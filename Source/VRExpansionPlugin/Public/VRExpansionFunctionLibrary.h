@@ -66,23 +66,6 @@ enum class EVRControllerProperty_String
 	Prop_AttachedDeviceId_String = 0
 };
 
-/*class FSteamVRHMDAccessor : public FSteamVRHMD
-{
-	//friend class FSteamVRHMD;
-
-	FSteamVRHMDAccessor::FSteamVRHMDAccessor(ISteamVRPlugin* SteamVRPlugin) :
-		FSteamVRHMD(SteamVRPlugin)
-	{
-
-	}
-
-	pVRGetGenericInterface * GetInterfacePtr()
-	{
-		return &VRGetGenericInterfaceFn;
-	}
-};*/
-
-
 // Not using due to BP incompatibility
 /*
 UENUM(BlueprintType)
@@ -169,18 +152,18 @@ public:
 		return Owner->IsLocallyControlled();
 	}
 
-	// Gets a String controller property
+	// Opends the handles for the library
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
 	bool OpenVRHandles();
 
-	// Gets a String controller property
+	// Closes the handles for the library
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
 	bool CloseVRHandles();
 
 	UPROPERTY(BlueprintReadWrite)
 	bool bInitialized;
 
-	// Gets a String controller property
+	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))
 	static bool GetIsHMDConnected();
 
