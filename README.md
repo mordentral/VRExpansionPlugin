@@ -1,3 +1,9 @@
+***NOTICE - Branched off of original motion controller plugin***
+
+Original plugin here (minus most new features):
+https://bitbucket.org/mordentral/ue4-vr-grippable-motion-controller-plugin
+
+
 ### Use Of This Plugin ###
 
 This Plugin is intended to add additional functionality to Open/SteamVR in UE4. 
