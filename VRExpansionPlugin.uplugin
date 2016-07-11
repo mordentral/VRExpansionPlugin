@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "VRExpansionPlugin",
+	"Description": "Adds several new VR features & components to UE4",
+	"Category": "VR",
+	"CreatedBy": "Joshua (MordenTral) Statzer",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EnabledByDefault": true,
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "VRExpansionPlugin",
+			"Type": "RunTime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
