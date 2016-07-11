@@ -135,10 +135,10 @@ public:
 	bool DropActor(AActor* ActorToDrop, bool bSimulate);
 
 	UFUNCTION(Reliable, NetMulticast)
-	void NotifyGrip(FBPActorGripInformation NewGrip);
+	void NotifyGrip(const FBPActorGripInformation &NewGrip);
 
 	UFUNCTION(Reliable, NetMulticast)
-	void NotifyDrop(FBPActorGripInformation NewDrop, bool bSimulate);
+	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);
 
 	// After teleporting a pawn you NEED to call this, otherwise gripped objects will travel with a sweeped move and can get caught on geometry
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")

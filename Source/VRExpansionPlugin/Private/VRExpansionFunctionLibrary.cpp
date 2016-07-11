@@ -109,7 +109,7 @@ bool UVRExpansionFunctionLibrary::GetIsHMDConnected()
 {
 	if (GEngine && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHMDConnected())
 		return true;
-	
+
 	return false;
 }
 

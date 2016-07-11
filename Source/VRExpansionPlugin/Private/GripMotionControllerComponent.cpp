@@ -293,7 +293,7 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 	return bFoundActor;
 }
 
-void UGripMotionControllerComponent::NotifyGrip_Implementation(FBPActorGripInformation NewGrip)
+void UGripMotionControllerComponent::NotifyGrip_Implementation(const FBPActorGripInformation &NewGrip)
 {
 	switch (NewGrip.GripAttachmentType.GetValue())
 	{
@@ -315,7 +315,7 @@ void UGripMotionControllerComponent::NotifyGrip_Implementation(FBPActorGripInfor
 	}
 }
 
-void UGripMotionControllerComponent::NotifyDrop_Implementation(FBPActorGripInformation NewDrop, bool bSimulate)
+void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
 	NewDrop.Actor->RemoveTickPrerequisiteComponent(this);
 	this->IgnoreActorWhenMoving(NewDrop.Actor, false);
