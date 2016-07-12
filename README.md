@@ -21,3 +21,6 @@ ADDME
 How to use specific components
 
 [Grip Motion Controller Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VRGrippableMotionController)
+
+
+[Replicated VR Camera Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Replicated%20VR%20Camera)
