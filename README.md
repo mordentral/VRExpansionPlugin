@@ -21,3 +21,6 @@ I will push pre-compiled binaries for all builds as well but I highly suggest th
 
 
 [Parent Relative Attachment Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Parent%20Relative%20Attachment%20Component)
+
+
+[VR Function Expansion Library Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VRExpansionFunctionLibrary)
