@@ -18,7 +18,8 @@ public:
 UENUM(Blueprintable)
 enum EGripAttachmentType
 {
-	GripWithAttachTo,
+	// Did not like how this works
+//	GripWithAttachTo,
 	GripWithMoveTo
 };
 
@@ -37,10 +38,6 @@ struct FBPActorGripInformation
 public:
 	UPROPERTY()
 		AActor * Actor;
-	//	UPROPERTY()
-	//	bool bInteractiveCollision;
-	//	UPROPERTY()
-	//	bool bSweepCollision;
 	UPROPERTY()
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
 	UPROPERTY()

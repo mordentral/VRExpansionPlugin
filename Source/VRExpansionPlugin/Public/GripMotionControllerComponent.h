@@ -144,6 +144,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	void PostTeleportMoveGrippedActors();
 
+	// Move a single gripped item back into position ignoring collision in the way
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	bool TeleportMoveGrippedActor(AActor * GrippedActorToMove);
+
 	// This is for testing, setting it to true allows you to test grip with a non VR enabled pawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bUseWithoutTracking;

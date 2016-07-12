@@ -126,7 +126,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
 	{
 		// Attached actors will already register as is above, so skipping GripWithAttachTo actors
-		if (!actor.Actor || actor.GripAttachmentType == EGripAttachmentType::GripWithAttachTo || actor.bColliding)
+		if (!actor.Actor /*|| actor.GripAttachmentType == EGripAttachmentType::GripWithAttachTo*/ || actor.bColliding)
 			continue;
 
 		UPrimitiveComponent *root = Cast<UPrimitiveComponent>(actor.Actor->GetRootComponent());
@@ -212,6 +212,7 @@ bool UGripMotionControllerComponent::GripActor(AActor* ActorToGrip, const FTrans
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GripAttachmentType = GripAttachmentType;
 	newActorGrip.Actor = ActorToGrip;
+	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
 
 	switch (GripAttachmentType.GetValue())
 	{
@@ -229,38 +230,16 @@ bool UGripMotionControllerComponent::GripActor(AActor* ActorToGrip, const FTrans
 		else
 			newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
 
-		newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
-
-		GrippedActors.Add(newActorGrip);
 	}break;
 
-	case EGripAttachmentType::GripWithAttachTo:
-	{
-	/*	switch (GripCollisionType.GetValue())
-		{
-		case EGripCollisionType::InteractiveCollisionWithPhysics:
-		{
-			ActorToGrip->simu
-		}break;
-
-		case EGripCollisionType::SweepWithPhysics:
-		case EGripCollisionType::PhysicsOnly:
-		{
-		
-		}break;
-
-		default:break;
-		}
-		if(EGripCollisionType::InteractiveCollisionWithPhysics)
-		FAttachmentTransformRules transRules;
-
-		ActorToGrip->AttachToComponent(this, transRules)
-		*/
-	}break;
+	/*case EGripAttachmentType::GripWithAttachTo:
+	{	
+	}break;*/
 
 	default:break;
 	}
 
+	GrippedActors.Add(newActorGrip);
 	NotifyGrip(newActorGrip);
 
 	return true;
@@ -274,18 +253,15 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 		return false;
 	}
 
-	EGripAttachmentType AttachType = EGripAttachmentType::GripWithMoveTo;
 	bool bFoundActor = false;
 
 	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 	{
 		if (GrippedActors[i].Actor == ActorToDrop)
 		{
-			AttachType = GrippedActors[i].GripAttachmentType;
 			NotifyDrop(GrippedActors[i], bSimulate);
 			
 			GrippedActors.RemoveAt(i);
-			
 			bFoundActor = true;
 			break;
 		}
@@ -295,21 +271,24 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 
 void UGripMotionControllerComponent::NotifyGrip_Implementation(const FBPActorGripInformation &NewGrip)
 {
+
+	if (bIsServer)
+		NewGrip.Actor->SetReplicateMovement(false);
+
+	this->IgnoreActorWhenMoving(NewGrip.Actor, true);
+
+
 	switch (NewGrip.GripAttachmentType.GetValue())
 	{
+	
 	case EGripAttachmentType::GripWithMoveTo:
 	{
 		NewGrip.Actor->DisableComponentsSimulatePhysics();
-		
-		if(bIsServer)
-			NewGrip.Actor->SetReplicateMovement(false);
-		
-		this->IgnoreActorWhenMoving(NewGrip.Actor, true);
 	}
 
-	case EGripAttachmentType::GripWithAttachTo:
+	/*case EGripAttachmentType::GripWithAttachTo:
 	{
-	}break;
+	}break;*/
 
 	default:break;
 	}
@@ -317,37 +296,70 @@ void UGripMotionControllerComponent::NotifyGrip_Implementation(const FBPActorGri
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
-	NewDrop.Actor->RemoveTickPrerequisiteComponent(this);
-	this->IgnoreActorWhenMoving(NewDrop.Actor, false);
 
-	switch (NewDrop.GripAttachmentType)
+	if (bIsServer)
 	{
-
-	case EGripAttachmentType::GripWithMoveTo:
-	{
-		if (bIsServer)
-			NewDrop.Actor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
+		NewDrop.Actor->RemoveTickPrerequisiteComponent(this);
+		this->IgnoreActorWhenMoving(NewDrop.Actor, false);
+		NewDrop.Actor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
 
 		UPrimitiveComponent *root = Cast<UPrimitiveComponent>(NewDrop.Actor->GetRootComponent());
+
+		switch (NewDrop.GripAttachmentType.GetValue())
+		{
+
+		case EGripAttachmentType::GripWithMoveTo:
+		{
+		} break;
+
+		/*case EGripAttachmentType::GripWithAttachTo:
+		{
+		}break;*/
+
+		default: break;
+		}
 
 		if (root)
 		{
 			root->IgnoreActorWhenMoving(this->GetOwner(), false);
-
-			if (bSimulate)
-			{
-				root->SetSimulatePhysics(true);
-			}
+			root->SetSimulatePhysics(bSimulate);
 		}
-	} break;
-
-	case EGripAttachmentType::GripWithAttachTo:
-	{
-
-	}break;
-
-	default: break;
 	}
+}
+
+bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedActorToMove)
+{
+	if (!GrippedActors.Num())
+		return false;
+
+	FTransform WorldTransform;
+	FTransform InverseTransform = this->GetComponentTransform().Inverse();
+	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+	{
+		if (GrippedActors[i].Actor == GrippedActorToMove)
+		{
+			if (GrippedActors[i].GripAttachmentType != EGripAttachmentType::GripWithMoveTo)
+				continue;
+
+			// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
+			// Not sure whats wrong with the function but I might want to push a patch out eventually
+			WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
+
+			// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
+			GrippedActors[i].Actor->SetActorTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
+			if (bIsServer)
+				GrippedActors[i].bColliding = false;
+
+			return true;
+		}
+		else
+		{
+			if (bIsServer)
+				GrippedActors.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
+		}
+	}
+
+	return false;
 }
 
 
@@ -380,7 +392,6 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 				GrippedActors.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
 		}
 	}
-
 }
 
 void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -521,10 +532,9 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 					}
 				}break;
 
-				case EGripAttachmentType::GripWithAttachTo: 
+				/*case EGripAttachmentType::GripWithAttachTo: 
 				{
-
-				}break;
+				}break;*/
 
 				default: break;
 				}
@@ -651,7 +661,6 @@ bool UGripMotionControllerComponent::CheckActorWithSweep(AActor * ActorToCheck, 
 	return true;
 
 }
-
 
 //=============================================================================
 bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation)
