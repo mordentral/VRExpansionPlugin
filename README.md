@@ -18,8 +18,6 @@ ADDME
 
 ### How do I use it? ###
 
-How to use specific components
-
 [Grip Motion Controller Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VRGrippableMotionController)
 
 
