@@ -49,11 +49,26 @@ public:
 	UPROPERTY()
 		bool bOriginalReplicatesMovement;
 
+	// For multi grip situations
+	UPROPERTY()
+		USceneComponent * SecondaryAttachment;
+	//UPROPERTY()
+	//	FTransform SecondaryRelativeTransform;
+	UPROPERTY()
+		bool bHasSecondaryAttachment;
+	// Allow hand to not be primary positional attachment?
+	// End multi grip
 
 	FBPActorGripInformation()
 	{
+		Actor = nullptr;
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics;
 		GripAttachmentType = EGripAttachmentType::GripWithMoveTo;
+
+
+		SecondaryAttachment = nullptr;
+		bHasSecondaryAttachment = false;
+		//bHandIsPrimaryReference = true;
 	}
 };

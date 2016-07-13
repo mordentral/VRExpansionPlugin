@@ -327,9 +327,45 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}
 }
 
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent)
+{
+	if (!GrippedActorToAddAttachment || !SecondaryPointComponent || !GrippedActors.Num())
+		return false;
+
+	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+	{
+		if (GrippedActors[i].Actor == GrippedActorToAddAttachment)
+		{
+			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
+			GrippedActors[i].bHasSecondaryAttachment = true;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment)
+{
+	if (!GrippedActorToAddAttachment || !GrippedActors.Num())
+		return false;
+
+	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+	{
+		if (GrippedActors[i].Actor == GrippedActorToAddAttachment)
+		{
+			GrippedActors[i].SecondaryAttachment = nullptr;
+			GrippedActors[i].bHasSecondaryAttachment = false;
+			return false;
+		}
+	}
+
+	return false;
+}
+
 bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedActorToMove)
 {
-	if (!GrippedActors.Num())
+	if (!GrippedActorToMove || !GrippedActors.Num())
 		return false;
 
 	FTransform WorldTransform;
@@ -338,9 +374,6 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 	{
 		if (GrippedActors[i].Actor == GrippedActorToMove)
 		{
-			if (GrippedActors[i].GripAttachmentType != EGripAttachmentType::GripWithMoveTo)
-				continue;
-
 			// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
 			// Not sure whats wrong with the function but I might want to push a patch out eventually
 			WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
@@ -351,11 +384,6 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 				GrippedActors[i].bColliding = false;
 
 			return true;
-		}
-		else
-		{
-			if (bIsServer)
-				GrippedActors.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
 		}
 	}
 
@@ -374,9 +402,6 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 	{
 		if (GrippedActors[i].Actor)
 		{
-			if (GrippedActors[i].GripAttachmentType != EGripAttachmentType::GripWithMoveTo)
-				continue;
-
 			// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
 			// Not sure whats wrong with the function but I might want to push a patch out eventually
 			WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
@@ -474,9 +499,16 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 				{
 					if (!bIsServer && GrippedActors[i].bColliding)
 						continue;
+
 					// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
 					// Not sure whats wrong with the function but I might want to push a patch out eventually
 					WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
+
+					// Need to figure out best default behavior
+					/*if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
+					{
+						WorldTransform.SetRotation((WorldTransform.GetLocation() - GrippedActors[i].SecondaryAttachment->GetComponentLocation()).ToOrientationRotator().Quaternion());
+					}*/
 
 					if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics && bIsServer)
 					{
@@ -525,7 +557,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 						// Move the actor, we are not offsetting by the hit result anyway
 						GrippedActors[i].Actor->SetActorTransform(WorldTransform, false);
 					}
-					else // This is the only one that is called on the client side in a network enviroment
+					else // This is the only one that is called on the client side in a network environment
 					{
 						// Move the actor, we are not offsetting by the hit result anyway
 						GrippedActors[i].Actor->SetActorTransform(WorldTransform, false);
