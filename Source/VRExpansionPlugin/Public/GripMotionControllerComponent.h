@@ -45,6 +45,7 @@ class UGripMotionControllerComponent : public UPrimitiveComponent
 	}
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void OnUnregister() override;
 
 public:
 
@@ -128,7 +129,7 @@ public:
 	   location that the socket is to its parent actor.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, TEnumAsByte<EGripAttachmentType> GripAttachmentType = EGripAttachmentType::GripWithMoveTo/* bool bSweepCollision = true, bool bInteractiveCollision = true*/, bool bAllowSetMobility = true);
+	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, /* bool bSweepCollision = true, bool bInteractiveCollision = true,*/ bool bAllowSetMobility = true);
 
 	// Drop a gripped actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -164,6 +165,19 @@ public:
 	FRotator OriginalOrientation;
 
 	bool CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation);
+	
+	// For physics handle operations
+	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
+	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
+	void UpdatePhysicsHandleTransform(const FTransform& NewTransform);
+protected: 
+
+		/** Physics scene index of the body we are grabbing. */
+		int32 SceneIndex;
+		/** Pointer to PhysX joint used by the handle*/
+		physx::PxD6Joint* HandleData;
+		/** Pointer to kinematic actor jointed to grabbed object */
+		physx::PxRigidDynamic* KinActorData;
 
 private:
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/

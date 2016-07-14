@@ -15,18 +15,17 @@ public:
 		FRotator Orientation;
 };
 
-UENUM(Blueprintable)
-enum EGripAttachmentType
-{
-	// Did not like how this works
-//	GripWithAttachTo,
-	GripWithMoveTo
-};
-
+/*
+Interactive Collision With Physics = Held items can be offset by geometry, uses physics for the offset, pushes physics simulating objects with weight taken into account
+Interactive Collision With Sweep = Held items can be offset by geometry, uses sweep for the offset, pushes physics simulating objects, no weight
+Sweep With Physics = Only sweeps movement, will not be offset by geomtry, still pushes physics simulating objects, no weight
+Physics Only = Does not sweep at all (does not trigger OnHitEvents), still pushes physics simulating objects, no weight
+*/
 UENUM(Blueprintable)
 enum EGripCollisionType
 {
 	InteractiveCollisionWithPhysics,
+	InteractiveCollisionWithSweep,
 	SweepWithPhysics,
 	PhysicsOnly
 };
@@ -40,8 +39,6 @@ public:
 		AActor * Actor;
 	UPROPERTY()
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
-	UPROPERTY()
-		TEnumAsByte<EGripAttachmentType> GripAttachmentType;
 	UPROPERTY()
 		bool bColliding;
 	UPROPERTY()
@@ -63,8 +60,7 @@ public:
 	{
 		Actor = nullptr;
 		bColliding = false;
-		GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics;
-		GripAttachmentType = EGripAttachmentType::GripWithMoveTo;
+		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 
 
 		SecondaryAttachment = nullptr;
