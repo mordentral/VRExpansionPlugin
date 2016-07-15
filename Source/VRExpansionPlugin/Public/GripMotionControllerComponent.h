@@ -164,25 +164,17 @@ public:
 	FVector OriginalPosition;
 	FRotator OriginalOrientation;
 
-	bool CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation);
+	bool CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
 	
 	// For physics handle operations
-	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
-	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
-	void UpdatePhysicsHandleTransform(const FTransform& NewTransform);
+	bool SetUpPhysicsHandle(FBPActorGripInformation &NewGrip);
+	bool DestroyPhysicsHandle(FBPActorGripInformation &Grip);
+	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
 
 	UPROPERTY(EditAnywhere, Category = "VRGrip")
 		float Damping;
 	UPROPERTY(EditAnywhere, Category = "VRGrip")
 		float Stiffness;
-protected: 
-
-		/** Physics scene index of the body we are grabbing. */
-		int32 SceneIndex;
-		/** Pointer to PhysX joint used by the handle*/
-		physx::PxD6Joint* HandleData;
-		/** Pointer to kinematic actor jointed to grabbed object */
-		physx::PxRigidDynamic* KinActorData;
 
 private:
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/

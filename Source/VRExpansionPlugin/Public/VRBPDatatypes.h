@@ -2,6 +2,7 @@
 
 #pragma once
 #include "Engine.h"
+
 #include "VRBPDatatypes.generated.h"
 
 USTRUCT()
@@ -26,6 +27,7 @@ enum EGripCollisionType
 {
 	InteractiveCollisionWithPhysics,
 	InteractiveCollisionWithSweep,
+	InteractiveHybridCollisionWithSweep,
 	SweepWithPhysics,
 	PhysicsOnly
 };
@@ -56,8 +58,21 @@ public:
 	// Allow hand to not be primary positional attachment?
 	// End multi grip
 
+
+
+	/** Physics scene index of the body we are grabbing. */
+	int32 SceneIndex;
+	/** Pointer to PhysX joint used by the handle*/
+	physx::PxD6Joint* HandleData;
+	/** Pointer to kinematic actor jointed to grabbed object */
+	physx::PxRigidDynamic* KinActorData;
+
+
 	FBPActorGripInformation()
 	{
+		HandleData = NULL;
+		KinActorData = NULL;
+
 		Actor = nullptr;
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
