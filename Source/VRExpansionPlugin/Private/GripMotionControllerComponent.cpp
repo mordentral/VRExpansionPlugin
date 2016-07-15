@@ -59,6 +59,9 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
+
+	Damping = 10000.0f;
+	Stiffness = 5000.0f;
 }
 
 //=============================================================================
@@ -688,6 +691,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				const uint32 SceneType = root->BodyInstance.UseAsyncScene(RBScene) ? PST_Async : PST_Sync;
 				SceneIndex = RBScene->PhysXSceneIndex[SceneType];
 
+				//Actor->setMass(90000.0f);
 				// Setting up the joint
 				NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
 				NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eFREE);//eFREE);
@@ -703,20 +707,20 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				//UpdateDriveSettings();
 				if (HandleData != nullptr)
 				{
-					float Stiffness = 750.0f; // 750
-					float Damping = 200.0f; // 200
-					float angleStiffness = 1500.0f; // 1500
-					float angleDamping = 500.0f; // 500
+					//float Stiffness = 999999.0f; // 750
+					//float Damping = 200.0f; // 200
+					//float angleStiffness = 9999999.0f; // 1500
+					//float angleDamping = 200.0f; // 500
 					HandleData->setDrive(PxD6Drive::eX, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 					HandleData->setDrive(PxD6Drive::eY, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 					HandleData->setDrive(PxD6Drive::eZ, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 
 					//if (bRotationConstrained)
 					//{
-					HandleData->setDrive(PxD6Drive::eSLERP, PxD6JointDrive(angleStiffness, angleDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+					HandleData->setDrive(PxD6Drive::eSLERP, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 
-						HandleData->setDrive(PxD6Drive::eTWIST, PxD6JointDrive(angleStiffness, angleDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
-						HandleData->setDrive(PxD6Drive::eSWING, PxD6JointDrive(angleStiffness, angleDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+						//HandleData->setDrive(PxD6Drive::eTWIST, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+						//HandleData->setDrive(PxD6Drive::eSWING, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 					//}
 				}
 			}

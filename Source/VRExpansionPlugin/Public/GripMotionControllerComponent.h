@@ -170,6 +170,11 @@ public:
 	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
 	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
 	void UpdatePhysicsHandleTransform(const FTransform& NewTransform);
+
+	UPROPERTY(EditAnywhere, Category = "VRGrip")
+		float Damping;
+	UPROPERTY(EditAnywhere, Category = "VRGrip")
+		float Stiffness;
 protected: 
 
 		/** Physics scene index of the body we are grabbing. */
