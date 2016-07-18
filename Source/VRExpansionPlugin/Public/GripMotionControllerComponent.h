@@ -141,6 +141,9 @@ public:
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);
 
+	// Running the gripping logic in its own function as the main tick was getting bloated
+	void TickGrip();
+
 	// Get list of all gripped actors 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	void GetGrippedActors(TArray<AActor*> &GrippedActorsArray);
@@ -179,6 +182,7 @@ public:
 	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);
 	int GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo);
 	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
+	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
 
 	UPROPERTY(EditAnywhere, Category = "VRGrip")
 	float Damping;
