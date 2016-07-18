@@ -32,6 +32,19 @@ enum EGripCollisionType
 	PhysicsOnly
 };
 
+
+// This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
+UENUM(Blueprintable)
+enum EBPHMDDeviceType
+{
+	DT_OculusRift,
+	DT_Morpheus,
+	DT_ES2GenericStereoMesh,
+	DT_SteamVR,
+	DT_GearVR,
+	DT_Unknown
+};
+
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {

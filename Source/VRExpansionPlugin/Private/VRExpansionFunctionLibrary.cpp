@@ -113,6 +113,26 @@ bool UVRExpansionFunctionLibrary::GetIsHMDConnected()
 	return false;
 }
 
+EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
+{
+	if (GEngine && GEngine->HMDDevice.IsValid())
+	{
+		switch (GEngine->HMDDevice->GetHMDDeviceType())
+		{
+		case EHMDDeviceType::DT_ES2GenericStereoMesh: return EBPHMDDeviceType::DT_ES2GenericStereoMesh; break;
+		case EHMDDeviceType::DT_GearVR: return EBPHMDDeviceType::DT_GearVR; break;
+		case EHMDDeviceType::DT_Morpheus: return EBPHMDDeviceType::DT_Morpheus; break;
+		case EHMDDeviceType::DT_OculusRift: return EBPHMDDeviceType::DT_OculusRift; break;
+		case EHMDDeviceType::DT_SteamVR: return EBPHMDDeviceType::DT_SteamVR; break;
+		
+		// Return unknown if not a matching enum, may need to add new entries in the copied enum if the original adds new ones in this case
+		default: return EBPHMDDeviceType::DT_Unknown; break;
+		}
+	}
+
+	return EBPHMDDeviceType::DT_Unknown;
+}
+
 
 bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(TEnumAsByte<EVRControllerProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue)
 {
