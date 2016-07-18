@@ -7,7 +7,7 @@
 
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
-class UParentRelativeAttachmentComponent : public USceneComponent
+class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneComponent
 {
 	GENERATED_UCLASS_BODY()
 

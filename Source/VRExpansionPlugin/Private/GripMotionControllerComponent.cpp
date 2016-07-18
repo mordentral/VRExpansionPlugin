@@ -5,6 +5,12 @@
 #include "Net/UnrealNetwork.h"
 #include "PrimitiveSceneInfo.h"
 
+#include "PhysicsPublic.h"
+
+#if WITH_PHYSX
+#include "PhysXSupport.h"
+#endif // WITH_PHYSX
+
 #if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 11
 #else
 #include "Features/IModularFeatures.h"
@@ -53,6 +59,9 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
+
+	Damping = 500.0f;
+	Stiffness = 5000.0f;
 }
 
 //=============================================================================
@@ -75,6 +84,107 @@ UGripMotionControllerComponent::~UGripMotionControllerComponent()
 	ViewExtension.Reset();
 }
 
+void UGripMotionControllerComponent::OnUnregister()
+{
+	for (int i = 0; i < GrippedActors.Num(); i++)
+	{
+		DestroyPhysicsHandle(GrippedActors[i]);
+		DropActor(GrippedActors[i].Actor, false);
+	}
+	GrippedActors.Empty();
+
+	for (int i = 0; i < PhysicsGrips.Num(); i++)
+	{
+		#if WITH_PHYSX
+				if (PhysicsGrips[i].HandleData)
+				{
+					check(PhysicsGrips[i].KinActorData);
+
+					// use correct scene
+					PxScene* PScene = GetPhysXSceneFromIndex(PhysicsGrips[i].SceneIndex);
+					if (PScene)
+					{
+						SCOPED_SCENE_WRITE_LOCK(PScene);
+						// Destroy joint.
+						PhysicsGrips[i].HandleData->release();
+
+						// Destroy temporary actor.
+						PhysicsGrips[i].KinActorData->release();
+
+					}
+					PhysicsGrips[i].KinActorData = NULL;
+					PhysicsGrips[i].HandleData = NULL;
+				}
+		#endif // WITH_PHYSX
+	}
+	PhysicsGrips.Empty();
+
+	Super::OnUnregister();
+}
+
+FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::GetPhysicsGrip(const FBPActorGripInformation & GripInfo)
+{
+	for (int i = 0; i < PhysicsGrips.Num(); i++)
+	{
+		if (PhysicsGrips[i].Actor == GripInfo.Actor)
+			return &PhysicsGrips[i];
+	}
+
+	return nullptr;
+}
+
+int UGripMotionControllerComponent::GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo)
+{
+	for (int i = 0; i < PhysicsGrips.Num(); i++)
+	{
+		if (PhysicsGrips[i].Actor == GripInfo.Actor)
+			return i;
+	}
+
+	return 0;
+}
+
+FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::CreatePhysicsGrip(const FBPActorGripInformation & GripInfo)
+{
+	for (int i = 0; i < PhysicsGrips.Num(); i++)
+	{
+		if (PhysicsGrips[i].Actor == GripInfo.Actor)
+		{
+		#if WITH_PHYSX
+					if (PhysicsGrips[i].HandleData)
+					{
+						check(PhysicsGrips[i].KinActorData);
+
+						// use correct scene
+						PxScene* PScene = GetPhysXSceneFromIndex(PhysicsGrips[i].SceneIndex);
+						if (PScene)
+						{
+							SCOPED_SCENE_WRITE_LOCK(PScene);
+							// Destroy joint.
+							PhysicsGrips[i].HandleData->release();
+
+							// Destroy temporary actor.
+							PhysicsGrips[i].KinActorData->release();
+
+						}
+						PhysicsGrips[i].KinActorData = NULL;
+						PhysicsGrips[i].HandleData = NULL;
+					}
+		#endif // WITH_PHYSX
+
+			return &PhysicsGrips[i];
+		}
+	}
+
+	FBPActorPhysicsHandleInformation NewInfo;
+	NewInfo.Actor = GripInfo.Actor;
+
+	int index = PhysicsGrips.Add(NewInfo);
+
+	return &PhysicsGrips[index];
+}
+
+
 //=============================================================================
 void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
@@ -96,8 +206,9 @@ void UGripMotionControllerComponent::Server_SendControllerTransform_Implementati
 	// Store new transform and trigger OnRep_Function
 	ReplicatedControllerTransform = NewTransform;
 
-	// Server should no longer call this RPC itself, no need to filter for authority here anymore
-	OnRep_ReplicatedControllerTransform();
+	// Server should no longer call this RPC itself, but if is using non tracked then it will so keeping auth check
+	if(!bHasAuthority)
+		OnRep_ReplicatedControllerTransform();
 }
 
 bool UGripMotionControllerComponent::Server_SendControllerTransform_Validate(FBPVRComponentPosRep NewTransform)
@@ -126,7 +237,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
 	{
 		// Attached actors will already register as is above, so skipping GripWithAttachTo actors
-		if (!actor.Actor /*|| actor.GripAttachmentType == EGripAttachmentType::GripWithAttachTo*/ || actor.bColliding)
+		if (!actor.Actor || actor.bColliding)
 			continue;
 
 		UPrimitiveComponent *root = Cast<UPrimitiveComponent>(actor.Actor->GetRootComponent());
@@ -173,7 +284,7 @@ void UGripMotionControllerComponent::FViewExtension::GatherLateGripUpdatePrimiti
 	}
 }
 
-bool UGripMotionControllerComponent::GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative, FName OptionalSnapToSocketName, TEnumAsByte<EGripCollisionType> GripCollisionType, TEnumAsByte<EGripAttachmentType> GripAttachmentType/* bool bSweepCollision, bool bInteractiveCollision*/, bool bAllowSetMobility)
+bool UGripMotionControllerComponent::GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative, FName OptionalSnapToSocketName, TEnumAsByte<EGripCollisionType> GripCollisionType/* bool bSweepCollision, bool bInteractiveCollision*/, bool bAllowSetMobility)
 {
 	if (!bIsServer || !ActorToGrip)
 	{
@@ -210,37 +321,23 @@ bool UGripMotionControllerComponent::GripActor(AActor* ActorToGrip, const FTrans
 
 	FBPActorGripInformation newActorGrip;
 	newActorGrip.GripCollisionType = GripCollisionType;
-	newActorGrip.GripAttachmentType = GripAttachmentType;
 	newActorGrip.Actor = ActorToGrip;
 	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
 
-	switch (GripAttachmentType.GetValue())
+	if (OptionalSnapToSocketName.IsValid() && root->DoesSocketExist(OptionalSnapToSocketName))
 	{
-	case EGripAttachmentType::GripWithMoveTo:
-	{
-		if (OptionalSnapToSocketName.IsValid() && root->DoesSocketExist(OptionalSnapToSocketName))
-		{
-			// I inverse it so that laying out the sockets makes sense
-			FTransform sockTrans = root->GetSocketTransform(OptionalSnapToSocketName, ERelativeTransformSpace::RTS_Component);
-			newActorGrip.RelativeTransform = sockTrans.Inverse();
-			newActorGrip.RelativeTransform.SetScale3D(ActorToGrip->GetActorScale3D());
-		}
-		else if (bWorldOffsetIsRelative)
-			newActorGrip.RelativeTransform = WorldOffset;
-		else
-			newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
-
-	}break;
-
-	/*case EGripAttachmentType::GripWithAttachTo:
-	{	
-	}break;*/
-
-	default:break;
+		// I inverse it so that laying out the sockets makes sense
+		FTransform sockTrans = root->GetSocketTransform(OptionalSnapToSocketName, ERelativeTransformSpace::RTS_Component);
+		newActorGrip.RelativeTransform = sockTrans.Inverse();
+		newActorGrip.RelativeTransform.SetScale3D(ActorToGrip->GetActorScale3D());
 	}
-
-	GrippedActors.Add(newActorGrip);
+	else if (bWorldOffsetIsRelative)
+		newActorGrip.RelativeTransform = WorldOffset;
+	else
+		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
+	
 	NotifyGrip(newActorGrip);
+	GrippedActors.Add(newActorGrip);
 
 	return true;
 }
@@ -272,58 +369,53 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 void UGripMotionControllerComponent::NotifyGrip_Implementation(const FBPActorGripInformation &NewGrip)
 {
 
-	if (bIsServer)
-		NewGrip.Actor->SetReplicateMovement(false);
-
-	this->IgnoreActorWhenMoving(NewGrip.Actor, true);
-
-
-	switch (NewGrip.GripAttachmentType.GetValue())
+	switch (NewGrip.GripCollisionType.GetValue())
 	{
-	
-	case EGripAttachmentType::GripWithMoveTo:
+	case EGripCollisionType::InteractiveCollisionWithPhysics:
+	{
+		if(bIsServer)
+			NewGrip.Actor->SetReplicateMovement(false); 
+
+		SetUpPhysicsHandle(NewGrip);
+
+	} break;
+
+	// Skip collision intersects with these types, they dont need it
+	case EGripCollisionType::PhysicsOnly:
+	case EGripCollisionType::SweepWithPhysics:
+	case EGripCollisionType::InteractiveHybridCollisionWithSweep:
+	case EGripCollisionType::InteractiveCollisionWithSweep:
+	default: 
 	{
 		NewGrip.Actor->DisableComponentsSimulatePhysics();
+
+		if (bIsServer)
+			NewGrip.Actor->SetReplicateMovement(false); 
+	} break;
+
 	}
 
-	/*case EGripAttachmentType::GripWithAttachTo:
-	{
-	}break;*/
-
-	default:break;
-	}
+	this->IgnoreActorWhenMoving(NewGrip.Actor, true);
 }
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
-
 	if (bIsServer)
 	{
 		NewDrop.Actor->RemoveTickPrerequisiteComponent(this);
 		this->IgnoreActorWhenMoving(NewDrop.Actor, false);
 		NewDrop.Actor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
+	}
 
-		UPrimitiveComponent *root = Cast<UPrimitiveComponent>(NewDrop.Actor->GetRootComponent());
+	DestroyPhysicsHandle(NewDrop);
 
-		switch (NewDrop.GripAttachmentType.GetValue())
-		{
+	UPrimitiveComponent *root = Cast<UPrimitiveComponent>(NewDrop.Actor->GetRootComponent());
 
-		case EGripAttachmentType::GripWithMoveTo:
-		{
-		} break;
-
-		/*case EGripAttachmentType::GripWithAttachTo:
-		{
-		}break;*/
-
-		default: break;
-		}
-
-		if (root)
-		{
-			root->IgnoreActorWhenMoving(this->GetOwner(), false);
-			root->SetSimulatePhysics(bSimulate);
-		}
+	if (root)
+	{
+		root->WakeAllRigidBodies();
+		root->IgnoreActorWhenMoving(this->GetOwner(), false);
+		root->SetSimulatePhysics(bSimulate);
 	}
 }
 
@@ -380,9 +472,23 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 
 			// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
 			GrippedActors[i].Actor->SetActorTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
-			if (bIsServer)
-				GrippedActors[i].bColliding = false;
+			
+			FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(GrippedActors[i]);
+			if (Handle && Handle->KinActorData)
+			{
+				Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 
+				UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
+				if (root)
+				{
+					FBodyInstance * body = root->GetBodyInstance();
+					if (body)
+					{
+						body->SetBodyTransform(WorldTransform, ETeleportType::TeleportPhysics);
+					}
+				}
+			}
+			
 			return true;
 		}
 	}
@@ -408,13 +514,30 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 
 			// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
 			GrippedActors[i].Actor->SetActorTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
-			if(bIsServer)
-				GrippedActors[i].bColliding = false;
+			
+			FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(GrippedActors[i]);
+			if (Handle && Handle->KinActorData)
+			{
+				Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+
+				UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
+				if (root)
+				{
+					FBodyInstance * body = root->GetBodyInstance();
+					if (body)
+					{
+						body->SetBodyTransform(WorldTransform, ETeleportType::TeleportPhysics);
+					}
+				}
+			}
 		}
 		else
 		{
 			if (bIsServer)
+			{
+				DestroyPhysicsHandle(GrippedActors[i]);
 				GrippedActors.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
+			}
 		}
 	}
 }
@@ -459,7 +582,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 		// Don't bother with any of this if not replicating transform
 		if (bReplicateControllerTransform)
 		{
-			if (bIsServer) // Skip sending the RPC if this is the server, it doesn't need to.
+			if (bIsServer && !bUseWithoutTracking) // Skip sending the RPC if this is the server, it doesn't need to.
 			{
 				ReplicatedControllerTransform.Position = Position;
 				ReplicatedControllerTransform.Orientation = Orientation;
@@ -493,30 +616,67 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 		{
 			if (GrippedActors[i].Actor)
 			{
-				switch (GrippedActors[i].GripAttachmentType.GetValue())
+				// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
+				// Not sure whats wrong with the function but I might want to push a patch out eventually
+				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
+
+				if (bIsServer)
 				{
-				case EGripAttachmentType::GripWithMoveTo:
+					// Handle collision intersection detection, this is used to intelligently manage some of the networking and late update features.
+					switch (GrippedActors[i].GripCollisionType.GetValue())
+					{
+					case EGripCollisionType::InteractiveCollisionWithPhysics:
+					case EGripCollisionType::InteractiveHybridCollisionWithSweep:
+					{
+						UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
+
+						if (root)
+						{
+							static FName NAME_TestOverlap = FName(TEXT("MovementOverlapTest"));
+							FCollisionQueryParams QueryParams(NAME_TestOverlap, false, this->GetOwner());
+							FCollisionResponseParams ResponseParam;
+							root->InitSweepCollisionParams(QueryParams, ResponseParam);
+							QueryParams.AddIgnoredActor(GrippedActors[i].Actor);
+							if (GetWorld()->OverlapBlockingTestByChannel(root->GetComponentLocation(), root->GetComponentQuat(), ECollisionChannel::ECC_Visibility, root->GetCollisionShape(), QueryParams, ResponseParam))
+							{
+								GrippedActors[i].bColliding = true;
+							}
+							else
+							{
+								GrippedActors[i].bColliding = false;
+							}
+						}
+					}
+
+					// Skip collision intersects with these types, they dont need it
+					case EGripCollisionType::PhysicsOnly:
+					case EGripCollisionType::SweepWithPhysics:
+					case EGripCollisionType::InteractiveCollisionWithSweep:
+					default:break;
+					}
+				}
+
+				// Need to figure out best default behavior
+				/*if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
 				{
-					if (!bIsServer && GrippedActors[i].bColliding)
-						continue;
+					WorldTransform.SetRotation((WorldTransform.GetLocation() - GrippedActors[i].SecondaryAttachment->GetComponentLocation()).ToOrientationRotator().Quaternion());
+				}*/
 
-					// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
-					// Not sure whats wrong with the function but I might want to push a patch out eventually
-					WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
-
-					// Need to figure out best default behavior
-					/*if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
+				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
+				{
+				//	if(bIsServer)
+						UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
+				}
+				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
+				{
+					if (bIsServer)
 					{
-						WorldTransform.SetRotation((WorldTransform.GetLocation() - GrippedActors[i].SecondaryAttachment->GetComponentLocation()).ToOrientationRotator().Quaternion());
-					}*/
+						FHitResult OutHit;
 
-					if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics && bIsServer)
-					{
-						FHitResult HitOut;
 						// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
-						GrippedActors[i].Actor->SetActorTransform(WorldTransform, true, &HitOut);
-
-						if (HitOut.bBlockingHit)// && HitOut.IsValidBlockingHit())
+						GrippedActors[i].Actor->SetActorTransform(WorldTransform, true, &OutHit);
+					
+						if (OutHit.bBlockingHit)
 						{
 							GrippedActors[i].bColliding = true;
 							if (!GrippedActors[i].Actor->bReplicateMovement)
@@ -529,7 +689,58 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 								GrippedActors[i].Actor->SetReplicateMovement(false);
 						}
 					}
-					else if (GrippedActors[i].GripCollisionType == EGripCollisionType::SweepWithPhysics && bIsServer)
+					else
+					{
+						if(!GrippedActors[i].bColliding)
+							GrippedActors[i].Actor->SetActorTransform(WorldTransform, true);
+					}
+				}
+				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
+				{
+					// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
+					if (bIsServer)
+					{
+						FBPActorPhysicsHandleInformation * GripHandle = GetPhysicsGrip(GrippedActors[i]);
+						if (!GrippedActors[i].bColliding)
+						{
+							if (GrippedActors[i].Actor->bReplicateMovement) // So we don't call on on change event over and over locally
+								GrippedActors[i].Actor->SetReplicateMovement(false);
+
+							if (GripHandle)
+							{
+								DestroyPhysicsHandle(GrippedActors[i]);
+								GrippedActors[i].Actor->DisableComponentsSimulatePhysics();
+							}
+
+							GrippedActors[i].Actor->SetActorTransform(WorldTransform, false);
+						}
+						else if (GrippedActors[i].bColliding && !GripHandle)
+						{
+							if (!GrippedActors[i].Actor->bReplicateMovement)
+								GrippedActors[i].Actor->SetReplicateMovement(true);
+
+							UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
+
+							root->SetSimulatePhysics(true);
+							SetUpPhysicsHandle(GrippedActors[i]);
+
+						}
+						else
+						{
+							if (GrippedActors[i].bColliding && GripHandle)
+								UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
+						}
+					}
+					else
+					{
+						if(!GrippedActors[i].bColliding)
+							GrippedActors[i].Actor->SetActorTransform(WorldTransform, false);
+					}
+
+				}
+				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::SweepWithPhysics)
+				{
+					if (bIsServer)
 					{
 						FVector OriginalPosition(GrippedActors[i].Actor->GetActorLocation());
 						FRotator OriginalOrientation(GrippedActors[i].Actor->GetActorRotation());
@@ -545,9 +756,9 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 							// ComponentSweepMulti does nothing if moving < KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
 							const float MinMovementDistSq = (FMath::Square(4.f*KINDA_SMALL_NUMBER));
 
-							if (bUseWithoutTracking || move.SizeSquared() > MinMovementDistSq || NewOrientation == OriginalOrientation)
+							if (bUseWithoutTracking || move.SizeSquared() > MinMovementDistSq || NewOrientation != OriginalOrientation)
 							{
-								if (CheckActorWithSweep(GrippedActors[i].Actor, move, NewOrientation))
+								if (CheckActorWithSweep(GrippedActors[i].Actor, move, NewOrientation, false))
 								{
 
 								}
@@ -557,31 +768,232 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 						// Move the actor, we are not offsetting by the hit result anyway
 						GrippedActors[i].Actor->SetActorTransform(WorldTransform, false);
 					}
-					else // This is the only one that is called on the client side in a network environment
+					else
 					{
 						// Move the actor, we are not offsetting by the hit result anyway
 						GrippedActors[i].Actor->SetActorTransform(WorldTransform, false);
 					}
-				}break;
-
-				/*case EGripAttachmentType::GripWithAttachTo: 
+				}
+				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::PhysicsOnly)
 				{
-				}break;*/
-
-				default: break;
+					// Move the actor, we are not offsetting by the hit result anyway
+					GrippedActors[i].Actor->SetActorTransform(WorldTransform, false);
 				}
 			}
 			else
 			{
 				if (bIsServer)
+				{
+					//if(GrippedActors[i].KinActorData)
+					DestroyPhysicsHandle(GrippedActors[i]);
+					
 					GrippedActors.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
+				}
 			}
 
 		}
 	}
 }
 
-bool UGripMotionControllerComponent::CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation)
+bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInformation &Grip)
+{
+
+	UPrimitiveComponent *root = Cast<UPrimitiveComponent>(Grip.Actor->GetRootComponent());
+
+	if (!root)
+		return false;
+
+	root->SetEnableGravity(true);
+
+	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(Grip);
+
+	if (!HandleInfo)
+		return true;
+
+	#if WITH_PHYSX
+		if (HandleInfo->HandleData)
+		{
+			check(HandleInfo->KinActorData);
+
+			// use correct scene
+			PxScene* PScene = GetPhysXSceneFromIndex(HandleInfo->SceneIndex);
+			if (PScene)
+			{
+				SCOPED_SCENE_WRITE_LOCK(PScene);
+				// Destroy joint.
+				HandleInfo->HandleData->release();
+
+				// Destroy temporary actor.
+				HandleInfo->KinActorData->release();
+
+			}
+			HandleInfo->KinActorData = NULL;
+			HandleInfo->HandleData = NULL;
+		}
+	#endif // WITH_PHYSX
+
+	PhysicsGrips.RemoveAt(GetPhysicsGripIndex(Grip));
+
+	return true;
+}
+
+bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip)
+{
+	UPrimitiveComponent *root = Cast<UPrimitiveComponent>(NewGrip.Actor->GetRootComponent());
+	
+	if (!root)
+		return false;
+
+	// Needs to be simulating in order to run physics
+	root->SetSimulatePhysics(true);
+	root->SetEnableGravity(false);
+
+	FBPActorPhysicsHandleInformation * HandleInfo = CreatePhysicsGrip(NewGrip);
+
+#if WITH_PHYSX
+	// Get the PxRigidDynamic that we want to grab.
+	FBodyInstance* BodyInstance = root->GetBodyInstance(NAME_None/*InBoneName*/);
+	if (!BodyInstance)
+	{
+		return false;
+	}
+
+	ExecuteOnPxRigidDynamicReadWrite(BodyInstance, [&](PxRigidDynamic* Actor)
+	{
+		PxScene* Scene = Actor->getScene();
+	
+		// Get transform of actor we are grabbing
+
+		FTransform WorldTransform;
+		FTransform InverseTransform = this->GetComponentTransform().Inverse();
+		WorldTransform = NewGrip.RelativeTransform.GetRelativeTransform(InverseTransform);
+
+		PxVec3 KinLocation = U2PVector(WorldTransform.GetLocation() - (WorldTransform.GetLocation() - root->GetComponentLocation()));
+		PxTransform GrabbedActorPose = Actor->getGlobalPose();
+		PxTransform KinPose(KinLocation, GrabbedActorPose.q);
+
+		// set target and current, so we don't need another "Tick" call to have it right
+		//TargetTransform = CurrentTransform = P2UTransform(KinPose);
+
+		// If we don't already have a handle - make one now.
+		if (!HandleInfo->HandleData)
+		{
+			// Create kinematic actor we are going to create joint with. This will be moved around with calls to SetLocation/SetRotation.
+			PxRigidDynamic* KinActor = Scene->getPhysics().createRigidDynamic(KinPose);
+			KinActor->setRigidDynamicFlag(PxRigidDynamicFlag::eKINEMATIC, true);
+			KinActor->setMass(0.0f); // 1.0f;
+			KinActor->setMassSpaceInertiaTensor(PxVec3(0.0f, 0.0f, 0.0f));// PxVec3(1.0f, 1.0f, 1.0f));
+			KinActor->setMaxDepenetrationVelocity(PX_MAX_F32);
+
+			// No bodyinstance
+			KinActor->userData = NULL;
+			
+			// Add to Scene
+			Scene->addActor(*KinActor);
+
+			// Save reference to the kinematic actor.
+			HandleInfo->KinActorData = KinActor;
+
+			// Create the joint
+			PxVec3 LocalHandlePos = GrabbedActorPose.transformInv(KinLocation);
+			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform::createIdentity(), Actor, PxTransform(LocalHandlePos));
+			
+			if (!NewJoint)
+			{
+				HandleInfo->HandleData = 0;
+			}
+			else
+			{
+				// No constraint instance
+				NewJoint->userData = NULL;
+				HandleInfo->HandleData = NewJoint;
+
+				// Remember the scene index that the handle joint/actor are in.
+				FPhysScene* RBScene = FPhysxUserData::Get<FPhysScene>(Scene->userData);
+				const uint32 SceneType = root->BodyInstance.UseAsyncScene(RBScene) ? PST_Async : PST_Sync;
+				HandleInfo->SceneIndex = RBScene->PhysXSceneIndex[SceneType];
+				
+				// Setting up the joint
+				NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
+				NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eFREE);
+				NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eFREE);
+				NewJoint->setDrivePosition(PxTransform(PxVec3(0, 0, 0)));
+
+				NewJoint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
+				NewJoint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
+				NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
+
+				//UpdateDriveSettings();
+				if (HandleInfo->HandleData != nullptr)
+				{
+					HandleInfo->HandleData->setDrive(PxD6Drive::eX, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+					HandleInfo->HandleData->setDrive(PxD6Drive::eY, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+					HandleInfo->HandleData->setDrive(PxD6Drive::eZ, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+
+					//if (bRotationConstrained)
+					//{
+					HandleInfo->HandleData->setDrive(PxD6Drive::eSLERP, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+
+						//HandleData->setDrive(PxD6Drive::eTWIST, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+						//HandleData->setDrive(PxD6Drive::eSWING, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+					//}
+				}
+			}
+
+		}
+	});
+#else
+	return false;
+#endif // WITH_PHYSX
+
+	return true;
+}
+
+void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform)
+{
+	if (!GrippedActor.Actor)
+		return;
+
+	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(GrippedActor);
+
+	if (!HandleInfo || !HandleInfo->KinActorData)
+		return;
+
+#if WITH_PHYSX
+	bool bChangedPosition = true;
+	bool bChangedRotation = true;
+
+	PxRigidDynamic* KinActor = HandleInfo->KinActorData;
+	PxScene* PScene = GetPhysXSceneFromIndex(HandleInfo->SceneIndex);
+	SCOPED_SCENE_WRITE_LOCK(PScene);
+
+	// Check if the new location is worthy of change
+	PxVec3 PNewLocation = U2PVector(NewTransform.GetTranslation());
+	PxVec3 PCurrentLocation = KinActor->getGlobalPose().p;
+	if ((PNewLocation - PCurrentLocation).magnitudeSquared() <= 0.01f*0.01f)
+	{
+		PNewLocation = PCurrentLocation;
+		bChangedPosition = false;
+	}
+
+	// Check if the new rotation is worthy of change
+	PxQuat PNewOrientation = U2PQuat(NewTransform.GetRotation());
+	PxQuat PCurrentOrientation = KinActor->getGlobalPose().q;
+	if ((FMath::Abs(PNewOrientation.dot(PCurrentOrientation)) > (1.f - SMALL_NUMBER)))
+	{
+		PNewOrientation = PCurrentOrientation;
+		bChangedRotation = false;
+	}
+
+	// Don't call moveKinematic if it hasn't changed - that will stop bodies from going to sleep.
+	if (bChangedPosition || bChangedRotation)
+	{
+		KinActor->setKinematicTarget(PxTransform(PNewLocation, PNewOrientation));
+	}
+#endif // WITH_PHYSX
+}
+
+bool UGripMotionControllerComponent::CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*,  bool &bHadBlockingHitOut*/)
 {
 	TArray<FHitResult> Hits;
 	// WARNING: HitResult is only partially initialized in some paths. All data is valid only if bFilledHitResult is true.
@@ -635,10 +1047,13 @@ bool UGripMotionControllerComponent::CheckActorWithSweep(AActor * ActorToCheck, 
 				const FHitResult& TestHit = Hits[HitIdx];
 
 				// Ignore the owning actor to the motion controller
-				if (TestHit.Actor == this->GetOwner())
+				if (TestHit.Actor == this->GetOwner() || (bSkipSimulatingComponents && TestHit.Component->IsSimulatingPhysics()))
 				{
 					if (Hits.Num() == 1)
+					{
+						//bHadBlockingHitOut = false;
 						return false;
+					}
 					else
 						continue;
 				}
@@ -688,11 +1103,13 @@ bool UGripMotionControllerComponent::CheckActorWithSweep(AActor * ActorToCheck, 
 		{
 			root->DispatchBlockingHit(*ActorToCheck, BlockingHit);
 		}
+
+		return true;
 	}
 
-	return true;
-
+	return false;
 }
+
 
 //=============================================================================
 bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation)
@@ -810,5 +1227,13 @@ void UGripMotionControllerComponent::FViewExtension::GatherLateUpdatePrimitives(
 		}
 
 		GatherLateUpdatePrimitives(ChildComponent, Primitives);
+	}
+}
+
+void UGripMotionControllerComponent::GetGrippedActors(TArray<AActor*> &GrippedActorsArray)
+{
+	for (int i = 0; i < GrippedActors.Num(); ++i)
+	{
+		GrippedActorsArray.Add(GrippedActors[i].Actor);
 	}
 }

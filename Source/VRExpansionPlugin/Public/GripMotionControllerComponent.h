@@ -16,7 +16,7 @@
 */
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionController)
-class UGripMotionControllerComponent : public UPrimitiveComponent
+class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveComponent
 {
 	GENERATED_UCLASS_BODY()
 	~UGripMotionControllerComponent();
@@ -45,6 +45,7 @@ class UGripMotionControllerComponent : public UPrimitiveComponent
 	}
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void OnUnregister() override;
 
 public:
 
@@ -128,7 +129,7 @@ public:
 	   location that the socket is to its parent actor.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, TEnumAsByte<EGripAttachmentType> GripAttachmentType = EGripAttachmentType::GripWithMoveTo/* bool bSweepCollision = true, bool bInteractiveCollision = true*/, bool bAllowSetMobility = true);
+	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, /* bool bSweepCollision = true, bool bInteractiveCollision = true,*/ bool bAllowSetMobility = true);
 
 	// Drop a gripped actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -139,6 +140,10 @@ public:
 
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);
+
+	// Get list of all gripped actors 
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	void GetGrippedActors(TArray<AActor*> &GrippedActorsArray);
 
 	// After teleporting a pawn you NEED to call this, otherwise gripped objects will travel with a sweeped move and can get caught on geometry
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -163,7 +168,22 @@ public:
 	FVector OriginalPosition;
 	FRotator OriginalOrientation;
 
-	bool CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation);
+	bool CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
+	
+	// For physics handle operations
+	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
+	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
+	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
+
+	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
+	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);
+	int GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo);
+	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
+
+	UPROPERTY(EditAnywhere, Category = "VRGrip")
+	float Damping;
+	UPROPERTY(EditAnywhere, Category = "VRGrip")
+	float Stiffness;
 
 private:
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/

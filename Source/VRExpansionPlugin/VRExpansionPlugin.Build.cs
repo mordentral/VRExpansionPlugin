@@ -23,6 +23,7 @@ public class VRExpansionPlugin : ModuleRules
 				"VRExpansionPlugin/Public",
                 "HeadMountedDisplay/Public",
                 "Runtime/Engine/Classes/Kismet",
+                "Runtime/Engine/Private/PhysicsEngine",
                 "../Plugins/Runtime/Steam/SteamVR/Source/SteamVR/Private" // This is dumb but it isn't very open
 				
 				// ... add public include paths required here ...
