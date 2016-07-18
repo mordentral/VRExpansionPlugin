@@ -6,7 +6,7 @@
 #include "VRBPDatatypes.generated.h"
 
 USTRUCT()
-struct FBPVRComponentPosRep
+struct VREXPANSIONPLUGIN_API FBPVRComponentPosRep
 {
 	GENERATED_BODY()
 public:
@@ -32,28 +32,28 @@ enum EGripCollisionType
 	PhysicsOnly
 };
 
-USTRUCT()
-struct FBPActorGripInformation
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 		AActor * Actor;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
 	UPROPERTY()
 		bool bColliding;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 		FTransform RelativeTransform;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 		bool bOriginalReplicatesMovement;
 
 	// For multi grip situations
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 		USceneComponent * SecondaryAttachment;
 	//UPROPERTY()
 	//	FTransform SecondaryRelativeTransform;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 		bool bHasSecondaryAttachment;
 	// Allow hand to not be primary positional attachment?
 	// End multi grip
@@ -61,17 +61,17 @@ public:
 
 
 	/** Physics scene index of the body we are grabbing. */
-	int32 SceneIndex;
+	//int32 SceneIndex;
 	/** Pointer to PhysX joint used by the handle*/
-	physx::PxD6Joint* HandleData;
+	//physx::PxD6Joint* HandleData;
 	/** Pointer to kinematic actor jointed to grabbed object */
-	physx::PxRigidDynamic* KinActorData;
+	//physx::PxRigidDynamic* KinActorData;
 
 
 	FBPActorGripInformation()
 	{
-		HandleData = NULL;
-		KinActorData = NULL;
+	//	HandleData = NULL;
+		//KinActorData = NULL;
 
 		Actor = nullptr;
 		bColliding = false;
@@ -81,5 +81,29 @@ public:
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;
 		//bHandIsPrimaryReference = true;
+	}
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadOnly)
+		AActor * Actor;
+
+	/** Physics scene index of the body we are grabbing. */
+	int32 SceneIndex;
+	/** Pointer to PhysX joint used by the handle*/
+	physx::PxD6Joint* HandleData;
+	/** Pointer to kinematic actor jointed to grabbed object */
+	physx::PxRigidDynamic* KinActorData;
+
+
+	FBPActorPhysicsHandleInformation()
+	{
+		HandleData = NULL;
+		KinActorData = NULL;
+		Actor = nullptr;
 	}
 };

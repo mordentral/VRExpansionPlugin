@@ -16,7 +16,7 @@
 */
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionController)
-class UGripMotionControllerComponent : public UPrimitiveComponent
+class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveComponent
 {
 	GENERATED_UCLASS_BODY()
 	~UGripMotionControllerComponent();
@@ -141,6 +141,10 @@ public:
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);
 
+	// Get list of all gripped actors 
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	void GetGrippedActors(TArray<AActor*> &GrippedActorsArray);
+
 	// After teleporting a pawn you NEED to call this, otherwise gripped objects will travel with a sweeped move and can get caught on geometry
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	void PostTeleportMoveGrippedActors();
@@ -167,14 +171,19 @@ public:
 	bool CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
 	
 	// For physics handle operations
-	bool SetUpPhysicsHandle(FBPActorGripInformation &NewGrip);
-	bool DestroyPhysicsHandle(FBPActorGripInformation &Grip);
+	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
+	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
 	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
 
+	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
+	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);
+	int GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo);
+	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
+
 	UPROPERTY(EditAnywhere, Category = "VRGrip")
-		float Damping;
+	float Damping;
 	UPROPERTY(EditAnywhere, Category = "VRGrip")
-		float Stiffness;
+	float Stiffness;
 
 private:
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/

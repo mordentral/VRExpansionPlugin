@@ -7,7 +7,7 @@
 
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
-class UReplicatedVRCameraComponent : public UCameraComponent
+class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraComponent
 {
 	GENERATED_UCLASS_BODY()
 		//	~UGripMotionControllerComponent();

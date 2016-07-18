@@ -41,7 +41,7 @@ enum class EVRDeviceProperty_String
 };
 
 UENUM(BlueprintType)
-enum class EVRDeviceProperty_Bool
+enum EVRDeviceProperty_Bool
 {	
 	Prop_WillDriftInYaw_Bool = 4,	
 	Prop_DeviceIsWireless_Bool = 10,
@@ -55,13 +55,13 @@ enum class EVRDeviceProperty_Bool
 };
 
 UENUM(BlueprintType)
-enum class EVRDeviceProperty_Float
+enum EVRDeviceProperty_Float
 {
 	Prop_DeviceBatteryPercentage_Float = 12 // 0 is empty, 1 is full
 };
 
 UENUM(BlueprintType)
-enum class EVRControllerProperty_String
+enum EVRControllerProperty_String
 {
 	Prop_AttachedDeviceId_String = 0
 };
@@ -113,7 +113,7 @@ Prop_TrackingRangeMaximumMeters_Float		= 4005,
 // Had to turn this in to a UObject, I felt the easiest way to use it was as an actor component to the player controller
 // It can be returned to just a blueprint library if epic ever upgrade steam to 1.33 or above
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
-class UVRExpansionFunctionLibrary : public UActorComponent//UBlueprintFunctionLibrary
+class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UActorComponent//UBlueprintFunctionLibrary
 {
 	//GENERATED_BODY()
 	GENERATED_UCLASS_BODY()
