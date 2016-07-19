@@ -54,7 +54,7 @@ public:
 		AActor * Actor;
 	UPROPERTY(BlueprintReadOnly)
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 		bool bColliding;
 	UPROPERTY(BlueprintReadOnly)
 		FTransform RelativeTransform;
