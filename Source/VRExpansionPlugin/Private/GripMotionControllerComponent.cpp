@@ -596,8 +596,8 @@ void UGripMotionControllerComponent::TickGrip()
 
 				UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
 
-				//if (bIsServer)
-				//{
+				if (bIsServer)
+				{
 					// Handle collision intersection detection, this is used to intelligently manage some of the networking and late update features.
 					switch (GrippedActors[i].GripCollisionType.GetValue())
 					{
@@ -628,7 +628,7 @@ void UGripMotionControllerComponent::TickGrip()
 					case EGripCollisionType::InteractiveCollisionWithSweep:
 					default:break;
 					}
-				//}
+				}
 
 				// Need to figure out best default behavior
 				/*if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
@@ -724,7 +724,7 @@ void UGripMotionControllerComponent::TickGrip()
 						if (bIsServer && !GrippedActors[i].Actor->bReplicateMovement)
 							GrippedActors[i].Actor->SetReplicateMovement(true);
 
-						UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
+						UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());	
 						if (root)
 						{
 							root->SetSimulatePhysics(true);

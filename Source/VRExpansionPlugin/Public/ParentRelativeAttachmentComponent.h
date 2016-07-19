@@ -7,9 +7,12 @@
 
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
-class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneComponent
+class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public UCapsuleComponent//USceneComponent
 {
 	GENERATED_UCLASS_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	bool bAutoSizeCapsuleHeight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	bool bLockPitch;

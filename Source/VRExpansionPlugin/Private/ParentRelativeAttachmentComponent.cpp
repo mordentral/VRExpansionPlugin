@@ -14,13 +14,15 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
 
-	bLockPitch = false;
+	bLockPitch = true;
 	bLockYaw = false;
-	bLockRoll = false;
+	bLockRoll = true;
 
 	PitchTolerance = 1.0f;
 	YawTolerance = 1.0f;
 	RollTolerance = 1.0f;
+
+	bAutoSizeCapsuleHeight = false;
 }
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -51,7 +53,13 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		else if (!bLockRoll && (FPlatformMath::Abs(InverseRot.Roll - CurRot.Roll)) > RollTolerance)
 			newRoll = InverseRot.Roll;
 
-		SetWorldRotation(FRotator(newPitch, newYaw, newRoll));
+		SetWorldRotation(FRotator(newPitch, newYaw, newRoll), false);
+		
+		if (bAutoSizeCapsuleHeight)
+		{
+			SetCapsuleSize(this->CapsuleRadius, GetAttachParent()->RelativeLocation.Z / 2, false);
+			this->SetRelativeLocation(FVector(0, 0, -this->CapsuleHalfHeight), false);
+		}
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
