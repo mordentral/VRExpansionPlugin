@@ -11,6 +11,8 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
+	this->CapsuleRadius = 16.0f;
+
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
 
