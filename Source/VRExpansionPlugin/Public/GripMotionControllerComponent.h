@@ -185,7 +185,11 @@ public:
 	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
 
 	UPROPERTY(EditAnywhere, Category = "VRGrip")
+	bool bTurnOffLateUpdateWhenColliding;
+
+	UPROPERTY(EditAnywhere, Category = "VRGrip")
 	float Damping;
+
 	UPROPERTY(EditAnywhere, Category = "VRGrip")
 	float Stiffness;
 

@@ -60,8 +60,10 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
 
-	Damping = 500.0f;
-	Stiffness = 5000.0f;
+	bTurnOffLateUpdateWhenColliding = true;
+
+	Damping = 200.0f;
+	Stiffness = 1500.0f;
 }
 
 //=============================================================================
@@ -196,7 +198,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
 	{
 		// Attached actors will already register as is above, so skipping GripWithAttachTo actors
-		if (!actor.Actor || actor.bColliding)
+		if (!actor.Actor || (MotionControllerComponent->bTurnOffLateUpdateWhenColliding && actor.bColliding))
 			continue;
 
 		UPrimitiveComponent *root = Cast<UPrimitiveComponent>(actor.Actor->GetRootComponent());
@@ -333,7 +335,7 @@ void UGripMotionControllerComponent::NotifyGrip_Implementation(const FBPActorGri
 	case EGripCollisionType::InteractiveCollisionWithPhysics:
 	{
 		if(bIsServer)
-			NewGrip.Actor->SetReplicateMovement(true);
+			NewGrip.Actor->SetReplicateMovement(false);
 		
 		SetUpPhysicsHandle(NewGrip);
 
@@ -604,12 +606,12 @@ void UGripMotionControllerComponent::TickGrip()
 					{
 						if (root)
 						{
-							//static FName NAME_TestOverlap = FName(TEXT("MovementOverlapTest"));
-							FCollisionQueryParams QueryParams(/*NAME_TestOverlap*/NAME_None, false, this->GetOwner());
-							FCollisionResponseParams ResponseParam;
-							root->InitSweepCollisionParams(QueryParams, ResponseParam);
-							QueryParams.AddIgnoredActor(GrippedActors[i].Actor);
-							if (GetWorld()->OverlapBlockingTestByChannel/*SweepTestByChannel*/(root->GetComponentLocation(),/* WorldTransform.GetLocation(),*/ root->GetComponentQuat(), ECollisionChannel::ECC_Visibility, root->GetCollisionShape(), QueryParams, ResponseParam))
+							TArray<FOverlapResult> Hits;
+							FComponentQueryParams Params(NAME_None, this->GetOwner());
+							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+							Params.AddIgnoredActors(root->MoveIgnoreActors);
+
+							if(GetWorld()->ComponentOverlapMulti(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), Params))
 							{
 								GrippedActors[i].bColliding = true;
 							}
@@ -679,11 +681,11 @@ void UGripMotionControllerComponent::TickGrip()
 						{
 							if (root)
 							{
-							//	static FName NAME_TestOverlap = FName(TEXT("MovementOverlapTest"));
 								FCollisionQueryParams QueryParams(NAME_None, false, this->GetOwner());
 								FCollisionResponseParams ResponseParam;
 								root->InitSweepCollisionParams(QueryParams, ResponseParam);
 								QueryParams.AddIgnoredActor(GrippedActors[i].Actor);
+								
 								if (GetWorld()->SweepTestByChannel(root->GetComponentLocation(), WorldTransform.GetLocation(), root->GetComponentQuat(), ECollisionChannel::ECC_Visibility, root->GetCollisionShape(), QueryParams, ResponseParam))
 								{
 									GrippedActors[i].bColliding = true;
