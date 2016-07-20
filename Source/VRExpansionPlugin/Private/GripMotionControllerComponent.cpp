@@ -685,7 +685,14 @@ void UGripMotionControllerComponent::TickGrip()
 								FCollisionResponseParams ResponseParam;
 								root->InitSweepCollisionParams(QueryParams, ResponseParam);
 								QueryParams.AddIgnoredActor(GrippedActors[i].Actor);
-								
+
+								/*TArray<FOverlapResult> Hits;
+								FComponentQueryParams Params(NAME_None, this->GetOwner());
+								Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+								Params.AddIgnoredActors(root->MoveIgnoreActors);
+
+								if (GetWorld()->ComponentOverlapMulti(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), Params))
+								GetWorld()->ComponentSweepMulti(OutHits,root, root->GetComponentLocation(),WorldTransform.GetLocation(), root->GetComponentQuat(), */
 								if (GetWorld()->SweepTestByChannel(root->GetComponentLocation(), WorldTransform.GetLocation(), root->GetComponentQuat(), ECollisionChannel::ECC_Visibility, root->GetCollisionShape(), QueryParams, ResponseParam))
 								{
 									GrippedActors[i].bColliding = true;

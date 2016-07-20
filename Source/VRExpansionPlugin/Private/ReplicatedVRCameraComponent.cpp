@@ -58,6 +58,11 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (this->GetAttachParent()->IsA(UParentRelativeAttachmentComponent::StaticClass()))
+	{
+		((UParentRelativeAttachmentComponent*)this->GetAttachParent())->SetCapsuleLocation(DeltaTime, this->GetRelativeTransform());
+	}
+
 	bHasAuthority = IsLocallyControlled();
 	bIsServer = IsServer();
 

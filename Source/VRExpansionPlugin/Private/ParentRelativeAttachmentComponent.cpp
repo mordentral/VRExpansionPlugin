@@ -25,6 +25,10 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 
 	bAutoSizeCapsuleHeight = false;
 	AutoSizeCapsuleOffset = FVector(-5.0f, 0.0f, 0.0f);
+	AutoCapsuleUpdateRate = 10;
+	AutoCapsuleUpdateCount = 0.0f;
+	bAutoCapsuleUpdateEveryFrame = false;
+	bExpectingCameraInput = false;
 
 	ShapeColor = FColor(223, 149, 157, 255);
 
@@ -35,7 +39,7 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-	if(this->GetAttachParent())
+	if (this->GetAttachParent())
 	{
 		FRotator InverseRot = GetAttachParent()->GetComponentRotation();
 		FRotator CurRot = this->GetComponentRotation();
@@ -65,12 +69,46 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		
 		if (bAutoSizeCapsuleHeight)
 		{
-			// Hacky experiment with full capsule collision on the body that scales with head height
-			SetCapsuleSize(this->CapsuleRadius, FMath::Clamp(GetAttachParent()->RelativeLocation.Z / 2,CapsuleRadius,300.0f), false);
+			if(bAutoCapsuleUpdateEveryFrame)
+				SetCapsuleSize(this->CapsuleRadius, FMath::Clamp(GetAttachParent()->RelativeLocation.Z / 2, CapsuleRadius, 300.0f), false);
+			else
+			{
+				AutoCapsuleUpdateCount += DeltaTime;
+
+				if (AutoCapsuleUpdateCount >= (1.0f / AutoCapsuleUpdateRate))
+				{
+					AutoCapsuleUpdateCount = 0.0f;
+					// Hacky experiment with full capsule collision on the body that scales with head height
+					SetCapsuleSize(this->CapsuleRadius, FMath::Clamp(GetAttachParent()->RelativeLocation.Z / 2, CapsuleRadius, 300.0f), false);
+				}
+			}
 		}
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+void UParentRelativeAttachmentComponent::SetCapsuleLocation(float DeltaTime, const FTransform & RelativeCameraTransform)
+{
+	curCameraLoc = RelativeCameraTransform.GetLocation();
+	curCameraRot = RelativeCameraTransform.GetRotation();
+
+	if (bAutoSizeCapsuleHeight)
+	{
+		if (bAutoCapsuleUpdateEveryFrame)
+			SetCapsuleSize(this->CapsuleRadius, FMath::Clamp(RelativeCameraTransform.GetLocation().Z / 2, CapsuleRadius, 300.0f), false);
+		else
+		{
+			AutoCapsuleUpdateCount += DeltaTime;
+
+			if (AutoCapsuleUpdateCount >= (1.0f / AutoCapsuleUpdateRate))
+			{
+				AutoCapsuleUpdateCount = 0.0f;
+				// Hacky experiment with full capsule collision on the body that scales with head height
+				SetCapsuleSize(this->CapsuleRadius, FMath::Clamp(RelativeCameraTransform.GetLocation().Z / 2, CapsuleRadius, 300.0f), false);
+			}
+		}
+	}
 }
 
 FPrimitiveSceneProxy* UParentRelativeAttachmentComponent::CreateSceneProxy()
@@ -86,6 +124,8 @@ FPrimitiveSceneProxy* UParentRelativeAttachmentComponent::CreateSceneProxy()
 			, CapsuleHalfHeight(InComponent->CapsuleHalfHeight)
 			, ShapeColor(InComponent->ShapeColor)
 			, AutoSizeCapsuleOffset(InComponent->AutoSizeCapsuleOffset)
+			, LocationOffset(InComponent->curCameraLoc)
+			, bExpectingCameraInput(InComponent->bExpectingCameraInput)
 		{
 			bWillEverBeLit = false;
 		}
@@ -108,7 +148,15 @@ FPrimitiveSceneProxy* UParentRelativeAttachmentComponent::CreateSceneProxy()
 					
 					// This is a quick hack and doesn't really show the location, it only works in viewport where the character has no rotation
 					FVector Base = LocalToWorld.GetOrigin();
-					Base += AutoSizeCapsuleOffset;
+					FVector Offset = AutoSizeCapsuleOffset;
+					if (bExpectingCameraInput)
+					{
+						Offset.X += LocationOffset.X;
+						Offset.Y += LocationOffset.Y;
+						//Offset.Z = 0;
+					}
+
+					Base += LocalToWorld.TransformVector(Offset);
 					Base.Z -= CapsuleHalfHeight;
 
 					FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
@@ -137,6 +185,8 @@ FPrimitiveSceneProxy* UParentRelativeAttachmentComponent::CreateSceneProxy()
 		const float		CapsuleHalfHeight;
 		const FColor	ShapeColor;
 		const FVector AutoSizeCapsuleOffset;
+		const FVector LocationOffset;
+		bool bExpectingCameraInput;
 	};
 
 	return new FDrawCylinderSceneProxy(this);
@@ -146,7 +196,10 @@ FPrimitiveSceneProxy* UParentRelativeAttachmentComponent::CreateSceneProxy()
 FBoxSphereBounds UParentRelativeAttachmentComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
-	return FBoxSphereBounds(/*FVector::ZeroVector*/FVector(0,0,-CapsuleHalfHeight) + AutoSizeCapsuleOffset, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	if(bExpectingCameraInput)
+		return FBoxSphereBounds(/*FVector::ZeroVector*/FVector(curCameraLoc.X,curCameraLoc.Y,-CapsuleHalfHeight) + AutoSizeCapsuleOffset, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	else
+		return FBoxSphereBounds(/*FVector::ZeroVector*/FVector(0, 0, -CapsuleHalfHeight) + AutoSizeCapsuleOffset, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 }
 
 void UParentRelativeAttachmentComponent::CalcBoundingCylinder(float& CylinderRadius, float& CylinderHalfHeight) const
@@ -230,7 +283,10 @@ void UParentRelativeAttachmentComponent::UpdateBodySetup()
 	check(ShapeBodySetup->AggGeom.SphylElems.Num() == 1);
 	FKSphylElem* SE = ShapeBodySetup->AggGeom.SphylElems.GetData();
 
-	SE->SetTransform(FTransform(FQuat(0,0,0,1.0f), FVector(0,0,-CapsuleHalfHeight) + AutoSizeCapsuleOffset, FVector(1.0f)));//FTransform::Identity);
+	if(bExpectingCameraInput)
+		SE->SetTransform(FTransform(FQuat(0,0,0,1.0f), FVector(curCameraLoc.X, curCameraLoc.Y, -CapsuleHalfHeight) + AutoSizeCapsuleOffset, FVector(1.0f)));//FTransform::Identity);
+	else
+		SE->SetTransform(FTransform(FQuat(0, 0, 0, 1.0f), FVector(0, 0, -CapsuleHalfHeight) + AutoSizeCapsuleOffset, FVector(1.0f)));//FTransform::Identity);
 	SE->Radius = CapsuleRadius;
 	SE->Length = 2 * FMath::Max(CapsuleHalfHeight - CapsuleRadius, 0.f);	//SphylElem uses height from center of capsule spheres, but UParentRelativeAttachmentComponent uses halfHeight from end of the sphere
 }

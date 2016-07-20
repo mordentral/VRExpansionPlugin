@@ -12,14 +12,6 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public UShapeCo
 {
 	GENERATED_UCLASS_BODY()
 
-	// Whether to auto size the capsule collision to the height of the head.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
-	bool bAutoSizeCapsuleHeight;
-
-	// Used to offset the collision (IE backwards from the player slightly.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
-	FVector AutoSizeCapsuleOffset;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	bool bLockPitch;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
@@ -33,6 +25,33 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public UShapeCo
 	float YawTolerance;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	float RollTolerance;
+
+
+	// Whether to auto size the capsule collision to the height of the head.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
+	bool bAutoSizeCapsuleHeight;
+
+	// Used to offset the collision (IE backwards from the player slightly.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
+	FVector AutoSizeCapsuleOffset;
+
+	// If true will update position every frame, if false will use the AutoCapsuleUpdateRate instead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
+	bool bAutoCapsuleUpdateEveryFrame;
+
+	// Rate to update the height of the collision capsule relative to the headset
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
+	float AutoCapsuleUpdateRate;
+
+	// Rate to update the height of the collision capsule relative to the headset
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
+	bool bExpectingCameraInput;
+
+	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case.
+	float AutoCapsuleUpdateCount;
+	void SetCapsuleLocation(float DeltaTime, const FTransform & CameraTransform);
+	FVector curCameraLoc;
+	FQuat curCameraRot;
 
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
