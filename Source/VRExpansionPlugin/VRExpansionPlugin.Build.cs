@@ -38,7 +38,7 @@ public class VRExpansionPlugin : ModuleRules
 			}
 			);
 
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "PhysX", "APEX","HeadMountedDisplay", "SteamVR","OpenVR", "SteamVRController", "ProceduralMeshComponent" });
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "PhysX", "APEX","HeadMountedDisplay", "SteamVR","OpenVR", "SteamVRController", "ProceduralMeshComponent", "RHI", "RenderCore", "ShaderCore"});
 
         PrivateDependencyModuleNames.AddRange(
 			new string[]

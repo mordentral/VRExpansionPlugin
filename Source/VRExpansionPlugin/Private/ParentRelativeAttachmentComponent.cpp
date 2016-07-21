@@ -15,6 +15,8 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
 
+	this->bAbsoluteRotation = 1;
+
 	bLockPitch = true;
 	bLockYaw = false;
 	bLockRoll = true;
