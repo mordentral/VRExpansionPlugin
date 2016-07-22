@@ -7,7 +7,7 @@
 #include "VRRootComponent.generated.h"
 
 //For UE4 Profiler ~ Stat Group
-//DECLARE_STATS_GROUP(TEXT("VRPhysicsUpdate"), STATGROUP_VRPhysics, STATCAT_Advanced);
+DECLARE_STATS_GROUP(TEXT("VRPhysicsUpdate"), STATGROUP_VRPhysics, STATCAT_Advanced);
 
 // EXPERIMENTAL, don't use
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
@@ -15,8 +15,6 @@ class VREXPANSIONPLUGIN_API UVRRootComponent : public UShapeComponent//USceneCom
 {
 	GENERATED_UCLASS_BODY()
 	friend class FDrawCylinderSceneProxy;
-	
-	bool bTEST;
 
 	// Whether to auto size the capsule collision to the height of the head.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")

@@ -18,7 +18,6 @@ public:
 		, CapsuleHalfHeight(InComponent->CapsuleHalfHeight)
 		, ShapeColor(InComponent->ShapeColor)
 		, AutoSizeCapsuleOffset(InComponent->AutoSizeCapsuleOffset)
-		, LocationOffset(InComponent->curCameraLoc)
 		, OffsetComponentToWorld(InComponent->OffsetComponentToWorld)
 	{
 		bWillEverBeLit = false;
@@ -28,7 +27,7 @@ public:
 	{
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_GetDynamicMeshElements_DrawDynamicElements);
 
-		const FMatrix& LocalToWorld = /*OffsetComponentToWorld.ToMatrixWithScale();*/GetLocalToWorld();
+		const FMatrix& LocalToWorld = OffsetComponentToWorld.ToMatrixWithScale();//GetLocalToWorld();
 		const int32 CapsuleSides = FMath::Clamp<int32>(CapsuleRadius / 4.f, 16, 64);
 
 		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
@@ -56,10 +55,11 @@ public:
 	}
 
 	/** Called on render thread to assign new dynamic data */
-	void UpdateTransform_RenderThread(FTransform NewTransform)
+	void UpdateTransform_RenderThread(FTransform NewTransform, float NewHalfHeight)
 	{
 		check(IsInRenderingThread());
 		OffsetComponentToWorld = NewTransform;
+		CapsuleHalfHeight = NewHalfHeight;
 	}
 
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override
@@ -78,12 +78,10 @@ public:
 private:
 	const uint32	bDrawOnlyIfSelected : 1;
 	const float		CapsuleRadius;
-	const float		CapsuleHalfHeight;
+	float		CapsuleHalfHeight;
 	FColor	ShapeColor;
 	const FVector AutoSizeCapsuleOffset;
-	const FVector LocationOffset;
 	FTransform OffsetComponentToWorld;
-	bool bExpectingCameraInput;
 };
 
 
@@ -101,7 +99,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 
 	bAutoSizeCapsuleHeight = false;
 	AutoSizeCapsuleOffset = FVector(-5.0f, 0.0f, 0.0f);
-	AutoCapsuleUpdateRate = 10;
+	AutoCapsuleUpdateRate = 60;
 	AutoCapsuleUpdateCount = 0.0f;
 	bAutoCapsuleUpdateEveryFrame = false;
 
@@ -114,9 +112,6 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	curCameraRot = FQuat(0.0f, 0.0f, 0.0f, 1.0f);// = FRotator::ZeroRotator;
 	curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
-
-
-	bTEST = false;
 }
 
 /*FBodyInstance* UVRRootComponent::GetBodyInstance(FName BoneName, bool bGetWelded) const
@@ -145,68 +140,54 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 {		
 	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
 
-	if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
-	{
-		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curCameraRot, curCameraLoc);
-	}
-	else
-	{
-		curCameraRot = FQuat(0.0f, 0.0f, 0.0f, 1.0f);// = FRotator::ZeroRotator;
-		curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
-	}
+	bool bUpdate = bAutoCapsuleUpdateEveryFrame;
 
-	if (!bTEST)
+	if (!bAutoCapsuleUpdateEveryFrame)
 	{
-		SetCapsuleSize(this->CapsuleRadius, FMath::Clamp(curCameraLoc.Z / 2, CapsuleRadius, 300.0f), false);
-		bTEST = true;
-	}
+		AutoCapsuleUpdateCount += DeltaTime;
 
-	if (bAutoSizeCapsuleHeight)
-	{
-		if (bAutoCapsuleUpdateEveryFrame)
+		if (AutoCapsuleUpdateCount >= (1.0f / AutoCapsuleUpdateRate))
 		{
-			if (bAutoSizeCapsuleHeight)
-				SetCapsuleSize(this->CapsuleRadius, FMath::Clamp(curCameraLoc.Z / 2, CapsuleRadius, 300.0f), false);
-			else
-			{
-				SetCapsuleSize(this->CapsuleRadius, this->CapsuleHalfHeight, false);
-			}
+			AutoCapsuleUpdateCount = 0.0f;
+
+			bUpdate = true;
+		}
+	}
+
+	if (bUpdate)
+	{
+		if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
+		{
+			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curCameraRot, curCameraLoc);
 		}
 		else
 		{
-			AutoCapsuleUpdateCount += DeltaTime;
-
-			if (AutoCapsuleUpdateCount >= (1.0f / AutoCapsuleUpdateRate))
-			{
-				AutoCapsuleUpdateCount = 0.0f;
-
-				// Hacky experiment with full capsule collision on the body that scales with head height
-				if (bAutoSizeCapsuleHeight)
-					SetCapsuleSize(this->CapsuleRadius, FMath::Clamp(curCameraLoc.Z / 2, CapsuleRadius, 300.0f), false);
-				else
-				{
-					SetCapsuleSize(this->CapsuleRadius, this->CapsuleHalfHeight, false);
-				}
-			}
+			curCameraRot = FQuat(0.0f, 0.0f, 0.0f, 1.0f);// = FRotator::ZeroRotator;
+			curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 		}
-	}
 
-	if (TargetPrimitiveComponent != NULL)
-	{
-		OffsetComponentToWorld = TargetPrimitiveComponent->ComponentToWorld;
+		if(bAutoSizeCapsuleHeight)
+			CapsuleHalfHeight = FMath::Clamp(curCameraLoc.Z / 2, CapsuleRadius, 300.0f);
 
-		//BodyInstance.SetBodyTransform(TargetPrimitiveComponent->GetRelativeTransform(), ETeleportType::TeleportPhysics);
-		//BodyInstance.UpdateBodyScale(TargetPrimitiveComponent->GetRelativeTransform().GetScale3D());
-		// Enqueue command to send to render thread
+		OffsetComponentToWorld = FTransform(curCameraRot, curCameraLoc + AutoSizeCapsuleOffset + FVector(0, 0, -CapsuleHalfHeight), FVector(1.0f)) * ComponentToWorld;
 
-		ENQUEUE_UNIQUE_RENDER_COMMAND_TWOPARAMETER(
-			FDrawCylinderTransformUpdate,
-			FDrawCylinderSceneProxy*, CylinderSceneProxy, (FDrawCylinderSceneProxy*)SceneProxy,
-			FTransform, OffsetComponentToWorld, OffsetComponentToWorld,
-			{
-				CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld);
-			}
-		);
+		//BodyInstance.SetBodyTransform(OffsetComponentToWorld, ETeleportType::TeleportPhysics);
+		//BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
+
+		UpdateBodySetup();
+		RecreatePhysicsState();
+
+		if (this->ShouldRender() && this->SceneProxy)
+		{
+			ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
+				FDrawCylinderTransformUpdate,
+				FDrawCylinderSceneProxy*, CylinderSceneProxy, (FDrawCylinderSceneProxy*)SceneProxy,
+				FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
+				{
+					CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
+				}
+			);
+		}
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -215,7 +196,8 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
-	return FBoxSphereBounds(/*FVector::ZeroVectorFVector*/FVector(curCameraLoc.X,curCameraLoc.Y,CapsuleHalfHeight) + AutoSizeCapsuleOffset, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	//return FBoxSphereBounds(FVector::ZeroVector, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	return FBoxSphereBounds(/*FVector::ZeroVectorFVector*/FVector(curCameraLoc.X,curCameraLoc.Y,/*CapsuleHalfHeight*/curCameraLoc.Z - CapsuleHalfHeight) + AutoSizeCapsuleOffset, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 }
 
 void UVRRootComponent::CalcBoundingCylinder(float& CylinderRadius, float& CylinderHalfHeight) const
@@ -303,7 +285,7 @@ void UVRRootComponent::UpdateBodySetup()
 	check(ShapeBodySetup->AggGeom.SphylElems.Num() == 1);
 	FKSphylElem* SE = ShapeBodySetup->AggGeom.SphylElems.GetData();
 
-	SE->SetTransform(FTransform(FQuat(0,0,0,1.0f), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + AutoSizeCapsuleOffset, FVector(1.0f)));//FTransform::Identity);
+	SE->SetTransform(FTransform(FQuat(0,0,0,1), FVector(curCameraLoc.X,curCameraLoc.Y,curCameraLoc.Z - CapsuleHalfHeight) + AutoSizeCapsuleOffset, FVector(1.0f)));
 	//SE->SetTransform(FTransform::Identity);
 	SE->Radius = CapsuleRadius;
 	SE->Length = 2 * FMath::Max(CapsuleHalfHeight - CapsuleRadius, 0.f);	//SphylElem uses height from center of capsule spheres, but UVRRootComponent uses halfHeight from end of the sphere
