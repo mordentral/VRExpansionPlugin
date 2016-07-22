@@ -14,6 +14,15 @@ UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpan
 class VREXPANSIONPLUGIN_API UVRRootComponent : public UShapeComponent//USceneComponent
 {
 	GENERATED_UCLASS_BODY()
+	friend class FDrawCylinderSceneProxy;
+	
+	bool bTEST;
+
+	// Whether to auto size the capsule collision to the height of the head.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
+	USceneComponent * TargetPrimitiveComponent;
+
+	FTransform OffsetComponentToWorld;
 
 	// Whether to auto size the capsule collision to the height of the head.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
@@ -37,7 +46,7 @@ class VREXPANSIONPLUGIN_API UVRRootComponent : public UShapeComponent//USceneCom
 	FVector curCameraLoc;
 	FQuat curCameraRot;
 
-
+	
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 //};
 

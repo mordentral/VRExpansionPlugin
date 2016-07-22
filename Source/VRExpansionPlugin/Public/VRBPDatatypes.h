@@ -53,6 +53,8 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		AActor * Actor;
 	UPROPERTY(BlueprintReadOnly)
+		UPrimitiveComponent * Component;
+	UPROPERTY(BlueprintReadOnly)
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
 	UPROPERTY(BlueprintReadOnly)
 		bool bColliding;
@@ -60,14 +62,21 @@ public:
 		FTransform RelativeTransform;
 	UPROPERTY(BlueprintReadOnly)
 		bool bOriginalReplicatesMovement;
+	UPROPERTY(BlueprintReadOnly)
+		bool bTurnOffLateUpdateWhenColliding;
+	UPROPERTY(BlueprintReadOnly)
+		float Damping;
+	UPROPERTY(BlueprintReadOnly)
+		float Stiffness;
+
 
 	// For multi grip situations
-	UPROPERTY(BlueprintReadOnly)
-		USceneComponent * SecondaryAttachment;
+	//UPROPERTY(BlueprintReadOnly)
+	//	USceneComponent * SecondaryAttachment;
 	//UPROPERTY()
 	//	FTransform SecondaryRelativeTransform;
-	UPROPERTY(BlueprintReadOnly)
-		bool bHasSecondaryAttachment;
+	//UPROPERTY(BlueprintReadOnly)
+	//	bool bHasSecondaryAttachment;
 	// Allow hand to not be primary positional attachment?
 	// End multi grip
 
@@ -85,14 +94,17 @@ public:
 	{
 	//	HandleData = NULL;
 		//KinActorData = NULL;
-
+		bTurnOffLateUpdateWhenColliding = true;
+		Damping = 200.0f;
+		Stiffness = 1500.0f;
+		Component = nullptr;
 		Actor = nullptr;
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 
 
-		SecondaryAttachment = nullptr;
-		bHasSecondaryAttachment = false;
+		//SecondaryAttachment = nullptr;
+		//bHasSecondaryAttachment = false;
 		//bHandIsPrimaryReference = true;
 	}
 };
@@ -104,6 +116,8 @@ struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
 public:
 	UPROPERTY(BlueprintReadOnly)
 		AActor * Actor;
+	UPROPERTY(BlueprintReadOnly)
+		UPrimitiveComponent * Component;
 
 	/** Physics scene index of the body we are grabbing. */
 	int32 SceneIndex;
@@ -118,5 +132,6 @@ public:
 		HandleData = NULL;
 		KinActorData = NULL;
 		Actor = nullptr;
+		Component = nullptr;
 	}
 };

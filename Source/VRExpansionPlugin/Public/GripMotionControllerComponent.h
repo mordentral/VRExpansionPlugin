@@ -129,11 +129,19 @@ public:
 	   location that the socket is to its parent actor.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, /* bool bSweepCollision = true, bool bInteractiveCollision = true,*/ bool bAllowSetMobility = true);
+	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, bool bAllowSetMobility = true, float GripStiffness = 1500.0f, float GripDamping = 200.0f, bool bTurnOffLateUpdateWhenColliding = true);
 
 	// Drop a gripped actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool DropActor(AActor* ActorToDrop, bool bSimulate);
+
+	// Grip a component
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	bool GripComponent(UPrimitiveComponent* ComponentToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, bool bAllowSetMobility = true, float GripStiffness = 1500.0f, float GripDamping = 200.0f, bool bTurnOffLateUpdateWhenColliding = true);
+
+	// Drop a gripped component
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	bool DropComponent(UPrimitiveComponent* ComponentToDrop, bool bSimulate);
 
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyGrip(const FBPActorGripInformation &NewGrip);
@@ -156,13 +164,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool TeleportMoveGrippedActor(AActor * GrippedActorToMove);
 
-	// Adds a secondary attachment point to the grip
+	// Move a single gripped item back into position ignoring collision in the way
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent);
+		bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	// Adds a secondary attachment point to the grip
-	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool RemoveSecondaryAttachmentPoint(AActor * GrippedActorToRemoveAttachment);
+	//UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	//bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent);
+
+	// Adds a secondary attachment point to the grip
+	//UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	//bool RemoveSecondaryAttachmentPoint(AActor * GrippedActorToRemoveAttachment);
 
 	// This is for testing, setting it to true allows you to test grip with a non VR enabled pawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
@@ -171,7 +183,7 @@ public:
 	FVector OriginalPosition;
 	FRotator OriginalOrientation;
 
-	bool CheckActorWithSweep(AActor * ActorToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
+	bool CheckComponentWithSweep(UPrimitiveComponent * ComponentToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
 	
 	// For physics handle operations
 	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
@@ -183,15 +195,6 @@ public:
 	int GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo);
 	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
 	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
-
-	UPROPERTY(EditAnywhere, Category = "VRGrip")
-	bool bTurnOffLateUpdateWhenColliding;
-
-	UPROPERTY(EditAnywhere, Category = "VRGrip")
-	float Damping;
-
-	UPROPERTY(EditAnywhere, Category = "VRGrip")
-	float Stiffness;
 
 private:
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/
@@ -247,7 +250,7 @@ private:
 
 		/** Walks the component hierarchy gathering scene proxies */
 		void GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives);
-		void GatherLateGripUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives, UPrimitiveComponent * root, FBPActorGripInformation * actor);
+		void GatherLateGripUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives);
 		/** Primitives that need late update before rendering */
 		TArray<LateUpdatePrimitiveInfo> LateUpdatePrimitives;
 	};
