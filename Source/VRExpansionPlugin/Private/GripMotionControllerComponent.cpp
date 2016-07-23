@@ -700,14 +700,14 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 				}
 			}
 		}
-		else
+		/*else
 		{
 			if (bIsServer)
 			{
 				DestroyPhysicsHandle(GrippedActors[i]);
 				GrippedActors.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
 			}
-		}
+		}*/
 	}
 }
 

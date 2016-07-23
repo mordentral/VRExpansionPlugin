@@ -49,7 +49,7 @@ public:
 
 				FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
 
-				DrawWireCapsule(PDI, Base, LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 2.0f);
+				DrawWireCapsule(PDI, Base, LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);
 			}
 		}
 	}
@@ -169,7 +169,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		if(bAutoSizeCapsuleHeight)
 			CapsuleHalfHeight = FMath::Clamp(curCameraLoc.Z / 2, CapsuleRadius, 300.0f);
 
-		OffsetComponentToWorld = FTransform(curCameraRot, curCameraLoc + AutoSizeCapsuleOffset + FVector(0, 0, -CapsuleHalfHeight), FVector(1.0f)) * ComponentToWorld;
+		OffsetComponentToWorld = FTransform(FQuat(0,0,0,1), curCameraLoc + AutoSizeCapsuleOffset + FVector(0, 0, -CapsuleHalfHeight), FVector(1.0f)) * ComponentToWorld;
 
 		//BodyInstance.SetBodyTransform(OffsetComponentToWorld, ETeleportType::TeleportPhysics);
 		//BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
