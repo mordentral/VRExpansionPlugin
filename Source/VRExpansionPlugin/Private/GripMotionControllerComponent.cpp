@@ -592,7 +592,17 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 			FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(GrippedActors[i]);
 			if (Handle && Handle->KinActorData)
 			{
-				Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+
+				{
+					PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
+					if (PScene)
+					{
+						SCOPED_SCENE_WRITE_LOCK(PScene);
+
+						Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+					}
+				}
+				//Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 
 				UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
 				if (root)
@@ -633,7 +643,15 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 			FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(GrippedActors[i]);
 			if (Handle && Handle->KinActorData)
 			{
-				Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+				{
+					PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
+					if (PScene)
+					{
+						SCOPED_SCENE_WRITE_LOCK(PScene);
+
+						Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+					}
+				}
 
 				FBodyInstance * body = GrippedActors[i].Component->GetBodyInstance();
 				if (body)
@@ -677,7 +695,16 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 		FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(GrippedActors[i]);
 		if (Handle && Handle->KinActorData)
 		{
-			Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+			{
+				PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
+				if (PScene)
+				{
+					SCOPED_SCENE_WRITE_LOCK(PScene);
+
+					Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+				}
+			}
+			//Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 
 			if (GrippedActors[i].Actor)
 			{

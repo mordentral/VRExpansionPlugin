@@ -11,10 +11,19 @@ DECLARE_STATS_GROUP(TEXT("VRPhysicsUpdate"), STATGROUP_VRPhysics, STATCAT_Advanc
 
 // EXPERIMENTAL, don't use
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
-class VREXPANSIONPLUGIN_API UVRRootComponent : public UShapeComponent//USceneComponent
+class VREXPANSIONPLUGIN_API UVRRootComponent : public UShapeComponent
 {
 	GENERATED_UCLASS_BODY()
+
+public:
 	friend class FDrawCylinderSceneProxy;
+	virtual class UBodySetup* GetBodySetup() override;
+
+protected:
+//	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;
+	virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
+	void SendPhysicsTransform(ETeleportType Teleport);
+public:
 
 	// Whether to auto size the capsule collision to the height of the head.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
@@ -44,7 +53,7 @@ class VREXPANSIONPLUGIN_API UVRRootComponent : public UShapeComponent//USceneCom
 	FVector curCameraLoc;
 	FQuat curCameraRot;
 
-	
+	FPrimitiveSceneProxy* CreateSceneProxy() override;
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 //};
 
@@ -108,14 +117,13 @@ public:
 	// End USceneComponent interface
 
 	// Begin UPrimitiveComponent interface.
-	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	virtual bool IsZeroExtent() const override;
 	virtual struct FCollisionShape GetCollisionShape(float Inflation = 0.0f) const override;
 	virtual bool AreSymmetricRotations(const FQuat& A, const FQuat& B, const FVector& Scale3D) const override;
 	// End UPrimitiveComponent interface.
 
 	// Begin UShapeComponent interface
-	virtual void UpdateBodySetup() override;
+	virtual void UpdateBodySetup();// override;
 	// End UShapeComponent interface
 
 	// @return the capsule radius scaled by the component scale.
