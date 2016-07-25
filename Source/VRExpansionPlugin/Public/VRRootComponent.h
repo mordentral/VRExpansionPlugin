@@ -19,36 +19,49 @@ public:
 	friend class FDrawCylinderSceneProxy;
 	virtual class UBodySetup* GetBodySetup() override;
 
+	void GenerateOffsetToWorld();
+
 protected:
-//	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;
+	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;
 	virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
 	void SendPhysicsTransform(ETeleportType Teleport);
+
+	const TArray<FOverlapInfo>* ConvertRotationOverlapsToCurrentOverlaps(TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& CurrentOverlaps);
+	const TArray<FOverlapInfo>* ConvertSweptOverlapsToCurrentOverlaps(
+		TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& SweptOverlaps, int32 SweptOverlapsIndex,
+		const FVector& EndLocation, const FQuat& EndRotationQuat);
+
 public:
+	void UVRRootComponent::BeginPlay() override;
+
+	bool IsLocallyControlled() const
+	{
+		// Epic used a check for a player controller to control has authority, however the controllers are always attached to a pawn
+		// So this check would have always failed to work in the first place.....
+
+		APawn* Owner = Cast<APawn>(GetOwner());
+
+		if (!Owner)
+		{
+			//const APlayerController* Actor = Cast<APlayerController>(GetOwner());
+			//if (!Actor)
+			return false;
+
+			//return Actor->IsLocalPlayerController();
+		}
+
+		return Owner->IsLocallyControlled();
+	}
 
 	// Whether to auto size the capsule collision to the height of the head.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
+	UPROPERTY(BlueprintReadWrite, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
 	FTransform OffsetComponentToWorld;
 
-	// Whether to auto size the capsule collision to the height of the head.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
-	bool bAutoSizeCapsuleHeight;
-
 	// Used to offset the collision (IE backwards from the player slightly.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
-	FVector AutoSizeCapsuleOffset;
-
-	// If true will update position every frame, if false will use the AutoCapsuleUpdateRate instead
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
-	bool bAutoCapsuleUpdateEveryFrame;
-
-	// Rate to update the height of the collision capsule relative to the headset
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary|AutoCapsule")
-	float AutoCapsuleUpdateRate;
-
-	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case.
-	float AutoCapsuleUpdateCount;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	FVector VRCapsuleOffset;
 
 	FVector curCameraLoc;
 	FQuat curCameraRot;

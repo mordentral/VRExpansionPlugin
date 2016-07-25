@@ -2,10 +2,156 @@
 
 #include "VRExpansionPluginPrivatePCH.h"
 #include "Runtime/Engine/Private/EnginePrivate.h"
+
+#include "PhysicsPublic.h"
+
+#if WITH_PHYSX
+#include "PhysXSupport.h"
+#endif // WITH_PHYSX
+
 #include "VRRootComponent.h"
 
 //For UE4 Profiler ~ Stat
 //DECLARE_CYCLE_STAT(TEXT("VR Create Physics Meshes"), STAT_CreatePhysicsMeshes, STATGROUP_VRPhysics);
+
+#define LOCTEXT_NAMESPACE "VRRootComponent"
+
+static int32 bEnableFastOverlapCheck = 1;
+
+static FAutoConsoleVariable CVarAllowCachedOverlaps(
+	TEXT("p.AllowCachedOverlaps"),
+	1,
+	TEXT("Primitive Component physics\n")
+	TEXT("0: disable cached overlaps, 1: enable (default)"));
+
+static TAutoConsoleVariable<float> CVarInitialOverlapTolerance(
+	TEXT("p.InitialOverlapTolerance"),
+	0.0f,
+	TEXT("Tolerance for initial overlapping test in PrimitiveComponent movement.\n")
+	TEXT("Normals within this tolerance are ignored if moving out of the object.\n")
+	TEXT("Dot product of movement direction and surface normal."),
+	ECVF_Default);
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+TAutoConsoleVariable<int32> CVarShowInitialOverlaps(
+	TEXT("p.ShowInitialOverlaps"),
+	0,
+	TEXT("Show initial overlaps when moving a component, including estimated 'exit' direction.\n")
+	TEXT(" 0:off, otherwise on"),
+	ECVF_Cheat);
+#endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+
+namespace PrimitiveComponentStatics
+{
+	static const FText MobilityWarnText = LOCTEXT("InvalidMove", "move");
+	static const FName MoveComponentName(TEXT("MoveComponent"));
+	static const FName UpdateOverlapsName(TEXT("UpdateOverlaps"));
+}
+
+// Predicate to determine if an overlap is *NOT* with a certain AActor.
+struct FPredicateOverlapHasDifferentActor
+{
+	FPredicateOverlapHasDifferentActor(const AActor& Owner)
+		: MyOwner(Owner)
+	{
+	}
+
+	bool operator() (const FOverlapInfo& Info)
+	{
+		return Info.OverlapInfo.Actor != &MyOwner;
+	}
+
+private:
+	const AActor& MyOwner;
+};
+
+static void PullBackHit(FHitResult& Hit, const FVector& Start, const FVector& End, const float Dist)
+{
+	const float DesiredTimeBack = FMath::Clamp(0.1f, 0.1f / Dist, 1.f / Dist) + 0.001f;
+	Hit.Time = FMath::Clamp(Hit.Time - DesiredTimeBack, 0.f, 1.f);
+}
+
+static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestHit, FVector const& MovementDirDenormalized, const AActor* MovingActor, EMoveComponentFlags MoveFlags)
+{
+	if (TestHit.bBlockingHit)
+	{
+		// check "ignore bases" functionality
+		if ((MoveFlags & MOVECOMP_IgnoreBases) && MovingActor)	//we let overlap components go through because their overlap is still needed and will cause beginOverlap/endOverlap events
+		{
+			// ignore if there's a base relationship between moving actor and hit actor
+			AActor const* const HitActor = TestHit.GetActor();
+			if (HitActor)
+			{
+				if (MovingActor->IsBasedOnActor(HitActor) || HitActor->IsBasedOnActor(MovingActor))
+				{
+					return true;
+				}
+			}
+		}
+
+		// If we started penetrating, we may want to ignore it if we are moving out of penetration.
+		// This helps prevent getting stuck in walls.
+		if (TestHit.bStartPenetrating && !(MoveFlags & MOVECOMP_NeverIgnoreBlockingOverlaps))
+		{
+			const float DotTolerance = CVarInitialOverlapTolerance.GetValueOnGameThread();
+
+			// Dot product of movement direction against 'exit' direction
+			const FVector MovementDir = MovementDirDenormalized.GetSafeNormal();
+			const float MoveDot = (TestHit.ImpactNormal | MovementDir);
+
+			const bool bMovingOut = MoveDot > DotTolerance;
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+			{
+				if (CVarShowInitialOverlaps.GetValueOnGameThread() != 0)
+				{
+					UE_LOG(LogTemp, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
+					DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
+					if (TestHit.PenetrationDepth > KINDA_SMALL_NUMBER)
+					{
+						DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + TestHit.PenetrationDepth * TestHit.Normal, 5.f, FColor(64, 255, 64), true, 4.f);
+					}
+				}
+			}
+#endif
+
+			// If we are moving out, ignore this result!
+			if (bMovingOut)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool ShouldIgnoreOverlapResult(const UWorld* World, const AActor* ThisActor, const UPrimitiveComponent& ThisComponent, const AActor* OtherActor, const UPrimitiveComponent& OtherComponent)
+{
+	// Don't overlap with self
+	if (&ThisComponent == &OtherComponent)
+	{
+		return true;
+	}
+
+	// Both components must set bGenerateOverlapEvents
+	if (!ThisComponent.bGenerateOverlapEvents || !OtherComponent.bGenerateOverlapEvents)
+	{
+		return true;
+	}
+
+	if (!ThisActor || !OtherActor)
+	{
+		return true;
+	}
+
+	if (!World || OtherActor == World->GetWorldSettings() || !OtherActor->IsActorInitialized())
+	{
+		return true;
+	}
+
+	return false;
+}
 
 /** Represents a UVRRootComponent to the scene manager. */
 class FDrawCylinderSceneProxy : public FPrimitiveSceneProxy
@@ -17,7 +163,7 @@ public:
 		, CapsuleRadius(InComponent->CapsuleRadius)
 		, CapsuleHalfHeight(InComponent->CapsuleHalfHeight)
 		, ShapeColor(InComponent->ShapeColor)
-		, AutoSizeCapsuleOffset(InComponent->AutoSizeCapsuleOffset)
+		, VRCapsuleOffset(InComponent->VRCapsuleOffset)
 		, OffsetComponentToWorld(InComponent->OffsetComponentToWorld)
 	{
 		bWillEverBeLit = false;
@@ -40,7 +186,7 @@ public:
 
 				// This is a quick hack and doesn't really show the location, it only works in viewport where the character has no rotation
 				FVector Base = LocalToWorld.GetOrigin();
-				//FVector Offset = AutoSizeCapsuleOffset;
+				//FVector Offset = VRCapsuleOffset;
 				//Offset.X += LocationOffset.X;
 				//Offset.Y += LocationOffset.Y;
 
@@ -80,7 +226,7 @@ private:
 	const float		CapsuleRadius;
 	float		CapsuleHalfHeight;
 	FColor	ShapeColor;
-	const FVector AutoSizeCapsuleOffset;
+	const FVector VRCapsuleOffset;
 	FTransform OffsetComponentToWorld;
 };
 
@@ -97,30 +243,17 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 
 	//ShapeBodySetup = NULL;
 
-	bAutoSizeCapsuleHeight = false;
-	AutoSizeCapsuleOffset = FVector(-5.0f, 0.0f, 0.0f);
-	AutoCapsuleUpdateRate = 60;
-	AutoCapsuleUpdateCount = 0.0f;
-	bAutoCapsuleUpdateEveryFrame = false;
-
+	VRCapsuleOffset = FVector(-15.0f, 0.0f, 0.0f);
 	ShapeColor = FColor(223, 149, 157, 255);
 
-	CapsuleRadius = 9.0f;
-	CapsuleHalfHeight = 9.0f;
+	CapsuleRadius = 20.0f;
+	CapsuleHalfHeight = 96.0f;
 	bUseEditorCompositing = true;
 
 	curCameraRot = FQuat(0.0f, 0.0f, 0.0f, 1.0f);// = FRotator::ZeroRotator;
 	curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
 }
-
-/*FBodyInstance* UVRRootComponent::GetBodyInstance(FName BoneName, bool bGetWelded) const
-{
-//	if (TargetPrimitiveComponent)
-	//	return TargetPrimitiveComponent->GetBodyInstance();
-	//else
-	//	return Super::GetBodyInstance(BoneName, bGetWelded);
-}*/
 
 class UBodySetup* UVRRootComponent::GetBodySetup()
 {
@@ -134,69 +267,64 @@ FPrimitiveSceneProxy* UVRRootComponent::CreateSceneProxy()
 	return new FDrawCylinderSceneProxy(this);
 }
 
+void UVRRootComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	TArray<USceneComponent*> children = this->GetAttachChildren();
+
+	for (int i = 0; i < children.Num(); i++)
+	{
+		if (children[i]->IsA(UCameraComponent::StaticClass()))
+		{
+			TargetPrimitiveComponent = children[i];
+			return;
+		}
+	}
+
+	TargetPrimitiveComponent = NULL;
+}
+
+
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {		
 	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
-
-	bool bUpdate = bAutoCapsuleUpdateEveryFrame;
-
-	if (!bAutoCapsuleUpdateEveryFrame)
+	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 	{
-		AutoCapsuleUpdateCount += DeltaTime;
-
-		if (AutoCapsuleUpdateCount >= (1.0f / AutoCapsuleUpdateRate))
-		{
-			AutoCapsuleUpdateCount = 0.0f;
-
-			bUpdate = true;
-		}
+		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curCameraRot, curCameraLoc);
+	}
+	else if(TargetPrimitiveComponent)
+	{
+		curCameraRot = TargetPrimitiveComponent->RelativeRotation.Quaternion();
+		curCameraLoc = TargetPrimitiveComponent->RelativeLocation;
+	}
+	else
+	{
+		curCameraRot = FQuat(0.0f, 0.0f, 0.0f, 1.0f);// = FRotator::ZeroRotator;
+		curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	}
 
-	if (bUpdate)
+	OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+	UpdateBounds();
+
+	if (this->ShouldRender() && this->SceneProxy)
 	{
-		if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
-		{
-			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curCameraRot, curCameraLoc);
-		}
-		else
-		{
-			
-			curCameraRot = FQuat(0.0f, 0.0f, 0.0f, 1.0f);// = FRotator::ZeroRotator;
-			curCameraLoc = FVector(0.0f, 0.0f, 160.0f);//FVector::ZeroVector;
-		}
-
-	//	if(bAutoSizeCapsuleHeight)
-		//	CapsuleHalfHeight = FMath::Clamp(curCameraLoc.Z / 2, CapsuleRadius, 300.0f);
-
-		OffsetComponentToWorld = FTransform(FQuat(0,0,0,1), curCameraLoc + AutoSizeCapsuleOffset /*+ FVector(0, 0, -CapsuleHalfHeight)*/, FVector(1.0f)) * ComponentToWorld;
-		FTransform OffsetComponentToWorld2 = FTransform(FQuat(0, 0, 0, 1), curCameraLoc + AutoSizeCapsuleOffset, FVector(1.0f)) * ComponentToWorld;
-		
-
-		//UpdateBounds();
-
-	//	FBodyInstance * bodyInstance = GetBodyInstance();
-	//	bodyInstance->SetBodyTransform(OffsetComponentToWorld2, ETeleportType::TeleportPhysics);
-		//BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
-
-		//UpdateBodySetup();
-
-		//RecreatePhysicsState();
-
-
-		if (this->ShouldRender() && this->SceneProxy)
-		{
-			ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
-				FDrawCylinderTransformUpdate,
-				FDrawCylinderSceneProxy*, CylinderSceneProxy, (FDrawCylinderSceneProxy*)SceneProxy,
-				FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
-				{
-					CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
-				}
-			);
-		}
+		ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
+			FDrawCylinderTransformUpdate,
+			FDrawCylinderSceneProxy*, CylinderSceneProxy, (FDrawCylinderSceneProxy*)SceneProxy,
+			FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
+			{
+				CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
+			}
+		);
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+
+void UVRRootComponent::GenerateOffsetToWorld()
+{
+	OffsetComponentToWorld = FTransform(FQuat(0, 0, 0, 1), FVector(curCameraLoc.X, curCameraLoc.Y, 0 + CapsuleHalfHeight) + VRCapsuleOffset, FVector(1.0f)) * ComponentToWorld;
 }
 
 void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
@@ -207,6 +335,8 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 
 void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
 {
+	GenerateOffsetToWorld();
+
 	// Don't want to call primitives version, and the scenecomponents version does nothing
 	//Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
 
@@ -228,7 +358,7 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 {
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
 	//return FBoxSphereBounds(FVector::ZeroVector, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
-	return FBoxSphereBounds(/*FVector::ZeroVectorFVector*/FVector(curCameraLoc.X,curCameraLoc.Y,/*CapsuleHalfHeight*/curCameraLoc.Z /*- CapsuleHalfHeight*/) + AutoSizeCapsuleOffset, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	return FBoxSphereBounds(/*FVector::ZeroVectorFVector*/FVector(curCameraLoc.X,curCameraLoc.Y,/*curCameraLoc.Z*/0 + CapsuleHalfHeight) + VRCapsuleOffset, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 }
 
 void UVRRootComponent::CalcBoundingCylinder(float& CylinderRadius, float& CylinderHalfHeight) const
@@ -321,8 +451,8 @@ void UVRRootComponent::UpdateBodySetup()
 	check(ShapeBodySetup->AggGeom.SphylElems.Num() == 1);
 	FKSphylElem* SE = ShapeBodySetup->AggGeom.SphylElems.GetData();
 
-	SE->SetTransform(FTransform(FQuat(0,0,0,1), FVector(curCameraLoc.X,curCameraLoc.Y,curCameraLoc.Z /*- CapsuleHalfHeight*/) + AutoSizeCapsuleOffset, FVector(1.0f)));
-	//SE->SetTransform(FTransform::Identity);
+	//SE->SetTransform(FTransform(FQuat(0,0,0,1), FVector(curCameraLoc.X,curCameraLoc.Y,curCameraLoc.Z /*CapsuleHalfHeight*/) + VRCapsuleOffset, FVector(1.0f)));
+	SE->SetTransform(FTransform::Identity);
 	SE->Radius = CapsuleRadius;
 	SE->Length = 2 * FMath::Max(CapsuleHalfHeight - CapsuleRadius, 0.f);	//SphylElem uses height from center of capsule spheres, but UVRRootComponent uses halfHeight from end of the sphere
 }
@@ -354,7 +484,7 @@ bool UVRRootComponent::AreSymmetricRotations(const FQuat& A, const FQuat& B, con
 }
 
 
-/*
+
 bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewRotationQuat, bool bSweep, FHitResult* OutHit, EMoveComponentFlags MoveFlags, ETeleportType Teleport)
 {
 	if (IsPendingKill() || (this->Mobility == EComponentMobility::Static && IsRegistered()))//|| CheckStaticMobilityAndWarn(PrimitiveComponentStatics::MobilityWarnText))
@@ -371,43 +501,6 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	// Init HitResult
 	FHitResult BlockingHit(1.f);
 	const FVector TraceStart = OffsetComponentToWorld.GetLocation();//GetComponentLocation();
-	const FVector TraceEnd = TraceStart + Delta;
-	BlockingHit.TraceStart = TraceStart;
-	BlockingHit.TraceEnd = TraceEnd;
-
-	// Update the location.  This will teleport any child components as well (not sweep).
-	bool bMoved = InternalSetWorldLocationAndRotation(NewLocation, NewRotationQuat, bSkipPhysicsMove, Teleport);
-
-	return bMoved;
-}*/
-
-	/*
-	SCOPE_CYCLE_COUNTER(STAT_MoveComponentTime);
-
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST) && PERF_MOVECOMPONENT_STATS
-	FScopedMoveCompTimer MoveTimer(this, Delta);
-#endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST) && PERF_MOVECOMPONENT_STATS
-
-#if defined(PERF_SHOW_MOVECOMPONENT_TAKING_LONG_TIME) || LOOKING_FOR_PERF_ISSUES
-	uint32 MoveCompTakingLongTime = 0;
-	CLOCK_CYCLES(MoveCompTakingLongTime);
-#endif
-
-	// static things can move before they are registered (e.g. immediately after streaming), but not after.
-	if (IsPendingKill() || (this->Mobility == EComponentMobility::Static && IsRegistered()))//|| CheckStaticMobilityAndWarn(PrimitiveComponentStatics::MobilityWarnText))
-	{
-		if (OutHit)
-		{
-			*OutHit = FHitResult();
-		}
-		return false;
-	}
-
-	ConditionalUpdateComponentToWorld();
-
-	// Init HitResult
-	FHitResult BlockingHit(1.f);
-	const FVector TraceStart = GetComponentLocation();
 	const FVector TraceEnd = TraceStart + Delta;
 	BlockingHit.TraceStart = TraceStart;
 	BlockingHit.TraceEnd = TraceEnd;
@@ -433,6 +526,8 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 		DeltaSizeSq = 0.f;
 	}
 
+
+
 	const bool bSkipPhysicsMove = ((MoveFlags & MOVECOMP_SkipPhysicsMove) != MOVECOMP_NoFlags);
 
 	bool bMoved = false;
@@ -444,39 +539,40 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	if (!bSweep)
 	{
 		// not sweeping, just go directly to the new transform
-		bMoved = InternalSetWorldLocationAndRotation(TraceEnd, NewRotationQuat, bSkipPhysicsMove, Teleport);
+		bMoved = InternalSetWorldLocationAndRotation(/*TraceEnd*/GetComponentLocation() + Delta, NewRotationQuat, bSkipPhysicsMove, Teleport);
+		GenerateOffsetToWorld();
 		bRotationOnly = (DeltaSizeSq == 0);
 		bIncludesOverlapsAtEnd = bRotationOnly && (AreSymmetricRotations(InitialRotationQuat, NewRotationQuat, GetComponentScale())) && IsCollisionEnabled();
 	}
 	else
 	{
 		TArray<FHitResult> Hits;
-		FVector NewLocation = TraceStart;
+		FVector NewLocation = GetComponentLocation();//TraceStart;
 
 		// Perform movement collision checking if needed for this actor.
 		const bool bCollisionEnabled = IsCollisionEnabled();
 		if (bCollisionEnabled && (DeltaSizeSq > 0.f))
 		{
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+/*#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 			if (!IsRegistered())
 			{
 				if (Actor)
 				{
-				//	UE_LOG(LogPrimitiveComponent, Fatal, TEXT("%s MovedComponent %s not initialized deleteme %d"), *Actor->GetName(), *GetName(), Actor->IsPendingKill());
+					//	UE_LOG(LogPrimitiveComponent, Fatal, TEXT("%s MovedComponent %s not initialized deleteme %d"), *Actor->GetName(), *GetName(), Actor->IsPendingKill());
 				}
 				else
 				{
-				//	UE_LOG(LogPrimitiveComponent, Fatal, TEXT("MovedComponent %s not initialized"), *GetFullName());
+					//	UE_LOG(LogPrimitiveComponent, Fatal, TEXT("MovedComponent %s not initialized"), *GetFullName());
 				}
 			}
-#endif
+#endif*/
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST) && PERF_MOVECOMPONENT_STATS
 			MoveTimer.bDidLineCheck = true;
 #endif 
 			UWorld* const MyWorld = GetWorld();
 
-			FComponentQueryParams Params(PrimitiveComponentStatics::MoveComponentName, Actor);
+			FComponentQueryParams Params(/*PrimitiveComponentStatics::MoveComponentName*/"MoveComponent", Actor);
 			FCollisionResponseParams ResponseParam;
 			InitSweepCollisionParams(Params, ResponseParam);
 			bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
@@ -560,18 +656,18 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			// Update NewLocation based on the hit result
 			if (!BlockingHit.bBlockingHit)
 			{
-				NewLocation = TraceEnd;
+				NewLocation += (TraceEnd - TraceStart);
 			}
 			else
 			{
-				NewLocation = TraceStart + (BlockingHit.Time * (TraceEnd - TraceStart));
+				NewLocation += (BlockingHit.Time * (TraceEnd - TraceStart));
 
 				// Sanity check
-				const FVector ToNewLocation = (NewLocation - TraceStart);
+				const FVector ToNewLocation = (NewLocation - GetComponentLocation()/*TraceStart*/);
 				if (ToNewLocation.SizeSquared() <= MinMovementDistSq)
 				{
 					// We don't want really small movements to put us on or inside a surface.
-					NewLocation = TraceStart;
+					NewLocation = GetComponentLocation();//TraceStart;
 					BlockingHit.Time = 0.f;
 
 					// Remove any pending overlaps after this point, we are not going as far as we swept.
@@ -583,25 +679,6 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			}
 
 			bIncludesOverlapsAtEnd = AreSymmetricRotations(InitialRotationQuat, NewRotationQuat, GetComponentScale());
-
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-			if ((BlockingHit.Time < 1.f) && !IsZeroExtent())
-			{
-				// this is sole debug purpose to find how capsule trace information was when hit 
-				// to resolve stuck or improve our movement system - To turn this on, use DebugCapsuleSweepPawn
-				APawn const* const ActorPawn = (Actor ? Cast<APawn>(Actor) : NULL);
-				if (ActorPawn && ActorPawn->Controller && ActorPawn->Controller->IsLocalPlayerController())
-				{
-					APlayerController const* const PC = CastChecked<APlayerController>(ActorPawn->Controller);
-					if (PC->CheatManager && PC->CheatManager->bDebugCapsuleSweepPawn)
-					{
-						FVector CylExtent = ActorPawn->GetSimpleCollisionCylinderExtent()*FVector(1.001f, 1.001f, 1.0f);
-						FCollisionShape CapsuleShape = FCollisionShape::MakeCapsule(CylExtent);
-						PC->CheatManager->AddCapsuleSweepDebugInfo(TraceStart, TraceEnd, BlockingHit.ImpactPoint, BlockingHit.Normal, BlockingHit.ImpactNormal, BlockingHit.Location, CapsuleShape.GetCapsuleHalfHeight(), CapsuleShape.GetCapsuleRadius(), true, (BlockingHit.bStartPenetrating && BlockingHit.bBlockingHit) ? true : false);
-					}
-				}
-			}
-#endif
 		}
 		else if (DeltaSizeSq > 0.f)
 		{
@@ -617,6 +694,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 		// Update the location.  This will teleport any child components as well (not sweep).
 		bMoved = InternalSetWorldLocationAndRotation(NewLocation, NewRotationQuat, bSkipPhysicsMove, Teleport);
+		GenerateOffsetToWorld();
 	}
 
 	// Handle overlap notifications.
@@ -647,7 +725,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 				}
 				else
 				{
-					OverlapsAtEndLocationPtr = ConvertSweptOverlapsToCurrentOverlaps(OverlapsAtEndLocation, PendingOverlaps, 0, GetComponentLocation(), GetComponentQuat());
+					OverlapsAtEndLocationPtr = ConvertSweptOverlapsToCurrentOverlaps(OverlapsAtEndLocation, PendingOverlaps, 0, /*GetComponentLocation()*/OffsetComponentToWorld.GetLocation(), GetComponentQuat());
 				}
 				UpdateOverlaps(&PendingOverlaps, true, OverlapsAtEndLocationPtr);
 			}
@@ -671,22 +749,6 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			DispatchBlockingHit(*Actor, BlockingHit);
 		}
 	}
-
-#if defined(PERF_SHOW_MOVECOMPONENT_TAKING_LONG_TIME) || LOOKING_FOR_PERF_ISSUES
-	UNCLOCK_CYCLES(MoveCompTakingLongTime);
-	const float MSec = FPlatformTime::ToMilliseconds(MoveCompTakingLongTime);
-	if (MSec > PERF_SHOW_MOVECOMPONENT_TAKING_LONG_TIME_AMOUNT)
-	{
-		if (GetOwner())
-		{
-			UE_LOG(LogPrimitiveComponent, Log, TEXT("%10f executing MoveComponent for %s owned by %s"), MSec, *GetName(), *GetOwner()->GetFullName());
-		}
-		else
-		{
-			UE_LOG(LogPrimitiveComponent, Log, TEXT("%10f executing MoveComponent for %s"), MSec, *GetFullName());
-		}
-	}
-#endif
 
 	// copy to optional output param
 	if (OutHit)
@@ -728,7 +790,7 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 							// Not handled yet. We could do it by checking every body explicitly and track each body index in the overlap test, but this seems like a rare need.
 							return nullptr;
 						}
-						else if (ComponentOverlapComponent(OtherPrimitive, EndLocation, EndRotationQuat, UnusedQueryParams))
+						else if (OtherPrimitive->ComponentOverlapComponent(this, EndLocation, EndRotationQuat, UnusedQueryParams))
 						{
 							OverlapsAtEndLocation.Add(OtherOverlap);
 						}
@@ -776,4 +838,4 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertRotationOverlapsToCurrentOv
 	}
 
 	return Result;
-}*/
+}

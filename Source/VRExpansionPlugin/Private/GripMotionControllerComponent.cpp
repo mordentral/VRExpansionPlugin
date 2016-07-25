@@ -598,7 +598,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 					if (PScene)
 					{
 						SCOPED_SCENE_WRITE_LOCK(PScene);
-
+						Handle->KinActorData->setKinematicTarget(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 						Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 					}
 				}
@@ -648,7 +648,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 					if (PScene)
 					{
 						SCOPED_SCENE_WRITE_LOCK(PScene);
-
+						Handle->KinActorData->setKinematicTarget(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 						Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 					}
 				}
@@ -700,7 +700,7 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 				if (PScene)
 				{
 					SCOPED_SCENE_WRITE_LOCK(PScene);
-
+					Handle->KinActorData->setKinematicTarget(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 					Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 				}
 			}
