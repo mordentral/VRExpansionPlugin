@@ -164,7 +164,8 @@ public:
 		, CapsuleHalfHeight(InComponent->CapsuleHalfHeight)
 		, ShapeColor(InComponent->ShapeColor)
 		, VRCapsuleOffset(InComponent->VRCapsuleOffset)
-		, OffsetComponentToWorld(InComponent->OffsetComponentToWorld)
+		//, OffsetComponentToWorld(InComponent->OffsetComponentToWorld)
+		, LocalToWorld(InComponent->OffsetComponentToWorld.ToMatrixWithScale())
 	{
 		bWillEverBeLit = false;
 	}
@@ -173,7 +174,7 @@ public:
 	{
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_GetDynamicMeshElements_DrawDynamicElements);
 
-		const FMatrix& LocalToWorld = OffsetComponentToWorld.ToMatrixWithScale();//GetLocalToWorld();
+		//const FMatrix& LocalToWorld = OffsetComponentToWorld.ToMatrixWithScale();//GetLocalToWorld();
 		const int32 CapsuleSides = FMath::Clamp<int32>(CapsuleRadius / 4.f, 16, 64);
 
 		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
@@ -184,14 +185,7 @@ public:
 				const FSceneView* View = Views[ViewIndex];
 				const FLinearColor DrawCapsuleColor = GetViewSelectionColor(ShapeColor, *View, IsSelected(), IsHovered(), false, IsIndividuallySelected());
 
-				// This is a quick hack and doesn't really show the location, it only works in viewport where the character has no rotation
 				FVector Base = LocalToWorld.GetOrigin();
-				//FVector Offset = VRCapsuleOffset;
-				//Offset.X += LocationOffset.X;
-				//Offset.Y += LocationOffset.Y;
-
-				//Base += LocalToWorld.TransformVector(Offset);
-				//Base.Z += CapsuleHalfHeight;
 
 				FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
 
@@ -204,7 +198,8 @@ public:
 	void UpdateTransform_RenderThread(FTransform NewTransform, float NewHalfHeight)
 	{
 		check(IsInRenderingThread());
-		OffsetComponentToWorld = NewTransform;
+		LocalToWorld = NewTransform.ToMatrixWithScale();
+		//OffsetComponentToWorld = NewTransform;
 		CapsuleHalfHeight = NewHalfHeight;
 	}
 
@@ -227,7 +222,8 @@ private:
 	float		CapsuleHalfHeight;
 	FColor	ShapeColor;
 	const FVector VRCapsuleOffset;
-	FTransform OffsetComponentToWorld;
+	//FTransform OffsetComponentToWorld;
+	FMatrix LocalToWorld;
 };
 
 
@@ -241,8 +237,6 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
 
-	//ShapeBodySetup = NULL;
-
 	VRCapsuleOffset = FVector(0.0f, 0.0f, 0.0f);
 	ShapeColor = FColor(223, 149, 157, 255);
 
@@ -253,6 +247,13 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
 	curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
+
+
+	CanCharacterStepUpOn = ECB_No;
+	bShouldUpdatePhysicsVolume = true;
+	bCheckAsyncSceneOnMove = false;
+	SetCanEverAffectNavigation(false);
+	bDynamicObstacle = true;
 }
 
 class UBodySetup* UVRRootComponent::GetBodySetup()
@@ -336,6 +337,7 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 	BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
 }
 
+// Override this so that the physics representation is in the correct location
 void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
 {
 	GenerateOffsetToWorld();
@@ -493,7 +495,7 @@ bool UVRRootComponent::AreSymmetricRotations(const FQuat& A, const FQuat& B, con
 }
 
 
-
+// This overrides the movement logic to use the offset location instead of the default location for sweeps.
 bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewRotationQuat, bool bSweep, FHitResult* OutHit, EMoveComponentFlags MoveFlags, ETeleportType Teleport)
 {
 	if (IsPendingKill() || (this->Mobility == EComponentMobility::Static && IsRegistered()))//|| CheckStaticMobilityAndWarn(PrimitiveComponentStatics::MobilityWarnText))
