@@ -57,6 +57,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
+	UPROPERTY(BlueprintReadOnly, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
 
 	// Used to offset the collision (IE backwards from the player slightly.
@@ -64,7 +65,7 @@ public:
 	FVector VRCapsuleOffset;
 
 	FVector curCameraLoc;
-	FQuat curCameraRot;
+	FRotator curCameraRot;
 
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;

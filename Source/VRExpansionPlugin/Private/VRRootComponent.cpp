@@ -243,14 +243,14 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 
 	//ShapeBodySetup = NULL;
 
-	VRCapsuleOffset = FVector(-15.0f, 0.0f, 0.0f);
+	VRCapsuleOffset = FVector(0.0f, 0.0f, 0.0f);
 	ShapeColor = FColor(223, 149, 157, 255);
 
 	CapsuleRadius = 20.0f;
 	CapsuleHalfHeight = 96.0f;
 	bUseEditorCompositing = true;
 
-	curCameraRot = FQuat(0.0f, 0.0f, 0.0f, 1.0f);// = FRotator::ZeroRotator;
+	curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
 	curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
 }
@@ -290,21 +290,22 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
 	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 	{
-		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curCameraRot, curCameraLoc);
+		FQuat curRot;
+		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
+		curCameraRot = curRot.Rotator();
 	}
 	else if(TargetPrimitiveComponent)
 	{
-		curCameraRot = TargetPrimitiveComponent->RelativeRotation.Quaternion();
+		curCameraRot = TargetPrimitiveComponent->RelativeRotation;
 		curCameraLoc = TargetPrimitiveComponent->RelativeLocation;
 	}
 	else
 	{
-		curCameraRot = FQuat(0.0f, 0.0f, 0.0f, 1.0f);// = FRotator::ZeroRotator;
+		curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
 		curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	}
 
 	OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
-	UpdateBounds();
 
 	if (this->ShouldRender() && this->SceneProxy)
 	{
@@ -324,7 +325,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 void UVRRootComponent::GenerateOffsetToWorld()
 {
-	OffsetComponentToWorld = FTransform(FQuat(0, 0, 0, 1), FVector(curCameraLoc.X, curCameraLoc.Y, 0 + CapsuleHalfHeight) + VRCapsuleOffset, FVector(1.0f)) * ComponentToWorld;
+	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
+	UpdateBounds();
 }
 
 void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
@@ -357,8 +360,8 @@ void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFl
 FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
-	//return FBoxSphereBounds(FVector::ZeroVector, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
-	return FBoxSphereBounds(/*FVector::ZeroVectorFVector*/FVector(curCameraLoc.X,curCameraLoc.Y,/*curCameraLoc.Z*/0 + CapsuleHalfHeight) + VRCapsuleOffset, BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 }
 
 void UVRRootComponent::CalcBoundingCylinder(float& CylinderRadius, float& CylinderHalfHeight) const
@@ -399,10 +402,16 @@ void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, CapsuleHalfHeight))
 	{
 		CapsuleHalfHeight = FMath::Max3(0.f, CapsuleHalfHeight, CapsuleRadius);
+		GenerateOffsetToWorld();
 	}
 	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, CapsuleRadius))
 	{
 		CapsuleRadius = FMath::Clamp(CapsuleRadius, 0.f, CapsuleHalfHeight);
+		GenerateOffsetToWorld();
+	}
+	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, VRCapsuleOffset))
+	{
+		GenerateOffsetToWorld();
 	}
 
 	if (!IsTemplate())
