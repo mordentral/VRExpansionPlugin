@@ -20,6 +20,9 @@ I will push pre-compiled binaries for all builds as well but I highly suggest th
 [Replicated VR Camera Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Replicated%20VR%20Camera)
 
 
+[VR Root Component Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VRRootComponent)
+
+
 [Parent Relative Attachment Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Parent%20Relative%20Attachment%20Component)
 
 
