@@ -75,6 +75,10 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 {
 	if (TestHit.bBlockingHit)
 	{
+		// VR Pawns need to totally ignore simulating components with movement to prevent sickness
+		if (TestHit.Component->IsSimulatingPhysics())
+			return true;
+
 		// check "ignore bases" functionality
 		if ((MoveFlags & MOVECOMP_IgnoreBases) && MovingActor)	//we let overlap components go through because their overlap is still needed and will cause beginOverlap/endOverlap events
 		{
