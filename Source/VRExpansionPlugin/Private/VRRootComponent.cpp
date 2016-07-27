@@ -425,34 +425,12 @@ void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 		UpdateBodySetup(); // do this before reregistering components so that new values are used for collision
 	}
 
-	Super::PostEditChangeProperty(PropertyChangedEvent);
+	return;
+
+	// Overrode the defaults for this, don't call the parent
+	//Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 #endif	// WITH_EDITOR
-
-void UVRRootComponent::SetCapsuleSize(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
-{
-	CapsuleHalfHeight = FMath::Max3(0.f, NewHalfHeight, NewRadius);
-	CapsuleRadius = FMath::Max(0.f, NewRadius);
-	MarkRenderStateDirty();
-
-	// do this if already created
-	// otherwise, it hasn't been really created yet
-	if (bPhysicsStateCreated)
-	{
-		//if (ShapeBodySetup != NULL)
-		//	ShapeBodySetup->InvalidatePhysicsData();
-		DestroyPhysicsState(); // Faster without
-		UpdateBodySetup();
-		CreatePhysicsState(); // Faster without
-		//ShapeBodySetup->CreatePhysicsMeshes();
-		//RecreatePhysicsState();
-
-		if (bUpdateOverlaps && IsCollisionEnabled() && GetOwner())
-		{
-			UpdateOverlaps();
-		}
-	}
-}
 
 void UVRRootComponent::UpdateBodySetup()
 {

@@ -19,9 +19,9 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	bLockYaw = false;
 	bLockRoll = true;
 
-	PitchTolerance = 1.0f;
-	YawTolerance = 1.0f;
-	RollTolerance = 1.0f;
+	PitchTolerance = 0.0f;
+	YawTolerance = 0.0f;
+	RollTolerance = 0.0f;
 }
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
