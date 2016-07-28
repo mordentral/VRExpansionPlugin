@@ -67,6 +67,11 @@ public:
 	FVector curCameraLoc;
 	FRotator curCameraRot;
 
+	FVector lastCameraLoc;
+	FRotator lastCameraRot;
+
+	bool bHadRelativeMovement;
+
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 

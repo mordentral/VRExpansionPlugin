@@ -69,7 +69,7 @@ public:
 	}
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRGrip")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRGrip", meta = (ClampMin = "0", UIMin = "0"))
 	float ControllerNetUpdateRate;
 
 	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case.

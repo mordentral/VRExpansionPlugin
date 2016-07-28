@@ -18,6 +18,23 @@
 
 static int32 bEnableFastOverlapCheck = 1;
 
+static TAutoConsoleVariable<float> CVarInitialOverlapTolerance(
+	TEXT("p.InitialOverlapTolerance"),
+	0.0f,
+	TEXT("Tolerance for initial overlapping test in PrimitiveComponent movement.\n")
+	TEXT("Normals within this tolerance are ignored if moving out of the object.\n")
+	TEXT("Dot product of movement direction and surface normal."),
+	ECVF_Default);
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+TAutoConsoleVariable<int32> CVarShowInitialOverlaps(
+	TEXT("p.ShowInitialOverlaps"),
+	0,
+	TEXT("Show initial overlaps when moving a component, including estimated 'exit' direction.\n")
+	TEXT(" 0:off, otherwise on"),
+	ECVF_Cheat);
+#endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+
 static FAutoConsoleVariable CVarAllowCachedOverlaps(
 	TEXT("p.AllowCachedOverlaps"),
 	1,
@@ -80,9 +97,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 		// This helps prevent getting stuck in walls.
 		if (TestHit.bStartPenetrating && !(MoveFlags & MOVECOMP_NeverIgnoreBlockingOverlaps))
 		{
-			static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindConsoleVariable(TEXT("InitialOverlapTolerance"));
-
-			const float DotTolerance = CVarInitialOverlapTolerance->GetFloat()/*.GetValueOnGameThread()*/;
+			const float DotTolerance = CVarInitialOverlapTolerance.GetValueOnGameThread();
 
 			// Dot product of movement direction against 'exit' direction
 			const FVector MovementDir = MovementDirDenormalized.GetSafeNormal();
@@ -92,9 +107,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
-				static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("ShowInitialOverlaps"));
-
-				if (CVarShowInitialOverlaps->GetInt()/*.GetValueOnGameThread()*/ != 0)
+				if (CVarShowInitialOverlaps.GetValueOnGameThread() != 0)
 				{
 					UE_LOG(LogTemp, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
 					DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
@@ -279,6 +292,10 @@ void UVRRootComponent::BeginPlay()
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {		
+
+	lastCameraLoc = curCameraLoc;
+	lastCameraRot = curCameraRot;
+
 	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
 	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 	{
@@ -297,19 +314,13 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	}
 
-	OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
-
-	if (this->ShouldRender() && this->SceneProxy)
+	if (lastCameraLoc != curCameraLoc || lastCameraRot != curCameraRot)
 	{
-		ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
-			FDrawCylinderTransformUpdate,
-			FDrawCylinderSceneProxy*, CylinderSceneProxy, (FDrawCylinderSceneProxy*)SceneProxy,
-			FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
-			{
-				CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
-			}
-		);
+		bHadRelativeMovement = true;
+		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
 	}
+	else
+		bHadRelativeMovement = false;
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
@@ -332,6 +343,18 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
 {
 	GenerateOffsetToWorld();
+
+	if (this->ShouldRender() && this->SceneProxy)
+	{
+		ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
+			FDrawCylinderTransformUpdate,
+			FDrawCylinderSceneProxy*, CylinderSceneProxy, (FDrawCylinderSceneProxy*)SceneProxy,
+			FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
+			{
+				CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
+			}
+		);
+	}
 
 	// Don't want to call primitives version, and the scenecomponents version does nothing
 	//Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
