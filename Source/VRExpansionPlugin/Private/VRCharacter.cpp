@@ -19,8 +19,9 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(TEXT("VR Camera"));
 	if (VRReplicatedCamera)
 	{
+		VRReplicatedCamera->SetupAttachment(RootComponent);
 	}
-		
+	
 	VRRelativeComponent = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Relative Attachment"));
 	if (VRRelativeComponent)
 	{
