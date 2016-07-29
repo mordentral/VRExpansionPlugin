@@ -242,6 +242,9 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	this->RelativeLocation = FVector(0, 0, 0);
 
 	VRCapsuleOffset = FVector(0.0f, 0.0f, 0.0f);
+	RelativeMovementTolerance = 0.1f;
+	RelativeRotationTolerance = 50.0f;
+	
 	ShapeColor = FColor(223, 149, 157, 255);
 
 	CapsuleRadius = 20.0f;
@@ -292,10 +295,6 @@ void UVRRootComponent::BeginPlay()
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {		
-
-	lastCameraLoc = curCameraLoc;
-	lastCameraRot = curCameraRot;
-
 	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
 	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 	{
@@ -314,8 +313,11 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	}
 
-	if (lastCameraLoc != curCameraLoc || lastCameraRot != curCameraRot)
+	// Can adjust the relative tolerances to remove jitter and some update processing
+	if (!(lastCameraLoc - curCameraLoc).IsNearlyZero(RelativeMovementTolerance) || !(lastCameraRot - curCameraRot).IsNearlyZero(RelativeRotationTolerance))
 	{
+		lastCameraLoc = curCameraLoc;
+		lastCameraRot = curCameraRot;
 		bHadRelativeMovement = true;
 		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
 	}

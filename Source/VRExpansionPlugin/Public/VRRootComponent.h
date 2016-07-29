@@ -64,6 +64,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	FVector VRCapsuleOffset;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	float RelativeMovementTolerance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	float RelativeRotationTolerance;
+
 	FVector curCameraLoc;
 	FRotator curCameraRot;
 

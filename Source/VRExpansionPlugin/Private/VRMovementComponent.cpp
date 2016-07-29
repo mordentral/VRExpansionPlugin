@@ -20,7 +20,55 @@ UVRMovementComponent::UVRMovementComponent(const FObjectInitializer& ObjectIniti
 	GravityVelocity = FVector::ZeroVector;
 	ResetMoveState();
 
+	// Start lower for VR
+	GravityScale = 0.5f;
+
 	bEnableGravity = true;
+}
+
+void UVRMovementComponent::Server_AddInputVector_Implementation(FVector WorldAccel, bool bForce)
+{
+	AddInputVector(WorldAccel, bForce);
+}
+
+bool UVRMovementComponent::Server_AddInputVector_Validate(FVector WorldAccel, bool bForce)
+{
+	return true;
+	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
+}
+
+void UVRMovementComponent::MoveForward(float ScaleValue, bool bForce)
+{
+	if (!UpdatedComponent || !PawnOwner)
+		return;
+
+	if (VRRootComponent)
+	{
+		AddInputVector(VRRootComponent->OffsetComponentToWorld.GetRotation().GetForwardVector() * ScaleValue, bForce);
+		Server_AddInputVector(VRRootComponent->OffsetComponentToWorld.GetRotation().GetForwardVector() * ScaleValue, bForce);
+	}
+	else
+	{
+		AddInputVector(UpdatedComponent->GetForwardVector() * ScaleValue, bForce);
+		Server_AddInputVector(UpdatedComponent->GetForwardVector() * ScaleValue, bForce);
+	}
+}
+
+void UVRMovementComponent::MoveRight(float ScaleValue, bool bForce)
+{
+	if (!UpdatedComponent || !PawnOwner)
+		return;
+
+	if (VRRootComponent)
+	{
+		AddInputVector(VRRootComponent->OffsetComponentToWorld.GetRotation().GetRightVector() * ScaleValue, bForce);
+		Server_AddInputVector(VRRootComponent->OffsetComponentToWorld.GetRotation().GetRightVector() * ScaleValue, bForce);
+	}
+	else
+	{
+		AddInputVector(UpdatedComponent->GetRightVector() * ScaleValue, bForce);
+		Server_AddInputVector(UpdatedComponent->GetRightVector() * ScaleValue, bForce);
+	}
 }
 
 void UVRMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -35,21 +83,8 @@ void UVRMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 
 
 	const AController* Controller = PawnOwner->GetController();
-	if (Controller && Controller->IsLocalController())
+	if (Controller && (Controller->IsLocalController() || this->GetNetMode() != ENetMode::NM_Client))
 	{
-		// apply input for local players but also for AI that's not following a navigation path at the moment
-		//if (Controller->IsLocalPlayerController() == true || Controller->IsFollowingAPath() == false)
-		//{
-			//ApplyControlInputToVelocity(DeltaTime);
-		//}
-		// if it's not player controller, but we do have a controller, then it's AI
-		// (that's not following a path) and we need to limit the speed
-		/*else if (IsExceedingMaxSpeed(MaxSpeed) == true)
-		{
-			Velocity = Velocity.GetUnsafeNormal() * MaxSpeed;
-		}*/
-
-
 		//LimitWorldBounds();
 		bPositionCorrected = false;
 
@@ -64,10 +99,8 @@ void UVRMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 		SetMovementMode(MOVE_Falling);
 		}*/
 
-		// Need to de-couple gravity and normal velocity.
 		// Should prob incorporate floor checks on every frame so we can know when we even need to ADD gravity.
-		
-		FVector Gravity(0.0f, 0.0f, GetGravityZ());
+		FVector Gravity(0.0f, 0.0f, GetGravityZ() * GravityScale);
 
 		if (!Gravity.IsZero())
 		{
@@ -85,14 +118,18 @@ void UVRMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 		}
 
 		// Move actor
-		FVector GravityDelta = GravityVelocity * DeltaTime;
+		FVector GravityDelta = GravityVelocity;// *DeltaTime;
 
 
 		FVector DesiredMovementThisFrame = ConsumeInputVector().GetClampedToMaxSize(1.0f) * DeltaTime * MoveSpeed;
-		DesiredMovementThisFrame = GravityDelta;
+		
+		if (MovementMode == EMovementMode::MOVE_Falling)
+			DesiredMovementThisFrame = FVector::ZeroVector;
+		
+		DesiredMovementThisFrame += GravityDelta;
 
 
-		if (!DesiredMovementThisFrame.IsNearlyZero())
+		if (!DesiredMovementThisFrame.IsNearlyZero() || (VRRootComponent && VRRootComponent->bHadRelativeMovement))
 		{
 			const FVector OldLocation = UpdatedComponent->GetComponentLocation();
 
@@ -106,40 +143,95 @@ void UVRMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 				SlideAlongSurface(DesiredMovementThisFrame, 1.f - Hit.Time, Hit.Normal, Hit, true);
 			}
 
+			// Hacky gravity reset if fall was stopped
 			FVector comp = UpdatedComponent->GetComponentLocation();
 			FVector Offset = UpdatedComponent->GetComponentLocation() - OldLocation;
-			if ((OldLocation - UpdatedComponent->GetComponentLocation()).Z > GravityDelta.Z)
+			if ((UpdatedComponent->GetComponentLocation() - OldLocation).Z > GravityDelta.Z)
 			{
 				// This is not correct for sliding / a ramp
 				GravityVelocity = FVector::ZeroVector;
+				MovementMode = EMovementMode::MOVE_Walking;
 			}
 			else
-			{
-				int hehe = 0;
-			}
+				MovementMode = EMovementMode::MOVE_Falling;
 		}
-
-
-		/*if (!Delta.IsNearlyZero(1e-6f))
-		{
-			const FVector OldLocation = UpdatedComponent->GetComponentLocation();
-			const FQuat Rotation = UpdatedComponent->GetComponentQuat();
-
-
-
-			// Update velocity
-			// We don't want position changes to vastly reverse our direction (which can happen due to penetration fixups etc)
-			if (!bPositionCorrected)
-			{
-				const FVector NewLocation = UpdatedComponent->GetComponentLocation();
-				Velocity = ((NewLocation - OldLocation) / DeltaTime);
-			}
-		}*/
 
 		// Finalize
 		//UpdateComponentVelocity();
 	}
 };
+
+
+/*
+void UCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult)
+{
+	if (!CurrentFloor.IsWalkableFloor())
+	{
+		return;
+	}
+
+	// Move along the current floor
+	const FVector Delta = FVector(InVelocity.X, InVelocity.Y, 0.f) * DeltaSeconds;
+	FHitResult Hit(1.f);
+	FVector RampVector = ComputeGroundMovementDelta(Delta, CurrentFloor.HitResult, CurrentFloor.bLineTrace);
+	SafeMoveUpdatedComponent(RampVector, UpdatedComponent->GetComponentQuat(), true, Hit);
+	float LastMoveTimeSlice = DeltaSeconds;
+
+	if (Hit.bStartPenetrating)
+	{
+		// Allow this hit to be used as an impact we can deflect off, otherwise we do nothing the rest of the update and appear to hitch.
+		HandleImpact(Hit);
+		SlideAlongSurface(Delta, 1.f, Hit.Normal, Hit, true);
+
+		if (Hit.bStartPenetrating)
+		{
+			OnCharacterStuckInGeometry(&Hit);
+		}
+	}
+	else if (Hit.IsValidBlockingHit())
+	{
+		// We impacted something (most likely another ramp, but possibly a barrier).
+		float PercentTimeApplied = Hit.Time;
+		if ((Hit.Time > 0.f) && (Hit.Normal.Z > KINDA_SMALL_NUMBER) && IsWalkable(Hit))
+		{
+			// Another walkable ramp.
+			const float InitialPercentRemaining = 1.f - PercentTimeApplied;
+			RampVector = ComputeGroundMovementDelta(Delta * InitialPercentRemaining, Hit, false);
+			LastMoveTimeSlice = InitialPercentRemaining * LastMoveTimeSlice;
+			SafeMoveUpdatedComponent(RampVector, UpdatedComponent->GetComponentQuat(), true, Hit);
+
+			const float SecondHitPercent = Hit.Time * InitialPercentRemaining;
+			PercentTimeApplied = FMath::Clamp(PercentTimeApplied + SecondHitPercent, 0.f, 1.f);
+		}
+
+		if (Hit.IsValidBlockingHit())
+		{
+			if (CanStepUp(Hit) || (CharacterOwner->GetMovementBase() != NULL && CharacterOwner->GetMovementBase()->GetOwner() == Hit.GetActor()))
+			{
+				// hit a barrier, try to step up
+				const FVector GravDir(0.f, 0.f, -1.f);
+				if (!StepUp(GravDir, Delta * (1.f - PercentTimeApplied), Hit, OutStepDownResult))
+				{
+					UE_LOG(LogCharacterMovement, Verbose, TEXT("- StepUp (ImpactNormal %s, Normal %s"), *Hit.ImpactNormal.ToString(), *Hit.Normal.ToString());
+					HandleImpact(Hit, LastMoveTimeSlice, RampVector);
+					SlideAlongSurface(Delta, 1.f - PercentTimeApplied, Hit.Normal, Hit, true);
+				}
+				else
+				{
+					// Don't recalculate velocity based on this height adjustment, if considering vertical adjustments.
+					UE_LOG(LogCharacterMovement, Verbose, TEXT("+ StepUp (ImpactNormal %s, Normal %s"), *Hit.ImpactNormal.ToString(), *Hit.Normal.ToString());
+					bJustTeleported |= !bMaintainHorizontalGroundVelocity;
+				}
+			}
+			else if (Hit.Component.IsValid() && !Hit.Component.Get()->CanCharacterStepUp(CharacterOwner))
+			{
+				HandleImpact(Hit, LastMoveTimeSlice, RampVector);
+				SlideAlongSurface(Delta, 1.f - PercentTimeApplied, Hit.Normal, Hit, true);
+			}
+		}
+	}
+}
+*/
 
 void UVRMovementComponent::SetUpdatedComponent(USceneComponent* NewUpdatedComponent)
 {
