@@ -170,7 +170,8 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 {
 	PostPhysicsTickFunction.bCanEverTick = true;
 	PostPhysicsTickFunction.bStartWithTickEnabled = false;
-	PostPhysicsTickFunction.TickGroup = TG_PostPhysics;
+	//PostPhysicsTickFunction.TickGroup = TG_PostPhysics;
+	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 	VRRootCapsule = NULL;
 	//this->bEnablePhysicsInteraction = false;
 }

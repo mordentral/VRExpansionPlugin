@@ -36,12 +36,14 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	if (LeftMotionController)
 	{
 		LeftMotionController->SetupAttachment(RootComponent);
+		LeftMotionController->Hand = EControllerHand::Left;
 	}
 
 	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Right Grip Motion Controller"));
 	if (RightMotionController)
 	{
 		RightMotionController->SetupAttachment(RootComponent);
+		RightMotionController->Hand = EControllerHand::Right;
 	}
 
 }

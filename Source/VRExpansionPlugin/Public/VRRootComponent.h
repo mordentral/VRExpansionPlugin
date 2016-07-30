@@ -54,11 +54,15 @@ public:
 	}
 
 	// Whether to auto size the capsule collision to the height of the head.
-	UPROPERTY(BlueprintReadWrite, Category = "VRExpansionLibrary")
+	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
-	UPROPERTY(BlueprintReadOnly, Category = "VRExpansionLibrary")
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
+
+	// For performance debugging
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	bool bSkipUpdating;
 
 	// Used to offset the collision (IE backwards from the player slightly.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
@@ -83,7 +87,7 @@ public:
 
 public:
 	// Begin UObject interface
-	virtual void Serialize(FArchive& Ar) override;
+	//virtual void Serialize(FArchive& Ar) override;
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif // WITH_EDITOR

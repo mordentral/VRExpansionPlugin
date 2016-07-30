@@ -236,14 +236,14 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
-	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
+	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
 
 	VRCapsuleOffset = FVector(0.0f, 0.0f, 0.0f);
 	RelativeMovementTolerance = 0.1f;
-	RelativeRotationTolerance = 50.0f;
+	RelativeRotationTolerance = 1.0f;
 	
 	ShapeColor = FColor(223, 149, 157, 255);
 
@@ -254,7 +254,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
 	curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
-
+	bSkipUpdating = false;
 
 	CanCharacterStepUpOn = ECB_No;
 	bShouldUpdatePhysicsVolume = true;
@@ -295,34 +295,37 @@ void UVRRootComponent::BeginPlay()
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {		
-	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
-	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
+	if (!bSkipUpdating)
 	{
-		FQuat curRot;
-		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
-		curCameraRot = curRot.Rotator();
-	}
-	else if(TargetPrimitiveComponent)
-	{
-		curCameraRot = TargetPrimitiveComponent->RelativeRotation;
-		curCameraLoc = TargetPrimitiveComponent->RelativeLocation;
-	}
-	else
-	{
-		curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
-		curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
-	}
+		//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
+		if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
+		{
+			FQuat curRot;
+			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
+			curCameraRot = curRot.Rotator();
+		}
+		else if (TargetPrimitiveComponent)
+		{
+			curCameraRot = TargetPrimitiveComponent->RelativeRotation;
+			curCameraLoc = TargetPrimitiveComponent->RelativeLocation;
+		}
+		else
+		{
+			curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
+			curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
+		}
 
-	// Can adjust the relative tolerances to remove jitter and some update processing
-	if (!(lastCameraLoc - curCameraLoc).IsNearlyZero(RelativeMovementTolerance) || !(lastCameraRot - curCameraRot).IsNearlyZero(RelativeRotationTolerance))
-	{
-		lastCameraLoc = curCameraLoc;
-		lastCameraRot = curCameraRot;
-		bHadRelativeMovement = true;
-		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+		// Can adjust the relative tolerances to remove jitter and some update processing
+		if (!(lastCameraLoc - curCameraLoc).IsNearlyZero(RelativeMovementTolerance) || !(lastCameraRot - curCameraRot).IsNearlyZero(RelativeRotationTolerance))
+		{
+			lastCameraLoc = curCameraLoc;
+			lastCameraRot = curCameraRot;
+			bHadRelativeMovement = true;
+			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+		}
+		else
+			bHadRelativeMovement = false;
 	}
-	else
-		bHadRelativeMovement = false;
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
@@ -394,7 +397,7 @@ void UVRRootComponent::CalcBoundingCylinder(float& CylinderRadius, float& Cylind
 	CylinderHalfHeight = ScaledRadius + ZAxis.Z;
 }
 
-void UVRRootComponent::Serialize(FArchive& Ar)
+/*void UVRRootComponent::Serialize(FArchive& Ar)
 {
 	Super::Serialize(Ar);
 
@@ -408,7 +411,7 @@ void UVRRootComponent::Serialize(FArchive& Ar)
 	}
 
 	CapsuleHalfHeight = FMath::Max3(0.f, CapsuleHalfHeight, CapsuleRadius);
-}
+}*/
 
 #if WITH_EDITOR
 void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -420,21 +423,21 @@ void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, CapsuleHalfHeight))
 	{
 		CapsuleHalfHeight = FMath::Max3(0.f, CapsuleHalfHeight, CapsuleRadius);
-		GenerateOffsetToWorld();
+		//GenerateOffsetToWorld();
 	}
 	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, CapsuleRadius))
 	{
 		CapsuleRadius = FMath::Clamp(CapsuleRadius, 0.f, CapsuleHalfHeight);
-		GenerateOffsetToWorld();
+		//GenerateOffsetToWorld();
 	}
 	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, VRCapsuleOffset))
 	{
-		GenerateOffsetToWorld();
+		//GenerateOffsetToWorld();
 	}
 
 	if (!IsTemplate())
 	{
-		UpdateBodySetup(); // do this before reregistering components so that new values are used for collision
+		//UpdateBodySetup(); // do this before reregistering components so that new values are used for collision
 	}
 
 	return;
