@@ -7,7 +7,6 @@
 #include "ReplicatedVRCameraComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
 #include "VRRootComponent.h"
-#include "VRMovementComponent.h"
 #include "VRCharacterMovementComponent.h"
 #include "VRCharacter.h"
 

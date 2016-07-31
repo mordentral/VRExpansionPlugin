@@ -53,7 +53,17 @@ public:
 	void VisualizeMovement() const override;
 	bool CanCrouch();
 
-	// Need to fill our capsule component variable here
+	/*void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iterations) override;
+	
+	bool HasRootMotion() const
+	{
+		return RootMotionParams.bHasRootMotion;
+	}*/
+
+	// Cheating at the relative collision detection
+	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction);
+
+	// Need to fill our capsule component variable here and override the default tick ordering
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
 
 	// Always called with the capsulecomponent location, no idea why it doesn't just get it inside it already

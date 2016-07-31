@@ -27,143 +27,21 @@
 
 #include "PerfCountersHelpers.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogCharacterMovement, Log, All);
-DEFINE_LOG_CATEGORY_STATIC(LogNavMeshMovement, Log, All);
-DEFINE_LOG_CATEGORY_STATIC(LogCharacterNetSmoothing, Log, All);
-
 /**
  * Character stats
  */
-DECLARE_CYCLE_STAT(TEXT("Char Tick"), STAT_CharacterMovementTick, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char NonSimulated Time"), STAT_CharacterMovementNonSimulated, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char Simulated Time"), STAT_CharacterMovementSimulated, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char PerformMovement"), STAT_CharacterMovementPerformMovement, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char ReplicateMoveToServer"), STAT_CharacterMovementReplicateMoveToServer, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char CallServerMove"), STAT_CharacterMovementCallServerMove, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char ClientUpdatePositionAfterServerUpdate"), STAT_CharacterMovementClientUpdatePositionAfterServerUpdate, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char CombineNetMove"), STAT_CharacterMovementCombineNetMove, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char NetSmoothCorrection"), STAT_CharacterMovementSmoothCorrection, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char SmoothClientPosition"), STAT_CharacterMovementSmoothClientPosition, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char SmoothClientPosition_Interp"), STAT_CharacterMovementSmoothClientPosition_Interp, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char SmoothClientPosition_Visual"), STAT_CharacterMovementSmoothClientPosition_Visual, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char Physics Interation"), STAT_CharPhysicsInteraction, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char StepUp"), STAT_CharStepUp, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char FindFloor"), STAT_CharFindFloor, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char AdjustFloorHeight"), STAT_CharAdjustFloorHeight, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char Update Acceleration"), STAT_CharUpdateAcceleration, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char MoveUpdateDelegate"), STAT_CharMoveUpdateDelegate, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char PhysWalking"), STAT_CharPhysWalking, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char PhysFalling"), STAT_CharPhysFalling, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char PhysNavWalking"), STAT_CharPhysNavWalking, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char NavProjectPoint"), STAT_CharNavProjectPoint, STATGROUP_Character);
-DECLARE_CYCLE_STAT(TEXT("Char NavProjectLocation"), STAT_CharNavProjectLocation, STATGROUP_Character);
+
 
 // MAGIC NUMBERS
 const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
-const float SWIMBOBSPEED = -80.f;
-const float VERTICAL_SLOPE_NORMAL_Z = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
 
 // Statics
 namespace CharacterMovementComponentStatics
 {
-	static const FName CrouchTraceName = FName(TEXT("CrouchTrace"));
-	static const FName FindWaterLineName = FName(TEXT("FindWaterLine"));
-	static const FName FallingTraceParamsTag = FName(TEXT("PhysFalling"));
-	static const FName CheckLedgeDirectionName = FName(TEXT("CheckLedgeDirection"));
-	static const FName ProjectLocationName = FName(TEXT("NavProjectLocation"));
-	static const FName CheckWaterJumpName = FName(TEXT("CheckWaterJump"));
-	static const FName ComputeFloorDistName = FName(TEXT("ComputeFloorDistSweep"));
-	static const FName FloorLineTraceName = FName(TEXT("ComputeFloorDistLineTrace"));
 	static const FName ImmersionDepthName = FName(TEXT("MovementComp_Character_ImmersionDepth"));
 }
-
-// CVars
-namespace CharacterCVars
-{
-	// Listen server smoothing
-	static int32 NetEnableListenServerSmoothing = 1;
-	static FAutoConsoleVariableRef CVarNetEnableListenServerSmoothing(
-		TEXT("p.NetEnableListenServerSmoothing"),
-		NetEnableListenServerSmoothing,
-		TEXT("Whether to enable move combining on the client to reduce bandwidth by combining similar moves.\n")
-		TEXT("0: Disable, 1: Enable"),
-		ECVF_Default);
-}
-
-
-static TAutoConsoleVariable<int32> CVarNetEnableMoveCombining(
-	TEXT("p.NetEnableMoveCombining"),
-	1,
-	TEXT("Whether to enable move combining on the client to reduce bandwidth by combining similar moves.\n")
-	TEXT("0: Disable, 1: Enable"),
-	ECVF_Default);
-
-static TAutoConsoleVariable<float> CVarNetProxyShrinkRadius(
-	TEXT("p.NetProxyShrinkRadius"),
-	0.01f,
-	TEXT("Shrink simulated proxy capsule radius by this amount, to account for network rounding that may cause encroachment.\n")
-	TEXT("Changing this value at runtime may require the proxy to re-join for correct behavior.\n")
-	TEXT("<= 0: disabled, > 0: shrink by this amount."),
-	ECVF_Default);
-
-static TAutoConsoleVariable<float> CVarNetProxyShrinkHalfHeight(
-	TEXT("p.NetProxyShrinkHalfHeight"),
-	0.01f,
-	TEXT("Shrink simulated proxy capsule half height by this amount, to account for network rounding that may cause encroachment.\n")
-	TEXT("Changing this value at runtime may require the proxy to re-join for correct behavior.\n")
-	TEXT("<= 0: disabled, > 0: shrink by this amount."),
-	ECVF_Default);
-
-#if !UE_BUILD_SHIPPING
-static TAutoConsoleVariable<int32> CVarNetShowCorrections(
-	TEXT("p.NetShowCorrections"),
-	0,
-	TEXT("Whether to draw client position corrections (red is incorrect, green is corrected).\n")
-	TEXT("0: Disable, 1: Enable"),
-	ECVF_Cheat);
-
-static TAutoConsoleVariable<float> CVarNetCorrectionLifetime(
-	TEXT("p.NetCorrectionLifetime"),
-	4.f,
-	TEXT("How long a visualized network correction persists.\n")
-	TEXT("Time in seconds each visualized network correction persists."),
-	ECVF_Cheat);
-#endif // !UI_BUILD_SHIPPING
-
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-static TAutoConsoleVariable<float> CVarNetForceClientAdjustmentPercent(
-	TEXT("p.NetForceClientAdjustmentPercent"),
-	0.f,
-	TEXT("Percent of ServerCheckClientError checks to return true regardless of actual error.\n")
-	TEXT("Useful for testing client correction code.\n")
-	TEXT("<=0: Disable, 0.05: 5% of checks will return failed, 1.0: Always send client adjustments"),
-	ECVF_Cheat);
-
-static TAutoConsoleVariable<int32> CVarVisualizeMovement(
-	TEXT("p.VisualizeMovement"),
-	0,
-	TEXT("Whether to draw in-world debug information for character movement.\n")
-	TEXT("0: Disable, 1: Enable"),
-	ECVF_Cheat);
-
-static TAutoConsoleVariable<int32> CVarNetVisualizeSimulatedCorrections(
-	TEXT( "p.NetVisualizeSimulatedCorrections" ),
-	0,
-	TEXT( "" )
-	TEXT( "0: Disable, 1: Enable" ),
-	ECVF_Cheat );
-
-static TAutoConsoleVariable<int32> CVarDebugTimeDiscrepancy(
-	TEXT( "p.DebugTimeDiscrepancy" ),
-	0,
-	TEXT( "Whether to log detailed Movement Time Discrepancy values for testing" )
-	TEXT( "0: Disable, 1: Enable Detection logging, 2: Enable Detection and Resolution logging" ),
-	ECVF_Cheat );
-
-
-#endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-
-static TAutoConsoleVariable<int32> CVarReplayUseInterpolation( TEXT( "p.ReplayUseInterpolation" ), 1, TEXT( "" ) );
 
 UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -173,8 +51,30 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	//PostPhysicsTickFunction.TickGroup = TG_PostPhysics;
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 	VRRootCapsule = NULL;
-	//this->bEnablePhysicsInteraction = false;
+
+	// Keep this false
+	this->bTickBeforeOwner = false;
 }
+
+
+void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+{
+
+	// There are many better ways of handling this, I am just playing around for now
+	if (VRRootCapsule)
+	{
+		if (VRRootCapsule->bHadRelativeMovement)
+		{
+			// For now am faking a non move by adding an input vector of a super small amount in the direction of the relative movement
+			// This will cause the movement component to check for intersections even if no real movement was performed this frame
+			// Need a more nuanced solution eventually
+			AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.01f);
+		}
+	}
+
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
 
 // No support for crouching code yet
 bool UVRCharacterMovementComponent::CanCrouch()
@@ -226,6 +126,13 @@ void UVRCharacterMovementComponent::SetUpdatedComponent(USceneComponent* NewUpda
 	if (UpdatedComponent)
 	{
 		VRRootCapsule = Cast<UVRRootComponent>(UpdatedComponent);
+
+		// Stop the tick forcing
+		UpdatedComponent->PrimaryComponentTick.RemovePrerequisite(this, PrimaryComponentTick);
+
+		// Start forcing the root to tick before this, the actor tick will still tick after the movement component
+		// We want the root component to tick first because it is setting its offset location based off of tick
+		this->PrimaryComponentTick.AddPrerequisite(UpdatedComponent, UpdatedComponent->PrimaryComponentTick);
 	}
 }
 

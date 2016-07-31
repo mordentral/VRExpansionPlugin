@@ -13,6 +13,12 @@ class VREXPANSIONPLUGIN_API AVRCharacter : public ACharacter
 public:
 	AVRCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	// Overriding teleport so that it auto calls my controllers re-positioning
+	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
+	
+	UPROPERTY(Category = VRCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UVRRootComponent * VRRootReference;
+
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UReplicatedVRCameraComponent * VRReplicatedCamera;
 
