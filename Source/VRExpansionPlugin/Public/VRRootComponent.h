@@ -18,8 +18,6 @@ class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent//UShapeC
 public:
 	friend class FDrawCylinderSceneProxy;
 
-	void PreEditChange(UProperty* PropertyThatWillChange);
-
 	void GenerateOffsetToWorld();
 
 	UFUNCTION(BlueprintPure, Category = "MotionController")
@@ -114,6 +112,7 @@ public:
 	// Begin UObject interface
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	void PreEditChange(UProperty* PropertyThatWillChange);
 #endif // WITH_EDITOR
 	// End UObject interface
 

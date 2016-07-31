@@ -245,16 +245,6 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	bDynamicObstacle = true;
 }
 
-void UVRRootComponent::PreEditChange(UProperty* PropertyThatWillChange)
-{
-	// This is technically not correct at all to do...however when overloading a root component the preedit gets called twice for some reason.
-	// Calling it twice attempts to double register it in the list and causes an assert to be thrown.
-	if (this->GetOwner()->IsA(AVRCharacter::StaticClass()))
-		return;
-	else
-		Super::PreEditChange(PropertyThatWillChange);
-}
-
 
 FPrimitiveSceneProxy* UVRRootComponent::CreateSceneProxy()
 {
@@ -374,6 +364,16 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 }
 
 #if WITH_EDITOR
+void UVRRootComponent::PreEditChange(UProperty* PropertyThatWillChange)
+{
+	// This is technically not correct at all to do...however when overloading a root component the preedit gets called twice for some reason.
+	// Calling it twice attempts to double register it in the list and causes an assert to be thrown.
+	if (this->GetOwner()->IsA(AVRCharacter::StaticClass()))
+		return;
+	else
+		Super::PreEditChange(PropertyThatWillChange);
+}
+
 void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	const FName PropertyName = PropertyChangedEvent.Property ? PropertyChangedEvent.Property->GetFName() : NAME_None;
