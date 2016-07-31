@@ -17,11 +17,43 @@ class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent//UShapeC
 
 public:
 	friend class FDrawCylinderSceneProxy;
-	virtual class UBodySetup* GetBodySetup() override;
+
+	void PreEditChange(UProperty* PropertyThatWillChange);
 
 	void GenerateOffsetToWorld();
 
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+	FVector GetVRForwardVector()
+	{
+		return OffsetComponentToWorld.GetRotation().GetForwardVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+	FVector GetVRRightVector()
+	{
+		return OffsetComponentToWorld.GetRotation().GetRightVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+	FVector GetVRUpVector()
+	{
+		return OffsetComponentToWorld.GetRotation().GetUpVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+	FVector GetVRLocation()
+	{
+		return OffsetComponentToWorld.GetLocation();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+	FRotator GetVRRotation()
+	{
+		return OffsetComponentToWorld.GetRotation().Rotator();
+	}
+
 protected:
+
 	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;
 	virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
 	void SendPhysicsTransform(ETeleportType Teleport);
@@ -53,12 +85,15 @@ public:
 		return Owner->IsLocallyControlled();
 	}
 
+
+
 	// Whether to auto size the capsule collision to the height of the head.
-	UPROPERTY(BlueprintReadWrite, Category = "VRExpansionLibrary")
+	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
-	UPROPERTY(BlueprintReadOnly, Category = "VRExpansionLibrary")
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
+	FVector DifferenceFromLastFrame;
 
 	// Used to offset the collision (IE backwards from the player slightly.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
@@ -77,23 +112,10 @@ public:
 
 public:
 	// Begin UObject interface
-	virtual void Serialize(FArchive& Ar) override;
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif // WITH_EDITOR
 	// End UObject interface
 
-	// Begin USceneComponent interface
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
-	virtual void CalcBoundingCylinder(float& CylinderRadius, float& CylinderHalfHeight) const override;
-	// End USceneComponent interface
-
-	// Begin UPrimitiveComponent interface.
-	virtual bool IsZeroExtent() const override;
-	virtual struct FCollisionShape GetCollisionShape(float Inflation = 0.0f) const override;
-	virtual bool AreSymmetricRotations(const FQuat& A, const FQuat& B, const FVector& Scale3D) const override;
-	// End UPrimitiveComponent interface.
-
-	// Begin UShapeComponent interface
-	virtual void UpdateBodySetup() override;// override;
 };

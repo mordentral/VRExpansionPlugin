@@ -21,23 +21,10 @@ namespace {
 	in the middle of being accessed by the render thread */
 	FCriticalSection CritSect;
 
-	// This is already declared in the original motion controller component, redeclaring it provides a reference
-	// I assume there is a better way, but I can't use the extern define for it as they have it in the damned anonymous name space
-	// I also can't easily use IConsoleManager::Get() as there is no GetOnRenderThread specific implementation
-	// Sadly this means that there is an annoying "VariableAlreadyDeclared" warning in the log
-
-	/** Console variable for specifying whether motion controller late update is used */
-	//extern TAutoConsoleVariable<int32> CVarEnableMotionControllerLateUpdate; // Can't use this
-
-	TAutoConsoleVariable<int32> CVarEnableMotionControllerLateUpdate(
-		TEXT("vr.EnableMotionControllerLateUpdate"),
-		1,
-		TEXT("This command allows you to specify whether the motion controller late update is applied.\n")
-		TEXT(" 0: don't use late update\n")
-		TEXT(" 1: use late update (default)"),
-		ECVF_Cheat);
-		
 } // anonymous namespace
+
+static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
+
 
   //=============================================================================
 UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInitializer& ObjectInitializer)
@@ -183,7 +170,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	}
 	FScopeLock ScopeLock(&CritSect);
 
-	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate.GetValueOnGameThread())
+	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnGameThread())
 	{
 		return;
 	}	
@@ -1403,7 +1390,7 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 	}
 	FScopeLock ScopeLock(&CritSect);
 
-	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate.GetValueOnRenderThread())
+	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnRenderThread())
 	{
 		return;
 	}

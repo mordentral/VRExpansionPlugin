@@ -9,6 +9,8 @@
 #include "PhysXSupport.h"
 #endif // WITH_PHYSX
 
+#include "Components/PrimitiveComponent.h"
+
 #include "VRRootComponent.h"
 
 //For UE4 Profiler ~ Stat
@@ -18,34 +20,17 @@
 
 static int32 bEnableFastOverlapCheck = 1;
 
-static TAutoConsoleVariable<float> CVarInitialOverlapTolerance(
-	TEXT("p.InitialOverlapTolerance"),
-	0.0f,
-	TEXT("Tolerance for initial overlapping test in PrimitiveComponent movement.\n")
-	TEXT("Normals within this tolerance are ignored if moving out of the object.\n")
-	TEXT("Dot product of movement direction and surface normal."),
-	ECVF_Default);
+static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindTConsoleVariableDataFloat(TEXT("p.InitialOverlapTolerance"));
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-TAutoConsoleVariable<int32> CVarShowInitialOverlaps(
-	TEXT("p.ShowInitialOverlaps"),
-	0,
-	TEXT("Show initial overlaps when moving a component, including estimated 'exit' direction.\n")
-	TEXT(" 0:off, otherwise on"),
-	ECVF_Cheat);
+static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.ShowInitialOverlaps"));
 #endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
-static FAutoConsoleVariable CVarAllowCachedOverlaps(
-	TEXT("p.AllowCachedOverlaps"),
-	1,
-	TEXT("Primitive Component physics\n")
-	TEXT("0: disable cached overlaps, 1: enable (default)"));
+static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
 
 namespace PrimitiveComponentStatics
 {
-	static const FText MobilityWarnText = LOCTEXT("InvalidMove", "move");
 	static const FName MoveComponentName(TEXT("MoveComponent"));
-	static const FName UpdateOverlapsName(TEXT("UpdateOverlaps"));
 }
 
 // Predicate to determine if an overlap is *NOT* with a certain AActor.
@@ -97,7 +82,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 		// This helps prevent getting stuck in walls.
 		if (TestHit.bStartPenetrating && !(MoveFlags & MOVECOMP_NeverIgnoreBlockingOverlaps))
 		{
-			const float DotTolerance = CVarInitialOverlapTolerance.GetValueOnGameThread();
+			const float DotTolerance = CVarInitialOverlapTolerance->GetValueOnGameThread();
 
 			// Dot product of movement direction against 'exit' direction
 			const FVector MovementDir = MovementDirDenormalized.GetSafeNormal();
@@ -107,7 +92,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
-				if (CVarShowInitialOverlaps.GetValueOnGameThread() != 0)
+				if (CVarShowInitialOverlaps->GetValueOnGameThread() != 0)
 				{
 					UE_LOG(LogTemp, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
 					DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
@@ -236,12 +221,13 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
-	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
+	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
 
 	VRCapsuleOffset = FVector(0.0f, 0.0f, 0.0f);
+	
 	ShapeColor = FColor(223, 149, 157, 255);
 
 	CapsuleRadius = 20.0f;
@@ -252,7 +238,6 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
 
-
 	CanCharacterStepUpOn = ECB_No;
 	bShouldUpdatePhysicsVolume = true;
 	bCheckAsyncSceneOnMove = false;
@@ -260,15 +245,19 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	bDynamicObstacle = true;
 }
 
-class UBodySetup* UVRRootComponent::GetBodySetup()
+void UVRRootComponent::PreEditChange(UProperty* PropertyThatWillChange)
 {
-	UpdateBodySetup();
-	return ShapeBodySetup;
+	// This is technically not correct at all to do...however when overloading a root component the preedit gets called twice for some reason.
+	// Calling it twice attempts to double register it in the list and causes an assert to be thrown.
+	if (this->GetOwner()->IsA(AVRCharacter::StaticClass()))
+		return;
+	else
+		Super::PreEditChange(PropertyThatWillChange);
 }
+
 
 FPrimitiveSceneProxy* UVRRootComponent::CreateSceneProxy()
 {
-
 	return new FDrawCylinderSceneProxy(this);
 }
 
@@ -292,10 +281,6 @@ void UVRRootComponent::BeginPlay()
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {		
-
-	lastCameraLoc = curCameraLoc;
-	lastCameraRot = curCameraRot;
-
 	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
 	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 	{
@@ -303,7 +288,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
 		curCameraRot = curRot.Rotator();
 	}
-	else if(TargetPrimitiveComponent)
+	else if (TargetPrimitiveComponent)
 	{
 		curCameraRot = TargetPrimitiveComponent->RelativeRotation;
 		curCameraLoc = TargetPrimitiveComponent->RelativeLocation;
@@ -314,10 +299,18 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	}
 
-	if (lastCameraLoc != curCameraLoc || lastCameraRot != curCameraRot)
+	// Can adjust the relative tolerances to remove jitter and some update processing
+	if (!(lastCameraLoc - curCameraLoc).IsNearlyZero(0.01f) || !(lastCameraRot - curCameraRot).IsNearlyZero(0.01f))
 	{
+		lastCameraLoc = curCameraLoc;
+		lastCameraRot = curCameraRot;
 		bHadRelativeMovement = true;
+
+		// Also calculate vector of movement for the movement component
+		FVector LastPosition = OffsetComponentToWorld.GetLocation();
 		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+		DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);
+		DifferenceFromLastFrame.Normalize();
 	}
 	else
 		bHadRelativeMovement = false;
@@ -380,34 +373,6 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 }
 
-void UVRRootComponent::CalcBoundingCylinder(float& CylinderRadius, float& CylinderHalfHeight) const
-{
-	const float Scale = ComponentToWorld.GetMaximumAxisScale();
-	const float CapsuleEndCapCenter = FMath::Max(CapsuleHalfHeight - CapsuleRadius, 0.f);
-	const FVector ZAxis = ComponentToWorld.TransformVectorNoScale(FVector(0.f, 0.f, CapsuleEndCapCenter * Scale));
-
-	const float ScaledRadius = CapsuleRadius * Scale;
-
-	CylinderRadius = ScaledRadius + FMath::Sqrt(FMath::Square(ZAxis.X) + FMath::Square(ZAxis.Y));
-	CylinderHalfHeight = ScaledRadius + ZAxis.Z;
-}
-
-void UVRRootComponent::Serialize(FArchive& Ar)
-{
-	Super::Serialize(Ar);
-
-	if (Ar.IsLoading() && (Ar.UE4Ver() < VER_UE4_AFTER_CAPSULE_HALF_HEIGHT_CHANGE))
-	{
-		if ((CapsuleHeight_DEPRECATED != 0.0f) || (Ar.UE4Ver() < VER_UE4_BLUEPRINT_VARS_NOT_READ_ONLY))
-		{
-			CapsuleHalfHeight = CapsuleHeight_DEPRECATED;
-			CapsuleHeight_DEPRECATED = 0.0f;
-		}
-	}
-
-	CapsuleHalfHeight = FMath::Max3(0.f, CapsuleHalfHeight, CapsuleRadius);
-}
-
 #if WITH_EDITOR
 void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -418,21 +383,21 @@ void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, CapsuleHalfHeight))
 	{
 		CapsuleHalfHeight = FMath::Max3(0.f, CapsuleHalfHeight, CapsuleRadius);
-		GenerateOffsetToWorld();
+		//GenerateOffsetToWorld();
 	}
 	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, CapsuleRadius))
 	{
 		CapsuleRadius = FMath::Clamp(CapsuleRadius, 0.f, CapsuleHalfHeight);
-		GenerateOffsetToWorld();
+		//GenerateOffsetToWorld();
 	}
 	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, VRCapsuleOffset))
 	{
-		GenerateOffsetToWorld();
+		//GenerateOffsetToWorld();
 	}
 
 	if (!IsTemplate())
 	{
-		UpdateBodySetup(); // do this before reregistering components so that new values are used for collision
+		//UpdateBodySetup(); // do this before reregistering components so that new values are used for collision
 	}
 
 	return;
@@ -441,50 +406,6 @@ void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 	//Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 #endif	// WITH_EDITOR
-
-void UVRRootComponent::UpdateBodySetup()
-{
-	if (ShapeBodySetup == NULL || ShapeBodySetup->IsPendingKill())
-	{
-		ShapeBodySetup = NewObject<UBodySetup>(this);
-		ShapeBodySetup->CollisionTraceFlag = CTF_UseSimpleAsComplex;
-		ShapeBodySetup->AggGeom.SphylElems.Add(FKSphylElem());
-	}
-
-	check(ShapeBodySetup->AggGeom.SphylElems.Num() == 1);
-	FKSphylElem* SE = ShapeBodySetup->AggGeom.SphylElems.GetData();
-
-	//SE->SetTransform(FTransform(FQuat(0,0,0,1), FVector(curCameraLoc.X,curCameraLoc.Y,curCameraLoc.Z /*CapsuleHalfHeight*/) + VRCapsuleOffset, FVector(1.0f)));
-	SE->SetTransform(FTransform::Identity);
-	SE->Radius = CapsuleRadius;
-	SE->Length = 2 * FMath::Max(CapsuleHalfHeight - CapsuleRadius, 0.f);	//SphylElem uses height from center of capsule spheres, but UVRRootComponent uses halfHeight from end of the sphere
-}
-
-bool UVRRootComponent::IsZeroExtent() const
-{
-	return (CapsuleRadius == 0.f) && (CapsuleHalfHeight == 0.f);
-}
-
-
-FCollisionShape UVRRootComponent::GetCollisionShape(float Inflation) const
-{
-	const float ShapeScale = GetShapeScale();
-	const float Radius = FMath::Max(0.f, (CapsuleRadius * ShapeScale) + Inflation);
-	const float HalfHeight = FMath::Max(0.f, (CapsuleHalfHeight * ShapeScale) + Inflation);
-	return FCollisionShape::MakeCapsule(Radius, HalfHeight);
-}
-
-bool UVRRootComponent::AreSymmetricRotations(const FQuat& A, const FQuat& B, const FVector& Scale3D) const
-{
-	if (Scale3D.X != Scale3D.Y)
-	{
-		return false;
-	}
-
-	const FVector AUp = A.GetAxisZ();
-	const FVector BUp = B.GetAxisZ();
-	return AUp.Equals(BUp);
-}
 
 
 // This overrides the movement logic to use the offset location instead of the default location for sweeps.
