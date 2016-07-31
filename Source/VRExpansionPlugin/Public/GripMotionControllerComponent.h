@@ -56,8 +56,8 @@ public:
 	// Actor needs to be replicated for this to work
 
 	// Whether to ever replicate position
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRGrip")
-	bool bReplicateControllerTransform;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRGrip")
+	//bool bReplicateControllerTransform;
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedControllerTransform, Category = "VRGrip")
 	FBPVRComponentPosRep ReplicatedControllerTransform;

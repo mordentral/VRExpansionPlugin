@@ -15,7 +15,7 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 
 	// Default 100 htz update rate, same as the 100htz update rate of rep_notify, will be capped to 90/45 though because of vsync on HMD
-	bReplicateTransform = true;
+	//bReplicateTransform = true;
 	NetUpdateRate = 100.0f; // 100 htz is default
 	NetUpdateCount = 0.0f;
 }
@@ -33,7 +33,7 @@ void UReplicatedVRCameraComponent::GetLifetimeReplicatedProps(TArray< class FLif
 	// Skipping the owner with this as the owner will use the location directly
 	DOREPLIFETIME_CONDITION(UReplicatedVRCameraComponent, ReplicatedTransform, COND_SkipOwner);
 	DOREPLIFETIME(UReplicatedVRCameraComponent, NetUpdateRate);
-	DOREPLIFETIME(UReplicatedVRCameraComponent, bReplicateTransform);
+	//DOREPLIFETIME(UReplicatedVRCameraComponent, bReplicateTransform);
 }
 
 void UReplicatedVRCameraComponent::Server_SendTransform_Implementation(FBPVRComponentPosRep NewTransform)
@@ -59,20 +59,22 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	bHasAuthority = IsLocallyControlled();
-	bIsServer = IsServer();
+	//bIsServer = IsServer();
 
-	// Don't bother with any of this if not replicating transform
-	if (bHasAuthority && bReplicateTransform)
+	if (bHasAuthority && bReplicates)
 	{
-		NetUpdateCount += DeltaTime;
+		ReplicatedTransform.Position = this->RelativeLocation;//Position;
+		ReplicatedTransform.Orientation = this->RelativeRotation;//Orientation;
 
-		if (NetUpdateCount >= (1.0f / NetUpdateRate))
+		// Don't bother with any of this if not replicating transform
+		if (GetNetMode() == NM_Client)	//if (bHasAuthority && bReplicateTransform)
 		{
-			NetUpdateCount = 0.0f;
-
-			ReplicatedTransform.Position = this->RelativeLocation;//Position;
-			ReplicatedTransform.Orientation = this->RelativeRotation;//Orientation;
-			Server_SendTransform(ReplicatedTransform);
+			NetUpdateCount += DeltaTime;
+			if (NetUpdateCount >= (1.0f / NetUpdateRate))
+			{
+				NetUpdateCount = 0.0f;
+				Server_SendTransform(ReplicatedTransform);
+			}
 		}
 	}
 }

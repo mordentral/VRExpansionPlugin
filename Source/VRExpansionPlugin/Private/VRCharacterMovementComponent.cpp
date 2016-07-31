@@ -54,6 +54,8 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 
 	// Keep this false
 	this->bTickBeforeOwner = false;
+
+	bAllowWalkingThroughWalls = false;
 }
 
 
@@ -61,7 +63,7 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 {
 
 	// There are many better ways of handling this, I am just playing around for now
-	if (VRRootCapsule)
+	if (!bAllowWalkingThroughWalls && VRRootCapsule)
 	{
 		if (VRRootCapsule->bHadRelativeMovement)
 		{

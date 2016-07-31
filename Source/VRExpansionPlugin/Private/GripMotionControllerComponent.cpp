@@ -43,7 +43,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	this->SetIsReplicated(true);
 
 	// Default 100 htz update rate, same as the 100htz update rate of rep_notify, will be capped to 90/45 though because of vsync on HMD
-	bReplicateControllerTransform = true;
+	//bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
 }
@@ -143,7 +143,7 @@ void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FL
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, ReplicatedControllerTransform, COND_SkipOwner);
 	DOREPLIFETIME(UGripMotionControllerComponent, GrippedActors);
 	DOREPLIFETIME(UGripMotionControllerComponent, ControllerNetUpdateRate);
-	DOREPLIFETIME(UGripMotionControllerComponent, bReplicateControllerTransform);
+//	DOREPLIFETIME(UGripMotionControllerComponent, bReplicateControllerTransform);
 }
 
 void UGripMotionControllerComponent::Server_SendControllerTransform_Implementation(FBPVRComponentPosRep NewTransform)
@@ -763,28 +763,18 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			return; // Don't update anything including location
 
 		// Don't bother with any of this if not replicating transform
-		if (bReplicateControllerTransform)
+		if (bReplicates)
 		{
-			if (bIsServer && !bUseWithoutTracking) // Skip sending the RPC if this is the server, it doesn't need to.
-			{
-				ReplicatedControllerTransform.Position = Position;
-				ReplicatedControllerTransform.Orientation = Orientation;
-			}
-			else
+			ReplicatedControllerTransform.Position = Position;
+			ReplicatedControllerTransform.Orientation = Orientation;
+
+			if (GetNetMode() == NM_Client)//bReplicateControllerTransform)
 			{
 				ControllerNetUpdateCount += DeltaTime;
-
 				if (ControllerNetUpdateCount >= (1.0f / ControllerNetUpdateRate))
 				{
 					ControllerNetUpdateCount = 0.0f;
-
-					if (bTracked)
-					{
-						ReplicatedControllerTransform.Position = Position;
-						ReplicatedControllerTransform.Orientation = Orientation;
-
-						Server_SendControllerTransform(ReplicatedControllerTransform);
-					}
+					Server_SendControllerTransform(ReplicatedControllerTransform);
 				}
 			}
 		}

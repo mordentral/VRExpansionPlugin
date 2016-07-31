@@ -21,8 +21,8 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	bool bIsServer;
 
 	// Whether to ever replicate position
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRExpansionLibrary")
-	bool bReplicateTransform;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRExpansionLibrary")
+	//bool bReplicateTransform;
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedTransform, Category = "VRExpansionLibrary")
 	FBPVRComponentPosRep ReplicatedTransform;

@@ -42,6 +42,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = VRMovement)
 	UVRRootComponent * VRRootCapsule;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
+	bool bAllowWalkingThroughWalls;
 
 	/**
 	 * Default UObject constructor.
