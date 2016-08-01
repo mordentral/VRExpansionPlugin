@@ -47,21 +47,10 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
 	bool IsLocallyControlled() const
 	{
-		// Epic used a check for a player controller to control has authority, however the controllers are always attached to a pawn
-		// So this check would have always failed to work in the first place.....
-
-		APawn* Owner = Cast<APawn>(GetOwner());
-
-		if (!Owner)
-		{
-			//const APlayerController* Actor = Cast<APlayerController>(GetOwner());
-			//if (!Actor)
-			return false;
-
-			//return Actor->IsLocalPlayerController();
-		}
-
-		return Owner->IsLocallyControlled();
+		// I like epics new authority check more than my own
+		const AActor* MyOwner = GetOwner();
+		const APawn* MyPawn = Cast<APawn>(MyOwner);
+		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
 	bool IsServer() const

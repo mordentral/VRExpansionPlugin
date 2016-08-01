@@ -178,58 +178,44 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	LateUpdatePrimitives.Reset();
 	GatherLateUpdatePrimitives(MotionControllerComponent, LateUpdatePrimitives);
 
+	/*
+	Add additional late updates registered to this controller that aren't children and aren't gripped
+	This array is editable in blueprint and can be used for things like arms or the like.
+	*/
+	for (UPrimitiveComponent* primComp : MotionControllerComponent->AdditionalLateUpdateComponents)
+	{
+		if (primComp)
+			GatherLateUpdatePrimitives(primComp, LateUpdatePrimitives);
+	}
+
 	// Loop through gripped actors
 	for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
 	{
-		// Attached actors will already register as is above, so skipping GripWithAttachTo actors
+		// Skip actors that are colliding if turning off late updates during collision.
 		if (actor.bTurnOffLateUpdateWhenColliding && actor.bColliding)
 			continue;
-
 
 		if (actor.Actor)
 		{
 			// Get primitive components attached to the actor and update them with the late motion controller offset
-			TInlineComponentArray<UPrimitiveComponent*> PrimComps(actor.Actor);
-			for (UPrimitiveComponent * PrimitiveComponent : PrimComps)
+			if (USceneComponent * rootComponent = actor.Actor->GetRootComponent())
 			{
-				GatherLateGripUpdatePrimitives(PrimitiveComponent, LateUpdatePrimitives);
+				GatherLateUpdatePrimitives(rootComponent, LateUpdatePrimitives);
 			}
+
+			// No idea why I was using this originally....with children this would have cause issues...wtf was I thinking
+			//TInlineComponentArray<UPrimitiveComponent*> PrimComps(actor.Actor);
+			
+			/*for (UPrimitiveComponent * PrimitiveComponent : PrimComps)
+			{
+				GatherLateUpdatePrimitives(PrimitiveComponent, LateUpdatePrimitives);
+			}*/
 		}
 		else if (actor.Component)
 		{
-			GatherLateGripUpdatePrimitives(actor.Component, LateUpdatePrimitives);
+			GatherLateUpdatePrimitives(actor.Component, LateUpdatePrimitives);
 		}
 
-	}
-}
-
-void UGripMotionControllerComponent::FViewExtension::GatherLateGripUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives)
-{
-	// If a scene proxy is present, cache it
-	UPrimitiveComponent* PrimitiveComponent = dynamic_cast<UPrimitiveComponent*>(Component);
-	if (PrimitiveComponent && PrimitiveComponent->SceneProxy)
-	{
-		FPrimitiveSceneInfo* PrimitiveSceneInfo = PrimitiveComponent->SceneProxy->GetPrimitiveSceneInfo();
-		if (PrimitiveSceneInfo)
-		{
-			LateUpdatePrimitiveInfo PrimitiveInfo;
-			PrimitiveInfo.IndexAddress = PrimitiveSceneInfo->GetIndexAddress();
-			PrimitiveInfo.SceneInfo = PrimitiveSceneInfo;
-			Primitives.Add(PrimitiveInfo);
-		}
-	}
-
-	// Gather children proxies
-	const int32 ChildCount = Component->GetNumChildrenComponents();
-	for (int32 ChildIndex = 0; ChildIndex < ChildCount; ++ChildIndex)
-	{
-		USceneComponent* ChildComponent = Component->GetChildComponent(ChildIndex);
-		if (!ChildComponent)
-		{
-			continue;
-		}
-
-		GatherLateGripUpdatePrimitives(ChildComponent, Primitives);
 	}
 }
 
@@ -238,8 +224,7 @@ bool UGripMotionControllerComponent::GripActor(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
-	TEnumAsByte<EGripCollisionType> GripCollisionType, 
-	bool bAllowSetMobility, 
+	TEnumAsByte<EGripCollisionType> GripCollisionType,  
 	float GripStiffness, 
 	float GripDamping, 
 	bool bTurnOffLateUpdateWhenColliding
@@ -262,13 +247,8 @@ bool UGripMotionControllerComponent::GripActor(
 	// Has to be movable to work
 	if (root->Mobility != EComponentMobility::Movable)
 	{
-		if (bAllowSetMobility)
-			root->SetMobility(EComponentMobility::Movable);
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController tried to grip an actor set to static mobility and bAllowSetMobility is false"));
-			return false; // It is not movable, can't grip it
-		}
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController tried to grip an actor set to static mobility and bAllowSetMobility is false"));
+		return false; // It is not movable, can't grip it
 	}
 
 	root->IgnoreActorWhenMoving(this->GetOwner(), true);
@@ -330,8 +310,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
-	TEnumAsByte<EGripCollisionType> GripCollisionType, 
-	bool bAllowSetMobility, 
+	TEnumAsByte<EGripCollisionType> GripCollisionType,  
 	float GripStiffness, 
 	float GripDamping, 
 	bool bTurnOffLateUpdateWhenColliding
@@ -346,13 +325,8 @@ bool UGripMotionControllerComponent::GripComponent(
 	// Has to be movable to work
 	if (ComponentToGrip->Mobility != EComponentMobility::Movable)
 	{
-		if (bAllowSetMobility)
-			ComponentToGrip->SetMobility(EComponentMobility::Movable);
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility and bAllowSetMobility is false"));
-			return false; // It is not movable, can't grip it
-		}
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility and bAllowSetMobility is false"));
+		return false; // It is not movable, can't grip it
 	}
 
 	ComponentToGrip->IgnoreActorWhenMoving(this->GetOwner(), true);

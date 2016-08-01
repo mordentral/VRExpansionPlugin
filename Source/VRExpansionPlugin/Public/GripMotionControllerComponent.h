@@ -52,6 +52,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip")
 	TArray<FBPActorGripInformation> GrippedActors;
 
+	UPROPERTY(BlueprintReadWrite, Category = "VRGrip")
+	TArray<UPrimitiveComponent *> AdditionalLateUpdateComponents;
+
 	//  Movement Replication
 	// Actor needs to be replicated for this to work
 
@@ -82,21 +85,10 @@ public:
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
 	bool IsLocallyControlled() const
 	{
-		// Epic used a check for a player controller to control has authority, however the controllers are always attached to a pawn
-		// So this check would have always failed to work in the first place.....
-		
-		APawn* Owner = Cast<APawn>(GetOwner());
-
-		if (!Owner)
-		{
-			//const APlayerController* Actor = Cast<APlayerController>(GetOwner());
-			//if (!Actor)
-				return false;
-
-			//return Actor->IsLocalPlayerController();
-		}
-	
-		return Owner->IsLocallyControlled();
+		// I like epics new authority check more than mine
+		const AActor* MyOwner = GetOwner();
+		const APawn* MyPawn = Cast<APawn>(MyOwner);
+		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
 
@@ -129,7 +121,7 @@ public:
 	   location that the socket is to its parent actor.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, bool bAllowSetMobility = true, float GripStiffness = 1500.0f, float GripDamping = 200.0f, bool bTurnOffLateUpdateWhenColliding = true);
+	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, float GripStiffness = 1500.0f, float GripDamping = 200.0f, bool bTurnOffLateUpdateWhenColliding = true);
 
 	// Drop a gripped actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -137,7 +129,7 @@ public:
 
 	// Grip a component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool GripComponent(UPrimitiveComponent* ComponentToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, bool bAllowSetMobility = true, float GripStiffness = 1500.0f, float GripDamping = 200.0f, bool bTurnOffLateUpdateWhenColliding = true);
+	bool GripComponent(UPrimitiveComponent* ComponentToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, float GripStiffness = 1500.0f, float GripDamping = 200.0f, bool bTurnOffLateUpdateWhenColliding = true);
 
 	// Drop a gripped component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -151,6 +143,13 @@ public:
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
 	void TickGrip();
+
+	// Converts a worldspace transform into being relative to this motion controller
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform)
+	{
+		return InTransform.GetRelativeTransform(this->GetComponentTransform());
+	}
 
 	// Get list of all gripped actors 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -166,7 +165,7 @@ public:
 
 	// Move a single gripped item back into position ignoring collision in the way
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-		bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
+	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	// Adds a secondary attachment point to the grip
 	//UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -250,7 +249,6 @@ private:
 
 		/** Walks the component hierarchy gathering scene proxies */
 		void GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives);
-		void GatherLateGripUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives);
 		/** Primitives that need late update before rendering */
 		TArray<LateUpdatePrimitiveInfo> LateUpdatePrimitives;
 	};

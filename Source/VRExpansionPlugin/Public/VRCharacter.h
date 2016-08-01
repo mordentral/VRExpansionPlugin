@@ -19,6 +19,9 @@ public:
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UVRRootComponent * VRRootReference;
 
+	UPROPERTY(Category = VRCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UVRCharacterMovementComponent * VRMovementReference;
+
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UReplicatedVRCameraComponent * VRReplicatedCamera;
 
@@ -30,5 +33,18 @@ public:
 
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UGripMotionControllerComponent * RightMotionController;
+
+
+	/* 
+	A helper function that offsets a given vector by the roots collision location
+	pass in a teleport location and it provides the correct spot for it to be at your feet
+	*/
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	FVector GetTeleportLocation(FVector OriginalLocation)
+	{
+		FVector modifier = VRRootReference->GetVRLocation() - this->GetActorLocation();
+		modifier.Z = 0.0f; // Null out Z
+		return OriginalLocation - modifier;
+	}
 
 };

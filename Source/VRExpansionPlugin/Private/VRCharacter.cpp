@@ -17,6 +17,12 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 		VRRootReference->SetCapsuleSize(20.0f, 96.0f);
 	}
 
+	VRMovementReference = NULL;
+	if (GetMovementComponent())
+	{
+		VRMovementReference = Cast<UVRCharacterMovementComponent>(GetMovementComponent());
+	}
+
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(TEXT("VR Replicated Camera"));
 	if (VRReplicatedCamera)
 	{
