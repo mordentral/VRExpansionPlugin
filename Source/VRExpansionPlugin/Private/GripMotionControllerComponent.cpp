@@ -763,7 +763,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			return; // Don't update anything including location
 
 		// Don't bother with any of this if not replicating transform
-		if (bReplicates)
+		if (bReplicates && bTracked)
 		{
 			ReplicatedControllerTransform.Position = Position;
 			ReplicatedControllerTransform.Orientation = Orientation;
