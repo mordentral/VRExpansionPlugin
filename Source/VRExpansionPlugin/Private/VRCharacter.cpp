@@ -7,7 +7,6 @@
 
 
 AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
-	//: Super(ObjectInitializer.SetDefaultSubobjectClass<UVRRootComponent>(ACharacter::CapsuleComponentName).SetDefaultSubobjectClass<UVRCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 	: Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRRootComponent>(ACharacter::CapsuleComponentName).SetDefaultSubobjectClass<UVRCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	VRRootReference = NULL;
@@ -36,10 +35,10 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		ParentRelativeAttachment->SetupAttachment(VRReplicatedCamera);
 
-	//	if (GetMesh())
-	//	{
-		//	GetMesh()->SetupAttachment(ParentRelativeAttachment);
-		//}
+		/*if (GetMesh())
+		{
+			GetMesh()->SetupAttachment(ParentRelativeAttachment);
+		}*/
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Left Grip Motion Controller"));

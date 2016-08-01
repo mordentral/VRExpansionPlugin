@@ -69,8 +69,8 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 		{
 			// For now am faking a non move by adding an input vector of a super small amount in the direction of the relative movement
 			// This will cause the movement component to check for intersections even if no real movement was performed this frame
-			// Need a more nuanced solution eventually
-			AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.01f);
+			// Need a more nuanced solution eventually, this can also cause view float if it is too strong.....
+			AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.0015f);
 		}
 	}
 
