@@ -17,7 +17,8 @@ I will push pre-compiled binaries for all builds as well but I highly suggest th
 [VR Character Actor Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Character%20Actor)
 
 
-
+[VR Character Movement Component Information Page](
+https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Character%20Movement%20Component)
 
 [Grip Motion Controller Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VRGrippableMotionController)
 
