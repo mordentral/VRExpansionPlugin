@@ -61,7 +61,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 	if (TestHit.bBlockingHit)
 	{
 		// VR Pawns need to totally ignore simulating components with movement to prevent sickness
-		if (TestHit.Component->IsSimulatingPhysics())
+		if (TestHit.Component.IsValid() && TestHit.Component->IsSimulatingPhysics())
 			return true;
 
 		// check "ignore bases" functionality
@@ -424,7 +424,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 	// Init HitResult
 	FHitResult BlockingHit(1.f);
-	const FVector TraceStart = OffsetComponentToWorld.GetLocation();//GetComponentLocation();
+	const FVector TraceStart = GetVRLocation();// .GetLocation();//GetComponentLocation();
 	const FVector TraceEnd = TraceStart + Delta;
 	BlockingHit.TraceStart = TraceStart;
 	BlockingHit.TraceEnd = TraceEnd;
