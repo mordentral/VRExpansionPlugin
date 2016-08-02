@@ -62,17 +62,21 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 
-	// There are many better ways of handling this, I am just playing around for now
-	if (!bAllowWalkingThroughWalls && VRRootCapsule)
+	/*if (!bAllowWalkingThroughWalls && VRRootCapsule)
 	{
 		if (VRRootCapsule->bHadRelativeMovement)
 		{
-			// For now am faking a non move by adding an input vector of a super small amount in the direction of the relative movement
-			// This will cause the movement component to check for intersections even if no real movement was performed this frame
-			// Need a more nuanced solution eventually, this can also cause view float if it is too strong.....
-			AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.0015f);
+			// Fake movement was too sketchy, going to find a different solution.
+			//AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.0008f);
+
+			// Force checking for a floor underneath the new position
+			this->bForceNextFloorCheck = true;
 		}
-	}
+	}*/
+
+	// Force checking for a floor underneath the new position if we had relative movement
+	if (VRRootCapsule->bHadRelativeMovement)
+		this->bForceNextFloorCheck = true;
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
