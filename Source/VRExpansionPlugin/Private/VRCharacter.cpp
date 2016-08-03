@@ -27,7 +27,6 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		VRReplicatedCamera->SetupAttachment(RootComponent);
 		// By default this will tick after the root, root will be one tick behind on position. Doubt it matters much
-		//RootComponent->AddTickPrerequisiteComponent(VRReplicatedCamera);
 	}
 
 	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Parent Relative Attachment"));

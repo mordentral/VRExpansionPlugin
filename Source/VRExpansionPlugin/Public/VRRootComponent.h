@@ -80,15 +80,13 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
-
-
-	// Whether to auto size the capsule collision to the height of the head.
 	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
+
+	FVector DifferenceFromLastFrame;
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
-	FVector DifferenceFromLastFrame;
 
 	// Used to offset the collision (IE backwards from the player slightly.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
