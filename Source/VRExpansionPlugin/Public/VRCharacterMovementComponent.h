@@ -45,6 +45,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
 	bool bAllowWalkingThroughWalls;
 
+	// Higher values will cause more slide but better step up
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
+	float WallRepulsionMultiplier;
+
 	/**
 	 * Default UObject constructor.
 	 */
@@ -69,7 +73,7 @@ public:
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
 
 	// Correct an offset sweep test
-	void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
+	//void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
 
 	// Always called with the capsulecomponent location, no idea why it doesn't just get it inside it already
 	void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const override;

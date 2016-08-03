@@ -193,7 +193,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		{
 			// calculate possible alternate movement
 			const FVector GravDir = FVector(0.f, 0.f, -1.f);
-			const FVector NewDelta = bTriedLedgeMove ? FVector::ZeroVector : GetLedgeMove(/*OldLocation*/OldCapsuleLocation, Delta, GravDir);
+			const FVector NewDelta = bTriedLedgeMove ? FVector::ZeroVector : GetLedgeMove(OldCapsuleLocation, Delta, GravDir);
 			if (!NewDelta.IsZero())
 			{
 				// first revert this move
@@ -297,6 +297,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		MaintainHorizontalGroundVelocity();
 	}
 }
+
 
 // Adjust for component location
 /*
@@ -408,6 +409,7 @@ return depth;
 }
 */
 
+/*
 void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
 {
 	SCOPE_CYCLE_COUNTER(STAT_CharacterMovementReplicateMoveToServer);
@@ -476,7 +478,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		if (VRRootCapsule)
 			OldCapsuleStartLocation = VRRootCapsule->GetVROffsetFromLocationAndRotation(OldStartLocation, ClientData->PendingMove->StartRotation.Quaternion());
 
-		if (!OverlapTest(/*OldStartLocation*/OldCapsuleStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
+		if (!OverlapTest(OldCapsuleStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
 		{
 			FScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 			UE_LOG(LogNetPlayerMovement, VeryVerbose, TEXT("CombineMove: add delta %f + %f and revert from %f %f to %f %f"), DeltaTime, ClientData->PendingMove->DeltaTime, UpdatedComponent->GetComponentLocation().X, UpdatedComponent->GetComponentLocation().Y, OldStartLocation.X, OldStartLocation.Y);
@@ -577,7 +579,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	}
 
 	ClientData->PendingMove = NULL;
-}
+}*/
 
 /*
 *
@@ -599,6 +601,8 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	// Keep this false
 	this->bTickBeforeOwner = false;
 
+	WallRepulsionMultiplier = 0.12f;
+
 	bAllowWalkingThroughWalls = false;
 }
 
@@ -606,27 +610,27 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 
-	if (!bAllowWalkingThroughWalls && VRRootCapsule)
+	if (VRRootCapsule && VRRootCapsule->bHadRelativeMovement && VRRootCapsule->IsLocallyControlled())
 	{
-		if (VRRootCapsule->bHadRelativeMovement && VRRootCapsule->IsLocallyControlled())
-		{
-			// Force checking for a floor underneath the new position if we had relative movement
-			//if (VRRootCapsule->bHadRelativeMovement)
-			this->bForceNextFloorCheck = true;
+		// Force checking for a floor underneath the new position if we had relative movement
+		//if (VRRootCapsule->bHadRelativeMovement)
+		this->bForceNextFloorCheck = true;
 
+		if (!bAllowWalkingThroughWalls)
+		{
 			// Fake movement was too sketchy, going to find a different solution.
 			//AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.0008f);
 			FHitResult OutHit;
-			FCollisionQueryParams Params("RelativeMovementSweep",false, VRRootCapsule->GetOwner());
+			FCollisionQueryParams Params("RelativeMovementSweep", false, VRRootCapsule->GetOwner());
 			FCollisionResponseParams ResponseParam;
 			VRRootCapsule->InitSweepCollisionParams(Params, ResponseParam);
-			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation(), VRRootCapsule->GetVRLocation() + VRRootCapsule->DifferenceFromLastFrame, FQuat(0.0f, 0.0f,0.0f,1.0f), ECollisionChannel::ECC_Visibility, VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
-
+			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation(), VRRootCapsule->GetVRLocation() + VRRootCapsule->DifferenceFromLastFrame, FQuat(0.0f, 0.0f, 0.0f, 1.0f), ECollisionChannel::ECC_Visibility, VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
+			
 			// If we had a valid blocking hit
-			if (bBlockingHit && (!OutHit.Component.IsValid() || (!OutHit.Component->IsSimulatingPhysics()) )) // Cancel for simulating physics on the component
+			if (bBlockingHit && (!OutHit.Component.IsValid() || (!OutHit.Component->IsSimulatingPhysics()))) // Cancel for simulating physics on the component
 			{
 				// Add the relative movement into the move for this frame to back us out and lower the strength to prevent sliding
-				AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.1f);
+				AddInputVector(VRRootCapsule->DifferenceFromLastFrame * WallRepulsionMultiplier);
 			}
 		}
 	}

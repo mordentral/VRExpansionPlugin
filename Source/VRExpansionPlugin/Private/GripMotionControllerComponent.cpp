@@ -251,7 +251,6 @@ bool UGripMotionControllerComponent::GripActor(
 		return false; // It is not movable, can't grip it
 	}
 
-	root->IgnoreActorWhenMoving(this->GetOwner(), true);
 	// So that events caused by sweep and the like will trigger correctly
 	ActorToGrip->AddTickPrerequisiteComponent(this);
 
@@ -436,16 +435,28 @@ void UGripMotionControllerComponent::NotifyGrip_Implementation(const FBPActorGri
 		root = Cast<UPrimitiveComponent>(NewGrip.Actor->GetRootComponent());
 
 		if (root)
+		{
 			root->SetEnableGravity(false);
+			root->IgnoreActorWhenMoving(this->GetOwner(), true);
+		}
 
-		this->IgnoreActorWhenMoving(NewGrip.Actor, true);
+		if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+		{
+			OwningPawn->MoveIgnoreActorAdd(NewGrip.Actor);
+		}
 	}
 	else if (root)
 	{
 		root->SetEnableGravity(false);
+		root->IgnoreActorWhenMoving(this->GetOwner(), true);
 
-		if(root->GetOwner())
-			this->IgnoreActorWhenMoving(root->GetOwner(), true);
+		if (root->GetOwner())
+		{
+			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+			{
+				OwningPawn->MoveIgnoreActorAdd(root->GetOwner());
+			}
+		}
 	}
 }
 
@@ -457,15 +468,31 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 		{
 			NewDrop.Actor->RemoveTickPrerequisiteComponent(this);
 			this->IgnoreActorWhenMoving(NewDrop.Actor, false);
+
+			UPrimitiveComponent * root = Cast<UPrimitiveComponent>(NewDrop.Actor->GetRootComponent());
+			
+			if (root)
+				root->IgnoreActorWhenMoving(this->GetOwner(), false);
+
+			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+			{
+				OwningPawn->MoveIgnoreActorRemove(NewDrop.Actor);
+			}
+
 			NewDrop.Actor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
 		}
 		else if (NewDrop.Component)
 		{
 			NewDrop.Component->RemoveTickPrerequisiteComponent(this);
 			
+			NewDrop.Component->IgnoreActorWhenMoving(this->GetOwner(), false);
+
 			if (NewDrop.Component->GetOwner())
 			{
-				this->IgnoreActorWhenMoving(NewDrop.Component->GetOwner(), false);
+				if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+				{
+					OwningPawn->MoveIgnoreActorRemove(NewDrop.Component->GetOwner());
+				}
 				NewDrop.Component->GetOwner()->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
 			}
 		}
