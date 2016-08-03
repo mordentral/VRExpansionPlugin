@@ -10,7 +10,9 @@ This Plugin is intended to add additional functionality to Open/SteamVR in UE4.
 
 * Add the VRExpansionPlugin to your projects PublicDependencyModuleNames in the projects build.cs if you have c++ code included.
 
-I will push pre-compiled binaries for all builds as well but I highly suggest that you have an installed compiler as it will re-build the project files for other engine versions for you then.
+* IF you do not have c++ code, use the Add New button in the editor and add a blank c++ class to your project.
+
+I will push pre-compiled binaries for all builds as well eventually when the plugin is stable enough for it, but until then installing it in the project instead of the engine is better.
 
 ### How do I use it? ###
 
