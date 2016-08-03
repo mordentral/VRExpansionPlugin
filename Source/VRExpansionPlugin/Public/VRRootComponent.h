@@ -20,6 +20,14 @@ public:
 
 	void GenerateOffsetToWorld();
 
+	FVector GetVROffsetFromLocationAndRotation(FVector Location, FQuat Rotation)
+	{
+		FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
+
+		FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+		return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
+	}
+
 	UFUNCTION(BlueprintPure, Category = "MotionController")
 	FVector GetVRForwardVector()
 	{

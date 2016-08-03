@@ -45,6 +45,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
 	bool bAllowWalkingThroughWalls;
 
+	// Higher values will cause more slide but better step up
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
+	float WallRepulsionMultiplier;
+
 	/**
 	 * Default UObject constructor.
 	 */
@@ -68,6 +72,9 @@ public:
 	// Need to fill our capsule component variable here and override the default tick ordering
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
 
+	// Correct an offset sweep test
+	//void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
+
 	// Always called with the capsulecomponent location, no idea why it doesn't just get it inside it already
 	void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const override;
 
@@ -85,8 +92,12 @@ public:
 		const struct FCollisionResponseParams& ResponseParam
 		) const override;
 
+	// Don't need this anymore, took care of throwing out the physics step in the movement function
 	// Don't step up on physics actors
-	virtual bool CanStepUp(const FHitResult& Hit) const override;
+	//virtual bool CanStepUp(const FHitResult& Hit) const override;
+
+	// Multiple changes to support relative motion and ledge sweeps
+	void PhysWalking(float deltaTime, int32 Iterations);
 
 };
 

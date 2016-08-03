@@ -61,7 +61,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 	if (TestHit.bBlockingHit)
 	{
 		// VR Pawns need to totally ignore simulating components with movement to prevent sickness
-		if (TestHit.Component->IsSimulatingPhysics())
+		if (TestHit.Component.IsValid() && TestHit.Component->IsSimulatingPhysics())
 			return true;
 
 		// check "ignore bases" functionality
@@ -233,7 +233,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	CapsuleRadius = 20.0f;
 	CapsuleHalfHeight = 96.0f;
 	bUseEditorCompositing = true;
-
+	OffsetComponentToWorld = FTransform(FQuat(0.0f,0.0f,0.0f,1.0f), FVector::ZeroVector, FVector(1.0f));
 	curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
 	curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
@@ -299,8 +299,8 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		// Also calculate vector of movement for the movement component
 		FVector LastPosition = OffsetComponentToWorld.GetLocation();
 		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
-		DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);
-		DifferenceFromLastFrame.Normalize();
+		DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition).GetSafeNormal2D();
+		//DifferenceFromLastFrame = DifferenceFromLastFrame.GetSafeNormal2D();
 	}
 	else
 		bHadRelativeMovement = false;
@@ -424,7 +424,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 	// Init HitResult
 	FHitResult BlockingHit(1.f);
-	const FVector TraceStart = OffsetComponentToWorld.GetLocation();//GetComponentLocation();
+	const FVector TraceStart = GetVRLocation();// .GetLocation();//GetComponentLocation();
 	const FVector TraceEnd = TraceStart + Delta;
 	BlockingHit.TraceStart = TraceStart;
 	BlockingHit.TraceEnd = TraceEnd;
