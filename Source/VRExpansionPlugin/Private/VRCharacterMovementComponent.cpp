@@ -632,7 +632,7 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 				if (bBlockingHit && (!OutHit.Component.IsValid() || (!OutHit.Component->IsSimulatingPhysics()))) // Cancel for simulating physics on the component
 				{
 					// Add the relative movement into the move for this frame to back us out and lower the strength to prevent sliding
-					AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.5f);// WallRepulsionMultiplier);
+					AddInputVector(VRRootCapsule->DifferenceFromLastFrame * WallRepulsionMultiplier);
 				}
 			}
 		}
