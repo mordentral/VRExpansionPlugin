@@ -179,8 +179,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bUseWithoutTracking;
 
-	FVector OriginalPosition;
-	FRotator OriginalOrientation;
+	//FVector OriginalPosition;
+	//FRotator OriginalOrientation;
 
 	bool CheckComponentWithSweep(UPrimitiveComponent * ComponentToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
 	

@@ -1083,13 +1083,13 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 #if WITH_PHYSX
 	// Get the PxRigidDynamic that we want to grab.
-	FBodyInstance* BodyInstance = root->GetBodyInstance(NAME_None/*InBoneName*/);
-	if (!BodyInstance)
+	FBodyInstance* rBodyInstance = root->GetBodyInstance(NAME_None/*InBoneName*/);
+	if (!rBodyInstance)
 	{
 		return false;
 	}
 
-	ExecuteOnPxRigidDynamicReadWrite(BodyInstance, [&](PxRigidDynamic* Actor)
+	ExecuteOnPxRigidDynamicReadWrite(rBodyInstance, [&](PxRigidDynamic* Actor)
 	{
 		PxScene* Scene = Actor->getScene();
 	

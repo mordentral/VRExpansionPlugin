@@ -1086,7 +1086,8 @@ bool UVRCharacterMovementComponent::FloorSweepTest(
 			// Test again with the same box, not rotated.
 			OutHit.Reset(1.f, false);
 
-			TArray<FHitResult> OutHits;
+			OutHits.Reset();
+			//TArray<FHitResult> OutHits;
 			GetWorld()->SweepMultiByChannel(OutHits, Start, End, FQuat::Identity, TraceChannel, BoxShape, Params, ResponseParam);
 
 			for (int i = 0; i < OutHits.Num(); i++)
