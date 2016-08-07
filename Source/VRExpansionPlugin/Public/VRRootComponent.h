@@ -22,9 +22,14 @@ public:
 
 	FVector GetVROffsetFromLocationAndRotation(FVector Location, FQuat Rotation)
 	{
-		FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
-
+		//return Location;
 		FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+		//return Location + FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset);
+		FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
+	//	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+	//	FVector curLoc = this->GetComponentLocation();
+	//	FVector val = testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
+
 		return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
 	}
 
@@ -80,15 +85,13 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
-
-
-	// Whether to auto size the capsule collision to the height of the head.
 	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
+
+	FVector DifferenceFromLastFrame;
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
-	FVector DifferenceFromLastFrame;
 
 	// Used to offset the collision (IE backwards from the player slightly.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")

@@ -27,6 +27,9 @@
 
 #include "PerfCountersHelpers.h"
 
+
+DEFINE_LOG_CATEGORY_STATIC(LogCharacterMovement, Log, All);
+
 /**
  * Character stats
  */
@@ -409,7 +412,7 @@ return depth;
 }
 */
 
-/*
+
 void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
 {
 	SCOPE_CYCLE_COUNTER(STAT_CharacterMovementReplicateMoveToServer);
@@ -464,21 +467,17 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 
 	NewMove->SetMoveFor(CharacterOwner, DeltaTime, NewAcceleration, *ClientData);
 
+	// Causing really bad crash when using vr offset location, rather remove for now than have it merge move improperly.
+
 	// see if the two moves could be combined
 	// do not combine moves which have different TimeStamps (before and after reset).
-	if (ClientData->PendingMove.IsValid() && !ClientData->PendingMove->bOldTimeStampBeforeReset && ClientData->PendingMove->CanCombineWith(NewMove, CharacterOwner, ClientData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation()))
+	/*if (ClientData->PendingMove.IsValid() && !ClientData->PendingMove->bOldTimeStampBeforeReset && ClientData->PendingMove->CanCombineWith(NewMove, CharacterOwner, ClientData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation()))
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCombineNetMove);
 
 		// Only combine and move back to the start location if we don't move back in to a spot that would make us collide with something new.
 		const FVector OldStartLocation = ClientData->PendingMove->GetRevertedLocation();
-		
-		// Correct for offset capsule location if needed
-		FVector OldCapsuleStartLocation = OldStartLocation;
-		if (VRRootCapsule)
-			OldCapsuleStartLocation = VRRootCapsule->GetVROffsetFromLocationAndRotation(OldStartLocation, ClientData->PendingMove->StartRotation.Quaternion());
-
-		if (!OverlapTest(OldCapsuleStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
+		if (!OverlapTest(OldStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
 		{
 			FScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 			UE_LOG(LogNetPlayerMovement, VeryVerbose, TEXT("CombineMove: add delta %f + %f and revert from %f %f to %f %f"), DeltaTime, ClientData->PendingMove->DeltaTime, UpdatedComponent->GetComponentLocation().X, UpdatedComponent->GetComponentLocation().Y, OldStartLocation.X, OldStartLocation.Y);
@@ -518,7 +517,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		{
 			//UE_LOG(LogNet, Log, TEXT("Not combining move, would collide at start location"));
 		}
-	}
+	}*/
 
 	// Acceleration should match what we send to the server, plus any other restrictions the server also enforces (see MoveAutonomous).
 	Acceleration = NewMove->Acceleration.GetClampedToMaxSize(GetMaxAcceleration());
@@ -579,7 +578,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	}
 
 	ClientData->PendingMove = NULL;
-}*/
+}
 
 /*
 *
@@ -609,35 +608,37 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 
 void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-
-	if (VRRootCapsule && VRRootCapsule->bHadRelativeMovement && VRRootCapsule->IsLocallyControlled())
+	if (VRRootCapsule && VRRootCapsule->bHadRelativeMovement && CharacterOwner->Role > ROLE_SimulatedProxy)
 	{
-		// Force checking for a floor underneath the new position if we had relative movement
-		//if (VRRootCapsule->bHadRelativeMovement)
-		this->bForceNextFloorCheck = true;
+		bForceNextFloorCheck = true;
 
-		if (!bAllowWalkingThroughWalls)
+		if (CharacterOwner->IsLocallyControlled())
 		{
-			// Fake movement was too sketchy, going to find a different solution.
-			//AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.0008f);
-			FHitResult OutHit;
-			FCollisionQueryParams Params("RelativeMovementSweep", false, VRRootCapsule->GetOwner());
-			FCollisionResponseParams ResponseParam;
-			VRRootCapsule->InitSweepCollisionParams(Params, ResponseParam);
-			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation(), VRRootCapsule->GetVRLocation() + VRRootCapsule->DifferenceFromLastFrame, FQuat(0.0f, 0.0f, 0.0f, 1.0f), ECollisionChannel::ECC_Visibility, VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
-			
-			// If we had a valid blocking hit
-			if (bBlockingHit && (!OutHit.Component.IsValid() || (!OutHit.Component->IsSimulatingPhysics()))) // Cancel for simulating physics on the component
+			if (!bAllowWalkingThroughWalls)
 			{
-				// Add the relative movement into the move for this frame to back us out and lower the strength to prevent sliding
-				AddInputVector(VRRootCapsule->DifferenceFromLastFrame * WallRepulsionMultiplier);
+				// Fake movement was too sketchy, going to find a different solution.
+				//AddInputVector(VRRootCapsule->DifferenceFromLastFrame * 0.0008f);
+				FHitResult OutHit;
+				FCollisionQueryParams Params("RelativeMovementSweep", false, VRRootCapsule->GetOwner());
+				FCollisionResponseParams ResponseParam;
+				VRRootCapsule->InitSweepCollisionParams(Params, ResponseParam);
+				bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation(), VRRootCapsule->GetVRLocation() + VRRootCapsule->DifferenceFromLastFrame, FQuat(0.0f, 0.0f, 0.0f, 1.0f), VRRootCapsule->GetCollisionObjectType(), VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
+
+				// If we had a valid blocking hit
+				if (OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
+				{
+					if (bBlockingHit /*&& OutHit.IsValidBlockingHit()*/) // Cancel for simulating physics on the component
+					{
+						// Add the relative movement into the move for this frame to back us out and lower the strength to prevent sliding
+						AddInputVector(VRRootCapsule->DifferenceFromLastFrame * WallRepulsionMultiplier);
+					}
+				}
 			}
 		}
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
-
 
 // No support for crouching code yet
 bool UVRCharacterMovementComponent::CanCrouch()
@@ -845,7 +846,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		const float DeltaZ = Hit.ImpactPoint.Z - PawnFloorPointZ;
 		if (DeltaZ > MaxStepHeight)
 		{
-			//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f to %f"), DeltaZ, PawnInitialFloorBaseZ, NewLocation.Z);
+			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f"), DeltaZ, PawnInitialFloorBaseZ);
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -866,7 +867,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			// It's fine to step down onto an unwalkable normal below us, we will just slide off. Rejecting those moves would prevent us from being able to walk off the edge.
 			if (Hit.Location.Z > OldLocation.Z)
 			{
-				//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
+				UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
 				ScopedStepUpMovement.RevertMove();
 				return false;
 			}
@@ -875,7 +876,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		// Reject moves where the downward sweep hit something very close to the edge of the capsule. This maintains consistency with FindFloor as well.
 		if (!IsWithinEdgeTolerance(Hit.Location, Hit.ImpactPoint, PawnRadius))
 		{
-			//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
+			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -883,7 +884,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		// Don't step up onto invalid surfaces if traveling higher.
 		if (DeltaZ > 0.f && !CanStepUp(Hit))
 		{
-			//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
+			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -1084,7 +1085,8 @@ bool UVRCharacterMovementComponent::FloorSweepTest(
 			// Test again with the same box, not rotated.
 			OutHit.Reset(1.f, false);
 
-			TArray<FHitResult> OutHits;
+			OutHits.Reset();
+			//TArray<FHitResult> OutHits;
 			GetWorld()->SweepMultiByChannel(OutHits, Start, End, FQuat::Identity, TraceChannel, BoxShape, Params, ResponseParam);
 
 			for (int i = 0; i < OutHits.Num(); i++)

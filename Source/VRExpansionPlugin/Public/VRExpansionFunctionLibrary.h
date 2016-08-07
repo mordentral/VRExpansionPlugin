@@ -15,7 +15,10 @@
 #include "SteamVRHMD.h"
 #include "SteamVRPrivatePCH.h" // Need a define in here....this is so ugly
 
+// Or procedural mesh component throws an error....
+#include "PhysicsEngine/ConvexElem.h"
 #include "ProceduralMeshComponent.h"
+
 #include "SteamVRFunctionLibrary.h"
 #include "KismetProceduralMeshLibrary.h"
 #include "HeadMountedDisplayFunctionLibrary.h"

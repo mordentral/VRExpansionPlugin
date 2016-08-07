@@ -59,8 +59,7 @@ public:
 	void VisualizeMovement() const override;
 	bool CanCrouch();
 
-	/*void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iterations) override;
-	
+	/*
 	bool HasRootMotion() const
 	{
 		return RootMotionParams.bHasRootMotion;
@@ -73,7 +72,7 @@ public:
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
 
 	// Correct an offset sweep test
-	//void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
+	void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
 
 	// Always called with the capsulecomponent location, no idea why it doesn't just get it inside it already
 	void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const override;
