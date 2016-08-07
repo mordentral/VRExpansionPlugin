@@ -70,6 +70,34 @@ public:
 		float Stiffness;
 
 
+	/** Network serialization */
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		//Ar << *this;
+		Ar << Actor;
+		Ar << Component;
+		Ar << GripCollisionType;
+
+		// Is being set locally
+		//Ar << bColliding;
+
+		Ar << RelativeTransform;
+
+		// This doesn't matter to clients
+		//Ar << bOriginalReplicatesMovement;
+
+		Ar << bTurnOffLateUpdateWhenColliding;
+		
+		// Don't bother replicated physics grip types if the grip type doesn't support it.
+		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
+		{
+			Ar << Damping;
+			Ar << Stiffness;
+		}
+
+		bOutSuccess = true;
+		return true;
+	}
 	// For multi grip situations
 	//UPROPERTY(BlueprintReadOnly)
 	//	USceneComponent * SecondaryAttachment;

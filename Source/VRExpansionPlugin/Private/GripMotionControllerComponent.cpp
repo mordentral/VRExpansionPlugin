@@ -815,38 +815,6 @@ void UGripMotionControllerComponent::TickGrip()
 				if (!actor)
 					continue;
 
-				if (bIsServer)
-				{
-					// Handle collision intersection detection, this is used to intelligently manage some of the networking and late update features.
-					switch (GrippedActors[i].GripCollisionType.GetValue())
-					{
-					case EGripCollisionType::InteractiveCollisionWithPhysics:
-					case EGripCollisionType::InteractiveHybridCollisionWithSweep:
-					{
-						TArray<FOverlapResult> Hits;
-						FComponentQueryParams Params(NAME_None, this->GetOwner());
-						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
-						Params.AddIgnoredActor(actor);
-						Params.AddIgnoredActors(root->MoveIgnoreActors);
-
-						if(GetWorld()->ComponentOverlapMulti(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), Params))
-						{
-							GrippedActors[i].bColliding = true;
-						}
-						else
-						{
-							GrippedActors[i].bColliding = false;
-						}
-					}
-
-					// Skip collision intersects with these types, they dont need it
-					case EGripCollisionType::PhysicsOnly:
-					case EGripCollisionType::SweepWithPhysics:
-					case EGripCollisionType::InteractiveCollisionWithSweep:
-					default:break;
-					}
-				}
-
 				// Need to figure out best default behavior
 				/*if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
 				{
@@ -855,144 +823,148 @@ void UGripMotionControllerComponent::TickGrip()
 
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
 				{
+
 					UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
-				}
-				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
-				{
-					if (bIsServer)
+					
+					// Sweep current collision state
+					if (bHasAuthority)
 					{
-						FHitResult OutHit;
-
-						// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
-						root->SetWorldTransform(WorldTransform, true, &OutHit);
-
-						if (OutHit.bBlockingHit)
+						TArray<FOverlapResult> Hits;
+						FComponentQueryParams Params(NAME_None, this->GetOwner());
+						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+						Params.AddIgnoredActor(actor);
+						Params.AddIgnoredActors(root->MoveIgnoreActors);
+						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+							//if(GetWorld()->ComponentOverlapMulti(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), Params))
 						{
 							GrippedActors[i].bColliding = true;
-
-							if (!actor->bReplicateMovement)
-								actor->SetReplicateMovement(true);
 						}
 						else
 						{
 							GrippedActors[i].bColliding = false;
-
-							if (actor->bReplicateMovement)
-								actor->SetReplicateMovement(false);
 						}
+					}
+
+				}
+				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
+				{
+					FHitResult OutHit;
+					// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
+					root->SetWorldTransform(WorldTransform, true, &OutHit);
+
+					if (OutHit.bBlockingHit)
+					{
+						GrippedActors[i].bColliding = true;
+
+						//if (!actor->bReplicateMovement)
+						//	actor->SetReplicateMovement(true);
 					}
 					else
 					{
-						if (!GrippedActors[i].bColliding)
-						{
-							root->SetWorldTransform(WorldTransform, true);
-						}
+						GrippedActors[i].bColliding = false;
+
+						//if (actor->bReplicateMovement)
+						//	actor->SetReplicateMovement(false);
 					}
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
 				{
-					// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
-					//if (bIsServer)
-					//{
+
+					// Make sure that there is no collision on course before turning off collision and snapping to controller
 					FBPActorPhysicsHandleInformation * GripHandle = GetPhysicsGrip(GrippedActors[i]);
-					if (!GrippedActors[i].bColliding)
+
+					if (GrippedActors[i].bColliding && GripHandle)
 					{
-						// Make sure that there is no collision on course before turning off collision and snapping to controller
-						if (bIsServer && actor && actor->bReplicateMovement)
+						TArray<FOverlapResult> Hits;
+						FComponentQueryParams Params(NAME_None, this->GetOwner());
+						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+						Params.AddIgnoredActor(actor);
+						Params.AddIgnoredActors(root->MoveIgnoreActors);
+						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+							//if(GetWorld()->ComponentOverlapMulti(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), Params))
 						{
-							FCollisionQueryParams QueryParams(NAME_None, false, this->GetOwner());
-							FCollisionResponseParams ResponseParam;
-							root->InitSweepCollisionParams(QueryParams, ResponseParam);
-							QueryParams.AddIgnoredActor(actor);
-							QueryParams.AddIgnoredActors(root->MoveIgnoreActors);
-
-							if (GetWorld()->SweepTestByChannel(root->GetComponentLocation(), WorldTransform.GetLocation(), root->GetComponentQuat(), ECollisionChannel::ECC_Visibility, root->GetCollisionShape(), QueryParams, ResponseParam))
-							{
-								GrippedActors[i].bColliding = true;
-							}
-							else
-							{
-								GrippedActors[i].bColliding = false;
-							}
-						}
-						
-						// If still not colliding
-						if (!GrippedActors[i].bColliding)
-						{
-							if (bIsServer && actor->bReplicateMovement) // So we don't call on on change event over and over locally
-								actor->SetReplicateMovement(false);
-
-							if (bIsServer && GripHandle)
-							{
-								DestroyPhysicsHandle(GrippedActors[i]);
-
-								if(GrippedActors[i].Actor)
-									GrippedActors[i].Actor->DisableComponentsSimulatePhysics();
-								else
-									root->SetSimulatePhysics(false);
-							}
-
-							root->SetWorldTransform(WorldTransform, false);
+							GrippedActors[i].bColliding = true;
 						}
 						else
 						{
-							if (bIsServer && GrippedActors[i].bColliding && GripHandle)
-								UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
+							GrippedActors[i].bColliding = false;
 						}
+					}
+
+
+					if (!GrippedActors[i].bColliding)
+					{		
+						// Removing server side physics totally, it isn't worth it, client side isn't goign to be perfect but it is less jarring.
+						//if (bIsServer && actor->bReplicateMovement) // So we don't call on on change event over and over locally
+						//	actor->SetReplicateMovement(false);
+
+						if (/*bIsServer && */GripHandle)
+						{
+							DestroyPhysicsHandle(GrippedActors[i]);
+
+							if(GrippedActors[i].Actor)
+								GrippedActors[i].Actor->DisableComponentsSimulatePhysics();
+							else
+								root->SetSimulatePhysics(false);
+						}
+
+						FHitResult OutHit;
+						root->SetWorldTransform(WorldTransform, true, &OutHit);
+
+						if (OutHit.bBlockingHit)
+							GrippedActors[i].bColliding = true;
+						//else
+							//GrippedActors[i].bColliding = false;
 
 					}
 					else if (GrippedActors[i].bColliding && !GripHandle)
 					{
-						if (bIsServer && !actor->bReplicateMovement)
-							actor->SetReplicateMovement(true);
+					//	if (bIsServer && !actor->bReplicateMovement)
+						//	actor->SetReplicateMovement(true);
 
 						root->SetSimulatePhysics(true);
 
-						if (bIsServer)
-							SetUpPhysicsHandle(GrippedActors[i]);
+						//if (bIsServer)
+						SetUpPhysicsHandle(GrippedActors[i]);
+						UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
 					}
 					else
 					{
-						if (bIsServer && GrippedActors[i].bColliding && GripHandle)
+						if (/*bIsServer && GrippedActors[i].bColliding &&*/ GripHandle)
 							UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
 					}
+
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::SweepWithPhysics)
 				{
-					if (bIsServer)
-					{
 						
-						FVector OriginalPosition(root->GetComponentLocation());
-						FRotator OriginalOrientation(root->GetComponentRotation());
+					FVector OriginalPosition(root->GetComponentLocation());
+					FRotator OriginalOrientation(root->GetComponentRotation());
 
-						FVector NewPosition(WorldTransform.GetTranslation());
-						FRotator NewOrientation(WorldTransform.GetRotation());
+					FVector NewPosition(WorldTransform.GetTranslation());
+					FRotator NewOrientation(WorldTransform.GetRotation());
 
-						// Now sweep collision separately so we can get hits but not have the location altered
-						if (bUseWithoutTracking || NewPosition != OriginalPosition || NewOrientation != OriginalOrientation)
-						{
-							FVector move = NewPosition - OriginalPosition;
-
-							// ComponentSweepMulti does nothing if moving < KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
-							const float MinMovementDistSq = (FMath::Square(4.f*KINDA_SMALL_NUMBER));
-
-							if (bUseWithoutTracking || move.SizeSquared() > MinMovementDistSq || NewOrientation != OriginalOrientation)
-							{
-								if (CheckComponentWithSweep(root, move, NewOrientation, false))
-								{
-
-								}
-							}
-						}
-
-						// Move the actor, we are not offsetting by the hit result anyway
-						root->SetWorldTransform(WorldTransform, false);
-					}
-					else
+					// Now sweep collision separately so we can get hits but not have the location altered
+					if (bUseWithoutTracking || NewPosition != OriginalPosition || NewOrientation != OriginalOrientation)
 					{
+						FVector move = NewPosition - OriginalPosition;
+
+						// ComponentSweepMulti does nothing if moving < KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
+						const float MinMovementDistSq = (FMath::Square(4.f*KINDA_SMALL_NUMBER));
+
+						if (bUseWithoutTracking || move.SizeSquared() > MinMovementDistSq || NewOrientation != OriginalOrientation)
+						{
+							if (CheckComponentWithSweep(root, move, NewOrientation, false))
+							{
+								GrippedActors[i].bColliding = true;
+							}
+							else
+								GrippedActors[i].bColliding = false;
+						}
+					}
+
 						// Move the actor, we are not offsetting by the hit result anyway
 						root->SetWorldTransform(WorldTransform, false);
-					}
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::PhysicsOnly)
 				{
@@ -1002,14 +974,13 @@ void UGripMotionControllerComponent::TickGrip()
 			}
 			else
 			{
+				DestroyPhysicsHandle(GrippedActors[i]);
+
 				if (bIsServer)
 				{
-					DestroyPhysicsHandle(GrippedActors[i]);
-
 					GrippedActors.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
 				}
 			}
-
 		}
 	}
 
