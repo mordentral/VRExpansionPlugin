@@ -22,13 +22,8 @@ public:
 
 	FVector GetVROffsetFromLocationAndRotation(FVector Location, FQuat Rotation)
 	{
-		//return Location;
 		FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
-		//return Location + FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset);
 		FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
-	//	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
-	//	FVector curLoc = this->GetComponentLocation();
-	//	FVector val = testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
 
 		return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
 	}
