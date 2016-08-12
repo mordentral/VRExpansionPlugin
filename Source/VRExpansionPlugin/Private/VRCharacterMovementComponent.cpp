@@ -56,36 +56,84 @@ namespace CharacterMovementComponentStatics
 //
 // CROUCH functions need an overhaul
 // NAVIGATION functions need an overhaul or to be removed entirely
-// void UCharacterMovementComponent::ApplyRepulsionForce(float DeltaSeconds) ???? check for capsule hit location being correct
 
-
-FVector UVRCharacterMovementComponent::ComputeSlideVector(const FVector& Delta, const float Time, const FVector& Normal, const FHitResult& Hit) const
+// Adjust for component location
+/*
+bool UCharacterMovementComponent::CheckWaterJump(FVector CheckPoint, FVector& WallNormal)
 {
-	FVector Result = FVector::ZeroVector;
-	if (!bConstrainToPlane)
-	{
-		Result = (FVector::VectorPlaneProject(Delta, Normal) * Time);// *0.5f;
-	}
-	else
-	{
-		const FVector ProjectedNormal = ConstrainNormalToPlane(Normal);
-		Result = (FVector::VectorPlaneProject(Delta, ProjectedNormal) * Time);// *0.5f;
-	}
+if (!HasValidData())
+{
+return false;
+}
+// check if there is a wall directly in front of the swimming pawn
+CheckPoint.Z = 0.f;
+FVector CheckNorm = CheckPoint.GetSafeNormal();
+float PawnCapsuleRadius, PawnCapsuleHalfHeight;
+CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleSize(PawnCapsuleRadius, PawnCapsuleHalfHeight);
+CheckPoint = UpdatedComponent->GetComponentLocation() + 1.2f * PawnCapsuleRadius * CheckNorm;
+FVector Extent(PawnCapsuleRadius, PawnCapsuleRadius, PawnCapsuleHalfHeight);
+FHitResult HitInfo(1.f);
+FCollisionQueryParams CapsuleParams(CharacterMovementComponentStatics::CheckWaterJumpName, false, CharacterOwner);
+FCollisionResponseParams ResponseParam;
+InitCollisionParams(CapsuleParams, ResponseParam);
+FCollisionShape CapsuleShape = GetPawnCapsuleCollisionShape(SHRINK_None);
+const ECollisionChannel CollisionChannel = UpdatedComponent->GetCollisionObjectType();
+bool bHit = GetWorld()->SweepSingleByChannel( HitInfo, UpdatedComponent->GetComponentLocation(), CheckPoint, FQuat::Identity, CollisionChannel, CapsuleShape, CapsuleParams, ResponseParam);
 
-
-	// prevent boosting up slopes
-	if (IsFalling())
-	{
-		Result = HandleSlopeBoosting(Result, Delta, Time, Normal, Hit);
-	}
-
-	return Result;
+if ( bHit && !Cast<APawn>(HitInfo.GetActor()) )
+{
+// hit a wall - check if it is low enough
+WallNormal = -1.f * HitInfo.ImpactNormal;
+FVector Start = UpdatedComponent->GetComponentLocation();
+Start.Z += MaxOutOfWaterStepHeight;
+CheckPoint = Start + 3.2f * PawnCapsuleRadius * WallNormal;
+FCollisionQueryParams LineParams(CharacterMovementComponentStatics::CheckWaterJumpName, true, CharacterOwner);
+FCollisionResponseParams LineResponseParam;
+InitCollisionParams(LineParams, LineResponseParam);
+bHit = GetWorld()->LineTraceSingleByChannel( HitInfo, Start, CheckPoint, CollisionChannel, LineParams, LineResponseParam );
+// if no high obstruction, or it's a valid floor, then pawn can jump out of water
+return !bHit || IsWalkable(HitInfo);
+}
+return false;
 }
 
-bool UVRCharacterMovementComponent::CanDelaySendingMove(const FSavedMovePtr& NewMove)
+
+*/
+
+// Adjust for component location
+/*
+FVector UCharacterMovementComponent::FindWaterLine(FVector InWater, FVector OutofWater)
 {
-	return true;//false;
+FVector Result = OutofWater;
+
+TArray<FHitResult> Hits;
+GetWorld()->LineTraceMultiByChannel(Hits, OutofWater, InWater, UpdatedComponent->GetCollisionObjectType(), FCollisionQueryParams(CharacterMovementComponentStatics::FindWaterLineName, true, CharacterOwner));
+
+for( int32 HitIdx = 0; HitIdx < Hits.Num(); HitIdx++ )
+{
+const FHitResult& Check = Hits[HitIdx];
+if ( !CharacterOwner->IsOwnedBy(Check.GetActor()) && !Check.Component.Get()->IsWorldGeometry() )
+{
+APhysicsVolume *W = Cast<APhysicsVolume>(Check.GetActor());
+if ( W && W->bWaterVolume )
+{
+FVector Dir = (InWater - OutofWater).GetSafeNormal();
+Result = Check.Location;
+if ( W == GetPhysicsVolume() )
+Result += 0.1f * Dir;
+else
+Result -= 0.1f * Dir;
+break;
 }
+}
+}
+
+return Result;
+}
+
+*/
+
+
 
 FNetworkPredictionData_Client* UVRCharacterMovementComponent::GetPredictionData_Client() const
 {
@@ -124,6 +172,7 @@ void FSavedMove_VRCharacter::Clear()
 {
 	VRCapsuleLocation = FVector::ZeroVector;
 	VRCapsuleRotation = FRotator::ZeroRotator;
+	LFDiff = FVector::ZeroVector;
 
 	FSavedMove_Character::Clear();
 }
@@ -424,13 +473,6 @@ void UVRCharacterMovementComponent::CallServerMoveVR
 	}
 }
 
-/*
-*
-*
-*  BEGIN TEST AREA
-*
-*
-*/
 
 void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iterations)
 {
@@ -662,118 +704,6 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 	}
 }
 
-
-// Adjust for component location
-/*
-bool UCharacterMovementComponent::CheckWaterJump(FVector CheckPoint, FVector& WallNormal)
-{
-if (!HasValidData())
-{
-return false;
-}
-// check if there is a wall directly in front of the swimming pawn
-CheckPoint.Z = 0.f;
-FVector CheckNorm = CheckPoint.GetSafeNormal();
-float PawnCapsuleRadius, PawnCapsuleHalfHeight;
-CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleSize(PawnCapsuleRadius, PawnCapsuleHalfHeight);
-CheckPoint = UpdatedComponent->GetComponentLocation() + 1.2f * PawnCapsuleRadius * CheckNorm;
-FVector Extent(PawnCapsuleRadius, PawnCapsuleRadius, PawnCapsuleHalfHeight);
-FHitResult HitInfo(1.f);
-FCollisionQueryParams CapsuleParams(CharacterMovementComponentStatics::CheckWaterJumpName, false, CharacterOwner);
-FCollisionResponseParams ResponseParam;
-InitCollisionParams(CapsuleParams, ResponseParam);
-FCollisionShape CapsuleShape = GetPawnCapsuleCollisionShape(SHRINK_None);
-const ECollisionChannel CollisionChannel = UpdatedComponent->GetCollisionObjectType();
-bool bHit = GetWorld()->SweepSingleByChannel( HitInfo, UpdatedComponent->GetComponentLocation(), CheckPoint, FQuat::Identity, CollisionChannel, CapsuleShape, CapsuleParams, ResponseParam);
-
-if ( bHit && !Cast<APawn>(HitInfo.GetActor()) )
-{
-// hit a wall - check if it is low enough
-WallNormal = -1.f * HitInfo.ImpactNormal;
-FVector Start = UpdatedComponent->GetComponentLocation();
-Start.Z += MaxOutOfWaterStepHeight;
-CheckPoint = Start + 3.2f * PawnCapsuleRadius * WallNormal;
-FCollisionQueryParams LineParams(CharacterMovementComponentStatics::CheckWaterJumpName, true, CharacterOwner);
-FCollisionResponseParams LineResponseParam;
-InitCollisionParams(LineParams, LineResponseParam);
-bHit = GetWorld()->LineTraceSingleByChannel( HitInfo, Start, CheckPoint, CollisionChannel, LineParams, LineResponseParam );
-// if no high obstruction, or it's a valid floor, then pawn can jump out of water
-return !bHit || IsWalkable(HitInfo);
-}
-return false;
-}
-
-
-*/
-
-// Adjust for component location
-/*
-FVector UCharacterMovementComponent::FindWaterLine(FVector InWater, FVector OutofWater)
-{
-FVector Result = OutofWater;
-
-TArray<FHitResult> Hits;
-GetWorld()->LineTraceMultiByChannel(Hits, OutofWater, InWater, UpdatedComponent->GetCollisionObjectType(), FCollisionQueryParams(CharacterMovementComponentStatics::FindWaterLineName, true, CharacterOwner));
-
-for( int32 HitIdx = 0; HitIdx < Hits.Num(); HitIdx++ )
-{
-const FHitResult& Check = Hits[HitIdx];
-if ( !CharacterOwner->IsOwnedBy(Check.GetActor()) && !Check.Component.Get()->IsWorldGeometry() )
-{
-APhysicsVolume *W = Cast<APhysicsVolume>(Check.GetActor());
-if ( W && W->bWaterVolume )
-{
-FVector Dir = (InWater - OutofWater).GetSafeNormal();
-Result = Check.Location;
-if ( W == GetPhysicsVolume() )
-Result += 0.1f * Dir;
-else
-Result -= 0.1f * Dir;
-break;
-}
-}
-}
-
-return Result;
-}
-
-*/
-
-// Adjust for new location / capsule
-/*
-float UCharacterMovementComponent::ImmersionDepth() const
-{
-float depth = 0.f;
-
-if ( CharacterOwner && GetPhysicsVolume()->bWaterVolume )
-{
-const float CollisionHalfHeight = CharacterOwner->GetSimpleCollisionHalfHeight();
-
-if ( (CollisionHalfHeight == 0.f) || (Buoyancy == 0.f) )
-{
-depth = 1.f;
-}
-else
-{
-UBrushComponent* VolumeBrushComp = GetPhysicsVolume()->GetBrushComponent();
-FHitResult Hit(1.f);
-if ( VolumeBrushComp )
-{
-const FVector TraceStart = UpdatedComponent->GetComponentLocation() + FVector(0.f,0.f,CollisionHalfHeight);
-const FVector TraceEnd = UpdatedComponent->GetComponentLocation() - FVector(0.f,0.f,CollisionHalfHeight);
-
-FCollisionQueryParams NewTraceParams(CharacterMovementComponentStatics::ImmersionDepthName, true);
-VolumeBrushComp->LineTraceComponent( Hit, TraceStart, TraceEnd, NewTraceParams );
-}
-
-depth = (Hit.Time == 1.f) ? 1.f : (1.f - Hit.Time);
-}
-}
-return depth;
-}
-*/
-
-
 void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
 {
 	SCOPE_CYCLE_COUNTER(STAT_CharacterMovementReplicateMoveToServer);
@@ -962,9 +892,9 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 	VRRootCapsule = NULL;
 
-	// Keep this false
-	this->bTickBeforeOwner = false;
-	WallRepulsionMultiplier = 0.1f;
+	// 0.1f is low slide and still impacts surfaces well
+	// This variable is a bit of a hack, it reduces the movement of the pawn in the direction of relative movement
+	WallRepulsionMultiplier = 0.01f;
 
 	bAllowWalkingThroughWalls = false;
 }
@@ -978,9 +908,8 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 
 		if (!bAllowWalkingThroughWalls)
 		{
-			// Fake movement is too sketchy, going to find a different solution.
-			// For now am also forcing move packets to be sent when trying to step up on something (in step up function)
-
+			// Fake movement is sketchy, going to find a different solution eventually?
+			// Currently just adds a slight vector in the movement direction when we detect an obstacle, this forces us to impact the wall and not penetrate
 			FHitResult OutHit;
 			FCollisionQueryParams Params("RelativeMovementSweep", false, VRRootCapsule->GetOwner());
 			FCollisionResponseParams ResponseParam;
@@ -992,7 +921,8 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 			// If we had a valid blocking hit
 			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
 			{
-				AddInputVector(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D() * WallRepulsionMultiplier);// (WallRepulsionMultiplier / 2));
+				// Wall Repulsion Multiplier just reduces the normal so that we don't get a ton of slide on the wall
+				AddInputVector(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D() * WallRepulsionMultiplier);
 			}			
 		}
 	}
@@ -1120,6 +1050,7 @@ void UVRCharacterMovementComponent::SetUpdatedComponent(USceneComponent* NewUpda
 
 	if (UpdatedComponent)
 	{	
+		// Fill the VRRootCapsule if we can
 		VRRootCapsule = Cast<UVRRootComponent>(UpdatedComponent);
 
 		// Stop the tick forcing
@@ -1131,11 +1062,113 @@ void UVRCharacterMovementComponent::SetUpdatedComponent(USceneComponent* NewUpda
 	}
 }
 
+FORCEINLINE_DEBUGGABLE bool UVRCharacterMovementComponent::SafeMoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult& OutHit, ETeleportType Teleport)
+{
+	return SafeMoveUpdatedComponent(Delta, NewRotation.Quaternion(), bSweep, OutHit, Teleport);
+}
+
+bool UVRCharacterMovementComponent::SafeMoveUpdatedComponent(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult& OutHit, ETeleportType Teleport)
+{
+	if (UpdatedComponent == NULL)
+	{
+		OutHit.Reset(1.f);
+		return false;
+	}
+
+	bool bMoveResult = MoveUpdatedComponent(Delta, NewRotation, bSweep, &OutHit, Teleport);
+
+	// Handle initial penetrations
+	if (OutHit.bStartPenetrating && UpdatedComponent)
+	{
+		const FVector RequestedAdjustment = GetPenetrationAdjustment(OutHit);
+		if (ResolvePenetration(RequestedAdjustment, OutHit, NewRotation))
+		{
+			FHitResult TempHit;
+			// Retry original move
+			bMoveResult = MoveUpdatedComponent(Delta, NewRotation, bSweep, &TempHit, Teleport);
+
+			// Remove start penetrating if this is a clean move, otherwise use the last moves hit as the result so step up actually attempts to work.
+			if (TempHit.bStartPenetrating)
+				OutHit = TempHit;
+			else
+				OutHit.bStartPenetrating = TempHit.bStartPenetrating;
+		}
+	}
+
+	return bMoveResult;
+}
+
+void UVRCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult)
+{
+	if (!CurrentFloor.IsWalkableFloor())
+	{
+		return;
+	}
+
+	// Move along the current floor
+	const FVector Delta = FVector(InVelocity.X, InVelocity.Y, 0.f) * DeltaSeconds;
+	FHitResult Hit(1.f);
+	FVector RampVector = ComputeGroundMovementDelta(Delta, CurrentFloor.HitResult, CurrentFloor.bLineTrace);
+	SafeMoveUpdatedComponent(RampVector, UpdatedComponent->GetComponentQuat(), true, Hit);
+	float LastMoveTimeSlice = DeltaSeconds;
+
+	if (Hit.bStartPenetrating)
+	{
+		// Allow this hit to be used as an impact we can deflect off, otherwise we do nothing the rest of the update and appear to hitch.
+		HandleImpact(Hit);
+		SlideAlongSurface(Delta, 1.f, Hit.Normal, Hit, true);
+
+		if (Hit.bStartPenetrating)
+		{
+			OnCharacterStuckInGeometry(&Hit);
+		}
+	}
+	else if (Hit.IsValidBlockingHit())
+	{
+		// We impacted something (most likely another ramp, but possibly a barrier).
+		float PercentTimeApplied = Hit.Time;
+		if ((Hit.Time > 0.f) && (Hit.Normal.Z > KINDA_SMALL_NUMBER) && IsWalkable(Hit))
+		{
+			// Another walkable ramp.
+			const float InitialPercentRemaining = 1.f - PercentTimeApplied;
+			RampVector = ComputeGroundMovementDelta(Delta * InitialPercentRemaining, Hit, false);
+			LastMoveTimeSlice = InitialPercentRemaining * LastMoveTimeSlice;
+			SafeMoveUpdatedComponent(RampVector, UpdatedComponent->GetComponentQuat(), true, Hit);
+
+			const float SecondHitPercent = Hit.Time * InitialPercentRemaining;
+			PercentTimeApplied = FMath::Clamp(PercentTimeApplied + SecondHitPercent, 0.f, 1.f);
+		}
+
+		if (Hit.IsValidBlockingHit())
+		{
+			if (CanStepUp(Hit) || (CharacterOwner->GetMovementBase() != NULL && CharacterOwner->GetMovementBase()->GetOwner() == Hit.GetActor()))
+			{
+				// hit a barrier, try to step up
+				const FVector GravDir(0.f, 0.f, -1.f);
+				if (!StepUp(GravDir, Delta * (1.f - PercentTimeApplied), Hit, OutStepDownResult))
+				{
+					UE_LOG(LogCharacterMovement, Verbose, TEXT("- StepUp (ImpactNormal %s, Normal %s"), *Hit.ImpactNormal.ToString(), *Hit.Normal.ToString());
+					HandleImpact(Hit, LastMoveTimeSlice, RampVector);
+					SlideAlongSurface(Delta, 1.f - PercentTimeApplied, Hit.Normal, Hit, true);
+				}
+				else
+				{
+					// Don't recalculate velocity based on this height adjustment, if considering vertical adjustments.
+					UE_LOG(LogCharacterMovement, Verbose, TEXT("+ StepUp (ImpactNormal %s, Normal %s"), *Hit.ImpactNormal.ToString(), *Hit.Normal.ToString());
+					bJustTeleported |= !bMaintainHorizontalGroundVelocity;
+				}
+			}
+			else if (Hit.Component.IsValid() && !Hit.Component.Get()->CanCharacterStepUp(CharacterOwner))
+			{
+				HandleImpact(Hit, LastMoveTimeSlice, RampVector);
+				SlideAlongSurface(Delta, 1.f - PercentTimeApplied, Hit.Normal, Hit, true);
+			}
+		}
+	}
+}
+
 bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult)
 {
-//	UE_LOG(LogTemp, Warning, TEXT("Stepup"));
-	//return Super::StepUp(GravDir, Delta, InHit, OutStepDownResult);
-
 
 	SCOPE_CYCLE_COUNTER(STAT_CharStepUp);
 
@@ -1218,8 +1251,13 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 
 	// step fwd
 	FHitResult Hit(1.f);
+	
+	// Adding in the directional difference of the last HMD movement to promote stepping up
+	// Probably entirely wrong as Delta is divided by movement ticks but I want the effect to be stronger anyway
+	// This won't effect control based movement unless stepping forward at the same time, but gives RW movement
+	// the extra boost to get up over a lip
 	if(VRRootCapsule)
-		MoveUpdatedComponent(Delta + VRRootCapsule->DifferenceFromLastFrame, PawnRotation, true, &Hit);
+		MoveUpdatedComponent(Delta + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), PawnRotation, true, &Hit);
 	else
 		MoveUpdatedComponent(Delta, PawnRotation, true, &Hit);
 
@@ -1494,7 +1532,7 @@ void UVRCharacterMovementComponent::UpdateBasedMovement(float DeltaSeconds)
 FVector UVRCharacterMovementComponent::GetImpartedMovementBaseVelocity() const
 {
 	FVector Result = FVector::ZeroVector;
-	//return Result;
+
 	if (CharacterOwner)
 	{
 		UPrimitiveComponent* MovementBase = CharacterOwner->GetMovementBase();
@@ -1504,6 +1542,7 @@ FVector UVRCharacterMovementComponent::GetImpartedMovementBaseVelocity() const
 
 			if (bImpartBaseAngularVelocity)
 			{
+				// Base position should be the bottom of the actor since I offset the capsule now
 				const FVector CharacterBasePosition = (UpdatedComponent->GetComponentLocation()/* - FVector(0.f, 0.f, CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight())*/);
 				const FVector BaseTangentialVel = MovementBaseUtility::GetMovementBaseTangentialVelocity(MovementBase, CharacterOwner->GetBasedMovement().BoneName, CharacterBasePosition);
 				BaseVelocity += BaseTangentialVel;
@@ -1729,8 +1768,19 @@ float UVRCharacterMovementComponent::ImmersionDepth() const
 			FHitResult Hit(1.f);
 			if (VolumeBrushComp)
 			{
-				const FVector TraceStart = UpdatedComponent->GetComponentLocation() + FVector(0.f, 0.f, CollisionHalfHeight*2);
-				const FVector TraceEnd = UpdatedComponent->GetComponentLocation();// -FVector(0.f, 0.f, CollisionHalfHeight);
+				FVector TraceStart;
+				FVector TraceEnd;
+
+				if (VRRootCapsule)
+				{
+					TraceStart = VRRootCapsule->GetVRLocation() + FVector(0.f, 0.f, CollisionHalfHeight);
+					TraceEnd = VRRootCapsule->GetVRLocation() - FVector(0.f, 0.f, CollisionHalfHeight);
+				}
+				else
+				{
+					TraceStart = UpdatedComponent->GetComponentLocation() + FVector(0.f, 0.f, CollisionHalfHeight);
+					TraceEnd = UpdatedComponent->GetComponentLocation() -FVector(0.f, 0.f, CollisionHalfHeight);
+				}
 
 				FCollisionQueryParams NewTraceParams(CharacterMovementComponentStatics::ImmersionDepthName, true);
 				VolumeBrushComp->LineTraceComponent(Hit, TraceStart, TraceEnd, NewTraceParams);
@@ -1750,7 +1800,15 @@ void UVRCharacterMovementComponent::VisualizeMovement() const
 	}
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-	const FVector TopOfCapsule = GetActorLocation() + FVector(0.f, 0.f, CharacterOwner->GetSimpleCollisionHalfHeight()*2);
+	FVector TopOfCapsule;
+	if (VRRootCapsule)
+		TopOfCapsule = VRRootCapsule->GetVRLocation();
+	else
+		TopOfCapsule = GetActorLocation();
+
+	TopOfCapsule += FVector(0.f, 0.f, CharacterOwner->GetSimpleCollisionHalfHeight());
+
+
 	float HeightOffset = 0.f;
 
 	// Position

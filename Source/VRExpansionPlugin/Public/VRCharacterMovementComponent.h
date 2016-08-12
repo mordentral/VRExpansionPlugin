@@ -46,23 +46,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
 	bool bAllowWalkingThroughWalls;
 
-	// This is used because the relative capsule offset can be different by the time a move is sent to the server if the move is delayed.
-	// It generally doesn't matter with most movements, but for step up it can get stuck in a step up/down loop.....
-	// For more accuracy I should be sending the capsules location when the move was made instead.
-	// This is the faster hack to get it more stable (for now) that still has lower sent packet impact
-
-	// #FIXME Add capsule location to saved moves that are replicated to server, set capsule location on server after saved move is pulled
-	//		  Then remove this function totally, FSavedMove_VRCharacter, FNetworkPredictionData_Client_VRCharacter
-	/*bool bForceSendMovementThisFrame;
-	void ForceSendMovementThisFrame()
-	{
-		if (VRRootCapsule->bHadRelativeMovement)
-			bForceSendMovementThisFrame = true;
-	}*/
-
-	// Set to false currently, need to change based on the move properties
-	bool CanDelaySendingMove(const FSavedMovePtr& NewMove) override;
-
 	void CallServerMoveVR(const class FSavedMove_VRCharacter* NewMove, const class FSavedMove_VRCharacter* OldMove);
 
 	/** Replicated function sent by client to server - contains client movement and view info. */
@@ -106,8 +89,15 @@ public:
 		return RootMotionParams.bHasRootMotion;
 	}*/
 
-	// Tone down sliding for VR, sickness inducing
-	FVector ComputeSlideVector(const FVector& Delta, const float Time, const FVector& Normal, const FHitResult& Hit) const override;
+	// Had to modify this, since every frame can start in penetration (capsule component moves into wall before movement tick)
+	// It was throwing out the initial hit and not calling "step up", now I am only checking for penetration after adjustment but keeping the initial hit for step up.
+	// this makes for FAR more responsive step ups.
+	// I WILL need to override these for flying / swimming as well
+	bool SafeMoveUpdatedComponent(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult& OutHit, ETeleportType Teleport = ETeleportType::None);
+	bool SafeMoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult& OutHit, ETeleportType Teleport = ETeleportType::None);
+	
+	// This is here to force it to call the correct SafeMoveUpdatedComponent functions for floor movement
+	void UVRCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
 
 	// Modify for correct location
 	void ApplyRepulsionForce(float DeltaSeconds) override;
