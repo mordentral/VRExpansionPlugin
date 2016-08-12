@@ -68,7 +68,7 @@ public:
 	UFUNCTION()
 	virtual void OnRep_ReplicatedControllerTransform()
 	{
-		SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Orientation);
+		SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.GetRotation()/*ReplicatedControllerTransform.Orientation*/);
 	}
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).

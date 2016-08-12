@@ -18,7 +18,7 @@ class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent//UShapeC
 public:
 	friend class FDrawCylinderSceneProxy;
 
-	void GenerateOffsetToWorld();
+	void GenerateOffsetToWorld(bool bUpdateBounds = true);
 
 	FVector GetVROffsetFromLocationAndRotation(FVector Location, FQuat Rotation)
 	{

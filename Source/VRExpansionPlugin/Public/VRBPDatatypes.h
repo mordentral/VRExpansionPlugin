@@ -13,7 +13,25 @@ public:
 	UPROPERTY()
 		FVector_NetQuantize100 Position;
 	UPROPERTY()
-		FRotator Orientation;
+		uint32 YawPitchINT;
+	UPROPERTY()
+		uint8 RollBYTE;
+//		FRotator Orientation;
+
+
+	FORCEINLINE void SetRotation(FRotator NewRot)
+	{
+		YawPitchINT = (FRotator::CompressAxisToShort(NewRot.Yaw) << 16) | FRotator::CompressAxisToShort(NewRot.Pitch);
+		RollBYTE = FRotator::CompressAxisToByte(NewRot.Roll);
+	}
+
+	FORCEINLINE FRotator GetRotation()
+	{
+		const uint16 nPitch = (YawPitchINT & 65535);
+		const uint16 nYaw = (YawPitchINT >> 16);
+
+		return FRotator(FRotator::DecompressAxisFromShort(nPitch), FRotator::DecompressAxisFromShort(nYaw), FRotator::DecompressAxisFromByte(RollBYTE));
+	}
 };
 
 /*

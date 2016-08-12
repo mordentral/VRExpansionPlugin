@@ -234,8 +234,10 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	CapsuleHalfHeight = 96.0f;
 	bUseEditorCompositing = true;
 	OffsetComponentToWorld = FTransform(FQuat(0.0f,0.0f,0.0f,1.0f), FVector::ZeroVector, FVector(1.0f));
-	curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
-	curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
+	lastCameraLoc = FVector::ZeroVector;
+	lastCameraRot = FRotator::ZeroRotator;
+	curCameraRot = FRotator::ZeroRotator;
+	curCameraLoc = FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
 
 	CanCharacterStepUpOn = ECB_No;
@@ -272,48 +274,67 @@ void UVRRootComponent::BeginPlay()
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {		
 	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
-	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
+	if (IsLocallyControlled())
 	{
-		FQuat curRot;
-		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
-		curCameraRot = curRot.Rotator();
-	}
-	else if (TargetPrimitiveComponent)
-	{
-		curCameraRot = TargetPrimitiveComponent->RelativeRotation;
-		curCameraLoc = TargetPrimitiveComponent->RelativeLocation;
+		if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
+		{
+			FQuat curRot;
+			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
+			curCameraRot = curRot.Rotator();
+		}
+		else if (TargetPrimitiveComponent)
+		{
+			curCameraRot = TargetPrimitiveComponent->RelativeRotation;
+			curCameraLoc = TargetPrimitiveComponent->RelativeLocation;
+		}
+		else
+		{
+			curCameraRot = FRotator::ZeroRotator;
+			curCameraLoc = FVector::ZeroVector;
+		}
+
+		// Can adjust the relative tolerances to remove jitter and some update processing
+		if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.01f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.01f))
+		{
+			lastCameraLoc = curCameraLoc;
+			lastCameraRot = curCameraRot;
+			bHadRelativeMovement = true;
+
+			// Also calculate vector of movement for the movement component
+			FVector LastPosition = OffsetComponentToWorld.GetLocation();
+			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+			DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);// .GetSafeNormal2D();
+		}
+		else
+			bHadRelativeMovement = false;
 	}
 	else
 	{
-		curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
-		curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
-	}
+		if (TargetPrimitiveComponent)
+		{
+			curCameraRot = TargetPrimitiveComponent->RelativeRotation;
+			curCameraLoc = TargetPrimitiveComponent->RelativeLocation;
+		}
+		else
+		{
+			curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
+			curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
+		}
 
-	// Can adjust the relative tolerances to remove jitter and some update processing
-	if (!(lastCameraLoc - curCameraLoc).IsNearlyZero(0.01f) || !(lastCameraRot - curCameraRot).IsNearlyZero(0.01f))
-	{
-		lastCameraLoc = curCameraLoc;
-		lastCameraRot = curCameraRot;
-		bHadRelativeMovement = true;
-
-		// Also calculate vector of movement for the movement component
-		FVector LastPosition = OffsetComponentToWorld.GetLocation();
 		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
-		DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition).GetSafeNormal2D();
-		//DifferenceFromLastFrame = DifferenceFromLastFrame.GetSafeNormal2D();
 	}
-	else
-		bHadRelativeMovement = false;
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
 
-void UVRRootComponent::GenerateOffsetToWorld()
+void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 {
 	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
-	UpdateBounds();
+	
+	if(bUpdateBounds)
+		UpdateBounds();
 }
 
 void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
@@ -383,16 +404,13 @@ void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, CapsuleHalfHeight))
 	{
 		CapsuleHalfHeight = FMath::Max3(0.f, CapsuleHalfHeight, CapsuleRadius);
-		//GenerateOffsetToWorld();
 	}
 	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, CapsuleRadius))
 	{
 		CapsuleRadius = FMath::Clamp(CapsuleRadius, 0.f, CapsuleHalfHeight);
-		//GenerateOffsetToWorld();
 	}
 	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UVRRootComponent, VRCapsuleOffset))
 	{
-		//GenerateOffsetToWorld();
 	}
 
 	if (!IsTemplate())

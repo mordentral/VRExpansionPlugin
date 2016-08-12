@@ -766,7 +766,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 		if (bReplicates && bTracked)
 		{
 			ReplicatedControllerTransform.Position = Position;
-			ReplicatedControllerTransform.Orientation = Orientation;
+			ReplicatedControllerTransform.SetRotation(Orientation);//.Orientation = Orientation;
 
 			if (GetNetMode() == NM_Client)//bReplicateControllerTransform)
 			{
