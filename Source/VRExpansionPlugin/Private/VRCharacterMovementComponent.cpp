@@ -964,7 +964,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 
 	// Keep this false
 	this->bTickBeforeOwner = false;
-	WallRepulsionMultiplier = 0.12f;
+	WallRepulsionMultiplier = 0.1f;
 
 	bAllowWalkingThroughWalls = false;
 }
