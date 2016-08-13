@@ -490,7 +490,6 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	{
 		TArray<FHitResult> Hits;
 		FVector NewLocation = GetComponentLocation();//TraceStart;
-
 		// Perform movement collision checking if needed for this actor.
 		const bool bCollisionEnabled = IsCollisionEnabled();
 		if (bCollisionEnabled && (DeltaSizeSq > 0.f))
