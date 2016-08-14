@@ -192,7 +192,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
 	{
 		// Skip actors that are colliding if turning off late updates during collision.
-		if (actor.bTurnOffLateUpdateWhenColliding && actor.bColliding)
+		if (actor.bTurnOffLateUpdateWhenColliding && actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics)
 			continue;
 
 		if (actor.Actor)
