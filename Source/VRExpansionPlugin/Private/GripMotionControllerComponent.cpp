@@ -186,12 +186,13 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	{
 		if (primComp)
 			GatherLateUpdatePrimitives(primComp, LateUpdatePrimitives);
-	}
+	}	
 
 	// Loop through gripped actors
 	for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
 	{
 		// Skip actors that are colliding if turning off late updates during collision.
+		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
 		if (actor.bTurnOffLateUpdateWhenColliding && actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics)
 			continue;
 
@@ -217,6 +218,23 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		}
 
 	}
+}
+
+
+bool UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
+{
+	UPrimitiveComponent * primComp = Grip.Component;
+
+	if (!primComp && Grip.Actor)
+		primComp = Cast<UPrimitiveComponent>(Grip.Actor->GetRootComponent());
+
+	if (!primComp)
+		return false;
+
+	AngularVelocity = primComp->GetPhysicsAngularVelocity();
+	LinearVelocity = primComp->GetPhysicsLinearVelocity();
+
+	return true;
 }
 
 bool UGripMotionControllerComponent::GripActor(
@@ -280,11 +298,17 @@ bool UGripMotionControllerComponent::GripActor(
 	return true;
 }
 
-bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimulate)
+bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
 {
-	if (!bIsServer || !ActorToDrop)
+	if (!ActorToDrop)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was passed an invalid actor"));
+		return false;
+	}
+	
+	if (!bIsServer)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
 		return false;
 	}
 
@@ -295,7 +319,16 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 		if (GrippedActors[i].Actor == ActorToDrop)
 		{
 			NotifyDrop(GrippedActors[i], bSimulate);
-			
+
+			if (OptionalLinearVelocity != FVector::ZeroVector && OptionalAngularVelocity != FVector::ZeroVector)
+			{
+				if (UPrimitiveComponent * primComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
+				{
+					primComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
+					primComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
+				}
+			}
+
 			GrippedActors.RemoveAt(i);
 			bFoundActor = true;
 			break;
@@ -362,7 +395,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	return true;
 }
 
-bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * ComponentToDrop, bool bSimulate)
+bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * ComponentToDrop, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
 {
 	if (!bIsServer || !ComponentToDrop)
 	{
@@ -377,6 +410,12 @@ bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * Compone
 		if (GrippedActors[i].Component == ComponentToDrop)
 		{
 			NotifyDrop(GrippedActors[i], bSimulate);
+
+			if (OptionalLinearVelocity != FVector::ZeroVector && OptionalAngularVelocity != FVector::ZeroVector)
+			{
+				GrippedActors[i].Component->SetPhysicsLinearVelocity(OptionalLinearVelocity);
+				GrippedActors[i].Component->SetPhysicsAngularVelocity(OptionalAngularVelocity);
+			}
 
 			GrippedActors.RemoveAt(i);
 			bFoundComponent = true;
