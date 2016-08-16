@@ -125,7 +125,7 @@ public:
 
 	// Drop a gripped actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool DropActor(AActor* ActorToDrop, bool bSimulate);
+	bool DropActor(AActor* ActorToDrop, bool bSimulate, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
 
 	// Grip a component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -133,13 +133,16 @@ public:
 
 	// Drop a gripped component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool DropComponent(UPrimitiveComponent* ComponentToDrop, bool bSimulate);
+	bool DropComponent(UPrimitiveComponent* ComponentToDrop, bool bSimulate, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
 
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyGrip(const FBPActorGripInformation &NewGrip);
 
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);
+
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	bool GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
 	void TickGrip();
