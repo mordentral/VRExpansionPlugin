@@ -1,6 +1,6 @@
 ***NOTICE - Branched off of original motion controller plugin***
 
-
+UE4 Forums Thread
 [https://forums.unrealengine.com/showthread.php?116782-VR-(OpenVR)-Expansion-Plugin](UE4 Forums Thread)
 
 ### Use Of This Plugin ###
