@@ -1,5 +1,8 @@
 ***NOTICE - Branched off of original motion controller plugin***
 
+
+[https://forums.unrealengine.com/showthread.php?116782-VR-(OpenVR)-Expansion-Plugin](UE4 Forums Thread)
+
 ### Use Of This Plugin ###
 
 This Plugin is intended to add additional functionality to Open/SteamVR in UE4. 
