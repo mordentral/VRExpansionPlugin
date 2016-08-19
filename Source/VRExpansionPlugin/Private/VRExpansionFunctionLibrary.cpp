@@ -268,6 +268,13 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(TEnumAsByte<EVRDevice
 
 UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<ESteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool & bSucceeded, bool bCreateCollision/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
 {
+
+	// Temp for 4.13 until re-write
+	UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Can't get VR models yet in 4.13!!"));
+	bSucceeded = false;
+	return nullptr;
+
+
 #if !STEAMVR_SUPPORTED_PLATFORMS
 	bSucceeded = false;
 	return false;
