@@ -5,7 +5,6 @@
 #include "Engine.h"
 #include "IMotionController.h"
 #include "SceneViewExtension.h"
-#include "Runtime/Launch/Resources/Version.h"
 
 #include "VRBPDatatypes.h"
 

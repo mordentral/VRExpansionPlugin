@@ -27,6 +27,20 @@
 //General Advanced Sessions Log
 DECLARE_LOG_CATEGORY_EXTERN(VRExpansionFunctionLibraryLog, Log, All);
 
+// This will make using the load model as async easier to understand
+UENUM()
+namespace EAsyncBlueprintResultSwitch
+{
+	enum Type
+	{
+		// On Success
+		OnSuccess,
+		// On still loading async
+		AsyncLoading,
+		// On Failure
+		OnFailure
+	};
+}
 
 UENUM(BlueprintType)
 enum class EVRDeviceProperty_String
@@ -126,10 +140,10 @@ public:
 	void* OpenVRDLLHandle;
 
 	//@todo steamvr: Remove GetProcAddress() workaround once we have updated to Steamworks 1.33 or higher
-	pVRInit VRInitFn;
-	pVRShutdown VRShutdownFn;
+//	pVRInit VRInitFn;
+	//pVRShutdown VRShutdownFn;
 	//pVRIsHmdPresent VRIsHmdPresentFn;
-	pVRGetStringForHmdError VRGetStringForHmdErrorFn;
+	//pVRGetStringForHmdError VRGetStringForHmdErrorFn;
 	pVRGetGenericInterface VRGetGenericInterfaceFn;
 
 	bool LoadOpenVRModule();
@@ -175,8 +189,8 @@ public:
 	static EBPHMDDeviceType GetHMDType();
 
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture"))
-	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<ESteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool & bSucceeded, bool bCreateCollision/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result"))
+	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<ESteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
 	
 	// Gets a String device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString"))

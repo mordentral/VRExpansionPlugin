@@ -82,10 +82,10 @@ bool UVRExpansionFunctionLibrary::LoadOpenVRModule()
 	//VRInitFn = (pVRInit)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_Init"));
 	//VRShutdownFn = (pVRShutdown)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_Shutdown"));
 	//VRIsHmdPresentFn = (pVRIsHmdPresent)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_IsHmdPresent"));
-	VRGetStringForHmdErrorFn = (pVRGetStringForHmdError)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_GetStringForHmdError"));
+//VRGetStringForHmdErrorFn = (pVRGetStringForHmdError)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_GetStringForHmdError"));
 	VRGetGenericInterfaceFn = (pVRGetGenericInterface)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_GetGenericInterface"));
 
-	if (/*!VRInitFn || !VRShutdownFn || !VRIsHmdPresentFn || */!VRGetStringForHmdErrorFn || !VRGetGenericInterfaceFn)
+	if (!VRGetGenericInterfaceFn)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Failed to GetProcAddress() on openvr_api.dll"));
 		UnloadOpenVRModule();
@@ -266,18 +266,19 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(TEnumAsByte<EVRDevice
 #endif
 }
 
-UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<ESteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool & bSucceeded, bool bCreateCollision/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
+UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<ESteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
 {
+
 #if !STEAMVR_SUPPORTED_PLATFORMS
-	bSucceeded = false;
-	return false;
+	Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
+	return NULL;
 	UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
 #else
 
 	if (!bInitialized)
 	{
-		bSucceeded = false;
-		return false;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
+		return NULL;
 	}
 
 	/*if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
@@ -316,7 +317,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	if (!VRSystem || !VRRenderModels)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Interfaces!!"));
-		bSucceeded = false;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
 
@@ -326,7 +327,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	if (TrackedIDs.Num() == 0)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Tracked Devices!!"));
-		bSucceeded = false;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
 
@@ -341,7 +342,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Render Model Name String!!"));
-		bSucceeded = false;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
 
@@ -349,14 +350,88 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	//UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("NumComponents: %i"), (int32)numComponents);
 	// if numComponents > 0 load each, otherwise load the main one only
 
-	vr::RenderModel_t *RenderModel;
+	vr::RenderModel_t *RenderModel = NULL;
+
+	//VRRenderModels->LoadRenderModel()
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
 	if (!VRRenderModels->LoadRenderModel(RenderModelName, &RenderModel))
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
-		bSucceeded = false;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
+
+	if(!RenderModel)
+	{
+		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
+		return nullptr;
+	}
+
+	vr::TextureID_t texID = RenderModel->diffuseTextureId;
+	vr::RenderModel_TextureMap_t * texture = NULL;
+
+	UTexture2D* OutTexture = nullptr;
+
+	if (!VRRenderModels->LoadTexture(texID, &texture))
+	{
+		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Texture!!"));
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
+		return nullptr;
+	}
+
+#else
+	vr::EVRRenderModelError ModelErrorCode = VRRenderModels->LoadRenderModel_Async(RenderModelName, &RenderModel);
 	
+	if (ModelErrorCode != vr::EVRRenderModelError::VRRenderModelError_None)
+	{
+		if (ModelErrorCode != vr::EVRRenderModelError::VRRenderModelError_Loading)
+		{
+			UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
+			Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
+		}
+		else
+			Result = EAsyncBlueprintResultSwitch::Type::AsyncLoading;
+
+		return nullptr;
+	}
+
+	if (!RenderModel)
+	{
+		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
+		return nullptr;
+	}
+
+	vr::TextureID_t texID = RenderModel->diffuseTextureId;
+	vr::RenderModel_TextureMap_t * texture = NULL;
+
+	UTexture2D* OutTexture = nullptr;
+	vr::EVRRenderModelError TextureErrorCode = VRRenderModels->LoadTexture_Async(texID, &texture);
+
+	if (TextureErrorCode != vr::EVRRenderModelError::VRRenderModelError_None)
+	{
+		if (TextureErrorCode != vr::EVRRenderModelError::VRRenderModelError_Loading)
+		{
+			UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Texture!!"));
+			Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
+		}
+		else
+			Result = EAsyncBlueprintResultSwitch::Type::AsyncLoading;
+
+		return nullptr;
+	}
+
+
+#endif
+
+	if (!texture)
+	{
+		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Texture!!"));
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
+		return nullptr;
+	}
+
 	if (ProceduralMeshComponentsToFill.Num() > 0)
 	{
 		TArray<FVector> vertices;
@@ -396,40 +471,28 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 		}
 	}
 
-	vr::TextureID_t texID = RenderModel->diffuseTextureId;
-	vr::RenderModel_TextureMap_t * texture;
+	uint32 Width = texture->unWidth;
+	uint32 Height = texture->unHeight;
 
-	UTexture2D* OutTexture = nullptr;
+	OutTexture = UTexture2D::CreateTransient(Width, Height, PF_R8G8B8A8);
 
-	if (VRRenderModels->LoadTexture(texID, &texture))
+	uint8* MipData = (uint8*)OutTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+	FMemory::Memcpy(MipData, (void*)texture->rubTextureMapData, Height * Width * 4);
+	OutTexture->PlatformData->Mips[0].BulkData.Unlock();
+
+	//Setting some Parameters for the Texture and finally returning it
+	OutTexture->PlatformData->NumSlices = 1;
+	OutTexture->NeverStream = true;
+	OutTexture->UpdateResource();
+
+	/*if (bReturnRawTexture)
 	{
-		uint32 Width = texture->unWidth;
-		uint32 Height = texture->unHeight;
+		OutRawTexture.AddUninitialized(Height * Width * 4);
+		FMemory::Memcpy(OutRawTexture.GetData(), (void*)texture->rubTextureMapData, Height * Width * 4);
+	}*/
 
-		OutTexture = UTexture2D::CreateTransient(Width, Height, PF_R8G8B8A8);
-
-		uint8* MipData = (uint8*)OutTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
-		FMemory::Memcpy(MipData, (void*)texture->rubTextureMapData, Height * Width * 4);
-		OutTexture->PlatformData->Mips[0].BulkData.Unlock();
-
-		//Setting some Parameters for the Texture and finally returning it
-		OutTexture->PlatformData->NumSlices = 1;
-		OutTexture->NeverStream = true;
-		OutTexture->UpdateResource();
-
-		/*if (bReturnRawTexture)
-		{
-			OutRawTexture.AddUninitialized(Height * Width * 4);
-			FMemory::Memcpy(OutRawTexture.GetData(), (void*)texture->rubTextureMapData, Height * Width * 4);
-		}*/
-
-		bSucceeded = true;
-		VRRenderModels->FreeTexture(texture);
-	}
-	else
-	{
-		bSucceeded = false;
-	}
+	Result = EAsyncBlueprintResultSwitch::Type::OnSuccess;
+	VRRenderModels->FreeTexture(texture);
 
 	VRRenderModels->FreeRenderModel(RenderModel);
 	return OutTexture;
