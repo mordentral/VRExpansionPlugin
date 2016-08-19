@@ -126,10 +126,10 @@ public:
 	void* OpenVRDLLHandle;
 
 	//@todo steamvr: Remove GetProcAddress() workaround once we have updated to Steamworks 1.33 or higher
-	pVRInit VRInitFn;
-	pVRShutdown VRShutdownFn;
+//	pVRInit VRInitFn;
+	//pVRShutdown VRShutdownFn;
 	//pVRIsHmdPresent VRIsHmdPresentFn;
-	pVRGetStringForHmdError VRGetStringForHmdErrorFn;
+	//pVRGetStringForHmdError VRGetStringForHmdErrorFn;
 	pVRGetGenericInterface VRGetGenericInterfaceFn;
 
 	bool LoadOpenVRModule();

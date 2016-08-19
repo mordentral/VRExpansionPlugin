@@ -82,10 +82,10 @@ bool UVRExpansionFunctionLibrary::LoadOpenVRModule()
 	//VRInitFn = (pVRInit)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_Init"));
 	//VRShutdownFn = (pVRShutdown)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_Shutdown"));
 	//VRIsHmdPresentFn = (pVRIsHmdPresent)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_IsHmdPresent"));
-	VRGetStringForHmdErrorFn = (pVRGetStringForHmdError)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_GetStringForHmdError"));
+//VRGetStringForHmdErrorFn = (pVRGetStringForHmdError)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_GetStringForHmdError"));
 	VRGetGenericInterfaceFn = (pVRGetGenericInterface)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_GetGenericInterface"));
 
-	if (/*!VRInitFn || !VRShutdownFn || !VRIsHmdPresentFn || */!VRGetStringForHmdErrorFn || !VRGetGenericInterfaceFn)
+	if (!VRGetGenericInterfaceFn)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Failed to GetProcAddress() on openvr_api.dll"));
 		UnloadOpenVRModule();
@@ -350,7 +350,9 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	// if numComponents > 0 load each, otherwise load the main one only
 
 	vr::RenderModel_t *RenderModel;
-	if (!VRRenderModels->LoadRenderModel(RenderModelName, &RenderModel))
+
+	//VRRenderModels->LoadRenderModel()
+	if (VRRenderModels->LoadRenderModel_Async(RenderModelName, &RenderModel) != vr::EVRRenderModelError::VRRenderModelError_None)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
 		bSucceeded = false;
@@ -400,8 +402,8 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	vr::RenderModel_TextureMap_t * texture;
 
 	UTexture2D* OutTexture = nullptr;
-
-	if (VRRenderModels->LoadTexture(texID, &texture))
+	//if (VRRenderModels->LoadTexture(texID, &texture))
+	if (VRRenderModels->LoadTexture_Async(texID, &texture) == vr::EVRRenderModelError::VRRenderModelError_None)
 	{
 		uint32 Width = texture->unWidth;
 		uint32 Height = texture->unHeight;
