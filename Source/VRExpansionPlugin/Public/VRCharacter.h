@@ -1,6 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
+#include "VRBPDatatypes.h"
+#include "GripMotionControllerComponent.h"
+#include "VRExpansionFunctionLibrary.h"
+#include "ReplicatedVRCameraComponent.h"
+#include "ParentRelativeAttachmentComponent.h"
+#include "VRRootComponent.h"
+#include "VRCharacterMovementComponent.h"
 
 #include "VRCharacter.generated.h"
 
@@ -40,11 +47,6 @@ public:
 	pass in a teleport location and it provides the correct spot for it to be at your feet
 	*/
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
-	FVector GetTeleportLocation(FVector OriginalLocation)
-	{
-		FVector modifier = VRRootReference->GetVRLocation() - this->GetActorLocation();
-		modifier.Z = 0.0f; // Null out Z
-		return OriginalLocation - modifier;
-	}
+	FVector GetTeleportLocation(FVector OriginalLocation);
 
 };

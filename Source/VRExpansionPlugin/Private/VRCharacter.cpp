@@ -68,6 +68,12 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 
 }
 
+FVector AVRCharacter::GetTeleportLocation(FVector OriginalLocation)
+{
+	FVector modifier = VRRootReference->GetVRLocation() - this->GetActorLocation();
+	modifier.Z = 0.0f; // Null out Z
+	return OriginalLocation - modifier;
+}
 
 bool AVRCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest, bool bNoCheck)
 {

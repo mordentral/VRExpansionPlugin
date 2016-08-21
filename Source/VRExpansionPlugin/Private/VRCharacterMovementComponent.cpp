@@ -40,7 +40,19 @@ DECLARE_CYCLE_STAT(TEXT("Char CallServerMove"), STAT_CharacterMovementCallServer
 DECLARE_CYCLE_STAT(TEXT("Char CombineNetMove"), STAT_CharacterMovementCombineNetMove, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char PhysWalking"), STAT_CharPhysWalking, STATGROUP_Character);
 
-static const auto CVarNetEnableMoveCombining = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.NetEnableMoveCombining"));
+// New method
+static int32 NetEnableMoveCombining = 1;
+FAutoConsoleVariableRef CVarNetEnableMoveCombining(
+	TEXT("p.NetEnableMoveCombining"),
+	NetEnableMoveCombining,
+	TEXT("Whether to enable move combining on the client to reduce bandwidth by combining similar moves.\n")
+	TEXT("0: Disable, 1: Enable"),
+	ECVF_Default);
+
+// The newer character movement component doesn't use this CVAR anymore, it just uses the variable from the REF, i am duplicating that.
+//static const auto CVarNetEnableMoveCombining = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.NetEnableMoveCombining"));
+
+
 
 // MAGIC NUMBERS
 const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
@@ -830,7 +842,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	{
 		ClientData->SavedMoves.Push(NewMove);
 
-		const bool bCanDelayMove = (CVarNetEnableMoveCombining->GetValueOnGameThread() != 0) && CanDelaySendingMove(NewMove);
+		const bool bCanDelayMove = (NetEnableMoveCombining != 0) && CanDelaySendingMove(NewMove);
 
 		if (bCanDelayMove && ClientData->PendingMove.IsValid() == false)
 		{
