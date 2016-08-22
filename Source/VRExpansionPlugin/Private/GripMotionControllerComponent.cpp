@@ -248,7 +248,13 @@ bool UGripMotionControllerComponent::GripActor(
 	bool bTurnOffLateUpdateWhenColliding
 	)
 {
-	if (!bIsServer || !ActorToGrip)
+	if (!bIsServer)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController grab function was called on the client side"));
+		return false;
+	}
+
+	if (!ActorToGrip)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped actor"));
 		return false;
@@ -348,7 +354,13 @@ bool UGripMotionControllerComponent::GripComponent(
 	bool bTurnOffLateUpdateWhenColliding
 	)
 {
-	if (!bIsServer || !ComponentToGrip)
+	if (!bIsServer)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController grab function was called on the client side"));
+		return false;
+	}
+
+	if (!ComponentToGrip)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped component"));
 		return false;
@@ -397,7 +409,13 @@ bool UGripMotionControllerComponent::GripComponent(
 
 bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * ComponentToDrop, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
 {
-	if (!bIsServer || !ComponentToDrop)
+	if (!bIsServer)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
+		return false;
+	}
+
+	if (!ComponentToDrop)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was passed an invalid component"));
 		return false;
@@ -556,8 +574,14 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}
 }
 
-/*bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent)
 {
+	if (!bIsServer)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side"));
+		return false;
+	}
+
 	if (!GrippedActorToAddAttachment || !SecondaryPointComponent || !GrippedActors.Num())
 		return false;
 
@@ -565,6 +589,10 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	{
 		if (GrippedActors[i].Actor == GrippedActorToAddAttachment)
 		{
+			if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
+			{
+				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform());
+			}
 			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
 			GrippedActors[i].bHasSecondaryAttachment = true;
 			return true;
@@ -572,10 +600,16 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}
 
 	return false;
-}*/
+}
 
-/*bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment)
+bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment)
 {
+	if (!bIsServer)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side"));
+		return false;
+	}
+
 	if (!GrippedActorToAddAttachment || !GrippedActors.Num())
 		return false;
 
@@ -590,7 +624,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}
 
 	return false;
-}*/
+}
 
 bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedActorToMove)
 {
@@ -603,7 +637,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 	{
 		if (GrippedActors[i].Actor == GrippedActorToMove)
 		{
-			// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
+			// GetRelativeTransformReverse had some floating point errors associated with it
 			// Not sure whats wrong with the function but I might want to push a patch out eventually
 			WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
 
@@ -655,7 +689,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 	{
 		if (GrippedActors[i].Component && GrippedActors[i].Component == ComponentToMove)
 		{
-			// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
+			// GetRelativeTransformReverse had some serious floating point errors associated with it
 			// Not sure whats wrong with the function but I might want to push a patch out eventually
 			WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
 
@@ -701,7 +735,7 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 	FTransform InverseTransform = this->GetComponentTransform().Inverse();
 	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 	{
-		// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
+		// GetRelativeTransformReverse had some serious floating point errors associated with it
 		// Not sure whats wrong with the function but I might want to push a patch out eventually
 		WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
 
@@ -835,9 +869,6 @@ void UGripMotionControllerComponent::TickGrip()
 		{
 			if (GrippedActors[i].Actor || GrippedActors[i].Component)
 			{
-				// GetRelativeTransformReverse had some serious fucking floating point errors associated with it that was fucking everything up
-				// Not sure whats wrong with the function but I might want to push a patch out eventually
-				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
 
 				UPrimitiveComponent *root = GrippedActors[i].Component;
 				AActor *actor = GrippedActors[i].Actor;
@@ -854,11 +885,23 @@ void UGripMotionControllerComponent::TickGrip()
 				if (!actor)
 					continue;
 
+
+
+
+				// GetRelativeTransformReverse had some floating point errors associated with it
+				// Not sure whats wrong with the function but I might want to push a patch out eventually
+				//WorldTransform = localTransform.GetRelativeTransform(InverseTransform);
+				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
+
+				/*
 				// Need to figure out best default behavior
-				/*if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
+				if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
 				{
-				WorldTransform.SetRotation((WorldTransform.GetLocation() - GrippedActors[i].SecondaryAttachment->GetComponentLocation()).ToOrientationRotator().Quaternion());
-				}*/
+
+					//WorldTransform.SetRotation(( GrippedActors[i].SecondaryAttachment->GetComponentLocation() - this->GetComponentLocation()).ToOrientationQuat());
+					//WorldTransform.SetRotation((WorldTransform.GetLocation() - GrippedActors[i].SecondaryAttachment->GetComponentLocation()).ToOrientationQuat());
+				}
+				*/
 
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
 				{

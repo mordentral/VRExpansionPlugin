@@ -87,6 +87,18 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		float Stiffness;
 
+	// For multi grip situations
+	UPROPERTY(BlueprintReadOnly)
+		bool bHasSecondaryAttachment;
+	UPROPERTY(BlueprintReadOnly)
+		USceneComponent * SecondaryAttachment;
+	UPROPERTY()
+		FTransform SecondaryRelativeTransform;
+
+	// Allow hand to not be primary positional attachment?
+	// End multi grip
+
+
 
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
@@ -105,6 +117,7 @@ public:
 		//Ar << bOriginalReplicatesMovement;
 
 		Ar << bTurnOffLateUpdateWhenColliding;
+		Ar << bHasSecondaryAttachment;
 		
 		// Don't bother replicated physics grip types if the grip type doesn't support it.
 		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
@@ -113,33 +126,19 @@ public:
 			Ar << Stiffness;
 		}
 
+		// If this grip has a secondary attachment
+		if (bHasSecondaryAttachment)
+		{
+			Ar << SecondaryAttachment;
+			Ar << SecondaryRelativeTransform;
+		}
+
 		bOutSuccess = true;
 		return true;
 	}
-	// For multi grip situations
-	//UPROPERTY(BlueprintReadOnly)
-	//	USceneComponent * SecondaryAttachment;
-	//UPROPERTY()
-	//	FTransform SecondaryRelativeTransform;
-	//UPROPERTY(BlueprintReadOnly)
-	//	bool bHasSecondaryAttachment;
-	// Allow hand to not be primary positional attachment?
-	// End multi grip
-
-
-
-	/** Physics scene index of the body we are grabbing. */
-	//int32 SceneIndex;
-	/** Pointer to PhysX joint used by the handle*/
-	//physx::PxD6Joint* HandleData;
-	/** Pointer to kinematic actor jointed to grabbed object */
-	//physx::PxRigidDynamic* KinActorData;
-
 
 	FBPActorGripInformation()
 	{
-	//	HandleData = NULL;
-		//KinActorData = NULL;
 		bTurnOffLateUpdateWhenColliding = true;
 		Damping = 200.0f;
 		Stiffness = 1500.0f;
@@ -148,11 +147,18 @@ public:
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 
-
-		//SecondaryAttachment = nullptr;
-		//bHasSecondaryAttachment = false;
-		//bHandIsPrimaryReference = true;
+		SecondaryAttachment = nullptr;
+		bHasSecondaryAttachment = false;
 	}
+};
+
+template<>
+struct TStructOpsTypeTraits< FBPActorGripInformation > : public TStructOpsTypeTraitsBase
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")

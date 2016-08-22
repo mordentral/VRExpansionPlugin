@@ -57,10 +57,6 @@ public:
 	//  Movement Replication
 	// Actor needs to be replicated for this to work
 
-	// Whether to ever replicate position
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRGrip")
-	//bool bReplicateControllerTransform;
-
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedControllerTransform, Category = "VRGrip")
 	FBPVRComponentPosRep ReplicatedControllerTransform;
 
@@ -170,12 +166,12 @@ public:
 	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	// Adds a secondary attachment point to the grip
-	//UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	//bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent);
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent);
 
 	// Adds a secondary attachment point to the grip
-	//UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	//bool RemoveSecondaryAttachmentPoint(AActor * GrippedActorToRemoveAttachment);
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	bool RemoveSecondaryAttachmentPoint(AActor * GrippedActorToRemoveAttachment);
 
 	// This is for testing, setting it to true allows you to test grip with a non VR enabled pawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
