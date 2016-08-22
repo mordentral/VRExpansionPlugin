@@ -33,6 +33,23 @@ namespace PrimitiveComponentStatics
 	static const FName MoveComponentName(TEXT("MoveComponent"));
 }
 
+// Predicate to determine if an overlap is with a certain AActor.
+struct FPredicateOverlapHasSameActor
+{
+	FPredicateOverlapHasSameActor(const AActor& Owner)
+		: MyOwner(Owner)
+	{
+	}
+
+	bool operator() (const FOverlapInfo& Info)
+	{
+		return Info.OverlapInfo.Actor == &MyOwner;
+	}
+
+private:
+	const AActor& MyOwner;
+};
+
 // Predicate to determine if an overlap is *NOT* with a certain AActor.
 struct FPredicateOverlapHasDifferentActor
 {
