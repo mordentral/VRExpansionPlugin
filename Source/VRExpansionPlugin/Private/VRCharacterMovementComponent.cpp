@@ -833,8 +833,12 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	if (CharacterOwner->bReplicateMovement)
 	{
 		ClientData->SavedMoves.Push(NewMove);
-
-		const bool bCanDelayMove = (CVarNetEnableMoveCombining->GetInt() != 0) && CanDelaySendingMove(NewMove);
+		
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
+		const bool bCanDelayMove = (CVarNetEnableMoveCombining->GetValueOnGameThread() != 0) && CanDelaySendingMove(NewMove);
+#else
+		const bool bCanDelayMove = (CVarNetEnableMoveCombining.GetInt() != 0) && CanDelaySendingMove(NewMove);
+#endif
 
 		if (bCanDelayMove && ClientData->PendingMove.IsValid() == false)
 		{
