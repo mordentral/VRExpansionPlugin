@@ -48,8 +48,27 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 
 public:
 
-	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip")
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedActors)
 	TArray<FBPActorGripInformation> GrippedActors;
+
+	UFUNCTION()
+	virtual void OnRep_GrippedActors(TArray<FBPActorGripInformation> OriginalArrayState)
+	{
+		// Check for new gripped actors
+		for (int i = 0; i < GrippedActors.Num(); i++)
+		{
+			int FoundIndex = 0;
+			if (!OriginalArrayState.Find(GrippedActors[i], FoundIndex))
+			{
+				// Is a new grip entry
+				NotifyGrip(GrippedActors[i]);
+			}
+		}
+
+		// Need to think about how best to handle the simulating flag here, don't handle for now
+		// Check for removed gripped actors
+		// This might actually be better left as an RPC multicast
+	}
 
 	UPROPERTY(BlueprintReadWrite, Category = "VRGrip")
 	TArray<UPrimitiveComponent *> AdditionalLateUpdateComponents;
@@ -130,7 +149,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool DropComponent(UPrimitiveComponent* ComponentToDrop, bool bSimulate, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
 
-	UFUNCTION(Reliable, NetMulticast)
+	// Master function for dropping a grip
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	bool DropGrip(const FBPActorGripInformation &Grip, bool bSimulate, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
+
+	// No Longer replicated, called via on rep now instead.
+	//UFUNCTION(Reliable, NetMulticast)
 	void NotifyGrip(const FBPActorGripInformation &NewGrip);
 
 	UFUNCTION(Reliable, NetMulticast)
@@ -164,6 +188,9 @@ public:
 	// Move a single gripped item back into position ignoring collision in the way
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
+
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	bool TeleportMoveGrip(const FBPActorGripInformation &Grip);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")

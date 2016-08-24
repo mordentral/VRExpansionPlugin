@@ -49,4 +49,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 	FVector GetTeleportLocation(FVector OriginalLocation);
 
+
+	UFUNCTION(Reliable, NetMulticast, Category = "VRGrip")
+	void NotifyOfTeleport();
 };

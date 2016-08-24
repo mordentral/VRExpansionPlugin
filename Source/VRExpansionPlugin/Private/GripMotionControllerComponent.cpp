@@ -220,7 +220,6 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	}
 }
 
-
 bool UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
 {
 	UPrimitiveComponent * primComp = Grip.Component;
@@ -318,29 +317,15 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 		return false;
 	}
 
-	bool bFoundActor = false;
-
 	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 	{
 		if (GrippedActors[i].Actor == ActorToDrop)
 		{
-			NotifyDrop(GrippedActors[i], bSimulate);
-
-			if (OptionalLinearVelocity != FVector::ZeroVector && OptionalAngularVelocity != FVector::ZeroVector)
-			{
-				if (UPrimitiveComponent * primComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
-				{
-					primComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
-					primComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
-				}
-			}
-
-			GrippedActors.RemoveAt(i);
-			bFoundActor = true;
-			break;
+			return DropGrip(GrippedActors[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 	}
-	return bFoundActor;
+
+	return false;
 }
 
 bool UGripMotionControllerComponent::GripComponent(
@@ -421,29 +406,56 @@ bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * Compone
 		return false;
 	}
 
-	bool bFoundComponent = false;
-
 	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 	{
 		if (GrippedActors[i].Component == ComponentToDrop)
 		{
-			NotifyDrop(GrippedActors[i], bSimulate);
-
-			if (OptionalLinearVelocity != FVector::ZeroVector && OptionalAngularVelocity != FVector::ZeroVector)
-			{
-				GrippedActors[i].Component->SetPhysicsLinearVelocity(OptionalLinearVelocity);
-				GrippedActors[i].Component->SetPhysicsAngularVelocity(OptionalAngularVelocity);
-			}
-
-			GrippedActors.RemoveAt(i);
-			bFoundComponent = true;
-			break;
+			return DropGrip(GrippedActors[i], bSimulate,OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 	}
-	return bFoundComponent;
+	return false;
 }
 
-void UGripMotionControllerComponent::NotifyGrip_Implementation(const FBPActorGripInformation &NewGrip)
+bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Grip, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
+{
+	if (!bIsServer)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
+		return false;
+	}
+
+	int FoundIndex = 0;
+	if (!GrippedActors.Find(Grip, FoundIndex)) // This auto checks if Actor and Component are valid in the == operator
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop"));
+		return false;
+	}
+
+	UPrimitiveComponent * PrimComp = GrippedActors[FoundIndex].Component;
+	if (!PrimComp)
+		PrimComp = Cast<UPrimitiveComponent>(GrippedActors[FoundIndex].Actor->GetRootComponent());
+
+	if(!PrimComp)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop"));
+		return false;
+	}
+	
+	NotifyDrop(GrippedActors[FoundIndex], bSimulate);
+
+	if (OptionalLinearVelocity != FVector::ZeroVector && OptionalAngularVelocity != FVector::ZeroVector)
+	{
+		PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
+		PrimComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
+	}
+
+	GrippedActors.RemoveAt(FoundIndex);
+		
+	return true;
+}
+
+// No longer an RPC, now is called from RepNotify so that joining clients also correctly set up grips
+void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActorGripInformation &NewGrip)
 {
 
 	switch (NewGrip.GripCollisionType.GetValue())
@@ -561,7 +573,8 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 		{
 			root->IgnoreActorWhenMoving(this->GetOwner(), false);
 			root->SetSimulatePhysics(bSimulate);
-			root->WakeAllRigidBodies();
+			if(bSimulate)
+				root->WakeAllRigidBodies();
 			root->SetEnableGravity(true);
 		}
 	}
@@ -569,7 +582,8 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	{
 		root->IgnoreActorWhenMoving(this->GetOwner(), false);
 		root->SetSimulatePhysics(bSimulate);
-		root->WakeAllRigidBodies();
+		if(bSimulate)
+			root->WakeAllRigidBodies();
 		root->SetEnableGravity(true);
 	}
 }
@@ -591,7 +605,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 		{
 			if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
 			{
-				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform());
+				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(rootComp->GetComponentTransform()/*this->GetComponentTransform()*/);
 			}
 			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
 			GrippedActors[i].bHasSecondaryAttachment = true;
@@ -637,41 +651,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 	{
 		if (GrippedActors[i].Actor == GrippedActorToMove)
 		{
-			// GetRelativeTransformReverse had some floating point errors associated with it
-			// Not sure whats wrong with the function but I might want to push a patch out eventually
-			WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
-
-			// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
-			GrippedActors[i].Actor->SetActorTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
-			
-			FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(GrippedActors[i]);
-			if (Handle && Handle->KinActorData)
-			{
-				#if WITH_PHYSX
-				{
-					PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
-					if (PScene)
-					{
-						SCOPED_SCENE_WRITE_LOCK(PScene);
-						Handle->KinActorData->setKinematicTarget(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
-						Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
-					}
-				}
-				#endif
-				//Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
-
-				UPrimitiveComponent *root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
-				if (root)
-				{
-					FBodyInstance * body = root->GetBodyInstance();
-					if (body)
-					{
-						body->SetBodyTransform(WorldTransform, ETeleportType::TeleportPhysics);
-					}
-				}
-			}
-			
-			return true;
+			return TeleportMoveGrip(GrippedActors[i]);
 		}
 	}
 
@@ -689,42 +669,60 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 	{
 		if (GrippedActors[i].Component && GrippedActors[i].Component == ComponentToMove)
 		{
-			// GetRelativeTransformReverse had some serious floating point errors associated with it
-			// Not sure whats wrong with the function but I might want to push a patch out eventually
-			WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
-
-			// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
-			GrippedActors[i].Component->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
-
-			FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(GrippedActors[i]);
-			if (Handle && Handle->KinActorData)
-			{
-				#if WITH_PHYSX
-				{
-					PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
-					if (PScene)
-					{
-						SCOPED_SCENE_WRITE_LOCK(PScene);
-						Handle->KinActorData->setKinematicTarget(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
-						Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
-					}
-				}
-				#endif
-
-				FBodyInstance * body = GrippedActors[i].Component->GetBodyInstance();
-				if (body)
-				{
-					body->SetBodyTransform(WorldTransform, ETeleportType::TeleportPhysics);
-				}
-			}
-
-			return true;
+			return TeleportMoveGrip(GrippedActors[i]);
 		}
 	}
 
 	return false;
 }
 
+bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformation &Grip)
+{
+	int FoundIndex = 0;
+	if (!GrippedActors.Find(Grip, FoundIndex))
+		return false;
+
+	UPrimitiveComponent * PrimComp = GrippedActors[FoundIndex].Component;
+
+	if (!PrimComp && GrippedActors[FoundIndex].Actor)
+		PrimComp = Cast<UPrimitiveComponent>(GrippedActors[FoundIndex].Actor->GetRootComponent());
+
+	if (!PrimComp)
+		return false;
+
+	FTransform WorldTransform;
+	FTransform InverseTransform = this->GetComponentTransform().Inverse();
+	// GetRelativeTransformReverse had some serious floating point errors associated with it
+	// Not sure whats wrong with the function but I might want to push a patch out eventually
+	WorldTransform = GrippedActors[FoundIndex].RelativeTransform.GetRelativeTransform(InverseTransform);
+
+	// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
+	PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
+
+	FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(GrippedActors[FoundIndex]);
+	if (Handle && Handle->KinActorData)
+	{
+#if WITH_PHYSX
+	{
+		PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
+		if (PScene)
+		{
+			SCOPED_SCENE_WRITE_LOCK(PScene);
+			Handle->KinActorData->setKinematicTarget(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+			Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+		}
+	}
+#endif
+
+	FBodyInstance * body = PrimComp->GetBodyInstance();
+	if (body)
+	{
+		body->SetBodyTransform(WorldTransform, ETeleportType::TeleportPhysics);
+	}
+	}
+
+	return true;
+}
 
 void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 {
@@ -886,22 +884,19 @@ void UGripMotionControllerComponent::TickGrip()
 					continue;
 
 
-
+				//FTransform localTransform = GrippedActors[i].RelativeTransform;
 
 				// GetRelativeTransformReverse had some floating point errors associated with it
 				// Not sure whats wrong with the function but I might want to push a patch out eventually
 				//WorldTransform = localTransform.GetRelativeTransform(InverseTransform);
 				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
 
-				/*
+
 				// Need to figure out best default behavior
 				if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
 				{
 
-					//WorldTransform.SetRotation(( GrippedActors[i].SecondaryAttachment->GetComponentLocation() - this->GetComponentLocation()).ToOrientationQuat());
-					//WorldTransform.SetRotation((WorldTransform.GetLocation() - GrippedActors[i].SecondaryAttachment->GetComponentLocation()).ToOrientationQuat());
 				}
-				*/
 
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
 				{

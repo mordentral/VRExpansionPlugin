@@ -81,16 +81,21 @@ bool AVRCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestR
 
 	if (bTeleportSucceeded)
 	{
-		if (LeftMotionController)
-			LeftMotionController->PostTeleportMoveGrippedActors();
-
-		if (RightMotionController)
-			RightMotionController->PostTeleportMoveGrippedActors();
-
-		// Regenerate the capsule offset location
-		if (VRRootReference)
-			VRRootReference->GenerateOffsetToWorld();
+		NotifyOfTeleport();
 	}
 
 	return bTeleportSucceeded;
+}
+
+void AVRCharacter::NotifyOfTeleport_Implementation()
+{
+	if (LeftMotionController)
+		LeftMotionController->PostTeleportMoveGrippedActors();
+
+	if (RightMotionController)
+		RightMotionController->PostTeleportMoveGrippedActors();
+
+	// Regenerate the capsule offset location
+	if (VRRootReference)
+		VRRootReference->GenerateOffsetToWorld();
 }

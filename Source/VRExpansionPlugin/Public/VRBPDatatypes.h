@@ -95,11 +95,6 @@ public:
 	UPROPERTY()
 		FTransform SecondaryRelativeTransform;
 
-	// Allow hand to not be primary positional attachment?
-	// End multi grip
-
-
-
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
@@ -135,6 +130,19 @@ public:
 
 		bOutSuccess = true;
 		return true;
+	}
+
+	//Check if a grip is the same as another, the only things I check for are the actor / component
+	//This is here for the Find() function from TArray
+	FORCEINLINE bool operator==(const FBPActorGripInformation &Other) const
+	{
+		if (Actor && Actor == Other.Actor)
+			return true;
+
+		if (Component && Component == Other.Component)
+			return true;
+
+		return false;
 	}
 
 	FBPActorGripInformation()
