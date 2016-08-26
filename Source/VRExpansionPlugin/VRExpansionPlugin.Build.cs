@@ -32,7 +32,7 @@ public class VRExpansionPlugin : ModuleRules
 
         PrivateIncludePaths.AddRange(
 			new string[] {
-				"VRExpansionPlugin/Private"
+				"VRExpansionPlugin/Private",
 
 				// ... add other private include paths required here ...
 			}

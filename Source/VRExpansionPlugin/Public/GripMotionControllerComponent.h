@@ -14,6 +14,8 @@
 *
 */
 
+DECLARE_LOG_CATEGORY_EXTERN(LogVRMotionController, Log, All);
+
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionController)
 class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveComponent
 {
@@ -43,6 +45,8 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 		return bTracked;
 	}
 
+	// Custom version of the component sweep function to remove that aggravating warning epic is throwing about skeletal mesh components.
+	bool ComponentSweepMultiVR(TArray<struct FHitResult>& OutHits, class UPrimitiveComponent* PrimComp, const FVector& Start, const FVector& End, const FQuat& Quat, const struct FComponentQueryParams& Params) const;
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void OnUnregister() override;
 

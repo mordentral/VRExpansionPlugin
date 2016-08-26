@@ -16,6 +16,8 @@
 #include "Features/IModularFeatures.h"
 #endif
 
+DEFINE_LOG_CATEGORY(LogVRMotionController);
+
 namespace {
 	/** This is to prevent destruction of motion controller components while they are
 	in the middle of being accessed by the render thread */
@@ -249,13 +251,13 @@ bool UGripMotionControllerComponent::GripActor(
 {
 	if (!bIsServer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController grab function was called on the client side"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was called on the client side"));
 		return false;
 	}
 
 	if (!ActorToGrip)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped actor"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped actor"));
 		return false;
 	}
 
@@ -263,14 +265,14 @@ bool UGripMotionControllerComponent::GripActor(
 
 	if (!root)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController tried to grip an actor without a UPrimitiveComponent Root"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip an actor without a UPrimitiveComponent Root"));
 		return false; // Need a primitive root
 	}
 
 	// Has to be movable to work
 	if (root->Mobility != EComponentMobility::Movable)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController tried to grip an actor set to static mobility and bAllowSetMobility is false"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip an actor set to static mobility and bAllowSetMobility is false"));
 		return false; // It is not movable, can't grip it
 	}
 
@@ -307,13 +309,13 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 {
 	if (!ActorToDrop)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was passed an invalid actor"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid actor"));
 		return false;
 	}
 	
 	if (!bIsServer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
 		return false;
 	}
 
@@ -341,20 +343,20 @@ bool UGripMotionControllerComponent::GripComponent(
 {
 	if (!bIsServer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController grab function was called on the client side"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was called on the client side"));
 		return false;
 	}
 
 	if (!ComponentToGrip)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped component"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped component"));
 		return false;
 	}
 
 	// Has to be movable to work
 	if (ComponentToGrip->Mobility != EComponentMobility::Movable)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility and bAllowSetMobility is false"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility and bAllowSetMobility is false"));
 		return false; // It is not movable, can't grip it
 	}
 
@@ -396,13 +398,13 @@ bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * Compone
 {
 	if (!bIsServer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
 		return false;
 	}
 
 	if (!ComponentToDrop)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was passed an invalid component"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid component"));
 		return false;
 	}
 
@@ -420,14 +422,14 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 {
 	if (!bIsServer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was called on the client side"));
 		return false;
 	}
 
 	int FoundIndex = 0;
 	if (!GrippedActors.Find(Grip, FoundIndex)) // This auto checks if Actor and Component are valid in the == operator
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop"));
 		return false;
 	}
 
@@ -437,7 +439,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 
 	if(!PrimComp)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop"));
 		return false;
 	}
 	
@@ -592,7 +594,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 {
 	if (!bIsServer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side"));
 		return false;
 	}
 
@@ -620,7 +622,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * Gri
 {
 	if (!bIsServer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side"));
 		return false;
 	}
 
@@ -1294,7 +1296,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 		if (!root->IsRegistered())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("MovedComponent %s not initialized in grip motion controller"), *root->GetFullName());
+			UE_LOG(LogVRMotionController, Warning, TEXT("MovedComponent %s not initialized in grip motion controller"), *root->GetFullName());
 		}
 #endif
 
@@ -1304,7 +1306,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 		FCollisionResponseParams ResponseParam;
 		root->InitSweepCollisionParams(Params, ResponseParam);
 
-		bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, root, start, start + Move, newOrientation, Params);
+		bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, root, start, start + Move, newOrientation.Quaternion(), Params);
 
 		if (bHadBlockingHit)
 		{
@@ -1378,7 +1380,6 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 
 	return false;
 }
-
 
 //=============================================================================
 bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation)
@@ -1506,3 +1507,4 @@ void UGripMotionControllerComponent::GetGrippedActors(TArray<AActor*> &GrippedAc
 		GrippedActorsArray.Add(GrippedActors[i].Actor);
 	}
 }
+
