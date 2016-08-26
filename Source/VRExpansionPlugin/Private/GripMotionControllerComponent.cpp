@@ -607,7 +607,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 		{
 			if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
 			{
-				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(rootComp->GetComponentTransform()/*this->GetComponentTransform()*/);
+				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform());
 			}
 			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
 			GrippedActors[i].bHasSecondaryAttachment = true;
@@ -886,13 +886,9 @@ void UGripMotionControllerComponent::TickGrip()
 					continue;
 
 
-				//FTransform localTransform = GrippedActors[i].RelativeTransform;
-
 				// GetRelativeTransformReverse had some floating point errors associated with it
 				// Not sure whats wrong with the function but I might want to push a patch out eventually
-				//WorldTransform = localTransform.GetRelativeTransform(InverseTransform);
 				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
-
 
 				// Need to figure out best default behavior
 				if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
