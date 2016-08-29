@@ -402,6 +402,7 @@ void UVRPathFollowingComponent::FollowPathSegment(float DeltaTime)
 	const bool bNotFollowingLastSegment = (MoveSegmentStartIndex < LastSegmentStartIndex);
 
 	PostProcessMove.ExecuteIfBound(this, MoveVelocity);
+	
 	MovementComp->RequestDirectMove(MoveVelocity, bNotFollowingLastSegment);
 }
 

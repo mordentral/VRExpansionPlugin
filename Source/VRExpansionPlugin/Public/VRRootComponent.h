@@ -103,7 +103,7 @@ public:
 		if (bUseWalkingCollisionOverride)
 			return WalkingCollisionOverride;
 		else
-			return GetVRCollisionObjectType();
+			return GetCollisionObjectType();
 	}
 
 	FVector curCameraLoc;
