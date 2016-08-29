@@ -99,3 +99,30 @@ void AVRCharacter::NotifyOfTeleport_Implementation()
 	if (VRRootReference)
 		VRRootReference->GenerateOffsetToWorld();
 }
+
+FVector AVRCharacter::GetNavAgentLocation() const
+{
+	FVector AgentLocation = FNavigationSystem::InvalidLocation;
+
+	if (GetCharacterMovement() != nullptr)
+	{
+		if (UVRCharacterMovementComponent * VRMove = Cast<UVRCharacterMovementComponent>(GetCharacterMovement()))
+		{
+			AgentLocation = VRMove->GetActorFeetLocation();
+		}
+		else
+			AgentLocation = GetCharacterMovement()->GetActorFeetLocation();
+	}
+
+	if (FNavigationSystem::IsValidLocation(AgentLocation) == false && GetCapsuleComponent() != nullptr)
+	{
+		if (VRRootReference)
+		{
+			AgentLocation = VRRootReference->GetVRLocation() - FVector(0, 0, VRRootReference->GetScaledCapsuleHalfHeight());
+		}
+		else
+			AgentLocation = GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+	}
+
+	return AgentLocation;
+}

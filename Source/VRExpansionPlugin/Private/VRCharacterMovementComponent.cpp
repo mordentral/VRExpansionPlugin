@@ -39,6 +39,9 @@ DECLARE_CYCLE_STAT(TEXT("Char ReplicateMoveToServer"), STAT_CharacterMovementRep
 DECLARE_CYCLE_STAT(TEXT("Char CallServerMove"), STAT_CharacterMovementCallServerMove, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char CombineNetMove"), STAT_CharacterMovementCombineNetMove, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char PhysWalking"), STAT_CharPhysWalking, STATGROUP_Character);
+DECLARE_CYCLE_STAT(TEXT("Char PhysNavWalking"), STAT_CharPhysNavWalking, STATGROUP_Character);
+DECLARE_CYCLE_STAT(TEXT("Char NavProjectPoint"), STAT_CharNavProjectPoint, STATGROUP_Character);
+DECLARE_CYCLE_STAT(TEXT("Char NavProjectLocation"), STAT_CharNavProjectLocation, STATGROUP_Character);
 
 #if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
 static const auto CVarNetEnableMoveCombining = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.NetEnableMoveCombining"));
@@ -924,7 +927,7 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 		
 			VRRootCapsule->InitSweepCollisionParams(Params, ResponseParam);
 
-			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation() - VRRootCapsule->DifferenceFromLastFrame, VRRootCapsule->GetVRLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), VRRootCapsule->GetCollisionObjectType(), VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
+			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation() - VRRootCapsule->DifferenceFromLastFrame, VRRootCapsule->GetVRLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), VRRootCapsule->GetVRCollisionObjectType(), VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
 
 			// If we had a valid blocking hit
 			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
@@ -1616,7 +1619,13 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 			// Force floor check if base has collision disabled or if it does not block us.
 			UPrimitiveComponent* MovementBase = CharacterOwner->GetMovementBase();
 			const AActor* BaseActor = MovementBase ? MovementBase->GetOwner() : NULL;
-			const ECollisionChannel CollisionChannel = UpdatedComponent->GetCollisionObjectType();
+			
+			ECollisionChannel CollisionChannel;
+			
+			if (VRRootCapsule)
+				CollisionChannel = VRRootCapsule->GetVRCollisionObjectType();
+			else
+				CollisionChannel = UpdatedComponent->GetCollisionObjectType();
 
 			if (MovementBase != NULL)
 			{
@@ -1893,3 +1902,213 @@ void UVRCharacterMovementComponent::VisualizeMovement() const
 	}
 #endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 }
+
+///////////////////////////
+// Navigation Functions
+///////////////////////////
+
+bool UVRCharacterMovementComponent::TryToLeaveNavWalking()
+{
+	SetNavWalkingPhysics(false);
+
+	bool bCanTeleport = true;
+	if (CharacterOwner)
+	{
+		FVector CollisionFreeLocation;
+		if (VRRootCapsule)
+			CollisionFreeLocation = VRRootCapsule->GetVRLocation();
+		else
+			CollisionFreeLocation =	UpdatedComponent->GetComponentLocation();
+		
+		// Think I need to create a custom "FindTeleportSpot" function, it is using ComponentToWorld location
+		bCanTeleport = GetWorld()->FindTeleportSpot(CharacterOwner, CollisionFreeLocation, UpdatedComponent->GetComponentRotation());
+		if (bCanTeleport)
+		{
+			
+			if (VRRootCapsule)
+			{
+				// Technically the same actor but i am keepign the usage convention for clarity.
+				// Subtracting actor location from capsule to get difference in worldspace, then removing from collision free location
+				// So that it uses the correct location.
+				CharacterOwner->SetActorLocation(CollisionFreeLocation - (VRRootCapsule->GetVRLocation() - UpdatedComponent->GetComponentLocation()));
+			}
+			else
+				CharacterOwner->SetActorLocation(CollisionFreeLocation);
+		}
+		else
+		{
+			SetNavWalkingPhysics(true);
+		}
+	}
+
+	bWantsToLeaveNavWalking = !bCanTeleport;
+	return bCanTeleport;
+}
+
+void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterations)
+{
+	SCOPE_CYCLE_COUNTER(STAT_CharPhysNavWalking);
+
+	if (deltaTime < MIN_TICK_TIME)
+	{
+		return;
+	}
+
+	// Root motion not for VR
+	if ((!CharacterOwner || !CharacterOwner->Controller) && !bRunPhysicsWithNoController /*&& !HasRootMotion()*/)
+	{
+		Acceleration = FVector::ZeroVector;
+		Velocity = FVector::ZeroVector;
+		return;
+	}
+
+	// Ensure velocity is horizontal.
+	MaintainHorizontalGroundVelocity();
+	checkf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN before CalcVelocity (%s: %s)\n%s"), *GetPathNameSafe(this), *GetPathNameSafe(GetOuter()), *Velocity.ToString());
+
+	//bound acceleration
+	Acceleration.Z = 0.f;
+	//if (!HasRootMotion())
+	//{
+		CalcVelocity(deltaTime, GroundFriction, false, BrakingDecelerationWalking);
+		checkf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN after CalcVelocity (%s: %s)\n%s"), *GetPathNameSafe(this), *GetPathNameSafe(GetOuter()), *Velocity.ToString());
+	//}
+
+	Iterations++;
+
+	FVector DesiredMove = Velocity;
+	DesiredMove.Z = 0.f;
+
+	const FVector OldPlayerLocation = GetActorFeetLocation();
+	const FVector OldLocation = GetActorFeetLocation();
+	const FVector DeltaMove = DesiredMove * deltaTime;
+
+	FVector AdjustedDest = OldLocation + DeltaMove;
+	FNavLocation DestNavLocation;
+
+	bool bSameNavLocation = false;
+	if (CachedNavLocation.NodeRef != INVALID_NAVNODEREF)
+	{
+		if (bProjectNavMeshWalking)
+		{
+			const float DistSq2D = (OldLocation - CachedNavLocation.Location).SizeSquared2D();
+			const float DistZ = FMath::Abs(OldLocation.Z - CachedNavLocation.Location.Z);
+
+			const float TotalCapsuleHeight = CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2.0f;
+			const float ProjectionScale = (OldLocation.Z > CachedNavLocation.Location.Z) ? NavMeshProjectionHeightScaleUp : NavMeshProjectionHeightScaleDown;
+			const float DistZThr = TotalCapsuleHeight * FMath::Max(0.f, ProjectionScale);
+
+			bSameNavLocation = (DistSq2D <= KINDA_SMALL_NUMBER) && (DistZ < DistZThr);
+		}
+		else
+		{
+			bSameNavLocation = CachedNavLocation.Location.Equals(OldLocation);
+		}
+	}
+
+
+	if (DeltaMove.IsNearlyZero() && bSameNavLocation)
+	{
+		DestNavLocation = CachedNavLocation;
+		UE_LOG(LogTemp, VeryVerbose, TEXT("%s using cached navmesh location! (bProjectNavMeshWalking = %d)"), *GetNameSafe(CharacterOwner), bProjectNavMeshWalking);
+	}
+	else
+	{
+		SCOPE_CYCLE_COUNTER(STAT_CharNavProjectPoint);
+
+		// Start the trace from the Z location of the last valid trace.
+		// Otherwise if we are projecting our location to the underlying geometry and it's far above or below the navmesh,
+		// we'll follow that geometry's plane out of range of valid navigation.
+		if (bSameNavLocation && bProjectNavMeshWalking)
+		{
+			AdjustedDest.Z = CachedNavLocation.Location.Z;
+		}
+
+		// Find the point on the NavMesh
+		const bool bHasNavigationData = FindNavFloor(AdjustedDest, DestNavLocation);
+		if (!bHasNavigationData)
+		{
+			SetMovementMode(MOVE_Walking);
+			return;
+		}
+
+		CachedNavLocation = DestNavLocation;
+	}
+
+	if (DestNavLocation.NodeRef != INVALID_NAVNODEREF)
+	{
+		FVector NewLocation(AdjustedDest.X, AdjustedDest.Y, DestNavLocation.Location.Z);
+		if (bProjectNavMeshWalking)
+		{
+			SCOPE_CYCLE_COUNTER(STAT_CharNavProjectLocation);
+			const float TotalCapsuleHeight = CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2.0f;
+			const float UpOffset = TotalCapsuleHeight * FMath::Max(0.f, NavMeshProjectionHeightScaleUp);
+			const float DownOffset = TotalCapsuleHeight * FMath::Max(0.f, NavMeshProjectionHeightScaleDown);
+			NewLocation = ProjectLocationFromNavMesh(deltaTime, OldLocation, NewLocation, UpOffset, DownOffset);
+		}
+
+		FVector AdjustedDelta = NewLocation - OldLocation;
+
+		if (!AdjustedDelta.IsNearlyZero())
+		{
+			const bool bSweep = UpdatedPrimitive ? UpdatedPrimitive->bGenerateOverlapEvents : false;
+			FHitResult HitResult;
+			SafeMoveUpdatedComponent(AdjustedDelta, UpdatedComponent->GetComponentQuat(), bSweep, HitResult);
+		}
+
+		// Update velocity to reflect actual move
+		if (!bJustTeleported /*&& !HasRootMotion()*/)
+		{
+			Velocity = (GetActorFeetLocation() - OldLocation) / deltaTime;
+			MaintainHorizontalGroundVelocity();
+		}
+
+		bJustTeleported = false;
+	}
+	else
+	{
+		StartFalling(Iterations, deltaTime, deltaTime, DeltaMove, OldLocation);
+	}
+}
+
+
+void UVRCharacterMovementComponent::ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations)
+{
+	if (CharacterOwner && CharacterOwner->ShouldNotifyLanded(Hit))
+	{
+		CharacterOwner->Landed(Hit);
+	}
+	if (IsFalling())
+	{
+		
+		if (GetGroundMovementMode() == MOVE_NavWalking)
+		{
+			// verify navmesh projection and current floor
+			// otherwise movement will be stuck in infinite loop:
+			// navwalking -> (no navmesh) -> falling -> (standing on something) -> navwalking -> ....
+
+			const FVector TestLocation = GetActorFeetLocation();
+			FNavLocation NavLocation;
+
+			const bool bHasNavigationData = FindNavFloor(TestLocation, NavLocation);
+			if (!bHasNavigationData || NavLocation.NodeRef == INVALID_NAVNODEREF)
+			{
+				SetGroundMovementMode(MOVE_Walking);
+				//GroundMovementMode = MOVE_Walking;
+				UE_LOG(LogTemp, Verbose, TEXT("ProcessLanded(): %s tried to go to NavWalking but couldn't find NavMesh! Using Walking instead."), *GetNameSafe(CharacterOwner));
+			}
+		}
+
+		SetPostLandedPhysics(Hit);
+	}
+	if (PathFollowingComp.IsValid())
+	{
+		PathFollowingComp->OnLanded();
+	}
+
+	StartNewPhysics(remainingTime, Iterations);
+}
+
+///////////////////////////
+// End Navigation Functions
+///////////////////////////

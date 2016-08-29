@@ -46,6 +46,38 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
 	bool bAllowWalkingThroughWalls;
 
+	// Higher values will cause more slide but better step up
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
+		float WallRepulsionMultiplier;
+
+	///////////////////////////
+	// Navigation Functions
+	///////////////////////////
+
+	/**
+	* Checks to see if the current location is not encroaching blocking geometry so the character can leave NavWalking.
+	* Restores collision settings and adjusts character location to avoid getting stuck in geometry.
+	* If it's not possible, MovementMode change will be delayed until character reach collision free spot.
+	* @return True if movement mode was successfully changed
+	*/
+	virtual bool TryToLeaveNavWalking() override;
+	
+	virtual void PhysNavWalking(float deltaTime, int32 Iterations) override;
+	void ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations) override;
+
+	FORCEINLINE FVector GetActorFeetLocation() const { return VRRootCapsule ? (VRRootCapsule->GetVRLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : UpdatedComponent ? (UpdatedComponent->GetComponentLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : FNavigationSystem::InvalidLocation; }
+	virtual FBasedPosition GetActorFeetLocationBased() const override
+	{
+		return FBasedPosition(NULL, GetActorFeetLocation());
+	}
+	///////////////////////////
+	// End Navigation Functions
+	///////////////////////////
+	
+
+	///////////////////////////
+	// Replication Functions
+	///////////////////////////
 	void CallServerMoveVR(const class FSavedMove_VRCharacter* NewMove, const class FSavedMove_VRCharacter* OldMove);
 
 	/** Replicated function sent by client to server - contains client movement and view info. */
@@ -70,9 +102,9 @@ public:
 	FNetworkPredictionData_Client* GetPredictionData_Client() const override;
 	FNetworkPredictionData_Server* GetPredictionData_Server() const override;
 
-	// Higher values will cause more slide but better step up
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
-	float WallRepulsionMultiplier;
+	///////////////////////////
+	// End Replication Functions
+	///////////////////////////
 
 	/**
 	 * Default UObject constructor.

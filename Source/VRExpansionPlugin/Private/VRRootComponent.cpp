@@ -257,6 +257,9 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	curCameraLoc = FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
 
+	bUseWalkingCollisionOverride = false;
+	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
+
 	CanCharacterStepUpOn = ECB_No;
 	bShouldUpdatePhysicsVolume = true;
 	bCheckAsyncSceneOnMove = false;

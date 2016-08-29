@@ -52,4 +52,7 @@ public:
 
 	UFUNCTION(Reliable, NetMulticast, Category = "VRGrip")
 	void NotifyOfTeleport();
+
+	// Overriding to correct some nav stuff
+	FVector GetNavAgentLocation() const override;
 };
