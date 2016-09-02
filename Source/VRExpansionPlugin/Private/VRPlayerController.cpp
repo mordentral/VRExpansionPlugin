@@ -12,7 +12,6 @@ AVRPlayerController::AVRPlayerController(const FObjectInitializer& ObjectInitial
 
 }
 
-
 void AVRPlayerController::InitNavigationControl(UPathFollowingComponent*& PathFollowingComp)
 {
 	PathFollowingComp = FindComponentByClass<UPathFollowingComponent>();

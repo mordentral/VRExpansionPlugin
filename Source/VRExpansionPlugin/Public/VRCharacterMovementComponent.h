@@ -3,6 +3,10 @@
 #pragma once
 #include "AI/Navigation/NavigationAvoidanceTypes.h"
 #include "AI/RVOAvoidanceInterface.h"
+#include "AITypes.h"
+#include "Navigation/PathFollowingComponent.h"
+#include "AI/Navigation/NavigationTypes.h"
+#include "AI/Navigation/NavigationSystem.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/EngineBaseTypes.h"
 #include "Engine/EngineTypes.h"
@@ -34,6 +38,9 @@ class AVRCharacter;
  * @see https://docs.unrealengine.com/latest/INT/Gameplay/Framework/Pawn/Character/
  */
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FAIMoveCompletedSignature, FAIRequestID, RequestID, EPathFollowingResult::Type, Result);
+
+
 UCLASS()
 class VREXPANSIONPLUGIN_API UVRCharacterMovementComponent : public UCharacterMovementComponent
 {
@@ -48,11 +55,19 @@ public:
 
 	// Higher values will cause more slide but better step up
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
-		float WallRepulsionMultiplier;
+	float WallRepulsionMultiplier;
 
 	///////////////////////////
 	// Navigation Functions
 	///////////////////////////
+
+
+	/** Blueprint notification that we've completed the current movement request */
+	//UPROPERTY(BlueprintAssignable, meta = (DisplayName = "MoveCompleted"))
+	//FAIMoveCompletedSignature ReceiveMoveCompleted;
+
+	/** Called on completing current movement request */
+	virtual void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
 
 	/**
 	* Checks to see if the current location is not encroaching blocking geometry so the character can leave NavWalking.
@@ -70,6 +85,14 @@ public:
 	{
 		return FBasedPosition(NULL, GetActorFeetLocation());
 	}
+
+	/** Returns status of path following */
+	UFUNCTION(BlueprintCallable, Category = "AI|Navigation")
+	EPathFollowingStatus::Type GetMoveStatus() const;
+
+	/** Returns true if the current PathFollowingComponent's path is partial (does not reach desired destination). */
+	UFUNCTION(BlueprintCallable, Category = "AI|Navigation")
+	bool HasPartialPath() const;
 
 	///////////////////////////
 	// End Navigation Functions

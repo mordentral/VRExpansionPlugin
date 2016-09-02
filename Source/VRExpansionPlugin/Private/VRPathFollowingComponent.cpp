@@ -14,6 +14,11 @@ void UVRPathFollowingComponent::SetMovementComponent(UNavMovementComponent* Move
 	Super::SetMovementComponent(MoveComp);
 
 	VRMovementComp = Cast<UVRCharacterMovementComponent>(MovementComp);
+
+	if (VRMovementComp)
+	{
+		OnMoveFinished.AddUObject(VRMovementComp, &UVRCharacterMovementComponent::OnMoveCompleted);
+	}
 }
 
 void UVRPathFollowingComponent::GetDebugStringTokens(TArray<FString>& Tokens, TArray<EPathFollowingDebugTokens::Type>& Flags) const
@@ -309,7 +314,7 @@ void UVRPathFollowingComponent::UpdatePathSegment()
 		}
 		return;
 	}
-
+	
 	// if agent has control over its movement, check finish conditions
 	const bool bCanReachTarget = MovementComp->CanStopPathFollowing();
 	if (bCanReachTarget && Status == EPathFollowingStatus::Moving)

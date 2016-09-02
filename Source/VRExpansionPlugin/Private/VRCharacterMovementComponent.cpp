@@ -1932,6 +1932,34 @@ void UVRCharacterMovementComponent::VisualizeMovement() const
 // Navigation Functions
 ///////////////////////////
 
+EPathFollowingStatus::Type UVRCharacterMovementComponent::GetMoveStatus() const
+{
+	return EPathFollowingStatus::Moving;
+	/*if (GetCharacterOwner() && GetCharacterOwner()->GetController())
+	{
+		if (APlayerController* pC = Cast<APlayerController>(GetCharacterOwner()->GetController()))
+		{
+			return()
+		}
+	}
+	return (PathFollowingComponent) ? PathFollowingComponent->GetStatus() : EPathFollowingStatus::Idle;*/
+}
+
+bool UVRCharacterMovementComponent::HasPartialPath() const
+{
+	return false;
+	//return (PathFollowingComponent != NULL) && (PathFollowingComponent->HasPartialPath());
+}
+
+void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
+{
+	if (AVRCharacter* vrOwner = Cast<AVRCharacter>(GetCharacterOwner()))
+	{
+		vrOwner->NavigationMoveCompleted(RequestID, Result);
+		//vrOwner->NavigationMoveCompleted(RequestID, Result);
+	}
+}
+
 bool UVRCharacterMovementComponent::TryToLeaveNavWalking()
 {
 	SetNavWalkingPhysics(false);

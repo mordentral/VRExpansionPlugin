@@ -55,4 +55,12 @@ public:
 
 	// Overriding to correct some nav stuff
 	FVector GetNavAgentLocation() const override;
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRCharacter")
+	void ReceiveNavigationMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
+
+	virtual void NavigationMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
+	{
+		ReceiveNavigationMoveCompleted(RequestID, Result);
+	}
 };
