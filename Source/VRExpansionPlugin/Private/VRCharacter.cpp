@@ -126,3 +126,85 @@ FVector AVRCharacter::GetNavAgentLocation() const
 
 	return AgentLocation;
 }
+
+void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, float AcceptanceRadius, bool bStopOnOverlap, bool bUsePathfinding, bool bProjectDestinationToNavigation, bool bCanStrafe, TSubclassOf<UNavigationQueryFilter> FilterClass, bool bAllowPartialPaths)
+{
+	UNavigationSystem* NavSys = Controller ? UNavigationSystem::GetCurrent(Controller->GetWorld()) : nullptr;
+	if (NavSys == nullptr || Controller == nullptr )
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UVRCharacter::ExtendedSimpleMoveToLocation called for NavSys:%s Controller:%s (if any of these is None then there's your problem"),
+			*GetNameSafe(NavSys), *GetNameSafe(Controller));
+		return;
+	}
+
+	UPathFollowingComponent* PFollowComp = nullptr;
+	Controller->InitNavigationControl(PFollowComp);
+
+	if (PFollowComp == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ExtendedSimpleMoveToLocation - No PathFollowingComponent Found"));
+		return;
+	}
+
+	if (!PFollowComp->IsPathFollowingAllowed())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ExtendedSimpleMoveToLocation - Path Following Movement Is Not Set To Allowed"));
+		return;
+	}
+
+	EPathFollowingReachMode ReachMode;
+	if (bStopOnOverlap)
+		ReachMode = EPathFollowingReachMode::OverlapAgent;
+	else
+		ReachMode = EPathFollowingReachMode::ExactLocation;
+
+	const bool bAlreadyAtGoal = PFollowComp->HasReached(GoalLocation, /*EPathFollowingReachMode::OverlapAgent*/ReachMode);
+
+	// script source, keep only one move request at time
+	if (PFollowComp->GetStatus() != EPathFollowingStatus::Idle)
+	{
+		if (GetNetMode() == ENetMode::NM_Client)
+		{
+			// Stop the movement here, not keeping the velocity because it bugs out for clients, might be able to fix.
+			PFollowComp->AbortMove(*NavSys, FPathFollowingResultFlags::ForcedScript | FPathFollowingResultFlags::NewRequest
+				, FAIRequestID::AnyRequest, /*bAlreadyAtGoal ? */EPathFollowingVelocityMode::Reset /*: EPathFollowingVelocityMode::Keep*/);
+		}
+		else
+		{
+			PFollowComp->AbortMove(*NavSys, FPathFollowingResultFlags::ForcedScript | FPathFollowingResultFlags::NewRequest
+				, FAIRequestID::AnyRequest, bAlreadyAtGoal ? EPathFollowingVelocityMode::Reset : EPathFollowingVelocityMode::Keep);
+		}
+	}
+
+	if (bAlreadyAtGoal)
+	{
+		PFollowComp->RequestMoveWithImmediateFinish(EPathFollowingResult::Success);
+	}
+	else
+	{
+		const ANavigationData* NavData = NavSys->GetNavDataForProps(Controller->GetNavAgentPropertiesRef());
+		if (NavData)
+		{
+			FPathFindingQuery Query(Controller, *NavData, Controller->GetNavAgentLocation(), GoalLocation);
+			FPathFindingResult Result = NavSys->FindPathSync(Query);
+			if (Result.IsSuccessful())
+			{
+				FAIMoveRequest MoveReq(GoalLocation);
+				MoveReq.SetUsePathfinding(bUsePathfinding);
+				MoveReq.SetAllowPartialPath(bAllowPartialPaths);
+				MoveReq.SetProjectGoalLocation(bProjectDestinationToNavigation);
+				MoveReq.SetNavigationFilter(*FilterClass ? FilterClass : DefaultNavigationFilterClass);
+				MoveReq.SetAcceptanceRadius(AcceptanceRadius);
+				MoveReq.SetReachTestIncludesAgentRadius(bStopOnOverlap);
+				MoveReq.SetCanStrafe(bCanStrafe);
+				MoveReq.SetReachTestIncludesGoalRadius(true);
+
+				PFollowComp->RequestMove(/*FAIMoveRequest(GoalLocation)*/MoveReq, Result.Path);
+			}
+			else if (PFollowComp->GetStatus() != EPathFollowingStatus::Idle)
+			{
+				PFollowComp->RequestMoveWithImmediateFinish(EPathFollowingResult::Invalid);
+			}
+		}
+	}
+}

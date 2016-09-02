@@ -90,14 +90,6 @@ public:
 		return FBasedPosition(NULL, GetActorFeetLocation());
 	}
 
-	/** Returns status of path following */
-	UFUNCTION(BlueprintCallable, Category = "AI|Navigation")
-	EPathFollowingStatus::Type GetMoveStatus() const;
-
-	/** Returns true if the current PathFollowingComponent's path is partial (does not reach desired destination). */
-	UFUNCTION(BlueprintCallable, Category = "AI|Navigation")
-	bool HasPartialPath() const;
-
 	///////////////////////////
 	// End Navigation Functions
 	///////////////////////////
@@ -211,8 +203,6 @@ public:
 	FRotator VRCapsuleRotation;
 	FVector RequestedVelocity;
 
-	bool bHasRequestedMove;
-
 	void Clear();
 	virtual void SetInitialPosition(ACharacter* C);
 
@@ -222,7 +212,6 @@ public:
 		LFDiff = FVector::ZeroVector;
 		VRCapsuleRotation = FRotator::ZeroRotator;
 		RequestedVelocity = FVector::ZeroVector;
-		bHasRequestedMove = false;
 	}
 };
 

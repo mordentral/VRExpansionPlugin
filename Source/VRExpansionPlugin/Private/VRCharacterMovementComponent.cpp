@@ -205,12 +205,14 @@ void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 
 		if (UCharacterMovementComponent * charMove = Cast<UCharacterMovementComponent>(VRC->GetMovementComponent()))
 		{
-			if (!charMove->RequestedVelocity.IsNearlyZero())
-			{
-				bHasRequestedMove = true;
-				RequestedVelocity = charMove->RequestedVelocity;
-			}
+			//if (!charMove->RequestedVelocity.IsNearlyZero())
+		//	{
+			RequestedVelocity = charMove->RequestedVelocity;
+			//}
 		}
+		else
+			RequestedVelocity = FVector::ZeroVector;
+
 	}
 	FSavedMove_Character::SetInitialPosition(C);
 }
@@ -361,10 +363,11 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 			PC->UpdateRotation(DeltaTime);
 		}
 
+		RequestedVelocity = rRequestedVelocity;
 		if (!rRequestedVelocity.IsNearlyZero())
 		{
 			bHasRequestedVelocity = true;
-			RequestedVelocity = rRequestedVelocity;
+			//RequestedVelocity = rRequestedVelocity;
 		}
 		// Set capsule location prior to testing movement
 		// I am overriding the replicated value here when movement is made on purpose
@@ -1932,32 +1935,12 @@ void UVRCharacterMovementComponent::VisualizeMovement() const
 // Navigation Functions
 ///////////////////////////
 
-EPathFollowingStatus::Type UVRCharacterMovementComponent::GetMoveStatus() const
-{
-	return EPathFollowingStatus::Moving;
-	/*if (GetCharacterOwner() && GetCharacterOwner()->GetController())
-	{
-		if (APlayerController* pC = Cast<APlayerController>(GetCharacterOwner()->GetController()))
-		{
-			return()
-		}
-	}
-	return (PathFollowingComponent) ? PathFollowingComponent->GetStatus() : EPathFollowingStatus::Idle;*/
-}
-
-bool UVRCharacterMovementComponent::HasPartialPath() const
-{
-	return false;
-	//return (PathFollowingComponent != NULL) && (PathFollowingComponent->HasPartialPath());
-}
-
 #if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
 void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 {
 	if (AVRCharacter* vrOwner = Cast<AVRCharacter>(GetCharacterOwner()))
 	{
 		vrOwner->NavigationMoveCompleted(RequestID, Result);
-		//vrOwner->NavigationMoveCompleted(RequestID, Result);
 	}
 }
 #else
@@ -1966,7 +1949,6 @@ void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, cons
 	if (AVRCharacter* vrOwner = Cast<AVRCharacter>(GetCharacterOwner()))
 	{
 		vrOwner->NavigationMoveCompleted(RequestID, Result);
-		//vrOwner->NavigationMoveCompleted(RequestID, Result);
 	}
 }
 #endif
