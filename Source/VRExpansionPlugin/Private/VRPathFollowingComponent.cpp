@@ -543,3 +543,24 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 	const float UseHeight = GoalHalfHeight + (AgentHalfHeight * MinAgentHalfHeightPct);
 	bHeightFailed = (CurrentHeight > UseHeight) ? 1 : 0;
 }
+
+/*
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
+
+void UVRPathFollowingComponent::AbortMove(const FString& Reason, FAIRequestID RequestID, bool bResetVelocity, bool bSilent, uint8 MessageFlags)
+{
+	if (GetNetMode() == NM_Client)
+		bResetVelocity = true;
+
+		Super::AbortMove(Reason, RequestID, bResetVelocity, bSilent, MessageFlags);
+}
+#else
+void UVRPathFollowingComponent::AbortMove(const UObject& Instigator, FPathFollowingResultFlags::Type AbortFlags, FAIRequestID RequestID, EPathFollowingVelocityMode VelocityMode)
+{
+	if (GetNetMode() == NM_Client)
+		VelocityMode = EPathFollowingVelocityMode::Reset;
+
+	Super::AbortMove(Instigator, AbortFlags, RequestID, VelocityMode);
+}
+#endif
+*/

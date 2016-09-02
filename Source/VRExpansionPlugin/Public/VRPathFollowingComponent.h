@@ -39,6 +39,14 @@ public:
 	bool ShouldCheckPathOnResume() const override;
 	void PauseMove(FAIRequestID RequestID, bool bResetVelocity) override;
 
+/*#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
+	// Temp for now, forcing reset on velocity if a client is calling this as it is broken with replication
+	virtual void AbortMove(const FString& Reason, FAIRequestID RequestID = FAIRequestID::CurrentRequest, bool bResetVelocity = true, bool bSilent = false, uint8 MessageFlags = 0) override;
+#else
+
+	virtual void AbortMove(const UObject& Instigator, FPathFollowingResultFlags::Type AbortFlags, FAIRequestID RequestID = FAIRequestID::CurrentRequest, EPathFollowingVelocityMode VelocityMode = EPathFollowingVelocityMode::Reset) override;
+#endif
+*/
 	// Just a debug reference
 	//virtual FAIRequestID RequestMove(FNavPathSharedPtr Path, FRequestCompletedSignature OnComplete, const AActor* DestinationActor = NULL, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius, bool bStopOnOverlap = true, FCustomMoveSharedPtr GameData = NULL) override;
 	
