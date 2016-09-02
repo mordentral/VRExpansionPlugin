@@ -1951,6 +1951,7 @@ bool UVRCharacterMovementComponent::HasPartialPath() const
 	//return (PathFollowingComponent != NULL) && (PathFollowingComponent->HasPartialPath());
 }
 
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
 void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 {
 	if (AVRCharacter* vrOwner = Cast<AVRCharacter>(GetCharacterOwner()))
@@ -1959,6 +1960,16 @@ void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, EPat
 		//vrOwner->NavigationMoveCompleted(RequestID, Result);
 	}
 }
+#else
+void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
+{
+	if (AVRCharacter* vrOwner = Cast<AVRCharacter>(GetCharacterOwner()))
+	{
+		vrOwner->NavigationMoveCompleted(RequestID, Result);
+		//vrOwner->NavigationMoveCompleted(RequestID, Result);
+	}
+}
+#endif
 
 bool UVRCharacterMovementComponent::TryToLeaveNavWalking()
 {

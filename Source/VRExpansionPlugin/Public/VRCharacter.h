@@ -57,10 +57,19 @@ public:
 	FVector GetNavAgentLocation() const override;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRCharacter")
-	void ReceiveNavigationMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
+	void ReceiveNavigationMoveCompleted(FAIRequestID RequestID,/* EPathFollowingResult::Type Result*/ bool Result);
+
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
 
 	virtual void NavigationMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 	{
-		ReceiveNavigationMoveCompleted(RequestID, Result);
+		ReceiveNavigationMoveCompleted(RequestID, /*Result*/true);
 	}
+#else
+
+	virtual void NavigationMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
+	{
+		ReceiveNavigationMoveCompleted(RequestID, /*Result*/true);
+	}
+#endif
 };

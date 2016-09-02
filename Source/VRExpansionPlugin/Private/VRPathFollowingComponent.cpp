@@ -17,7 +17,11 @@ void UVRPathFollowingComponent::SetMovementComponent(UNavMovementComponent* Move
 
 	if (VRMovementComp)
 	{
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
 		OnMoveFinished.AddUObject(VRMovementComp, &UVRCharacterMovementComponent::OnMoveCompleted);
+#else
+		OnRequestFinished.AddUObject(VRMovementComp, &UVRCharacterMovementComponent::OnMoveCompleted);
+#endif
 	}
 }
 
