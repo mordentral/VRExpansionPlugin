@@ -116,7 +116,11 @@ public:
 		{
 			// @note FPathFollowingResultFlags::ForcedScript added to make AITask_MoveTo instances 
 			// not ignore OnRequestFinished notify that's going to be sent out due to this call
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
+			pathComp->AbortMove(TEXT("no path"), FAIRequestID::CurrentRequest, true, false, EPathFollowingMessage::NoPath);
+#else
 			pathComp->AbortMove(*this, FPathFollowingResultFlags::MovementStop | FPathFollowingResultFlags::ForcedScript);
+#endif
 		}
 	}
 
