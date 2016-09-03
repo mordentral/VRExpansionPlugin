@@ -8,7 +8,7 @@
 #include "ParentRelativeAttachmentComponent.h"
 #include "VRRootComponent.h"
 #include "VRCharacterMovementComponent.h"
-
+#include "Runtime/Launch/Resources/Version.h"
 #include "VRCharacter.generated.h"
 
 
@@ -40,7 +40,6 @@ public:
 
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UGripMotionControllerComponent * RightMotionController;
-
 
 	/* 
 	A helper function that offsets a given vector by the roots collision location

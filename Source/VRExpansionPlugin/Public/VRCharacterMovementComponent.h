@@ -13,6 +13,7 @@
 #include "GameFramework/PawnMovementComponent.h"
 #include "Interfaces/NetworkPredictionInterface.h"
 #include "WorldCollision.h"
+#include "Runtime/Launch/Resources/Version.h"
 #include "VRCharacterMovementComponent.generated.h"
 
 class FDebugDisplayInfo;

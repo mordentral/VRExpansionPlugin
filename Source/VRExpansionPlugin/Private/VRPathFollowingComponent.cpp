@@ -2,8 +2,13 @@
 
 #include "VRExpansionPluginPrivatePCH.h"
 #include "Runtime/Engine/Private/EnginePrivate.h"
-#include "VRPathFollowingComponent.h"
 
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 13
+#include "Navigation/MetaNavMeshPath.h"
+#include "AI/Navigation/NavLinkCustomInterface.h"
+#endif
+
+#include "VRPathFollowingComponent.h"
 // Force to use new movement comp
 
 //#define (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation()) VRMovementComp != nullptr ? VR(VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation()) : (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
@@ -302,6 +307,29 @@ int32 UVRPathFollowingComponent::DetermineStartingPathPoint(const FNavigationPat
 	return PickedPathPoint;
 }
 
+bool UVRPathFollowingComponent::UpdateBlockDetection()
+{
+	const float GameTime = GetWorld()->GetTimeSeconds();
+	if (bUseBlockDetection &&
+		MovementComp &&
+		GameTime > (LastSampleTime + BlockDetectionInterval) &&
+		BlockDetectionSampleCount > 0)
+	{
+		LastSampleTime = GameTime;
+
+		if (LocationSamples.Num() == NextSampleIdx)
+		{
+			LocationSamples.AddZeroed(1);
+		}
+
+		LocationSamples[NextSampleIdx] = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationBased() : MovementComp->GetActorFeetLocationBased());
+		NextSampleIdx = (NextSampleIdx + 1) % BlockDetectionSampleCount;
+		return true;
+	}
+
+	return false;
+}
+
 void UVRPathFollowingComponent::UpdatePathSegment()
 {
 	if (!Path.IsValid() || MovementComp == NULL)
@@ -415,48 +443,6 @@ void UVRPathFollowingComponent::FollowPathSegment(float DeltaTime)
 	MovementComp->RequestDirectMove(MoveVelocity, bNotFollowingLastSegment);
 }
 
-/*bool UVRPathFollowingComponent::HasReached(const FVector& TestPoint, float InAcceptanceRadius, bool bExactSpot) const
-{
-	// simple test for stationary agent, used as early finish condition
-	const FVector CurrentLocation = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
-	const float GoalRadius = 0.0f;
-	const float GoalHalfHeight = 0.0f;
-	if (InAcceptanceRadius == UPathFollowingComponent::DefaultAcceptanceRadius)
-	{
-		InAcceptanceRadius = MyDefaultAcceptanceRadius;
-	}
-
-	return HasReachedInternal(TestPoint, GoalRadius, GoalHalfHeight, CurrentLocation, InAcceptanceRadius, bExactSpot ? 0.0f : MinAgentRadiusPct);
-}
-
-bool UVRPathFollowingComponent::HasReached(const AActor& TestGoal, float InAcceptanceRadius, bool bExactSpot, bool bUseNavAgentGoalLocation) const
-{
-	// simple test for stationary agent, used as early finish condition
-	float GoalRadius = 0.0f;
-	float GoalHalfHeight = 0.0f;
-	FVector GoalOffset = FVector::ZeroVector;
-	FVector TestPoint = TestGoal.GetActorLocation();
-	if (InAcceptanceRadius == UPathFollowingComponent::DefaultAcceptanceRadius)
-	{
-		InAcceptanceRadius = MyDefaultAcceptanceRadius;
-	}
-
-	if (bUseNavAgentGoalLocation)
-	{
-		const INavAgentInterface* NavAgent = Cast<const INavAgentInterface>(&TestGoal);
-		if (NavAgent)
-		{
-			const FVector GoalMoveOffset = NavAgent->GetMoveGoalOffset(GetOwner());
-			NavAgent->GetMoveGoalReachTest(GetOwner(), GoalMoveOffset, GoalOffset, GoalRadius, GoalHalfHeight);
-			TestPoint = FQuatRotationTranslationMatrix(TestGoal.GetActorQuat(), NavAgent->GetNavAgentLocation()).TransformPosition(GoalOffset);
-		}
-	}
-
-	const FVector CurrentLocation = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
-	return HasReachedInternal(TestPoint, GoalRadius, GoalHalfHeight, CurrentLocation, InAcceptanceRadius, bExactSpot ? 0.0f : MinAgentRadiusPct);
-}
-*/
-
 bool UVRPathFollowingComponent::HasReachedCurrentTarget(const FVector& CurrentLocation) const
 {
 	if (MovementComp == NULL)
@@ -513,7 +499,9 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 			if (DestinationAgent)
 			{
 				FVector GoalOffset;
-				DestinationAgent->GetMoveGoalReachTest(GetOwner(), MoveOffset, GoalOffset, GoalRadius, GoalHalfHeight);
+				const AActor* OwnerActor = GetOwner();
+				DestinationAgent->GetMoveGoalReachTest(OwnerActor, MoveOffset, GoalOffset, GoalRadius, GoalHalfHeight);
+			//	DestinationAgent->GetMoveGoalReachTest(GetOwner(), MoveOffset, GoalOffset, GoalRadius, GoalHalfHeight);
 
 				GoalLocation = FQuatRotationTranslationMatrix(DestinationActor->GetActorQuat(), DestinationAgent->GetNavAgentLocation()).TransformPosition(GoalOffset);
 			}
@@ -544,8 +532,8 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 	bHeightFailed = (CurrentHeight > UseHeight) ? 1 : 0;
 }
 
-/*
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
+
+/*#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
 
 void UVRPathFollowingComponent::AbortMove(const FString& Reason, FAIRequestID RequestID, bool bResetVelocity, bool bSilent, uint8 MessageFlags)
 {
@@ -564,3 +552,9 @@ void UVRPathFollowingComponent::AbortMove(const UObject& Instigator, FPathFollow
 }
 #endif
 */
+
+/////4.13 specifics//////
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 13
+
+
+#endif // 4.13 specifics
