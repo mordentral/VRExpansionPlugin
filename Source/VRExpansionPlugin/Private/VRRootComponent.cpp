@@ -67,6 +67,7 @@ private:
 	const AActor& MyOwner;
 };
 
+
 static void PullBackHit(FHitResult& Hit, const FVector& Start, const FVector& End, const float Dist)
 {
 	const float DesiredTimeBack = FMath::Clamp(0.1f, 0.1f / Dist, 1.f / Dist) + 0.001f;
@@ -401,7 +402,9 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 {
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
 	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+
 	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+
 }
 
 #if WITH_EDITOR

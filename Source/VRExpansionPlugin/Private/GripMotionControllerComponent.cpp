@@ -3,6 +3,7 @@
 #include "VRExpansionPluginPrivatePCH.h"
 #include "GripMotionControllerComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "KismetMathLibrary.h"
 #include "PrimitiveSceneInfo.h"
 
 #include "PhysicsPublic.h"
@@ -529,6 +530,9 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			}
 		}
 	}
+
+	// Move it to the correct location automatically
+	TeleportMoveGrip(NewGrip);
 }
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
@@ -854,11 +858,32 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	}
 
 	// Process the gripped actors
-	TickGrip();
+	TickGrip(DeltaTime);
 
 }
 
-void UGripMotionControllerComponent::TickGrip()
+void UGripMotionControllerComponent::RotateTransformAroundPivot(FVector WorldPivot, FRotator RotationDelta, FTransform & Transform)
+{
+	// Compute new rotation
+	const FQuat OldRotation = Transform.GetRotation();
+	const FQuat DeltaRotation = (RotationDelta).Quaternion();
+	const FQuat NewRotation = (DeltaRotation * OldRotation);
+
+	// Compute new location
+	FVector DeltaLocation = FVector::ZeroVector;
+	if (!WorldPivot.IsZero())
+	{
+		const FVector OldPivot = OldRotation.RotateVector(WorldPivot);
+		const FVector NewPivot = NewRotation.RotateVector(WorldPivot);
+		DeltaLocation = (OldPivot - NewPivot); // ConstrainDirectionToPlane() not necessary because it's done by MoveUpdatedComponent() below.
+	}
+
+	Transform.SetLocation(Transform.GetLocation() + DeltaLocation);
+	Transform.SetRotation(NewRotation);
+}
+
+
+void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 {
 	if (GrippedActors.Num())
 	{
@@ -885,7 +910,6 @@ void UGripMotionControllerComponent::TickGrip()
 				if (!actor)
 					continue;
 
-
 				// GetRelativeTransformReverse had some floating point errors associated with it
 				// Not sure whats wrong with the function but I might want to push a patch out eventually
 				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
@@ -893,12 +917,27 @@ void UGripMotionControllerComponent::TickGrip()
 				// Need to figure out best default behavior
 				if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
 				{
+					/*
+					FVector customPivot = this->GetComponentTransform().GetRelativeTransform(WorldTransform).GetLocation();
 
+					FTransform ExpectedLoc = GrippedActors[i].SecondaryRelativeTransform.GetRelativeTransform(InverseTransform);
+					FTransform ActualLoc = GrippedActors[i].SecondaryAttachment->GetComponentTransform();
+
+					FRotator ExpectedRot = WorldTransform.RotateVector(ExpectedLoc.GetLocation()).ToOrientationRotator();
+					FRotator FinalRot = WorldTransform.RotateVector(ActualLoc.GetLocation()).ToOrientationRotator();
+
+					FRotator diff = ExpectedRot - FinalRot;
+
+					if (!diff.IsNearlyZero())
+					{
+						int g = 0;
+					}
+
+					RotateTransformAroundPivot(customPivot, diff, WorldTransform);*/
 				}
 
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
 				{
-
 					UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
 					
 					// Sweep current collision state
@@ -916,13 +955,22 @@ void UGripMotionControllerComponent::TickGrip()
 						}
 						else
 						{
-							GrippedActors[i].bColliding = false;
+							GrippedActors[i].bColliding = false;							
 						}
 					}
 
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
 				{
+					FVector OriginalPosition(root->GetComponentLocation());
+					FVector NewPosition(WorldTransform.GetTranslation());
+
+					if(!GrippedActors[i].bIsLocked)
+						root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
+
+					if (GrippedActors[i].bIsLocked)
+						WorldTransform.SetRotation(GrippedActors[i].LastLockedRotation);
+
 					FHitResult OutHit;
 					// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
 					root->SetWorldTransform(WorldTransform, true, &OutHit);
@@ -931,12 +979,21 @@ void UGripMotionControllerComponent::TickGrip()
 					{
 						GrippedActors[i].bColliding = true;
 
+						if (!GrippedActors[i].bIsLocked)
+						{
+							GrippedActors[i].bIsLocked = true;
+							GrippedActors[i].LastLockedRotation = root->GetComponentQuat();
+						}
+
 						//if (!actor->bReplicateMovement)
 						//	actor->SetReplicateMovement(true);
 					}
 					else
 					{
 						GrippedActors[i].bColliding = false;
+
+						if (GrippedActors[i].bIsLocked)
+							GrippedActors[i].bIsLocked = false;
 
 						//if (actor->bReplicateMovement)
 						//	actor->SetReplicateMovement(false);
@@ -948,7 +1005,7 @@ void UGripMotionControllerComponent::TickGrip()
 					// Make sure that there is no collision on course before turning off collision and snapping to controller
 					FBPActorPhysicsHandleInformation * GripHandle = GetPhysicsGrip(GrippedActors[i]);
 
-					if (GrippedActors[i].bColliding && GripHandle)
+					if (GrippedActors[i].bColliding/* && GripHandle*/)
 					{
 						TArray<FOverlapResult> Hits;
 						FComponentQueryParams Params(NAME_None, this->GetOwner());
@@ -956,7 +1013,6 @@ void UGripMotionControllerComponent::TickGrip()
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
-							//if(GetWorld()->ComponentOverlapMulti(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), Params))
 						{
 							GrippedActors[i].bColliding = true;
 						}
@@ -965,7 +1021,22 @@ void UGripMotionControllerComponent::TickGrip()
 							GrippedActors[i].bColliding = false;
 						}
 					}
-
+					else if(!GrippedActors[i].bColliding)
+					{
+						TArray<FOverlapResult> Hits;
+						FComponentQueryParams Params(NAME_None, this->GetOwner());
+						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+						Params.AddIgnoredActor(actor);
+						Params.AddIgnoredActors(root->MoveIgnoreActors);
+						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params))
+						{
+							GrippedActors[i].bColliding = true;
+						}
+						else
+						{
+							GrippedActors[i].bColliding = false;
+						}
+					}
 
 					if (!GrippedActors[i].bColliding)
 					{		
@@ -1011,13 +1082,14 @@ void UGripMotionControllerComponent::TickGrip()
 
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::SweepWithPhysics)
-				{
-						
+				{			
 					FVector OriginalPosition(root->GetComponentLocation());
 					FRotator OriginalOrientation(root->GetComponentRotation());
 
 					FVector NewPosition(WorldTransform.GetTranslation());
 					FRotator NewOrientation(WorldTransform.GetRotation());
+
+					root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
 
 					// Now sweep collision separately so we can get hits but not have the location altered
 					if (bUseWithoutTracking || NewPosition != OriginalPosition || NewOrientation != OriginalOrientation)
@@ -1029,7 +1101,7 @@ void UGripMotionControllerComponent::TickGrip()
 
 						if (bUseWithoutTracking || move.SizeSquared() > MinMovementDistSq || NewOrientation != OriginalOrientation)
 						{
-							if (CheckComponentWithSweep(root, move, NewOrientation, false))
+							if (CheckComponentWithSweep(root, move, OriginalOrientation, false))
 							{
 								GrippedActors[i].bColliding = true;
 							}
@@ -1038,8 +1110,9 @@ void UGripMotionControllerComponent::TickGrip()
 						}
 					}
 
-						// Move the actor, we are not offsetting by the hit result anyway
-						root->SetWorldTransform(WorldTransform, false);
+					// Move the actor, we are not offsetting by the hit result anyway
+					root->SetWorldTransform(WorldTransform, false);
+
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::PhysicsOnly)
 				{
@@ -1367,6 +1440,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 		}
 		else
 		{
+			
 			if(root->GetOwner())
 				root->DispatchBlockingHit(*root->GetOwner(), BlockingHit);
 		}

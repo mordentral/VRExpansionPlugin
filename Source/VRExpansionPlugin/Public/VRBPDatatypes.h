@@ -95,6 +95,9 @@ public:
 	UPROPERTY()
 		FTransform SecondaryRelativeTransform;
 
+	bool bIsLocked;
+	FQuat LastLockedRotation;
+
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
@@ -154,6 +157,7 @@ public:
 		Actor = nullptr;
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
+		bIsLocked = false;
 
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;

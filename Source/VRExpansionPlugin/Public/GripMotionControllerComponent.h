@@ -167,7 +167,7 @@ public:
 	bool GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
-	void TickGrip();
+	void TickGrip(float DeltaTime);
 
 	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
@@ -209,6 +209,8 @@ public:
 
 	//FVector OriginalPosition;
 	//FRotator OriginalOrientation;
+
+	void RotateTransformAroundPivot(FVector WorldPivot, FRotator RotationDelta, FTransform & Transform);
 
 	bool CheckComponentWithSweep(UPrimitiveComponent * ComponentToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
 	
