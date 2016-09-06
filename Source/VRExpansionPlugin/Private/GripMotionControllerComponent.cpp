@@ -611,7 +611,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 		{
 			if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
 			{
-				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform());
+				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(rootComp->GetComponentTransform());
 			}
 			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
 			GrippedActors[i].bHasSecondaryAttachment = true;
@@ -913,27 +913,25 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				// GetRelativeTransformReverse had some floating point errors associated with it
 				// Not sure whats wrong with the function but I might want to push a patch out eventually
 				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
-
+			
 				// Need to figure out best default behavior
 				if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
 				{
-					/*
-					FVector customPivot = this->GetComponentTransform().GetRelativeTransform(WorldTransform).GetLocation();
+					FVector customPivot = (this->GetComponentTransform().GetRelativeTransform(WorldTransform).GetLocation()) * WorldTransform.GetScale3D();
 
-					FTransform ExpectedLoc = GrippedActors[i].SecondaryRelativeTransform.GetRelativeTransform(InverseTransform);
-					FTransform ActualLoc = GrippedActors[i].SecondaryAttachment->GetComponentTransform();
+					FTransform ExpectedLoc = GrippedActors[i].SecondaryRelativeTransform;
+					FTransform ActualLoc = GrippedActors[i].SecondaryAttachment->GetComponentTransform().GetRelativeTransform(WorldTransform);
 
-					FRotator ExpectedRot = WorldTransform.RotateVector(ExpectedLoc.GetLocation()).ToOrientationRotator();
-					FRotator FinalRot = WorldTransform.RotateVector(ActualLoc.GetLocation()).ToOrientationRotator();
+					//FRotator ExpectedRot = FRotationMatrix::MakeFromX(ExpectedLoc.GetLocation()).Rotator();
+					//FRotator FinalRot = FRotationMatrix::MakeFromX(ActualLoc.GetLocation()).Rotator();
 
-					FRotator diff = ExpectedRot - FinalRot;
+					FRotator ExpectedRot = WorldTransform.TransformVector(ExpectedLoc.GetLocation()).ToOrientationRotator();
+					FRotator FinalRot = WorldTransform.TransformVector(ActualLoc.GetLocation()).ToOrientationRotator();
 
-					if (!diff.IsNearlyZero())
-					{
-						int g = 0;
-					}
 
-					RotateTransformAroundPivot(customPivot, diff, WorldTransform);*/
+					TempRotator = FinalRot - ExpectedRot;
+
+					RotateTransformAroundPivot(customPivot, FinalRot - ExpectedRot, WorldTransform);
 				}
 
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)

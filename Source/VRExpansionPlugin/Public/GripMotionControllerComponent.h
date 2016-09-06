@@ -22,6 +22,12 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 	GENERATED_UCLASS_BODY()
 	~UGripMotionControllerComponent();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
+	FRotator TempRotator;
+
+
+
+
 	/** Which player index this motion controller should automatically follow */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
 		int32 PlayerIndex;
