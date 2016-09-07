@@ -22,12 +22,6 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 	GENERATED_UCLASS_BODY()
 	~UGripMotionControllerComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
-	FRotator TempRotator;
-
-
-
-
 	/** Which player index this motion controller should automatically follow */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
 		int32 PlayerIndex;
@@ -212,9 +206,6 @@ public:
 	// This is for testing, setting it to true allows you to test grip with a non VR enabled pawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bUseWithoutTracking;
-
-	//FVector OriginalPosition;
-	//FRotator OriginalOrientation;
 
 	void RotateTransformAroundPivot(FVector WorldPivot, FRotator RotationDelta, FTransform & Transform);
 

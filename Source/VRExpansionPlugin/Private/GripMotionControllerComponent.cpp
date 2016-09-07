@@ -925,13 +925,11 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					//FRotator ExpectedRot = FRotationMatrix::MakeFromX(ExpectedLoc.GetLocation()).Rotator();
 					//FRotator FinalRot = FRotationMatrix::MakeFromX(ActualLoc.GetLocation()).Rotator();
 
-					FRotator ExpectedRot = WorldTransform.TransformVector(ExpectedLoc.GetLocation()).ToOrientationRotator();
-					FRotator FinalRot = WorldTransform.TransformVector(ActualLoc.GetLocation()).ToOrientationRotator();
+					FRotator ExpectedRot = WorldTransform.Inverse().TransformVector(ExpectedLoc.GetLocation()).ToOrientationRotator();
+					FRotator FinalRot = WorldTransform.Inverse().TransformVector(ActualLoc.GetLocation()).ToOrientationRotator();
+					FRotator finalR = FinalRot - ExpectedRot;
 
-
-					TempRotator = FinalRot - ExpectedRot;
-
-					RotateTransformAroundPivot(customPivot, FinalRot - ExpectedRot, WorldTransform);
+					RotateTransformAroundPivot(customPivot, finalR, WorldTransform);
 				}
 
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
