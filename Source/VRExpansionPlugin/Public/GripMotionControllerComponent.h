@@ -197,7 +197,7 @@ public:
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent);
+	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, FTransform SecondaryAttachmentPoint);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
