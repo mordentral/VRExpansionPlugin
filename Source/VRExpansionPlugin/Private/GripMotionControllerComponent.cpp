@@ -258,8 +258,17 @@ bool UGripMotionControllerComponent::GripActor(
 
 	if (!ActorToGrip)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped actor"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid actor"));
 		return false;
+	}
+
+	for (int i = 0; i < GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i].Actor == ActorToGrip)
+		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already gripped actor"));
+			return false;
+		}
 	}
 
 	UPrimitiveComponent *root = Cast<UPrimitiveComponent>(ActorToGrip->GetRootComponent());
@@ -353,6 +362,17 @@ bool UGripMotionControllerComponent::GripComponent(
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped component"));
 		return false;
 	}
+
+
+	for(int i=0; i<GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i].Component == ComponentToGrip)
+		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already gripped component"));
+			return false;
+		}
+	}
+
 
 	// Has to be movable to work
 	if (ComponentToGrip->Mobility != EComponentMobility::Movable)
