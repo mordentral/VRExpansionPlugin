@@ -197,7 +197,7 @@ public:
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, FTransform SecondaryAttachmentPoint);
+	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, bool bUsePrimaryRoll = false, float SecondaryInfluenceScaler = 1.0f);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -207,7 +207,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bUseWithoutTracking;
 
-	void RotateTransformAroundPivot(FVector WorldPivot, FRotator RotationDelta, FTransform & Transform);
+	void RotateTransformAroundPivot(FVector WorldPivot, FRotator RotationDelta, FTransform & Transform, float SlerpValue = 1.0f);
 
 	bool CheckComponentWithSweep(UPrimitiveComponent * ComponentToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
 	

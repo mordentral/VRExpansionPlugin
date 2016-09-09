@@ -614,7 +614,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}
 }
 
-bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, FTransform SecondaryAttachmentPoint)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, bool bUsePrimaryRoll, float SecondaryInfluenceScaler)
 {
 	if (!bIsServer)
 	{
@@ -635,6 +635,8 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 			}
 			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
 			GrippedActors[i].bHasSecondaryAttachment = true;
+			GrippedActors[i].bUsePrimaryRoll = bUsePrimaryRoll;
+			GrippedActors[i].fSecondaryInfluenceScaler = SecondaryInfluenceScaler;
 			return true;
 		}
 	}
@@ -882,12 +884,12 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 }
 
-void UGripMotionControllerComponent::RotateTransformAroundPivot(FVector WorldPivot, FRotator RotationDelta, FTransform & Transform)
+void UGripMotionControllerComponent::RotateTransformAroundPivot(FVector WorldPivot, FRotator RotationDelta, FTransform & Transform, float SlerpValue)
 {
 	// Compute new rotation
 	const FQuat OldRotation = Transform.GetRotation();
-	const FQuat DeltaRotation = (RotationDelta).Quaternion();
-	const FQuat NewRotation = DeltaRotation;// (DeltaRotation * OldRotation);
+	//const FQuat DeltaRotation = (RotationDelta).Quaternion();
+	const FQuat NewRotation = FQuat::Slerp(OldRotation, RotationDelta.Quaternion(), SlerpValue);// (DeltaRotation * OldRotation);
 
 	// Compute new location
 	FVector DeltaLocation = FVector::ZeroVector;
@@ -937,18 +939,22 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				// Need to figure out best default behavior
 				if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
 				{
-					FVector customPivot = (this->GetComponentTransform().GetRelativeTransform(WorldTransform).GetLocation()) * WorldTransform.GetScale3D();
-
-					//FTransform ExpectedLoc = GrippedActors[i].SecondaryRelativeTransform.GetRelativeTransform(InverseTransform);
-					FTransform ActualLoc = GrippedActors[i].SecondaryAttachment->GetComponentTransform().GetRelativeTransform(WorldTransform);
+					FTransform PivotTrans = this->GetComponentTransform().GetRelativeTransform(WorldTransform);
+					FVector customPivot = (PivotTrans.GetLocation()) * WorldTransform.GetScale3D();
 				
-					FVector expectLoc = GrippedActors[i].SecondaryRelativeTransform.GetLocation();
-					FVector nLoc = ActualLoc.GetLocation();
+					FVector nLoc = GrippedActors[i].SecondaryRelativeTransform.GetLocation();
+					nLoc.X = 0;
 
-					FVector newLoc = WorldTransform.TransformPosition(ActualLoc.GetLocation() - GrippedActors[i].SecondaryRelativeTransform.GetLocation());
-					FRotator FinalRot = FRotationMatrix::MakeFromX(newLoc - this->GetComponentLocation()).Rotator();
-					//FinalRot = FinalRot - FRotationMatrix::MakeFromX(GrippedActors[i].SecondaryRelativeTransform.GetLocation()).Rotator();
-					RotateTransformAroundPivot(customPivot, FinalRot, WorldTransform);
+					FVector newLoc = WorldTransform.TransformPosition((GrippedActors[i].SecondaryAttachment->GetComponentTransform().GetRelativeTransform(WorldTransform).GetLocation() - nLoc));
+
+					FVector BasePoint = WorldTransform.TransformPosition(FVector(PivotTrans.GetLocation().X, 0, 0));
+
+					FRotator FinalRot = FRotationMatrix::MakeFromX(newLoc - BasePoint).Rotator();
+
+					if(GrippedActors[i].bUsePrimaryRoll)
+						FinalRot.Roll = WorldTransform.GetRotation().Rotator().Roll;
+
+					RotateTransformAroundPivot(customPivot, FinalRot, WorldTransform, GrippedActors[i].fSecondaryInfluenceScaler);
 				}
 
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)

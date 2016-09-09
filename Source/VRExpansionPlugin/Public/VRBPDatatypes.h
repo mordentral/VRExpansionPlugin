@@ -91,6 +91,10 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		bool bHasSecondaryAttachment;
 	UPROPERTY(BlueprintReadOnly)
+		bool bUsePrimaryRoll;
+	UPROPERTY(BlueprintReadOnly)
+		float fSecondaryInfluenceScaler;
+	UPROPERTY(BlueprintReadOnly)
 		USceneComponent * SecondaryAttachment;
 	UPROPERTY()
 		FTransform SecondaryRelativeTransform;
@@ -129,6 +133,8 @@ public:
 		{
 			Ar << SecondaryAttachment;
 			Ar << SecondaryRelativeTransform;
+			Ar << bUsePrimaryRoll;
+			Ar << fSecondaryInfluenceScaler;
 		}
 
 		bOutSuccess = true;
