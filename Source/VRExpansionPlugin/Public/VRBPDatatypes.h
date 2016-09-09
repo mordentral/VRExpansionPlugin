@@ -63,6 +63,14 @@ enum EBPHMDDeviceType
 	DT_Unknown
 };
 
+UENUM(Blueprintable)
+enum EMeshWorldAlignment
+{
+	XForward,
+	YForward,
+	ZForward
+};
+
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
@@ -98,6 +106,8 @@ public:
 		USceneComponent * SecondaryAttachment;
 	UPROPERTY()
 		FTransform SecondaryRelativeTransform;
+	UPROPERTY()
+		TEnumAsByte<EMeshWorldAlignment> MeshWorldAlignment;
 
 	bool bIsLocked;
 	FQuat LastLockedRotation;
@@ -135,6 +145,7 @@ public:
 			Ar << SecondaryRelativeTransform;
 			Ar << bUsePrimaryRoll;
 			Ar << fSecondaryInfluenceScaler;
+			Ar << MeshWorldAlignment;
 		}
 
 		bOutSuccess = true;
