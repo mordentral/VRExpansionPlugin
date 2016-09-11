@@ -180,6 +180,10 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	bool bInitialized;
 
+	// Gets the unwound yaw of the HMD
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDPureYaw"))
+	static FRotator GetHMDPureYaw(FRotator HMDRotation);
+
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))
 	static bool GetIsHMDConnected();

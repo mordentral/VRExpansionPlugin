@@ -32,7 +32,8 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Parent Relative Attachment"));
 	if (ParentRelativeAttachment && VRReplicatedCamera)
 	{
-		ParentRelativeAttachment->SetupAttachment(VRReplicatedCamera);
+		// Moved this to be root relative as the camera late updates were killing how it worked
+		ParentRelativeAttachment->SetupAttachment(RootComponent);
 
 		/*if (GetMesh())
 		{

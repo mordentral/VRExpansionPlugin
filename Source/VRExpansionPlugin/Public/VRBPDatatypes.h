@@ -50,7 +50,6 @@ enum EGripCollisionType
 	PhysicsOnly
 };
 
-
 // This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
 UENUM(Blueprintable)
 enum EBPHMDDeviceType
@@ -63,13 +62,16 @@ enum EBPHMDDeviceType
 	DT_Unknown
 };
 
+// This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
 UENUM(Blueprintable)
-enum EMeshWorldAlignment
+enum EGripLerpState
 {
-	XForward,
-	YForward,
-	ZForward
+	StartLerp,
+	EndLerp,
+	ConstantLerp,
+	NotLerping
 };
+
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorGripInformation
@@ -99,23 +101,30 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		bool bHasSecondaryAttachment;
 	UPROPERTY(BlueprintReadOnly)
-		bool bUsePrimaryRoll;
-	UPROPERTY(BlueprintReadOnly)
-		float fSecondaryInfluenceScaler;
-	UPROPERTY(BlueprintReadOnly)
 		USceneComponent * SecondaryAttachment;
+	UPROPERTY(BlueprintReadOnly)
+		float SecondarySmoothingScaler;
+	UPROPERTY(BlueprintReadOnly)
+		bool bTurnOffLateUpdateWhenDoubleGrip;
 	UPROPERTY()
-		FTransform SecondaryRelativeTransform;
-	UPROPERTY()
-		TEnumAsByte<EMeshWorldAlignment> MeshWorldAlignment;
+		FVector SecondaryRelativeLocation;
 
+	// Lerp transitions
+	UPROPERTY(BlueprintReadOnly)
+		float LerpToRate;
+	
+	// These are not replicated, they don't need to be
+	TEnumAsByte<EGripLerpState> GripLerpState;
+	FVector LastRelativeLocation;
+	float curLerp;
+
+	// Locked transitions
 	bool bIsLocked;
 	FQuat LastLockedRotation;
 
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
-		//Ar << *this;
 		Ar << Actor;
 		Ar << Component;
 		Ar << GripCollisionType;
@@ -129,23 +138,50 @@ public:
 		//Ar << bOriginalReplicatesMovement;
 
 		Ar << bTurnOffLateUpdateWhenColliding;
-		Ar << bHasSecondaryAttachment;
 		
-		// Don't bother replicated physics grip types if the grip type doesn't support it.
-		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
-		{
-			Ar << Damping;
-			Ar << Stiffness;
-		}
+		bool bHadAttachment = bHasSecondaryAttachment;
+	
+		Ar << bHasSecondaryAttachment;
+		Ar << LerpToRate;
 
 		// If this grip has a secondary attachment
 		if (bHasSecondaryAttachment)
 		{
 			Ar << SecondaryAttachment;
-			Ar << SecondaryRelativeTransform;
-			Ar << bUsePrimaryRoll;
-			Ar << fSecondaryInfluenceScaler;
-			Ar << MeshWorldAlignment;
+			Ar << SecondaryRelativeLocation;
+			Ar << SecondarySmoothingScaler;
+			Ar << bTurnOffLateUpdateWhenDoubleGrip;
+		}
+
+		// Manage lerp states
+		if (Ar.IsLoading())
+		{
+			if (bHadAttachment != bHasSecondaryAttachment)
+			{
+				if (LerpToRate < 0.01f)
+					GripLerpState = EGripLerpState::NotLerping;
+				else
+				{
+					// New lerp
+					if (bHasSecondaryAttachment)
+					{
+						curLerp = LerpToRate;
+						GripLerpState = EGripLerpState::StartLerp;
+					}
+					else // Post Lerp
+					{
+						curLerp = LerpToRate;
+						GripLerpState = EGripLerpState::EndLerp;
+					}
+				}
+			}
+		}
+
+		// Don't bother replicated physics grip types if the grip type doesn't support it.
+		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
+		{
+			Ar << Damping;
+			Ar << Stiffness;
 		}
 
 		bOutSuccess = true;
@@ -175,6 +211,11 @@ public:
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 		bIsLocked = false;
+		curLerp = 0.0f;
+		LerpToRate = 0.0f;
+		GripLerpState = EGripLerpState::NotLerping;
+		SecondarySmoothingScaler = 1.0f;
+		bTurnOffLateUpdateWhenDoubleGrip = false;
 
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;
@@ -206,7 +247,6 @@ public:
 	physx::PxD6Joint* HandleData;
 	/** Pointer to kinematic actor jointed to grabbed object */
 	physx::PxRigidDynamic* KinActorData;
-
 
 	FBPActorPhysicsHandleInformation()
 	{

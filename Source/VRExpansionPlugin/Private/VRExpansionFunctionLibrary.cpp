@@ -18,6 +18,15 @@ UVRExpansionFunctionLibrary::~UVRExpansionFunctionLibrary()
 		UnloadOpenVRModule();
 }
 
+FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
+{
+	FQuat RotOffset = HMDRotation.Quaternion();
+	FRotator Inversey = HMDRotation.GetInverse();
+
+	RotOffset = FRotator(0.0f, 0.0f, Inversey.Roll).Quaternion() * (FRotator(Inversey.Pitch, 0.0f, 0.0f).Quaternion() * RotOffset);
+	return FRotator(0, RotOffset.Rotator().Yaw, 0);
+}
+
 bool UVRExpansionFunctionLibrary::OpenVRHandles()
 {
 	if (IsLocallyControlled() && !bInitialized)

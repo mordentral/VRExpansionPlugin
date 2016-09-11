@@ -49,6 +49,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	//bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
+
 }
 
 //=============================================================================
@@ -196,7 +197,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	{
 		// Skip actors that are colliding if turning off late updates during collision.
 		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
-		if (actor.bTurnOffLateUpdateWhenColliding && actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics)
+		if ((actor.bTurnOffLateUpdateWhenDoubleGrip && actor.bHasSecondaryAttachment) || (actor.bTurnOffLateUpdateWhenColliding && actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics))
 			continue;
 
 		if (actor.Actor)
@@ -308,7 +309,7 @@ bool UGripMotionControllerComponent::GripActor(
 		newActorGrip.RelativeTransform = WorldOffset;
 	else
 		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
-	
+
 	NotifyGrip(newActorGrip);
 	GrippedActors.Add(newActorGrip);
 
@@ -614,7 +615,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}
 }
 
-bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, bool bUsePrimaryRoll, float SecondaryInfluenceScaler, TEnumAsByte<EMeshWorldAlignment> MeshWorldAlignment)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, FTransform OriginalRelativeTransform, bool bTurnOfLateUpdates, float LerpToTime, float SecondarySmoothingScaler)
 {
 	if (!bIsServer)
 	{
@@ -629,15 +630,22 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 	{
 		if (GrippedActors[i].Actor == GrippedActorToAddAttachment)
 		{
-			if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
-			{
-				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(rootComp->GetComponentTransform());
-			}
+			GrippedActors[i].SecondaryRelativeLocation = OriginalRelativeTransform.GetLocation();
 			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
-			GrippedActors[i].bHasSecondaryAttachment = true;
-			GrippedActors[i].bUsePrimaryRoll = bUsePrimaryRoll;
-			GrippedActors[i].fSecondaryInfluenceScaler = SecondaryInfluenceScaler;
-			GrippedActors[i].MeshWorldAlignment = MeshWorldAlignment;
+			GrippedActors[i].bHasSecondaryAttachment = true;	
+			GrippedActors[i].SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
+			GrippedActors[i].bTurnOffLateUpdateWhenDoubleGrip = bTurnOfLateUpdates;
+
+			if (GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
+				LerpToTime = 0.0f;
+
+			if (LerpToTime > 0.0f)
+			{
+				GrippedActors[i].LerpToRate = LerpToTime;
+				GrippedActors[i].GripLerpState = EGripLerpState::StartLerp;
+				GrippedActors[i].curLerp = LerpToTime;
+			}
+
 			return true;
 		}
 	}
@@ -645,7 +653,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 	return false;
 }
 
-bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment)
+bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, float LerpToTime)
 {
 	if (!bIsServer)
 	{
@@ -660,9 +668,33 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * Gri
 	{
 		if (GrippedActors[i].Actor == GrippedActorToAddAttachment)
 		{
+			if (GrippedActors[i].GripLerpState == EGripLerpState::StartLerp)
+				LerpToTime = 0.0f;
+
+			if (LerpToTime > 0.0f)
+			{
+				if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
+				{
+					GrippedActors[i].LerpToRate = LerpToTime;
+					GrippedActors[i].GripLerpState = EGripLerpState::EndLerp;
+					GrippedActors[i].curLerp = LerpToTime;
+				}
+				else
+				{
+					GrippedActors[i].LerpToRate = 0.0f;
+					GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
+				}
+			}
+			else
+			{
+				GrippedActors[i].LerpToRate = 0.0f;
+				GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
+			}
+
 			GrippedActors[i].SecondaryAttachment = nullptr;
 			GrippedActors[i].bHasSecondaryAttachment = false;
-			return false;
+			
+			return true;
 		}
 	}
 
@@ -720,10 +752,9 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 		return false;
 
 	FTransform WorldTransform;
-	FTransform InverseTransform = this->GetComponentTransform().Inverse();
-	// GetRelativeTransformReverse had some serious floating point errors associated with it
-	// Not sure whats wrong with the function but I might want to push a patch out eventually
-	WorldTransform = GrippedActors[FoundIndex].RelativeTransform.GetRelativeTransform(InverseTransform);
+	FTransform ParentTransform = this->GetComponentTransform();
+
+	WorldTransform = GrippedActors[FoundIndex].RelativeTransform * ParentTransform;
 
 	// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
 	PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
@@ -759,12 +790,11 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 		return;
 
 	FTransform WorldTransform;
-	FTransform InverseTransform = this->GetComponentTransform().Inverse();
+	FTransform ParentTransform = this->GetComponentTransform();
 	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 	{
-		// GetRelativeTransformReverse had some serious floating point errors associated with it
-		// Not sure whats wrong with the function but I might want to push a patch out eventually
-		WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
+
+		WorldTransform = GrippedActors[i].RelativeTransform * ParentTransform;
 
 		if (GrippedActors[i].Actor)
 		{
@@ -885,33 +915,12 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 }
 
-void UGripMotionControllerComponent::RotateTransformAroundPivot(FVector WorldPivot, FRotator RotationDelta, FTransform & Transform, float SlerpValue, bool bIsRealDelta)
-{
-	// Compute new rotation
-	const FQuat OldRotation = Transform.GetRotation();
-	//const FQuat DeltaRotation = (RotationDelta).Quaternion();
-	const FQuat NewRotation = FQuat::Slerp(OldRotation, bIsRealDelta ? OldRotation * RotationDelta.Quaternion() : RotationDelta.Quaternion(), SlerpValue);// (DeltaRotation * OldRotation);
-
-	// Compute new location
-	FVector DeltaLocation = FVector::ZeroVector;
-	if (!WorldPivot.IsZero())
-	{
-		const FVector OldPivot = OldRotation.RotateVector(WorldPivot);
-		const FVector NewPivot = NewRotation.RotateVector(WorldPivot);
-		DeltaLocation = (OldPivot - NewPivot); // ConstrainDirectionToPlane() not necessary because it's done by MoveUpdatedComponent() below.
-	}
-
-	Transform.SetLocation(Transform.GetLocation() + DeltaLocation);
-	Transform.SetRotation(NewRotation);
-}
-
-
 void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 {
 	if (GrippedActors.Num())
 	{
 		FTransform WorldTransform;
-		FTransform InverseTransform = this->GetComponentTransform().Inverse();
+		FTransform ParentTransform = this->GetComponentTransform();
 
 		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 		{
@@ -933,96 +942,81 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				if (!actor)
 					continue;
 
-				// GetRelativeTransformReverse had some floating point errors associated with it
-				// Not sure whats wrong with the function but I might want to push a patch out eventually
-				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
-			
-				// Now working for the most part
-				if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
+				WorldTransform = GrippedActors[i].RelativeTransform * ParentTransform;
+
+
+				// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
+				if ((GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment) || GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
 				{
-					FTransform PivotTrans = this->GetComponentTransform().GetRelativeTransform(WorldTransform);
-					FVector customPivot = (PivotTrans.GetLocation());
-
-					FVector nLoc = GrippedActors[i].SecondaryRelativeTransform.GetLocation();
-					//nLoc.X = 0;
-
-					FVector frontLoc = (GrippedActors[i].SecondaryAttachment->GetComponentTransform().GetRelativeTransform(WorldTransform).GetLocation() /*- nLoc*/);
-					
-					FVector BasePoint = PivotTrans.GetLocation();//(FVector(PivotTrans.GetLocation().X, 0, 0));
-
-					FVector rotDir = frontLoc -BasePoint;
-					FVector rotDirOrig = nLoc -BasePoint;
-					
-					//rotDir = WorldTransform.TransformVector(rotDir);
-					//rotDirOrig = WorldTransform.TransformVector(rotDirOrig);
-				
-					// Reverse grip tracking if grabbed with pivot in front
-					if (customPivot.X > GrippedActors[i].SecondaryRelativeTransform.GetLocation().X)
+					switch (GrippedActors[i].GripLerpState)
 					{
-						rotDir = -rotDir;
-						rotDirOrig = -rotDirOrig;
+					case EGripLerpState::StartLerp:
+					case EGripLerpState::EndLerp:
+					{
+						if (GrippedActors[i].curLerp > 0.01f)
+							GrippedActors[i].curLerp -= DeltaTime;
+						else
+						{
+							if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondarySmoothingScaler < 0.99f)
+								GrippedActors[i].GripLerpState = EGripLerpState::ConstantLerp;
+							else
+								GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
+						}
+
+					}break;
+					case EGripLerpState::ConstantLerp:
+					case EGripLerpState::NotLerping:
+					default:break;
 					}
-
-					//FRotator FinalRot = rotDir.ToOrientationRotator() - rotDirOrig.ToOrientationRotator();
-					FRotator FinalRot = FRotationMatrix::MakeFromX(rotDir).Rotator() - FRotationMatrix::MakeFromX(rotDirOrig).Rotator();//
-					//FinalRot.Roll = 0;
-					//if (GrippedActors[i].bUsePrimaryRoll)
-						//FinalRot.Roll = WorldTransform.GetRotation().Rotator().Roll;
-
-					RotateTransformAroundPivot(customPivot * WorldTransform.GetScale3D(), FinalRot, WorldTransform, GrippedActors[i].fSecondaryInfluenceScaler, true);
-
-					/*
-					FTransform PivotTrans = this->GetComponentTransform().GetRelativeTransform(WorldTransform);
-					FVector customPivot = (PivotTrans.GetLocation());
-
-					FVector nLoc = GrippedActors[i].SecondaryRelativeTransform.GetLocation();
-					nLoc.X = 0;
-
-					FVector frontLoc = (GrippedActors[i].SecondaryAttachment->GetComponentTransform().GetRelativeTransform(WorldTransform).GetLocation() - nLoc);
-
-					FVector BasePoint = (FVector(PivotTrans.GetLocation().X, 0, 0));
-
-					FVector rotDir = WorldTransform.TransformVector(frontLoc - BasePoint);
-
-					// Reverse grip tracking if grabbed with pivot in front
-					if (customPivot.X > GrippedActors[i].SecondaryRelativeTransform.GetLocation().X)
-						rotDir = -rotDir;
-
-					FRotator FinalRot = rotDir.ToOrientationRotator();//FRotationMatrix::MakeFromX(rotDir).Rotator();
-
-					if (GrippedActors[i].bUsePrimaryRoll)
-						FinalRot.Roll = WorldTransform.GetRotation().Rotator().Roll;
-
-					RotateTransformAroundPivot(customPivot * WorldTransform.GetScale3D(), FinalRot, WorldTransform, GrippedActors[i].fSecondaryInfluenceScaler);
-					*/
-					/*
-					FTransform PivotTrans = this->GetComponentTransform().GetRelativeTransform(WorldTransform);
-					FVector customPivot = (PivotTrans.GetLocation());
-
-					FVector nLoc = GrippedActors[i].SecondaryRelativeTransform.GetLocation();
-					nLoc.X = 0;
-
-					FVector frontLoc = WorldTransform.TransformPosition(GrippedActors[i].SecondaryAttachment->GetComponentTransform().GetRelativeTransform(WorldTransform).GetLocation() - nLoc);
-					
-					FVector BasePoint = WorldTransform.TransformPosition(FVector(PivotTrans.GetLocation().X, 0, 0));
-
-					//FVector newLoc = WorldTransform.TransformPosition(frontLoc - nLoc);
-					
-					FVector rotDir = (frontLoc - BasePoint);// .GetAbs();
-				
-					// Reverse grip tracking if grabbed with pivot in front
-					if (customPivot.X > GrippedActors[i].SecondaryRelativeTransform.GetLocation().X)
-						rotDir = -rotDir;
-
-					FRotator FinalRot = rotDir.ToOrientationRotator();//FRotationMatrix::MakeFromX(rotDir).Rotator();
-					
-					if(GrippedActors[i].bUsePrimaryRoll)
-						FinalRot.Roll = WorldTransform.GetRotation().Rotator().Roll;
-
-					RotateTransformAroundPivot(customPivot * WorldTransform.GetScale3D(), FinalRot, WorldTransform, GrippedActors[i].fSecondaryInfluenceScaler);
-					*/
 				}
 
+				// Handle the interp and multi grip situations, re-checking the grip situation here as it may have changed in the switch above.
+				if ((GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment) || GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
+				{
+					// Variables needed for multi grip transform
+					FVector BasePoint = this->GetComponentLocation();
+					const FTransform PivotToWorld = FTransform(FQuat::Identity, BasePoint);
+					const FTransform WorldToPivot = FTransform(FQuat::Identity, -BasePoint);
+
+					FVector frontLocOrig;
+					FVector frontLoc;
+					
+					// Ending lerp out of a multi grip
+					if (GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
+					{
+						frontLocOrig = (WorldTransform.TransformPosition(GrippedActors[i].SecondaryRelativeLocation)) - BasePoint;
+						frontLoc = GrippedActors[i].LastRelativeLocation;
+
+						frontLocOrig = FMath::Lerp(frontLoc, frontLocOrig, GrippedActors[i].curLerp / GrippedActors[i].LerpToRate);
+					}
+					else // Is in a multi grip, might be lerping into it as well.
+					{
+						FVector curLocation = GrippedActors[i].SecondaryAttachment->GetComponentLocation();
+
+						frontLocOrig = (WorldTransform.TransformPosition(GrippedActors[i].SecondaryRelativeLocation)) - BasePoint;
+						frontLoc = curLocation - BasePoint;
+
+						if (GrippedActors[i].GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transtion
+							frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, GrippedActors[i].curLerp / GrippedActors[i].LerpToRate);
+						else if (GrippedActors[i].GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
+							frontLoc = FMath::Lerp(frontLoc, GrippedActors[i].LastRelativeLocation, GrippedActors[i].SecondarySmoothingScaler);
+
+						GrippedActors[i].LastRelativeLocation = curLocation - BasePoint;
+					}
+
+					// Get the rotation difference from the initial second grip
+					FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
+					
+					// Create a transform from it
+					FTransform RotationOffsetTransform(rotVal, FVector::ZeroVector);
+
+					// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
+					WorldTransform = WorldTransform * WorldToPivot * RotationOffsetTransform * PivotToWorld;
+
+					EndRotation = rotVal.Rotator();
+				}
+
+				// Start handling the grip types and their functions
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
 				{
 					UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
@@ -1302,8 +1296,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		// Get transform of actor we are grabbing
 
 		FTransform WorldTransform;
-		FTransform InverseTransform = this->GetComponentTransform().Inverse();
-		WorldTransform = NewGrip.RelativeTransform.GetRelativeTransform(InverseTransform);
+		WorldTransform = NewGrip.RelativeTransform * this->GetComponentTransform();
 
 		PxVec3 KinLocation = U2PVector(WorldTransform.GetLocation() - (WorldTransform.GetLocation() - root->GetComponentLocation()));
 		PxTransform GrabbedActorPose = Actor->getGlobalPose();
