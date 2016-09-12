@@ -1012,8 +1012,6 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 					// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
 					WorldTransform = WorldTransform * WorldToPivot * RotationOffsetTransform * PivotToWorld;
-
-					EndRotation = rotVal.Rotator();
 				}
 
 				// Start handling the grip types and their functions
