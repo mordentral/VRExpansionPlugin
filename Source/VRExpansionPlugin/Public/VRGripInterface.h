@@ -17,7 +17,9 @@ class VREXPANSIONPLUGIN_API IVRGripInterface
  
 public:
 
-	//classes using this interface may implement HasSlots
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGrip")
+		void ObjectType(uint8 & ObjectType);
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGrip")
 		EGripCollisionType SlotGripType();
 

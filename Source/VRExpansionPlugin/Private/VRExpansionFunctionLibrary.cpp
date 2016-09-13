@@ -18,6 +18,19 @@ UVRExpansionFunctionLibrary::~UVRExpansionFunctionLibrary()
 		UnloadOpenVRModule();
 }
 
+bool UVRExpansionFunctionLibrary::GetIsActorMovable(AActor * ActorToCheck)
+{
+	if (!ActorToCheck)
+		return false;
+
+	if (USceneComponent * rootComp = ActorToCheck->GetRootComponent())
+	{
+		 return rootComp->Mobility == EComponentMobility::Movable;
+	}
+
+	return false;
+}
+
 void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform)
 {
 	bHadSlotInRange = false;
