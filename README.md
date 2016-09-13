@@ -25,6 +25,13 @@ I will offer pre-compiled binaries for all builds as well eventually when the pl
 [VR Character Movement Component Information Page](
 https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Character%20Movement%20Component)
 
+
+[VR Path Following Component Information Page](
+https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Path%20Following%20Component)
+
+[VR Player Controller Information Page](
+https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Player%20Controller)
+
 [Grip Motion Controller Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VRGrippableMotionController)
 
 
