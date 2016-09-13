@@ -50,6 +50,10 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 	virtual void OnUnregister() override;
 
 public:
+	UPROPERTY(BlueprintReadOnly, Category = "VRGrip")
+		FRotator EndRotation;
+	UPROPERTY(BlueprintReadOnly, Category = "VRGrip")
+		float EndAngle;
 
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedActors)
 	TArray<FBPActorGripInformation> GrippedActors;

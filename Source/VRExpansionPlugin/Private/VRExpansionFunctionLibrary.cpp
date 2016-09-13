@@ -18,6 +18,44 @@ UVRExpansionFunctionLibrary::~UVRExpansionFunctionLibrary()
 		UnloadOpenVRModule();
 }
 
+void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform)
+{
+	bHadSlotInRange = false;
+	SlotWorldTransform = FTransform::Identity;
+
+	if (!Actor)
+		return;
+
+	if (USceneComponent *rootComp = Actor->GetRootComponent())
+	{
+		float ClosestSlotDistance = -0.1f;
+
+		TArray<FName> SocketNames = rootComp->GetAllSocketNames();
+
+		FString GripIdentifier = SlotType.ToString();
+
+		int foundIndex = 0;
+
+		for (int i = 0; i < SocketNames.Num(); ++i)
+		{
+			if (SocketNames[i].ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
+			{
+				float vecLen = (rootComp->GetSocketLocation(SocketNames[i]) - WorldLocation).Size();
+
+				if (MaxRange >= vecLen && (ClosestSlotDistance < 0.0f || vecLen < ClosestSlotDistance))
+				{
+					ClosestSlotDistance = vecLen;
+					bHadSlotInRange = true;
+					foundIndex = i;
+				}
+			}
+		}
+
+		if (bHadSlotInRange)
+			SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
+	}
+}
+
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
 {
 	FQuat RotOffset = HMDRotation.Quaternion();

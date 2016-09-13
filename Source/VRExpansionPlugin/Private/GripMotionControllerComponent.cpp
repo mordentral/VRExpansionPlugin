@@ -1006,7 +1006,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 					// Get the rotation difference from the initial second grip
 					FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
-					
+
 					// Create a transform from it
 					FTransform RotationOffsetTransform(rotVal, FVector::ZeroVector);
 
