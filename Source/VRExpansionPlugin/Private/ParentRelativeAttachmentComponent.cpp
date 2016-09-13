@@ -2,6 +2,7 @@
 
 #include "VRExpansionPluginPrivatePCH.h"
 #include "Runtime/Engine/Private/EnginePrivate.h"
+#include "KismetMathLibrary.h"
 #include "ParentRelativeAttachmentComponent.h"
 
 
@@ -14,45 +15,45 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
-
-	bLockPitch = true;
-	bLockYaw = false;
-	bLockRoll = true;
-
-	PitchTolerance = 0.0f;
 	YawTolerance = 0.0f;
-	RollTolerance = 0.0f;
 }
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-	if (this->GetAttachParent())
+	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 	{
-		FRotator InverseRot = GetAttachParent()->GetComponentRotation();
-		FRotator CurRot = this->GetComponentRotation();
+		FQuat curRot;
+		FVector curCameraLoc;
+		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
 
-		float newYaw = CurRot.Yaw;
-		float newRoll = CurRot.Roll;
-		float newPitch = CurRot.Pitch;
+		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(curRot.Rotator());
 
-		if (bLockYaw)
-			newYaw = 0;
-		else if (!bLockYaw && (FPlatformMath::Abs(InverseRot.Yaw - CurRot.Yaw)) > YawTolerance)
-			newYaw = InverseRot.Yaw;
-		else
-			newYaw = CurRot.Yaw;
+		if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
+		{
+			SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion(), false);
+			return;
+		}
 
-		if (bLockPitch)
-			newPitch = 0;
-		else if (!bLockPitch && (FPlatformMath::Abs(InverseRot.Pitch - CurRot.Pitch)) > PitchTolerance)
-			newPitch = InverseRot.Pitch;
+		LastRot = InverseRot;
+		SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
+		SetRelativeLocation(curCameraLoc);
+	}
+	else if (this->GetOwner())
+	{
+		if (UCameraComponent * CameraOwner = this->GetOwner()->FindComponentByClass<UCameraComponent>())
+		{
+			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(CameraOwner->GetComponentRotation());
 
-		if (bLockRoll)
-			newRoll = 0;
-		else if (!bLockRoll && (FPlatformMath::Abs(InverseRot.Roll - CurRot.Roll)) > RollTolerance)
-			newRoll = InverseRot.Roll;
+			if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
+			{
+				SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion(), false);
+				return;
+			}
 
-		SetWorldRotation(FRotator(newPitch, newYaw, newRoll), false);
+			LastRot = InverseRot;
+			SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
+			SetWorldLocation(CameraOwner->GetComponentLocation());
+		}
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);

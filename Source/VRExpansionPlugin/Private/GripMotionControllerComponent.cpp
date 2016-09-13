@@ -3,6 +3,7 @@
 #include "VRExpansionPluginPrivatePCH.h"
 #include "GripMotionControllerComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "KismetMathLibrary.h"
 #include "PrimitiveSceneInfo.h"
 
 #include "PhysicsPublic.h"
@@ -48,6 +49,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	//bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
+
 }
 
 //=============================================================================
@@ -195,7 +197,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	{
 		// Skip actors that are colliding if turning off late updates during collision.
 		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
-		if (actor.bTurnOffLateUpdateWhenColliding && actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics)
+		if ((actor.bTurnOffLateUpdateWhenDoubleGrip && actor.bHasSecondaryAttachment) || (actor.bTurnOffLateUpdateWhenColliding && actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics))
 			continue;
 
 		if (actor.Actor)
@@ -257,8 +259,17 @@ bool UGripMotionControllerComponent::GripActor(
 
 	if (!ActorToGrip)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped actor"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid actor"));
 		return false;
+	}
+
+	for (int i = 0; i < GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i].Actor == ActorToGrip)
+		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already gripped actor"));
+			return false;
+		}
 	}
 
 	UPrimitiveComponent *root = Cast<UPrimitiveComponent>(ActorToGrip->GetRootComponent());
@@ -298,7 +309,7 @@ bool UGripMotionControllerComponent::GripActor(
 		newActorGrip.RelativeTransform = WorldOffset;
 	else
 		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
-	
+
 	NotifyGrip(newActorGrip);
 	GrippedActors.Add(newActorGrip);
 
@@ -352,6 +363,17 @@ bool UGripMotionControllerComponent::GripComponent(
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped component"));
 		return false;
 	}
+
+
+	for(int i=0; i<GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i].Component == ComponentToGrip)
+		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already gripped component"));
+			return false;
+		}
+	}
+
 
 	// Has to be movable to work
 	if (ComponentToGrip->Mobility != EComponentMobility::Movable)
@@ -529,6 +551,9 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			}
 		}
 	}
+
+	// Move it to the correct location automatically
+	TeleportMoveGrip(NewGrip);
 }
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
@@ -590,7 +615,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}
 }
 
-bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, FTransform OriginalRelativeTransform, bool bTurnOfLateUpdates, float LerpToTime, float SecondarySmoothingScaler)
 {
 	if (!bIsServer)
 	{
@@ -605,12 +630,22 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 	{
 		if (GrippedActors[i].Actor == GrippedActorToAddAttachment)
 		{
-			if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
-			{
-				GrippedActors[i].SecondaryRelativeTransform = SecondaryPointComponent->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform());
-			}
+			GrippedActors[i].SecondaryRelativeLocation = OriginalRelativeTransform.GetLocation();
 			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
-			GrippedActors[i].bHasSecondaryAttachment = true;
+			GrippedActors[i].bHasSecondaryAttachment = true;	
+			GrippedActors[i].SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
+			GrippedActors[i].bTurnOffLateUpdateWhenDoubleGrip = bTurnOfLateUpdates;
+
+			if (GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
+				LerpToTime = 0.0f;
+
+			if (LerpToTime > 0.0f)
+			{
+				GrippedActors[i].LerpToRate = LerpToTime;
+				GrippedActors[i].GripLerpState = EGripLerpState::StartLerp;
+				GrippedActors[i].curLerp = LerpToTime;
+			}
+
 			return true;
 		}
 	}
@@ -618,7 +653,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 	return false;
 }
 
-bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment)
+bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, float LerpToTime)
 {
 	if (!bIsServer)
 	{
@@ -633,9 +668,33 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * Gri
 	{
 		if (GrippedActors[i].Actor == GrippedActorToAddAttachment)
 		{
+			if (GrippedActors[i].GripLerpState == EGripLerpState::StartLerp)
+				LerpToTime = 0.0f;
+
+			if (LerpToTime > 0.0f)
+			{
+				if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent()))
+				{
+					GrippedActors[i].LerpToRate = LerpToTime;
+					GrippedActors[i].GripLerpState = EGripLerpState::EndLerp;
+					GrippedActors[i].curLerp = LerpToTime;
+				}
+				else
+				{
+					GrippedActors[i].LerpToRate = 0.0f;
+					GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
+				}
+			}
+			else
+			{
+				GrippedActors[i].LerpToRate = 0.0f;
+				GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
+			}
+
 			GrippedActors[i].SecondaryAttachment = nullptr;
 			GrippedActors[i].bHasSecondaryAttachment = false;
-			return false;
+			
+			return true;
 		}
 	}
 
@@ -693,10 +752,9 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 		return false;
 
 	FTransform WorldTransform;
-	FTransform InverseTransform = this->GetComponentTransform().Inverse();
-	// GetRelativeTransformReverse had some serious floating point errors associated with it
-	// Not sure whats wrong with the function but I might want to push a patch out eventually
-	WorldTransform = GrippedActors[FoundIndex].RelativeTransform.GetRelativeTransform(InverseTransform);
+	FTransform ParentTransform = this->GetComponentTransform();
+
+	WorldTransform = GrippedActors[FoundIndex].RelativeTransform * ParentTransform;
 
 	// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
 	PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
@@ -732,12 +790,11 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 		return;
 
 	FTransform WorldTransform;
-	FTransform InverseTransform = this->GetComponentTransform().Inverse();
+	FTransform ParentTransform = this->GetComponentTransform();
 	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 	{
-		// GetRelativeTransformReverse had some serious floating point errors associated with it
-		// Not sure whats wrong with the function but I might want to push a patch out eventually
-		WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
+
+		WorldTransform = GrippedActors[i].RelativeTransform * ParentTransform;
 
 		if (GrippedActors[i].Actor)
 		{
@@ -854,16 +911,16 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	}
 
 	// Process the gripped actors
-	TickGrip();
+	TickGrip(DeltaTime);
 
 }
 
-void UGripMotionControllerComponent::TickGrip()
+void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 {
 	if (GrippedActors.Num())
 	{
 		FTransform WorldTransform;
-		FTransform InverseTransform = this->GetComponentTransform().Inverse();
+		FTransform ParentTransform = this->GetComponentTransform();
 
 		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 		{
@@ -885,20 +942,81 @@ void UGripMotionControllerComponent::TickGrip()
 				if (!actor)
 					continue;
 
+				WorldTransform = GrippedActors[i].RelativeTransform * ParentTransform;
 
-				// GetRelativeTransformReverse had some floating point errors associated with it
-				// Not sure whats wrong with the function but I might want to push a patch out eventually
-				WorldTransform = GrippedActors[i].RelativeTransform.GetRelativeTransform(InverseTransform);
 
-				// Need to figure out best default behavior
-				if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment)
+				// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
+				if ((GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment) || GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
 				{
+					switch (GrippedActors[i].GripLerpState)
+					{
+					case EGripLerpState::StartLerp:
+					case EGripLerpState::EndLerp:
+					{
+						if (GrippedActors[i].curLerp > 0.01f)
+							GrippedActors[i].curLerp -= DeltaTime;
+						else
+						{
+							if (GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondarySmoothingScaler < 0.99f)
+								GrippedActors[i].GripLerpState = EGripLerpState::ConstantLerp;
+							else
+								GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
+						}
 
+					}break;
+					case EGripLerpState::ConstantLerp:
+					case EGripLerpState::NotLerping:
+					default:break;
+					}
 				}
 
+				// Handle the interp and multi grip situations, re-checking the grip situation here as it may have changed in the switch above.
+				if ((GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment) || GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
+				{
+					// Variables needed for multi grip transform
+					FVector BasePoint = this->GetComponentLocation();
+					const FTransform PivotToWorld = FTransform(FQuat::Identity, BasePoint);
+					const FTransform WorldToPivot = FTransform(FQuat::Identity, -BasePoint);
+
+					FVector frontLocOrig;
+					FVector frontLoc;
+					
+					// Ending lerp out of a multi grip
+					if (GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
+					{
+						frontLocOrig = (WorldTransform.TransformPosition(GrippedActors[i].SecondaryRelativeLocation)) - BasePoint;
+						frontLoc = GrippedActors[i].LastRelativeLocation;
+
+						frontLocOrig = FMath::Lerp(frontLoc, frontLocOrig, GrippedActors[i].curLerp / GrippedActors[i].LerpToRate);
+					}
+					else // Is in a multi grip, might be lerping into it as well.
+					{
+						FVector curLocation = GrippedActors[i].SecondaryAttachment->GetComponentLocation();
+
+						frontLocOrig = (WorldTransform.TransformPosition(GrippedActors[i].SecondaryRelativeLocation)) - BasePoint;
+						frontLoc = curLocation - BasePoint;
+
+						if (GrippedActors[i].GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transtion
+							frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, GrippedActors[i].curLerp / GrippedActors[i].LerpToRate);
+						else if (GrippedActors[i].GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
+							frontLoc = FMath::Lerp(frontLoc, GrippedActors[i].LastRelativeLocation, GrippedActors[i].SecondarySmoothingScaler);
+
+						GrippedActors[i].LastRelativeLocation = curLocation - BasePoint;
+					}
+
+					// Get the rotation difference from the initial second grip
+					FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
+
+					// Create a transform from it
+					FTransform RotationOffsetTransform(rotVal, FVector::ZeroVector);
+
+					// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
+					WorldTransform = WorldTransform * WorldToPivot * RotationOffsetTransform * PivotToWorld;
+				}
+
+				// Start handling the grip types and their functions
 				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
 				{
-
 					UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
 					
 					// Sweep current collision state
@@ -916,13 +1034,22 @@ void UGripMotionControllerComponent::TickGrip()
 						}
 						else
 						{
-							GrippedActors[i].bColliding = false;
+							GrippedActors[i].bColliding = false;							
 						}
 					}
 
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
 				{
+					FVector OriginalPosition(root->GetComponentLocation());
+					FVector NewPosition(WorldTransform.GetTranslation());
+
+					if(!GrippedActors[i].bIsLocked)
+						root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
+
+					if (GrippedActors[i].bIsLocked)
+						WorldTransform.SetRotation(GrippedActors[i].LastLockedRotation);
+
 					FHitResult OutHit;
 					// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
 					root->SetWorldTransform(WorldTransform, true, &OutHit);
@@ -931,12 +1058,21 @@ void UGripMotionControllerComponent::TickGrip()
 					{
 						GrippedActors[i].bColliding = true;
 
+						if (!GrippedActors[i].bIsLocked)
+						{
+							GrippedActors[i].bIsLocked = true;
+							GrippedActors[i].LastLockedRotation = root->GetComponentQuat();
+						}
+
 						//if (!actor->bReplicateMovement)
 						//	actor->SetReplicateMovement(true);
 					}
 					else
 					{
 						GrippedActors[i].bColliding = false;
+
+						if (GrippedActors[i].bIsLocked)
+							GrippedActors[i].bIsLocked = false;
 
 						//if (actor->bReplicateMovement)
 						//	actor->SetReplicateMovement(false);
@@ -948,7 +1084,7 @@ void UGripMotionControllerComponent::TickGrip()
 					// Make sure that there is no collision on course before turning off collision and snapping to controller
 					FBPActorPhysicsHandleInformation * GripHandle = GetPhysicsGrip(GrippedActors[i]);
 
-					if (GrippedActors[i].bColliding && GripHandle)
+					if (GrippedActors[i].bColliding/* && GripHandle*/)
 					{
 						TArray<FOverlapResult> Hits;
 						FComponentQueryParams Params(NAME_None, this->GetOwner());
@@ -956,7 +1092,6 @@ void UGripMotionControllerComponent::TickGrip()
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
-							//if(GetWorld()->ComponentOverlapMulti(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), Params))
 						{
 							GrippedActors[i].bColliding = true;
 						}
@@ -965,7 +1100,22 @@ void UGripMotionControllerComponent::TickGrip()
 							GrippedActors[i].bColliding = false;
 						}
 					}
-
+					else if(!GrippedActors[i].bColliding)
+					{
+						TArray<FOverlapResult> Hits;
+						FComponentQueryParams Params(NAME_None, this->GetOwner());
+						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+						Params.AddIgnoredActor(actor);
+						Params.AddIgnoredActors(root->MoveIgnoreActors);
+						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params))
+						{
+							GrippedActors[i].bColliding = true;
+						}
+						else
+						{
+							GrippedActors[i].bColliding = false;
+						}
+					}
 
 					if (!GrippedActors[i].bColliding)
 					{		
@@ -1011,13 +1161,14 @@ void UGripMotionControllerComponent::TickGrip()
 
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::SweepWithPhysics)
-				{
-						
+				{			
 					FVector OriginalPosition(root->GetComponentLocation());
 					FRotator OriginalOrientation(root->GetComponentRotation());
 
 					FVector NewPosition(WorldTransform.GetTranslation());
 					FRotator NewOrientation(WorldTransform.GetRotation());
+
+					root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
 
 					// Now sweep collision separately so we can get hits but not have the location altered
 					if (bUseWithoutTracking || NewPosition != OriginalPosition || NewOrientation != OriginalOrientation)
@@ -1029,7 +1180,7 @@ void UGripMotionControllerComponent::TickGrip()
 
 						if (bUseWithoutTracking || move.SizeSquared() > MinMovementDistSq || NewOrientation != OriginalOrientation)
 						{
-							if (CheckComponentWithSweep(root, move, NewOrientation, false))
+							if (CheckComponentWithSweep(root, move, OriginalOrientation, false))
 							{
 								GrippedActors[i].bColliding = true;
 							}
@@ -1038,8 +1189,9 @@ void UGripMotionControllerComponent::TickGrip()
 						}
 					}
 
-						// Move the actor, we are not offsetting by the hit result anyway
-						root->SetWorldTransform(WorldTransform, false);
+					// Move the actor, we are not offsetting by the hit result anyway
+					root->SetWorldTransform(WorldTransform, false);
+
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::PhysicsOnly)
 				{
@@ -1142,8 +1294,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		// Get transform of actor we are grabbing
 
 		FTransform WorldTransform;
-		FTransform InverseTransform = this->GetComponentTransform().Inverse();
-		WorldTransform = NewGrip.RelativeTransform.GetRelativeTransform(InverseTransform);
+		WorldTransform = NewGrip.RelativeTransform * this->GetComponentTransform();
 
 		PxVec3 KinLocation = U2PVector(WorldTransform.GetLocation() - (WorldTransform.GetLocation() - root->GetComponentLocation()));
 		PxTransform GrabbedActorPose = Actor->getGlobalPose();
@@ -1367,6 +1518,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 		}
 		else
 		{
+			
 			if(root->GetOwner())
 				root->DispatchBlockingHit(*root->GetOwner(), BlockingHit);
 		}

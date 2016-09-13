@@ -67,6 +67,7 @@ private:
 	const AActor& MyOwner;
 };
 
+
 static void PullBackHit(FHitResult& Hit, const FVector& Start, const FVector& End, const float Dist)
 {
 	const float DesiredTimeBack = FMath::Clamp(0.1f, 0.1f / Dist, 1.f / Dist) + 0.001f;
@@ -257,6 +258,9 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	curCameraLoc = FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
 
+	bUseWalkingCollisionOverride = false;
+	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
+
 	CanCharacterStepUpOn = ECB_No;
 	bShouldUpdatePhysicsVolume = true;
 	bCheckAsyncSceneOnMove = false;
@@ -347,7 +351,10 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 {
-	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+
+	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
+
+	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
 	
 	if(bUpdateBounds)
@@ -397,8 +404,11 @@ void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFl
 FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
-	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
+
 	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+
 }
 
 #if WITH_EDITOR

@@ -46,11 +46,14 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 	}
 
 	// Custom version of the component sweep function to remove that aggravating warning epic is throwing about skeletal mesh components.
-	bool ComponentSweepMultiVR(TArray<struct FHitResult>& OutHits, class UPrimitiveComponent* PrimComp, const FVector& Start, const FVector& End, const FQuat& Quat, const struct FComponentQueryParams& Params) const;
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void OnUnregister() override;
 
 public:
+	UPROPERTY(BlueprintReadOnly, Category = "VRGrip")
+		FRotator EndRotation;
+	UPROPERTY(BlueprintReadOnly, Category = "VRGrip")
+		float EndAngle;
 
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedActors)
 	TArray<FBPActorGripInformation> GrippedActors;
@@ -168,13 +171,59 @@ public:
 	bool GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
-	void TickGrip();
+	void TickGrip(float DeltaTime);
 
 	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform)
 	{
 		return InTransform.GetRelativeTransform(this->GetComponentTransform());
+	}
+
+	// Creates a secondary grip relative transform
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	static FTransform ConvertToGripRelativeTransform(const FTransform& GrippedActorTransform, const FTransform & InTransform)
+	{
+		return InTransform.GetRelativeTransform(GrippedActorTransform);
+	}
+
+
+	// Gets if the given Component is a secondary attach point to a gripped actor
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	bool GetIsHeld(const AActor * ActorToCheck)
+	{
+		if (!ActorToCheck)
+			return false;
+
+		for (int i = 0; i < GrippedActors.Num(); ++i)
+		{
+			if (GrippedActors[i].Actor == ActorToCheck)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+
+	// Gets if the given Component is a secondary attach point to a gripped actor
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	bool GetIsSecondaryAttachment(const USceneComponent * ComponentToCheck, FBPActorGripInformation & Grip)
+	{
+		if (!ComponentToCheck)
+			return false;
+
+		for (int i = 0; i < GrippedActors.Num(); ++i)
+		{
+			if(GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment == ComponentToCheck)
+			{
+				Grip = GrippedActors[i];
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	// Get list of all gripped actors 
@@ -198,18 +247,15 @@ public:
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent);
+	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, FTransform OriginalTransform, bool bTurnOfLateUpdates = true, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool RemoveSecondaryAttachmentPoint(AActor * GrippedActorToRemoveAttachment);
+	bool RemoveSecondaryAttachmentPoint(AActor * GrippedActorToRemoveAttachment, float LerpToTime = 0.25f);
 
 	// This is for testing, setting it to true allows you to test grip with a non VR enabled pawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bUseWithoutTracking;
-
-	//FVector OriginalPosition;
-	//FRotator OriginalOrientation;
 
 	bool CheckComponentWithSweep(UPrimitiveComponent * ComponentToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
 	

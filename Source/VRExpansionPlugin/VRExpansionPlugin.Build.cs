@@ -55,7 +55,8 @@ public class VRExpansionPlugin : ModuleRules
                 "RHI",
                 "RenderCore",
                 "ShaderCore",
-                "NetworkReplayStreaming"
+                "NetworkReplayStreaming",
+                "AIModule"
             });
 
         PrivateDependencyModuleNames.AddRange(

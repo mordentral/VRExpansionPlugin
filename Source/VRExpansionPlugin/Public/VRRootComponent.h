@@ -92,6 +92,20 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	FVector VRCapsuleOffset;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	bool bUseWalkingCollisionOverride;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	TEnumAsByte<ECollisionChannel> WalkingCollisionOverride;
+
+	ECollisionChannel GetVRCollisionObjectType()
+	{
+		if (bUseWalkingCollisionOverride)
+			return WalkingCollisionOverride;
+		else
+			return GetCollisionObjectType();
+	}
+
 	FVector curCameraLoc;
 	FRotator curCameraRot;
 
