@@ -413,34 +413,6 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	vr::RenderModel_t *RenderModel = NULL;
 
 	//VRRenderModels->LoadRenderModel()
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-	if (!VRRenderModels->LoadRenderModel(RenderModelName, &RenderModel))
-	{
-		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
-		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
-		return nullptr;
-	}
-
-	if(!RenderModel)
-	{
-		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
-		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
-		return nullptr;
-	}
-
-	vr::TextureID_t texID = RenderModel->diffuseTextureId;
-	vr::RenderModel_TextureMap_t * texture = NULL;
-
-	UTexture2D* OutTexture = nullptr;
-
-	if (!VRRenderModels->LoadTexture(texID, &texture))
-	{
-		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Texture!!"));
-		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
-		return nullptr;
-	}
-
-#else
 	vr::EVRRenderModelError ModelErrorCode = VRRenderModels->LoadRenderModel_Async(RenderModelName, &RenderModel);
 	
 	if (ModelErrorCode != vr::EVRRenderModelError::VRRenderModelError_None)
@@ -481,9 +453,6 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 
 		return nullptr;
 	}
-
-
-#endif
 
 	if (!texture)
 	{

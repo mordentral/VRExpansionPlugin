@@ -12,10 +12,10 @@
 #include "PhysXSupport.h"
 #endif // WITH_PHYSX
 
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 11
-#else
+//#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 11
+//#else
 #include "Features/IModularFeatures.h"
-#endif
+//#endif
 
 DEFINE_LOG_CATEGORY(LogVRMotionController);
 
@@ -1548,17 +1548,6 @@ bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRot
 
 	if ((PlayerIndex != INDEX_NONE) && bHasAuthority)
 	{
-
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 11
-		for (auto MotionController : GEngine->MotionControllerDevices)
-		{
-			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position))
-			{
-				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
-				return true;
-			}
-		}
-#else
 		// New iteration and retrieval for 4.12
 		TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
 		for (auto MotionController : MotionControllers)
@@ -1569,7 +1558,6 @@ bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRot
 				return true;
 			}
 		}
-#endif
 	}
 	return false;
 }

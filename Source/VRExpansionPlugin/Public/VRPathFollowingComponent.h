@@ -36,13 +36,15 @@ public:
 	int32 DetermineStartingPathPoint(const FNavigationPath* ConsideredPath) const override;
 		
 
-	// Changes with 4.13
-	void PauseMove(FAIRequestID RequestID, bool bResetVelocity) override;
-		
+	// This has a foot location when using meta paths, i'm not overriding it yet but this means that meta paths might have slightly bugged implementation.
+	/** notify about finished movement */
+	//virtual void OnPathFinished(const FPathFollowingResult& Result) override;
+
+	/** pause path following
+	*  @param RequestID - request to pause, FAIRequestID::CurrentRequest means pause current request, regardless of its ID */
+	void PauseMove(FAIRequestID RequestID = FAIRequestID::CurrentRequest, EPathFollowingVelocityMode VelocityMode = EPathFollowingVelocityMode::Reset) override;
 	// Now has an actor feet call  .......Just a debug reference
 	//virtual FAIRequestID RequestMove(FNavPathSharedPtr Path, FRequestCompletedSignature OnComplete, const AActor* DestinationActor = NULL, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius, bool bStopOnOverlap = true, FCustomMoveSharedPtr GameData = NULL) override;
-
-	// END UPDATE WITH 4.13
 
 
 	// Fine in 4.13
@@ -51,41 +53,22 @@ public:
 	// Fine in 4.13, had to change feet based for both
 	bool UpdateBlockDetection() override;
 
-	////////4.13 specifics///////
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 13
 
-	// Added a actorfeetlocation() call
-	//void OnPathFinished(const FPathFollowingResult& Result) override;
+	/** simple test for stationary agent (used as early finish condition), check if reached given point
+	*  @param TestPoint - point to test
+	*  @param AcceptanceRadius - allowed 2D distance
+	*  @param ReachMode - modifiers for AcceptanceRadius
+	*/
+	bool HasReached(const FVector& TestPoint, EPathFollowingReachMode ReachMode, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius) const;
 
-#endif
-	/*
-	DEPRECATED(4.13, "This function is now deprecated, please use version with FAIMoveRequest parameter instead.")
-		FAIRequestID RequestMove(FNavPathSharedPtr InPath, const AActor* InDestinationActor = NULL, float InAcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius, bool InStopOnOverlap = true, FCustomMoveSharedPtr InGameData = NULL);
+	/** simple test for stationary agent (used as early finish condition), check if reached given goal
+	*  @param TestGoal - actor to test
+	*  @param AcceptanceRadius - allowed 2D distance
+	*  @param ReachMode - modifiers for AcceptanceRadius
+	*  @param bUseNavAgentGoalLocation - true: if the goal is a nav agent, we will use their nav agent location rather than their actual location
+	*/
+	bool HasReached(const AActor& TestGoal, EPathFollowingReachMode ReachMode, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius, bool bUseNavAgentGoalLocation = true) const;
 
-	DEPRECATED(4.13, "This function is now deprecated, please use version with EPathFollowingResultDetails parameter instead.")
-		virtual void AbortMove(const FString& Reason, FAIRequestID RequestID = FAIRequestID::CurrentRequest, bool bResetVelocity = true, bool bSilent = false, uint8 MessageFlags = 0);
-
-	DEPRECATED(4.13, "This function is now deprecated, please use version with EPathFollowingVelocityMode parameter instead.")
-		virtual void PauseMove(FAIRequestID RequestID = FAIRequestID::CurrentRequest, bool bResetVelocity = true);
-
-	UFUNCTION(BlueprintCallable, Category = "AI|Components|PathFollowing", meta = (DeprecatedFunction, DeprecationMessage = "This function is now deprecated, please use AIController.GetMoveStatus instead"))
-		EPathFollowingAction::Type GetPathActionType() const;
-
-	UFUNCTION(BlueprintCallable, Category = "AI|Components|PathFollowing", meta = (DeprecatedFunction, DeprecationMessage = "This function is now deprecated, please use AIController.GetImmediateMoveDestination instead"))
-		FVector GetPathDestination() const;
-
-	DEPRECATED(4.13, "This function is now deprecated, please version with FPathFollowingResult parameter instead.")
-		virtual void OnPathFinished(EPathFollowingResult::Type Result);
-
-	DEPRECATED(4.13, "This function is now deprecated and no longer supported.")
-		int32 OptimizeSegmentVisibility(int32 StartIndex) { return StartIndex + 1; }
-
-	DEPRECATED(4.13, "This function is now deprecated, please use version with EPathFollowingReachMode parameter instead.")
-		bool HasReached(const FVector& TestPoint, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius, bool bExactSpot = false) const;
-
-	DEPRECATED(4.13, "This function is now deprecated, please use version with EPathFollowingReachMode parameter instead.")
-		bool HasReached(const AActor& TestGoal, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius, bool bExactSpot = false, bool bUseNavAgentGoalLocation = true) const;
-		*/
 
 
 
