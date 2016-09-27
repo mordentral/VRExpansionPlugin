@@ -1004,14 +1004,20 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						GrippedActors[i].LastRelativeLocation = curLocation - BasePoint;
 					}
 
+
+					FVector Start = FVector::CrossProduct(frontLoc, frontLocOrig);
+					Start.Normalize();
+					DrawDebugLine(GetWorld(), (frontLoc+frontLocOrig)/2 + BasePoint, (((frontLoc + frontLocOrig) / 2)+BasePoint) + (Start * 20), FColor::Red);
+
 					// Get the rotation difference from the initial second grip
 					FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
-
+				
 					// Create a transform from it
 					FTransform RotationOffsetTransform(rotVal, FVector::ZeroVector);
 
 					// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
 					WorldTransform = WorldTransform * WorldToPivot * RotationOffsetTransform * PivotToWorld;
+
 				}
 
 				// Start handling the grip types and their functions
