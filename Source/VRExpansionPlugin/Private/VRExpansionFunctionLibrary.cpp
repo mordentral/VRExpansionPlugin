@@ -71,11 +71,36 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
 {
-	FQuat RotOffset = HMDRotation.Quaternion();
+
+	// Testing Unity's version
+
+	FRotationMatrix HeadMat(HMDRotation);
+
+	FVector forward = HeadMat.GetScaledAxis(EAxis::X);
+	FVector forwardLeveled = forward;
+	forwardLeveled.Z = 0;
+	forwardLeveled.Normalize();
+	FVector mixedInLocalForward = HeadMat.GetScaledAxis(EAxis::Z);
+
+	if (forward.Z > 0)
+	{
+		mixedInLocalForward = -mixedInLocalForward;
+	}
+	mixedInLocalForward.Z = 0;
+	mixedInLocalForward.Normalize();
+	float dot = FMath::Clamp(FVector::DotProduct(forwardLeveled, forward), 0.0f, 1.0f);
+	FVector finalForward = FMath::Lerp(mixedInLocalForward, forwardLeveled, dot * dot);
+
+
+	return FRotationMatrix::MakeFromXZ(finalForward, FVector::UpVector).Rotator();
+	
+
+
+	/*FQuat RotOffset = HMDRotation.Quaternion();
 	FRotator Inversey = HMDRotation.GetInverse();
 
 	RotOffset = FRotator(0.0f, 0.0f, Inversey.Roll).Quaternion() * (FRotator(Inversey.Pitch, 0.0f, 0.0f).Quaternion() * RotOffset);
-	return FRotator(0, RotOffset.Rotator().Yaw, 0);
+	return FRotator(0, RotOffset.Rotator().Yaw, 0);*/
 }
 
 bool UVRExpansionFunctionLibrary::OpenVRHandles()
