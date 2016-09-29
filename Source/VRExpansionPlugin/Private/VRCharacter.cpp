@@ -128,60 +128,6 @@ FVector AVRCharacter::GetNavAgentLocation() const
 	return AgentLocation;
 }
 
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, float AcceptanceRadius, bool bStopOnOverlap, bool bUsePathfinding, bool bProjectDestinationToNavigation, bool bCanStrafe, TSubclassOf<UNavigationQueryFilter> FilterClass, bool bAllowPartialPaths)
-{
-	UNavigationSystem* NavSys = Controller ? UNavigationSystem::GetCurrent(Controller->GetWorld()) : nullptr;
-	if (NavSys == nullptr || Controller == nullptr || Controller->GetPawn() == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("UNavigationSystem::SimpleMoveToActor called for NavSys:%s Controller:%s (if any of these is None then there's your problem"),
-			*GetNameSafe(NavSys), *GetNameSafe(Controller));
-		return;
-	}
-
-	UPathFollowingComponent* PFollowComp = nullptr;
-	Controller->InitNavigationControl(PFollowComp);
-
-	if (PFollowComp == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ExtendedSimpleMoveToLocation - No PathFollowingComponent Found"));
-		return;
-	}
-
-	if (!PFollowComp->IsPathFollowingAllowed())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ExtendedSimpleMoveToLocation - Path Following Movement Is Not Set To Allowed"));
-		return;
-	}
-
-	if (PFollowComp->HasReached(GoalLocation))
-	{
-		// make sure previous move request gets aborted
-		PFollowComp->AbortMove(TEXT("Aborting move due to new move request finishing with AlreadyAtGoal"), FAIRequestID::AnyRequest);
-		PFollowComp->SetLastMoveAtGoal(true);
-	}
-	else
-	{
-		const ANavigationData* NavData = NavSys->GetNavDataForProps(Controller->GetNavAgentPropertiesRef());
-		if (NavData)
-		{
-			FPathFindingQuery Query(Controller, *NavData, Controller->GetNavAgentLocation(), GoalLocation);
-			FPathFindingResult Result = NavSys->FindPathSync(Query);
-			if (Result.IsSuccessful())
-			{
-				PFollowComp->RequestMove(Result.Path, NULL,AcceptanceRadius,bStopOnOverlap);
-			}
-			else if (PFollowComp->GetStatus() != EPathFollowingStatus::Idle)
-			{
-				PFollowComp->AbortMove(TEXT("Aborting move due to new move request failing to generate a path"), FAIRequestID::AnyRequest);
-				PFollowComp->SetLastMoveAtGoal(false);
-			}
-		}
-	}
-}
-
-#else // 4.13 better version
-
 void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, float AcceptanceRadius, bool bStopOnOverlap, bool bUsePathfinding, bool bProjectDestinationToNavigation, bool bCanStrafe, TSubclassOf<UNavigationQueryFilter> FilterClass, bool bAllowPartialPaths)
 {
 	UNavigationSystem* NavSys = Controller ? UNavigationSystem::GetCurrent(Controller->GetWorld()) : nullptr;
@@ -213,7 +159,12 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 	else
 		ReachMode = EPathFollowingReachMode::ExactLocation;
 
-	const bool bAlreadyAtGoal = PFollowComp->HasReached(GoalLocation, /*EPathFollowingReachMode::OverlapAgent*/ReachMode);
+	bool bAlreadyAtGoal = false;
+
+	if(UVRPathFollowingComponent * pathcomp = Cast<UVRPathFollowingComponent>(PFollowComp))
+		bAlreadyAtGoal = pathcomp->HasReached(GoalLocation, /*EPathFollowingReachMode::OverlapAgent*/ReachMode);
+	else
+		bAlreadyAtGoal = PFollowComp->HasReached(GoalLocation, /*EPathFollowingReachMode::OverlapAgent*/ReachMode);
 
 	// script source, keep only one move request at time
 	if (PFollowComp->GetStatus() != EPathFollowingStatus::Idle)
@@ -263,5 +214,3 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 		}
 	}
 }
-
-#endif

@@ -59,21 +59,11 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRCharacter")
 	void ReceiveNavigationMoveCompleted(EPathFollowingResult::Type PathingResult);
 
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-
-	virtual void NavigationMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
-	{
-		this->Controller->StopMovement();
-		ReceiveNavigationMoveCompleted(Result);
-	}
-#else
-
 	virtual void NavigationMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
 	{
 		this->Controller->StopMovement();
 		ReceiveNavigationMoveCompleted(Result.Code);
 	}
-#endif
 
 	/** Returns status of path following */
 	UFUNCTION(BlueprintCallable, Category = "VRCharacter")
@@ -116,11 +106,7 @@ public:
 		{
 			// @note FPathFollowingResultFlags::ForcedScript added to make AITask_MoveTo instances 
 			// not ignore OnRequestFinished notify that's going to be sent out due to this call
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-			pathComp->AbortMove(TEXT("no path"), FAIRequestID::CurrentRequest, true, false, EPathFollowingMessage::NoPath);
-#else
 			pathComp->AbortMove(*this, FPathFollowingResultFlags::MovementStop | FPathFollowingResultFlags::ForcedScript);
-#endif
 		}
 	}
 

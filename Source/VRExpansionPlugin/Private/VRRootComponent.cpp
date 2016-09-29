@@ -352,7 +352,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 {
 
-	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
+	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 
 	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;

@@ -68,15 +68,42 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 			SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
 	}
 }
-
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
 {
-	FQuat RotOffset = HMDRotation.Quaternion();
+	return GetHMDPureYaw_I(HMDRotation);
+}
+
+/*FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw_I(FRotator HMDRotation)
+{
+	// Took this from UnityVRToolkit, no shame, I liked it
+	FRotationMatrix HeadMat(HMDRotation);
+
+	FVector forward = HeadMat.GetScaledAxis(EAxis::X);
+	FVector forwardLeveled = forward;
+	forwardLeveled.Z = 0;
+	forwardLeveled.Normalize();
+	FVector mixedInLocalForward = HeadMat.GetScaledAxis(EAxis::Z);
+
+	if (forward.Z > 0)
+	{
+		mixedInLocalForward = -mixedInLocalForward;
+	}
+
+	mixedInLocalForward.Z = 0;
+	mixedInLocalForward.Normalize();
+	float dot = FMath::Clamp(FVector::DotProduct(forwardLeveled, forward), 0.0f, 1.0f);
+	FVector finalForward = FMath::Lerp(mixedInLocalForward, forwardLeveled, dot * dot);
+
+	return FRotationMatrix::MakeFromXZ(finalForward,FVector::UpVector).Rotator();
+	
+
+	// This had rotational offsets
+	/*FQuat RotOffset = HMDRotation.Quaternion();
 	FRotator Inversey = HMDRotation.GetInverse();
 
 	RotOffset = FRotator(0.0f, 0.0f, Inversey.Roll).Quaternion() * (FRotator(Inversey.Pitch, 0.0f, 0.0f).Quaternion() * RotOffset);
-	return FRotator(0, RotOffset.Rotator().Yaw, 0);
-}
+	return FRotator(0, RotOffset.Rotator().Yaw, 0);*//*
+}*/
 
 bool UVRExpansionFunctionLibrary::OpenVRHandles()
 {
@@ -413,34 +440,6 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	vr::RenderModel_t *RenderModel = NULL;
 
 	//VRRenderModels->LoadRenderModel()
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-	if (!VRRenderModels->LoadRenderModel(RenderModelName, &RenderModel))
-	{
-		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
-		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
-		return nullptr;
-	}
-
-	if(!RenderModel)
-	{
-		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
-		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
-		return nullptr;
-	}
-
-	vr::TextureID_t texID = RenderModel->diffuseTextureId;
-	vr::RenderModel_TextureMap_t * texture = NULL;
-
-	UTexture2D* OutTexture = nullptr;
-
-	if (!VRRenderModels->LoadTexture(texID, &texture))
-	{
-		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Texture!!"));
-		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
-		return nullptr;
-	}
-
-#else
 	vr::EVRRenderModelError ModelErrorCode = VRRenderModels->LoadRenderModel_Async(RenderModelName, &RenderModel);
 	
 	if (ModelErrorCode != vr::EVRRenderModelError::VRRenderModelError_None)
@@ -481,9 +480,6 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 
 		return nullptr;
 	}
-
-
-#endif
 
 	if (!texture)
 	{

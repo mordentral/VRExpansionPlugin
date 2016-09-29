@@ -67,12 +67,7 @@ public:
 	//UPROPERTY(BlueprintAssignable, meta = (DisplayName = "MoveCompleted"))
 	//FAIMoveCompletedSignature ReceiveMoveCompleted;
 
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-	/** Called on completing current movement request */
-	virtual void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
-#else
 	virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
-#endif
 
 	/**
 	* Checks to see if the current location is not encroaching blocking geometry so the character can leave NavWalking.

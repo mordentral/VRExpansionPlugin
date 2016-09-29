@@ -43,11 +43,7 @@ DECLARE_CYCLE_STAT(TEXT("Char PhysNavWalking"), STAT_CharPhysNavWalking, STATGRO
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectPoint"), STAT_CharNavProjectPoint, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectLocation"), STAT_CharNavProjectLocation, STATGROUP_Character);
 
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-static const auto CVarNetEnableMoveCombining = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.NetEnableMoveCombining"));
-#else
 static const auto CVarNetEnableMoveCombining = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableMoveCombining"));
-#endif
 
 // MAGIC NUMBERS
 const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
@@ -865,11 +861,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	{
 		ClientData->SavedMoves.Push(NewMove);
 		
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-		const bool bCanDelayMove = (CVarNetEnableMoveCombining->GetValueOnGameThread() != 0) && CanDelaySendingMove(NewMove);
-#else
 		const bool bCanDelayMove = (CVarNetEnableMoveCombining->GetInt() != 0) && CanDelaySendingMove(NewMove);
-#endif
 
 		if (bCanDelayMove && ClientData->PendingMove.IsValid() == false)
 		{
@@ -1935,15 +1927,6 @@ void UVRCharacterMovementComponent::VisualizeMovement() const
 // Navigation Functions
 ///////////////////////////
 
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 12
-void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
-{
-	if (AVRCharacter* vrOwner = Cast<AVRCharacter>(GetCharacterOwner()))
-	{
-		vrOwner->NavigationMoveCompleted(RequestID, Result);
-	}
-}
-#else
 void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
 {
 	if (AVRCharacter* vrOwner = Cast<AVRCharacter>(GetCharacterOwner()))
@@ -1951,7 +1934,6 @@ void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, cons
 		vrOwner->NavigationMoveCompleted(RequestID, Result);
 	}
 }
-#endif
 
 bool UVRCharacterMovementComponent::TryToLeaveNavWalking()
 {

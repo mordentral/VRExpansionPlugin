@@ -293,10 +293,7 @@ private:
 		virtual void PreRenderView_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override {}
 		virtual void PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
 
-#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 11
-#else
 		virtual int32 GetPriority() const override { return -10; }
-#endif
 
 	private:
 		friend class UGripMotionControllerComponent;
