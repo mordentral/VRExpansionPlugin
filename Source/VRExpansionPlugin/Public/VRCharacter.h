@@ -33,6 +33,9 @@ public:
 	UReplicatedVRCameraComponent * VRReplicatedCamera;
 
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USphereComponent * VRCameraCollider;
+
+	UPROPERTY(Category = VRCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UParentRelativeAttachmentComponent * ParentRelativeAttachment;
 
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -40,6 +43,14 @@ public:
 
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UGripMotionControllerComponent * RightMotionController;
+
+	// Event when VRHeadCollider starts overlapping an object
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRCharacter")
+	void OnHeadOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	
+	// Event when VRHeadCollider stops overlapping an object
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRCharacter")
+	void OnHeadOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	/* 
 	A helper function that offsets a given vector by the roots collision location

@@ -948,7 +948,7 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 			VRRootCapsule->InitSweepCollisionParams(Params, ResponseParam);
 
 			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation() - VRRootCapsule->DifferenceFromLastFrame, VRRootCapsule->GetVRLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), VRRootCapsule->GetVRCollisionObjectType(), VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
-
+			
 			// If we had a valid blocking hit
 			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
 			{

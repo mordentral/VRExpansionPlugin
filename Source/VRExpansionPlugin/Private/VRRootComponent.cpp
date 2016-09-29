@@ -277,14 +277,24 @@ FPrimitiveSceneProxy* UVRRootComponent::CreateSceneProxy()
 void UVRRootComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	TArray<USceneComponent*> children = this->GetAttachChildren();
 
-	for (int i = 0; i < children.Num(); i++)
+
+	if(AVRCharacter * vrOwner = Cast<AVRCharacter>(this->GetOwner()))
+	{ 
+		TargetPrimitiveComponent = vrOwner->VRReplicatedCamera;
+		return;
+	}
+	else
 	{
-		if (children[i]->IsA(UCameraComponent::StaticClass()))
+		TArray<USceneComponent*> children = this->GetAttachChildren();
+
+		for (int i = 0; i < children.Num(); i++)
 		{
-			TargetPrimitiveComponent = children[i];
-			return;
+			if (children[i]->IsA(UCameraComponent::StaticClass()))
+			{
+				TargetPrimitiveComponent = children[i];
+				return;
+			}
 		}
 	}
 
@@ -543,7 +553,8 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			FComponentQueryParams Params(/*PrimitiveComponentStatics::MoveComponentName*/"MoveComponent", Actor);
 			FCollisionResponseParams ResponseParam;
 			InitSweepCollisionParams(Params, ResponseParam);
-			bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
+
+			bool /*const*/ bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
 
 			if (Hits.Num() > 0)
 			{

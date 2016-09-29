@@ -83,7 +83,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
-
 	FVector DifferenceFromLastFrame;
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
