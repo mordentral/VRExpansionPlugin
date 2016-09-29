@@ -68,12 +68,14 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 			SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
 	}
 }
-
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
 {
+	return GetHMDPureYaw_I(HMDRotation);
+}
 
-	// Testing Unity's version
-
+/*FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw_I(FRotator HMDRotation)
+{
+	// Took this from UnityVRToolkit, no shame, I liked it
 	FRotationMatrix HeadMat(HMDRotation);
 
 	FVector forward = HeadMat.GetScaledAxis(EAxis::X);
@@ -86,22 +88,22 @@ FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
 	{
 		mixedInLocalForward = -mixedInLocalForward;
 	}
+
 	mixedInLocalForward.Z = 0;
 	mixedInLocalForward.Normalize();
 	float dot = FMath::Clamp(FVector::DotProduct(forwardLeveled, forward), 0.0f, 1.0f);
 	FVector finalForward = FMath::Lerp(mixedInLocalForward, forwardLeveled, dot * dot);
 
-
-	return FRotationMatrix::MakeFromXZ(finalForward, FVector::UpVector).Rotator();
+	return FRotationMatrix::MakeFromXZ(finalForward,FVector::UpVector).Rotator();
 	
 
-
+	// This had rotational offsets
 	/*FQuat RotOffset = HMDRotation.Quaternion();
 	FRotator Inversey = HMDRotation.GetInverse();
 
 	RotOffset = FRotator(0.0f, 0.0f, Inversey.Roll).Quaternion() * (FRotator(Inversey.Pitch, 0.0f, 0.0f).Quaternion() * RotOffset);
-	return FRotator(0, RotOffset.Rotator().Yaw, 0);*/
-}
+	return FRotator(0, RotOffset.Rotator().Yaw, 0);*//*
+}*/
 
 bool UVRExpansionFunctionLibrary::OpenVRHandles()
 {

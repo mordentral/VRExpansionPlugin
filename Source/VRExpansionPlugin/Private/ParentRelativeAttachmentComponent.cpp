@@ -26,7 +26,7 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		FVector curCameraLoc;
 		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
 
-		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(curRot.Rotator());
+		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
 
 		if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
 		{
