@@ -257,7 +257,9 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	curCameraRot = FRotator::ZeroRotator;
 	curCameraLoc = FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
+	VRCameraCollider = NULL;
 
+	bSweepHeadWithMovement = false;
 	bUseWalkingCollisionOverride = false;
 	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
 
@@ -277,17 +279,29 @@ FPrimitiveSceneProxy* UVRRootComponent::CreateSceneProxy()
 void UVRRootComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	TArray<USceneComponent*> children = this->GetAttachChildren();
 
-	for (int i = 0; i < children.Num(); i++)
+
+	if(AVRCharacter * vrOwner = Cast<AVRCharacter>(this->GetOwner()))
+	{ 
+		TargetPrimitiveComponent = vrOwner->VRReplicatedCamera;
+		VRCameraCollider = vrOwner->VRCameraCollider;
+		return;
+	}
+	else
 	{
-		if (children[i]->IsA(UCameraComponent::StaticClass()))
+		TArray<USceneComponent*> children = this->GetAttachChildren();
+
+		for (int i = 0; i < children.Num(); i++)
 		{
-			TargetPrimitiveComponent = children[i];
-			return;
+			if (children[i]->IsA(UCameraComponent::StaticClass()))
+			{
+				TargetPrimitiveComponent = children[i];
+				return;
+			}
 		}
 	}
 
+	VRCameraCollider = NULL;
 	TargetPrimitiveComponent = NULL;
 }
 
@@ -357,6 +371,10 @@ void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
 	
+
+	if (VRCameraCollider)
+		VRCameraCollider->SetRelativeLocationAndRotation(curCameraLoc,CamRotOffset,false);
+
 	if(bUpdateBounds)
 		UpdateBounds();
 }
@@ -469,8 +487,8 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 	// Init HitResult
 	FHitResult BlockingHit(1.f);
-	const FVector TraceStart = GetVRLocation();// .GetLocation();//GetComponentLocation();
-	const FVector TraceEnd = TraceStart + Delta;
+	/*const*/ FVector TraceStart = GetVRLocation();// .GetLocation();//GetComponentLocation();
+	/*const*/ FVector TraceEnd = TraceStart + Delta;
 	BlockingHit.TraceStart = TraceStart;
 	BlockingHit.TraceEnd = TraceEnd;
 
@@ -516,6 +534,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	else
 	{
 		TArray<FHitResult> Hits;
+		TArray<FHitResult> HitsHead;
 		FVector NewLocation = GetComponentLocation();//TraceStart;
 		// Perform movement collision checking if needed for this actor.
 		const bool bCollisionEnabled = IsCollisionEnabled();
@@ -543,7 +562,8 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			FComponentQueryParams Params(/*PrimitiveComponentStatics::MoveComponentName*/"MoveComponent", Actor);
 			FCollisionResponseParams ResponseParam;
 			InitSweepCollisionParams(Params, ResponseParam);
-			bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
+
+			bool /*const*/ bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
 
 			if (Hits.Num() > 0)
 			{
@@ -551,6 +571,34 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 				for (int32 HitIdx = 0; HitIdx < Hits.Num(); HitIdx++)
 				{
 					PullBackHit(Hits[HitIdx], TraceStart, TraceEnd, DeltaSize);
+				}
+			}
+
+			if(bSweepHeadWithMovement && VRCameraCollider)
+			{
+				FVector TraceStartC = VRCameraCollider->GetComponentLocation();
+				FVector TraceEndC = TraceStartC + Delta;
+
+				VRCameraCollider->InitSweepCollisionParams(Params, ResponseParam);
+
+				bool bHadBlockingHitHead = MyWorld->ComponentSweepMulti(HitsHead, VRCameraCollider, TraceStartC, TraceEndC, VRCameraCollider->GetComponentQuat(), Params);
+
+				if (!bHadBlockingHit)
+					bHadBlockingHit = bHadBlockingHitHead;
+
+				if (HitsHead.Num() > 0)
+				{
+					const float DeltaSize = FMath::Sqrt(DeltaSizeSq);
+					///FVector impactnormal = -Delta;
+					//impactnormal.Normalize();
+					for (int32 HitIdx = 0; HitIdx < HitsHead.Num(); HitIdx++)
+					{
+						PullBackHit(HitsHead[HitIdx], TraceStartC, TraceEndC, DeltaSize);
+						//HitsHead[HitIdx].ImpactNormal.Z = 0;// = impactnormal;
+						//HitsHead[HitIdx].Normal.Z = 0;// = impactnormal;
+					}
+
+					Hits.Append(HitsHead);
 				}
 			}
 

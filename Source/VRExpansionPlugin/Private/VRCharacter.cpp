@@ -9,11 +9,15 @@
 AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRRootComponent>(ACharacter::CapsuleComponentName).SetDefaultSubobjectClass<UVRCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
+
 	VRRootReference = NULL;
 	if (GetCapsuleComponent())
 	{
 		VRRootReference = Cast<UVRRootComponent>(GetCapsuleComponent());
 		VRRootReference->SetCapsuleSize(20.0f, 96.0f);
+		VRRootReference->VRCapsuleOffset = FVector(-8.0f, 0.0f, 0.0f);
+		VRRootReference->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		VRRootReference->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 	}
 
 	VRMovementReference = NULL;
@@ -29,16 +33,21 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 		// By default this will tick after the root, root will be one tick behind on position. Doubt it matters much
 	}
 
+	VRCameraCollider = CreateDefaultSubobject<UCapsuleComponent>(TEXT("VR Camera Collider"));
+	if (VRCameraCollider)
+	{
+		VRCameraCollider->SetupAttachment(RootComponent);
+
+		VRCameraCollider->SetCapsuleSize(25.0f, 25.0f);
+		VRCameraCollider->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		VRCameraCollider->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
+	}
+
 	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Parent Relative Attachment"));
 	if (ParentRelativeAttachment && VRReplicatedCamera)
 	{
 		// Moved this to be root relative as the camera late updates were killing how it worked
 		ParentRelativeAttachment->SetupAttachment(RootComponent);
-
-		/*if (GetMesh())
-		{
-			GetMesh()->SetupAttachment(ParentRelativeAttachment);
-		}*/
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Left Grip Motion Controller"));

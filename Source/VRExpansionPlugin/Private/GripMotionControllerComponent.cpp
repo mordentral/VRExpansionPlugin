@@ -1004,11 +1004,6 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						GrippedActors[i].LastRelativeLocation = curLocation - BasePoint;
 					}
 
-
-					FVector Start = FVector::CrossProduct(frontLoc, frontLocOrig);
-					Start.Normalize();
-					DrawDebugLine(GetWorld(), (frontLoc+frontLocOrig)/2 + BasePoint, (((frontLoc + frontLocOrig) / 2)+BasePoint) + (Start * 20), FColor::Red);
-
 					// Get the rotation difference from the initial second grip
 					FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
 				
