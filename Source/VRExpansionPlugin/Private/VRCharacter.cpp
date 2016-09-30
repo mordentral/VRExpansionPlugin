@@ -36,8 +36,7 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	VRCameraCollider = CreateDefaultSubobject<UCapsuleComponent>(TEXT("VR Camera Collider"));
 	if (VRCameraCollider)
 	{
-		if(VRReplicatedCamera)
-			VRCameraCollider->SetupAttachment(VRReplicatedCamera);
+		VRCameraCollider->SetupAttachment(RootComponent);
 
 		VRCameraCollider->SetCapsuleSize(25.0f, 25.0f);
 		VRCameraCollider->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);

@@ -371,6 +371,10 @@ void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
 	
+
+	if (VRCameraCollider)
+		VRCameraCollider->SetRelativeLocationAndRotation(curCameraLoc,CamRotOffset,false);
+
 	if(bUpdateBounds)
 		UpdateBounds();
 }
@@ -569,12 +573,11 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 					PullBackHit(Hits[HitIdx], TraceStart, TraceEnd, DeltaSize);
 				}
 			}
-			
+
 			if(bSweepHeadWithMovement && VRCameraCollider)
 			{
 				FVector TraceStartC = VRCameraCollider->GetComponentLocation();
-				FVector HeadDelta = FVector(Delta.X,Delta.Y, 0.0f);
-				FVector TraceEndC = TraceStartC + HeadDelta;
+				FVector TraceEndC = TraceStartC + Delta;
 
 				VRCameraCollider->InitSweepCollisionParams(Params, ResponseParam);
 
@@ -585,11 +588,14 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 				if (HitsHead.Num() > 0)
 				{
-					float DeltaSizeSqC = HeadDelta.SizeSquared();
-					const float DeltaSize = FMath::Sqrt(DeltaSizeSqC);
+					const float DeltaSize = FMath::Sqrt(DeltaSizeSq);
+					///FVector impactnormal = -Delta;
+					//impactnormal.Normalize();
 					for (int32 HitIdx = 0; HitIdx < HitsHead.Num(); HitIdx++)
 					{
 						PullBackHit(HitsHead[HitIdx], TraceStartC, TraceEndC, DeltaSize);
+						//HitsHead[HitIdx].ImpactNormal.Z = 0;// = impactnormal;
+						//HitsHead[HitIdx].Normal.Z = 0;// = impactnormal;
 					}
 
 					Hits.Append(HitsHead);

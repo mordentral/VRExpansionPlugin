@@ -1842,7 +1842,7 @@ float UVRCharacterMovementComponent::ImmersionDepth() const
 	return depth;
 }
 
-void UVRCharacterMovementComponent::VisualizeMovement() const
+/*void UVRCharacterMovementComponent::VisualizeMovement() const
 {
 	if (CharacterOwner == nullptr)
 	{
@@ -1934,7 +1934,7 @@ void UVRCharacterMovementComponent::VisualizeMovement() const
 		DrawDebugString(GetWorld(), DebugLocation, DebugText, nullptr, DebugColor, 0.f, true);
 	}
 #endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-}
+}*/
 
 ///////////////////////////
 // Navigation Functions

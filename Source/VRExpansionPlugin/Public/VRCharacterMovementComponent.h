@@ -131,8 +131,11 @@ public:
 	UVRCharacterMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	float ImmersionDepth() const override;
-	void VisualizeMovement() const override;
 	bool CanCrouch();
+
+	// Don't really need to override this at all, it doesn't work that well even when fixed in VR
+	//void VisualizeMovement() const override;
+
 
 	/*
 	bool HasRootMotion() const
