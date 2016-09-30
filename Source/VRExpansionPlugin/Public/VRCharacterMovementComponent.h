@@ -51,8 +51,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 	UVRRootComponent * VRRootCapsule;
 
-	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
-	UCapsuleComponent * VRCameraCollider;
+	//UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
+	//UCapsuleComponent * VRCameraCollider;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
 	bool bAllowWalkingThroughWalls;

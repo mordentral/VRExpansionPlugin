@@ -86,8 +86,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
-	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
-	UCapsuleComponent * VRCameraCollider;
+	//UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
+	//UCapsuleComponent * VRCameraCollider;
 
 	FVector DifferenceFromLastFrame;
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")

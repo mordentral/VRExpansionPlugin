@@ -252,12 +252,14 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	CapsuleHalfHeight = 96.0f;
 	bUseEditorCompositing = true;
 	OffsetComponentToWorld = FTransform(FQuat(0.0f,0.0f,0.0f,1.0f), FVector::ZeroVector, FVector(1.0f));
+	
+	// Fixes a problem where headset stays at 0,0,0
 	lastCameraLoc = FVector::ZeroVector;
 	lastCameraRot = FRotator::ZeroRotator;
 	curCameraRot = FRotator::ZeroRotator;
 	curCameraLoc = FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
-	VRCameraCollider = NULL;
+	//VRCameraCollider = NULL;
 
 	bSweepHeadWithMovement = false;
 	bUseWalkingCollisionOverride = false;
@@ -284,7 +286,7 @@ void UVRRootComponent::BeginPlay()
 	if(AVRCharacter * vrOwner = Cast<AVRCharacter>(this->GetOwner()))
 	{ 
 		TargetPrimitiveComponent = vrOwner->VRReplicatedCamera;
-		VRCameraCollider = vrOwner->VRCameraCollider;
+		//VRCameraCollider = vrOwner->VRCameraCollider;
 		return;
 	}
 	else
@@ -301,7 +303,7 @@ void UVRRootComponent::BeginPlay()
 		}
 	}
 
-	VRCameraCollider = NULL;
+	//VRCameraCollider = NULL;
 	TargetPrimitiveComponent = NULL;
 }
 
@@ -372,8 +374,8 @@ void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
 	
 
-	if (VRCameraCollider)
-		VRCameraCollider->SetRelativeLocationAndRotation(curCameraLoc,CamRotOffset,false);
+//	if (VRCameraCollider)
+	//	VRCameraCollider->SetRelativeLocationAndRotation(curCameraLoc,CamRotOffset,false);
 
 	if(bUpdateBounds)
 		UpdateBounds();
@@ -534,7 +536,6 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	else
 	{
 		TArray<FHitResult> Hits;
-		TArray<FHitResult> HitsHead;
 		FVector NewLocation = GetComponentLocation();//TraceStart;
 		// Perform movement collision checking if needed for this actor.
 		const bool bCollisionEnabled = IsCollisionEnabled();
@@ -563,7 +564,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			FCollisionResponseParams ResponseParam;
 			InitSweepCollisionParams(Params, ResponseParam);
 
-			bool /*const*/ bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
+			bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
 
 			if (Hits.Num() > 0)
 			{
@@ -574,7 +575,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 				}
 			}
 
-			if(bSweepHeadWithMovement && VRCameraCollider)
+			/*if(bSweepHeadWithMovement && VRCameraCollider)
 			{
 				FVector TraceStartC = VRCameraCollider->GetComponentLocation();
 				FVector TraceEndC = TraceStartC + Delta;
@@ -600,7 +601,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 					Hits.Append(HitsHead);
 				}
-			}
+			}*/
 
 			// If we had a valid blocking hit, store it.
 			// If we are looking for overlaps, store those as well.
