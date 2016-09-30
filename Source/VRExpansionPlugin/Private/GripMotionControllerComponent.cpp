@@ -615,7 +615,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}
 }
 
-bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, FTransform OriginalRelativeTransform, bool bTurnOfLateUpdates, float LerpToTime, float SecondarySmoothingScaler)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalRelativeTransform, bool bTurnOfLateUpdates, float LerpToTime, float SecondarySmoothingScaler)
 {
 	if (!bIsServer)
 	{

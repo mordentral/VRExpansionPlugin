@@ -202,7 +202,7 @@ public:
 	}
 
 	/** Called on render thread to assign new dynamic data */
-	void UpdateTransform_RenderThread(FTransform NewTransform, float NewHalfHeight)
+	void UpdateTransform_RenderThread(const FTransform &NewTransform, float NewHalfHeight)
 	{
 		check(IsInRenderingThread());
 		LocalToWorld = NewTransform.ToMatrixWithScale();

@@ -20,7 +20,7 @@ public:
 
 	void GenerateOffsetToWorld(bool bUpdateBounds = true);
 
-	FVector GetVROffsetFromLocationAndRotation(FVector Location, FQuat Rotation)
+	FVector GetVROffsetFromLocationAndRotation(FVector Location, const FQuat &Rotation)
 	{
 		FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 		FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
