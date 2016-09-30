@@ -261,7 +261,6 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	TargetPrimitiveComponent = NULL;
 	//VRCameraCollider = NULL;
 
-	bSweepHeadWithMovement = false;
 	bUseWalkingCollisionOverride = false;
 	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
 

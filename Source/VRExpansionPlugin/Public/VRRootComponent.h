@@ -80,9 +80,6 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacter")
-		bool bSweepHeadWithMovement;
-
 	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;
 
