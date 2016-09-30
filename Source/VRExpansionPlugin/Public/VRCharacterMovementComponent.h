@@ -48,8 +48,11 @@ class VREXPANSIONPLUGIN_API UVRCharacterMovementComponent : public UCharacterMov
 	GENERATED_BODY()
 public:
 
-	UPROPERTY(BlueprintReadOnly, Category = VRMovement)
+	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 	UVRRootComponent * VRRootCapsule;
+
+	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
+	UCapsuleComponent * VRCameraCollider;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
 	bool bAllowWalkingThroughWalls;

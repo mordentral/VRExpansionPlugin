@@ -922,6 +922,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	//PostPhysicsTickFunction.TickGroup = TG_PostPhysics;
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 	VRRootCapsule = NULL;
+	VRCameraCollider = NULL;
 
 	// 0.1f is low slide and still impacts surfaces well
 	// This variable is a bit of a hack, it reduces the movement of the pawn in the direction of relative movement
@@ -949,6 +950,12 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 
 			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation() - VRRootCapsule->DifferenceFromLastFrame, VRRootCapsule->GetVRLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), VRRootCapsule->GetVRCollisionObjectType(), VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
 			
+			if (VRRootCapsule->bSweepHeadWithMovement && !bBlockingHit && VRCameraCollider)
+			{
+				VRCameraCollider->InitSweepCollisionParams(Params, ResponseParam);
+				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRCameraCollider->GetComponentLocation() - VRRootCapsule->DifferenceFromLastFrame, VRCameraCollider->GetComponentLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), VRCameraCollider->GetCollisionObjectType(), VRCameraCollider->GetCollisionShape(), Params, ResponseParam);
+			}
+
 			// If we had a valid blocking hit
 			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
 			{
@@ -1083,6 +1090,12 @@ void UVRCharacterMovementComponent::SetUpdatedComponent(USceneComponent* NewUpda
 	{	
 		// Fill the VRRootCapsule if we can
 		VRRootCapsule = Cast<UVRRootComponent>(UpdatedComponent);
+
+		// Fill in the camera collider if we can
+		if (AVRCharacter * vrOwner = Cast<AVRCharacter>(this->GetOwner()))
+		{
+			VRCameraCollider = vrOwner->VRCameraCollider;
+		}
 
 		// Stop the tick forcing
 		UpdatedComponent->PrimaryComponentTick.RemovePrerequisite(this, PrimaryComponentTick);
