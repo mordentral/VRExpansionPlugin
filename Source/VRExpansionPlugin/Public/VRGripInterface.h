@@ -34,4 +34,21 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGrip")
 		void ClosestPrimarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
+
+
+	// Events that can be called for interface inheriting actors
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRGrip")
+		void OnGrip(UGripMotionControllerComponent * GrippingController);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRGrip")
+		void OnGripRelease(UGripMotionControllerComponent * ReleasingController);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRGrip")
+		void OnSecondaryGrip(USceneComponent * SecondaryGripComponent);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRGrip")
+		void OnSecondaryGripRelease(USceneComponent * ReleasingSecondaryGripComponent);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRGrip")
+		void OnUsed();
 };
