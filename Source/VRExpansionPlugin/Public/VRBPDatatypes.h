@@ -74,6 +74,85 @@ enum EGripLerpState
 
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPInteractionSettings
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool bCanUse;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool bLimitsInLocalSpace;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		bool bLimitX;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		bool bLimitY;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		bool bLimitZ;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		bool bLimitPitch;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		bool bLimitYaw;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		bool bLimitRoll;
+
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		FVector CustomPivot;
+
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		FVector InitialLinearTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		FVector MinLinearTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		FVector MaxLinearTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		FRotator InitialAngularTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		FRotator MinAngularTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		FRotator MaxAngularTranslation;
+
+	FBPInteractionSettings()
+	{
+		bCanUse = false;
+		bLimitsInLocalSpace = true;
+
+		bLimitX = false;
+		bLimitY = false;
+		bLimitZ = false;
+
+		bLimitPitch = false;
+		bLimitYaw = false;
+		bLimitRoll = false;
+
+		CustomPivot = FVector::ZeroVector;
+
+		InitialLinearTranslation = FVector::ZeroVector;
+		MinLinearTranslation = FVector::ZeroVector;
+		MaxLinearTranslation = FVector::ZeroVector;
+
+		InitialAngularTranslation = FRotator::ZeroRotator;
+		MinAngularTranslation = FRotator::ZeroRotator;
+		MaxAngularTranslation = FRotator::ZeroRotator;
+	}
+
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
 	GENERATED_BODY()

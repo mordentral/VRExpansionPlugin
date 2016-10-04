@@ -17,6 +17,10 @@ class VREXPANSIONPLUGIN_API IVRGripInterface
  
 public:
 
+	// Set up as deny instead of allow so that default allows for gripping
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGrip")
+		bool DenyGripping();
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGrip")
 		void ObjectType(uint8 & ObjectType);
 
@@ -49,6 +53,14 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRGrip")
 		void OnSecondaryGripRelease(USceneComponent * ReleasingSecondaryGripComponent);
 
+
+	// Interaction Functions
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRGrip")
 		void OnUsed();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGrip")
+		bool IsInteractible();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGrip")
+		FBPInteractionSettings GetInteractionSettings();
 };

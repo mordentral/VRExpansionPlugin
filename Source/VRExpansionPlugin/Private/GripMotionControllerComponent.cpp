@@ -288,6 +288,16 @@ bool UGripMotionControllerComponent::GripActor(
 		return false; // It is not movable, can't grip it
 	}
 
+	if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		if(IVRGripInterface::Execute_DenyGripping(root))
+			return false; // Interface is saying not to grip it right now
+	}
+	else if (ActorToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_DenyGripping(ActorToGrip))
+	{
+		return false; // Interface is saying not to grip it right now
+	}
+
 	// So that events caused by sweep and the like will trigger correctly
 	ActorToGrip->AddTickPrerequisiteComponent(this);
 
@@ -381,6 +391,11 @@ bool UGripMotionControllerComponent::GripComponent(
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility and bAllowSetMobility is false"));
 		return false; // It is not movable, can't grip it
+	}
+
+	if (ComponentToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_DenyGripping(ComponentToGrip))
+	{
+		return false; // Interface is saying not to grip it right now
 	}
 
 	ComponentToGrip->IgnoreActorWhenMoving(this->GetOwner(), true);
@@ -974,8 +989,21 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				if (!actor)
 					continue;
 
-				WorldTransform = GrippedActors[i].RelativeTransform * ParentTransform;
-
+				// Check for interaction interface and modify transform by it
+				if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_IsInteractible(root))
+				{
+					WorldTransform = HandleInteractionSettings(DeltaTime, ParentTransform, root, IVRGripInterface::Execute_GetInteractionSettings(root), GrippedActors[i]);
+				}
+				else if (actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_IsInteractible(actor))
+				{
+					// Actor grip interface is checked after component
+					WorldTransform = HandleInteractionSettings(DeltaTime, ParentTransform, root, IVRGripInterface::Execute_GetInteractionSettings(actor), GrippedActors[i]);
+				}
+				else
+				{
+					// Just simple transform setting
+					WorldTransform = GrippedActors[i].RelativeTransform * ParentTransform;
+				}
 
 				// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
 				if ((GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment) || GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
@@ -1244,6 +1272,72 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 		}
 	}
 
+}
+
+FTransform UGripMotionControllerComponent::HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo)
+{
+	FTransform LocalTransform = GripInfo.RelativeTransform;
+	FTransform WorldTransform;
+	
+	WorldTransform = LocalTransform * ParentTransform;
+	
+	if (InteractionSettings.bLimitsInLocalSpace)
+	{
+		if (USceneComponent * parent = root->GetAttachParent())
+			LocalTransform = parent->GetComponentTransform();
+		else
+			LocalTransform = FTransform::Identity;
+
+		WorldTransform = WorldTransform.GetRelativeTransform(LocalTransform);
+	}
+
+	FVector componentLoc = WorldTransform.GetLocation();
+
+	// Translation settings
+	if (InteractionSettings.bLimitX)
+		componentLoc.X = FMath::Clamp(componentLoc.X, InteractionSettings.InitialLinearTranslation.X + InteractionSettings.MinLinearTranslation.X, InteractionSettings.InitialLinearTranslation.X + InteractionSettings.MaxLinearTranslation.X);
+		
+	if (InteractionSettings.bLimitY)
+		componentLoc.Y = FMath::Clamp(componentLoc.Y, InteractionSettings.InitialLinearTranslation.Y + InteractionSettings.MinLinearTranslation.Y, InteractionSettings.InitialLinearTranslation.Y + InteractionSettings.MaxLinearTranslation.Y);
+
+	if (InteractionSettings.bLimitZ)
+		componentLoc.Z = FMath::Clamp(componentLoc.Z, InteractionSettings.InitialLinearTranslation.Z + InteractionSettings.MinLinearTranslation.Z, InteractionSettings.InitialLinearTranslation.Z + InteractionSettings.MaxLinearTranslation.Z);
+
+	WorldTransform.SetLocation(componentLoc);
+
+	FRotator componentRot = WorldTransform.GetRotation().Rotator();
+
+	// Rotation Settings
+	if (InteractionSettings.bLimitPitch)
+		componentRot.Pitch = FMath::Clamp(componentRot.Pitch, InteractionSettings.InitialAngularTranslation.Pitch + InteractionSettings.MinAngularTranslation.Pitch, InteractionSettings.InitialAngularTranslation.Pitch + InteractionSettings.MaxAngularTranslation.Pitch);
+		
+	if (InteractionSettings.bLimitYaw)
+		componentRot.Yaw = FMath::Clamp(componentRot.Yaw, InteractionSettings.InitialAngularTranslation.Yaw + InteractionSettings.MinAngularTranslation.Yaw, InteractionSettings.InitialAngularTranslation.Yaw + InteractionSettings.MaxAngularTranslation.Yaw);
+
+	if (InteractionSettings.bLimitRoll)
+		componentRot.Roll = FMath::Clamp(componentRot.Roll, InteractionSettings.InitialAngularTranslation.Roll + InteractionSettings.MinAngularTranslation.Roll, InteractionSettings.InitialAngularTranslation.Roll + InteractionSettings.MaxAngularTranslation.Roll);
+
+	WorldTransform.SetRotation(componentRot.Quaternion());
+
+	if (!InteractionSettings.CustomPivot.IsNearlyZero())
+	{
+		const FQuat OldRotation = InteractionSettings.InitialAngularTranslation.Quaternion();//WorldTransform.GetRotation();//UpdatedComponent->GetComponentQuat();
+		const FQuat NewRotation = WorldTransform.GetRotation();
+
+		// Compute new location
+		FVector DeltaLocation = FVector::ZeroVector;
+		const FVector OldPivot = OldRotation.RotateVector(InteractionSettings.CustomPivot);
+		const FVector NewPivot = NewRotation.RotateVector(InteractionSettings.CustomPivot);
+		DeltaLocation = (OldPivot - NewPivot); // ConstrainDirectionToPlane() not necessary because it's done by MoveUpdatedComponent() below.
+		WorldTransform.AddToTranslation(DeltaLocation);
+	}
+
+	if (InteractionSettings.bLimitsInLocalSpace)
+	{
+		WorldTransform = WorldTransform * LocalTransform;
+	}
+
+	return WorldTransform;
 }
 
 bool UGripMotionControllerComponent::DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData)

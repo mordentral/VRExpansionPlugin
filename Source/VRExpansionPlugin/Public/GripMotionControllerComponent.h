@@ -169,6 +169,9 @@ public:
 	// Running the gripping logic in its own function as the main tick was getting bloated
 	void TickGrip(float DeltaTime);
 
+	// Handle modifying the transform per the grip interaction settings, returns final world transform
+	FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
+
 	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform)
