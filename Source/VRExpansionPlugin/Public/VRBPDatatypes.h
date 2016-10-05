@@ -62,7 +62,7 @@ enum EBPHMDDeviceType
 	DT_Unknown
 };
 
-// This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
+// Lerp states
 UENUM(Blueprintable)
 enum EGripLerpState
 {
@@ -72,6 +72,35 @@ enum EGripLerpState
 	NotLerping
 };
 
+// Grip Late Update informaiton
+UENUM(Blueprintable)
+enum EGripLateUpdateSettings
+{
+	LateUpdatesAlwaysOn,
+	LateUpdatesAlwaysOff,
+	NotWhenColliding,
+	NotWhenDoubleGripping,
+	NotWhenCollidingOrDoubleGripping
+};
+
+// Grip Target Type
+UENUM(Blueprintable)
+enum EGripTargetType
+{
+	ActorGrip,
+	ComponentGrip,
+	InteractibleActorGrip,
+	InteractibleComponentGrip
+};
+
+// Lerp states
+UENUM(Blueprintable)
+enum EGripInterfaceTeleportBehavior
+{
+	TeleportAllComponents,
+	OnlyTeleportRootComponent,
+	DropOnTeleport
+};
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPInteractionSettings
@@ -157,23 +186,27 @@ struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
 	GENERATED_BODY()
 public:
+
+	UPROPERTY(BlueprintReadOnly)
+		TEnumAsByte<EGripTargetType> GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
 		AActor * Actor;
 	UPROPERTY(BlueprintReadOnly)
 		UPrimitiveComponent * Component;
 	UPROPERTY(BlueprintReadOnly)
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
+	UPROPERTY(BlueprintReadWrite)
+		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting;
 	UPROPERTY(BlueprintReadOnly)
 		bool bColliding;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 		FTransform RelativeTransform;
 	UPROPERTY(BlueprintReadOnly)
 		bool bOriginalReplicatesMovement;
-	UPROPERTY(BlueprintReadOnly)
-		bool bTurnOffLateUpdateWhenColliding;
-	UPROPERTY(BlueprintReadOnly)
+
+	UPROPERTY()
 		float Damping;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY()
 		float Stiffness;
 
 	// For multi grip situations
@@ -181,15 +214,13 @@ public:
 		bool bHasSecondaryAttachment;
 	UPROPERTY(BlueprintReadOnly)
 		USceneComponent * SecondaryAttachment;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 		float SecondarySmoothingScaler;
-	UPROPERTY(BlueprintReadOnly)
-		bool bTurnOffLateUpdateWhenDoubleGrip;
 	UPROPERTY()
 		FVector SecondaryRelativeLocation;
 
 	// Lerp transitions
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY()
 		float LerpToRate;
 	
 	// These are not replicated, they don't need to be
@@ -204,9 +235,11 @@ public:
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
+		Ar << GripTargetType;
 		Ar << Actor;
 		Ar << Component;
 		Ar << GripCollisionType;
+		Ar << GripLateUpdateSetting;
 
 		// Is being set locally
 		//Ar << bColliding;
@@ -215,8 +248,6 @@ public:
 
 		// This doesn't matter to clients
 		//Ar << bOriginalReplicatesMovement;
-
-		Ar << bTurnOffLateUpdateWhenColliding;
 		
 		bool bHadAttachment = bHasSecondaryAttachment;
 	
@@ -229,7 +260,6 @@ public:
 			Ar << SecondaryAttachment;
 			Ar << SecondaryRelativeLocation;
 			Ar << SecondarySmoothingScaler;
-			Ar << bTurnOffLateUpdateWhenDoubleGrip;
 		}
 
 		// Manage lerp states
@@ -282,19 +312,19 @@ public:
 
 	FBPActorGripInformation()
 	{
-		bTurnOffLateUpdateWhenColliding = true;
+		GripTargetType = EGripTargetType::ActorGrip;
 		Damping = 200.0f;
 		Stiffness = 1500.0f;
 		Component = nullptr;
 		Actor = nullptr;
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
+		GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
 		bIsLocked = false;
 		curLerp = 0.0f;
 		LerpToRate = 0.0f;
 		GripLerpState = EGripLerpState::NotLerping;
 		SecondarySmoothingScaler = 1.0f;
-		bTurnOffLateUpdateWhenDoubleGrip = false;
 
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;

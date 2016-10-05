@@ -138,23 +138,54 @@ public:
 	   location that the socket is to its parent actor.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool GripActor(AActor* ActorToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, float GripStiffness = 1500.0f, float GripDamping = 200.0f, bool bTurnOffLateUpdateWhenColliding = true);
+	bool GripActor(
+		AActor* ActorToGrip, 
+		const FTransform &WorldOffset, 
+		bool bWorldOffsetIsRelative = false, 
+		FName OptionalSnapToSocketName = NAME_None, 
+		TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
+		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping, 
+		float GripStiffness = 1500.0f, 
+		float GripDamping = 200.0f
+		);
 
 	// Drop a gripped actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool DropActor(AActor* ActorToDrop, bool bSimulate, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
+	bool DropActor(
+		AActor* ActorToDrop, 
+		bool bSimulate, 
+		FVector OptionalAngularVelocity = FVector::ZeroVector, 
+		FVector OptionalLinearVelocity = FVector::ZeroVector
+		);
 
 	// Grip a component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool GripComponent(UPrimitiveComponent* ComponentToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalSnapToSocketName = NAME_None, TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, float GripStiffness = 1500.0f, float GripDamping = 200.0f, bool bTurnOffLateUpdateWhenColliding = true);
+	bool GripComponent(
+		UPrimitiveComponent* ComponentToGrip, 
+		const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, 
+		FName OptionalSnapToSocketName = NAME_None, 
+		TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
+		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
+		float GripStiffness = 1500.0f, 
+		float GripDamping = 200.0f
+		);
 
 	// Drop a gripped component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool DropComponent(UPrimitiveComponent* ComponentToDrop, bool bSimulate, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
+	bool DropComponent(
+		UPrimitiveComponent* ComponentToDrop, 
+		bool bSimulate, 
+		FVector OptionalAngularVelocity = FVector::ZeroVector, 
+		FVector OptionalLinearVelocity = FVector::ZeroVector
+		);
 
 	// Master function for dropping a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool DropGrip(const FBPActorGripInformation &Grip, bool bSimulate, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
+	bool DropGrip(
+		const FBPActorGripInformation &Grip, 
+		bool bSimulate, 
+		FVector OptionalAngularVelocity = FVector::ZeroVector, 
+		FVector OptionalLinearVelocity = FVector::ZeroVector);
 
 	// No Longer replicated, called via on rep now instead.
 	//UFUNCTION(Reliable, NetMulticast)
@@ -167,10 +198,13 @@ public:
 	bool GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
-	void TickGrip(float DeltaTime);
+	FORCEINLINE void TickGrip(float DeltaTime);
+
+	// Gets the world transform of a grip, modified by secondary grips and interaction settings
+	FORCEINLINE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root);
 
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
-	FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
+	FORCEINLINE FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
 
 	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
@@ -229,6 +263,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	void GetGrippedActors(TArray<AActor*> &GrippedActorsArray);
 
+	// Get list of all gripped components
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	void GetGrippedComponents(TArray<UPrimitiveComponent*> &GrippedComponentsArray);
+
 	// After teleporting a pawn you NEED to call this, otherwise gripped objects will travel with a sweeped move and can get caught on geometry
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	void PostTeleportMoveGrippedActors();
@@ -242,11 +280,11 @@ public:
 	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool TeleportMoveGrip(const FBPActorGripInformation &Grip);
+	bool TeleportMoveGrip(const FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, bool bTurnOffLateUpdates = true, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f);
+	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
