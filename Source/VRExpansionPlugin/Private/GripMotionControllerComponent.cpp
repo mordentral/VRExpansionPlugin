@@ -540,7 +540,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	}
 
 	UPrimitiveComponent * PrimComp = GrippedActors[FoundIndex].Component;
-	if (!PrimComp)
+	if (!PrimComp && GrippedActors[FoundIndex].Actor)
 		PrimComp = Cast<UPrimitiveComponent>(GrippedActors[FoundIndex].Actor->GetRootComponent());
 
 	if(!PrimComp)
@@ -1172,7 +1172,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					{
 						actor = GrippedActors[i].Actor;
 						if(actor)
-							root = Cast<UPrimitiveComponent>(GrippedActors[i].Actor->GetRootComponent());
+							root = Cast<UPrimitiveComponent>(actor->GetRootComponent());
 					}break;
 
 					case EGripTargetType::ComponentGrip:
@@ -1491,13 +1491,11 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(int32 SceneIndex, phys
 bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInformation &Grip)
 {
 	UPrimitiveComponent *root = Grip.Component;
-	if(!root)
+	if(!root && Grip.Actor)
 		root = Cast<UPrimitiveComponent>(Grip.Actor->GetRootComponent());
 
-	if (!root)
-		return false;
-
-	root->SetEnableGravity(true);
+	if (root)
+		root->SetEnableGravity(true);
 
 	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(Grip);
 
@@ -1513,7 +1511,7 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip)
 {
 	UPrimitiveComponent *root = NewGrip.Component;
-	if(!root)
+	if(!root && NewGrip.Actor)
 		root = Cast<UPrimitiveComponent>(NewGrip.Actor->GetRootComponent());
 	
 	if (!root)
@@ -1586,6 +1584,9 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				FPhysScene* RBScene = FPhysxUserData::Get<FPhysScene>(Scene->userData);
 				const uint32 SceneType = root->BodyInstance.UseAsyncScene(RBScene) ? PST_Async : PST_Sync;
 				HandleInfo->SceneIndex = RBScene->PhysXSceneIndex[SceneType];
+				
+				// Pretty Much Unbreakable
+				NewJoint->setBreakForce(PX_MAX_REAL, PX_MAX_REAL);
 				
 				// Setting up the joint
 				NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
