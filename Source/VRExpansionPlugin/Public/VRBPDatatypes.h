@@ -5,6 +5,21 @@
 
 #include "VRBPDatatypes.generated.h"
 
+// This makes a lot of the blueprint functions cleaner
+UENUM()
+namespace EBPVRResultSwitch
+{
+	enum Type
+	{
+		// On Success
+		OnSucceeded,
+
+		// On Failure
+		OnFailed
+	};
+}
+
+
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FBPVRComponentPosRep
 {
@@ -44,6 +59,7 @@ UENUM(Blueprintable)
 enum EGripCollisionType
 {
 	InteractiveCollisionWithPhysics,
+	InteractiveCollisionWithVelocity,
 	InteractiveCollisionWithSweep,
 	InteractiveHybridCollisionWithSweep,
 	SweepWithPhysics,
@@ -287,7 +303,7 @@ public:
 		}
 
 		// Don't bother replicated physics grip types if the grip type doesn't support it.
-		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
+		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep || GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
 		{
 			Ar << Damping;
 			Ar << Stiffness;
@@ -305,6 +321,22 @@ public:
 			return true;
 
 		if (Component && Component == Other.Component)
+			return true;
+
+		return false;
+	}
+
+	FORCEINLINE bool operator==(const AActor * Other) const
+	{
+		if (Actor && Actor == Other)
+			return true;
+
+		return false;
+	}
+
+	FORCEINLINE bool operator==(const UPrimitiveComponent * Other) const
+	{
+		if (Component && Component == Other)
 			return true;
 
 		return false;

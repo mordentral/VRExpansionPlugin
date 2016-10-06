@@ -194,8 +194,23 @@ public:
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);
 
+	// Get a grip by actor
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+		void GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result);
+
+	// Get a grip by component
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+		void GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result);
+
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
-	bool GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
+		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
+
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+		void ChangeGripLateUpdateSetting(
+			const FBPActorGripInformation &Grip, 
+			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+			TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping	
+			);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
 	FORCEINLINE void TickGrip(float DeltaTime);

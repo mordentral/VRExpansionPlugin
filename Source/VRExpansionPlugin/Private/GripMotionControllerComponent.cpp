@@ -270,7 +270,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	}
 }
 
-bool UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
+void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
 {
 	UPrimitiveComponent * primComp = Grip.Component;
 
@@ -278,12 +278,70 @@ bool UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 		primComp = Cast<UPrimitiveComponent>(Grip.Actor->GetRootComponent());
 
 	if (!primComp)
-		return false;
+	{
+		AngularVelocity = FVector::ZeroVector;
+		LinearVelocity = FVector::ZeroVector;
+		return;
+	}
 
 	AngularVelocity = primComp->GetPhysicsAngularVelocity();
 	LinearVelocity = primComp->GetPhysicsLinearVelocity();
+}
 
-	return true;
+void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result)
+{
+	if (!ActorToLookForGrip)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	for (int i = 0; i < GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i] == ActorToLookForGrip)
+		{
+			Grip = GrippedActors[i];
+			Result = EBPVRResultSwitch::OnSucceeded;
+			return;
+		}
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+}
+
+void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result)
+{
+	if (!ComponentToLookForGrip)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	for (int i = 0; i < GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i] == ComponentToLookForGrip)
+		{
+			Grip = GrippedActors[i];
+			Result = EBPVRResultSwitch::OnSucceeded;
+			return;
+		}
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+}
+
+void UGripMotionControllerComponent::ChangeGripLateUpdateSetting(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting)
+{
+	int fIndex = GrippedActors.Find(Grip);
+
+	if (fIndex != INDEX_NONE)
+	{
+		GrippedActors[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
+		Result = EBPVRResultSwitch::OnSucceeded;
+		return;
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
 }
 
 bool UGripMotionControllerComponent::GripActor(
@@ -400,7 +458,7 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 
 	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 	{
-		if (GrippedActors[i].Actor == ActorToDrop)
+		if (GrippedActors[i] == ActorToDrop)
 		{
 			return DropGrip(GrippedActors[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
@@ -516,7 +574,7 @@ bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * Compone
 
 	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 	{
-		if (GrippedActors[i].Component == ComponentToDrop)
+		if (GrippedActors[i] == ComponentToDrop)
 		{
 			return DropGrip(GrippedActors[i], bSimulate,OptionalAngularVelocity, OptionalLinearVelocity);
 		}
@@ -641,9 +699,31 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 
 	} break;
 
+	case EGripCollisionType::InteractiveCollisionWithVelocity:
+	{
+		if (bIsServer)
+		{
+			if (NewGrip.Component && NewGrip.Component->GetOwner())
+				NewGrip.Component->GetOwner()->SetReplicateMovement(false);
+			else if (NewGrip.Actor)
+				NewGrip.Actor->SetReplicateMovement(false);
+		}
+
+		if (NewGrip.Component)
+			NewGrip.Component->SetSimulatePhysics(true);
+		else if (NewGrip.Actor)
+		{
+			if (UPrimitiveComponent * primComp = Cast<UPrimitiveComponent>(NewGrip.Actor->GetRootComponent()))
+			{
+				primComp->SetSimulatePhysics(true);
+			}
+		}
+	} break;
+
 	// Skip collision intersects with these types, they dont need it
 	case EGripCollisionType::PhysicsOnly:
 	case EGripCollisionType::SweepWithPhysics:
+
 	case EGripCollisionType::InteractiveHybridCollisionWithSweep:
 	case EGripCollisionType::InteractiveCollisionWithSweep:
 	default: 
@@ -1218,6 +1298,58 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						}
 					}
 
+				}
+				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
+				{
+					
+					// BETA CODE
+					FBodyInstance * body = root->GetBodyInstance();
+
+					FTransform bodyTransform = body->GetUnrealWorldTransform();
+
+					FQuat RotationDelta = WorldTransform.GetRotation() * bodyTransform.GetRotation().Inverse();
+					FVector axis;
+					float angle;
+					RotationDelta.ToAxisAndAngle(axis, angle);
+
+					//if (angle > 180)
+				//		angle -= 360;
+
+					if (angle != 0)
+					{
+						FVector AngularTarget = angle * axis;
+						body->MaxAngularVelocity = PX_MAX_F32;
+						body->SetAngularVelocity(AngularTarget * 20.0f, false);
+					}
+
+					//float AttachedRotationMagic = 20.0f;
+					//float AttachedPositionMagic = 3000.0f;
+
+					FVector PositionDelta = WorldTransform.GetLocation() - bodyTransform.GetLocation();//root->GetComponentLocation();
+					body->SetLinearVelocity(PositionDelta / DeltaTime, false);
+
+					//body->SetMaxAngularVelocity(PX_MAX_F32, false);
+					
+					/*
+					float angle;
+					Vector3 axis;
+
+					RotationDelta = Hand.transform.rotation * Quaternion.Inverse(PhysicalController.transform.rotation);
+					PositionDelta = (Hand.transform.position - PhysicalController.transform.position);
+
+					RotationDelta.ToAngleAxis(out angle, out axis);
+
+					if (angle > 180)
+						angle -= 360;
+
+					if (angle != 0)
+					{
+						Vector3 AngularTarget = angle * axis;
+						this.Rigidbody.angularVelocity = AngularTarget;
+					}
+					*/
+					//PositionDelta = (AttachedBy.transform.position - InteractionPoint.position);
+					//this.Rigidbody.velocity = PositionDelta * AttachedPositionMagic * Time.fixedDeltaTime;
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
 				{

@@ -3,13 +3,11 @@
 #pragma once
 
 #include "Engine.h"
-#include "IMotionController.h"
 #include "ISteamVRPlugin.h"
+#include "IMotionController.h"
+
 #if STEAMVR_SUPPORTED_PLATFORMS
 #include "openvr.h"
-#endif // STEAMVR_SUPPORTED_PLATFORMS
-//#include "openvr.h"
-#include "HeadMountedDisplay.h" 
 
 //This is a stupid way of gaining access to this header...see build.cs
 #include "SteamVRHMD.h"
@@ -18,9 +16,14 @@
 // Or procedural mesh component throws an error....
 #include "PhysicsEngine/ConvexElem.h"
 #include "ProceduralMeshComponent.h"
-
-#include "SteamVRFunctionLibrary.h"
 #include "KismetProceduralMeshLibrary.h"
+#include "SteamVRFunctionLibrary.h"
+
+#endif // STEAMVR_SUPPORTED_PLATFORMS
+//#include "openvr.h"
+
+
+#include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "VRExpansionFunctionLibrary.generated.h"
 
@@ -144,7 +147,9 @@ public:
 	//pVRShutdown VRShutdownFn;
 	//pVRIsHmdPresent VRIsHmdPresentFn;
 	//pVRGetStringForHmdError VRGetStringForHmdErrorFn;
+#if STEAMVR_SUPPORTED_PLATFORMS
 	pVRGetGenericInterface VRGetGenericInterfaceFn;
+#endif
 
 	bool LoadOpenVRModule();
 	void UnloadOpenVRModule();
@@ -170,14 +175,14 @@ public:
 	}
 
 	// Opends the handles for the library
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
 	bool OpenVRHandles();
 
 	// Closes the handles for the library
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
 	bool CloseVRHandles();
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadOnly)
 	bool bInitialized;
 
 	// Gets the unwound yaw of the HMD
@@ -206,14 +211,6 @@ public:
 		FVector finalForward = FMath::Lerp(mixedInLocalForward, forwardLeveled, dot * dot);
 
 		return FRotationMatrix::MakeFromXZ(finalForward, FVector::UpVector).Rotator();
-
-
-		// This had rotational offsets
-		/*FQuat RotOffset = HMDRotation.Quaternion();
-		FRotator Inversey = HMDRotation.GetInverse();
-
-		RotOffset = FRotator(0.0f, 0.0f, Inversey.Roll).Quaternion() * (FRotator(Inversey.Pitch, 0.0f, 0.0f).Quaternion() * RotOffset);
-		return FRotator(0, RotOffset.Rotator().Yaw, 0);*/
 	}
 
 	// Gets whether an HMD device is connected
@@ -233,23 +230,23 @@ public:
 	static void GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
 
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result"))
 	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<ESteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
 	
 	// Gets a String device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString"))
 	bool GetVRDevicePropertyString(TEnumAsByte<EVRDeviceProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue);
 
 	// Gets a Bool device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyBool"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyBool"))
 	bool GetVRDevicePropertyBool(TEnumAsByte<EVRDeviceProperty_Bool> PropertyToRetrieve, int32 DeviceID, bool & BoolValue);
 
 	// Gets a Float device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyFloat"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyFloat"))
 	bool GetVRDevicePropertyFloat(TEnumAsByte<EVRDeviceProperty_Float> PropertyToRetrieve, int32 DeviceID, float & FloatValue);
 
 	// Gets a String controller property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetVRControllerPropertyString"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRControllerPropertyString"))
 	bool GetVRControllerPropertyString(TEnumAsByte<EVRControllerProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue);
 
 };	
