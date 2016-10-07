@@ -39,7 +39,6 @@ public class VRExpansionPlugin : ModuleRules
                 "Engine",
                 "InputCore",
                 "PhysX",
-                "APEX",
                 "HeadMountedDisplay",
                 "RHI",
                 "RenderCore",
@@ -60,6 +59,22 @@ public class VRExpansionPlugin : ModuleRules
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
+
+
+
+        // Don't load APEX on incompatible platforms
+        if (
+            Target.Platform != UnrealTargetPlatform.IOS &&
+            Target.Platform != UnrealTargetPlatform.TVOS &&
+            Target.Platform != UnrealTargetPlatform.Android &&
+            Target.Platform != UnrealTargetPlatform.HTML5)
+        {
+            PublicDependencyModuleNames.AddRange(
+            new string[]
+            {                   
+             "APEX"
+            });
+        }
 
 
         // Locking steamVR out of non windows builds

@@ -151,7 +151,7 @@ public:
 	bool SafeMoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult& OutHit, ETeleportType Teleport = ETeleportType::None);
 	
 	// This is here to force it to call the correct SafeMoveUpdatedComponent functions for floor movement
-	void UVRCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
+	void MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
 
 	// Modify for correct location
 	void ApplyRepulsionForce(float DeltaSeconds) override;
