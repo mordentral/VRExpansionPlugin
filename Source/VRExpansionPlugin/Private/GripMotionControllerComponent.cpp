@@ -1206,17 +1206,39 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime,FTran
 		}
 		else // Is in a multi grip, might be lerping into it as well.
 		{
-			FVector curLocation = Grip.SecondaryAttachment->GetComponentLocation();
+			FVector curLocation;
+
+			bool bPulledControllerLoc = false;
+			if (bHasAuthority && Grip.SecondaryAttachment->GetOwner() == this->GetOwner())
+			{
+				if (UGripMotionControllerComponent * OtherController = Cast<UGripMotionControllerComponent>(Grip.SecondaryAttachment))
+				{
+					FVector Position;
+					FRotator Orientation;
+
+					if (OtherController->PollControllerState(Position, Orientation))
+					{
+						curLocation = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
+						bPulledControllerLoc = true;
+					}
+				}
+			}
+
+			if(!bPulledControllerLoc)
+				curLocation = Grip.SecondaryAttachment->GetComponentLocation() - BasePoint;
+
 
 			frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
-			frontLoc = curLocation - BasePoint;
+			frontLoc = curLocation;// -BasePoint;
 
 			if (Grip.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transtion
+			{
 				frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, Grip.curLerp / Grip.LerpToRate);
+			}
 			else if (Grip.GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
-				frontLoc = FMath::Lerp(frontLoc, Grip.LastRelativeLocation, Grip.SecondarySmoothingScaler);
+				frontLoc = FMath::Lerp(Grip.LastRelativeLocation, frontLoc, Grip.SecondarySmoothingScaler);
 
-			Grip.LastRelativeLocation = curLocation - BasePoint;
+			Grip.LastRelativeLocation = frontLoc;//curLocation;// -BasePoint;
 		}
 
 		// Get the rotation difference from the initial second grip
