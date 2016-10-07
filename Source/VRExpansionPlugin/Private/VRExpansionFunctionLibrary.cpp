@@ -14,7 +14,7 @@ UVRExpansionFunctionLibrary::UVRExpansionFunctionLibrary(const FObjectInitialize
 //=============================================================================
 UVRExpansionFunctionLibrary::~UVRExpansionFunctionLibrary()
 {
-#if STEAMVR_SUPPORTED_PLATFORMS
+#if STEAMVR_SUPPORTED_PLATFORM
 	if(bInitialized)
 		UnloadOpenVRModule();
 #endif
@@ -77,7 +77,7 @@ FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
 
 bool UVRExpansionFunctionLibrary::OpenVRHandles()
 {
-#if !STEAMVR_SUPPORTED_PLATFORMS
+#if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
 #else
 	if (IsLocallyControlled() && !bInitialized)
@@ -93,7 +93,7 @@ bool UVRExpansionFunctionLibrary::OpenVRHandles()
 
 bool UVRExpansionFunctionLibrary::CloseVRHandles()
 {
-#if !STEAMVR_SUPPORTED_PLATFORMS
+#if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
 #else
 	if (bInitialized)
@@ -109,7 +109,7 @@ bool UVRExpansionFunctionLibrary::CloseVRHandles()
 
 bool UVRExpansionFunctionLibrary::LoadOpenVRModule()
 {
-#if !STEAMVR_SUPPORTED_PLATFORMS
+#if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
 #else
 #if PLATFORM_WINDOWS
@@ -173,7 +173,7 @@ bool UVRExpansionFunctionLibrary::LoadOpenVRModule()
 
 void UVRExpansionFunctionLibrary::UnloadOpenVRModule()
 {
-#if STEAMVR_SUPPORTED_PLATFORMS
+#if STEAMVR_SUPPORTED_PLATFORM
 	if (OpenVRDLLHandle != nullptr)
 	{
 		FPlatformProcess::FreeDllHandle(OpenVRDLLHandle);
@@ -214,7 +214,7 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 
 bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(TEnumAsByte<EVRControllerProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue)
 {
-#if !STEAMVR_SUPPORTED_PLATFORMS
+#if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
 #else
 
@@ -248,7 +248,7 @@ bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(TEnumAsByte<EVRC
 
 bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(TEnumAsByte<EVRDeviceProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue)
 {
-#if !STEAMVR_SUPPORTED_PLATFORMS
+#if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
 #else
 
@@ -282,7 +282,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(TEnumAsByte<EVRDevic
 
 bool UVRExpansionFunctionLibrary::GetVRDevicePropertyBool(TEnumAsByte<EVRDeviceProperty_Bool> PropertyToRetrieve, int32 DeviceID, bool & BoolValue)
 {
-#if !STEAMVR_SUPPORTED_PLATFORMS
+#if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
 #else
 
@@ -314,7 +314,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyBool(TEnumAsByte<EVRDeviceP
 
 bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(TEnumAsByte<EVRDeviceProperty_Float> PropertyToRetrieve, int32 DeviceID, float & FloatValue)
 {
-#if !STEAMVR_SUPPORTED_PLATFORMS
+#if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
 #else
 
@@ -344,10 +344,10 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(TEnumAsByte<EVRDevice
 #endif
 }
 
-UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<ESteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
+UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<EBPSteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
 {
 
-#if !STEAMVR_SUPPORTED_PLATFORMS
+#if !STEAMVR_SUPPORTED_PLATFORM
 	Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 	return NULL;
 	UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
@@ -401,7 +401,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 
 	TArray<int32> TrackedIDs;
 
-	USteamVRFunctionLibrary::GetValidTrackedDeviceIds(DeviceType.GetValue(), TrackedIDs);
+	USteamVRFunctionLibrary::GetValidTrackedDeviceIds((ESteamVRTrackedDeviceType)DeviceType.GetValue(), TrackedIDs);
 	if (TrackedIDs.Num() == 0)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Tracked Devices!!"));

@@ -3,25 +3,28 @@
 #pragma once
 
 #include "Engine.h"
-#include "ISteamVRPlugin.h"
 #include "IMotionController.h"
 
-#if STEAMVR_SUPPORTED_PLATFORMS
+//Re-defined here as I can't load ISteamVRPlugin on non windows platforms
+// Make sure to update if it changes
+#define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_WINDOWS && WINVER > 0x0502)
+
+#if STEAMVR_SUPPORTED_PLATFORM
 #include "openvr.h"
+#include "ISteamVRPlugin.h"
 
 //This is a stupid way of gaining access to this header...see build.cs
 #include "SteamVRHMD.h"
 #include "SteamVRPrivatePCH.h" // Need a define in here....this is so ugly
-
-// Or procedural mesh component throws an error....
-#include "PhysicsEngine/ConvexElem.h"
-#include "ProceduralMeshComponent.h"
-#include "KismetProceduralMeshLibrary.h"
 #include "SteamVRFunctionLibrary.h"
 
-#endif // STEAMVR_SUPPORTED_PLATFORMS
+#endif // STEAMVR_SUPPORTED_PLATFORM
 //#include "openvr.h"
 
+#include "ProceduralMeshComponent.h"
+#include "KismetProceduralMeshLibrary.h"
+// Or procedural mesh component throws an error....
+#include "PhysicsEngine/ConvexElem.h" // Fixed in 4.13.1?
 
 #include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"
@@ -147,7 +150,7 @@ public:
 	//pVRShutdown VRShutdownFn;
 	//pVRIsHmdPresent VRIsHmdPresentFn;
 	//pVRGetStringForHmdError VRGetStringForHmdErrorFn;
-#if STEAMVR_SUPPORTED_PLATFORMS
+#if STEAMVR_SUPPORTED_PLATFORM
 	pVRGetGenericInterface VRGetGenericInterfaceFn;
 #endif
 
@@ -231,7 +234,7 @@ public:
 
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result"))
-	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<ESteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
+	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<EBPSteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
 	
 	// Gets a String device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString"))

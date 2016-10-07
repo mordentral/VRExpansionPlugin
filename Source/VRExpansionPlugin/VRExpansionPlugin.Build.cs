@@ -45,7 +45,8 @@ public class VRExpansionPlugin : ModuleRules
                 "RenderCore",
                 "ShaderCore",
                 "NetworkReplayStreaming",
-                "AIModule"
+                "AIModule",
+                "ProceduralMeshComponent"
             });
 
         PrivateDependencyModuleNames.AddRange(
@@ -79,8 +80,7 @@ public class VRExpansionPlugin : ModuleRules
                 {
                 "SteamVR",
                 "OpenVR",
-                "SteamVRController",
-                "ProceduralMeshComponent"
+                "SteamVRController"
                 });
 
             // AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenVR");
