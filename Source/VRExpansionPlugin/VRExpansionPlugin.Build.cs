@@ -12,19 +12,12 @@ public class VRExpansionPlugin : ModuleRules
     public VRExpansionPlugin(TargetInfo Target)
 	{
 
-       /* if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64)
-        {
-            AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenVR");
-            //  PrivateDependencyModuleNames.AddRange(new string[] { "D3D11RHI" });     //@todo steamvr: multiplatform
-        }*/
-
         PublicIncludePaths.AddRange(
 			new string[] {
 				"VRExpansionPlugin/Public",
                 "HeadMountedDisplay/Public",
                 "Runtime/Engine/Classes/Kismet",
-                "Runtime/Engine/Private/PhysicsEngine",
-                "../Plugins/Runtime/Steam/SteamVR/Source/SteamVR/Private" // This is dumb but it isn't very open
+                "Runtime/Engine/Private/PhysicsEngine"
 				
 				// ... add public include paths required here ...
 			}
@@ -48,10 +41,6 @@ public class VRExpansionPlugin : ModuleRules
                 "PhysX",
                 "APEX",
                 "HeadMountedDisplay",
-                "SteamVR",
-                "OpenVR",
-                "SteamVRController",
-                "ProceduralMeshComponent",
                 "RHI",
                 "RenderCore",
                 "ShaderCore",
@@ -70,14 +59,33 @@ public class VRExpansionPlugin : ModuleRules
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
-		
-		
-		DynamicallyLoadedModuleNames.AddRange(
-			new string[]
-			{
-				// ... add any modules that your module loads dynamically here ...
-			}
-			);
+
+
+        // Locking steamVR out of non windows builds
+        if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64)
+        {
+
+            PublicIncludePaths.AddRange(
+            new string[] {
+                        "../Plugins/Runtime/Steam/SteamVR/Source/SteamVR/Private" // This is dumb but it isn't very open
+
+                // ... add public include paths required here ...
+            }
+            );
+
+
+            PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                "SteamVR",
+                "OpenVR",
+                "SteamVRController",
+                "ProceduralMeshComponent"
+                });
+
+            // AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenVR");
+            //  PrivateDependencyModuleNames.AddRange(new string[] { "D3D11RHI" });     //@todo steamvr: multiplatform
+        }
 
     }
 }
