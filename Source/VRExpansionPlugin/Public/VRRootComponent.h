@@ -70,7 +70,7 @@ protected:
 	const FVector& EndLocation, const FQuat& EndRotationQuat);
 
 public:
-	void UVRRootComponent::BeginPlay() override;
+	void BeginPlay() override;
 
 	bool IsLocallyControlled() const
 	{

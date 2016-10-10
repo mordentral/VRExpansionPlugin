@@ -5,6 +5,40 @@
 
 #include "VRBPDatatypes.generated.h"
 
+// Redefined here so that non windows packages can compile
+/** Defines the class of tracked devices in SteamVR*/
+UENUM(BlueprintType)
+enum class EBPSteamVRTrackedDeviceType
+{
+	/** Represents a Steam VR Controller */
+	Controller,
+
+	/** Represents a static tracking reference device, such as a Lighthouse or tracking camera */
+	TrackingReference,
+
+	/** Misc. device types, for future expansion */
+	Other,
+
+	/** DeviceId is invalid */
+	Invalid
+};
+
+
+// This makes a lot of the blueprint functions cleaner
+UENUM()
+namespace EBPVRResultSwitch
+{
+	enum Type
+	{
+		// On Success
+		OnSucceeded,
+
+		// On Failure
+		OnFailed
+	};
+}
+
+
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FBPVRComponentPosRep
 {
@@ -44,6 +78,7 @@ UENUM(Blueprintable)
 enum EGripCollisionType
 {
 	InteractiveCollisionWithPhysics,
+	InteractiveCollisionWithVelocity,
 	InteractiveCollisionWithSweep,
 	InteractiveHybridCollisionWithSweep,
 	SweepWithPhysics,
@@ -62,7 +97,7 @@ enum EBPHMDDeviceType
 	DT_Unknown
 };
 
-// This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
+// Lerp states
 UENUM(Blueprintable)
 enum EGripLerpState
 {
@@ -72,29 +107,141 @@ enum EGripLerpState
 	NotLerping
 };
 
+// Grip Late Update informaiton
+UENUM(Blueprintable)
+enum EGripLateUpdateSettings
+{
+	LateUpdatesAlwaysOn,
+	LateUpdatesAlwaysOff,
+	NotWhenColliding,
+	NotWhenDoubleGripping,
+	NotWhenCollidingOrDoubleGripping
+};
+
+// Grip Target Type
+UENUM(Blueprintable)
+enum EGripTargetType
+{
+	ActorGrip,
+	ComponentGrip,
+	InteractibleActorGrip,
+	InteractibleComponentGrip
+};
+
+// Lerp states
+UENUM(Blueprintable)
+enum EGripInterfaceTeleportBehavior
+{
+	TeleportAllComponents,
+	OnlyTeleportRootComponent,
+	DropOnTeleport
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPInteractionSettings
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool bCanUse;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool bLimitsInLocalSpace;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		bool bLimitX;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		bool bLimitY;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		bool bLimitZ;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		bool bLimitPitch;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		bool bLimitYaw;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		bool bLimitRoll;
+
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		FVector CustomPivot;
+
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		FVector InitialLinearTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		FVector MinLinearTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		FVector MaxLinearTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		FRotator InitialAngularTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		FRotator MinAngularTranslation;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+		FRotator MaxAngularTranslation;
+
+	FBPInteractionSettings()
+	{
+		bCanUse = false;
+		bLimitsInLocalSpace = true;
+
+		bLimitX = false;
+		bLimitY = false;
+		bLimitZ = false;
+
+		bLimitPitch = false;
+		bLimitYaw = false;
+		bLimitRoll = false;
+
+		CustomPivot = FVector::ZeroVector;
+
+		InitialLinearTranslation = FVector::ZeroVector;
+		MinLinearTranslation = FVector::ZeroVector;
+		MaxLinearTranslation = FVector::ZeroVector;
+
+		InitialAngularTranslation = FRotator::ZeroRotator;
+		MinAngularTranslation = FRotator::ZeroRotator;
+		MaxAngularTranslation = FRotator::ZeroRotator;
+	}
+
+};
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
 	GENERATED_BODY()
 public:
+
+	UPROPERTY(BlueprintReadOnly)
+		TEnumAsByte<EGripTargetType> GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
 		AActor * Actor;
 	UPROPERTY(BlueprintReadOnly)
 		UPrimitiveComponent * Component;
 	UPROPERTY(BlueprintReadOnly)
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
+	UPROPERTY(BlueprintReadWrite)
+		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting;
 	UPROPERTY(BlueprintReadOnly)
 		bool bColliding;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 		FTransform RelativeTransform;
 	UPROPERTY(BlueprintReadOnly)
 		bool bOriginalReplicatesMovement;
-	UPROPERTY(BlueprintReadOnly)
-		bool bTurnOffLateUpdateWhenColliding;
-	UPROPERTY(BlueprintReadOnly)
+
+	UPROPERTY()
 		float Damping;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY()
 		float Stiffness;
 
 	// For multi grip situations
@@ -102,15 +249,13 @@ public:
 		bool bHasSecondaryAttachment;
 	UPROPERTY(BlueprintReadOnly)
 		USceneComponent * SecondaryAttachment;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 		float SecondarySmoothingScaler;
-	UPROPERTY(BlueprintReadOnly)
-		bool bTurnOffLateUpdateWhenDoubleGrip;
 	UPROPERTY()
 		FVector SecondaryRelativeLocation;
 
 	// Lerp transitions
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY()
 		float LerpToRate;
 	
 	// These are not replicated, they don't need to be
@@ -125,9 +270,11 @@ public:
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
+		Ar << GripTargetType;
 		Ar << Actor;
 		Ar << Component;
 		Ar << GripCollisionType;
+		Ar << GripLateUpdateSetting;
 
 		// Is being set locally
 		//Ar << bColliding;
@@ -136,8 +283,6 @@ public:
 
 		// This doesn't matter to clients
 		//Ar << bOriginalReplicatesMovement;
-
-		Ar << bTurnOffLateUpdateWhenColliding;
 		
 		bool bHadAttachment = bHasSecondaryAttachment;
 	
@@ -150,7 +295,6 @@ public:
 			Ar << SecondaryAttachment;
 			Ar << SecondaryRelativeLocation;
 			Ar << SecondarySmoothingScaler;
-			Ar << bTurnOffLateUpdateWhenDoubleGrip;
 		}
 
 		// Manage lerp states
@@ -178,7 +322,7 @@ public:
 		}
 
 		// Don't bother replicated physics grip types if the grip type doesn't support it.
-		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
+		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep || GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
 		{
 			Ar << Damping;
 			Ar << Stiffness;
@@ -201,21 +345,37 @@ public:
 		return false;
 	}
 
+	FORCEINLINE bool operator==(const AActor * Other) const
+	{
+		if (Actor && Actor == Other)
+			return true;
+
+		return false;
+	}
+
+	FORCEINLINE bool operator==(const UPrimitiveComponent * Other) const
+	{
+		if (Component && Component == Other)
+			return true;
+
+		return false;
+	}
+
 	FBPActorGripInformation()
 	{
-		bTurnOffLateUpdateWhenColliding = true;
+		GripTargetType = EGripTargetType::ActorGrip;
 		Damping = 200.0f;
 		Stiffness = 1500.0f;
 		Component = nullptr;
 		Actor = nullptr;
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
+		GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
 		bIsLocked = false;
 		curLerp = 0.0f;
 		LerpToRate = 0.0f;
 		GripLerpState = EGripLerpState::NotLerping;
 		SecondarySmoothingScaler = 1.0f;
-		bTurnOffLateUpdateWhenDoubleGrip = false;
 
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;
