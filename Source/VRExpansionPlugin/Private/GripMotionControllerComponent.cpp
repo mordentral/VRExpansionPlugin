@@ -1172,7 +1172,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime,FTran
 				Grip.curLerp -= DeltaTime;
 			else
 			{
-				if (Grip.bHasSecondaryAttachment && Grip.SecondarySmoothingScaler < 0.99f)
+				if (Grip.bHasSecondaryAttachment && Grip.SecondarySmoothingScaler < 1.0f)
 					Grip.GripLerpState = EGripLerpState::ConstantLerp;
 				else
 					Grip.GripLerpState = EGripLerpState::NotLerping;
@@ -1236,8 +1236,9 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime,FTran
 				frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, Grip.curLerp / Grip.LerpToRate);
 			}
 			else if (Grip.GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
+			{
 				frontLoc = FMath::Lerp(Grip.LastRelativeLocation, frontLoc, Grip.SecondarySmoothingScaler);
-
+			}
 			Grip.LastRelativeLocation = frontLoc;//curLocation;// -BasePoint;
 		}
 
@@ -1323,55 +1324,60 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
 				{
-					
+					TArray<FOverlapResult> Hits;
+					FComponentQueryParams Params(NAME_None, this->GetOwner());
+					Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+					Params.AddIgnoredActor(actor);
+					Params.AddIgnoredActors(root->MoveIgnoreActors);
+					if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+					{
+						GrippedActors[i].bColliding = true;
+					}
+					else
+					{
+						GrippedActors[i].bColliding = false;
+					}
+
 					// BETA CODE
 					FBodyInstance * body = root->GetBodyInstance();
+					FVector linVel = (WorldTransform.GetLocation() - root->GetComponentLocation()) * 40.0f;// / DeltaTime;
 
-					FTransform bodyTransform = body->GetUnrealWorldTransform();
+					// Stop that jitter
+					if (GrippedActors[i].bColliding)
+						linVel = linVel.GetClampedToSize(-150.0f, 150.0f);
+					else
+						linVel = linVel.GetClampedToSize(-2000.0f, 2000.0f);
 
-					FQuat RotationDelta = WorldTransform.GetRotation() * bodyTransform.GetRotation().Inverse();
+					root->SetAllPhysicsLinearVelocity(linVel, false);
+
+				//	body->SetLinearVelocity(linVel, false);
+
+					FQuat RotationDelta = WorldTransform.GetRotation() * root->GetComponentQuat().Inverse();
+					RotationDelta.Normalize();
 					FVector axis;
 					float angle;
 					RotationDelta.ToAxisAndAngle(axis, angle);
 
-					//if (angle > 180)
-				//		angle -= 360;
+					// Correcting for over rotation, using Radians
+					if (angle > PI)
+						angle -= PI * 2.0f;
 
 					if (angle != 0)
 					{
-						FVector AngularTarget = angle * axis;
-						body->MaxAngularVelocity = PX_MAX_F32;
-						body->SetAngularVelocity(AngularTarget * 20.0f, false);
-					}
-
-					//float AttachedRotationMagic = 20.0f;
-					//float AttachedPositionMagic = 3000.0f;
-
-					FVector PositionDelta = WorldTransform.GetLocation() - bodyTransform.GetLocation();//root->GetComponentLocation();
-					body->SetLinearVelocity(PositionDelta / DeltaTime, false);
-
-					//body->SetMaxAngularVelocity(PX_MAX_F32, false);
+						FVector AngularTarget = ((angle * axis) / DeltaTime) * 20.0f;
+						//body->MaxAngularVelocity = PX_MAX_F32;
 					
-					/*
-					float angle;
-					Vector3 axis;
 
-					RotationDelta = Hand.transform.rotation * Quaternion.Inverse(PhysicalController.transform.rotation);
-					PositionDelta = (Hand.transform.position - PhysicalController.transform.position);
+						// Stop that jitter
+						if (GrippedActors[i].bColliding)
+							AngularTarget = AngularTarget.GetClampedToSize(-150.0f, 150.0f);
+						else
+							AngularTarget = AngularTarget.GetClampedToSize(-10000.0f, 10000.0f);
 
-					RotationDelta.ToAngleAxis(out angle, out axis);
-
-					if (angle > 180)
-						angle -= 360;
-
-					if (angle != 0)
-					{
-						Vector3 AngularTarget = angle * axis;
-						this.Rigidbody.angularVelocity = AngularTarget;
+						root->SetAllPhysicsAngularVelocity(AngularTarget, false);
+						//body->SetAngularVelocity((AngularTarget / DeltaTime) * 20.0f, false);
 					}
-					*/
-					//PositionDelta = (AttachedBy.transform.position - InteractionPoint.position);
-					//this.Rigidbody.velocity = PositionDelta * AttachedPositionMagic * Time.fixedDeltaTime;
+
 				}
 				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
 				{
