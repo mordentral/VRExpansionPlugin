@@ -1340,7 +1340,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 					// BETA CODE
 					FBodyInstance * body = root->GetBodyInstance();
-					FVector linVel = (WorldTransform.GetLocation() - root->GetComponentLocation()) * 40.0f;// / DeltaTime;
+					FVector linVel = (WorldTransform.GetLocation() - root->GetComponentLocation()) * 100.0f;// / DeltaTime;
 
 					// Stop that jitter
 					if (GrippedActors[i].bColliding)
@@ -1364,7 +1364,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 					if (angle != 0)
 					{
-						FVector AngularTarget = ((angle * axis) / DeltaTime) * 20.0f;
+						FVector AngularTarget = ((angle * axis) / DeltaTime) * 40.0f;
 						//body->MaxAngularVelocity = PX_MAX_F32;
 					
 
