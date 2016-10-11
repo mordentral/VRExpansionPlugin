@@ -1340,17 +1340,13 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 					// BETA CODE
 					FBodyInstance * body = root->GetBodyInstance();
-					FVector linVel = (WorldTransform.GetLocation() - root->GetComponentLocation()) * 100.0f;// / DeltaTime;
+					FVector linVel = (WorldTransform.GetLocation() - root->GetComponentLocation()) / DeltaTime;// (1.0f / DeltaTime);
 
 					// Stop that jitter
 					if (GrippedActors[i].bColliding)
 						linVel = linVel.GetClampedToSize(-150.0f, 150.0f);
-					else
-						linVel = linVel.GetClampedToSize(-2000.0f, 2000.0f);
 
 					root->SetAllPhysicsLinearVelocity(linVel, false);
-
-				//	body->SetLinearVelocity(linVel, false);
 
 					FQuat RotationDelta = WorldTransform.GetRotation() * root->GetComponentQuat().Inverse();
 					RotationDelta.Normalize();
@@ -1364,18 +1360,14 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 					if (angle != 0)
 					{
-						FVector AngularTarget = ((angle * axis) / DeltaTime) * 40.0f;
-						//body->MaxAngularVelocity = PX_MAX_F32;
-					
+						body->MaxAngularVelocity = PX_MAX_F32;
+						FVector AngularTarget = ((angle * axis) / DeltaTime) *20.0f;
 
 						// Stop that jitter
 						if (GrippedActors[i].bColliding)
 							AngularTarget = AngularTarget.GetClampedToSize(-150.0f, 150.0f);
-						else
-							AngularTarget = AngularTarget.GetClampedToSize(-10000.0f, 10000.0f);
 
 						root->SetAllPhysicsAngularVelocity(AngularTarget, false);
-						//body->SetAngularVelocity((AngularTarget / DeltaTime) * 20.0f, false);
 					}
 
 				}
