@@ -100,7 +100,7 @@ public:
 	void Server_SendControllerTransform(FBPVRComponentPosRep NewTransform);
 
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
-	bool IsLocallyControlled() const
+	FORCEINLINE bool IsLocallyControlled() const
 	{
 		// I like epics new authority check more than mine
 		const AActor* MyOwner = GetOwner();
@@ -109,7 +109,7 @@ public:
 	}
 
 
-	bool IsServer() const
+	FORCEINLINE bool IsServer() const
 	{
 		if (GEngine != nullptr && GWorld != nullptr)
 		{
