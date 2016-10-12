@@ -34,6 +34,8 @@ https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Player%20Controller
 
 [Grip Motion Controller Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VRGrippableMotionController)
 
+[FBPActorGripInformation Struct Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/FBPActorGripInformation%20Struct)
+
 [VR Grip Interface Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VRGripInterface)
 
 [Replicated VR Camera Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Replicated%20VR%20Camera)
