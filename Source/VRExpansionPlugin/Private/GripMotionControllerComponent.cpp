@@ -1361,7 +1361,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					if (angle != 0)
 					{
 						body->MaxAngularVelocity = PX_MAX_F32;
-						FVector AngularTarget = ((angle * axis) / DeltaTime) *20.0f;
+						FVector AngularTarget = ((angle * axis) / DeltaTime) * 40.0f;
 
 						// Stop that jitter
 						if (GrippedActors[i].bColliding)
