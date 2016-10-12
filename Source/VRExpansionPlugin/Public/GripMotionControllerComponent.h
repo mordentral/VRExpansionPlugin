@@ -206,10 +206,24 @@ public:
 		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
-		void ChangeGripLateUpdateSetting(
+		void SetGripLateUpdateSetting(
 			const FBPActorGripInformation &Grip, 
 			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
 			TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping	
+			);
+
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+		void SetGripRelativeTransform(
+			const FBPActorGripInformation &Grip,
+			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+			const FTransform & NewRelativeTransform
+			);
+
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+		void SetGripAdditionTransform(
+			const FBPActorGripInformation &Grip,
+			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+			const FTransform & NewAdditionTransform
 			);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated

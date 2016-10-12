@@ -330,13 +330,49 @@ void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation 
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::ChangeGripLateUpdateSetting(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting)
+void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting)
 {
 	int fIndex = GrippedActors.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
 	{
 		GrippedActors[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
+		Result = EBPVRResultSwitch::OnSucceeded;
+		return;
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+}
+
+void UGripMotionControllerComponent::SetGripRelativeTransform(
+	const FBPActorGripInformation &Grip,
+	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+	const FTransform & NewRelativeTransform
+	)
+{
+	int fIndex = GrippedActors.Find(Grip);
+
+	if (fIndex != INDEX_NONE)
+	{
+		GrippedActors[fIndex].RelativeTransform = NewRelativeTransform;
+		Result = EBPVRResultSwitch::OnSucceeded;
+		return;
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+}
+
+void UGripMotionControllerComponent::SetGripAdditionTransform(
+	const FBPActorGripInformation &Grip,
+	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+	const FTransform & NewAdditionTransform
+	)
+{
+	int fIndex = GrippedActors.Find(Grip);
+
+	if (fIndex != INDEX_NONE)
+	{
+		GrippedActors[fIndex].AdditionTransform = NewAdditionTransform;
 		Result = EBPVRResultSwitch::OnSucceeded;
 		return;
 	}
@@ -435,9 +471,10 @@ bool UGripMotionControllerComponent::GripActor(
 		newActorGrip.RelativeTransform = WorldOffset;
 	else
 		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
+	
 
-	NotifyGrip(newActorGrip);
 	GrippedActors.Add(newActorGrip);
+	NotifyGrip(newActorGrip);
 
 	return true;
 }
@@ -552,8 +589,8 @@ bool UGripMotionControllerComponent::GripComponent(
 	else
 		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
 
-	NotifyGrip(newActorGrip);
 	GrippedActors.Add(newActorGrip);
+	NotifyGrip(newActorGrip);
 
 	return true;
 }
@@ -1157,7 +1194,8 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime,FTran
 	else
 	{
 		// Just simple transform setting
-		WorldTransform = Grip.RelativeTransform * ParentTransform;
+		WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
+
 	}
 
 	// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
@@ -1547,7 +1585,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 FTransform UGripMotionControllerComponent::HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo)
 {
-	FTransform LocalTransform = GripInfo.RelativeTransform;
+	FTransform LocalTransform = GripInfo.RelativeTransform * GripInfo.AdditionTransform;
 	FTransform WorldTransform;
 	
 	WorldTransform = LocalTransform * ParentTransform;

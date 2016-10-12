@@ -263,6 +263,9 @@ public:
 	FVector LastRelativeLocation;
 	float curLerp;
 
+	// Optional Additive Transform for programatic animation
+	FTransform AdditionTransform;
+
 	// Locked transitions
 	bool bIsLocked;
 	FQuat LastLockedRotation;
@@ -379,6 +382,8 @@ public:
 
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;
+
+		AdditionTransform = FTransform::Identity;
 	}
 };
 
