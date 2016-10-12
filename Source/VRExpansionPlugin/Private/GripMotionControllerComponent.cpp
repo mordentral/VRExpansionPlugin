@@ -365,14 +365,21 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 void UGripMotionControllerComponent::SetGripAdditionTransform(
 	const FBPActorGripInformation &Grip,
 	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
-	const FTransform & NewAdditionTransform
+	const FTransform & NewAdditionTransform, bool bRotateByGripRelativeTransform
 	)
 {
 	int fIndex = GrippedActors.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
 	{
-		GrippedActors[fIndex].AdditionTransform = NewAdditionTransform;
+		if (bRotateByGripRelativeTransform)
+		{
+			// Rotate by grips rotation
+			GrippedActors[fIndex].AdditionTransform = FTransform(NewAdditionTransform.GetRotation(),GrippedActors[fIndex].RelativeTransform.GetRotation().RotateVector(NewAdditionTransform.GetLocation()), NewAdditionTransform.GetScale3D());
+		}
+		else
+			GrippedActors[fIndex].AdditionTransform = NewAdditionTransform;
+
 		Result = EBPVRResultSwitch::OnSucceeded;
 		return;
 	}

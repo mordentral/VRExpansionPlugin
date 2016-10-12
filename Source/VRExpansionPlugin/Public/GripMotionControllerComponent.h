@@ -223,7 +223,7 @@ public:
 		void SetGripAdditionTransform(
 			const FBPActorGripInformation &Grip,
 			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
-			const FTransform & NewAdditionTransform
+			const FTransform & NewAdditionTransform, bool bRotateByGripRelativeTransform = true
 			);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
