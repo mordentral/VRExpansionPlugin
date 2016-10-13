@@ -1441,7 +1441,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 					// Stop that jitter
 					if (GrippedActors[i].bColliding)
-						linVel = linVel.GetClampedToSize(-150.0f, 150.0f);
+						linVel = linVel.GetClampedToSize(-200.0f, 200.0f);
 
 					root->SetAllPhysicsLinearVelocity(linVel, false);
 
@@ -1462,7 +1462,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 						// Stop that jitter
 						if (GrippedActors[i].bColliding)
-							AngularTarget = AngularTarget.GetClampedToSize(-150.0f, 150.0f);
+							AngularTarget = AngularTarget.GetClampedToSize(-200.0f, 200.0f);
 
 						root->SetAllPhysicsAngularVelocity(AngularTarget, false);
 					}
