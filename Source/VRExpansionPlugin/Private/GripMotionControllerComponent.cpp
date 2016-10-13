@@ -1076,6 +1076,10 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 
 			return false; // Didn't teleport
 		}
+		else if (TeleportBehavior == EGripInterfaceTeleportBehavior::DontTeleport)
+		{
+			return false; // Didn't teleport
+		}
 	}
 
 	FTransform WorldTransform;

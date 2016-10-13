@@ -134,7 +134,8 @@ enum EGripInterfaceTeleportBehavior
 {
 	TeleportAllComponents,
 	OnlyTeleportRootComponent,
-	DropOnTeleport
+	DropOnTeleport,
+	DontTeleport
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
