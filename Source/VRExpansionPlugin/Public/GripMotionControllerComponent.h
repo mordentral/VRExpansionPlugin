@@ -238,7 +238,7 @@ public:
 			bool bGripRelative = false
 			);
 
-	/*FORCEINLINE*/ FTransform CreateGripRelativeAdditionTransform(
+	FORCEINLINE FTransform CreateGripRelativeAdditionTransform(
 		const FBPActorGripInformation &GripToSample,
 		const FTransform & AdditionTransform,
 		bool bGripRelative = false
