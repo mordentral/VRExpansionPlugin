@@ -351,7 +351,7 @@ public:
 
 	FORCEINLINE bool operator==(const AActor * Other) const
 	{
-		if (Actor && Actor == Other)
+		if (Other && Actor && Actor == Other)
 			return true;
 
 		return false;
@@ -359,7 +359,7 @@ public:
 
 	FORCEINLINE bool operator==(const UPrimitiveComponent * Other) const
 	{
-		if (Component && Component == Other)
+		if (Other && Component && Component == Other)
 			return true;
 
 		return false;
@@ -421,4 +421,13 @@ public:
 		Actor = nullptr;
 		Component = nullptr;
 	}
+
+	FORCEINLINE bool operator==(const FBPActorGripInformation & Other) const
+	{
+		if (Actor && Actor == Other.Actor || Component && Component == Other.Component)
+			return true;
+
+		return false;
+	}
+
 };

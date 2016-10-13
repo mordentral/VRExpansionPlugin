@@ -202,9 +202,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result);
 
+	// Get the physics velocities of a grip
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
+	// Set the late update setting of a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripLateUpdateSetting(
 			const FBPActorGripInformation &Grip, 
@@ -212,6 +214,7 @@ public:
 			TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping	
 			);
 
+	// Set the relative transform of a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripRelativeTransform(
 			const FBPActorGripInformation &Grip,
@@ -219,12 +222,27 @@ public:
 			const FTransform & NewRelativeTransform
 			);
 
+	// Set the addition transform of a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripAdditionTransform(
 			const FBPActorGripInformation &Grip,
 			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
-			const FTransform & NewAdditionTransform, bool bRotateByGripRelativeTransform = false
+			const FTransform & NewAdditionTransform, bool bMakeGripRelative = false
 			);
+
+	// Used to convert an offset transform to grip relative, useful for storing an initial offset and then lerping back to 0 without re-calculating every tick
+	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (DisplayName = "CreateGripRelativeAdditionTransform"))
+		FTransform CreateGripRelativeAdditionTransform_BP(
+			const FBPActorGripInformation &GripToSample,
+			const FTransform & AdditionTransform,
+			bool bGripRelative = false
+			);
+
+	/*FORCEINLINE*/ FTransform CreateGripRelativeAdditionTransform(
+		const FBPActorGripInformation &GripToSample,
+		const FTransform & AdditionTransform,
+		bool bGripRelative = false
+		);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
 	FORCEINLINE void TickGrip(float DeltaTime);
@@ -332,7 +350,7 @@ public:
 
 	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
 	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);
-	int GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo);
+	bool GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo, int & index);
 	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
 	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
 

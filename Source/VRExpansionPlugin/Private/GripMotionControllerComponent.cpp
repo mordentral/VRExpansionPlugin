@@ -106,30 +106,32 @@ FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::GetPhysicsGri
 {
 	for (int i = 0; i < PhysicsGrips.Num(); i++)
 	{
-		if ((PhysicsGrips[i].Actor && PhysicsGrips[i].Actor == GripInfo.Actor) || PhysicsGrips[i].Component && PhysicsGrips[i].Component == GripInfo.Component)
+		if (PhysicsGrips[i] == GripInfo)
 			return &PhysicsGrips[i];
 	}
-
 	return nullptr;
 }
 
 
-int UGripMotionControllerComponent::GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo)
+bool UGripMotionControllerComponent::GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo, int & index)
 {
 	for (int i = 0; i < PhysicsGrips.Num(); i++)
 	{
-		if ((PhysicsGrips[i].Actor && PhysicsGrips[i].Actor == GripInfo.Actor) || (PhysicsGrips[i].Component && PhysicsGrips[i].Component == GripInfo.Component))
-			return i;
+		if (PhysicsGrips[i] == GripInfo)
+		{
+			index = i;
+			return true;
+		}
 	}
 
-	return 0;
+	return false;
 }
 
 FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::CreatePhysicsGrip(const FBPActorGripInformation & GripInfo)
 {
 	for (int i = 0; i < PhysicsGrips.Num(); i++)
 	{
-		if ((PhysicsGrips[i].Actor && PhysicsGrips[i].Actor == GripInfo.Actor) || (PhysicsGrips[i].Component && PhysicsGrips[i].Component == GripInfo.Component))
+		if (PhysicsGrips[i] == GripInfo)
 		{
 			DestroyPhysicsHandle(PhysicsGrips[i].SceneIndex, &PhysicsGrips[i].HandleData, &PhysicsGrips[i].KinActorData);
 			return &PhysicsGrips[i];
@@ -365,17 +367,16 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 void UGripMotionControllerComponent::SetGripAdditionTransform(
 	const FBPActorGripInformation &Grip,
 	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
-	const FTransform & NewAdditionTransform, bool bRotateByGripRelativeTransform
+	const FTransform & NewAdditionTransform, bool bMakeGripRelative
 	)
 {
 	int fIndex = GrippedActors.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
 	{
-		if (bRotateByGripRelativeTransform)
+		if (bMakeGripRelative)
 		{
-			// Rotate by grips rotation
-			GrippedActors[fIndex].AdditionTransform = FTransform(NewAdditionTransform.GetRotation(),GrippedActors[fIndex].RelativeTransform.GetRotation().RotateVector(NewAdditionTransform.GetLocation()), NewAdditionTransform.GetScale3D());
+			GrippedActors[fIndex].AdditionTransform = CreateGripRelativeAdditionTransform(Grip, NewAdditionTransform, bMakeGripRelative);
 		}
 		else
 			GrippedActors[fIndex].AdditionTransform = NewAdditionTransform;
@@ -385,6 +386,42 @@ void UGripMotionControllerComponent::SetGripAdditionTransform(
 	}
 
 	Result = EBPVRResultSwitch::OnFailed;
+}
+
+FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform_BP(
+	const FBPActorGripInformation &GripToSample,
+	const FTransform & AdditionTransform,
+	bool bGripRelative
+	)
+{
+	return CreateGripRelativeAdditionTransform(GripToSample, AdditionTransform, bGripRelative);
+}
+
+FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform(
+	const FBPActorGripInformation &GripToSample,
+	const FTransform & AdditionTransform,
+	bool bGripRelative
+	)
+{
+
+	FTransform FinalTransform;
+
+	if (bGripRelative)
+	{
+		FinalTransform = FTransform(AdditionTransform.GetRotation(), GripToSample.RelativeTransform.GetRotation().RotateVector(AdditionTransform.GetLocation()), AdditionTransform.GetScale3D());
+	}
+	else
+	{
+		const FTransform PivotToWorld = FTransform(FQuat::Identity, GripToSample.RelativeTransform.GetLocation());
+		const FTransform WorldToPivot = FTransform(FQuat::Identity, -GripToSample.RelativeTransform.GetLocation());
+
+		// Create a transform from it
+		FTransform RotationOffsetTransform(AdditionTransform.GetRotation(), FVector::ZeroVector);
+
+		FinalTransform = FTransform(FQuat::Identity, AdditionTransform.GetLocation(), AdditionTransform.GetScale3D()) * WorldToPivot * RotationOffsetTransform * PivotToWorld;
+	}
+
+	return FinalTransform;
 }
 
 bool UGripMotionControllerComponent::GripActor(
@@ -659,7 +696,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 		PrimComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
 	}
 
-	GrippedActors.RemoveAt(FoundIndex);
+	//GrippedActors.RemoveAt(FoundIndex);
 		
 	return true;
 }
@@ -794,8 +831,15 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
-
 	DestroyPhysicsHandle(NewDrop);
+
+	// Remove the drop from the array, can't wait around for replication as the tick function will start in on it.
+	int fIndex = 0;
+	if (GrippedActors.Find(NewDrop, fIndex))
+	{
+		GrippedActors.RemoveAt(fIndex);
+	}
+
 	UPrimitiveComponent *root = NULL;
 
 	switch (NewDrop.GripTargetType)
@@ -1304,6 +1348,10 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime,FTran
 
 void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 {
+
+	// Debug test that we aren't floating physics handles
+	//check(PhysicsGrips.Num() <= GrippedActors.Num());
+
 	if (GrippedActors.Num())
 	{
 		FTransform WorldTransform;
@@ -1506,7 +1554,8 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 						if (/*bIsServer && */GripHandle)
 						{
-							DestroyPhysicsHandle(GrippedActors[i]);
+							if(GripHandle)
+								DestroyPhysicsHandle(GrippedActors[i]);
 
 							if(GrippedActors[i].Actor)
 								GrippedActors[i].Actor->DisableComponentsSimulatePhysics();
@@ -1701,10 +1750,15 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(Grip);
 
 	if (!HandleInfo)
+	{
 		return true;
+	}
 
 	DestroyPhysicsHandle(HandleInfo->SceneIndex, &HandleInfo->HandleData, &HandleInfo->KinActorData);
-	PhysicsGrips.RemoveAt(GetPhysicsGripIndex(Grip));
+
+	int index;
+	if (GetPhysicsGripIndex(Grip, index))
+		PhysicsGrips.RemoveAt(index);
 
 	return true;
 }
