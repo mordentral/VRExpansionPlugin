@@ -168,10 +168,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		bool bLimitRoll;
 
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
-		FVector CustomPivot;
-
+		bool bRotateLeverToFaceController;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
 		FVector InitialLinearTranslation;
@@ -204,7 +202,7 @@ public:
 		bLimitYaw = false;
 		bLimitRoll = false;
 
-		CustomPivot = FVector::ZeroVector;
+		bRotateLeverToFaceController = false;
 
 		InitialLinearTranslation = FVector::ZeroVector;
 		MinLinearTranslation = FVector::ZeroVector;

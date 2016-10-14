@@ -374,12 +374,7 @@ void UGripMotionControllerComponent::SetGripAdditionTransform(
 
 	if (fIndex != INDEX_NONE)
 	{
-		if (bMakeGripRelative)
-		{
-			GrippedActors[fIndex].AdditionTransform = CreateGripRelativeAdditionTransform(Grip, NewAdditionTransform, bMakeGripRelative);
-		}
-		else
-			GrippedActors[fIndex].AdditionTransform = NewAdditionTransform;
+		GrippedActors[fIndex].AdditionTransform = CreateGripRelativeAdditionTransform(Grip, NewAdditionTransform, bMakeGripRelative);
 
 		Result = EBPVRResultSwitch::OnSucceeded;
 		return;
@@ -417,8 +412,7 @@ FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform(
 
 		// Create a transform from it
 		FTransform RotationOffsetTransform(AdditionTransform.GetRotation(), FVector::ZeroVector);
-
-		FinalTransform = FTransform(FQuat::Identity, AdditionTransform.GetLocation(), AdditionTransform.GetScale3D()) * WorldToPivot * RotationOffsetTransform * PivotToWorld;
+		FinalTransform = FTransform(FQuat::Identity, AdditionTransform.GetLocation(), AdditionTransform.GetScale3D()) * WorldToPivot * RotationOffsetTransform * PivotToWorld;	
 	}
 
 	return FinalTransform;
@@ -1676,30 +1670,30 @@ FTransform UGripMotionControllerComponent::HandleInteractionSettings(float Delta
 
 	FRotator componentRot = WorldTransform.GetRotation().Rotator();
 
+	if (InteractionSettings.bRotateLeverToFaceController)
+	{
+		FRotator leverRot = FRotationMatrix::MakeFromX(ParentTransform.GetLocation() - componentLoc).Rotator();
+		if (!InteractionSettings.bLimitPitch)
+			componentRot.Pitch = leverRot .Pitch;
+
+		if (!InteractionSettings.bLimitYaw)
+			componentRot.Yaw = leverRot.Yaw;
+
+		if (!InteractionSettings.bLimitRoll)
+			componentRot.Roll = leverRot.Roll;
+	}
+
 	// Rotation Settings
-	if (InteractionSettings.bLimitPitch)
+	if ((InteractionSettings.bRotateLeverToFaceController && !InteractionSettings.bLimitPitch) || InteractionSettings.bLimitPitch)
 		componentRot.Pitch = FMath::Clamp(componentRot.Pitch, InteractionSettings.InitialAngularTranslation.Pitch + InteractionSettings.MinAngularTranslation.Pitch, InteractionSettings.InitialAngularTranslation.Pitch + InteractionSettings.MaxAngularTranslation.Pitch);
 		
-	if (InteractionSettings.bLimitYaw)
+	if ((InteractionSettings.bRotateLeverToFaceController && !InteractionSettings.bLimitYaw) || InteractionSettings.bLimitYaw)
 		componentRot.Yaw = FMath::Clamp(componentRot.Yaw, InteractionSettings.InitialAngularTranslation.Yaw + InteractionSettings.MinAngularTranslation.Yaw, InteractionSettings.InitialAngularTranslation.Yaw + InteractionSettings.MaxAngularTranslation.Yaw);
 
-	if (InteractionSettings.bLimitRoll)
+	if ((InteractionSettings.bRotateLeverToFaceController && !InteractionSettings.bLimitRoll) || InteractionSettings.bLimitRoll)
 		componentRot.Roll = FMath::Clamp(componentRot.Roll, InteractionSettings.InitialAngularTranslation.Roll + InteractionSettings.MinAngularTranslation.Roll, InteractionSettings.InitialAngularTranslation.Roll + InteractionSettings.MaxAngularTranslation.Roll);
-
+	
 	WorldTransform.SetRotation(componentRot.Quaternion());
-
-	if (!InteractionSettings.CustomPivot.IsNearlyZero())
-	{
-		const FQuat OldRotation = InteractionSettings.InitialAngularTranslation.Quaternion();//WorldTransform.GetRotation();//UpdatedComponent->GetComponentQuat();
-		const FQuat NewRotation = WorldTransform.GetRotation();
-
-		// Compute new location
-		FVector DeltaLocation = FVector::ZeroVector;
-		const FVector OldPivot = OldRotation.RotateVector(InteractionSettings.CustomPivot);
-		const FVector NewPivot = NewRotation.RotateVector(InteractionSettings.CustomPivot);
-		DeltaLocation = (OldPivot - NewPivot); // ConstrainDirectionToPlane() not necessary because it's done by MoveUpdatedComponent() below.
-		WorldTransform.AddToTranslation(DeltaLocation);
-	}
 
 	if (InteractionSettings.bLimitsInLocalSpace)
 	{

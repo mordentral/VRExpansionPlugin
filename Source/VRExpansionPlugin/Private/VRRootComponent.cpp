@@ -366,15 +366,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 {
-
 	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 
-	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
-	
-
-//	if (VRCameraCollider)
-	//	VRCameraCollider->SetRelativeLocationAndRotation(curCameraLoc,CamRotOffset,false);
 
 	if(bUpdateBounds)
 		UpdateBounds();
@@ -427,7 +421,7 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
 
 	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
-
+		
 }
 
 #if WITH_EDITOR
@@ -436,7 +430,7 @@ void UVRRootComponent::PreEditChange(UProperty* PropertyThatWillChange)
 	// This is technically not correct at all to do...however when overloading a root component the preedit gets called twice for some reason.
 	// Calling it twice attempts to double register it in the list and causes an assert to be thrown.
 	if (this->GetOwner()->IsA(AVRCharacter::StaticClass()))
-		return;
+		return;	
 	else
 		Super::PreEditChange(PropertyThatWillChange);
 }
