@@ -125,8 +125,7 @@ enum EGripMovementReplicationSettings
 {
 	KeepOriginalMovement,
 	ForceServerSideMovement,
-	ForceClientSideMovement,
-	ServerSideMovementOnlyWhenColliding
+	ForceClientSideMovement
 };
 
 // Grip Target Type
@@ -242,7 +241,7 @@ public:
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
 		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting;
-	UPROPERTY(BlueprintReadOnly)
+	//UPROPERTY(BlueprintReadOnly)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
 		FTransform RelativeTransform;
@@ -300,8 +299,7 @@ public:
 		Ar << GripMovementReplicationSetting;
 
 		// If on colliding server, otherwise doesn't matter to client
-		if(GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding)
-			Ar << bColliding;
+		//	Ar << bColliding;
 
 		// This doesn't matter to clients
 		//Ar << bOriginalReplicatesMovement;
