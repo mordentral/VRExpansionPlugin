@@ -57,6 +57,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
 	bool bAllowWalkingThroughWalls;
 
+	// Allow merging movement replication (may cause issues when >10 players due to capsule location
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
+	bool bAllowMovementMerging;
+
 	// Higher values will cause more slide but better step up
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
 	float WallRepulsionMultiplier;
@@ -64,7 +68,6 @@ public:
 	///////////////////////////
 	// Navigation Functions
 	///////////////////////////
-
 
 	/** Blueprint notification that we've completed the current movement request */
 	//UPROPERTY(BlueprintAssignable, meta = (DisplayName = "MoveCompleted"))

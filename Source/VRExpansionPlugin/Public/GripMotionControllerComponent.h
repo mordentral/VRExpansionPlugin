@@ -127,6 +127,16 @@ public:
 		return false;
 	}
 
+	/*UFUNCTION(BlueprintCallable, Category = "VRGrip")
+		bool GripObjectByInterface(
+			UObject * ObjectToGrip,
+			const FTransform &WorldOffset,
+			bool bWorldOffsetIsRelative = false,
+			FName OptionalSnapToSocketName = NAME_None,
+			float GripStiffness = 1500.0f,
+			float GripDamping = 200.0f
+			);*/
+
 	/* Grip an actor, these are stored in a Tarray that will prevent destruction of the object, you MUST ungrip an actor if you want to kill it
 	   The WorldOffset is the transform that it will remain away from the controller, if you use the world position of the actor then it will grab
 	   at the point of intersection. 
@@ -145,6 +155,7 @@ public:
 		FName OptionalSnapToSocketName = NAME_None, 
 		TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
 		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping, 
+		TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
 		float GripStiffness = 1500.0f, 
 		float GripDamping = 200.0f
 		);
@@ -166,6 +177,7 @@ public:
 		FName OptionalSnapToSocketName = NAME_None, 
 		TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
 		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
+		TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
 		float GripStiffness = 1500.0f, 
 		float GripDamping = 200.0f
 		);
@@ -243,6 +255,10 @@ public:
 		const FTransform & AdditionTransform,
 		bool bGripRelative = false
 		);
+
+
+	// Checks if we should be handling the movement of a grip based on settings for it
+	FORCEINLINE bool HasGripMovementAuthority(const FBPActorGripInformation &Grip);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
 	FORCEINLINE void TickGrip(float DeltaTime);

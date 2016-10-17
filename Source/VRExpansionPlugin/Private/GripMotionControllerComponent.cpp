@@ -212,6 +212,10 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		// Skip actors that are colliding if turning off late updates during collision.
 		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
 		
+		// Don't allow late updates with server sided movement, there is no point
+		if (actor.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement)
+			continue;
+
 		switch (actor.GripLateUpdateSetting)
 		{
 		case EGripLateUpdateSettings::LateUpdatesAlwaysOff:
@@ -425,6 +429,7 @@ bool UGripMotionControllerComponent::GripActor(
 	FName OptionalSnapToSocketName, 
 	TEnumAsByte<EGripCollisionType> GripCollisionType, 
 	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
+	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
 	float GripStiffness, 
 	float GripDamping
 	)
@@ -493,6 +498,20 @@ bool UGripMotionControllerComponent::GripActor(
 	newActorGrip.Damping = GripDamping;
 	newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
 
+	if (GripMovementReplicationSetting == EGripMovementReplicationSettings::KeepOriginalMovement)
+	{
+		if (ActorToGrip->bReplicateMovement)
+		{
+			newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceServerSideMovement;
+		}
+		else
+		{
+			newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
+		}
+	}
+	else
+		newActorGrip.GripMovementReplicationSetting = GripMovementReplicationSetting;
+
 	if (bIsInteractible)
 		newActorGrip.GripTargetType = EGripTargetType::InteractibleActorGrip;
 	else
@@ -549,6 +568,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	FName OptionalSnapToSocketName, 
 	TEnumAsByte<EGripCollisionType> GripCollisionType,
 	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
+	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
 	float GripStiffness, 
 	float GripDamping
 	)
@@ -614,6 +634,25 @@ bool UGripMotionControllerComponent::GripComponent(
 		newActorGrip.GripTargetType = EGripTargetType::ComponentGrip;
 
 	newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
+
+	if (GripMovementReplicationSetting == EGripMovementReplicationSettings::KeepOriginalMovement)
+	{
+		if (ComponentToGrip->GetOwner())
+		{
+			if (ComponentToGrip->GetOwner()->bReplicateMovement)
+			{
+				newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceServerSideMovement;
+			}
+			else
+			{
+				newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
+			}
+		}
+		else
+			newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
+	}
+	else
+		newActorGrip.GripMovementReplicationSetting = GripMovementReplicationSetting;
 
 	if (OptionalSnapToSocketName.IsValid() && ComponentToGrip->DoesSocketExist(OptionalSnapToSocketName))
 	{
@@ -758,9 +797,10 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	}break;
 	}
 
-	switch (NewGrip.GripCollisionType.GetValue())
+	switch (NewGrip.GripMovementReplicationSetting)
 	{
-	case EGripCollisionType::InteractiveCollisionWithPhysics:
+	case EGripMovementReplicationSettings::ForceClientSideMovement:
+	case EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding:
 	{
 		if (bIsServer)
 		{
@@ -769,20 +809,46 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			else if (NewGrip.Actor)
 				NewGrip.Actor->SetReplicateMovement(false);
 		}
-		
-		SetUpPhysicsHandle(NewGrip);
+	}break;
+
+	case EGripMovementReplicationSettings::ForceServerSideMovement:
+	{
+		if (bIsServer)
+		{
+			if (NewGrip.Component && NewGrip.Component->GetOwner())
+				NewGrip.Component->GetOwner()->SetReplicateMovement(true);
+			else if (NewGrip.Actor)
+				NewGrip.Actor->SetReplicateMovement(true);
+		}
+	}break;
+
+	case EGripMovementReplicationSettings::KeepOriginalMovement:
+	default:
+	{}break;
+	}
+
+
+	bool bHasMovementAuthority = HasGripMovementAuthority(NewGrip);
+
+
+	switch (NewGrip.GripCollisionType.GetValue())
+	{
+	case EGripCollisionType::InteractiveCollisionWithPhysics:
+	{
+		if(bHasMovementAuthority)
+			SetUpPhysicsHandle(NewGrip);
 
 	} break;
 
 	case EGripCollisionType::InteractiveCollisionWithVelocity:
 	{
-		if (bIsServer)
+		/*if (bIsServer)
 		{
 			if (NewGrip.Component && NewGrip.Component->GetOwner())
 				NewGrip.Component->GetOwner()->SetReplicateMovement(false);
 			else if (NewGrip.Actor)
 				NewGrip.Actor->SetReplicateMovement(false);
-		}
+		}*/
 
 		if (NewGrip.Component)
 			NewGrip.Component->SetSimulatePhysics(true);
@@ -808,19 +874,20 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 		else if(NewGrip.Actor)
 			NewGrip.Actor->DisableComponentsSimulatePhysics();
 
-		if (bIsServer)
+		/*if (bIsServer)
 		{
 			if (NewGrip.Component && NewGrip.Component->GetOwner())
 				NewGrip.Component->GetOwner()->SetReplicateMovement(false);
 			else if(NewGrip.Actor)
 				NewGrip.Actor->SetReplicateMovement(false);
-		}
+		}*/
 	} break;
 
 	}
 
 	// Move it to the correct location automatically
-	TeleportMoveGrip(NewGrip);
+	if (bHasMovementAuthority)
+		TeleportMoveGrip(NewGrip);
 }
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
@@ -912,6 +979,36 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 			root->WakeAllRigidBodies();
 		root->SetEnableGravity(true);
 	}
+}
+
+bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGripInformation &Grip)
+{
+	if (bIsServer)
+	{
+		return true;
+	}
+	else
+	{
+		if (Grip.GripCollisionType == EGripCollisionType::PhysicsOnly ||
+			Grip.GripCollisionType == EGripCollisionType::SweepWithPhysics ||
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement ||
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding && !Grip.bColliding)
+		{
+			return true;
+		}
+		else if (
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement ||
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding && Grip.bColliding
+			)
+		{
+			return false;
+		}
+
+		// Use original movement type is overridden when initializing the grip and shouldn't happen
+		check(Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::KeepOriginalMovement);
+	}
+
+	return false;
 }
 
 bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, float SecondarySmoothingScaler)
@@ -1353,18 +1450,26 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 		{
-			if (GrippedActors[i].Actor || GrippedActors[i].Component)
+			if (!HasGripMovementAuthority(GrippedActors[i]))
+				continue;
+
+			FBPActorGripInformation * Grip = &GrippedActors[i];
+
+			if (!Grip)
+				continue;
+
+			if (Grip->Actor || Grip->Component)
 			{
 				UPrimitiveComponent *root = NULL;
 				AActor *actor = NULL;
 
 				// Getting the correct variables depending on the grip target type
-				switch (GrippedActors[i].GripTargetType)
+				switch (Grip->GripTargetType)
 				{
 					case EGripTargetType::ActorGrip:
 					case EGripTargetType::InteractibleActorGrip:
 					{
-						actor = GrippedActors[i].Actor;
+						actor = Grip->Actor;
 						if(actor)
 							root = Cast<UPrimitiveComponent>(actor->GetRootComponent());
 					}break;
@@ -1372,7 +1477,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					case EGripTargetType::ComponentGrip:
 					case EGripTargetType::InteractibleComponentGrip :
 					{
-						root = GrippedActors[i].Component;
+						root = Grip->Component;
 						if(root)
 							actor = root->GetOwner();
 					}break;
@@ -1385,16 +1490,22 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					continue;
 
 				// Get the world transform for this grip after handling secondary grips and interaction differences
-				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, GrippedActors[i], actor, root);
+				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root);
 
 
 				// Start handling the grip types and their functions
-				if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
+				if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
 				{
-					UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
+					UpdatePhysicsHandleTransform(*Grip, WorldTransform);
 					
-					// Sweep current collision state
-					if (bHasAuthority)
+					// Sweep current collision state, only used for client side late update removal
+					if (
+						(bIsServer && Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding) ||		
+						(bHasAuthority &&
+						(Grip->GripMovementReplicationSetting != EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding) &&
+						((Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenColliding) ||
+						(Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping)))		
+						)
 					{
 						TArray<FOverlapResult> Hits;
 						FComponentQueryParams Params(NAME_None, this->GetOwner());
@@ -1402,31 +1513,58 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
-							//if(GetWorld()->ComponentOverlapMulti(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), Params))
 						{
-							GrippedActors[i].bColliding = true;
+							Grip->bColliding = true;
+							if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+							{
+								if (actor && !actor->bReplicateMovement)
+									actor->SetReplicateMovement(true);
+							}
 						}
 						else
 						{
-							GrippedActors[i].bColliding = false;							
+							Grip->bColliding = false;
+							if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+							{
+								if (actor && actor->bReplicateMovement)
+									actor->SetReplicateMovement(false);
+							}
 						}
 					}
 
 				}
-				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
+				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
 				{
-					TArray<FOverlapResult> Hits;
-					FComponentQueryParams Params(NAME_None, this->GetOwner());
-					Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
-					Params.AddIgnoredActor(actor);
-					Params.AddIgnoredActors(root->MoveIgnoreActors);
-					if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+
+					// Sweep current collision state, only used for client side late update removal
+					if (
+						bIsServer ||
+						(Grip->GripMovementReplicationSetting != EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding)
+						)
 					{
-						GrippedActors[i].bColliding = true;
-					}
-					else
-					{
-						GrippedActors[i].bColliding = false;
+						TArray<FOverlapResult> Hits;
+						FComponentQueryParams Params(NAME_None, this->GetOwner());
+						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+						Params.AddIgnoredActor(actor);
+						Params.AddIgnoredActors(root->MoveIgnoreActors);
+						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+						{
+							Grip->bColliding = true;
+							if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+							{
+								if (actor && !actor->bReplicateMovement)
+									actor->SetReplicateMovement(true);
+							}
+						}
+						else
+						{
+							Grip->bColliding = false;
+							if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+							{
+								if (actor && actor->bReplicateMovement)
+									actor->SetReplicateMovement(false);
+							}
+						}
 					}
 
 					// BETA CODE
@@ -1434,7 +1572,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					FVector linVel = (WorldTransform.GetLocation() - root->GetComponentLocation()) / DeltaTime;// (1.0f / DeltaTime);
 
 					// Stop that jitter
-					if (GrippedActors[i].bColliding)
+					if (Grip->bColliding)
 						linVel = linVel.GetClampedToSize(-200.0f, 200.0f);
 
 					root->SetAllPhysicsLinearVelocity(linVel, false);
@@ -1455,136 +1593,189 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						FVector AngularTarget = ((angle * axis) / DeltaTime) * 40.0f;
 
 						// Stop that jitter
-						if (GrippedActors[i].bColliding)
+						if (Grip->bColliding)
 							AngularTarget = AngularTarget.GetClampedToSize(-200.0f, 200.0f);
 
 						root->SetAllPhysicsAngularVelocity(AngularTarget, false);
 					}
 
 				}
-				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
+				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
 				{
 					FVector OriginalPosition(root->GetComponentLocation());
 					FVector NewPosition(WorldTransform.GetTranslation());
 
-					if(!GrippedActors[i].bIsLocked)
+					if(!Grip->bIsLocked)
 						root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
 
-					if (GrippedActors[i].bIsLocked)
-						WorldTransform.SetRotation(GrippedActors[i].LastLockedRotation);
+					if (Grip->bIsLocked)
+						WorldTransform.SetRotation(Grip->LastLockedRotation);
 
 					FHitResult OutHit;
 					// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
-					root->SetWorldTransform(WorldTransform, true, &OutHit);
-
-					if (OutHit.bBlockingHit)
+					
+					if (bIsServer ||
+						(Grip->GripMovementReplicationSetting != EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding)
+						)
 					{
-						GrippedActors[i].bColliding = true;
+						root->SetWorldTransform(WorldTransform, true, &OutHit);
 
-						if (!GrippedActors[i].bIsLocked)
+						if (OutHit.bBlockingHit)
 						{
-							GrippedActors[i].bIsLocked = true;
-							GrippedActors[i].LastLockedRotation = root->GetComponentQuat();
+							Grip->bColliding = true;
+							if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+							{
+								if (actor && !actor->bReplicateMovement)
+									actor->SetReplicateMovement(true);
+							}
+
+							if (!Grip->bIsLocked)
+							{
+								Grip->bIsLocked = true;
+								Grip->LastLockedRotation = root->GetComponentQuat();
+							}
 						}
+						else
+						{
+							Grip->bColliding = false;
+							if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+							{
+								if (actor && actor->bReplicateMovement)
+									actor->SetReplicateMovement(false);
+							}
 
-						//if (!actor->bReplicateMovement)
-						//	actor->SetReplicateMovement(true);
+							if (Grip->bIsLocked)
+								Grip->bIsLocked = false;
+						}
 					}
-					else
-					{
-						GrippedActors[i].bColliding = false;
+					else // Not sweeping as server is set to handle it
+						root->SetWorldTransform(WorldTransform, false);
 
-						if (GrippedActors[i].bIsLocked)
-							GrippedActors[i].bIsLocked = false;
-
-						//if (actor->bReplicateMovement)
-						//	actor->SetReplicateMovement(false);
-					}
 				}
-				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
+				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
 				{
 
 					// Make sure that there is no collision on course before turning off collision and snapping to controller
-					FBPActorPhysicsHandleInformation * GripHandle = GetPhysicsGrip(GrippedActors[i]);
+					FBPActorPhysicsHandleInformation * GripHandle = GetPhysicsGrip(*Grip);
 
-					if (GrippedActors[i].bColliding/* && GripHandle*/)
+
+					if (bIsServer || (Grip->GripMovementReplicationSetting != EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
 					{
-						TArray<FOverlapResult> Hits;
-						FComponentQueryParams Params(NAME_None, this->GetOwner());
-						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
-						Params.AddIgnoredActor(actor);
-						Params.AddIgnoredActors(root->MoveIgnoreActors);
-						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+						if (Grip->bColliding)
 						{
-							GrippedActors[i].bColliding = true;
+							// Check for overlap ending
+							TArray<FOverlapResult> Hits;
+							FComponentQueryParams Params(NAME_None, this->GetOwner());
+							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+							Params.AddIgnoredActor(actor);
+							Params.AddIgnoredActors(root->MoveIgnoreActors);
+							if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+							{
+								Grip->bColliding = true;
+								if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+								{
+									if (actor && !actor->bReplicateMovement)
+										actor->SetReplicateMovement(true);
+								}
+							}
+							else
+							{
+								Grip->bColliding = false;
+								if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+								{
+									if (actor && actor->bReplicateMovement)
+										actor->SetReplicateMovement(false);
+								}
+							}
 						}
-						else
+						else if (!Grip->bColliding)
 						{
-							GrippedActors[i].bColliding = false;
+							// Check for overlap beginning
+							TArray<FOverlapResult> Hits;
+							FComponentQueryParams Params(NAME_None, this->GetOwner());
+							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+							Params.AddIgnoredActor(actor);
+							Params.AddIgnoredActors(root->MoveIgnoreActors);
+							if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params))
+							{
+								Grip->bColliding = true;
+								if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+								{
+									if (actor && !actor->bReplicateMovement)
+										actor->SetReplicateMovement(true);
+								}
+							}
+							else
+							{
+								Grip->bColliding = false;
+								if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+								{
+									if (actor && actor->bReplicateMovement)
+										actor->SetReplicateMovement(false);
+								}
+							}
 						}
 					}
-					else if(!GrippedActors[i].bColliding)
-					{
-						TArray<FOverlapResult> Hits;
-						FComponentQueryParams Params(NAME_None, this->GetOwner());
-						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
-						Params.AddIgnoredActor(actor);
-						Params.AddIgnoredActors(root->MoveIgnoreActors);
-						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params))
-						{
-							GrippedActors[i].bColliding = true;
-						}
-						else
-						{
-							GrippedActors[i].bColliding = false;
-						}
-					}
 
-					if (!GrippedActors[i].bColliding)
-					{		
-						// Removing server side physics totally, it isn't worth it, client side isn't goign to be perfect but it is less jarring.
-						//if (bIsServer && actor->bReplicateMovement) // So we don't call on on change event over and over locally
-						//	actor->SetReplicateMovement(false);
-
-						if (/*bIsServer && */GripHandle)
+					if (!Grip->bColliding)
+					{	
+						if (!bIsServer && Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding)
 						{
-							if(GripHandle)
-								DestroyPhysicsHandle(GrippedActors[i]);
-
-							if(GrippedActors[i].Actor)
-								GrippedActors[i].Actor->DisableComponentsSimulatePhysics();
+							if (Grip->Actor)
+								Grip->Actor->DisableComponentsSimulatePhysics();
 							else
 								root->SetSimulatePhysics(false);
 						}
 
-						FHitResult OutHit;
-						root->SetWorldTransform(WorldTransform, true, &OutHit);
+						if (GripHandle)
+						{
+							if(GripHandle)
+								DestroyPhysicsHandle(*Grip);
 
-						if (OutHit.bBlockingHit)
-							GrippedActors[i].bColliding = true;
-						//else
-							//GrippedActors[i].bColliding = false;
+							if(Grip->Actor)
+								Grip->Actor->DisableComponentsSimulatePhysics();
+							else
+								root->SetSimulatePhysics(false);
+						}
+
+						if (bIsServer || (Grip->GripMovementReplicationSetting != EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+						{
+							FHitResult OutHit;
+							root->SetWorldTransform(WorldTransform, true, &OutHit);
+
+							if (OutHit.bBlockingHit)
+							{
+								Grip->bColliding = true;
+								if (bIsServer && (Grip->GripMovementReplicationSetting == EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+								{
+									if (actor && !actor->bReplicateMovement)
+										actor->SetReplicateMovement(true);
+								}
+							}
+						}
+						else
+							root->SetWorldTransform(WorldTransform, false);
 
 					}
-					else if (GrippedActors[i].bColliding && !GripHandle)
+					else if (Grip->bColliding && !GripHandle)
 					{
-					//	if (bIsServer && !actor->bReplicateMovement)
-						//	actor->SetReplicateMovement(true);
-
 						root->SetSimulatePhysics(true);
 
-						//if (bIsServer)
-						SetUpPhysicsHandle(GrippedActors[i]);
-						UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
+						if (bIsServer || (Grip->GripMovementReplicationSetting != EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+						{
+							SetUpPhysicsHandle(*Grip);
+							UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+						}
 					}
 					else
 					{
-						if (/*bIsServer && GrippedActors[i].bColliding &&*/ GripHandle)
-							UpdatePhysicsHandleTransform(GrippedActors[i], WorldTransform);
+						// Shouldn't be a grip handle if not server when server side moving
+						if (GripHandle)
+							UpdatePhysicsHandleTransform(*Grip, WorldTransform);
 					}
 
 				}
-				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::SweepWithPhysics)
+				else if (Grip->GripCollisionType == EGripCollisionType::SweepWithPhysics)
 				{			
 					FVector OriginalPosition(root->GetComponentLocation());
 					FRotator OriginalOrientation(root->GetComponentRotation());
@@ -1606,10 +1797,16 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						{
 							if (CheckComponentWithSweep(root, move, OriginalOrientation, false))
 							{
-								GrippedActors[i].bColliding = true;
+								if (bIsServer || (Grip->GripMovementReplicationSetting != EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+									Grip->bColliding = true;
+								// Not setting server side movement on collide with this grip
 							}
 							else
-								GrippedActors[i].bColliding = false;
+							{
+								if (bIsServer || (Grip->GripMovementReplicationSetting != EGripMovementReplicationSettings::ServerSideMovementOnlyWhenColliding))
+									Grip->bColliding = false;
+								// Not setting server side movement on collide with this grip
+							}
 						}
 					}
 
@@ -1617,7 +1814,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					root->SetWorldTransform(WorldTransform, false);
 
 				}
-				else if (GrippedActors[i].GripCollisionType == EGripCollisionType::PhysicsOnly)
+				else if (Grip->GripCollisionType == EGripCollisionType::PhysicsOnly)
 				{
 					// Move the actor, we are not offsetting by the hit result anyway
 					root->SetWorldTransform(WorldTransform, false);
@@ -1625,7 +1822,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 			}
 			else
 			{
-				DestroyPhysicsHandle(GrippedActors[i]);
+				DestroyPhysicsHandle(*Grip);
 
 				if (bIsServer)
 				{
@@ -1738,8 +1935,8 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 	if(!root && Grip.Actor)
 		root = Cast<UPrimitiveComponent>(Grip.Actor->GetRootComponent());
 
-	if (root)
-		root->SetEnableGravity(true);
+	//if (root)
+	//	root->SetEnableGravity(true);
 
 	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(Grip);
 
@@ -1768,7 +1965,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	// Needs to be simulating in order to run physics
 	root->SetSimulatePhysics(true);
-	root->SetEnableGravity(false);
 
 	FBPActorPhysicsHandleInformation * HandleInfo = CreatePhysicsGrip(NewGrip);
 
