@@ -261,7 +261,7 @@ public:
 	FORCEINLINE bool HasGripMovementAuthority(const FBPActorGripInformation &Grip);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
-	/*FORCEINLINE*/ void TickGrip(float DeltaTime);
+	FORCEINLINE void TickGrip(float DeltaTime);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
 	FORCEINLINE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root);
