@@ -118,6 +118,16 @@ enum EGripLateUpdateSettings
 	NotWhenCollidingOrDoubleGripping
 };
 
+// Grip movement replication settings
+// ServerSideMovementOnlyWhenColliding is not InteractivePhysicsGripCompatible
+UENUM(Blueprintable)
+enum EGripMovementReplicationSettings
+{
+	KeepOriginalMovement,
+	ForceServerSideMovement,
+	ForceClientSideMovement
+};
+
 // Grip Target Type
 UENUM(Blueprintable)
 enum EGripTargetType
@@ -231,10 +241,13 @@ public:
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
 		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting;
-	UPROPERTY(BlueprintReadOnly)
+	//UPROPERTY(BlueprintReadOnly)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
 		FTransform RelativeTransform;
+
+	UPROPERTY(BlueprintReadOnly)
+		TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting;
 	UPROPERTY(BlueprintReadOnly)
 		bool bOriginalReplicatesMovement;
 
@@ -278,10 +291,15 @@ public:
 		Ar << GripCollisionType;
 		Ar << GripLateUpdateSetting;
 
-		// Is being set locally
-		//Ar << bColliding;
+
 
 		Ar << RelativeTransform;
+
+
+		Ar << GripMovementReplicationSetting;
+
+		// If on colliding server, otherwise doesn't matter to client
+		//	Ar << bColliding;
 
 		// This doesn't matter to clients
 		//Ar << bOriginalReplicatesMovement;

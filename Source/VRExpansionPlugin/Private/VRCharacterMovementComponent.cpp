@@ -793,7 +793,9 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	// see if the two moves could be combined
 	// do not combine moves which have different TimeStamps (before and after reset).
 	
-	if (ClientData->PendingMove.IsValid() && !ClientData->PendingMove->bOldTimeStampBeforeReset && ClientData->PendingMove->CanCombineWith(NewMove, CharacterOwner, ClientData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation()))
+
+	// Don' merge with a vr capsule
+	if (bAllowMovementMerging && ClientData->PendingMove.IsValid() && !ClientData->PendingMove->bOldTimeStampBeforeReset && ClientData->PendingMove->CanCombineWith(NewMove, CharacterOwner, ClientData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation()))
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCombineNetMove);
 
@@ -929,6 +931,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	WallRepulsionMultiplier = 0.01f;
 
 	bAllowWalkingThroughWalls = false;
+	bAllowMovementMerging = false;
 }
 
 
