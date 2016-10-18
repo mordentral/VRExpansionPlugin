@@ -5,7 +5,7 @@ https://forums.unrealengine.com/showthread.php?116782-VR-(OpenVR)-Expansion-Plug
 
 ### Use Of This Plugin ###
 
-This Plugin is intended to add additional functionality to Open/SteamVR in UE4. 
+This Plugin is intended to add additional functionality to Open/SteamVR/(All VR now) in UE4. 
 
 ### How do I install it? ###
 
