@@ -1234,8 +1234,8 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 		if (PScene)
 		{
 			SCOPED_SCENE_WRITE_LOCK(PScene);
-			Handle->KinActorData->setKinematicTarget(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
-			Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+			Handle->KinActorData->setKinematicTarget(PxTransform(/*U2PTransform(WorldTransform)*/U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+			Handle->KinActorData->setGlobalPose(PxTransform(/*U2PTransform(WorldTransform)*/U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
 		}
 	}
 #endif
@@ -1887,13 +1887,44 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		PxScene* Scene = Actor->getScene();
 	
 		// Get transform of actor we are grabbing
-
-		FTransform WorldTransform;
+	/*	FTransform WorldTransform;
 		WorldTransform = NewGrip.RelativeTransform * this->GetComponentTransform();
-
-		PxVec3 KinLocation = U2PVector(WorldTransform.GetLocation() - (WorldTransform.GetLocation() - root->GetComponentLocation()));
+		PxQuat KinOrientation = U2PQuat(root->GetComponentToWorld().GetRelativeTransform(rBodyInstance->GetUnrealWorldTransform()).GetRotation());
+		
+		PxVec3 KinLocation = U2PVector(root->GetComponentTransform().GetTranslation());//WorldTransform.GetLocation() - (WorldTransform.GetLocation() - root->GetComponentLocation()));
 		PxTransform GrabbedActorPose = Actor->getGlobalPose();
-		PxTransform KinPose(KinLocation, GrabbedActorPose.q);
+
+		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
+		*/		
+		
+		PxTransform GrabbedActorPose = U2PTransform(root->GetComponentTransform());
+
+		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
+
+		FTransform terns;
+		FRotator rotval = FRotator::ZeroRotator;
+		if (skele)
+		{	
+			terns = skele->GetBoneTransform(0, FTransform::Identity);
+			rotval = terns.GetRotation().Rotator().GetInverse();
+			int vals = 0;
+		}
+
+
+		/*
+		
+				FTransform RotationOffsetTransform(rotval.Quaternion(), FVector::ZeroVector);
+		FTransform finalTrans = root->GetComponentTransform() * RotationOffsetTransform;
+
+		//SCOPED_SCENE_WRITE_LOCK(PScene);
+		//Handle->KinActorData->setKinematicTarget(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+		//Handle->KinActorData->setGlobalPose(PxTransform(U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
+		*/
+
+
+		FTransform finalTrans = root->GetComponentTransform();
+		finalTrans.ConcatenateRotation(rotval.Quaternion());
+		PxTransform KinPose(U2PTransform(finalTrans));//(KinLocation, U2PQuat(root->GetComponentTransform().GetRotation()));//GrabbedActorPose.q);
 
 		// set target and current, so we don't need another "Tick" call to have it right
 		//TargetTransform = CurrentTransform = P2UTransform(KinPose);
@@ -1915,11 +1946,15 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			// Add to Scene
 			Scene->addActor(*KinActor);
 
+			// Set the target early
+			//KinActor->setKinematicTarget(U2PTransform(NewGrip.RelativeTransform * this->GetComponentTransform()));
+			//KinActor->setGlobalPose(U2PTransform(NewGrip.RelativeTransform * this->GetComponentTransform()));
+
 			// Save reference to the kinematic actor.
 			HandleInfo->KinActorData = KinActor;
 
 			// Create the joint
-			PxVec3 LocalHandlePos = GrabbedActorPose.transformInv(KinLocation);
+			//PxVec3 LocalHandlePos = GrabbedActorPose.transformInv(KinLocation);
 			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, GrabbedActorPose.transformInv(KinPose));
 			
 			if (!NewJoint)
@@ -2011,7 +2046,7 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 	// Don't call moveKinematic if it hasn't changed - that will stop bodies from going to sleep.
 	if (bChangedPosition || bChangedRotation)
 	{
-		KinActor->setKinematicTarget(PxTransform(PNewLocation, PNewOrientation));
+		KinActor->setKinematicTarget(PxTransform( U2PTransform(NewTransform)/*PNewLocation, PNewOrientation*/));
 	}
 #endif // WITH_PHYSX
 }
