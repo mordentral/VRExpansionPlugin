@@ -1903,11 +1903,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		{
 			// Create kinematic actor we are going to create joint with. This will be moved around with calls to SetLocation/SetRotation.
 			PxRigidDynamic* KinActor = Scene->getPhysics().createRigidDynamic(KinPose);
-			//#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 13
-			//			KinActor->setRigidDynamicFlag(PxRigidDynamicFlag::eKINEMATIC, true);
-			//#else
 			KinActor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
-			//#endif
+
 			KinActor->setMass(0.0f); // 1.0f;
 			KinActor->setMassSpaceInertiaTensor(PxVec3(0.0f, 0.0f, 0.0f));// PxVec3(1.0f, 1.0f, 1.0f));
 			KinActor->setMaxDepenetrationVelocity(PX_MAX_F32);
@@ -1923,11 +1920,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 			// Create the joint
 			PxVec3 LocalHandlePos = GrabbedActorPose.transformInv(KinLocation);
-			//#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 13
-			//			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform::createIdentity(), Actor, PxTransform(LocalHandlePos));
-			//#else
 			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, GrabbedActorPose.transformInv(KinPose));
-			//#endif
 			
 			if (!NewJoint)
 			{
@@ -1946,7 +1939,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				
 				// Pretty Much Unbreakable
 				NewJoint->setBreakForce(PX_MAX_REAL, PX_MAX_REAL);
-				
+
 				// Setting up the joint
 				NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
 				NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eFREE);
@@ -1964,7 +1957,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					HandleInfo->HandleData->setDrive(PxD6Drive::eY, PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 					HandleInfo->HandleData->setDrive(PxD6Drive::eZ, PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 
-					HandleInfo->HandleData->setDrive(PxD6Drive::eSLERP, PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+					HandleInfo->HandleData->setDrive(PxD6Drive::eSLERP, PxD6JointDrive(NewGrip.Stiffness * 1.5f, NewGrip.Damping * 1.4f, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 
 						//HandleData->setDrive(PxD6Drive::eTWIST, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
 						//HandleData->setDrive(PxD6Drive::eSWING, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
