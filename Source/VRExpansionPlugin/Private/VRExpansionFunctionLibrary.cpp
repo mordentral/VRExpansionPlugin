@@ -212,7 +212,7 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 }
 
 
-bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(EVRControllerProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue)
+bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(TEnumAsByte<EVRControllerProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
@@ -235,7 +235,7 @@ bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(EVRControllerPro
 
 	char charvalue[vr::k_unMaxPropertyStringSize];
 	uint32_t buffersize = 255;
-	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 3000), charvalue, buffersize, &pError);
+	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve.GetValue()) + 3000), charvalue, buffersize, &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 		return false;
@@ -246,7 +246,7 @@ bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(EVRControllerPro
 #endif
 }
 
-bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue)
+bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(TEnumAsByte<EVRDeviceProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
@@ -269,7 +269,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_St
 
 	char charvalue[vr::k_unMaxPropertyStringSize];
 	uint32_t buffersize = 255;
-	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 1000), charvalue, buffersize, &pError);
+	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve.GetValue()) + 1000), charvalue, buffersize, &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 		return false;
@@ -280,7 +280,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_St
 #endif
 }
 
-bool UVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue)
+bool UVRExpansionFunctionLibrary::GetVRDevicePropertyBool(TEnumAsByte<EVRDeviceProperty_Bool> PropertyToRetrieve, int32 DeviceID, bool & BoolValue)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
@@ -301,7 +301,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_Bool
 
 	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
 
-	bool ret = VRSystem->GetBoolTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 1000), &pError);
+	bool ret = VRSystem->GetBoolTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve.GetValue()) + 1000), &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 		return false;
@@ -312,7 +312,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_Bool
 #endif
 }
 
-bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue)
+bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(TEnumAsByte<EVRDeviceProperty_Float> PropertyToRetrieve, int32 DeviceID, float & FloatValue)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
@@ -333,7 +333,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty_Flo
 
 	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
 
-	float ret = VRSystem->GetFloatTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 1000), &pError);
+	float ret = VRSystem->GetFloatTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve.GetValue()) + 1000), &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 		return false;
@@ -344,18 +344,18 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty_Flo
 #endif
 }
 
-UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
+UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<EBPSteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
 {
 
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EAsyncBlueprintResultSwitch::OnFailure;
+	Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 	return NULL;
 	UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
 #else
 
 	if (!bInitialized)
 	{
-		Result = EAsyncBlueprintResultSwitch::OnFailure;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return NULL;
 	}
 
@@ -395,17 +395,17 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	if (!VRSystem || !VRRenderModels)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Interfaces!!"));
-		Result = EAsyncBlueprintResultSwitch::OnFailure;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
 
 	TArray<int32> TrackedIDs;
 
-	USteamVRFunctionLibrary::GetValidTrackedDeviceIds((ESteamVRTrackedDeviceType)DeviceType, TrackedIDs);
+	USteamVRFunctionLibrary::GetValidTrackedDeviceIds((ESteamVRTrackedDeviceType)DeviceType.GetValue(), TrackedIDs);
 	if (TrackedIDs.Num() == 0)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Tracked Devices!!"));
-		Result = EAsyncBlueprintResultSwitch::OnFailure;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
 
@@ -420,7 +420,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Render Model Name String!!"));
-		Result = EAsyncBlueprintResultSwitch::OnFailure;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
 
@@ -438,10 +438,10 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 		if (ModelErrorCode != vr::EVRRenderModelError::VRRenderModelError_Loading)
 		{
 			UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
-			Result = EAsyncBlueprintResultSwitch::OnFailure;
+			Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		}
 		else
-			Result = EAsyncBlueprintResultSwitch::AsyncLoading;
+			Result = EAsyncBlueprintResultSwitch::Type::AsyncLoading;
 
 		return nullptr;
 	}
@@ -449,7 +449,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	if (!RenderModel)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Model!!"));
-		Result = EAsyncBlueprintResultSwitch::OnFailure;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
 
@@ -464,10 +464,10 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 		if (TextureErrorCode != vr::EVRRenderModelError::VRRenderModelError_Loading)
 		{
 			UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Texture!!"));
-			Result = EAsyncBlueprintResultSwitch::OnFailure;
+			Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		}
 		else
-			Result = EAsyncBlueprintResultSwitch::AsyncLoading;
+			Result = EAsyncBlueprintResultSwitch::Type::AsyncLoading;
 
 		return nullptr;
 	}
@@ -475,7 +475,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 	if (!texture)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Load Texture!!"));
-		Result = EAsyncBlueprintResultSwitch::OnFailure;
+		Result = EAsyncBlueprintResultSwitch::Type::OnFailure;
 		return nullptr;
 	}
 
@@ -538,7 +538,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 		FMemory::Memcpy(OutRawTexture.GetData(), (void*)texture->rubTextureMapData, Height * Width * 4);
 	}*/
 
-	Result = EAsyncBlueprintResultSwitch::OnSuccess;
+	Result = EAsyncBlueprintResultSwitch::Type::OnSuccess;
 	VRRenderModels->FreeTexture(texture);
 
 	VRRenderModels->FreeRenderModel(RenderModel);

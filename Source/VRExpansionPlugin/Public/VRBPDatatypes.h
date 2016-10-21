@@ -8,7 +8,7 @@
 // Redefined here so that non windows packages can compile
 /** Defines the class of tracked devices in SteamVR*/
 UENUM(BlueprintType)
-enum class EBPSteamVRTrackedDeviceType : uint8
+enum class EBPSteamVRTrackedDeviceType
 {
 	/** Represents a Steam VR Controller */
 	Controller,
@@ -26,14 +26,17 @@ enum class EBPSteamVRTrackedDeviceType : uint8
 
 // This makes a lot of the blueprint functions cleaner
 UENUM()
-enum class EBPVRResultSwitch : uint8
+namespace EBPVRResultSwitch
 {
-	// On Success
-	OnSucceeded,
+	enum Type
+	{
+		// On Success
+		OnSucceeded,
 
-	// On Failure
-	OnFailed
-};
+		// On Failure
+		OnFailed
+	};
+}
 
 
 USTRUCT()
@@ -72,7 +75,7 @@ Sweep With Physics = Only sweeps movement, will not be offset by geomtry, still 
 Physics Only = Does not sweep at all (does not trigger OnHitEvents), still pushes physics simulating objects, no weight
 */
 UENUM(Blueprintable)
-enum class EGripCollisionType : uint8
+enum EGripCollisionType
 {
 	InteractiveCollisionWithPhysics,
 	InteractiveCollisionWithVelocity,
@@ -84,7 +87,7 @@ enum class EGripCollisionType : uint8
 
 // This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
 UENUM(Blueprintable)
-enum class EBPHMDDeviceType : uint8
+enum EBPHMDDeviceType
 {
 	DT_OculusRift,
 	DT_Morpheus,
@@ -96,7 +99,7 @@ enum class EBPHMDDeviceType : uint8
 
 // Lerp states
 UENUM(Blueprintable)
-enum class EGripLerpState : uint8
+enum EGripLerpState
 {
 	StartLerp,
 	EndLerp,
@@ -106,7 +109,7 @@ enum class EGripLerpState : uint8
 
 // Grip Late Update informaiton
 UENUM(Blueprintable)
-enum class EGripLateUpdateSettings : uint8
+enum EGripLateUpdateSettings
 {
 	LateUpdatesAlwaysOn,
 	LateUpdatesAlwaysOff,
@@ -118,7 +121,7 @@ enum class EGripLateUpdateSettings : uint8
 // Grip movement replication settings
 // ServerSideMovementOnlyWhenColliding is not InteractivePhysicsGripCompatible
 UENUM(Blueprintable)
-enum class EGripMovementReplicationSettings : uint8
+enum EGripMovementReplicationSettings
 {
 	KeepOriginalMovement,
 	ForceServerSideMovement,
@@ -127,7 +130,7 @@ enum class EGripMovementReplicationSettings : uint8
 
 // Grip Target Type
 UENUM(Blueprintable)
-enum class EGripTargetType : uint8
+enum EGripTargetType
 {
 	ActorGrip,
 	ComponentGrip,
@@ -137,7 +140,7 @@ enum class EGripTargetType : uint8
 
 // Lerp states
 UENUM(Blueprintable)
-enum class EGripInterfaceTeleportBehavior : uint8
+enum EGripInterfaceTeleportBehavior
 {
 	TeleportAllComponents,
 	OnlyTeleportRootComponent,
@@ -229,22 +232,22 @@ struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 public:
 
 	UPROPERTY(BlueprintReadOnly)
-		EGripTargetType GripTargetType;
+		TEnumAsByte<EGripTargetType> GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
 		AActor * Actor;
 	UPROPERTY(BlueprintReadOnly)
 		UPrimitiveComponent * Component;
 	UPROPERTY(BlueprintReadOnly)
-		EGripCollisionType GripCollisionType;
+		TEnumAsByte<EGripCollisionType> GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
-		EGripLateUpdateSettings GripLateUpdateSetting;
+		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting;
 	//UPROPERTY(BlueprintReadOnly)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
 		FTransform RelativeTransform;
 
 	UPROPERTY(BlueprintReadOnly)
-		EGripMovementReplicationSettings GripMovementReplicationSetting;
+		TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting;
 	UPROPERTY(BlueprintReadOnly)
 		bool bOriginalReplicatesMovement;
 
@@ -268,7 +271,7 @@ public:
 		float LerpToRate;
 	
 	// These are not replicated, they don't need to be
-	EGripLerpState GripLerpState;
+	TEnumAsByte<EGripLerpState> GripLerpState;
 	FVector LastRelativeLocation;
 	float curLerp;
 

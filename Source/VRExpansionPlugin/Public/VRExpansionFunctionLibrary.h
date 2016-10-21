@@ -35,18 +35,21 @@ DECLARE_LOG_CATEGORY_EXTERN(VRExpansionFunctionLibraryLog, Log, All);
 
 // This will make using the load model as async easier to understand
 UENUM()
-enum class EAsyncBlueprintResultSwitch : uint8
+namespace EAsyncBlueprintResultSwitch
 {
-	// On Success
-	OnSuccess,
-	// On still loading async
-	AsyncLoading,
-	// On Failure
-	OnFailure
-};
+	enum Type
+	{
+		// On Success
+		OnSuccess,
+		// On still loading async
+		AsyncLoading,
+		// On Failure
+		OnFailure
+	};
+}
 
 UENUM(BlueprintType)
-enum class EVRDeviceProperty_String : uint8
+enum class EVRDeviceProperty_String
 {
 	Prop_TrackingSystemName_String				= 0, ////
 	Prop_ModelNumber_String						= 1,
@@ -61,7 +64,7 @@ enum class EVRDeviceProperty_String : uint8
 };
 
 UENUM(BlueprintType)
-enum class EVRDeviceProperty_Bool : uint8
+enum EVRDeviceProperty_Bool
 {	
 	Prop_WillDriftInYaw_Bool = 4,	
 	Prop_DeviceIsWireless_Bool = 10,
@@ -75,13 +78,13 @@ enum class EVRDeviceProperty_Bool : uint8
 };
 
 UENUM(BlueprintType)
-enum class EVRDeviceProperty_Float : uint8
+enum EVRDeviceProperty_Float
 {
 	Prop_DeviceBatteryPercentage_Float = 12 // 0 is empty, 1 is full
 };
 
 UENUM(BlueprintType)
-enum class EVRControllerProperty_String : uint8
+enum EVRControllerProperty_String
 {
 	Prop_AttachedDeviceId_String = 0
 };
@@ -89,7 +92,7 @@ enum class EVRControllerProperty_String : uint8
 // Not using due to BP incompatibility
 /*
 UENUM(BlueprintType)
-enum class EVRDeviceProperty_UInt64 : uint8
+enum class EVRDeviceProperty_UInt64
 {
 	Prop_HardwareRevision_Uint64 = 17,
 	Prop_FirmwareVersion_Uint64 = 18,
@@ -231,22 +234,22 @@ public:
 
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result"))
-	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
+	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<EBPSteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
 	
 	// Gets a String device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString"))
-	bool GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
+	bool GetVRDevicePropertyString(TEnumAsByte<EVRDeviceProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue);
 
 	// Gets a Bool device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyBool"))
-	bool GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue);
+	bool GetVRDevicePropertyBool(TEnumAsByte<EVRDeviceProperty_Bool> PropertyToRetrieve, int32 DeviceID, bool & BoolValue);
 
 	// Gets a Float device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyFloat"))
-	bool GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue);
+	bool GetVRDevicePropertyFloat(TEnumAsByte<EVRDeviceProperty_Float> PropertyToRetrieve, int32 DeviceID, float & FloatValue);
 
 	// Gets a String controller property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRControllerPropertyString"))
-	bool GetVRControllerPropertyString(EVRControllerProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
+	bool GetVRControllerPropertyString(TEnumAsByte<EVRControllerProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue);
 
 };	
