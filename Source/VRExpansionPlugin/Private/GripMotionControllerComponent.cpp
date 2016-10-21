@@ -43,7 +43,6 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bDisableLowLatencyUpdate = false;
 	bHasAuthority = false;
 	bUseWithoutTracking = false;
-	bAutoActivate = true;
 
 	this->SetIsReplicated(true);
 
@@ -1264,10 +1263,6 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-
-	if (!bIsActive)
-		return;
 
 	// Moved this here instead of in the polling function, it was ticking once per frame anyway so no loss of perf
 	// It doesn't need to be there and now I can pre-check
