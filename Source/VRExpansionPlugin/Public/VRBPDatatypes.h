@@ -8,7 +8,7 @@
 // Redefined here so that non windows packages can compile
 /** Defines the class of tracked devices in SteamVR*/
 UENUM(BlueprintType)
-enum class EBPSteamVRTrackedDeviceType
+enum class EBPSteamVRTrackedDeviceType : uint8
 {
 	/** Represents a Steam VR Controller */
 	Controller,

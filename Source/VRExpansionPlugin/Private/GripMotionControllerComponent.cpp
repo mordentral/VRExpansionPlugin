@@ -43,6 +43,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bDisableLowLatencyUpdate = false;
 	bHasAuthority = false;
 	bUseWithoutTracking = false;
+	bAutoActivate = true;
 
 	this->SetIsReplicated(true);
 
@@ -1264,6 +1265,10 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+
+	if (!bIsActive)
+		return;
+
 	// Moved this here instead of in the polling function, it was ticking once per frame anyway so no loss of perf
 	// It doesn't need to be there and now I can pre-check
 	// Also epics implementation in the polling function didn't work anyway as it was based off of playercontroller which is not the owner of this controller
@@ -1898,7 +1903,11 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		{
 			// Create kinematic actor we are going to create joint with. This will be moved around with calls to SetLocation/SetRotation.
 			PxRigidDynamic* KinActor = Scene->getPhysics().createRigidDynamic(KinPose);
-			KinActor->setRigidDynamicFlag(PxRigidDynamicFlag::eKINEMATIC, true);
+			//#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 13
+			//			KinActor->setRigidDynamicFlag(PxRigidDynamicFlag::eKINEMATIC, true);
+			//#else
+			KinActor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+			//#endif
 			KinActor->setMass(0.0f); // 1.0f;
 			KinActor->setMassSpaceInertiaTensor(PxVec3(0.0f, 0.0f, 0.0f));// PxVec3(1.0f, 1.0f, 1.0f));
 			KinActor->setMaxDepenetrationVelocity(PX_MAX_F32);
@@ -1914,7 +1923,11 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 			// Create the joint
 			PxVec3 LocalHandlePos = GrabbedActorPose.transformInv(KinLocation);
-			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform::createIdentity(), Actor, PxTransform(LocalHandlePos));
+			//#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 13
+			//			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform::createIdentity(), Actor, PxTransform(LocalHandlePos));
+			//#else
+			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, GrabbedActorPose.transformInv(KinPose));
+			//#endif
 			
 			if (!NewJoint)
 			{

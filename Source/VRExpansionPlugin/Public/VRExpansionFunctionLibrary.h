@@ -49,7 +49,7 @@ namespace EAsyncBlueprintResultSwitch
 }
 
 UENUM(BlueprintType)
-enum class EVRDeviceProperty_String
+enum class EVRDeviceProperty_String : uint8
 {
 	Prop_TrackingSystemName_String				= 0, ////
 	Prop_ModelNumber_String						= 1,
