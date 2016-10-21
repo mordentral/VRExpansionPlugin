@@ -294,7 +294,7 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 	LinearVelocity = primComp->GetPhysicsLinearVelocity();
 }
 
-void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result)
+void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, EBPVRResultSwitch &Result)
 {
 	if (!ActorToLookForGrip)
 	{
@@ -315,7 +315,7 @@ void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Gri
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result)
+void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, EBPVRResultSwitch &Result)
 {
 	if (!ComponentToLookForGrip)
 	{
@@ -336,7 +336,7 @@ void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation 
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting)
+void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripLateUpdateSettings NewGripLateUpdateSetting)
 {
 	int fIndex = GrippedActors.Find(Grip);
 
@@ -352,7 +352,7 @@ void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGrip
 
 void UGripMotionControllerComponent::SetGripRelativeTransform(
 	const FBPActorGripInformation &Grip,
-	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+	EBPVRResultSwitch &Result,
 	const FTransform & NewRelativeTransform
 	)
 {
@@ -370,7 +370,7 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 
 void UGripMotionControllerComponent::SetGripAdditionTransform(
 	const FBPActorGripInformation &Grip,
-	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+	EBPVRResultSwitch &Result,
 	const FTransform & NewAdditionTransform, bool bMakeGripRelative
 	)
 {
@@ -427,9 +427,9 @@ bool UGripMotionControllerComponent::GripActor(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
-	TEnumAsByte<EGripCollisionType> GripCollisionType, 
-	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
-	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	EGripCollisionType GripCollisionType, 
+	EGripLateUpdateSettings GripLateUpdateSetting,
+	EGripMovementReplicationSettings GripMovementReplicationSetting,
 	float GripStiffness, 
 	float GripDamping
 	)
@@ -566,9 +566,9 @@ bool UGripMotionControllerComponent::GripComponent(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
-	TEnumAsByte<EGripCollisionType> GripCollisionType,
-	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
-	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	EGripCollisionType GripCollisionType,
+	EGripLateUpdateSettings GripLateUpdateSetting,
+	EGripMovementReplicationSettings GripMovementReplicationSetting,
 	float GripStiffness, 
 	float GripDamping
 	)
@@ -830,7 +830,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	bool bHasMovementAuthority = HasGripMovementAuthority(NewGrip);
 
 
-	switch (NewGrip.GripCollisionType.GetValue())
+	switch (NewGrip.GripCollisionType)
 	{
 	case EGripCollisionType::InteractiveCollisionWithPhysics:
 	{
@@ -1898,7 +1898,12 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		{
 			// Create kinematic actor we are going to create joint with. This will be moved around with calls to SetLocation/SetRotation.
 			PxRigidDynamic* KinActor = Scene->getPhysics().createRigidDynamic(KinPose);
+			
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 13
 			KinActor->setRigidDynamicFlag(PxRigidDynamicFlag::eKINEMATIC, true);
+#else
+			KinActor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+#endif
 			KinActor->setMass(0.0f); // 1.0f;
 			KinActor->setMassSpaceInertiaTensor(PxVec3(0.0f, 0.0f, 0.0f));// PxVec3(1.0f, 1.0f, 1.0f));
 			KinActor->setMaxDepenetrationVelocity(PX_MAX_F32);
@@ -1914,8 +1919,13 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 			// Create the joint
 			PxVec3 LocalHandlePos = GrabbedActorPose.transformInv(KinLocation);
+
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 13
 			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform::createIdentity(), Actor, PxTransform(LocalHandlePos));
-			
+#else
+			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, GrabbedActorPose.transformInv(KinPose));
+#endif
+
 			if (!NewJoint)
 			{
 				HandleInfo->HandleData = 0;

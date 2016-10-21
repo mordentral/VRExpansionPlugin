@@ -28,7 +28,7 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 
 	/** Which hand this component should automatically follow */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
-		TEnumAsByte<EControllerHand> Hand;
+		EControllerHand Hand;
 
 	/** If false, render transforms within the motion controller hierarchy will be updated a second time immediately before rendering. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
@@ -36,7 +36,7 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 
 	/** The tracking status for the device (e.g. full tracking, inertial tracking only, no tracking) */
 	UPROPERTY(BlueprintReadOnly, Category = "MotionController")
-		TEnumAsByte<ETrackingStatus> CurrentTrackingStatus;
+		ETrackingStatus CurrentTrackingStatus;
 
 	/** Whether or not this component had a valid tracked device this frame */
 	UFUNCTION(BlueprintPure, Category = "MotionController")
@@ -153,9 +153,9 @@ public:
 		const FTransform &WorldOffset, 
 		bool bWorldOffsetIsRelative = false, 
 		FName OptionalSnapToSocketName = NAME_None, 
-		TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
-		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping, 
-		TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
+		EGripCollisionType GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
+		EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping, 
+		EGripMovementReplicationSettings GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
 		float GripStiffness = 1500.0f, 
 		float GripDamping = 200.0f
 		);
@@ -175,9 +175,9 @@ public:
 		UPrimitiveComponent* ComponentToGrip, 
 		const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, 
 		FName OptionalSnapToSocketName = NAME_None, 
-		TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
-		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
-		TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
+		EGripCollisionType GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
+		EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
+		EGripMovementReplicationSettings GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
 		float GripStiffness = 1500.0f, 
 		float GripDamping = 200.0f
 		);
@@ -208,11 +208,11 @@ public:
 
 	// Get a grip by actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
-		void GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result);
+		void GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, EBPVRResultSwitch &Result);
 
 	// Get a grip by component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
-		void GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result);
+		void GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, EBPVRResultSwitch &Result);
 
 	// Get the physics velocities of a grip
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
@@ -222,15 +222,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripLateUpdateSetting(
 			const FBPActorGripInformation &Grip, 
-			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
-			TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping	
+			EBPVRResultSwitch &Result,
+			EGripLateUpdateSettings NewGripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping	
 			);
 
 	// Set the relative transform of a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripRelativeTransform(
 			const FBPActorGripInformation &Grip,
-			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+			EBPVRResultSwitch &Result,
 			const FTransform & NewRelativeTransform
 			);
 
@@ -238,7 +238,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripAdditionTransform(
 			const FBPActorGripInformation &Grip,
-			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+			EBPVRResultSwitch &Result,
 			const FTransform & NewAdditionTransform, bool bMakeGripRelative = false
 			);
 

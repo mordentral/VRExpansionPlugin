@@ -29,7 +29,7 @@ public:
 	bool HasReachedCurrentTarget(const FVector& CurrentLocation) const;
 
 	// Had to override this to get the correct DebugReachTest
-	virtual void GetDebugStringTokens(TArray<FString>& Tokens, TArray<EPathFollowingDebugTokens::Type>& Flags) const override;
+	virtual void GetDebugStringTokens(TArray<FString>& Tokens, TArray<EPathFollowingDebugTokens::Type> & Flags) const override;
 	void DebugReachTest(float& CurrentDot, float& CurrentDistance, float& CurrentHeight, uint8& bDotFailed, uint8& bDistanceFailed, uint8& bHeightFailed) const;
 
 	void FollowPathSegment(float DeltaTime) override;
