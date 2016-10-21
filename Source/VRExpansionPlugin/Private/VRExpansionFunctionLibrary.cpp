@@ -246,7 +246,7 @@ bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(TEnumAsByte<EVRC
 #endif
 }
 
-bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(TEnumAsByte<EVRDeviceProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue)
+bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
@@ -269,7 +269,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyString(TEnumAsByte<EVRDevic
 
 	char charvalue[vr::k_unMaxPropertyStringSize];
 	uint32_t buffersize = 255;
-	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve.GetValue()) + 1000), charvalue, buffersize, &pError);
+	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 1000), charvalue, buffersize, &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 		return false;
@@ -344,7 +344,7 @@ bool UVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(TEnumAsByte<EVRDevice
 #endif
 }
 
-UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, TEnumAsByte<EBPSteamVRTrackedDeviceType> DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
+UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture*/)
 {
 
 #if !STEAMVR_SUPPORTED_PLATFORM
@@ -401,7 +401,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 
 	TArray<int32> TrackedIDs;
 
-	USteamVRFunctionLibrary::GetValidTrackedDeviceIds((ESteamVRTrackedDeviceType)DeviceType.GetValue(), TrackedIDs);
+	USteamVRFunctionLibrary::GetValidTrackedDeviceIds((ESteamVRTrackedDeviceType)DeviceType, TrackedIDs);
 	if (TrackedIDs.Num() == 0)
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Tracked Devices!!"));

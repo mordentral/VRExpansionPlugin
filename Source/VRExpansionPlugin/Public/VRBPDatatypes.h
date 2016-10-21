@@ -5,6 +5,16 @@
 
 #include "VRBPDatatypes.generated.h"
 
+// Temp until full conversion past 4.13, breaks 4.14 / 4.13 cross conversion
+UENUM(BlueprintType)
+enum class EBPTrackingStatus : uint8 //  ETrackingStatus
+{
+	NotTracked,
+	InertialOnly,
+	Tracked
+};
+
+
 // Redefined here so that non windows packages can compile
 /** Defines the class of tracked devices in SteamVR*/
 UENUM(BlueprintType)
