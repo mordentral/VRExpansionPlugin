@@ -378,7 +378,7 @@ private:
 	bool bHasAuthority;
 
 	/** Whether or not this component is currently on the network server*/
-	bool bIsServer;
+	//bool bIsServer;
 
 	/** If true, the Position and Orientation args will contain the most recent controller state */
 	bool PollControllerState(FVector& Position, FRotator& Orientation);
