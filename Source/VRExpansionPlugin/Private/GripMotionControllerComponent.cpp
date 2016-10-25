@@ -834,6 +834,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	switch (NewGrip.GripCollisionType.GetValue())
 	{
 	case EGripCollisionType::InteractiveCollisionWithPhysics:
+	case EGripCollisionType::ManipulationGrip:
 	{
 		if(bHasMovementAuthority)
 			SetUpPhysicsHandle(NewGrip);
@@ -1724,6 +1725,10 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					// Move the actor, we are not offsetting by the hit result anyway
 					root->SetWorldTransform(WorldTransform, false);
 				}
+				else if (Grip->GripCollisionType == EGripCollisionType::ManipulationGrip)
+				{
+					UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+				}
 			}
 			else
 			{
@@ -1901,15 +1906,25 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		finalTrans.ConcatenateRotation(rotval.Quaternion());
 		PxTransform KinPose(U2PTransform(finalTrans));//(KinLocation, U2PQuat(root->GetComponentTransform().GetRotation()));//GrabbedActorPose.q);
 		*/
+		PxTransform KinPose;
+		PxTransform GrabbedActorPose;
+
+
+		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
+
+		FTransform terns = FTransform::Identity;
+		FRotator rotval = FRotator::ZeroRotator;
+		if (skele)
+		{
+			terns = skele->GetBoneTransform(0, FTransform::Identity);
+			KinPose = U2PTransform(terns);
+		}
+		
+		FTransform trans = root->GetComponentTransform();
+		trans.ConcatenateRotation(terns.GetRotation().Inverse());
 
 		// Get transform of actor we are grabbing
-
-		FTransform WorldTransform;
-		WorldTransform = NewGrip.RelativeTransform * this->GetComponentTransform();
-
-		PxVec3 KinLocation = U2PVector(WorldTransform.GetLocation() - (WorldTransform.GetLocation() - root->GetComponentLocation()));
-		PxTransform GrabbedActorPose = Actor->getGlobalPose();
-		PxTransform KinPose(KinLocation, GrabbedActorPose.q);
+		KinPose = U2PTransform(trans);
 
 		// set target and current, so we don't need another "Tick" call to have it right
 		//TargetTransform = CurrentTransform = P2UTransform(KinPose);
@@ -1921,7 +1936,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			PxRigidDynamic* KinActor = Scene->getPhysics().createRigidDynamic(KinPose);
 			KinActor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
 
-			KinActor->setMass(0.0f); // 1.0f;
+			KinActor->setMass(10000000.0f); // 1.0f;
 			KinActor->setMassSpaceInertiaTensor(PxVec3(0.0f, 0.0f, 0.0f));// PxVec3(1.0f, 1.0f, 1.0f));
 			KinActor->setMaxDepenetrationVelocity(PX_MAX_F32);
 
@@ -1933,10 +1948,10 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 			// Save reference to the kinematic actor.
 			HandleInfo->KinActorData = KinActor;
+			PxD6Joint* NewJoint = NULL;
 
 			// Create the joint
-			PxVec3 LocalHandlePos = GrabbedActorPose.transformInv(KinLocation);
-			PxD6Joint* NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, GrabbedActorPose.transformInv(KinPose));
+			NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, PxTransform(PxIdentity));
 
 			if (!NewJoint)
 			{
@@ -1956,27 +1971,45 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				// Pretty Much Unbreakable
 				NewJoint->setBreakForce(PX_MAX_REAL, PX_MAX_REAL);
 
-				// Setting up the joint
-				NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
-				NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eFREE);
-				NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eFREE);
-				NewJoint->setDrivePosition(PxTransform(PxVec3(0, 0, 0)));
-
-				NewJoint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
-				NewJoint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
-				NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
-
-				//UpdateDriveSettings();
-				if (HandleInfo->HandleData != nullptr)
+				// Different settings for manip grip
+				if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip)
 				{
-					HandleInfo->HandleData->setDrive(PxD6Drive::eX, PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
-					HandleInfo->HandleData->setDrive(PxD6Drive::eY, PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
-					HandleInfo->HandleData->setDrive(PxD6Drive::eZ, PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+					
+					// Setting up the joint
+					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
+					NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eLIMITED);
+					NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eLIMITED);
+					//NewJoint->setDrivePosition(PxTransform(PxVec3(0, 0, 0)));
+					NewJoint->setLinearLimit(PxJointLinearLimit(1.0f, PxSpring(5000.0f, 1.0f)));
 
-					HandleInfo->HandleData->setDrive(PxD6Drive::eSLERP, PxD6JointDrive(NewGrip.Stiffness /** 1.5f*/, NewGrip.Damping /** 1.4f*/, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+					NewJoint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
+					NewJoint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
+					NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
 
-					//HandleData->setDrive(PxD6Drive::eTWIST, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
-					//HandleData->setDrive(PxD6Drive::eSWING, PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION));
+				}
+				else
+				{
+
+					PxD6JointDrive drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+					PxD6JointDrive Angledrive = PxD6JointDrive(NewGrip.Stiffness * 1.5f, NewGrip.Damping /** 1.4f*/, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+
+					// Setting up the joint
+					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
+					NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eFREE);
+					NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eFREE);
+
+					NewJoint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
+					NewJoint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
+					NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
+
+					NewJoint->setDrivePosition(PxTransform(PxVec3(0, 0, 0)));
+
+					NewJoint->setDrive(PxD6Drive::eX, drive);
+					NewJoint->setDrive(PxD6Drive::eY, drive);
+					NewJoint->setDrive(PxD6Drive::eZ, drive);
+					NewJoint->setDrive(PxD6Drive::eTWIST, Angledrive);
+					NewJoint->setDrive(PxD6Drive::eSWING, Angledrive);
+					//NewJoint->setDrive(PxD6Drive::eSLERP, Angledrive);
 				}
 			}
 		}

@@ -92,7 +92,8 @@ enum EGripCollisionType
 	InteractiveCollisionWithSweep,
 	InteractiveHybridCollisionWithSweep,
 	SweepWithPhysics,
-	PhysicsOnly
+	PhysicsOnly,
+	ManipulationGrip
 };
 
 // This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
