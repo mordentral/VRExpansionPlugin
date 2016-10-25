@@ -529,7 +529,6 @@ bool UGripMotionControllerComponent::GripActor(
 		newActorGrip.RelativeTransform = WorldOffset;
 	else
 		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
-	
 
 	GrippedActors.Add(newActorGrip);
 	NotifyGrip(newActorGrip);
@@ -1229,23 +1228,33 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 	FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(Grip);
 	if (Handle && Handle->KinActorData)
 	{
-#if WITH_PHYSX
-	{
-		PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
-		if (PScene)
-		{
-			SCOPED_SCENE_WRITE_LOCK(PScene);
-			Handle->KinActorData->setKinematicTarget(PxTransform(/*U2PTransform(WorldTransform)*/U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
-			Handle->KinActorData->setGlobalPose(PxTransform(/*U2PTransform(WorldTransform)*/U2PVector(WorldTransform.GetLocation()), Handle->KinActorData->getGlobalPose().q));
-		}
-	}
-#endif
 
-	FBodyInstance * body = PrimComp->GetBodyInstance();
-	if (body)
-	{
-		body->SetBodyTransform(WorldTransform, ETeleportType::TeleportPhysics);
-	}
+		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(PrimComp);
+		FTransform trans = P2UTransform(Handle->KinActorData->getGlobalPose());
+
+		if (skele)
+		{
+			WorldTransform.ConcatenateRotation(skele->GetBoneTransform(0, FTransform::Identity).GetRotation());
+		}
+
+	#if WITH_PHYSX
+		{
+			PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
+			if (PScene)
+			{
+				SCOPED_SCENE_WRITE_LOCK(PScene);
+				Handle->KinActorData->setKinematicTarget(U2PTransform(WorldTransform));
+				Handle->KinActorData->setGlobalPose(U2PTransform(WorldTransform));
+			}
+		}
+	#endif
+
+		FBodyInstance * body = PrimComp->GetBodyInstance();
+		if (body)
+		{
+			body->SetBodyTransform(WorldTransform, ETeleportType::TeleportPhysics);
+		}
+
 	}
 
 	return true;
@@ -1491,7 +1500,6 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 				// Get the world transform for this grip after handling secondary grips and interaction differences
 				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root);
-
 
 				// Start handling the grip types and their functions
 				if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
@@ -1906,22 +1914,18 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		finalTrans.ConcatenateRotation(rotval.Quaternion());
 		PxTransform KinPose(U2PTransform(finalTrans));//(KinLocation, U2PQuat(root->GetComponentTransform().GetRotation()));//GrabbedActorPose.q);
 		*/
+
+
+
 		PxTransform KinPose;
 		PxTransform GrabbedActorPose;
-
+		FTransform trans = root->GetComponentTransform();
 
 		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
-
-		FTransform terns = FTransform::Identity;
-		FRotator rotval = FRotator::ZeroRotator;
 		if (skele)
 		{
-			terns = skele->GetBoneTransform(0, FTransform::Identity);
-			KinPose = U2PTransform(terns);
+			trans.ConcatenateRotation(skele->GetBoneTransform(0, FTransform::Identity).GetRotation());
 		}
-		
-		FTransform trans = root->GetComponentTransform();
-		trans.ConcatenateRotation(terns.GetRotation().Inverse());
 
 		// Get transform of actor we are grabbing
 		KinPose = U2PTransform(trans);
@@ -1959,6 +1963,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 			else
 			{
+				PxDistanceJointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, PxTransform(PxIdentity));
 				// No constraint instance
 				NewJoint->userData = NULL;
 				HandleInfo->HandleData = NewJoint;
@@ -1976,16 +1981,26 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				{
 					
 					// Setting up the joint
-					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
+					/*NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
 					NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eLIMITED);
 					NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eLIMITED);
-					//NewJoint->setDrivePosition(PxTransform(PxVec3(0, 0, 0)));
-					NewJoint->setLinearLimit(PxJointLinearLimit(1.0f, PxSpring(5000.0f, 1.0f)));
+					PxJointLinearLimit newLimiter(1.0f, PxSpring(1500.0f, 200.0f));
+					newLimiter.restitution = 0.0f;
+					NewJoint->setLinearLimit(newLimiter);
+					*/
+					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
+					NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eFREE);
+					NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eFREE);
 
 					NewJoint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
 					NewJoint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
 					NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
 
+					PxD6JointDrive drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+					NewJoint->setDrive(PxD6Drive::eX, drive);
+					NewJoint->setDrive(PxD6Drive::eY, drive);
+					NewJoint->setDrive(PxD6Drive::eZ, drive);
+					NewJoint->setDrive(PxD6Drive::eTWIST, drive);
 				}
 				else
 				{
@@ -2038,7 +2053,7 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 	PxRigidDynamic* KinActor = HandleInfo->KinActorData;
 	PxScene* PScene = GetPhysXSceneFromIndex(HandleInfo->SceneIndex);
 	SCOPED_SCENE_WRITE_LOCK(PScene);
-
+	
 	// Check if the new location is worthy of change
 	PxVec3 PNewLocation = U2PVector(NewTransform.GetTranslation());
 	PxVec3 PCurrentLocation = KinActor->getGlobalPose().p;
@@ -2056,11 +2071,27 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 		PNewOrientation = PCurrentOrientation;
 		bChangedRotation = false;
 	}
-
+	
 	// Don't call moveKinematic if it hasn't changed - that will stop bodies from going to sleep.
 	if (bChangedPosition || bChangedRotation)
 	{
-		KinActor->setKinematicTarget(PxTransform( U2PTransform(NewTransform)/*PNewLocation, PNewOrientation*/));
+		USkeletalMeshComponent * skele = NULL;
+		if (GrippedActor.Component)
+		{
+			skele = Cast<USkeletalMeshComponent>(GrippedActor.Component);
+		}
+		else if (GrippedActor.Actor)
+		{
+			skele = Cast<USkeletalMeshComponent>(GrippedActor.Actor->GetRootComponent());
+		}
+
+		FTransform terns = NewTransform;
+		if (skele)
+		{
+			terns.ConcatenateRotation(skele->GetBoneTransform(0, FTransform::Identity).GetRotation());
+		}
+
+		KinActor->setKinematicTarget(PxTransform( U2PTransform(terns)/*PNewLocation, PNewOrientation*/));
 	}
 #endif // WITH_PHYSX
 }
