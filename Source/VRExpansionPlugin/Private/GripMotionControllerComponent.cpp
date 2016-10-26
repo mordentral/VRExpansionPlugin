@@ -2090,7 +2090,7 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 		{
 			terns.ConcatenateRotation(skele->GetBoneTransform(0, FTransform::Identity).GetRotation());
 		}
-
+		//KinActor->setGlobalPose(U2PTransform(terns));
 		KinActor->setKinematicTarget(PxTransform( U2PTransform(terns)/*PNewLocation, PNewOrientation*/));
 	}
 #endif // WITH_PHYSX
