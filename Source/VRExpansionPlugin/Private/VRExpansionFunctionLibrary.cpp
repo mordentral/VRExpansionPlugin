@@ -70,6 +70,42 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 			SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
 	}
 }
+
+void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform)
+{
+	bHadSlotInRange = false;
+	SlotWorldTransform = FTransform::Identity;
+
+	if (!Component)
+		return;
+
+	float ClosestSlotDistance = -0.1f;
+
+	TArray<FName> SocketNames = Component->GetAllSocketNames();
+
+	FString GripIdentifier = SlotType.ToString();
+
+	int foundIndex = 0;
+
+	for (int i = 0; i < SocketNames.Num(); ++i)
+	{
+		if (SocketNames[i].ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
+		{
+			float vecLen = (Component->GetSocketLocation(SocketNames[i]) - WorldLocation).Size();
+
+			if (MaxRange >= vecLen && (ClosestSlotDistance < 0.0f || vecLen < ClosestSlotDistance))
+			{
+				ClosestSlotDistance = vecLen;
+				bHadSlotInRange = true;
+				foundIndex = i;
+			}
+		}
+	}
+
+	if (bHadSlotInRange)
+		SlotWorldTransform = Component->GetSocketTransform(SocketNames[foundIndex]);
+}
+
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
 {
 	return GetHMDPureYaw_I(HMDRotation);
