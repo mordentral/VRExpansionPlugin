@@ -217,10 +217,6 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		if (actor.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement)
 			continue;
 
-		// Don't allow late updates with manipulation grip, there is no point
-		if (actor.GripCollisionType == EGripCollisionType::ManipulationGrip)
-			continue;
-
 		switch (actor.GripLateUpdateSetting)
 		{
 		case EGripLateUpdateSettings::LateUpdatesAlwaysOff:
@@ -501,7 +497,24 @@ bool UGripMotionControllerComponent::GripActor(
 	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
-	newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
+
+	// Ignore late update setting if it doesn't make sense with the grip
+	switch(newActorGrip.GripCollisionType)
+	{
+	case EGripCollisionType::ManipulationGrip:
+	{
+		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff; // Late updates are bad for this grip
+	}break;
+	case EGripCollisionType::PhysicsOnly:
+	case EGripCollisionType::SweepWithPhysics:
+	{
+		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOn;
+	}break;
+	default:
+	{
+		newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
+	}break;
+	}
 
 	if (GripMovementReplicationSetting == EGripMovementReplicationSettings::KeepOriginalMovement)
 	{
@@ -637,7 +650,24 @@ bool UGripMotionControllerComponent::GripComponent(
 	else
 		newActorGrip.GripTargetType = EGripTargetType::ComponentGrip;
 
-	newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
+	// Ignore late update setting if it doesn't make sense with the grip
+	switch (newActorGrip.GripCollisionType)
+	{
+	case EGripCollisionType::ManipulationGrip:
+	{
+		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff; // Late updates are bad for this grip
+	}break;
+	case EGripCollisionType::PhysicsOnly:
+	case EGripCollisionType::SweepWithPhysics:
+	{
+		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOn;
+	}break;
+	default:
+	{
+		newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
+	}break;
+	}
+
 
 	if (GripMovementReplicationSetting == EGripMovementReplicationSettings::KeepOriginalMovement)
 	{
