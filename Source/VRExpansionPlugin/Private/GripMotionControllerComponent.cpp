@@ -217,6 +217,10 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		if (actor.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement)
 			continue;
 
+		// Don't allow late updates with manipulation grip, there is no point
+		if (actor.GripCollisionType == EGripCollisionType::ManipulationGrip)
+			continue;
+
 		switch (actor.GripLateUpdateSetting)
 		{
 		case EGripLateUpdateSettings::LateUpdatesAlwaysOff:
