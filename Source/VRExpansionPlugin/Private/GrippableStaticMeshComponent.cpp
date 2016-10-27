@@ -7,21 +7,21 @@
 UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	bDenyGripping = false;
-	OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
-	bSimulateOnDrop = true;
-	EnumObjectType = 0;
-	SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
-	FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-	bCanHaveDoubleGrip = false;
-	GripTarget = EGripTargetType::ComponentGrip;
-	MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
-	ConstraintStiffness = 1500.0f;
-	ConstraintDamping = 200.0f;
-	SecondarySlotRange = 20.0f;
-	PrimarySlotRange = 20.0f;
-	bIsInteractible = false;
-	//	FBPInteractionSettings sInteractionSettings;
+	VRGripInterfaceSettings.bDenyGripping = false;
+	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
+	VRGripInterfaceSettings.bSimulateOnDrop = true;
+	VRGripInterfaceSettings.EnumObjectType = 0;
+	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
+	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
+	VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
+	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
+	VRGripInterfaceSettings.ConstraintStiffness = 1500.0f;
+	VRGripInterfaceSettings.ConstraintDamping = 200.0f;
+	VRGripInterfaceSettings.ConstraintBreakDistance = 100.0f;
+	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
+	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
+	VRGripInterfaceSettings.bIsInteractible = false;
 }
 
 //=============================================================================
@@ -32,77 +32,81 @@ UGrippableStaticMeshComponent::~UGrippableStaticMeshComponent()
 
 bool UGrippableStaticMeshComponent::DenyGripping_Implementation()
 {
-	return bDenyGripping;
+	return VRGripInterfaceSettings.bDenyGripping;
 }
 
 
 EGripInterfaceTeleportBehavior UGrippableStaticMeshComponent::TeleportBehavior_Implementation()
 {
-	return OnTeleportBehavior;
+	return VRGripInterfaceSettings.OnTeleportBehavior;
 }
 
 bool UGrippableStaticMeshComponent::SimulateOnDrop_Implementation()
 {
-	return bSimulateOnDrop;
+	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
 void UGrippableStaticMeshComponent::ObjectType_Implementation(uint8 & ObjectType)
 {
-	ObjectType = EnumObjectType;
+	ObjectType = VRGripInterfaceSettings.EnumObjectType;
 }
 
 EGripCollisionType UGrippableStaticMeshComponent::SlotGripType_Implementation()
 {
-	return SlotDefaultGripType;
+	return VRGripInterfaceSettings.SlotDefaultGripType;
 }
 
 EGripCollisionType UGrippableStaticMeshComponent::FreeGripType_Implementation()
 {
-	return FreeDefaultGripType;
+	return VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
 bool UGrippableStaticMeshComponent::CanHaveDoubleGrip_Implementation()
 {
-	return bCanHaveDoubleGrip;
+	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
 }
 
 EGripTargetType UGrippableStaticMeshComponent::GripTargetType_Implementation()
 {
-	return GripTarget;
+	return VRGripInterfaceSettings.GripTarget;
 }
 
 EGripMovementReplicationSettings UGrippableStaticMeshComponent::GripMovementReplicationType_Implementation()
 {
-	return MovementReplicationType;
+	return VRGripInterfaceSettings.MovementReplicationType;
 }
 
 float UGrippableStaticMeshComponent::GripStiffness_Implementation()
 {
-	return ConstraintStiffness;
+	return VRGripInterfaceSettings.ConstraintStiffness;
 }
 
 float UGrippableStaticMeshComponent::GripDamping_Implementation()
 {
-	return ConstraintDamping;
+	return VRGripInterfaceSettings.ConstraintDamping;
+}
+
+float UGrippableStaticMeshComponent::GripBreakDistance_Implementation()
+{
+	return VRGripInterfaceSettings.ConstraintBreakDistance;
 }
 
 void UGrippableStaticMeshComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform)
 {
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component("VRGripS", this, WorldLocation, SecondarySlotRange, bHadSlotInRange, SlotWorldTransform);
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component("VRGripS", this, WorldLocation, VRGripInterfaceSettings.SecondarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
 void UGrippableStaticMeshComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform)
 {
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component("VRGripP", this, WorldLocation, PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component("VRGripP", this, WorldLocation, VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
 bool UGrippableStaticMeshComponent::IsInteractible_Implementation()
 {
-	return bIsInteractible;
+	return VRGripInterfaceSettings.bIsInteractible;
 }
 
 FBPInteractionSettings UGrippableStaticMeshComponent::GetInteractionSettings_Implementation()
 {
-	return InteractionSettings;
+	return VRGripInterfaceSettings.InteractionSettings;
 }
-

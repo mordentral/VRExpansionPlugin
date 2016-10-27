@@ -1547,6 +1547,42 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				// Get the world transform for this grip after handling secondary grips and interaction differences
 				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root);
 
+
+				// Half done auto drop with break distance
+				/*if (IsServer())
+				{
+					float BreakDistance = 0.0f;
+					if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_IsInteractible(root))
+					{
+						BreakDistance = IVRGripInterface::Execute_GripBreakDistance(root);
+					}
+					else if (actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_IsInteractible(actor))
+					{
+						// Actor grip interface is checked after component
+						BreakDistance = IVRGripInterface::Execute_GripBreakDistance(actor);
+					}
+
+					if (BreakDistance > 0.0f)
+					{
+						if ((WorldTransform.GetLocation() - root->GetComponentLocation()).Size() >= BreakDistance)
+						{
+							switch (Grip->GripTargetType)
+							{
+							case EGripTargetType::ComponentGrip:
+							case EGripTargetType::InteractibleComponentGrip:
+							{
+								DropComponent(root,)
+							}break;
+							case EGripTargetType::ActorGrip:
+							case EGripTargetType::InteractibleActorGrip:
+							{
+
+							}break;
+							}
+						}
+					}
+				}*/
+
 				// Start handling the grip types and their functions
 				if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
 				{

@@ -4,18 +4,18 @@
 
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
-#include "GrippableStaticMeshComponent.generated.h"
+#include "GrippableStaticMeshActor.generated.h"
 
 /**
 *
 */
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
-class VREXPANSIONPLUGIN_API UGrippableStaticMeshComponent : public UStaticMeshComponent, public IVRGripInterface
+class VREXPANSIONPLUGIN_API AGrippableStaticMeshActor : public AStaticMeshActor, public IVRGripInterface
 {
 	GENERATED_UCLASS_BODY()
 
-	~UGrippableStaticMeshComponent();
+	~AGrippableStaticMeshActor();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 	FBPInterfaceProperties VRGripInterfaceSettings;

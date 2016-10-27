@@ -61,6 +61,10 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripDamping();
 
+	// What distance to break a grip at (only relevent with physics enabled grips
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		float GripBreakDistance();
+
 	// Get closest secondary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void ClosestSecondarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
@@ -95,7 +99,6 @@ public:
 	// Event triggered on the interfaced object when secondary grip is released
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
 		void OnSecondaryGripRelease(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation);
-
 
 	// Interaction Functions
 

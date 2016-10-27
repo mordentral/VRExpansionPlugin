@@ -5,6 +5,7 @@
 
 #include "VRBPDatatypes.generated.h"
 
+
 // Temp until full conversion past 4.13, breaks 4.14 / 4.13 cross conversion
 UENUM(BlueprintType)
 enum class EBPTrackingStatus : uint8 //  ETrackingStatus
@@ -13,7 +14,6 @@ enum class EBPTrackingStatus : uint8 //  ETrackingStatus
 	InertialOnly,
 	Tracked
 };
-
 
 // Redefined here so that non windows packages can compile
 /** Defines the class of tracked devices in SteamVR*/
@@ -423,6 +423,80 @@ struct TStructOpsTypeTraits< FBPActorGripInformation > : public TStructOpsTypeTr
 		WithNetSerializer = true
 	};
 };
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPInterfaceProperties
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		bool bDenyGripping;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		TEnumAsByte<EGripInterfaceTeleportBehavior> OnTeleportBehavior;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		bool bSimulateOnDrop;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		uint8 EnumObjectType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		TEnumAsByte<EGripCollisionType> SlotDefaultGripType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		TEnumAsByte<EGripCollisionType> FreeDefaultGripType;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		bool bCanHaveDoubleGrip;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		TEnumAsByte<EGripTargetType> GripTarget;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		TEnumAsByte<EGripMovementReplicationSettings> MovementReplicationType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		float ConstraintStiffness;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		float ConstraintDamping;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		float ConstraintBreakDistance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		float SecondarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		float PrimarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		bool bIsInteractible;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		FBPInteractionSettings InteractionSettings;
+
+	FBPInterfaceProperties()
+	{
+		bDenyGripping = false;
+		OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
+		bSimulateOnDrop = true;
+		EnumObjectType = 0;
+		SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
+		FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
+		bCanHaveDoubleGrip = false;
+		GripTarget = EGripTargetType::ComponentGrip;
+		MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
+		ConstraintStiffness = 1500.0f;
+		ConstraintDamping = 200.0f;
+		ConstraintBreakDistance = 100.0f;
+		SecondarySlotRange = 20.0f;
+		PrimarySlotRange = 20.0f;
+		bIsInteractible = false;
+	}
+};
+
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
