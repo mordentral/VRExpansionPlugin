@@ -99,15 +99,15 @@ bool AVRCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestR
 
 void AVRCharacter::NotifyOfTeleport_Implementation()
 {
+	// Regenerate the capsule offset location - Should be done anyway in the move_impl function, but playing it safe
+	if (VRRootReference)
+		VRRootReference->GenerateOffsetToWorld();
+
 	if (LeftMotionController)
 		LeftMotionController->PostTeleportMoveGrippedActors();
 
 	if (RightMotionController)
 		RightMotionController->PostTeleportMoveGrippedActors();
-
-	// Regenerate the capsule offset location
-	if (VRRootReference)
-		VRRootReference->GenerateOffsetToWorld();
 }
 
 FVector AVRCharacter::GetNavAgentLocation() const
