@@ -57,5 +57,6 @@ Here is a list of VR quick tips  that I will begin to assemble
 
 
 For Temporal AA I found the following two console commands to greatly increase clarity and reduce blur.
+
  * r.temporalAAsamples 1
  * r.temporalAAsharpness 1
