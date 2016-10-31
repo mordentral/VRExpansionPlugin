@@ -457,6 +457,9 @@ public:
 		TEnumAsByte<EGripMovementReplicationSettings> MovementReplicationType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		TEnumAsByte<EGripLateUpdateSettings> LateUpdateSetting;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintStiffness;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
@@ -488,9 +491,10 @@ public:
 		bCanHaveDoubleGrip = false;
 		GripTarget = EGripTargetType::ComponentGrip;
 		MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
+		LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 		ConstraintStiffness = 1500.0f;
 		ConstraintDamping = 200.0f;
-		ConstraintBreakDistance = 100.0f;
+		ConstraintBreakDistance = 0.0f;
 		SecondarySlotRange = 20.0f;
 		PrimarySlotRange = 20.0f;
 		bIsInteractible = false;

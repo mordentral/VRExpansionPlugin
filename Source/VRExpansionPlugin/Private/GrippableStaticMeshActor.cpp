@@ -16,12 +16,15 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
 	VRGripInterfaceSettings.GripTarget = EGripTargetType::ActorGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
+	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
 	VRGripInterfaceSettings.ConstraintStiffness = 1500.0f;
 	VRGripInterfaceSettings.ConstraintDamping = 200.0f;
 	VRGripInterfaceSettings.ConstraintBreakDistance = 100.0f;
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
+
+	this->SetMobility(EComponentMobility::Movable);
 }
 
 //=============================================================================
@@ -74,6 +77,11 @@ EGripTargetType AGrippableStaticMeshActor::GripTargetType_Implementation()
 EGripMovementReplicationSettings AGrippableStaticMeshActor::GripMovementReplicationType_Implementation()
 {
 	return VRGripInterfaceSettings.MovementReplicationType;
+}
+
+EGripLateUpdateSettings AGrippableStaticMeshActor::GripLateUpdateSetting_Implementation()
+{
+	return VRGripInterfaceSettings.LateUpdateSetting;
 }
 
 float AGrippableStaticMeshActor::GripStiffness_Implementation()

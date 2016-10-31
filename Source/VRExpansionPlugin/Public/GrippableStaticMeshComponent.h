@@ -56,6 +56,10 @@ class VREXPANSIONPLUGIN_API UGrippableStaticMeshComponent : public UStaticMeshCo
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripMovementReplicationSettings GripMovementReplicationType();
 
+	// Define the late update setting
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		EGripLateUpdateSettings GripLateUpdateSetting();
+
 	// What grip stiffness to use if using a physics constraint
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripStiffness();

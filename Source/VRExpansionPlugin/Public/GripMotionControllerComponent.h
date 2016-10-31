@@ -127,15 +127,9 @@ public:
 		return false;
 	}
 
-	/*UFUNCTION(BlueprintCallable, Category = "VRGrip")
-		bool GripObjectByInterface(
-			UObject * ObjectToGrip,
-			const FTransform &WorldOffset,
-			bool bWorldOffsetIsRelative = false,
-			FName OptionalSnapToSocketName = NAME_None,
-			float GripStiffness = 1500.0f,
-			float GripDamping = 200.0f
-			);*/
+	// Auto grip any uobject that is/root is a primitive component and has the VR Grip Interface	
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+		bool GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, bool bIsSlotGrip = false);
 
 	/* Grip an actor, these are stored in a Tarray that will prevent destruction of the object, you MUST ungrip an actor if you want to kill it
 	   The WorldOffset is the transform that it will remain away from the controller, if you use the world position of the actor then it will grab
@@ -283,7 +277,6 @@ public:
 		return InTransform.GetRelativeTransform(GrippedActorTransform);
 	}
 
-
 	// Gets if the given Component is a secondary attach point to a gripped actor
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 	bool GetIsHeld(const AActor * ActorToCheck)
@@ -293,7 +286,7 @@ public:
 
 		for (int i = 0; i < GrippedActors.Num(); ++i)
 		{
-			if (GrippedActors[i].Actor == ActorToCheck)
+			if (GrippedActors[i] == ActorToCheck)
 			{
 				return true;
 			}
@@ -302,6 +295,23 @@ public:
 		return false;
 	}
 
+	// Gets if the given Component is a secondary attach point to a gripped actor
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	bool GetIsComponentHeld(const UPrimitiveComponent * ComponentToCheck)
+	{
+		if (!ComponentToCheck)
+			return false;
+
+		for (int i = 0; i < GrippedActors.Num(); ++i)
+		{
+			if (GrippedActors[i] == ComponentToCheck)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
 
 	// Gets if the given Component is a secondary attach point to a gripped actor
 	UFUNCTION(BlueprintPure, Category = "VRGrip")

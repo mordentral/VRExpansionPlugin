@@ -16,6 +16,7 @@ UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitia
 	VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
 	VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
+	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 	VRGripInterfaceSettings.ConstraintStiffness = 1500.0f;
 	VRGripInterfaceSettings.ConstraintDamping = 200.0f;
 	VRGripInterfaceSettings.ConstraintBreakDistance = 100.0f;
@@ -34,7 +35,6 @@ bool UGrippableStaticMeshComponent::DenyGripping_Implementation()
 {
 	return VRGripInterfaceSettings.bDenyGripping;
 }
-
 
 EGripInterfaceTeleportBehavior UGrippableStaticMeshComponent::TeleportBehavior_Implementation()
 {
@@ -74,6 +74,11 @@ EGripTargetType UGrippableStaticMeshComponent::GripTargetType_Implementation()
 EGripMovementReplicationSettings UGrippableStaticMeshComponent::GripMovementReplicationType_Implementation()
 {
 	return VRGripInterfaceSettings.MovementReplicationType;
+}
+
+EGripLateUpdateSettings UGrippableStaticMeshComponent::GripLateUpdateSetting_Implementation()
+{
+	return VRGripInterfaceSettings.LateUpdateSetting;
 }
 
 float UGrippableStaticMeshComponent::GripStiffness_Implementation()

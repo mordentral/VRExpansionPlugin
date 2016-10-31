@@ -423,6 +423,102 @@ FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform(
 	return FinalTransform;
 }
 
+bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative, bool bIsSlotGrip)
+{
+	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToGrip))
+	{
+		AActor * Owner = PrimComp->GetOwner();
+
+		if (!Owner)
+			return false;
+
+		if (PrimComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			EGripCollisionType CollisionType;
+			if (bIsSlotGrip)
+				CollisionType = IVRGripInterface::Execute_SlotGripType(PrimComp);
+			else
+				CollisionType = IVRGripInterface::Execute_FreeGripType(PrimComp);
+
+			return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, NAME_None,
+				CollisionType,
+				IVRGripInterface::Execute_GripLateUpdateSetting(PrimComp),
+				IVRGripInterface::Execute_GripMovementReplicationType(PrimComp),
+				IVRGripInterface::Execute_GripStiffness(PrimComp),
+				IVRGripInterface::Execute_GripDamping(PrimComp)
+				);
+		}
+		else if (Owner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			EGripCollisionType CollisionType;
+			if (bIsSlotGrip)
+				CollisionType = IVRGripInterface::Execute_SlotGripType(Owner);
+			else
+				CollisionType = IVRGripInterface::Execute_FreeGripType(Owner);
+
+			return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, NAME_None,
+				CollisionType,
+				IVRGripInterface::Execute_GripLateUpdateSetting(Owner),
+				IVRGripInterface::Execute_GripMovementReplicationType(Owner),
+				IVRGripInterface::Execute_GripStiffness(Owner),
+				IVRGripInterface::Execute_GripDamping(Owner)
+				);
+		}
+		else
+		{
+			// No interface, no grip
+			return false;
+		}
+	}
+	else if (AActor * Actor = Cast<AActor>(ObjectToGrip))
+	{
+		UPrimitiveComponent * root = Cast<UPrimitiveComponent>(Actor->GetRootComponent());
+
+		if (!root)
+			return false;
+
+		if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			EGripCollisionType CollisionType;
+			if (bIsSlotGrip)
+				CollisionType = IVRGripInterface::Execute_SlotGripType(root);
+			else
+				CollisionType = IVRGripInterface::Execute_FreeGripType(root);
+
+			return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, NAME_None,
+				CollisionType,
+				IVRGripInterface::Execute_GripLateUpdateSetting(root),
+				IVRGripInterface::Execute_GripMovementReplicationType(root),
+				IVRGripInterface::Execute_GripStiffness(root),
+				IVRGripInterface::Execute_GripDamping(root)
+				);
+		}
+		else if (Actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			EGripCollisionType CollisionType;
+			if (bIsSlotGrip)
+				CollisionType = IVRGripInterface::Execute_SlotGripType(Actor);
+			else
+				CollisionType = IVRGripInterface::Execute_FreeGripType(Actor);
+
+			return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, NAME_None,
+				CollisionType,
+				IVRGripInterface::Execute_GripLateUpdateSetting(Actor),
+				IVRGripInterface::Execute_GripMovementReplicationType(Actor),
+				IVRGripInterface::Execute_GripStiffness(Actor),
+				IVRGripInterface::Execute_GripDamping(Actor)
+				);
+		}
+		else
+		{
+			// No interface, no grip
+			return false;
+		}
+	}
+
+	return false;
+}
+
 bool UGripMotionControllerComponent::GripActor(
 	AActor* ActorToGrip, 
 	const FTransform &WorldOffset, 
@@ -1547,16 +1643,24 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				// Get the world transform for this grip after handling secondary grips and interaction differences
 				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root);
 
-
-				// Half done auto drop with break distance
-				/*if (IsServer())
+				// Auto drop based on distance from expected point
+				// Not perfect, should be done post physics or in next frame prior to changing controller location
+				// However I don't want to recalculate world transform
+				// Maybe add a grip variable of "expected loc" and use that to check next frame, but for now this will do.
+				if (IsServer() &&
+					(Grip->GripCollisionType != EGripCollisionType::PhysicsOnly ||
+					Grip->GripCollisionType != EGripCollisionType::SweepWithPhysics ||
+					Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep && Grip->bColliding)
+					)
 				{
 					float BreakDistance = 0.0f;
-					if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_IsInteractible(root))
+					bool bComponentInterface = false;
+					if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						BreakDistance = IVRGripInterface::Execute_GripBreakDistance(root);
+						bComponentInterface = true;
 					}
-					else if (actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_IsInteractible(actor))
+					else if (actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						// Actor grip interface is checked after component
 						BreakDistance = IVRGripInterface::Execute_GripBreakDistance(actor);
@@ -1571,17 +1675,26 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 							case EGripTargetType::ComponentGrip:
 							case EGripTargetType::InteractibleComponentGrip:
 							{
-								DropComponent(root,)
+								if (bComponentInterface)
+									DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(root));
+								else
+									DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(actor));
 							}break;
 							case EGripTargetType::ActorGrip:
 							case EGripTargetType::InteractibleActorGrip:
 							{
-
+								if (bComponentInterface)
+									DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(root));
+								else
+									DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(actor));
 							}break;
 							}
+
+							// Don't bother moving it, dropped now
+							continue;
 						}
 					}
-				}*/
+				}
 
 				// Start handling the grip types and their functions
 				if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
