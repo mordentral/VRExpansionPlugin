@@ -7,7 +7,7 @@
 #include "VRRootComponent.generated.h"
 
 //For UE4 Profiler ~ Stat Group
-DECLARE_STATS_GROUP(TEXT("VRPhysicsUpdate"), STATGROUP_VRPhysics, STATCAT_Advanced);
+//DECLARE_STATS_GROUP(TEXT("VRPhysicsUpdate"), STATGROUP_VRPhysics, STATCAT_Advanced);
 
 // EXPERIMENTAL, don't use
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)

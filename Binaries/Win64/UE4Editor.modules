@@ -1,6 +1,7 @@
 {
-	"Changelist" : 3142249,
-	"BuildId" : "4870daf4-0b02-459b-9258-609d8c5a2c4b",
+	"Changelist" : 3179539,
+	"CompatibleChangelist" : 0,
+	"BuildId" : "ed487194-1613-4fcb-bbf1-0f141d9e41b6",
 	"Modules" : 
 	{
 		"VRExpansionPlugin" : "UE4Editor-VRExpansionPlugin.dll"

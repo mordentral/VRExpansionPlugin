@@ -13,9 +13,6 @@
 
 #include "VRRootComponent.h"
 
-//For UE4 Profiler ~ Stat
-DECLARE_CYCLE_STAT(TEXT("VR-UpdatePhysics"), STAT_CreatePhysicsMeshes, STATGROUP_VRPhysics);
-
 #define LOCTEXT_NAMESPACE "VRRootComponent"
 
 static int32 bEnableFastOverlapCheck = 1;
@@ -382,8 +379,6 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 // Override this so that the physics representation is in the correct location
 void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
 {
-	SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
-
 	GenerateOffsetToWorld();
 
 	if (this->ShouldRender() && this->SceneProxy)

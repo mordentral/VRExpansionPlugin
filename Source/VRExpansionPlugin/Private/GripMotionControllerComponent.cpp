@@ -2159,7 +2159,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		PxScene* Scene = Actor->getScene();
 			
 		PxTransform KinPose;
-		PxTransform GrabbedActorPose;
+		//PxTransform GrabbedActorPose;
 		FTransform trans = root->GetComponentTransform();
 
 
@@ -2172,6 +2172,16 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		}
 		else
 		{
+			/*FTransform WorldTransform;
+			WorldTransform = NewGrip.RelativeTransform * this->GetComponentTransform();
+			PxVec3 KinLocation = U2PVector(WorldTransform.GetLocation() - (WorldTransform.GetLocation() - root->GetComponentLocation()));
+			PxTransform KinPose2(KinLocation, GrabbedActorPose.q);
+
+			trans = P2UTransform(KinPose2);*/
+			//FTransform WorldTransform;
+			//WorldTransform = NewGrip.RelativeTransform * this->GetComponentTransform();
+			//trans.SetLocation(root->GetComponentTransform().GetLocation() - (WorldTransform.GetLocation() - this->GetComponentLocation()));
+
 			USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
 			if (skele)
 			{
@@ -2214,6 +2224,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			else
 			{
 				// Create the joint
+				//NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, Actor->getGlobalPose().transformInv(KinPose));
 				NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, PxTransform(PxIdentity));
 			}
 
@@ -2268,7 +2279,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				else
 				{
 					PxD6JointDrive drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
-					PxD6JointDrive Angledrive = PxD6JointDrive(NewGrip.Stiffness * 1.5f, NewGrip.Damping /** 1.4f*/, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+					PxD6JointDrive Angledrive = PxD6JointDrive(NewGrip.Stiffness/* * 1.5f*/, NewGrip.Damping /** 1.4f*/, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
 
 					// Setting up the joint
 					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
@@ -2280,7 +2291,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
 
 					//NewJoint->setDrivePosition(PxTransform(Actor->getGlobalPose().transformInv(U2PVector(rBodyInstance->GetCOMPosition()))));			
-					NewJoint->setDrivePosition(PxTransform(PxVec3(0, 0, 0)));
+					//NewJoint->setDrivePosition(PxTransform(PxVec3(0, 0, 0)));
 
 					NewJoint->setDrive(PxD6Drive::eX, drive);
 					NewJoint->setDrive(PxD6Drive::eY, drive);
