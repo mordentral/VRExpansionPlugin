@@ -14,7 +14,7 @@
 #include "VRRootComponent.h"
 
 //For UE4 Profiler ~ Stat
-//DECLARE_CYCLE_STAT(TEXT("VR Create Physics Meshes"), STAT_CreatePhysicsMeshes, STATGROUP_VRPhysics);
+DECLARE_CYCLE_STAT(TEXT("VR-UpdatePhysics"), STAT_CreatePhysicsMeshes, STATGROUP_VRPhysics);
 
 #define LOCTEXT_NAMESPACE "VRRootComponent"
 
@@ -309,7 +309,6 @@ void UVRRootComponent::BeginPlay()
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {		
-	//SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
 	if (IsLocallyControlled())
 	{
 		if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
@@ -383,6 +382,8 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 // Override this so that the physics representation is in the correct location
 void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
 {
+	SCOPE_CYCLE_COUNTER(STAT_CreatePhysicsMeshes);
+
 	GenerateOffsetToWorld();
 
 	if (this->ShouldRender() && this->SceneProxy)

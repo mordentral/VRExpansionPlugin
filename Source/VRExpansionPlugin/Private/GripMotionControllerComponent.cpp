@@ -18,6 +18,8 @@
 //#endif
 
 DEFINE_LOG_CATEGORY(LogVRMotionController);
+//For UE4 Profiler ~ Stat
+DECLARE_CYCLE_STAT(TEXT("TickGrip ~ TickingGrip"), STAT_TickGrip, STATGROUP_TickGrip);
 
 namespace {
 	/** This is to prevent destruction of motion controller components while they are
@@ -1639,6 +1641,8 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime,FTran
 
 void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 {
+
+	SCOPE_CYCLE_COUNTER(STAT_TickGrip);
 
 	// Debug test that we aren't floating physics handles
 	check(PhysicsGrips.Num() <= GrippedActors.Num());

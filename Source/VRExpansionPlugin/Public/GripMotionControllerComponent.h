@@ -15,6 +15,10 @@
 */
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRMotionController, Log, All);
+//For UE4 Profiler ~ Stat Group
+DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
+
+
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionController)
 class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveComponent
