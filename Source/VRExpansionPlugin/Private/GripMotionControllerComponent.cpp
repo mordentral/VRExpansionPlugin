@@ -519,6 +519,55 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 	return false;
 }
 
+bool UGripMotionControllerComponent::DropObjectByInterface(UObject * ObjectToDrop, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
+{
+	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToDrop))
+	{
+		AActor * Owner = PrimComp->GetOwner();
+
+		if (!Owner)
+			return false;
+
+		if (PrimComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			return DropComponent(PrimComp, IVRGripInterface::Execute_SimulateOnDrop(PrimComp), OptionalAngularVelocity, OptionalLinearVelocity);
+		}
+		else if (Owner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			return DropComponent(PrimComp, IVRGripInterface::Execute_SimulateOnDrop(Owner), OptionalAngularVelocity, OptionalLinearVelocity);
+		}
+		else
+		{
+			// Allowing for failsafe dropping here.
+			return DropComponent(PrimComp, true, OptionalAngularVelocity, OptionalLinearVelocity);
+		}
+	}
+	else if (AActor * Actor = Cast<AActor>(ObjectToDrop))
+	{
+		UPrimitiveComponent * root = Cast<UPrimitiveComponent>(Actor->GetRootComponent());
+
+		if (!root)
+			return false;
+
+		if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			return DropActor(Actor, IVRGripInterface::Execute_SimulateOnDrop(root), OptionalAngularVelocity, OptionalLinearVelocity);
+		}
+		else if (Actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			return DropActor(Actor, IVRGripInterface::Execute_SimulateOnDrop(Actor), OptionalAngularVelocity, OptionalLinearVelocity);
+		}
+		else
+		{
+			// Failsafe drop here
+			return DropActor(Actor, true, OptionalAngularVelocity, OptionalLinearVelocity);
+		}
+	}
+
+	return false;
+}
+
+
 bool UGripMotionControllerComponent::GripActor(
 	AActor* ActorToGrip, 
 	const FTransform &WorldOffset, 

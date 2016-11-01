@@ -131,6 +131,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 		bool GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, bool bIsSlotGrip = false);
 
+	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+		bool DropObjectByInterface(UObject * ObjectToDrop, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
+
 	/* Grip an actor, these are stored in a Tarray that will prevent destruction of the object, you MUST ungrip an actor if you want to kill it
 	   The WorldOffset is the transform that it will remain away from the controller, if you use the world position of the actor then it will grab
 	   at the point of intersection. 
