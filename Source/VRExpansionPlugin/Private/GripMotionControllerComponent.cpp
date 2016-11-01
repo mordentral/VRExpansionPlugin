@@ -1648,9 +1648,13 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				// However I don't want to recalculate world transform
 				// Maybe add a grip variable of "expected loc" and use that to check next frame, but for now this will do.
 				if (IsServer() &&
-					(Grip->GripCollisionType != EGripCollisionType::PhysicsOnly ||
-					Grip->GripCollisionType != EGripCollisionType::SweepWithPhysics ||
-					Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep && Grip->bColliding)
+					(
+						(
+							Grip->GripCollisionType != EGripCollisionType::PhysicsOnly &&
+							Grip->GripCollisionType != EGripCollisionType::SweepWithPhysics) &&
+						(Grip->GripCollisionType != EGripCollisionType::InteractiveHybridCollisionWithSweep ||
+							Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep && Grip->bColliding)
+						)
 					)
 				{
 					float BreakDistance = 0.0f;
@@ -1668,7 +1672,15 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 					if (BreakDistance > 0.0f)
 					{
-						if ((WorldTransform.GetLocation() - root->GetComponentLocation()).Size() >= BreakDistance)
+						FVector CheckDistance;
+						if (!GetPhysicsJointLength(*Grip, CheckDistance))
+						{
+							CheckDistance = (WorldTransform.GetLocation() - root->GetComponentLocation());
+						}
+
+						//UE_LOG(LogTemp, Warning, TEXT("DIST: %f"), CheckDistance.Size());
+
+						if (CheckDistance.Size() >= BreakDistance)
 						{
 							switch (Grip->GripTargetType)
 							{
@@ -2232,6 +2244,27 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 #endif // WITH_PHYSX
 
 	return true;
+}
+
+bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, FVector & LocOut)
+{
+	if (!GrippedActor.Actor && !GrippedActor.Component)
+		return false;
+
+	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(GrippedActor);
+
+	if (!HandleInfo || !HandleInfo->KinActorData)
+		return false;
+
+#if WITH_PHYSX
+	if (!HandleInfo->HandleData)
+		return false;
+
+	LocOut = P2UVector(HandleInfo->HandleData->getRelativeTransform().p);
+	return true;
+#else
+	return false;
+#endif // WITH_PHYSX
 }
 
 void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform)
