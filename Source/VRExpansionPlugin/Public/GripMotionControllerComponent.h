@@ -23,6 +23,27 @@ DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionController)
 class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveComponent
 {
+	// BETA /////////
+	FCalculateCustomPhysics OnCalculateCustomPhysics;
+
+	static FVector FVectorMoveTowards(FVector Current, FVector Target, float maxDistanceDelta)
+	{
+		FVector a = Target - Current;
+		float magnitude = a.Size();
+
+		if (magnitude <= maxDistanceDelta || magnitude == 0.0f)
+		{
+			return Target;
+		}
+
+		return Current + a / magnitude * maxDistanceDelta;
+	}
+
+	void SubstepTick(float DeltaTime, FBodyInstance* BdyInstance);
+
+	// BETA /////////
+
+
 	GENERATED_UCLASS_BODY()
 	~UGripMotionControllerComponent();
 

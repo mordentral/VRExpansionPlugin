@@ -289,6 +289,9 @@ public:
 	// Optional Additive Transform for programatic animation
 	FTransform AdditionTransform;
 
+	// Late Update Transform for velocity grips
+	FTransform VelocityTargetTransform;
+
 	// Locked transitions
 	bool bIsLocked;
 	FQuat LastLockedRotation;

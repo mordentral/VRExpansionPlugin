@@ -54,6 +54,8 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
 
+	OnCalculateCustomPhysics.BindUObject(this, &UGripMotionControllerComponent::SubstepTick);
+
 }
 
 //=============================================================================
@@ -1806,37 +1808,25 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						Grip->bColliding = false;
 					}
 
-
 					// BETA CODE
 					FBodyInstance * body = root->GetBodyInstance();
-					FVector linVel = (WorldTransform.GetLocation() - root->GetComponentLocation()) / DeltaTime;// (1.0f / DeltaTime);
-
-					// Stop that jitter
-					if (Grip->bColliding)
-						linVel = linVel.GetClampedToSize(-200.0f, 200.0f);
-
-					root->SetAllPhysicsLinearVelocity(linVel, false);
-
-					FQuat RotationDelta = WorldTransform.GetRotation() * root->GetComponentQuat().Inverse();
-					RotationDelta.Normalize();
-					FVector axis;
-					float angle;
-					RotationDelta.ToAxisAndAngle(axis, angle);
-
-					// Correcting for over rotation, using Radians
-					if (angle > PI)
-						angle -= PI * 2.0f;
-
-					if (angle != 0)
+					Grip->VelocityTargetTransform = WorldTransform;
+#if WITH_PHYSX				
+					FPhysScene* PhysScene = GetWorld()->GetPhysicsScene();
+					if (PhysScene->bSubstepping/* && !body->bUseAsyncScene || PhysScene->bSubsteppingAsync && body->bUseAsyncScene*/)
 					{
-						body->MaxAngularVelocity = PX_MAX_F32;
-						FVector AngularTarget = ((angle * axis) / DeltaTime) * 40.0f;
-
-						// Stop that jitter
-						if (Grip->bColliding)
-							AngularTarget = AngularTarget.GetClampedToSize(-200.0f, 200.0f);
-
-						root->SetAllPhysicsAngularVelocity(AngularTarget, false);
+						if(body)
+							body->AddCustomPhysics(OnCalculateCustomPhysics);
+					}
+#else
+					if (false)
+					{
+					}
+#endif
+					else
+					{
+						if(body)
+							SubstepTick(DeltaTime, body);
 					}
 
 				}
@@ -2009,7 +1999,69 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 			}
 		}
 	}
+}
 
+void UGripMotionControllerComponent::SubstepTick(float DeltaTime, FBodyInstance* BdyInstance)
+{
+	if(!BdyInstance->OwnerComponent.IsValid())
+		return;
+
+	// Need to think about what happens here if an object is removed during physics stepping, I don't think it will happen but need to test.
+
+	UPrimitiveComponent *root = BdyInstance->OwnerComponent.Get();
+	AActor *Owner = root->GetOwner();
+	
+	FBPActorGripInformation Grip;
+	bool bFoundGrip = false;
+
+
+	for (int i = 0; i < GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i].Component == root || GrippedActors[i].Actor == Owner)
+		{
+			Grip = GrippedActors[i];
+			bFoundGrip = true;
+			break;
+		}
+	}
+
+	if (!bFoundGrip)
+		return;
+
+	// BETA CODE
+	FBodyInstance * body = BdyInstance;//root->GetBodyInstance();
+	FVector linVel = (Grip.VelocityTargetTransform.GetLocation() - body->GetUnrealWorldTransform().GetLocation()) / DeltaTime;// (1.0f / DeltaTime);
+
+	// Stop that jitter
+	//if (Grip->bColliding)
+	//linVel = linVel.GetClampedToSize(-200.0f, 200.0f);
+	
+	FVector FinalPos = FVectorMoveTowards(body->GetUnrealWorldVelocity(), linVel, 1000.0f);
+	body->SetLinearVelocity(/*linVel*/FinalPos, false);
+
+	FQuat RotationDelta = Grip.VelocityTargetTransform.GetRotation() * body->GetUnrealWorldTransform().GetRotation().Inverse();
+	RotationDelta.Normalize();
+	FVector axis;
+	float angle;
+	RotationDelta.ToAxisAndAngle(axis, angle);
+
+	// Correcting for over rotation, using Radians
+	if (angle > PI)
+		angle -= PI * 2.0f;
+
+	if (angle != 0)
+	{
+		body->MaxAngularVelocity = PX_MAX_F32;
+		FVector AngularTarget = ((angle * 180) * axis) * 40.0f;//((angle * axis) / DeltaTime) * 40.0f;
+
+															   // Stop that jitter
+															   //if (Grip->bColliding)
+															   //AngularTarget = AngularTarget.GetClampedToSize(-200.0f, 200.0f);
+
+		FVector FinalRot = FVectorMoveTowards(body->GetUnrealWorldAngularVelocity(), AngularTarget, 1000.0f);
+		body->SetAngularVelocity(/*AngularTarget*/FinalRot,false);
+		//root->SetAllPhysicsAngularVelocity(AngularTarget/*FinalRot*/, false);
+	}
 }
 
 FTransform UGripMotionControllerComponent::HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo)
