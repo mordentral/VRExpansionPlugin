@@ -3,6 +3,11 @@
 #pragma once
 #include "Engine.h"
 
+#include "PhysicsPublic.h"
+#if WITH_PHYSX
+#include "PhysXSupport.h"
+#endif // WITH_PHYSX
+
 #include "VRBPDatatypes.generated.h"
 
 
@@ -289,6 +294,9 @@ public:
 	// Optional Additive Transform for programatic animation
 	FTransform AdditionTransform;
 
+	// Late Update Transform for velocity grips
+	FTransform VelocityTargetTransform;
+
 	// Locked transitions
 	bool bIsLocked;
 	FQuat LastLockedRotation;
@@ -519,12 +527,15 @@ public:
 	/** Pointer to kinematic actor jointed to grabbed object */
 	physx::PxRigidDynamic* KinActorData;
 
+	physx::PxTransform COMPosition;
+
 	FBPActorPhysicsHandleInformation()
 	{
 		HandleData = NULL;
 		KinActorData = NULL;
 		Actor = nullptr;
 		Component = nullptr;
+		COMPosition = physx::PxTransform(U2PVector(FVector::ZeroVector));
 	}
 
 	FORCEINLINE bool operator==(const FBPActorGripInformation & Other) const
