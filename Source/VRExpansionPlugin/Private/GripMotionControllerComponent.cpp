@@ -2224,17 +2224,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		}
 		else
 		{
-
-			/*FTransform WorldTransform;
-			FTransform InverseTransform = this->GetComponentTransform().Inverse();
-			WorldTransform = NewGrip.RelativeTransform.GetRelativeTransform(InverseTransform);
-
-			KinLocation = U2PVector(WorldTransform.GetLocation() - (WorldTransform.GetLocation() - root->GetComponentLocation()));
-			GrabbedActorPose = Actor->getGlobalPose();
-			PxTransform KinPose2(KinLocation, GrabbedActorPose.q);
-
-			trans = P2UTransform(KinPose2);
-			*/
 			trans.SetLocation(rBodyInstance->GetCOMPosition());
 			USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
 			if (skele)
