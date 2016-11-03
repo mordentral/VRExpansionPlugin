@@ -24,7 +24,7 @@ UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionC
 class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveComponent
 {
 	// BETA /////////
-	FCalculateCustomPhysics OnCalculateCustomPhysics;
+	/*FCalculateCustomPhysics OnCalculateCustomPhysics;
 
 	static FVector FVectorMoveTowards(FVector Current, FVector Target, float maxDistanceDelta)
 	{
@@ -39,7 +39,7 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UPrimitiveCo
 		return Current + a / magnitude * maxDistanceDelta;
 	}
 
-	void SubstepTick(float DeltaTime, FBodyInstance* BdyInstance);
+	void SubstepTick(float DeltaTime, FBodyInstance* BdyInstance);*/
 
 	// BETA /////////
 

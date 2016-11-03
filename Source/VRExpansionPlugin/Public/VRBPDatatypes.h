@@ -93,7 +93,7 @@ UENUM(Blueprintable)
 enum EGripCollisionType
 {
 	InteractiveCollisionWithPhysics,
-	InteractiveCollisionWithVelocity,
+//	InteractiveCollisionWithVelocity,
 	InteractiveCollisionWithSweep,
 	InteractiveHybridCollisionWithSweep,
 	SweepWithPhysics,
@@ -294,9 +294,6 @@ public:
 	// Optional Additive Transform for programatic animation
 	FTransform AdditionTransform;
 
-	// Late Update Transform for velocity grips
-	FTransform VelocityTargetTransform;
-
 	// Locked transitions
 	bool bIsLocked;
 	FQuat LastLockedRotation;
@@ -361,7 +358,7 @@ public:
 		}
 
 		// Don't bother replicated physics grip types if the grip type doesn't support it.
-		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep || GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
+		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep /*|| GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity*/)
 		{
 			Ar << Damping;
 			Ar << Stiffness;

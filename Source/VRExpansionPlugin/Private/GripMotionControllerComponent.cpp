@@ -54,7 +54,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
 
-	OnCalculateCustomPhysics.BindUObject(this, &UGripMotionControllerComponent::SubstepTick);
+	//OnCalculateCustomPhysics.BindUObject(this, &UGripMotionControllerComponent::SubstepTick);
 
 }
 
@@ -1023,15 +1023,8 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 
 	} break;
 
-	case EGripCollisionType::InteractiveCollisionWithVelocity:
+	/*case EGripCollisionType::InteractiveCollisionWithVelocity:
 	{
-		/*if (IsServer())
-		{
-			if (NewGrip.Component && NewGrip.Component->GetOwner())
-				NewGrip.Component->GetOwner()->SetReplicateMovement(false);
-			else if (NewGrip.Actor)
-				NewGrip.Actor->SetReplicateMovement(false);
-		}*/
 
 		if (NewGrip.Component)
 			NewGrip.Component->SetSimulatePhysics(true);
@@ -1042,7 +1035,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 				primComp->SetSimulatePhysics(true);
 			}
 		}
-	} break;
+	} break;*/
 
 	// Skip collision intersects with these types, they dont need it
 	case EGripCollisionType::PhysicsOnly:
@@ -1790,7 +1783,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					}
 
 				}
-				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
+				/*else if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
 				{
 
 					TArray<FOverlapResult> Hits;
@@ -1812,7 +1805,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					Grip->VelocityTargetTransform = WorldTransform;
 #if WITH_PHYSX				
 					FPhysScene* PhysScene = GetWorld()->GetPhysicsScene();
-					if (PhysScene->bSubstepping/* && !body->bUseAsyncScene || PhysScene->bSubsteppingAsync && body->bUseAsyncScene*/)
+					if (PhysScene->bSubstepping)// && !body->bUseAsyncScene || PhysScene->bSubsteppingAsync && body->bUseAsyncScene)
 					{
 						if(body)
 							body->AddCustomPhysics(OnCalculateCustomPhysics);
@@ -1862,7 +1855,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						if (Grip->bIsLocked)
 							Grip->bIsLocked = false;
 					}
-				}
+				}*/
 				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
 				{
 
@@ -2000,7 +1993,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	}
 }
 
-void UGripMotionControllerComponent::SubstepTick(float DeltaTime, FBodyInstance* BdyInstance)
+/*void UGripMotionControllerComponent::SubstepTick(float DeltaTime, FBodyInstance* BdyInstance)
 {
 	if(!BdyInstance->OwnerComponent.IsValid())
 		return;
@@ -2036,7 +2029,7 @@ void UGripMotionControllerComponent::SubstepTick(float DeltaTime, FBodyInstance*
 	//linVel = linVel.GetClampedToSize(-200.0f, 200.0f);
 	
 	FVector FinalPos = FVectorMoveTowards(body->GetUnrealWorldVelocity(), linVel, 500.0f);
-	body->SetLinearVelocity(/*linVel*/FinalPos, false);
+	body->SetLinearVelocity(FinalPos, false);
 
 	FQuat RotationDelta = Grip.VelocityTargetTransform.GetRotation() * body->GetUnrealWorldTransform().GetRotation().Inverse();
 	RotationDelta.Normalize();
@@ -2058,10 +2051,10 @@ void UGripMotionControllerComponent::SubstepTick(float DeltaTime, FBodyInstance*
 															   //AngularTarget = AngularTarget.GetClampedToSize(-200.0f, 200.0f);
 
 		FVector FinalRot = FVectorMoveTowards(body->GetUnrealWorldAngularVelocity(), AngularTarget, 500.0f);
-		body->SetAngularVelocity(/*AngularTarget*/FinalRot,false);
-		//root->SetAllPhysicsAngularVelocity(AngularTarget/*FinalRot*/, false);
+		body->SetAngularVelocity(FinalRot,false);
+		//root->SetAllPhysicsAngularVelocity(AngularTarget, false);
 	}
-}
+}*/
 
 FTransform UGripMotionControllerComponent::HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo)
 {
