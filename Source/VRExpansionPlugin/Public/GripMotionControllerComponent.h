@@ -154,6 +154,27 @@ public:
 
 	// Auto grip any uobject that is/root is a primitive component and has the VR Grip Interface	
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+		bool GripObject(
+			UObject * ObjectToGrip, 
+			const FTransform &WorldOffset,
+			bool bWorldOffsetIsRelative = false,
+			FName OptionalSnapToSocketName = NAME_None,
+			TEnumAsByte<EGripCollisionType> GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics,
+			TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
+			TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
+			float GripStiffness = 1500.0f,
+			float GripDamping = 200.0f);
+
+	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+		bool DropObject(
+			UObject * ObjectToDrop, 
+			bool bSimulate,
+			FVector OptionalAngularVelocity = FVector::ZeroVector,
+			FVector OptionalLinearVelocity = FVector::ZeroVector);
+
+	// Auto grip any uobject that is/root is a primitive component
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 		bool GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, bool bIsSlotGrip = false);
 
 	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	
@@ -304,6 +325,24 @@ public:
 	static FTransform ConvertToGripRelativeTransform(const FTransform& GrippedActorTransform, const FTransform & InTransform)
 	{
 		return InTransform.GetRelativeTransform(GrippedActorTransform);
+	}
+
+	// Gets if the given Component is a secondary attach point to a gripped actor
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	bool GetIsObjectHeld(const UObject * ObjectToCheck)
+	{
+		if (!ObjectToCheck)
+			return false;
+
+		for (int i = 0; i < GrippedActors.Num(); ++i)
+		{
+			if (GrippedActors[i] == ObjectToCheck)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	// Gets if the given Component is a secondary attach point to a gripped actor

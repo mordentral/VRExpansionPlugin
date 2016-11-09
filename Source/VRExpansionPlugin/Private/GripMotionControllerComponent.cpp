@@ -426,6 +426,46 @@ FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform(
 
 	return FinalTransform;
 }
+bool UGripMotionControllerComponent::GripObject(
+	UObject * ObjectToGrip,
+	const FTransform &WorldOffset,
+	bool bWorldOffsetIsRelative,
+	FName OptionalSnapToSocketName,
+	TEnumAsByte<EGripCollisionType> GripCollisionType,
+	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
+	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	float GripStiffness,
+	float GripDamping)
+{
+	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToGrip))
+	{
+		return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName,GripCollisionType,GripLateUpdateSetting,GripMovementReplicationSetting,GripStiffness,GripDamping);
+	}
+	else if (AActor * Actor = Cast<AActor>(ObjectToGrip))
+	{
+		return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName, GripCollisionType, GripLateUpdateSetting, GripMovementReplicationSetting, GripStiffness, GripDamping);
+	}
+
+	return false;
+}
+
+bool UGripMotionControllerComponent::DropObject(
+	UObject * ObjectToDrop,
+	bool bSimulate,
+	FVector OptionalAngularVelocity,
+	FVector OptionalLinearVelocity)
+{
+	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToDrop))
+	{
+		return DropComponent(PrimComp, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+	}
+	else if (AActor * Actor = Cast<AActor>(ObjectToDrop))
+	{
+		return DropActor(Actor, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+	}
+
+	return false;
+}
 
 bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative, bool bIsSlotGrip)
 {

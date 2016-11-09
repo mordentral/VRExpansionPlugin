@@ -397,6 +397,15 @@ public:
 		return false;
 	}
 
+
+	FORCEINLINE bool operator==(const UObject * Other) const
+	{
+		if (Other && ((Component && Component == Other) || (Actor && Actor == Other)))
+			return true;
+
+		return false;
+	}
+
 	FBPActorGripInformation()
 	{
 		GripTargetType = EGripTargetType::ActorGrip;
