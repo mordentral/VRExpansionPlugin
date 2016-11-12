@@ -81,7 +81,7 @@ class VREXPANSIONPLUGIN_API AGrippableStaticMeshActor : public AStaticMeshActor,
 		void ClosestPrimarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
 
 	// Events that can be called for interface inheriting actors
-
+/*
 	// Event triggered on the interfaced object when gripped
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
 		void OnGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation);
@@ -111,7 +111,7 @@ class VREXPANSIONPLUGIN_API AGrippableStaticMeshActor : public AStaticMeshActor,
 	// Call to use an object
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
 		void OnUsed();
-
+*/
 	// Check if the object is an interactable
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool IsInteractible();
