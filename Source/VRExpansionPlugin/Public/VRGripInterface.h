@@ -107,7 +107,7 @@ public:
 	// Interaction Functions
 
 	// Call to use an object
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRGripInterface")
 		void OnUsed();
 
 	// Check if the object is an interactable
