@@ -697,7 +697,12 @@ bool UGripMotionControllerComponent::GripActor(
 	case EGripCollisionType::PhysicsOnly:
 	case EGripCollisionType::SweepWithPhysics:
 	{
-		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOn;
+		// Don't force on if they are trying to force it off
+		if(GripLateUpdateSetting != EGripLateUpdateSettings::LateUpdatesAlwaysOff)
+			newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOn;
+		else		
+			newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
+
 	}break;
 	default:
 	{
@@ -849,7 +854,11 @@ bool UGripMotionControllerComponent::GripComponent(
 	case EGripCollisionType::PhysicsOnly:
 	case EGripCollisionType::SweepWithPhysics:
 	{
-		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOn;
+		// Don't force on if they are trying to force it off
+		if (GripLateUpdateSetting != EGripLateUpdateSettings::LateUpdatesAlwaysOff)
+			newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOn;
+		else
+			newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;;
 	}break;
 	default:
 	{
