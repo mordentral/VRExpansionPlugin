@@ -3,6 +3,9 @@
 UE4 Forums Thread
 https://forums.unrealengine.com/showthread.php?116782-VR-(OpenVR)-Expansion-Plugin
 
+Example Template Project
+https://bitbucket.org/mordentral/vrexppluginexample
+
 ### Use Of This Plugin ###
 
 This Plugin is intended to add additional functionality to Open/SteamVR/(All VR now) in UE4. 
