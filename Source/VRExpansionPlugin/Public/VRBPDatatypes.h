@@ -171,9 +171,6 @@ struct VREXPANSIONPLUGIN_API FBPInteractionSettings
 public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		bool bCanUse;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		bool bLimitsInLocalSpace;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
@@ -217,7 +214,6 @@ public:
 
 	FBPInteractionSettings()
 	{
-		bCanUse = false;
 		bLimitsInLocalSpace = true;
 
 		bLimitX = false;

@@ -80,38 +80,6 @@ class VREXPANSIONPLUGIN_API UGrippableStaticMeshComponent : public UStaticMeshCo
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void ClosestPrimarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
 
-	// Events that can be called for interface inheriting actors
-/*
-	// Event triggered on the interfaced object when gripped
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
-		void OnGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation);
-
-	// Event triggered on the interfaced object when grip is released
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
-		void OnGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation);
-
-	// Event triggered on the interfaced object when child component is gripped
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
-		void OnChildGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation);
-
-	// Event triggered on the interfaced object when child component is released
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
-		void OnChildGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation);
-
-	// Event triggered on the interfaced object when secondary gripped
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
-		void OnSecondaryGrip(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation);
-
-	// Event triggered on the interfaced object when secondary grip is released
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
-		void OnSecondaryGripRelease(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation);
-
-	// Interaction Functions
-
-	// Call to use an object
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
-		void OnUsed();
-*/
 	// Check if the object is an interactable
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool IsInteractible();
