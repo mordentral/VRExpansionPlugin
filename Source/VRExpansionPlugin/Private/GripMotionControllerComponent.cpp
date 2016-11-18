@@ -1145,6 +1145,15 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 				OwningPawn->MoveIgnoreActorRemove(NewDrop.Actor);
 			}
 
+			if (root)
+			{
+				root->IgnoreActorWhenMoving(this->GetOwner(), false);
+				root->SetSimulatePhysics(bSimulate);
+				if (bSimulate)
+					root->WakeAllRigidBodies();
+				root->SetEnableGravity(true);
+			}
+
 			if (IsServer())
 			{
 				NewDrop.Actor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
@@ -1173,6 +1182,15 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 				OwningPawn->MoveIgnoreActorRemove(NewDrop.Component->GetOwner());
 			}
 
+			if (root)
+			{
+				root->IgnoreActorWhenMoving(this->GetOwner(), false);
+				root->SetSimulatePhysics(bSimulate);
+				if (bSimulate)
+					root->WakeAllRigidBodies();
+				root->SetEnableGravity(true);
+			}
+
 			if (AActor * owner = NewDrop.Component->GetOwner())
 			{
 				if (IsServer())
@@ -1194,15 +1212,6 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 			}
 		}
 	}break;
-	}
-
-	if (root)
-	{
-		root->IgnoreActorWhenMoving(this->GetOwner(), false);
-		root->SetSimulatePhysics(bSimulate);
-		if(bSimulate)
-			root->WakeAllRigidBodies();
-		root->SetEnableGravity(true);
 	}
 }
 
