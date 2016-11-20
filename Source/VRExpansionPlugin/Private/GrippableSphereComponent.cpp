@@ -14,7 +14,7 @@ UGrippableSphereComponent::UGrippableSphereComponent(const FObjectInitializer& O
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
-	VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
+	//VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 	VRGripInterfaceSettings.ConstraintStiffness = 1500.0f;
@@ -66,10 +66,10 @@ bool UGrippableSphereComponent::CanHaveDoubleGrip_Implementation()
 	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
 }
 
-EGripTargetType UGrippableSphereComponent::GripTargetType_Implementation()
+/*EGripTargetType UGrippableSphereComponent::GripTargetType_Implementation()
 {
 	return VRGripInterfaceSettings.GripTarget;
-}
+}*/
 
 EGripMovementReplicationSettings UGrippableSphereComponent::GripMovementReplicationType_Implementation()
 {

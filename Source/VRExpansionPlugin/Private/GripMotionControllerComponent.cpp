@@ -87,11 +87,11 @@ void UGripMotionControllerComponent::OnUnregister()
 		switch (GrippedActors[i].GripTargetType)
 		{
 		case EGripTargetType::ActorGrip:
-		case EGripTargetType::InteractibleActorGrip:
+		//case EGripTargetType::InteractibleActorGrip:
 		{DropActor(GrippedActors[i].Actor, false); }break;
 
 		case EGripTargetType::ComponentGrip:
-		case EGripTargetType::InteractibleComponentGrip:
+		//case EGripTargetType::InteractibleComponentGrip:
 		{DropComponent(GrippedActors[i].Component, false); }break;
 		}
 		
@@ -256,7 +256,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		switch (actor.GripTargetType)
 		{
 		case EGripTargetType::ActorGrip:
-		case EGripTargetType::InteractibleActorGrip:
+		//case EGripTargetType::InteractibleActorGrip:
 		{
 			if (actor.Actor)
 			{
@@ -269,7 +269,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		}break;
 
 		case EGripTargetType::ComponentGrip:
-		case EGripTargetType::InteractibleComponentGrip:
+		//case EGripTargetType::InteractibleComponentGrip:
 		{
 			if (actor.Component)
 			{
@@ -661,6 +661,7 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 
 	bool bIsInteractible = false;
+	UObject * ObjectToCheck = NULL; // Used if having to calculate the transform
 
 	if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
@@ -668,6 +669,8 @@ bool UGripMotionControllerComponent::GripActor(
 			return false; // Interface is saying not to grip it right now
 
 		bIsInteractible = IVRGripInterface::Execute_IsInteractible(root);
+
+		ObjectToCheck = root;
 	}
 	else if (ActorToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
@@ -675,6 +678,8 @@ bool UGripMotionControllerComponent::GripActor(
 			return false; // Interface is saying not to grip it right now
 
 		bIsInteractible = IVRGripInterface::Execute_IsInteractible(ActorToGrip);
+
+		ObjectToCheck = ActorToGrip;
 	}
 
 	// So that events caused by sweep and the like will trigger correctly
@@ -724,10 +729,10 @@ bool UGripMotionControllerComponent::GripActor(
 	else
 		newActorGrip.GripMovementReplicationSetting = GripMovementReplicationSetting;
 
-	if (bIsInteractible)
-		newActorGrip.GripTargetType = EGripTargetType::InteractibleActorGrip;
-	else
-		newActorGrip.GripTargetType = EGripTargetType::ActorGrip;
+	//if (bIsInteractible)
+	//	newActorGrip.GripTargetType = EGripTargetType::InteractibleActorGrip;
+	//else
+	newActorGrip.GripTargetType = EGripTargetType::ActorGrip;
 
 	if (OptionalSnapToSocketName.IsValid() && root->DoesSocketExist(OptionalSnapToSocketName))
 	{
@@ -735,11 +740,15 @@ bool UGripMotionControllerComponent::GripActor(
 		FTransform sockTrans = root->GetSocketTransform(OptionalSnapToSocketName, ERelativeTransformSpace::RTS_Component);
 		newActorGrip.RelativeTransform = sockTrans.Inverse();
 		newActorGrip.RelativeTransform.SetScale3D(ActorToGrip->GetActorScale3D());
+
+		ObjectToCheck = NULL; // Null it back out, socketed grips don't use this
 	}
 	else if (bWorldOffsetIsRelative)
 		newActorGrip.RelativeTransform = WorldOffset;
 	else
-		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
+	{
+		newActorGrip.RelativeTransform = ConvertToControllerRelativeTransform(WorldOffset, ObjectToCheck);
+	}
 
 	GrippedActors.Add(newActorGrip);
 	NotifyGrip(newActorGrip);
@@ -815,6 +824,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 
 	bool bIsInteractible = false;
+	UObject * ObjectToCheck = NULL;
 
 	if (ComponentToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
@@ -822,6 +832,7 @@ bool UGripMotionControllerComponent::GripComponent(
 		return false; // Interface is saying not to grip it right now
 
 		bIsInteractible = IVRGripInterface::Execute_IsInteractible(ComponentToGrip);
+		ObjectToCheck = ComponentToGrip;
 	}
 
 	ComponentToGrip->IgnoreActorWhenMoving(this->GetOwner(), true);
@@ -839,10 +850,10 @@ bool UGripMotionControllerComponent::GripComponent(
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
 
-	if (bIsInteractible)
-		newActorGrip.GripTargetType = EGripTargetType::InteractibleComponentGrip;
-	else
-		newActorGrip.GripTargetType = EGripTargetType::ComponentGrip;
+//	if (bIsInteractible)
+//		newActorGrip.GripTargetType = EGripTargetType::InteractibleComponentGrip;
+//	else
+	newActorGrip.GripTargetType = EGripTargetType::ComponentGrip;
 
 	// Ignore late update setting if it doesn't make sense with the grip
 	switch (newActorGrip.GripCollisionType)
@@ -892,11 +903,13 @@ bool UGripMotionControllerComponent::GripComponent(
 		FTransform sockTrans = ComponentToGrip->GetSocketTransform(OptionalSnapToSocketName, ERelativeTransformSpace::RTS_Component);
 		newActorGrip.RelativeTransform = sockTrans.Inverse();
 		newActorGrip.RelativeTransform.SetScale3D(ComponentToGrip->GetComponentScale());
+
+		ObjectToCheck = NULL; // Null it out, socketed grips don't use this
 	}
 	else if (bWorldOffsetIsRelative)
 		newActorGrip.RelativeTransform = WorldOffset;
 	else
-		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(this->GetComponentTransform());
+		newActorGrip.RelativeTransform = ConvertToControllerRelativeTransform(WorldOffset, ObjectToCheck);
 
 	GrippedActors.Add(newActorGrip);
 	NotifyGrip(newActorGrip);
@@ -975,18 +988,12 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	switch (NewGrip.GripTargetType)
 	{
 	case EGripTargetType::ActorGrip:
-	case EGripTargetType::InteractibleActorGrip:
+	//case EGripTargetType::InteractibleActorGrip:
 	{
 		if (NewGrip.Actor)
 		{
 			root = Cast<UPrimitiveComponent>(NewGrip.Actor->GetRootComponent());
-
-			if (root)
-			{
-				root->SetEnableGravity(false);
-				root->IgnoreActorWhenMoving(this->GetOwner(), true);
-			}
-
+			
 			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
 			{
 				OwningPawn->MoveIgnoreActorAdd(NewGrip.Actor);
@@ -996,17 +1003,26 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			{
 				IVRGripInterface::Execute_OnGrip(NewGrip.Actor, this, NewGrip);
 			}
+
+			if (root)
+			{
+				// Have to turn off gravity locally
+				if(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer())
+					root->SetEnableGravity(false);
+
+				root->IgnoreActorWhenMoving(this->GetOwner(), true);
+			}
+
+
 		}
 	}break;
 
 	case EGripTargetType::ComponentGrip:
-	case EGripTargetType::InteractibleComponentGrip:
+	//case EGripTargetType::InteractibleComponentGrip:
 	{
 		if (NewGrip.Component)
 		{
 			root = NewGrip.Component;
-			root->SetEnableGravity(false);
-			root->IgnoreActorWhenMoving(this->GetOwner(), true);
 
 			if (AActor* owner = root->GetOwner())
 			{
@@ -1025,6 +1041,12 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			{
 				IVRGripInterface::Execute_OnGrip(NewGrip.Component, this, NewGrip);
 			}
+
+			// Have to turn off gravity locally
+			if (NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer())
+				root->SetEnableGravity(false);
+
+			root->IgnoreActorWhenMoving(this->GetOwner(), true);
 		}
 	}break;
 	}
@@ -1131,7 +1153,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	switch (NewDrop.GripTargetType)
 	{
 	case EGripTargetType::ActorGrip:
-	case EGripTargetType::InteractibleActorGrip:
+	//case EGripTargetType::InteractibleActorGrip:
 	{
 		if (NewDrop.Actor)
 		{
@@ -1151,7 +1173,9 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 				root->SetSimulatePhysics(bSimulate);
 				if (bSimulate)
 					root->WakeAllRigidBodies();
-				root->SetEnableGravity(true);
+
+				if (NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer())
+					root->SetEnableGravity(true);
 			}
 
 			if (IsServer())
@@ -1170,7 +1194,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}break;
 
 	case EGripTargetType::ComponentGrip:
-	case EGripTargetType::InteractibleComponentGrip:
+	//case EGripTargetType::InteractibleComponentGrip:
 	{
 		if (NewDrop.Component)
 		{
@@ -1188,7 +1212,9 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 				root->SetSimulatePhysics(bSimulate);
 				if (bSimulate)
 					root->WakeAllRigidBodies();
-				root->SetEnableGravity(true);
+
+				if (NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer())
+					root->SetEnableGravity(true);
 			}
 
 			if (AActor * owner = NewDrop.Component->GetOwner())
@@ -1384,7 +1410,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 	switch (Grip.GripTargetType)
 	{
 	case EGripTargetType::ActorGrip:
-	case EGripTargetType::InteractibleActorGrip:
+	//case EGripTargetType::InteractibleActorGrip:
 	{
 		if (Grip.Actor)
 		{
@@ -1394,7 +1420,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 	}break;
 
 	case EGripTargetType::ComponentGrip:
-	case EGripTargetType::InteractibleComponentGrip:
+	//case EGripTargetType::InteractibleComponentGrip:
 	{
 		actor = Grip.Component->GetOwner();
 		PrimComp = Grip.Component;
@@ -1723,7 +1749,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				switch (Grip->GripTargetType)
 				{
 					case EGripTargetType::ActorGrip:
-					case EGripTargetType::InteractibleActorGrip:
+					//case EGripTargetType::InteractibleActorGrip:
 					{
 						actor = Grip->Actor;
 						if(actor)
@@ -1731,7 +1757,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					}break;
 
 					case EGripTargetType::ComponentGrip:
-					case EGripTargetType::InteractibleComponentGrip :
+					//case EGripTargetType::InteractibleComponentGrip :
 					{
 						root = Grip->Component;
 						if(root)
@@ -1790,7 +1816,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 							switch (Grip->GripTargetType)
 							{
 							case EGripTargetType::ComponentGrip:
-							case EGripTargetType::InteractibleComponentGrip:
+							//case EGripTargetType::InteractibleComponentGrip:
 							{
 								if (bComponentInterface)
 									DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(root));
@@ -1798,7 +1824,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 									DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(actor));
 							}break;
 							case EGripTargetType::ActorGrip:
-							case EGripTargetType::InteractibleActorGrip:
+							//case EGripTargetType::InteractibleActorGrip:
 							{
 								if (bComponentInterface)
 									DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(root));
@@ -2119,7 +2145,15 @@ FTransform UGripMotionControllerComponent::HandleInteractionSettings(float Delta
 	FTransform LocalTransform = GripInfo.RelativeTransform * GripInfo.AdditionTransform;
 	FTransform WorldTransform;
 	
-	WorldTransform = LocalTransform * ParentTransform;
+	if (InteractionSettings.bIgnoreHandRotation)
+	{
+		FTransform RotationalessTransform = ParentTransform;
+		RotationalessTransform.SetRotation(FQuat::Identity);
+
+		WorldTransform = LocalTransform * RotationalessTransform;
+	}
+	else
+		WorldTransform = LocalTransform * ParentTransform;
 	
 	if (InteractionSettings.bLimitsInLocalSpace)
 	{
@@ -2147,7 +2181,7 @@ FTransform UGripMotionControllerComponent::HandleInteractionSettings(float Delta
 
 	FRotator componentRot = WorldTransform.GetRotation().Rotator();
 
-	if (InteractionSettings.bRotateLeverToFaceController)
+	/*if (InteractionSettings.bRotateLeverToFaceController)
 	{
 		FRotator leverRot = FRotationMatrix::MakeFromX(ParentTransform.GetLocation() - componentLoc).Rotator();
 		if (!InteractionSettings.bLimitPitch)
@@ -2158,16 +2192,16 @@ FTransform UGripMotionControllerComponent::HandleInteractionSettings(float Delta
 
 		if (!InteractionSettings.bLimitRoll)
 			componentRot.Roll = leverRot.Roll;
-	}
+	}*/
 
 	// Rotation Settings
-	if ((InteractionSettings.bRotateLeverToFaceController && !InteractionSettings.bLimitPitch) || InteractionSettings.bLimitPitch)
+	if (InteractionSettings.bLimitPitch)
 		componentRot.Pitch = FMath::Clamp(componentRot.Pitch, InteractionSettings.InitialAngularTranslation.Pitch + InteractionSettings.MinAngularTranslation.Pitch, InteractionSettings.InitialAngularTranslation.Pitch + InteractionSettings.MaxAngularTranslation.Pitch);
 		
-	if ((InteractionSettings.bRotateLeverToFaceController && !InteractionSettings.bLimitYaw) || InteractionSettings.bLimitYaw)
+	if (InteractionSettings.bLimitYaw)
 		componentRot.Yaw = FMath::Clamp(componentRot.Yaw, InteractionSettings.InitialAngularTranslation.Yaw + InteractionSettings.MinAngularTranslation.Yaw, InteractionSettings.InitialAngularTranslation.Yaw + InteractionSettings.MaxAngularTranslation.Yaw);
 
-	if ((InteractionSettings.bRotateLeverToFaceController && !InteractionSettings.bLimitRoll) || InteractionSettings.bLimitRoll)
+	if (InteractionSettings.bLimitRoll)
 		componentRot.Roll = FMath::Clamp(componentRot.Roll, InteractionSettings.InitialAngularTranslation.Roll + InteractionSettings.MinAngularTranslation.Roll, InteractionSettings.InitialAngularTranslation.Roll + InteractionSettings.MaxAngularTranslation.Roll);
 	
 	WorldTransform.SetRotation(componentRot.Quaternion());

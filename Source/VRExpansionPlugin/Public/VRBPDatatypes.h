@@ -149,9 +149,9 @@ UENUM(Blueprintable)
 enum EGripTargetType
 {
 	ActorGrip,
-	ComponentGrip,
-	InteractibleActorGrip,
-	InteractibleComponentGrip
+	ComponentGrip
+	//InteractibleActorGrip,
+	//InteractibleComponentGrip
 };
 
 // Lerp states
@@ -191,8 +191,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		bool bLimitRoll;
 
+	// Doesn't work totally correctly without using the ConvertToControllerRelativeTransform node in the motion controller
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
-		bool bRotateLeverToFaceController;
+		bool bIgnoreHandRotation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
 		FVector InitialLinearTranslation;
@@ -224,7 +225,7 @@ public:
 		bLimitYaw = false;
 		bLimitRoll = false;
 
-		bRotateLeverToFaceController = false;
+		bIgnoreHandRotation = false;
 
 		InitialLinearTranslation = FVector::ZeroVector;
 		MinLinearTranslation = FVector::ZeroVector;
@@ -460,8 +461,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bCanHaveDoubleGrip;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		TEnumAsByte<EGripTargetType> GripTarget;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+	//	TEnumAsByte<EGripTargetType> GripTarget;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		TEnumAsByte<EGripMovementReplicationSettings> MovementReplicationType;
@@ -499,7 +500,7 @@ public:
 		SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 		FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
 		bCanHaveDoubleGrip = false;
-		GripTarget = EGripTargetType::ComponentGrip;
+		//GripTarget = EGripTargetType::ComponentGrip;
 		MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 		LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 		ConstraintStiffness = 1500.0f;

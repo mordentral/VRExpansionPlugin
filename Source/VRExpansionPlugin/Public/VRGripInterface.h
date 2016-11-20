@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
+#include "VRBPDatatypes.h"
+
 #include "VRGripInterface.generated.h"
 
 
@@ -46,8 +48,8 @@ public:
 		bool CanHaveDoubleGrip();
 
 	// Define which grip target to use for gripping
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		EGripTargetType GripTargetType();
+	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	//	EGripTargetType GripTargetType();
 
 	// Define the late update setting
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

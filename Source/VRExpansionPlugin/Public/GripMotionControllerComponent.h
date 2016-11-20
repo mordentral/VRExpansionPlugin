@@ -5,8 +5,8 @@
 #include "Engine.h"
 #include "IMotionController.h"
 #include "SceneViewExtension.h"
-
 #include "VRBPDatatypes.h"
+#include "VRGripInterface.h"
 
 #include "GripMotionControllerComponent.generated.h"
 
@@ -313,10 +313,25 @@ public:
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
 	FORCEINLINE FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
 
-	// Converts a worldspace transform into being relative to this motion controller
+	// Converts a worldspace transform into being relative to this motion controller, optionally can check interface settings for a given object as well to modify the given transform
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
-	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform)
+	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform, UObject * OptionalObjectToCheck = NULL)
 	{
+		if (OptionalObjectToCheck)
+		{
+			if (OptionalObjectToCheck->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			{
+				if (IVRGripInterface::Execute_IsInteractible(OptionalObjectToCheck) && IVRGripInterface::Execute_GetInteractionSettings(OptionalObjectToCheck).bIgnoreHandRotation)
+				{
+					// Remove the rotation portion of the transform, this interaction doesn't use it
+					FTransform ModifiedTransform = this->GetComponentTransform();
+					ModifiedTransform.SetRotation(FQuat::Identity);
+
+					return InTransform.GetRelativeTransform(ModifiedTransform);
+				}
+			}
+		}
+
 		return InTransform.GetRelativeTransform(this->GetComponentTransform());
 	}
 
