@@ -505,6 +505,26 @@ void UVRCharacterMovementComponent::CallServerMoveVR
 	}
 }
 
+
+bool UVRCharacterMovementComponent::ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const
+{
+	// See if we hit an edge of a surface on the lower portion of the capsule.
+	// In this case the normal will not equal the impact normal, and a downward sweep may find a walkable surface on top of the edge.
+	if (Hit.Normal.Z > KINDA_SMALL_NUMBER && !Hit.Normal.Equals(Hit.ImpactNormal))
+	{
+		FVector PawnLocation = UpdatedComponent->GetComponentLocation();
+		if (VRRootCapsule)
+			PawnLocation = VRRootCapsule->GetVRLocation();
+
+		if (IsWithinEdgeTolerance(PawnLocation, Hit.ImpactPoint, CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleRadius()))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iterations)
 {
 	SCOPE_CYCLE_COUNTER(STAT_CharPhysWalking);
