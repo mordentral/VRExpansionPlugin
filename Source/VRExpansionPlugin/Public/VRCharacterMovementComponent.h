@@ -193,7 +193,18 @@ public:
 		) const override;
 
 	// Multiple changes to support relative motion and ledge sweeps
-	void PhysWalking(float deltaTime, int32 Iterations);
+	void PhysWalking(float deltaTime, int32 Iterations) override;
+	
+	
+	// Phys Falling uses this, 
+	bool ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const override;
+	
+	// Is valid landing spot takes care of this
+	//void PhysFalling(float deltaTime, int32 Iterations) override;
+
+	// Just calls find floor
+	/** Verify that the supplied hit result is a valid landing spot when falling. */
+	//virtual bool IsValidLandingSpot(const FVector& CapsuleLocation, const FHitResult& Hit) const override;
 
 };
 

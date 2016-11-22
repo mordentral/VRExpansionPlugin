@@ -24,6 +24,14 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRExpansionLibrary")
 	//bool bReplicateTransform;
 
+
+	/** Sets lock to hmd automatically based on if the camera is currently locally controlled or not */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		uint32 bAutoSetLockToHmd : 1;
+
+	UFUNCTION(BlueprintCallable, Category = Camera)
+		virtual void GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView) override;
+
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedTransform, Category = "VRExpansionLibrary")
 	FBPVRComponentPosRep ReplicatedTransform;
 
@@ -45,7 +53,7 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	void Server_SendTransform(FBPVRComponentPosRep NewTransform);
 
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
-	bool IsLocallyControlled() const
+	FORCEINLINE bool IsLocallyControlled() const
 	{
 		// I like epics new authority check more than my own
 		const AActor* MyOwner = GetOwner();

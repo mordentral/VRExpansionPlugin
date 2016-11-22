@@ -18,6 +18,9 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	//bReplicateTransform = true;
 	NetUpdateRate = 100.0f; // 100 htz is default
 	NetUpdateCount = 0.0f;
+
+	bUsePawnControlRotation = false;
+	bAutoSetLockToHmd = true;
 }
 
 
@@ -54,12 +57,25 @@ bool UReplicatedVRCameraComponent::Server_SendTransform_Validate(FBPVRComponentP
 	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
 }
 
+void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView)
+{
+	if (bAutoSetLockToHmd)
+	{
+		if (IsLocallyControlled())
+			bLockToHmd = true;
+		else
+			bLockToHmd = false;
+	}
+
+	Super::GetCameraView(DeltaTime, DesiredView);
+}
+
 void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
 	bHasAuthority = IsLocallyControlled();
 	//bIsServer = IsServer();
+
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	if (bHasAuthority && bReplicates)
 	{
