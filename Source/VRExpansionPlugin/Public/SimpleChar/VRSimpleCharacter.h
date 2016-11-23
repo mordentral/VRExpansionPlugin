@@ -4,9 +4,10 @@
 #include "VRBPDatatypes.h"
 #include "GripMotionControllerComponent.h"
 #include "VRExpansionFunctionLibrary.h"
-#include "ReplicatedVRCameraComponent.h"
+#include "ReplicatedVRSimpleCameraComponent.h"
+#include "VRSimpleCharacterMovementComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
-#include "VRRootComponent.h"
+#include "VRSimpleRootComponent.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "VRSimpleCharacter.generated.h"
 
@@ -23,13 +24,13 @@ public:
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))	
-	UCapsuleComponent * VRRootReference;
+	UVRSimpleRootComponent * VRRootReference;
 
-	//UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	//UVRSimpleCharacterMovementComponent * VRMovementReference;
+	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UVRSimpleCharacterMovementComponent * VRMovementReference;
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	UReplicatedVRCameraComponent * VRReplicatedCamera;
+	UReplicatedVRSimpleCameraComponent * VRReplicatedCamera;
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UParentRelativeAttachmentComponent * ParentRelativeAttachment;
