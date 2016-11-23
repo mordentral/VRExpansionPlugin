@@ -22,6 +22,7 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	if (GetMovementComponent())
 	{
 		VRMovementReference = Cast<UVRCharacterMovementComponent>(GetMovementComponent());
+		//AddTickPrerequisiteComponent(this->GetCharacterMovement());
 	}
 
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(TEXT("VR Replicated Camera"));

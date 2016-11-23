@@ -108,6 +108,9 @@ public:
 			return GetCollisionObjectType();
 	}
 
+	FVector curCapsuleLoc;
+	FRotator curCapsuleRot;
+
 	FVector curCameraLoc;
 	FRotator curCameraRot;
 

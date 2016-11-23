@@ -959,32 +959,16 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 {
 	if (CharacterOwner && CharacterOwner->IsLocallyControlled() && VRRootCapsule && VRRootCapsule->bHadRelativeMovement)
 	{
-		//bForceNextFloorCheck = true;
-
 		if (!bAllowWalkingThroughWalls)
 		{
 			// Fake movement is sketchy, going to find a different solution eventually?
 			// Currently just adds a slight vector in the movement direction when we detect an obstacle, this forces us to impact the wall and not penetrate
-			FHitResult OutHit;
-			FCollisionQueryParams Params("RelativeMovementSweep", false, VRRootCapsule->GetOwner());
-			FCollisionResponseParams ResponseParam;
-		
-			VRRootCapsule->InitSweepCollisionParams(Params, ResponseParam);
 
-			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRRootCapsule->GetVRLocation() - VRRootCapsule->DifferenceFromLastFrame, VRRootCapsule->GetVRLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), VRRootCapsule->GetVRCollisionObjectType(), VRRootCapsule->GetCollisionShape(), Params, ResponseParam);
-			
-			/*if (VRRootCapsule->bSweepHeadWithMovement && !bBlockingHit && VRCameraCollider)
+			if (VRRootCapsule->bHadRelativeMovement)
 			{
-				VRCameraCollider->InitSweepCollisionParams(Params, ResponseParam);
-				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, VRCameraCollider->GetComponentLocation() - VRRootCapsule->DifferenceFromLastFrame, VRCameraCollider->GetComponentLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), VRCameraCollider->GetCollisionObjectType(), VRCameraCollider->GetCollisionShape(), Params, ResponseParam);
-			}*/
-
-			// If we had a valid blocking hit
-			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
-			{
-				// Wall Repulsion Multiplier just reduces the normal so that we don't get a ton of slide on the wall
+				//RequestDirectMove(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(),false);
 				AddInputVector(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D() * WallRepulsionMultiplier);
-			}			
+			}
 		}
 	}
 

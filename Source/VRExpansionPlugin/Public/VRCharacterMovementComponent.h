@@ -205,7 +205,6 @@ public:
 	// Just calls find floor
 	/** Verify that the supplied hit result is a valid landing spot when falling. */
 	//virtual bool IsValidLandingSpot(const FVector& CapsuleLocation, const FHitResult& Hit) const override;
-
 };
 
 
