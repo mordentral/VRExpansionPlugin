@@ -10,6 +10,7 @@ UReplicatedVRSimpleCameraComponent::UReplicatedVRSimpleCameraComponent(const FOb
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 //	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
 	this->SetIsReplicated(true);
@@ -95,7 +96,7 @@ void UReplicatedVRSimpleCameraComponent::GetCameraView(float DeltaTime, FMinimal
 			bLockToHmd = false;
 	}
 
-	if (bLockToHmd && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
+	if (bLockToHmd && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 	{
 		ResetRelativeTransform();
 		const FTransform ParentWorld = GetComponentToWorld();
@@ -107,7 +108,7 @@ void UReplicatedVRSimpleCameraComponent::GetCameraView(float DeltaTime, FMinimal
 		{
 			Position.X = 0;
 			Position.Y = 0;
-			SetRelativeTransform(FTransform(/*Orientation*/FQuat::Identity, Position));
+			SetRelativeTransform(FTransform(Orientation, Position));
 		}
 	}
 

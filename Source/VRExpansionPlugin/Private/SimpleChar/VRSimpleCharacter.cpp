@@ -9,57 +9,78 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
  : Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRSimpleRootComponent>(ACharacter::CapsuleComponentName).SetDefaultSubobjectClass<UVRSimpleCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 
 {
-	VRRootReference = NULL;
-	if (GetCapsuleComponent())
+	//VRRootReference = NULL;
+	if (UCapsuleComponent * cap = GetCapsuleComponent())
 	{
-		VRRootReference = Cast<UVRSimpleRootComponent>(GetCapsuleComponent());
-		VRRootReference->SetCapsuleSize(20.0f, 96.0f);
+		cap->SetCapsuleSize(16.0f, 96.0f);
 		//VRRootReference->VRCapsuleOffset = FVector(-8.0f, 0.0f, 0.0f);
-		VRRootReference->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		VRRootReference->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
+		cap->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		cap->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 	}
 
 	VRMovementReference = Cast<UVRSimpleCharacterMovementComponent>(GetMovementComponent());
 
-	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRSimpleCameraComponent>(TEXT("VR Replicated Camera"));
-	if (VRReplicatedCamera)
+	VRSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("VR Scene Component"));
+
+	if (VRSceneComponent)
 	{
-		VRReplicatedCamera->SetupAttachment(RootComponent);
+		VRSceneComponent->SetupAttachment(RootComponent);
+		VRSceneComponent->SetRelativeLocation(FVector(0, 0, -96));
+	}
+
+	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRSimpleCameraComponent>(TEXT("VR Replicated Camera"));
+	if (VRReplicatedCamera && VRSceneComponent)
+	{
+		VRReplicatedCamera->SetupAttachment(VRSceneComponent);
+		VRReplicatedCamera->AddTickPrerequisiteComponent(VRMovementReference);
+		//VRReplicatedCamera->SetupAttachment(RootComponent);
 	}
 
 	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Parent Relative Attachment"));
-	if (ParentRelativeAttachment && VRReplicatedCamera)
+	if (ParentRelativeAttachment && VRReplicatedCamera && VRSceneComponent)
 	{
 		// Moved this to be root relative as the camera late updates were killing how it worked
-		ParentRelativeAttachment->SetupAttachment(RootComponent);
+		//ParentRelativeAttachment->SetupAttachment(RootComponent);
+		ParentRelativeAttachment->SetupAttachment(VRSceneComponent);
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Left Grip Motion Controller"));
 	if (LeftMotionController)
 	{
-		LeftMotionController->SetupAttachment(RootComponent);
-		LeftMotionController->Hand = EControllerHand::Left;
-		
-		// Keep the controllers ticking after movement
-		if (this->GetCharacterMovement())
+		if (VRSceneComponent)
 		{
-			LeftMotionController->AddTickPrerequisiteComponent(this->GetCharacterMovement());
+			LeftMotionController->SetupAttachment(VRSceneComponent);
 		}
+		//LeftMotionController->SetupAttachment(RootComponent);
+		LeftMotionController->Hand = EControllerHand::Left;
+		LeftMotionController->bOffsetByHMD = true;
+		// Keep the controllers ticking after movement
+		if (VRReplicatedCamera)
+		{
+			LeftMotionController->AddTickPrerequisiteComponent(VRMovementReference);
+		}
+
+
 	}
 
 	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Right Grip Motion Controller"));
 	if (RightMotionController)
 	{
-		RightMotionController->SetupAttachment(RootComponent);
-		RightMotionController->Hand = EControllerHand::Right;
-
-		// Keep the controllers ticking after movement
-		if (this->GetCharacterMovement())
+		if (VRSceneComponent)
 		{
-			RightMotionController->AddTickPrerequisiteComponent(this->GetCharacterMovement());
+			RightMotionController->SetupAttachment(VRSceneComponent);
+		}
+		//RightMotionController->SetupAttachment(RootComponent);
+		RightMotionController->Hand = EControllerHand::Right;
+		RightMotionController->bOffsetByHMD = true;
+		// Keep the controllers ticking after movement
+		if (VRReplicatedCamera)
+		{
+			RightMotionController->AddTickPrerequisiteComponent(VRMovementReference);
 		}
 	}
 }
+
 
 FVector AVRSimpleCharacter::GetTeleportLocation(FVector OriginalLocation)
 {
@@ -72,7 +93,7 @@ FVector AVRSimpleCharacter::GetTeleportLocation(FVector OriginalLocation)
 
 bool AVRSimpleCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest, bool bNoCheck)
 {
-	bool bTeleportSucceeded = Super::TeleportTo(DestLocation, DestRotation, bIsATest, bNoCheck);
+	bool bTeleportSucceeded = Super::TeleportTo(DestLocation + GetCapsuleComponent()->GetScaledCapsuleHalfHeight(), DestRotation, bIsATest, bNoCheck);
 
 	if (bTeleportSucceeded)
 	{

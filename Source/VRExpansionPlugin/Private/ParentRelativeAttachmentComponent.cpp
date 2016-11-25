@@ -36,6 +36,7 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 
 		LastRot = InverseRot;
 		SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
+
 		SetRelativeLocation(curCameraLoc);
 	}
 	else if (this->GetOwner())

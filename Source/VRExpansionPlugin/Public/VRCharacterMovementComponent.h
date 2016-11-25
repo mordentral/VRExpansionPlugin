@@ -83,6 +83,7 @@ public:
 	*/
 	virtual bool TryToLeaveNavWalking() override;
 	
+	
 	virtual void PhysNavWalking(float deltaTime, int32 Iterations) override;
 	void ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations) override;
 
@@ -196,11 +197,11 @@ public:
 	void PhysWalking(float deltaTime, int32 Iterations) override;
 	
 	
-	// Phys Falling uses this, 
+	// Need to use VR location, was defaulting to actor
 	bool ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const override;
-	
-	// Is valid landing spot takes care of this
-	//void PhysFalling(float deltaTime, int32 Iterations) override;
+
+	// Overriding the physfalling because valid landing spots were computed incorrectly.
+	virtual void PhysFalling(float deltaTime, int32 Iterations) override;
 
 	// Just calls find floor
 	/** Verify that the supplied hit result is a valid landing spot when falling. */

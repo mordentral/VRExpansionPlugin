@@ -196,7 +196,6 @@ public:
 	{
 		// Took this from UnityVRToolkit, no shame, I liked it
 		FRotationMatrix HeadMat(HMDRotation);
-
 		FVector forward = HeadMat.GetScaledAxis(EAxis::X);
 		FVector forwardLeveled = forward;
 		forwardLeveled.Z = 0;
@@ -215,6 +214,7 @@ public:
 
 		return FRotationMatrix::MakeFromXZ(finalForward, FVector::UpVector).Rotator();
 	}
+
 
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))

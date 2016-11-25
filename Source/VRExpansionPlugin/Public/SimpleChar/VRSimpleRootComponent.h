@@ -18,34 +18,45 @@ class VREXPANSIONPLUGIN_API UVRSimpleRootComponent : public UCapsuleComponent//U
 
 public:
 
-	UFUNCTION(BlueprintPure, Category = "MotionController")
-	FVector GetVRForwardVector()
+
+	FORCEINLINE void GenerateOffsetToWorld();
+
+	/*FVector GetVROffsetFromLocationAndRotation(FVector Location, const FQuat &Rotation)
 	{
-		return this->ComponentToWorld.GetRotation().GetForwardVector();
+	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+	FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
+
+	return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
+	}*/
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRForwardVector()
+	{
+		return OffsetComponentToWorld.GetRotation().GetForwardVector();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "MotionController")
-	FVector GetVRRightVector()
+		FVector GetVRRightVector()
 	{
-		return this->ComponentToWorld.GetRotation().GetRightVector();
+		return OffsetComponentToWorld.GetRotation().GetRightVector();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "MotionController")
-	FVector GetVRUpVector()
+		FVector GetVRUpVector()
 	{
-		return this->ComponentToWorld.GetRotation().GetUpVector();
+		return OffsetComponentToWorld.GetRotation().GetUpVector();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "MotionController")
-	FVector GetVRLocation()
+		FVector GetVRLocation()
 	{
-		return this->ComponentToWorld.GetLocation();
+		return OffsetComponentToWorld.GetLocation();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "MotionController")
-	FRotator GetVRRotation()
+		FRotator GetVRRotation()
 	{
-		return this->ComponentToWorld.GetRotation().Rotator();
+		return OffsetComponentToWorld.GetRotation().Rotator();
 	}
 
 protected:
@@ -93,11 +104,14 @@ public:
 			return GetCollisionObjectType();
 	}
 
+	bool bFirstTimeLoc;
 	FVector curCameraLoc;
 	FRotator curCameraRot;
 
 	FVector lastCameraLoc;
 	FRotator lastCameraRot;
+
+	FVector HMDOffsetValue;
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 

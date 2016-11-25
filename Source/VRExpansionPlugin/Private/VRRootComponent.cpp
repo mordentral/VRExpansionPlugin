@@ -312,11 +312,14 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	{
 		if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 		{
-			FQuat curRot;
-			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
-			curCameraRot = curRot.Rotator();
-			curCapsuleRot = curCameraRot;
-			curCapsuleLoc = curCameraLoc;
+			if (GEngine->HMDDevice->HasValidTrackingPosition())
+			{
+				FQuat curRot;
+				GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
+				curCameraRot = curRot.Rotator();
+				curCapsuleRot = curCameraRot;
+				curCapsuleLoc = curCameraLoc;
+			}
 		}
 		else if (TargetPrimitiveComponent)
 		{
@@ -351,20 +354,15 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			Params.bFindInitialOverlaps = true;
 
 			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), GetVRCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
-		
 			// If we had a valid blocking hit
+			
 			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
 			{
-			//	if (OutHit.bStartPenetrating && OutHit.PenetrationDepth != 0.0f)
-			//	{
-			//		curCapsuleLoc += OutHit.ImpactNormal * OutHit.PenetrationDepth;
-			//	}
-			//	else
-			//	{
+				//if (OutHit.bStartPenetrating && OutHit.PenetrationDepth != 0.0f)
 					//curCapsuleRot = lastCameraRot;
-					curCapsuleLoc = FMath::Lerp(lastCapsuleLoc, curCapsuleLoc, OutHit.Time);
-			//	}
 
+				// Back it out a little bit
+				curCapsuleLoc = FMath::Lerp(lastCapsuleLoc, curCapsuleLoc, OutHit.Time);
 				bHadRelativeMovement = true;
 			}
 			else

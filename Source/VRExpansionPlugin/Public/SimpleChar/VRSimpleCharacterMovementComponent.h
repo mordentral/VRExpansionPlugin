@@ -49,8 +49,15 @@ class VREXPANSIONPLUGIN_API UVRSimpleCharacterMovementComponent : public UCharac
 	GENERATED_BODY()
 public:
 
+	bool bFirstTimeLoc;
+	FVector curCameraLoc;
+	FRotator curCameraRot;
+
+	FVector lastCameraLoc;
+	FRotator lastCameraRot;
+
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
-	UVRSimpleRootComponent * VRRootCapsule;
+		UCapsuleComponent * VRRootCapsule;
 
 	//UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 	//UCapsuleComponent * VRCameraCollider;
@@ -66,6 +73,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSimpleCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
 	float WallRepulsionMultiplier;
 
+	bool IsLocallyControlled() const
+	{
+		// I like epics implementation better than my own
+		const AActor* MyOwner = GetOwner();
+		const APawn* MyPawn = Cast<APawn>(MyOwner);
+		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
+	}
 
 	void SetRequestedVelocity(FVector RequestedVel)
 	{
@@ -76,13 +90,16 @@ public:
 	bool CalcVRMove(float DeltaTime, float MaxAccel, float MaxSpeed, float Friction, float BrakingDeceleration, FVector& OutAcceleration, float& OutRequestedSpeed);
 
 	FVector AdditionalVRInputVector;
-	FVector LastAdditionalVRInputVector;
+	//FVector LastAdditionalVRInputVector;
 
 	FVector ScaleInputAcceleration(const FVector& InputAcceleration) const override;
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
-	void CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration) override;
+	//void CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration) override;
+
+	void MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
+	void PhysWalking(float deltaTime, int32 Iterations) override;
 	/**
 	* Default UObject constructor.
 	*/

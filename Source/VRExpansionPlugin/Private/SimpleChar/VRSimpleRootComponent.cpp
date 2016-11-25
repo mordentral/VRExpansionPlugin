@@ -45,6 +45,8 @@ UVRSimpleRootComponent::UVRSimpleRootComponent(const FObjectInitializer& ObjectI
 	bUseWalkingCollisionOverride = false;
 	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
 
+	HMDOffsetValue = FVector(0,0,0);
+
 	CanCharacterStepUpOn = ECB_No;
 	bShouldUpdatePhysicsVolume = true;
 	bCheckAsyncSceneOnMove = false;
@@ -85,6 +87,12 @@ void UVRSimpleRootComponent::BeginPlay()
 	}
 }
 
+void UVRSimpleRootComponent::GenerateOffsetToWorld()
+{
+	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(0, 0, 0), FVector(1.0f)) * ComponentToWorld;
+}
+
 void UVRSimpleRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {		
 	if (IsLocallyControlled())
@@ -97,6 +105,9 @@ void UVRSimpleRootComponent::TickComponent(float DeltaTime, enum ELevelTick Tick
 			FQuat curRot;
 			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
 			curCameraRot = curRot.Rotator();
+
+			HMDOffsetValue = curCameraLoc;
+			HMDOffsetValue.Z = CapsuleHalfHeight;
 		}
 		else if (TargetPrimitiveComponent)
 		{
@@ -112,18 +123,17 @@ void UVRSimpleRootComponent::TickComponent(float DeltaTime, enum ELevelTick Tick
 		// Can adjust the relative tolerances to remove jitter and some update processing
 		if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.001f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.001f))
 		{
-
 			DifferenceFromLastFrame = (curCameraLoc - lastCameraLoc);
 			DifferenceFromLastFrame.Z = 0.0f;
-		
+
 
 			if (!bWasDirectHead)
 			{
-				TargetPrimitiveComponent->SetRelativeLocation(FVector(0,0,TargetPrimitiveComponent->RelativeLocation.Z));
+				TargetPrimitiveComponent->SetRelativeLocation(FVector(0, 0, TargetPrimitiveComponent->RelativeLocation.Z));
 			}
 			else
 			{
-				this->SetRelativeRotation(curCameraRot);
+				//this->SetRelativeRotation(curCameraRot);
 			}
 
 			if (MovementComponent)
@@ -137,6 +147,9 @@ void UVRSimpleRootComponent::TickComponent(float DeltaTime, enum ELevelTick Tick
 			MovementComponent->AdditionalVRInputVector = FVector::ZeroVector;
 		}
 	}
+
+	lastCameraLoc = curCameraLoc;
+	GenerateOffsetToWorld();
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }

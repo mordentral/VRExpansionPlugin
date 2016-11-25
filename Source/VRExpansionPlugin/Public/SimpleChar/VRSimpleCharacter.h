@@ -20,6 +20,52 @@ class VREXPANSIONPLUGIN_API AVRSimpleCharacter : public ACharacter
 public:
 	AVRSimpleCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
+		FTransform OffsetComponentToWorld;
+
+	/*FVector GetVROffsetFromLocationAndRotation(FVector Location, const FQuat &Rotation)
+	{
+	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+	FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
+
+	return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
+	}*/
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRForwardVector()
+	{
+		return UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation()).Quaternion().GetForwardVector();
+		//return OffsetComponentToWorld.GetRotation().GetForwardVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRRightVector()
+	{
+		return OffsetComponentToWorld.GetRotation().GetRightVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRUpVector()
+	{
+		return OffsetComponentToWorld.GetRotation().GetUpVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRLocation()
+	{
+		return OffsetComponentToWorld.GetLocation();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FRotator GetVRRotation()
+	{
+		return OffsetComponentToWorld.GetRotation().Rotator();
+	}
+
+
+
+
 	// Overriding teleport so that it auto calls my controllers re-positioning
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
 
@@ -28,6 +74,9 @@ public:
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UVRSimpleCharacterMovementComponent * VRMovementReference;
+
+	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USceneComponent * VRSceneComponent;
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UReplicatedVRSimpleCameraComponent * VRReplicatedCamera;
