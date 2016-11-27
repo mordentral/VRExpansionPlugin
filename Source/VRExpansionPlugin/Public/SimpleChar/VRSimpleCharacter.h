@@ -4,9 +4,10 @@
 #include "VRBPDatatypes.h"
 #include "GripMotionControllerComponent.h"
 #include "VRExpansionFunctionLibrary.h"
-#include "ReplicatedVRCameraComponent.h"
+#include "ReplicatedVRSimpleCameraComponent.h"
+#include "VRSimpleCharacterMovementComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
-#include "VRRootComponent.h"
+//#include "VRSimpleRootComponent.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "VRSimpleCharacter.generated.h"
 
@@ -19,17 +20,61 @@ class VREXPANSIONPLUGIN_API AVRSimpleCharacter : public ACharacter
 public:
 	AVRSimpleCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
+		FTransform OffsetComponentToWorld;
+
+	/*FVector GetVROffsetFromLocationAndRotation(FVector Location, const FQuat &Rotation)
+	{
+	FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
+	FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
+
+	return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
+	}*/
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRForwardVector()
+	{
+		return UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation()).Quaternion().GetForwardVector();
+		//return OffsetComponentToWorld.GetRotation().GetForwardVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRRightVector()
+	{
+		return UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation()).Quaternion().GetRightVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRUpVector()
+	{
+		return GetCapsuleComponent()->GetUpVector();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FVector GetVRLocation()
+	{
+		return GetCapsuleComponent()->GetComponentLocation();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "MotionController")
+		FRotator GetVRRotation()
+	{
+		return UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation());
+	}
+
+
 	// Overriding teleport so that it auto calls my controllers re-positioning
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
 
-	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))	
-	UCapsuleComponent * VRRootReference;
-
-	//UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	//UVRSimpleCharacterMovementComponent * VRMovementReference;
+	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UVRSimpleCharacterMovementComponent * VRMovementReference;
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	UReplicatedVRCameraComponent * VRReplicatedCamera;
+	USceneComponent * VRSceneComponent;
+
+	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UReplicatedVRSimpleCameraComponent * VRReplicatedCamera;
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UParentRelativeAttachmentComponent * ParentRelativeAttachment;

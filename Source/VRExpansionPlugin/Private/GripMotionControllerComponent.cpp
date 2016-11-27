@@ -229,7 +229,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		}break;
 		case EGripLateUpdateSettings::NotWhenColliding:
 		{
-			if (actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics)
+			if (actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly)
 				continue;
 		}break;
 		case EGripLateUpdateSettings::NotWhenDoubleGripping:
@@ -240,7 +240,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		case EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping:
 		{
 			if (
-				(actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics) ||
+				(actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly) ||
 				(actor.bHasSecondaryAttachment)
 				)
 			{
@@ -699,16 +699,7 @@ bool UGripMotionControllerComponent::GripActor(
 	{
 		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff; // Late updates are bad for this grip
 	}break;
-	case EGripCollisionType::PhysicsOnly:
-	case EGripCollisionType::SweepWithPhysics:
-	{
-		// Don't force on if they are trying to force it off
-		if(GripLateUpdateSetting != EGripLateUpdateSettings::LateUpdatesAlwaysOff)
-			newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOn;
-		else		
-			newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
 
-	}break;
 	default:
 	{
 		newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
@@ -862,15 +853,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	{
 		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff; // Late updates are bad for this grip
 	}break;
-	case EGripCollisionType::PhysicsOnly:
-	case EGripCollisionType::SweepWithPhysics:
-	{
-		// Don't force on if they are trying to force it off
-		if (GripLateUpdateSetting != EGripLateUpdateSettings::LateUpdatesAlwaysOff)
-			newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOn;
-		else
-			newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;;
-	}break;
+
 	default:
 	{
 		newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
@@ -2661,6 +2644,28 @@ bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRot
 			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position))
 			{
 				CurrentTrackingStatus = (EBPTrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
+				
+				if (bOffsetByHMD)
+				{
+					if (IsInGameThread())
+					{
+						if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+						{
+							FQuat curRot;
+							FVector curLoc;
+							GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curLoc);
+							curLoc.Z = 0;
+
+							LastLocationForLateUpdate = curLoc;
+						}
+						else
+							LastLocationForLateUpdate = FVector::ZeroVector;
+					}
+
+					Position -= LastLocationForLateUpdate;
+				}
+				
+				
 				return true;
 			}
 		}

@@ -32,16 +32,6 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 		// By default this will tick after the root, root will be one tick behind on position. Doubt it matters much
 	}
 
-	/*VRCameraCollider = CreateDefaultSubobject<UCapsuleComponent>(TEXT("VR Camera Collider"));
-	if (VRCameraCollider)
-	{
-		VRCameraCollider->SetupAttachment(RootComponent);
-
-		VRCameraCollider->SetCapsuleSize(25.0f, 25.0f);
-		VRCameraCollider->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		VRCameraCollider->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
-	}*/
-
 	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Parent Relative Attachment"));
 	if (ParentRelativeAttachment && VRReplicatedCamera)
 	{
@@ -76,6 +66,7 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	}
 
 }
+
 
 FVector AVRCharacter::GetTeleportLocation(FVector OriginalLocation)
 {

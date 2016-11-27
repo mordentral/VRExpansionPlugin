@@ -15,6 +15,7 @@ public class VRExpansionPlugin : ModuleRules
         PublicIncludePaths.AddRange(
 			new string[] {
 				"VRExpansionPlugin/Public",
+                "VRExpansionPlugin/Public/SimpleChar",
                 "HeadMountedDisplay/Public",
                 "Runtime/Engine/Classes/Kismet",
                 "Runtime/Engine/Private/PhysicsEngine"
@@ -26,7 +27,7 @@ public class VRExpansionPlugin : ModuleRules
         PrivateIncludePaths.AddRange(
 			new string[] {
 				"VRExpansionPlugin/Private",
-
+                "VRExpansionPlugin/Private/SimpleChar",
 				// ... add other private include paths required here ...
 			}
 			);
