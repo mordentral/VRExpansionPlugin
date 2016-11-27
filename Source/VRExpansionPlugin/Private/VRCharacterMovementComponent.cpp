@@ -757,6 +757,52 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 	}
 }
 
+
+void UVRCharacterMovementComponent::CapsuleTouched(UPrimitiveComponent* OverlappedComp, AActor* Other, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!bEnablePhysicsInteraction)
+	{
+		return;
+	}
+
+	if (OtherComp != NULL && OtherComp->IsAnySimulatingPhysics())
+	{
+		/*const*/FVector OtherLoc = OtherComp->GetComponentLocation();
+		if (UVRRootComponent * rCap = Cast<UVRRootComponent>(OtherComp))
+		{
+			OtherLoc = rCap->GetVRLocation();
+		}
+		
+		const FVector Loc = VRRootCapsule->GetVRLocation();//UpdatedComponent->GetComponentLocation();
+		FVector ImpulseDir = FVector(OtherLoc.X - Loc.X, OtherLoc.Y - Loc.Y, 0.25f).GetSafeNormal();
+		ImpulseDir = (ImpulseDir + Velocity.GetSafeNormal2D()) * 0.5f;
+		ImpulseDir.Normalize();
+
+		FName BoneName = NAME_None;
+		if (OtherBodyIndex != INDEX_NONE)
+		{
+			BoneName = ((USkinnedMeshComponent*)OtherComp)->GetBoneName(OtherBodyIndex);
+		}
+
+		float TouchForceFactorModified = TouchForceFactor;
+
+		if (bTouchForceScaledToMass)
+		{
+			FBodyInstance* BI = OtherComp->GetBodyInstance(BoneName);
+			TouchForceFactorModified *= BI ? BI->GetBodyMass() : 1.0f;
+		}
+
+		float ImpulseStrength = FMath::Clamp(Velocity.Size2D() * TouchForceFactorModified,
+			MinTouchForce > 0.0f ? MinTouchForce : -FLT_MAX,
+			MaxTouchForce > 0.0f ? MaxTouchForce : FLT_MAX);
+
+		FVector Impulse = ImpulseDir * ImpulseStrength;
+
+		OtherComp->AddImpulse(Impulse, BoneName);
+	}
+}
+
+
 void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
 {
 	SCOPE_CYCLE_COUNTER(STAT_CharacterMovementReplicateMoveToServer);

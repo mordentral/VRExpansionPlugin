@@ -20,7 +20,7 @@ class FDebugDisplayInfo;
 class ACharacter;
 class UVRSimpleCharacterMovementComponent;
 class AVRSimpleCharacter;
-class UVRSimpleRootComponent;
+//class UVRSimpleRootComponent;
 
 /** Shared pointer for easy memory management of FSavedMove_Character, for accumulating and replaying network moves. */
 //typedef TSharedPtr<class FSavedMove_Character> FSavedMovePtr;
@@ -59,20 +59,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 		UCapsuleComponent * VRRootCapsule;
 
-	//UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
-	//UCapsuleComponent * VRCameraCollider;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSimpleCharacterMovementComponent")
-	bool bAllowWalkingThroughWalls;
-
-	// Allow merging movement replication (may cause issues when >10 players due to capsule location
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSimpleCharacterMovementComponent")
-	bool bAllowMovementMerging;
-
-	// Higher values will cause more slide but better step up
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSimpleCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
-	float WallRepulsionMultiplier;
-
 	bool IsLocallyControlled() const
 	{
 		// I like epics implementation better than my own
@@ -81,25 +67,20 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
-	void SetRequestedVelocity(FVector RequestedVel)
-	{
-		RequestedVelocity = RequestedVel;
-		bHasRequestedVelocity = true;
-	}
-
-	bool CalcVRMove(float DeltaTime, float MaxAccel, float MaxSpeed, float Friction, float BrakingDeceleration, FVector& OutAcceleration, float& OutRequestedSpeed);
 
 	FVector AdditionalVRInputVector;
-	//FVector LastAdditionalVRInputVector;
-
-	FVector ScaleInputAcceleration(const FVector& InputAcceleration) const override;
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
-	//void CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration) override;
 
-	void MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
+	virtual void ApplyVRMotionToVelocity(float deltaTime);
+	virtual void RestorePreAdditiveVRMotionVelocity();
+	FVector LastPreAdditiveVRVelocity;
+
 	void PhysWalking(float deltaTime, int32 Iterations) override;
+	void PhysFlying(float deltaTime, int32 Iterations) override;
+	void PhysFalling(float deltaTime, int32 Iterations) override;
+	void PhysNavWalking(float deltaTime, int32 Iterations) override;
 	/**
 	* Default UObject constructor.
 	*/

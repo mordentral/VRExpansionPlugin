@@ -7,7 +7,7 @@
 #include "ReplicatedVRSimpleCameraComponent.h"
 #include "VRSimpleCharacterMovementComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
-#include "VRSimpleRootComponent.h"
+//#include "VRSimpleRootComponent.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "VRSimpleCharacter.generated.h"
 
@@ -42,35 +42,30 @@ public:
 	UFUNCTION(BlueprintPure, Category = "MotionController")
 		FVector GetVRRightVector()
 	{
-		return OffsetComponentToWorld.GetRotation().GetRightVector();
+		return UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation()).Quaternion().GetRightVector();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "MotionController")
 		FVector GetVRUpVector()
 	{
-		return OffsetComponentToWorld.GetRotation().GetUpVector();
+		return GetCapsuleComponent()->GetUpVector();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "MotionController")
 		FVector GetVRLocation()
 	{
-		return OffsetComponentToWorld.GetLocation();
+		return GetCapsuleComponent()->GetComponentLocation();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "MotionController")
 		FRotator GetVRRotation()
 	{
-		return OffsetComponentToWorld.GetRotation().Rotator();
+		return UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation());
 	}
-
-
 
 
 	// Overriding teleport so that it auto calls my controllers re-positioning
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
-
-	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))	
-	UVRSimpleRootComponent * VRRootReference;
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UVRSimpleCharacterMovementComponent * VRMovementReference;

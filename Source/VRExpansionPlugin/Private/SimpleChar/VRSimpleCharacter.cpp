@@ -6,7 +6,7 @@
 #include "VRSimpleCharacter.h"
 
 AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializer)
- : Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRSimpleRootComponent>(ACharacter::CapsuleComponentName).SetDefaultSubobjectClass<UVRSimpleCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+ : Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRSimpleCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 
 {
 	//VRRootReference = NULL;

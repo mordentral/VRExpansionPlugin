@@ -4,6 +4,7 @@
 #include "Runtime/Engine/Private/EnginePrivate.h"
 #include "KismetMathLibrary.h"
 #include "ParentRelativeAttachmentComponent.h"
+#include "VRSimpleCharacter.h"
 
 
 UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FObjectInitializer& ObjectInitializer)
@@ -20,7 +21,7 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
+	if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 	{
 		FQuat curRot;
 		FVector curCameraLoc;
@@ -36,6 +37,12 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 
 		LastRot = InverseRot;
 		SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
+
+		if (AVRSimpleCharacter * simpleOwner = Cast<AVRSimpleCharacter>(GetOwner()))
+		{
+			curCameraLoc.X = 0;
+			curCameraLoc.Y = 0;
+		}
 
 		SetRelativeLocation(curCameraLoc);
 	}

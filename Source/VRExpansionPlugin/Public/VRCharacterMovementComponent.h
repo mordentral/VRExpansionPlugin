@@ -85,7 +85,7 @@ public:
 	
 	
 	virtual void PhysNavWalking(float deltaTime, int32 Iterations) override;
-	void ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations) override;
+	virtual void ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations) override;
 
 	FORCEINLINE FVector GetActorFeetLocation() const { return VRRootCapsule ? (VRRootCapsule->GetVRLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : UpdatedComponent ? (UpdatedComponent->GetComponentLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : FNavigationSystem::InvalidLocation; }
 	virtual FBasedPosition GetActorFeetLocationBased() const override
@@ -155,35 +155,35 @@ public:
 	bool SafeMoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult& OutHit, ETeleportType Teleport = ETeleportType::None);
 	
 	// This is here to force it to call the correct SafeMoveUpdatedComponent functions for floor movement
-	void MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
+	virtual void MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
 
 	// Modify for correct location
-	void ApplyRepulsionForce(float DeltaSeconds) override;
+	virtual void ApplyRepulsionForce(float DeltaSeconds) override;
 
 	// Update BaseOffset to be zero
-	void UpdateBasedMovement(float DeltaSeconds) override;
+	virtual void UpdateBasedMovement(float DeltaSeconds) override;
 
 	// Stop subtracting the capsules half height
-	FVector GetImpartedMovementBaseVelocity() const override;
+	virtual FVector GetImpartedMovementBaseVelocity() const override;
 
 	// Cheating at the relative collision detection
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction);
 
 	// Need to fill our capsule component variable here and override the default tick ordering
-	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
+	virtual void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
 
 	// Correct an offset sweep test
-	void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
+	virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
 
 	// Always called with the capsulecomponent location, no idea why it doesn't just get it inside it already
 	// Had to force it within the function to use VRLocation instead.
-	void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const override;
+	virtual void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const override;
 
 	// Need to use actual capsule location for step up
 	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult);
 
 	// Skip physics channels when looking for floor
-	bool FloorSweepTest(
+	virtual bool FloorSweepTest(
 		FHitResult& OutHit,
 		const FVector& Start,
 		const FVector& End,
@@ -194,11 +194,11 @@ public:
 		) const override;
 
 	// Multiple changes to support relative motion and ledge sweeps
-	void PhysWalking(float deltaTime, int32 Iterations) override;
+	virtual void PhysWalking(float deltaTime, int32 Iterations) override;
 	
 	
 	// Need to use VR location, was defaulting to actor
-	bool ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const override;
+	virtual bool ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const override;
 
 	// Overriding the physfalling because valid landing spots were computed incorrectly.
 	virtual void PhysFalling(float deltaTime, int32 Iterations) override;
@@ -206,6 +206,9 @@ public:
 	// Just calls find floor
 	/** Verify that the supplied hit result is a valid landing spot when falling. */
 	//virtual bool IsValidLandingSpot(const FVector& CapsuleLocation, const FHitResult& Hit) const override;
+
+	// Making sure that impulses are correct
+	virtual void CapsuleTouched(UPrimitiveComponent* OverlappedComp, AActor* Other, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
 };
 
 
