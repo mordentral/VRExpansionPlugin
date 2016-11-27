@@ -1888,7 +1888,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 							SubstepTick(DeltaTime, body);
 					}
 
-				}
+				}*/
 				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
 				{
 					FVector OriginalPosition(root->GetComponentLocation());
@@ -1922,7 +1922,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						if (Grip->bIsLocked)
 							Grip->bIsLocked = false;
 					}
-				}*/
+				}
 				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
 				{
 
