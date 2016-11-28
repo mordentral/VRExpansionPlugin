@@ -1098,10 +1098,9 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 			// Decide whether to hold off on move
 			// send moves more frequently in small games where server isn't likely to be saturated
 			float NetMoveDelta;
-			UPlayer* Player = (PC ? PC->Player : nullptr);
-			AGameStateBase const* const GameState = GetWorld()->GetGameState();
+			UPlayer* Player = (PC ? PC->Player : NULL);
 
-			if (Player && (Player->CurrentNetSpeed > 10000) && (GameState != nullptr) && (GameState->PlayerArray.Num() <= 10))
+			if (Player && (Player->CurrentNetSpeed > 10000) && (GetWorld()->GetGameState() != NULL) && (GetWorld()->GetGameState()->PlayerArray.Num() <= 10))
 			{
 				NetMoveDelta = 0.011f;
 			}
