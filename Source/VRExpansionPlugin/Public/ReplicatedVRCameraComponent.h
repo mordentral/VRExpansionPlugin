@@ -20,10 +20,11 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	/** Whether or not this component is currently on the network server*/
 	bool bIsServer;
 
-	// Whether to ever replicate position
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRExpansionLibrary")
-	//bool bReplicateTransform;
+//public:
+	// If to use HMD offset
+	bool bOffsetByHMD;
 
+//protected:
 
 	/** Sets lock to hmd automatically based on if the camera is currently locally controlled or not */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")

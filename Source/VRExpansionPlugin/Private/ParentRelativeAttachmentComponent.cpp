@@ -17,6 +17,7 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
 	YawTolerance = 0.0f;
+	bOffsetByHMD = false;
 }
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -38,7 +39,7 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		LastRot = InverseRot;
 		SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
 
-		if (AVRSimpleCharacter * simpleOwner = Cast<AVRSimpleCharacter>(GetOwner()))
+		if (bOffsetByHMD)
 		{
 			curCameraLoc.X = 0;
 			curCameraLoc.Y = 0;

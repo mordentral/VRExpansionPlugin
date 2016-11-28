@@ -9,6 +9,9 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
  : Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRSimpleCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 
 {
+	// Remove the movement jitter with slow speeds
+	this->ReplicatedMovement.LocationQuantizationLevel = EVectorQuantization::RoundTwoDecimals;
+
 	//VRRootReference = NULL;
 	if (UCapsuleComponent * cap = GetCapsuleComponent())
 	{
@@ -28,11 +31,12 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 		VRSceneComponent->SetRelativeLocation(FVector(0, 0, -96));
 	}
 
-	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRSimpleCameraComponent>(TEXT("VR Replicated Camera"));
+	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(TEXT("VR Replicated Camera"));
 	if (VRReplicatedCamera && VRSceneComponent)
 	{
 		VRReplicatedCamera->SetupAttachment(VRSceneComponent);
 		VRReplicatedCamera->AddTickPrerequisiteComponent(VRMovementReference);
+		VRReplicatedCamera->bOffsetByHMD = true;
 		//VRReplicatedCamera->SetupAttachment(RootComponent);
 	}
 
@@ -42,6 +46,7 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 		// Moved this to be root relative as the camera late updates were killing how it worked
 		//ParentRelativeAttachment->SetupAttachment(RootComponent);
 		ParentRelativeAttachment->SetupAttachment(VRSceneComponent);
+		ParentRelativeAttachment->bOffsetByHMD = true;
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Left Grip Motion Controller"));
@@ -81,6 +86,11 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 	}
 }
 
+void AVRSimpleCharacter::GenerateOffsetToWorld()
+{
+	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation());
+	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), this->GetActorLocation(), this->GetActorScale3D());
+}
 
 FVector AVRSimpleCharacter::GetTeleportLocation(FVector OriginalLocation)
 {

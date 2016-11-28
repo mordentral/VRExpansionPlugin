@@ -8,6 +8,7 @@
 AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRRootComponent>(ACharacter::CapsuleComponentName).SetDefaultSubobjectClass<UVRCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
+
 	VRRootReference = NULL;
 	if (GetCapsuleComponent())
 	{

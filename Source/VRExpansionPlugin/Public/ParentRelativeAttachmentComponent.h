@@ -17,6 +17,9 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 
 	FRotator LastRot;
 
+	// If to use HMD offset
+	bool bOffsetByHMD;
+
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	bool IsLocallyControlled() const

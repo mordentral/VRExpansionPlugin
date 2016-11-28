@@ -28,31 +28,31 @@ public:
 		return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
 	}*/
 
-	UFUNCTION(BlueprintPure, Category = "MotionController")
+	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
 	FVector GetVRForwardVector()
 	{
 		return OffsetComponentToWorld.GetRotation().GetForwardVector();
 	}
 
-	UFUNCTION(BlueprintPure, Category = "MotionController")
+	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
 	FVector GetVRRightVector()
 	{
 		return OffsetComponentToWorld.GetRotation().GetRightVector();
 	}
 
-	UFUNCTION(BlueprintPure, Category = "MotionController")
+	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
 	FVector GetVRUpVector()
 	{
 		return OffsetComponentToWorld.GetRotation().GetUpVector();
 	}
 
-	UFUNCTION(BlueprintPure, Category = "MotionController")
+	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
 	FVector GetVRLocation()
 	{
 		return OffsetComponentToWorld.GetLocation();
 	}
 
-	UFUNCTION(BlueprintPure, Category = "MotionController")
+	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
 	FRotator GetVRRotation()
 	{
 		return OffsetComponentToWorld.GetRotation().Rotator();
@@ -107,9 +107,6 @@ public:
 		else
 			return GetCollisionObjectType();
 	}
-
-	FVector curCapsuleLoc;
-	FRotator curCapsuleRot;
 
 	FVector curCameraLoc;
 	FRotator curCameraRot;

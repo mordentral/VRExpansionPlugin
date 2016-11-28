@@ -25,6 +25,10 @@
 #include "Engine/DemoNetDriver.h"
 #include "Engine/NetworkObjectList.h"
 
+
+DECLARE_CYCLE_STAT(TEXT("Char ReplicateMoveToServerVRSimple"), STAT_CharacterMovementReplicateMoveToServerVRSimple, STATGROUP_Character);
+DECLARE_CYCLE_STAT(TEXT("Char CallServerMoveVRSimple"), STAT_CharacterMovementCallServerMoveVRSimple, STATGROUP_Character);
+static const auto CVarNetEnableMoveCombiningVRSimple = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableMoveCombining"));
 //#include "PerfCountersHelpers.h"
 //DECLARE_CYCLE_STAT(TEXT("Char PhysWalking"), STAT_CharPhysWalking, STATGROUP_Character);
 //DECLARE_CYCLE_STAT(TEXT("Char PhysFalling"), STAT_CharPhysFalling, STATGROUP_Character);
@@ -48,6 +52,7 @@ UVRSimpleCharacterMovementComponent::UVRSimpleCharacterMovementComponent(const F
 	this->bUpdateOnlyIfRendered = false;
 	this->AirControl = 0.0f;
 
+	bIsFirstTick = true;
 	//LastAdditionalVRInputVector = FVector::ZeroVector;
 	AdditionalVRInputVector = FVector::ZeroVector;	
 
@@ -64,6 +69,7 @@ void UVRSimpleCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTim
 void UVRSimpleCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
 {
 	Velocity -= LastPreAdditiveVRVelocity;
+	LastPreAdditiveVRVelocity = FVector::ZeroVector;
 }
 
 void UVRSimpleCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations)
@@ -762,43 +768,59 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 
 void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-	if (AVRSimpleCharacter * owningChar = Cast<AVRSimpleCharacter>(GetOwner()))
-	{
-		//curCameraRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
-		if(VRRootCapsule)
-		owningChar->VRSceneComponent->SetRelativeLocation(FVector(0, 0, -VRRootCapsule->GetUnscaledCapsuleHalfHeight()));
-		//owningChar->VRSceneComponent->SetWorldLocation(owningChar->GetCapsuleComponent()->GetComponentLocation()+ curCameraRot.RotateVector(FVector(15, 0, -owningChar->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight())));
-	}
-
 	if (IsLocallyControlled())
 	{
 		FQuat curRot;
+		bool bWasHeadset = false;
 
 		if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 		{
-
+			bWasHeadset = true;
 			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
 			curCameraRot = curRot.Rotator();
 		}
-
-		// Can adjust the relative tolerances to remove jitter and some update processing
-		if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.001f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.001f))
+		else if (VRCameraComponent)
 		{
-			FVector DifferenceFromLastFrame = (curCameraLoc - lastCameraLoc);
-			DifferenceFromLastFrame.Z = 0.0f;
+			curCameraLoc = VRCameraComponent->RelativeLocation;
+			curCameraRot = VRCameraComponent->RelativeRotation;
+			VRCameraComponent->SetRelativeLocation(FVector(0, 0, VRCameraComponent->RelativeLocation.Z));
+		}
 
-			if(VRRootCapsule)
-				AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame); // Apply over a second
+		if (!bIsFirstTick)
+		{
+			// Can adjust the relative tolerances to remove jitter and some update processing
+			if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.001f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.001f))
+			{
+				FVector DifferenceFromLastFrame = (curCameraLoc - lastCameraLoc);
+				DifferenceFromLastFrame.Z = 0.0f;
+
+				if (VRRootCapsule)
+					AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame); // Apply over a second
+			}
+			else
+			{
+				AdditionalVRInputVector = FVector::ZeroVector;
+			}
 		}
 		else
-		{
-			AdditionalVRInputVector = FVector::ZeroVector;
-		}
+			bIsFirstTick = false;
 
-		lastCameraLoc = curCameraLoc;
+		if (bWasHeadset)
+			lastCameraLoc = curCameraLoc;
+		else
+			lastCameraLoc = FVector::ZeroVector; // Technically this would be incorrect for Z, but we don't use Z anyway
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (AVRSimpleCharacter * owningChar = Cast<AVRSimpleCharacter>(GetOwner()))
+	{
+		if (VRRootCapsule)
+			owningChar->VRSceneComponent->SetRelativeLocation(FVector(0, 0, -VRRootCapsule->GetUnscaledCapsuleHalfHeight()));
+
+		owningChar->GenerateOffsetToWorld();
+		//owningChar->VRSceneComponent->SetWorldLocation(owningChar->GetCapsuleComponent()->GetComponentLocation()+ curCameraRot.RotateVector(FVector(15, 0, -owningChar->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight())));
+	}
 }
 
 void UVRSimpleCharacterMovementComponent::SetUpdatedComponent(USceneComponent* NewUpdatedComponent)
@@ -810,6 +832,11 @@ void UVRSimpleCharacterMovementComponent::SetUpdatedComponent(USceneComponent* N
 		// Fill the VRRootCapsule if we can
 		VRRootCapsule = Cast<UCapsuleComponent>(UpdatedComponent);
 
+		if (AVRSimpleCharacter * simpleChar = Cast<AVRSimpleCharacter>(GetOwner()))
+		{
+			VRCameraComponent = Cast<UCameraComponent>(simpleChar->VRReplicatedCamera);
+		}
+
 		// Stop the tick forcing
 		//UpdatedComponent->PrimaryComponentTick.RemovePrerequisite(this, PrimaryComponentTick);
 
@@ -817,4 +844,539 @@ void UVRSimpleCharacterMovementComponent::SetUpdatedComponent(USceneComponent* N
 		// We want the root component to tick first because it is setting its offset location based off of tick
 		//this->PrimaryComponentTick.AddPrerequisite(UpdatedComponent, UpdatedComponent->PrimaryComponentTick);
 	}
+}
+
+
+/////////////////////////////// REPLICATION ///////////////////////////
+
+void UVRSimpleCharacterMovementComponent::CallServerMoveVR
+(
+	const class FSavedMove_VRSimpleCharacter* NewMove,
+	const class FSavedMove_VRSimpleCharacter* OldMove
+)
+{
+	check(NewMove != NULL);
+
+	// Compress rotation down to 5 bytes
+	const uint32 ClientYawPitchINT = PackYawAndPitchTo32(NewMove->SavedControlRotation.Yaw, NewMove->SavedControlRotation.Pitch);
+	const uint8 ClientRollBYTE = FRotator::CompressAxisToByte(NewMove->SavedControlRotation.Roll);
+	//const uint8 CapsuleYawBYTE = FRotator::CompressAxisToByte(NewMove->VRCapsuleRotation.Yaw);
+
+	// Determine if we send absolute or relative location
+	UPrimitiveComponent* ClientMovementBase = NewMove->EndBase.Get();
+	const FName ClientBaseBone = NewMove->EndBoneName;
+	const FVector SendLocation = MovementBaseUtility::UseRelativeLocation(ClientMovementBase) ? NewMove->SavedRelativeLocation : NewMove->SavedLocation;
+
+	// send old move if it exists
+	if (OldMove)
+	{
+		ServerMoveOld(OldMove->TimeStamp, OldMove->Acceleration, OldMove->GetCompressedFlags());
+	}
+
+	FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
+	if (ClientData->PendingMove.IsValid())
+	{
+		const uint32 OldClientYawPitchINT = PackYawAndPitchTo32(ClientData->PendingMove->SavedControlRotation.Yaw, ClientData->PendingMove->SavedControlRotation.Pitch);
+		FSavedMove_VRSimpleCharacter* oldMove = (FSavedMove_VRSimpleCharacter*)ClientData->PendingMove.Get();
+		//const uint8 OldCapsuleYawBYTE = FRotator::CompressAxisToByte(oldMove->VRCapsuleRotation.Yaw);
+
+		// If we delayed a move without root motion, and our new move has root motion, send these through a special function, so the server knows how to process them.
+		if ((ClientData->PendingMove->RootMotionMontage == NULL) && (NewMove->RootMotionMontage != NULL))
+		{
+			// send two moves simultaneously
+			ServerMoveVRDualHybridRootMotion
+			(
+				ClientData->PendingMove->TimeStamp,
+				ClientData->PendingMove->Acceleration,
+				ClientData->PendingMove->GetCompressedFlags(),
+				OldClientYawPitchINT,
+				//oldMove->VRCapsuleLocation,
+				oldMove->RequestedVelocity,
+				oldMove->LFDiff,
+				//OldCapsuleYawBYTE,
+				NewMove->TimeStamp,
+				NewMove->Acceleration,
+				SendLocation,
+				//NewMove->VRCapsuleLocation,
+				NewMove->RequestedVelocity,
+				NewMove->LFDiff,
+				//CapsuleYawBYTE,
+				NewMove->GetCompressedFlags(),
+				ClientRollBYTE,
+				ClientYawPitchINT,
+				ClientMovementBase,
+				ClientBaseBone,
+				NewMove->MovementMode
+			);
+		}
+		else
+		{
+			// send two moves simultaneously
+			ServerMoveVRDual
+			(
+				ClientData->PendingMove->TimeStamp,
+				ClientData->PendingMove->Acceleration,
+				ClientData->PendingMove->GetCompressedFlags(),
+				OldClientYawPitchINT,
+				//oldMove->VRCapsuleLocation,
+				oldMove->RequestedVelocity,
+				oldMove->LFDiff,
+				//OldCapsuleYawBYTE,
+				NewMove->TimeStamp,
+				NewMove->Acceleration,
+				SendLocation,
+				//NewMove->VRCapsuleLocation,
+				NewMove->RequestedVelocity,
+				NewMove->LFDiff,
+				//CapsuleYawBYTE,
+				NewMove->GetCompressedFlags(),
+				ClientRollBYTE,
+				ClientYawPitchINT,
+				ClientMovementBase,
+				ClientBaseBone,
+				NewMove->MovementMode
+			);
+		}
+	}
+	else
+	{
+		ServerMoveVR
+		(
+			NewMove->TimeStamp,
+			NewMove->Acceleration,
+			SendLocation,
+			//NewMove->VRCapsuleLocation,
+			NewMove->RequestedVelocity,
+			NewMove->LFDiff,
+			//CapsuleYawBYTE,
+			NewMove->GetCompressedFlags(),
+			ClientRollBYTE,
+			ClientYawPitchINT,
+			ClientMovementBase,
+			ClientBaseBone,
+			NewMove->MovementMode
+		);
+	}
+
+
+	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
+	APlayerCameraManager* PlayerCameraManager = (PC ? PC->PlayerCameraManager : NULL);
+	if (PlayerCameraManager != NULL && PlayerCameraManager->bUseClientSideCameraUpdates)
+	{
+		PlayerCameraManager->bShouldSendClientSideCameraUpdate = true;
+	}
+}
+
+
+void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
+{
+	SCOPE_CYCLE_COUNTER(STAT_CharacterMovementReplicateMoveToServerVRSimple);
+	check(CharacterOwner != NULL);
+
+	// Can only start sending moves if our controllers are synced up over the network, otherwise we flood the reliable buffer.
+	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
+	if (PC && PC->AcknowledgedPawn != CharacterOwner)
+	{
+		return;
+	}
+
+	// Bail out if our character's controller doesn't have a Player. This may be the case when the local player
+	// has switched to another controller, such as a debug camera controller.
+	if (PC && PC->Player == nullptr)
+	{
+		return;
+	}
+
+	FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
+	if (!ClientData)
+	{
+		return;
+	}
+
+	// Update our delta time for physics simulation.
+	DeltaTime = ClientData->UpdateTimeStampAndDeltaTime(DeltaTime, *CharacterOwner, *this);
+
+	// Find the oldest (unacknowledged) important move (OldMove).
+	// Don't include the last move because it may be combined with the next new move.
+	// A saved move is interesting if it differs significantly from the last acknowledged move
+	FSavedMovePtr OldMove = NULL;
+	if (ClientData->LastAckedMove.IsValid())
+	{
+		const int32 NumSavedMoves = ClientData->SavedMoves.Num();
+		for (int32 i = 0; i < NumSavedMoves - 1; i++)
+		{
+			const FSavedMovePtr& CurrentMove = ClientData->SavedMoves[i];
+			if (CurrentMove->IsImportantMove(ClientData->LastAckedMove))
+			{
+				OldMove = CurrentMove;
+				break;
+			}
+		}
+	}
+
+	// Get a SavedMove object to store the movement in.
+	FSavedMovePtr NewMove = ClientData->CreateSavedMove();
+	if (NewMove.IsValid() == false)
+	{
+		return;
+	}
+
+	NewMove->SetMoveFor(CharacterOwner, DeltaTime, NewAcceleration, *ClientData);
+
+	// see if the two moves could be combined
+	// do not combine moves which have different TimeStamps (before and after reset).
+	if (ClientData->PendingMove.IsValid() && !ClientData->PendingMove->bOldTimeStampBeforeReset && ClientData->PendingMove->CanCombineWith(NewMove, CharacterOwner, ClientData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation()))
+	{
+		//SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCombineNetMove);
+
+		// Only combine and move back to the start location if we don't move back in to a spot that would make us collide with something new.
+		const FVector OldStartLocation = ClientData->PendingMove->GetRevertedLocation();
+		if (!OverlapTest(OldStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
+		{
+			FScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
+			UE_LOG(LogNetPlayerMovement, VeryVerbose, TEXT("CombineMove: add delta %f + %f and revert from %f %f to %f %f"), DeltaTime, ClientData->PendingMove->DeltaTime, UpdatedComponent->GetComponentLocation().X, UpdatedComponent->GetComponentLocation().Y, OldStartLocation.X, OldStartLocation.Y);
+
+			// to combine move, first revert pawn position to PendingMove start position, before playing combined move on client
+			const bool bNoCollisionCheck = true;
+			UpdatedComponent->SetWorldLocationAndRotation(OldStartLocation, ClientData->PendingMove->StartRotation, false);
+			Velocity = ClientData->PendingMove->StartVelocity;
+
+			SetBase(ClientData->PendingMove->StartBase.Get(), ClientData->PendingMove->StartBoneName);
+			CurrentFloor = ClientData->PendingMove->StartFloor;
+
+			// Now that we have reverted to the old position, prepare a new move from that position,
+			// using our current velocity, acceleration, and rotation, but applied over the combined time from the old and new move.
+
+			NewMove->DeltaTime += ClientData->PendingMove->DeltaTime;
+
+			if (PC)
+			{
+				// We reverted position to that at the start of the pending move (above), however some code paths expect rotation to be set correctly
+				// before character movement occurs (via FaceRotation), so try that now. The bOrientRotationToMovement path happens later as part of PerformMovement() and PhysicsRotation().
+				CharacterOwner->FaceRotation(PC->GetControlRotation(), NewMove->DeltaTime);
+			}
+
+			SaveBaseLocation();
+			NewMove->SetInitialPosition(CharacterOwner);
+
+			// Remove pending move from move list. It would have to be the last move on the list.
+			if (ClientData->SavedMoves.Num() > 0 && ClientData->SavedMoves.Last() == ClientData->PendingMove)
+			{
+				const bool bAllowShrinking = false;
+				ClientData->SavedMoves.Pop(bAllowShrinking);
+			}
+			ClientData->FreeMove(ClientData->PendingMove);
+			ClientData->PendingMove = NULL;
+		}
+		else
+		{
+			//UE_LOG(LogNet, Log, TEXT("Not combining move, would collide at start location"));
+		}
+	}
+
+	// Acceleration should match what we send to the server, plus any other restrictions the server also enforces (see MoveAutonomous).
+	Acceleration = NewMove->Acceleration.GetClampedToMaxSize(GetMaxAcceleration());
+	AnalogInputModifier = ComputeAnalogInputModifier(); // recompute since acceleration may have changed.
+
+														// Perform the move locally
+	CharacterOwner->ClientRootMotionParams.Clear();
+	CharacterOwner->SavedRootMotion.Clear();
+	PerformMovement(NewMove->DeltaTime);
+
+	NewMove->PostUpdate(CharacterOwner, FSavedMove_Character::PostUpdate_Record);
+
+	// Add NewMove to the list
+	if (CharacterOwner->bReplicateMovement)
+	{
+		ClientData->SavedMoves.Push(NewMove);
+
+		//const bool bCanDelayMove = (CharacterMovementCVars::NetEnableMoveCombining != 0) && CanDelaySendingMove(NewMove);
+		const bool bCanDelayMove = (CVarNetEnableMoveCombiningVRSimple->GetInt() != 0) && CanDelaySendingMove(NewMove);
+
+		if (bCanDelayMove && ClientData->PendingMove.IsValid() == false)
+		{
+			// Decide whether to hold off on move
+			// send moves more frequently in small games where server isn't likely to be saturated
+			float NetMoveDelta;
+			UPlayer* Player = (PC ? PC->Player : nullptr);
+			AGameStateBase const* const GameState = GetWorld()->GetGameState();
+
+			if (Player && (Player->CurrentNetSpeed > 10000) && (GameState != nullptr) && (GameState->PlayerArray.Num() <= 10))
+			{
+				NetMoveDelta = 0.011f;
+			}
+			else if (Player && CharacterOwner->GetWorldSettings()->GameNetworkManagerClass)
+			{
+				NetMoveDelta = FMath::Max(0.0222f, 2 * GetDefault<AGameNetworkManager>(CharacterOwner->GetWorldSettings()->GameNetworkManagerClass)->MoveRepSize / Player->CurrentNetSpeed);
+			}
+			else
+			{
+				NetMoveDelta = 0.011f;
+			}
+
+			if ((GetWorld()->TimeSeconds - ClientData->ClientUpdateTime) * CharacterOwner->GetWorldSettings()->GetEffectiveTimeDilation() < NetMoveDelta)
+			{
+				// Delay sending this move.
+				ClientData->PendingMove = NewMove;
+				return;
+			}
+		}
+
+		ClientData->ClientUpdateTime = GetWorld()->TimeSeconds;
+
+		UE_LOG(LogNetPlayerMovement, Verbose, TEXT("Client ReplicateMove Time %f Acceleration %s Position %s DeltaTime %f"),
+			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
+
+		// Send move to server if this character is replicating movement
+		{
+			SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCallServerMoveVRSimple);
+			//CallServerMove(NewMove.Get(), OldMove.Get());
+			CallServerMoveVR((FSavedMove_VRSimpleCharacter *)NewMove.Get(), (FSavedMove_VRSimpleCharacter *)OldMove.Get());
+		}
+	}
+
+	ClientData->PendingMove = NULL;
+}
+
+FNetworkPredictionData_Client* UVRSimpleCharacterMovementComponent::GetPredictionData_Client() const
+{
+	// Should only be called on client or listen server (for remote clients) in network games
+	check(CharacterOwner != NULL);
+	checkSlow(CharacterOwner->Role < ROLE_Authority || (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy && GetNetMode() == NM_ListenServer));
+	checkSlow(GetNetMode() == NM_Client || GetNetMode() == NM_ListenServer);
+
+	if (!ClientPredictionData)
+	{
+		UVRSimpleCharacterMovementComponent* MutableThis = const_cast<UVRSimpleCharacterMovementComponent*>(this);
+		MutableThis->ClientPredictionData = new FNetworkPredictionData_Client_VRSimpleCharacter(*this);
+	}
+
+	return ClientPredictionData;
+}
+
+FNetworkPredictionData_Server* UVRSimpleCharacterMovementComponent::GetPredictionData_Server() const
+{
+	// Should only be called on server in network games
+	check(CharacterOwner != NULL);
+	check(CharacterOwner->Role == ROLE_Authority);
+	checkSlow(GetNetMode() < NM_Client);
+
+	if (!ServerPredictionData)
+	{
+		UVRSimpleCharacterMovementComponent* MutableThis = const_cast<UVRSimpleCharacterMovementComponent*>(this);
+		MutableThis->ServerPredictionData = new FNetworkPredictionData_Server_VRSimpleCharacter(*this);
+	}
+
+	return ServerPredictionData;
+}
+
+
+void FSavedMove_VRSimpleCharacter::Clear()
+{
+	//VRCapsuleLocation = FVector::ZeroVector;
+	//VRCapsuleRotation = FRotator::ZeroRotator;
+	LFDiff = FVector::ZeroVector;
+	RequestedVelocity = FVector::ZeroVector;
+
+	FSavedMove_Character::Clear();
+}
+
+void FSavedMove_VRSimpleCharacter::SetInitialPosition(ACharacter* C)
+{
+	// See if we can get the VR capsule location
+	if (AVRSimpleCharacter * VRC = Cast<AVRSimpleCharacter>(C))
+	{
+		/*if (VRC->VRRootReference)
+		{
+			VRCapsuleLocation = VRC->VRRootReference->curCameraLoc;
+			VRCapsuleRotation = VRC->VRRootReference->curCameraRot;
+			LFDiff = VRC->VRRootReference->DifferenceFromLastFrame;
+		}
+		else
+		{
+			VRCapsuleLocation = FVector::ZeroVector;
+			VRCapsuleRotation = FRotator::ZeroRotator;
+			LFDiff = FVector::ZeroVector;
+		}*/
+
+		
+		if (VRC->VRMovementReference)
+		{
+			LFDiff = VRC->VRMovementReference->AdditionalVRInputVector;
+			RequestedVelocity = VRC->VRMovementReference->RequestedVelocity;
+		}
+		else
+		{
+			LFDiff = FVector::ZeroVector;
+			RequestedVelocity = FVector::ZeroVector;
+		}
+
+	}
+	FSavedMove_Character::SetInitialPosition(C);
+}
+
+bool UVRSimpleCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, uint8 MoveFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+{
+	return true;
+}
+
+bool UVRSimpleCharacterMovementComponent::ServerMoveVRDual_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 rOldRequestedVelocity, FVector_NetQuantize100 OldLFDiff, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+{
+	return true;
+}
+
+bool UVRSimpleCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 rOldRequestedVelocity, FVector_NetQuantize100 OldLFDiff, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+{
+	return true;
+}
+
+void UVRSimpleCharacterMovementComponent::ServerMoveVRDual_Implementation(
+	float TimeStamp0,
+	FVector_NetQuantize10 InAccel0,
+	uint8 PendingFlags,
+	uint32 View0,
+	//FVector_NetQuantize100 OldCapsuleLoc,
+	FVector_NetQuantize100 rOldRequestedVelocity,
+	FVector_NetQuantize100 OldLFDiff,
+	//uint8 OldCapsuleYaw,
+	float TimeStamp,
+	FVector_NetQuantize10 InAccel,
+	FVector_NetQuantize100 ClientLoc,
+	//FVector_NetQuantize100 CapsuleLoc,
+	FVector_NetQuantize100 rRequestedVelocity,
+	FVector_NetQuantize100 LFDiff,
+	//uint8 CapsuleYaw,
+	uint8 NewFlags,
+	uint8 ClientRoll,
+	uint32 View,
+	UPrimitiveComponent* ClientMovementBase,
+	FName ClientBaseBone,
+	uint8 ClientMovementMode)
+{
+	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), rOldRequestedVelocity, OldLFDiff, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, rRequestedVelocity, LFDiff, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+}
+
+void UVRSimpleCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementation(
+	float TimeStamp0,
+	FVector_NetQuantize10 InAccel0,
+	uint8 PendingFlags,
+	uint32 View0,
+	//FVector_NetQuantize100 OldCapsuleLoc,
+	FVector_NetQuantize100 rOldRequestedVelocity,
+	FVector_NetQuantize100 OldLFDiff,
+	//uint8 OldCapsuleYaw,
+	float TimeStamp,
+	FVector_NetQuantize10 InAccel,
+	FVector_NetQuantize100 ClientLoc,
+	//FVector_NetQuantize100 CapsuleLoc,
+	FVector_NetQuantize100 rRequestedVelocity,
+	FVector_NetQuantize100 LFDiff,
+	//uint8 CapsuleYaw,
+	uint8 NewFlags,
+	uint8 ClientRoll,
+	uint32 View,
+	UPrimitiveComponent* ClientMovementBase,
+	FName ClientBaseBone,
+	uint8 ClientMovementMode)
+{
+	// First move received didn't use root motion, process it as such.
+	CharacterOwner->bServerMoveIgnoreRootMotion = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
+	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), rOldRequestedVelocity, OldLFDiff, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	CharacterOwner->bServerMoveIgnoreRootMotion = false;
+
+	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, rRequestedVelocity, LFDiff, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+}
+
+void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
+	float TimeStamp,
+	FVector_NetQuantize10 InAccel,
+	FVector_NetQuantize100 ClientLoc,
+	//FVector_NetQuantize100 CapsuleLoc,
+	FVector_NetQuantize100 rRequestedVelocity,
+	FVector_NetQuantize100 LFDiff,
+	//uint8 CapsuleYaw,
+	uint8 MoveFlags,
+	uint8 ClientRoll,
+	uint32 View,
+	UPrimitiveComponent* ClientMovementBase,
+	FName ClientBaseBoneName,
+	uint8 ClientMovementMode)
+{
+	if (!HasValidData() || !IsComponentTickEnabled())
+	{
+		return;
+	}
+
+	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
+	check(ServerData);
+
+	if (!VerifyClientTimeStamp(TimeStamp, *ServerData))
+	{
+		return;
+	}
+
+	bool bServerReadyForClient = true;
+	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
+	if (PC)
+	{
+		bServerReadyForClient = PC->NotifyServerReceivedClientData(CharacterOwner, TimeStamp);
+		if (!bServerReadyForClient)
+		{
+			InAccel = FVector::ZeroVector;
+		}
+	}
+
+	// View components
+	const uint16 ViewPitch = (View & 65535);
+	const uint16 ViewYaw = (View >> 16);
+
+	const FVector Accel = InAccel;
+	// Save move parameters.
+	const float DeltaTime = ServerData->GetServerMoveDeltaTime(TimeStamp, CharacterOwner->GetActorTimeDilation());
+
+	ServerData->CurrentClientTimeStamp = TimeStamp;
+	ServerData->ServerTimeStamp = GetWorld()->GetTimeSeconds();
+	ServerData->ServerTimeStampLastServerMove = ServerData->ServerTimeStamp;
+	FRotator ViewRot;
+	ViewRot.Pitch = FRotator::DecompressAxisFromShort(ViewPitch);
+	ViewRot.Yaw = FRotator::DecompressAxisFromShort(ViewYaw);
+	ViewRot.Roll = FRotator::DecompressAxisFromByte(ClientRoll);
+
+	if (PC)
+	{
+		PC->SetControlRotation(ViewRot);
+	}
+
+	if (!bServerReadyForClient)
+	{
+		return;
+	}
+
+	// Perform actual movement
+	if ((CharacterOwner->GetWorldSettings()->Pauser == NULL) && (DeltaTime > 0.f))
+	{
+		if (PC)
+		{
+			PC->UpdateRotation(DeltaTime);
+		}
+
+		RequestedVelocity = rRequestedVelocity;
+		if (!rRequestedVelocity.IsNearlyZero())
+		{
+			bHasRequestedVelocity = true;
+			//RequestedVelocity = rRequestedVelocity;
+		}
+
+		// Add in VR Input velocity
+		AdditionalVRInputVector = LFDiff;
+
+		MoveAutonomous(TimeStamp, DeltaTime, MoveFlags, Accel);
+		bHasRequestedVelocity = false;
+	}
+
+	UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ServerMove Time %f Acceleration %s Position %s DeltaTime %f"),
+		TimeStamp, *Accel.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
+
+	ServerMoveHandleClientError(TimeStamp, DeltaTime, Accel, ClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode);
 }

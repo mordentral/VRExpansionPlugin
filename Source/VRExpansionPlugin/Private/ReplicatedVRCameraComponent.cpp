@@ -21,6 +21,7 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 
 	bUsePawnControlRotation = false;
 	bAutoSetLockToHmd = true;
+	bOffsetByHMD = false;
 }
 
 
@@ -57,19 +58,6 @@ bool UReplicatedVRCameraComponent::Server_SendTransform_Validate(FBPVRComponentP
 	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
 }
 
-void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView)
-{
-	if (bAutoSetLockToHmd)
-	{
-		if (IsLocallyControlled())
-			bLockToHmd = true;
-		else
-			bLockToHmd = false;
-	}
-
-	Super::GetCameraView(DeltaTime, DesiredView);
-}
-
 void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	bHasAuthority = IsLocallyControlled();
@@ -94,4 +82,96 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 			}
 		}
 	}
+}
+
+void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView)
+{
+	if (bAutoSetLockToHmd)
+	{
+		if (IsLocallyControlled())
+			bLockToHmd = true;
+		else
+			bLockToHmd = false;
+	}
+
+	if (bLockToHmd && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+	{
+		ResetRelativeTransform();
+		const FTransform ParentWorld = GetComponentToWorld();
+		GEngine->HMDDevice->SetupLateUpdate(ParentWorld, this);
+
+		FQuat Orientation;
+		FVector Position;
+		if (GEngine->HMDDevice->UpdatePlayerCamera(Orientation, Position))
+		{
+			if (bOffsetByHMD)
+			{
+				Position.X = 0;
+				Position.Y = 0;
+			}
+
+			SetRelativeTransform(FTransform(Orientation, Position));
+		}
+	}
+
+	if (bUsePawnControlRotation)
+	{
+		const APawn* OwningPawn = Cast<APawn>(GetOwner());
+		const AController* OwningController = OwningPawn ? OwningPawn->GetController() : nullptr;
+		if (OwningController && OwningController->IsLocalPlayerController())
+		{
+			const FRotator PawnViewRotation = OwningPawn->GetViewRotation();
+			if (!PawnViewRotation.Equals(GetComponentRotation()))
+			{
+				SetWorldRotation(PawnViewRotation);
+			}
+		}
+	}
+
+	if (bUseAdditiveOffset)
+	{
+		FTransform OffsetCamToBaseCam = AdditiveOffset;
+		FTransform BaseCamToWorld = GetComponentToWorld();
+		FTransform OffsetCamToWorld = OffsetCamToBaseCam * BaseCamToWorld;
+
+		DesiredView.Location = OffsetCamToWorld.GetLocation();
+		DesiredView.Rotation = OffsetCamToWorld.Rotator();
+
+#if WITH_EDITORONLY_DATA
+		if (ProxyMeshComponent)
+		{
+			ResetProxyMeshTransform();
+
+			FTransform LocalTransform = ProxyMeshComponent->GetRelativeTransform();
+			FTransform WorldTransform = LocalTransform * OffsetCamToWorld;
+
+			ProxyMeshComponent->SetWorldTransform(WorldTransform);
+		}
+#endif
+	}
+	else
+	{
+		DesiredView.Location = GetComponentLocation();
+		DesiredView.Rotation = GetComponentRotation();
+	}
+
+	DesiredView.FOV = bUseAdditiveOffset ? (FieldOfView + AdditiveFOVOffset) : FieldOfView;
+	DesiredView.AspectRatio = AspectRatio;
+	DesiredView.bConstrainAspectRatio = bConstrainAspectRatio;
+	DesiredView.bUseFieldOfViewForLOD = bUseFieldOfViewForLOD;
+	DesiredView.ProjectionMode = ProjectionMode;
+	DesiredView.OrthoWidth = OrthoWidth;
+	DesiredView.OrthoNearClipPlane = OrthoNearClipPlane;
+	DesiredView.OrthoFarClipPlane = OrthoFarClipPlane;
+
+	// See if the CameraActor wants to override the PostProcess settings used.
+	DesiredView.PostProcessBlendWeight = PostProcessBlendWeight;
+	if (PostProcessBlendWeight > 0.0f)
+	{
+		DesiredView.PostProcessSettings = PostProcessSettings;
+	}
+
+#if WITH_EDITOR
+	ResetProxyMeshTransform();
+#endif //WITH_EDITOR
 }
