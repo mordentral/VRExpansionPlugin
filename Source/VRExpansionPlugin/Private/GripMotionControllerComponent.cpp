@@ -951,7 +951,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	
 	NotifyDrop(GrippedActors[FoundIndex], bSimulate);
 
-	if (OptionalLinearVelocity != FVector::ZeroVector && OptionalAngularVelocity != FVector::ZeroVector)
+	if (Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement && OptionalLinearVelocity != FVector::ZeroVector && OptionalAngularVelocity != FVector::ZeroVector)
 	{
 		PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
 		PrimComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
