@@ -1074,6 +1074,12 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	{
 		if(bHasMovementAuthority)
 			SetUpPhysicsHandle(NewGrip);
+		else
+		{
+			// Need to enable physics client side too
+			root->SetSimulatePhysics(true);
+			// Set up physics handle already does it
+		}
 
 	} break;
 
@@ -1232,9 +1238,7 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 	}
 	else
 	{
-		if (Grip.GripCollisionType == EGripCollisionType::PhysicsOnly ||
-			Grip.GripCollisionType == EGripCollisionType::SweepWithPhysics ||
-			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement)
+		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement)
 		{
 			return true;
 		}
@@ -1387,6 +1391,11 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 
 bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformation &Grip, bool bIsPostTeleport)
 {
+	bool bHasMovementAuthority = HasGripMovementAuthority(Grip);
+
+	if (!bHasMovementAuthority)
+		return false;
+
 	UPrimitiveComponent * PrimComp = NULL;
 	AActor * actor = NULL;
 
@@ -1753,7 +1762,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				// Last check to make sure the variables are valid
 				if (!root || !actor)
 					continue;
-
+				
 				// Get the world transform for this grip after handling secondary grips and interaction differences
 				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root);
 
@@ -1791,8 +1800,6 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 						{
 							CheckDistance = (WorldTransform.GetLocation() - root->GetComponentLocation());
 						}
-
-						//UE_LOG(LogTemp, Warning, TEXT("DIST: %f"), CheckDistance.Size());
 
 						if (CheckDistance.Size() >= BreakDistance)
 						{

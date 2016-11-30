@@ -35,7 +35,7 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 	if (VRReplicatedCamera && VRSceneComponent)
 	{
 		VRReplicatedCamera->SetupAttachment(VRSceneComponent);
-		VRReplicatedCamera->AddTickPrerequisiteComponent(VRMovementReference);
+	//	VRReplicatedCamera->AddTickPrerequisiteComponent(VRMovementReference);
 		VRReplicatedCamera->bOffsetByHMD = true;
 		//VRReplicatedCamera->SetupAttachment(RootComponent);
 	}
