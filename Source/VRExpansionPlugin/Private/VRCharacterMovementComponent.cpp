@@ -989,11 +989,9 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 {
 	PostPhysicsTickFunction.bCanEverTick = true;
 	PostPhysicsTickFunction.bStartWithTickEnabled = false;
-	//PostPhysicsTickFunction.TickGroup = TG_PostPhysics;
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 	VRRootCapsule = NULL;
 	//VRCameraCollider = NULL;
-
 	// 0.1f is low slide and still impacts surfaces well
 	// This variable is a bit of a hack, it reduces the movement of the pawn in the direction of relative movement
 	WallRepulsionMultiplier = 0.01f;

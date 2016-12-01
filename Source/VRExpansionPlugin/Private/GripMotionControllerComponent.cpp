@@ -951,7 +951,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	
 	NotifyDrop(GrippedActors[FoundIndex], bSimulate);
 
-	if (Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement && OptionalLinearVelocity != FVector::ZeroVector && OptionalAngularVelocity != FVector::ZeroVector)
+	if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement && (OptionalLinearVelocity != FVector::ZeroVector || OptionalAngularVelocity != FVector::ZeroVector))
 	{
 		PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
 		PrimComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
@@ -1074,12 +1074,6 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	{
 		if(bHasMovementAuthority)
 			SetUpPhysicsHandle(NewGrip);
-		else
-		{
-			// Need to enable physics client side too
-			root->SetSimulatePhysics(true);
-			// Set up physics handle already does it
-		}
 
 	} break;
 
@@ -1159,6 +1153,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 			if (root)
 			{
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
+				
 				root->SetSimulatePhysics(bSimulate);
 				if (bSimulate)
 					root->WakeAllRigidBodies();
@@ -1198,6 +1193,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 			if (root)
 			{
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
+			
 				root->SetSimulatePhysics(bSimulate);
 				if (bSimulate)
 					root->WakeAllRigidBodies();
@@ -1244,7 +1240,7 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 		}
 		else if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
-			return false;
+			return false;	
 		}
 
 		// Use original movement type is overridden when initializing the grip and shouldn't happen
@@ -1566,7 +1562,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 		FRotator Orientation;
 		bTracked = PollControllerState(Position, Orientation);
 
-		if (bTracked)
+		if (bTracked && !bUseWithoutTracking)
 		{
 			SetRelativeLocationAndRotation(Position, Orientation);
 		}

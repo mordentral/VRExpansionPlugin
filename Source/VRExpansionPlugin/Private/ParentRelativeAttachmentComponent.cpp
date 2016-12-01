@@ -30,14 +30,19 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 
 		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
 
+		FTransform ParentTrans = FTransform::Identity;
+
+		if (USceneComponent * Parent = GetAttachParent())
+			ParentTrans = Parent->GetComponentToWorld();
+		
 		if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
 		{
-			SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion(), false);
+			SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion() * ParentTrans.GetRotation(), false);
 			return;
 		}
 
 		LastRot = InverseRot;
-		SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
+		SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion() * ParentTrans.GetRotation(), false);
 
 		if (bOffsetByHMD)
 		{

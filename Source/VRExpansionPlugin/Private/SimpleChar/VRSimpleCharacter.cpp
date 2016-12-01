@@ -103,7 +103,7 @@ FVector AVRSimpleCharacter::GetTeleportLocation(FVector OriginalLocation)
 
 bool AVRSimpleCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest, bool bNoCheck)
 {
-	bool bTeleportSucceeded = Super::TeleportTo(DestLocation + GetCapsuleComponent()->GetScaledCapsuleHalfHeight(), DestRotation, bIsATest, bNoCheck);
+	bool bTeleportSucceeded = Super::TeleportTo(DestLocation + FVector(0,0,GetCapsuleComponent()->GetScaledCapsuleHalfHeight()), DestRotation, bIsATest, bNoCheck);
 
 	if (bTeleportSucceeded)
 	{
