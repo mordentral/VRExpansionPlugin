@@ -45,6 +45,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bDisableLowLatencyUpdate = false;
 	bHasAuthority = false;
 	bUseWithoutTracking = false;
+	bAlwaysSendTickGrip = false;
 	bAutoActivate = true;
 
 	this->SetIsReplicated(true);
@@ -53,8 +54,6 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	//bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
-
-	//OnCalculateCustomPhysics.BindUObject(this, &UGripMotionControllerComponent::SubstepTick);
 
 }
 
@@ -1077,24 +1076,10 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 
 	} break;
 
-	/*case EGripCollisionType::InteractiveCollisionWithVelocity:
-	{
-
-		if (NewGrip.Component)
-			NewGrip.Component->SetSimulatePhysics(true);
-		else if (NewGrip.Actor)
-		{
-			if (UPrimitiveComponent * primComp = Cast<UPrimitiveComponent>(NewGrip.Actor->GetRootComponent()))
-			{
-				primComp->SetSimulatePhysics(true);
-			}
-		}
-	} break;*/
-
 	// Skip collision intersects with these types, they dont need it
+	case EGripCollisionType::CustomGrip:
 	case EGripCollisionType::PhysicsOnly:
 	case EGripCollisionType::SweepWithPhysics:
-
 	case EGripCollisionType::InteractiveHybridCollisionWithSweep:
 	case EGripCollisionType::InteractiveCollisionWithSweep:
 	default: 
@@ -1419,6 +1404,21 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 	if (!PrimComp || !actor)
 		return false;
 
+	// Check if either implements the interface
+	bool bRootHasInterface = false;
+	bool bActorHasInterface = false;
+
+	if (PrimComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		bRootHasInterface = true;
+	}
+	if (actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		// Actor grip interface is checked after component
+		bActorHasInterface = true;
+	}
+
+
 	// Only use with actual teleporting
 	if (bIsPostTeleport)
 	{
@@ -1426,12 +1426,12 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 		bool bSimulateOnDrop = false;
 
 		// Check for interaction interface
-		if (PrimComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		if (bRootHasInterface)
 		{
 			TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(PrimComp);
 			bSimulateOnDrop = IVRGripInterface::Execute_SimulateOnDrop(PrimComp);
 		}
-		else if (Grip.Actor && Grip.Actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		else if (bActorHasInterface)
 		{
 			// Actor grip interface is checked after component
 			TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(Grip.Actor);
@@ -1466,7 +1466,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 
 	FBPActorGripInformation copyGrip = Grip;
 
-	GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp);
+	GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface);
 
 	//WorldTransform = Grip.RelativeTransform * ParentTransform;
 
@@ -1480,6 +1480,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(PrimComp);
 	//	FTransform trans = P2UTransform(Handle->KinActorData->getGlobalPose());
 
+		// This corrects for root bone transforms not being handled with physics in the engine
 		if (skele)
 		{
 			WorldTransform.ConcatenateRotation(skele->GetBoneTransform(0, FTransform::Identity).GetRotation());
@@ -1591,16 +1592,19 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	// Process the gripped actors
 	TickGrip(DeltaTime);
 
+
+	// Set the last controller world location for next frame
+	LastControllerLocation = this->GetComponentLocation();
 }
 
-void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root)
+void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
 {
 	// Check for interaction interface and modify transform by it
-	if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_IsInteractible(root))
+	if (bRootHasInterface && IVRGripInterface::Execute_IsInteractible(root))
 	{
 		WorldTransform = HandleInteractionSettings(DeltaTime, ParentTransform, root, IVRGripInterface::Execute_GetInteractionSettings(root), Grip);
 	}
-	else if (actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IVRGripInterface::Execute_IsInteractible(actor))
+	else if (bActorHasInterface && IVRGripInterface::Execute_IsInteractible(actor))
 	{
 		// Actor grip interface is checked after component
 		WorldTransform = HandleInteractionSettings(DeltaTime, ParentTransform, root, IVRGripInterface::Execute_GetInteractionSettings(actor), Grip);
@@ -1718,6 +1722,8 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 		FTransform WorldTransform;
 		FTransform ParentTransform = this->GetComponentTransform();
 
+		FVector MotionControllerLocDelta = ParentTransform.GetLocation() - LastControllerLocation;
+
 		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 		{
 			if (!HasGripMovementAuthority(GrippedActors[i]))
@@ -1758,15 +1764,46 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				// Last check to make sure the variables are valid
 				if (!root || !actor)
 					continue;
+
+
+				// Check if either implements the interface
+				bool bRootHasInterface = false;
+				bool bActorHasInterface = false;
+				
+				if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				{
+					bRootHasInterface = true;
+				}
+				if (actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				{
+					// Actor grip interface is checked after component
+					bActorHasInterface = true;
+				}
+
+				if (Grip->GripCollisionType == EGripCollisionType::CustomGrip)
+				{
+					// Don't perform logic on the movement for this object, just pass in the GripTick() event with the controller difference instead
+					if (bRootHasInterface)
+					{
+						IVRGripInterface::Execute_TickGrip(root, this, *Grip, MotionControllerLocDelta, DeltaTime);
+					}
+					
+					if (bActorHasInterface)
+					{
+						IVRGripInterface::Execute_TickGrip(actor, this, *Grip, MotionControllerLocDelta, DeltaTime);
+					}
+
+					continue;
+				}
 				
 				// Get the world transform for this grip after handling secondary grips and interaction differences
-				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root);
+				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface);
 
 				// Auto drop based on distance from expected point
 				// Not perfect, should be done post physics or in next frame prior to changing controller location
 				// However I don't want to recalculate world transform
 				// Maybe add a grip variable of "expected loc" and use that to check next frame, but for now this will do.
-				if (IsServer() &&
+				if (IsServer() && (bRootHasInterface || bActorHasInterface) &&
 					(
 						(
 							Grip->GripCollisionType != EGripCollisionType::PhysicsOnly &&
@@ -1777,13 +1814,11 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 					)
 				{
 					float BreakDistance = 0.0f;
-					bool bComponentInterface = false;
-					if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					if (bRootHasInterface)
 					{
 						BreakDistance = IVRGripInterface::Execute_GripBreakDistance(root);
-						bComponentInterface = true;
 					}
-					else if (actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					else if (bActorHasInterface)
 					{
 						// Actor grip interface is checked after component
 						BreakDistance = IVRGripInterface::Execute_GripBreakDistance(actor);
@@ -1804,7 +1839,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 							case EGripTargetType::ComponentGrip:
 							//case EGripTargetType::InteractibleComponentGrip:
 							{
-								if (bComponentInterface)
+								if (bRootHasInterface)
 									DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(root));
 								else
 									DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(actor));
@@ -1812,7 +1847,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 							case EGripTargetType::ActorGrip:
 							//case EGripTargetType::InteractibleActorGrip:
 							{
-								if (bComponentInterface)
+								if (bRootHasInterface)
 									DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(root));
 								else
 									DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(actor));
@@ -1826,206 +1861,25 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 				}
 
 				// Start handling the grip types and their functions
-				if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics)
+				switch (Grip->GripCollisionType)
 				{
-					UpdatePhysicsHandleTransform(*Grip, WorldTransform);
-					
-					// Sweep current collision state, only used for client side late update removal
-					if (	
-						(bHasAuthority &&
-						((Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenColliding) ||
-						(Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping)))		
-						)
+					case EGripCollisionType::InteractiveCollisionWithPhysics:
 					{
-						TArray<FOverlapResult> Hits;
-						FComponentQueryParams Params(NAME_None, this->GetOwner());
-						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
-						Params.AddIgnoredActor(actor);
-						Params.AddIgnoredActors(root->MoveIgnoreActors);
-						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
-						{
-							Grip->bColliding = true;
-						}
-						else
-						{
-							Grip->bColliding = false;
-						}
-					}
-
-				}
-				/*else if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity)
-				{
-
-					TArray<FOverlapResult> Hits;
-					FComponentQueryParams Params(NAME_None, this->GetOwner());
-					Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
-					Params.AddIgnoredActor(actor);
-					Params.AddIgnoredActors(root->MoveIgnoreActors);
-					if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
-					{
-						Grip->bColliding = true;
-					}
-					else
-					{
-						Grip->bColliding = false;
-					}
-
-					// BETA CODE
-					FBodyInstance * body = root->GetBodyInstance();
-					Grip->VelocityTargetTransform = WorldTransform;
-#if WITH_PHYSX				
-					FPhysScene* PhysScene = GetWorld()->GetPhysicsScene();
-					if (PhysScene->bSubstepping)// && !body->bUseAsyncScene || PhysScene->bSubsteppingAsync && body->bUseAsyncScene)
-					{
-						if(body)
-							body->AddCustomPhysics(OnCalculateCustomPhysics);
-					}
-#else
-					if (false)
-					{
-					}
-#endif
-					else
-					{
-						if(body)
-							SubstepTick(DeltaTime, body);
-					}
-
-				}*/
-				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveCollisionWithSweep)
-				{
-					FVector OriginalPosition(root->GetComponentLocation());
-					FVector NewPosition(WorldTransform.GetTranslation());
-
-					if(!Grip->bIsLocked)
-						root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
-
-					if (Grip->bIsLocked)
-						WorldTransform.SetRotation(Grip->LastLockedRotation);
-
-					FHitResult OutHit;
-					// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
-					
-					root->SetWorldTransform(WorldTransform, true, &OutHit);
-
-					if (OutHit.bBlockingHit)
-					{
-						Grip->bColliding = true;
-
-						if (!Grip->bIsLocked)
-						{
-							Grip->bIsLocked = true;
-							Grip->LastLockedRotation = root->GetComponentQuat();
-						}
-					}
-					else
-					{
-						Grip->bColliding = false;
-
-						if (Grip->bIsLocked)
-							Grip->bIsLocked = false;
-					}
-				}
-				else if (Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
-				{
-
-					// Make sure that there is no collision on course before turning off collision and snapping to controller
-					FBPActorPhysicsHandleInformation * GripHandle = GetPhysicsGrip(*Grip);
-
-					if (Grip->bColliding)
-					{
-						// Check for overlap ending
-						TArray<FOverlapResult> Hits;
-						FComponentQueryParams Params(NAME_None, this->GetOwner());
-						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
-						Params.AddIgnoredActor(actor);
-						Params.AddIgnoredActors(root->MoveIgnoreActors);
-						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
-						{
-							Grip->bColliding = true;
-						}
-						else
-						{
-							Grip->bColliding = false;
-						}
-					}
-					else if (!Grip->bColliding)
-					{
-						// Check for overlap beginning
-						TArray<FOverlapResult> Hits;
-						FComponentQueryParams Params(NAME_None, this->GetOwner());
-						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
-						Params.AddIgnoredActor(actor);
-						Params.AddIgnoredActors(root->MoveIgnoreActors);
-						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params))
-						{
-							Grip->bColliding = true;
-						}
-						else
-						{
-							Grip->bColliding = false;
-						}
-					}
-
-					if (!Grip->bColliding)
-					{	
-
-						if (GripHandle)
-						{
-							if(GripHandle)
-								DestroyPhysicsHandle(*Grip);
-
-							if(Grip->Actor)
-								Grip->Actor->DisableComponentsSimulatePhysics();
-							else
-								root->SetSimulatePhysics(false);
-						}
-
-						FHitResult OutHit;
-						root->SetWorldTransform(WorldTransform, true, &OutHit);
-
-						if (OutHit.bBlockingHit)
-						{
-							Grip->bColliding = true;
-						}
-
-					}
-					else if (Grip->bColliding && !GripHandle)
-					{
-						root->SetSimulatePhysics(true);
-
-						SetUpPhysicsHandle(*Grip);
 						UpdatePhysicsHandleTransform(*Grip, WorldTransform);
-					}
-					else
-					{
-						// Shouldn't be a grip handle if not server when server side moving
-						if (GripHandle)
-							UpdatePhysicsHandleTransform(*Grip, WorldTransform);
-					}
 
-				}
-				else if (Grip->GripCollisionType == EGripCollisionType::SweepWithPhysics)
-				{			
-					FVector OriginalPosition(root->GetComponentLocation());
-					FRotator OriginalOrientation(root->GetComponentRotation());
-
-					FVector NewPosition(WorldTransform.GetTranslation());
-					FRotator NewOrientation(WorldTransform.GetRotation());
-
-					root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
-
-					// Now sweep collision separately so we can get hits but not have the location altered
-					if (bUseWithoutTracking || NewPosition != OriginalPosition || NewOrientation != OriginalOrientation)
-					{
-						FVector move = NewPosition - OriginalPosition;
-
-						// ComponentSweepMulti does nothing if moving < KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
-						const float MinMovementDistSq = (FMath::Square(4.f*KINDA_SMALL_NUMBER));
-
-						if (bUseWithoutTracking || move.SizeSquared() > MinMovementDistSq || NewOrientation != OriginalOrientation)
+						// Sweep current collision state, only used for client side late update removal
+						if (
+							(bHasAuthority &&
+								((Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenColliding) ||
+									(Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping)))
+							)
 						{
-							if (CheckComponentWithSweep(root, move, OriginalOrientation, false))
+							TArray<FOverlapResult> Hits;
+							FComponentQueryParams Params(NAME_None, this->GetOwner());
+							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+							Params.AddIgnoredActor(actor);
+							Params.AddIgnoredActors(root->MoveIgnoreActors);
+							if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
 							{
 								Grip->bColliding = true;
 							}
@@ -2034,20 +1888,188 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 								Grip->bColliding = false;
 							}
 						}
+
+					}break;
+
+					case EGripCollisionType::InteractiveCollisionWithSweep:
+					{
+						FVector OriginalPosition(root->GetComponentLocation());
+						FVector NewPosition(WorldTransform.GetTranslation());
+
+						if (!Grip->bIsLocked)
+							root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
+
+						if (Grip->bIsLocked)
+							WorldTransform.SetRotation(Grip->LastLockedRotation);
+
+						FHitResult OutHit;
+						// Need to use without teleport so that the physics velocity is updated for when the actor is released to throw
+
+						root->SetWorldTransform(WorldTransform, true, &OutHit);
+
+						if (OutHit.bBlockingHit)
+						{
+							Grip->bColliding = true;
+
+							if (!Grip->bIsLocked)
+							{
+								Grip->bIsLocked = true;
+								Grip->LastLockedRotation = root->GetComponentQuat();
+							}
+						}
+						else
+						{
+							Grip->bColliding = false;
+
+							if (Grip->bIsLocked)
+								Grip->bIsLocked = false;
+						}
+					}break;
+
+					case EGripCollisionType::InteractiveHybridCollisionWithSweep:
+					{
+
+						// Make sure that there is no collision on course before turning off collision and snapping to controller
+						FBPActorPhysicsHandleInformation * GripHandle = GetPhysicsGrip(*Grip);
+
+						if (Grip->bColliding)
+						{
+							// Check for overlap ending
+							TArray<FOverlapResult> Hits;
+							FComponentQueryParams Params(NAME_None, this->GetOwner());
+							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+							Params.AddIgnoredActor(actor);
+							Params.AddIgnoredActors(root->MoveIgnoreActors);
+							if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+							{
+								Grip->bColliding = true;
+							}
+							else
+							{
+								Grip->bColliding = false;
+							}
+						}
+						else if (!Grip->bColliding)
+						{
+							// Check for overlap beginning
+							TArray<FOverlapResult> Hits;
+							FComponentQueryParams Params(NAME_None, this->GetOwner());
+							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+							Params.AddIgnoredActor(actor);
+							Params.AddIgnoredActors(root->MoveIgnoreActors);
+							if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params))
+							{
+								Grip->bColliding = true;
+							}
+							else
+							{
+								Grip->bColliding = false;
+							}
+						}
+
+						if (!Grip->bColliding)
+						{
+
+							if (GripHandle)
+							{
+								if (GripHandle)
+									DestroyPhysicsHandle(*Grip);
+
+								if (Grip->Actor)
+									Grip->Actor->DisableComponentsSimulatePhysics();
+								else
+									root->SetSimulatePhysics(false);
+							}
+
+							FHitResult OutHit;
+							root->SetWorldTransform(WorldTransform, true, &OutHit);
+
+							if (OutHit.bBlockingHit)
+							{
+								Grip->bColliding = true;
+							}
+
+						}
+						else if (Grip->bColliding && !GripHandle)
+						{
+							root->SetSimulatePhysics(true);
+
+							SetUpPhysicsHandle(*Grip);
+							UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+						}
+						else
+						{
+							// Shouldn't be a grip handle if not server when server side moving
+							if (GripHandle)
+								UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+						}
+
+					}break;
+
+					case EGripCollisionType::SweepWithPhysics:
+					{
+						FVector OriginalPosition(root->GetComponentLocation());
+						FRotator OriginalOrientation(root->GetComponentRotation());
+
+						FVector NewPosition(WorldTransform.GetTranslation());
+						FRotator NewOrientation(WorldTransform.GetRotation());
+
+						root->ComponentVelocity = (NewPosition - OriginalPosition) / DeltaTime;
+
+						// Now sweep collision separately so we can get hits but not have the location altered
+						if (bUseWithoutTracking || NewPosition != OriginalPosition || NewOrientation != OriginalOrientation)
+						{
+							FVector move = NewPosition - OriginalPosition;
+
+							// ComponentSweepMulti does nothing if moving < KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
+							const float MinMovementDistSq = (FMath::Square(4.f*KINDA_SMALL_NUMBER));
+
+							if (bUseWithoutTracking || move.SizeSquared() > MinMovementDistSq || NewOrientation != OriginalOrientation)
+							{
+								if (CheckComponentWithSweep(root, move, OriginalOrientation, false))
+								{
+									Grip->bColliding = true;
+								}
+								else
+								{
+									Grip->bColliding = false;
+								}
+							}
+						}
+
+						// Move the actor, we are not offsetting by the hit result anyway
+						root->SetWorldTransform(WorldTransform, false);
+
+					}break;
+
+					case EGripCollisionType::PhysicsOnly:
+					{
+						// Move the actor, we are not offsetting by the hit result anyway
+						root->SetWorldTransform(WorldTransform, false);
+					}break;
+
+					case EGripCollisionType::ManipulationGrip:
+					{
+						UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+					}break;
+
+					default:
+					{}break;
+				}
+
+				// We only do this if specifically requested, it has a slight perf hit and isn't normally needed for non Custom Grip types
+				if (bAlwaysSendTickGrip)
+				{
+					// All non custom grips tick after translation, this is still pre physics so interactive grips location will be wrong, but others will be correct
+					if (bRootHasInterface)
+					{
+						IVRGripInterface::Execute_TickGrip(root, this, *Grip, MotionControllerLocDelta, DeltaTime);
 					}
 
-					// Move the actor, we are not offsetting by the hit result anyway
-					root->SetWorldTransform(WorldTransform, false);
-
-				}
-				else if (Grip->GripCollisionType == EGripCollisionType::PhysicsOnly)
-				{
-					// Move the actor, we are not offsetting by the hit result anyway
-					root->SetWorldTransform(WorldTransform, false);
-				}
-				else if (Grip->GripCollisionType == EGripCollisionType::ManipulationGrip)
-				{
-					UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+					if (bActorHasInterface)
+					{
+						IVRGripInterface::Execute_TickGrip(actor, this, *Grip, MotionControllerLocDelta, DeltaTime);
+					}
 				}
 			}
 			else
@@ -2062,69 +2084,6 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 		}
 	}
 }
-
-/*void UGripMotionControllerComponent::SubstepTick(float DeltaTime, FBodyInstance* BdyInstance)
-{
-	if(!BdyInstance->OwnerComponent.IsValid())
-		return;
-
-	// Need to think about what happens here if an object is removed during physics stepping, I don't think it will happen but need to test.
-
-	UPrimitiveComponent *root = BdyInstance->OwnerComponent.Get();
-	AActor *Owner = root->GetOwner();
-	
-	FBPActorGripInformation Grip;
-	bool bFoundGrip = false;
-
-
-	for (int i = 0; i < GrippedActors.Num(); ++i)
-	{
-		if (GrippedActors[i].Component == root || GrippedActors[i].Actor == Owner)
-		{
-			Grip = GrippedActors[i];
-			bFoundGrip = true;
-			break;
-		}
-	}
-
-	if (!bFoundGrip)
-		return;
-
-	// BETA CODE
-	FBodyInstance * body = BdyInstance;//root->GetBodyInstance();
-	FVector linVel = (Grip.VelocityTargetTransform.GetLocation() - body->GetUnrealWorldTransform().GetLocation()) / DeltaTime;// (1.0f / DeltaTime);
-
-	// Stop that jitter
-	//if (Grip->bColliding)
-	//linVel = linVel.GetClampedToSize(-200.0f, 200.0f);
-	
-	FVector FinalPos = FVectorMoveTowards(body->GetUnrealWorldVelocity(), linVel, 500.0f);
-	body->SetLinearVelocity(FinalPos, false);
-
-	FQuat RotationDelta = Grip.VelocityTargetTransform.GetRotation() * body->GetUnrealWorldTransform().GetRotation().Inverse();
-	RotationDelta.Normalize();
-	FVector axis;
-	float angle;
-	RotationDelta.ToAxisAndAngle(axis, angle);
-
-	// Correcting for over rotation, using Radians
-	if (angle > PI)
-		angle -= PI * 2.0f;
-
-	if (angle != 0)
-	{
-		body->MaxAngularVelocity = PX_MAX_F32;
-		FVector AngularTarget = ((angle * 180) * axis) * 40.0f;//((angle * axis) / DeltaTime) * 40.0f;
-
-															   // Stop that jitter
-															   //if (Grip->bColliding)
-															   //AngularTarget = AngularTarget.GetClampedToSize(-200.0f, 200.0f);
-
-		FVector FinalRot = FVectorMoveTowards(body->GetUnrealWorldAngularVelocity(), AngularTarget, 500.0f);
-		body->SetAngularVelocity(FinalRot,false);
-		//root->SetAllPhysicsAngularVelocity(AngularTarget, false);
-	}
-}*/
 
 FTransform UGripMotionControllerComponent::HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo)
 {
@@ -2166,19 +2125,6 @@ FTransform UGripMotionControllerComponent::HandleInteractionSettings(float Delta
 	WorldTransform.SetLocation(componentLoc);
 
 	FRotator componentRot = WorldTransform.GetRotation().Rotator();
-
-	/*if (InteractionSettings.bRotateLeverToFaceController)
-	{
-		FRotator leverRot = FRotationMatrix::MakeFromX(ParentTransform.GetLocation() - componentLoc).Rotator();
-		if (!InteractionSettings.bLimitPitch)
-			componentRot.Pitch = leverRot .Pitch;
-
-		if (!InteractionSettings.bLimitYaw)
-			componentRot.Yaw = leverRot.Yaw;
-
-		if (!InteractionSettings.bLimitRoll)
-			componentRot.Roll = leverRot.Roll;
-	}*/
 
 	// Rotation Settings
 	if (InteractionSettings.bLimitPitch)
@@ -2630,14 +2576,6 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 //=============================================================================
 bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation)
 {
-	// THIS IS WRONG, it would have never worked!!!
-	/*if (IsInGameThread())
-	{
-		// Cache state from the game thread for use on the render thread
-		const APlayerController* Actor = Cast<APlayerController>(GetOwner());
-		bHasAuthority = !Actor || Actor->IsLocalPlayerController();
-	}*/
-
 	if ((PlayerIndex != INDEX_NONE) && bHasAuthority)
 	{
 		// New iteration and retrieval for 4.12

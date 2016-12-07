@@ -82,6 +82,10 @@ public:
 
 	// Events that can be called for interface inheriting actors
 
+	// Event triggered each tick on the interfaced object when gripped, can be used for custom movement or grip based logic
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
+		void TickGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime);
+
 	// Event triggered on the interfaced object when gripped
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRGripInterface")
 		void OnGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation);

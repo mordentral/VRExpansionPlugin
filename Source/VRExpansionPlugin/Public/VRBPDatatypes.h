@@ -88,6 +88,7 @@ Interactive Collision With Physics = Held items can be offset by geometry, uses 
 Interactive Collision With Sweep = Held items can be offset by geometry, uses sweep for the offset, pushes physics simulating objects, no weight
 Sweep With Physics = Only sweeps movement, will not be offset by geomtry, still pushes physics simulating objects, no weight
 Physics Only = Does not sweep at all (does not trigger OnHitEvents), still pushes physics simulating objects, no weight
+Custom grip is to be handled by the object itself, it just sends the TickGrip event every frame but doesn't move the object.
 */
 UENUM(Blueprintable)
 enum EGripCollisionType
@@ -98,7 +99,8 @@ enum EGripCollisionType
 	InteractiveHybridCollisionWithSweep,
 	SweepWithPhysics,
 	PhysicsOnly,
-	ManipulationGrip
+	ManipulationGrip,
+	CustomGrip
 };
 
 // This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.

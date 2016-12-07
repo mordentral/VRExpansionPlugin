@@ -29,27 +29,6 @@ public:
 	FVector LastLocationForLateUpdate;
 private:
 
-	// BETA /////////
-	/*FCalculateCustomPhysics OnCalculateCustomPhysics;
-
-	static FVector FVectorMoveTowards(FVector Current, FVector Target, float maxDistanceDelta)
-	{
-		FVector a = Target - Current;
-		float magnitude = a.Size();
-
-		if (magnitude <= maxDistanceDelta || magnitude == 0.0f)
-		{
-			return Target;
-		}
-
-		return Current + a / magnitude * maxDistanceDelta;
-	}
-
-	void SubstepTick(float DeltaTime, FBodyInstance* BdyInstance);*/
-
-	// BETA /////////
-
-
 	GENERATED_UCLASS_BODY()
 	~UGripMotionControllerComponent();
 
@@ -76,6 +55,9 @@ private:
 		return bTracked;
 	}
 
+	// Used to set the difference since last tick for TickGrip()
+	FVector LastControllerLocation; 
+
 	// Custom version of the component sweep function to remove that aggravating warning epic is throwing about skeletal mesh components.
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void OnUnregister() override;
@@ -84,6 +66,10 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedActors)
 	TArray<FBPActorGripInformation> GrippedActors;
+
+	// Enable this to send the TickGrip event every tick even for non custom grip types - has a slight performance hit
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
+	bool bAlwaysSendTickGrip;
 
 	UFUNCTION()
 	virtual void OnRep_GrippedActors(TArray<FBPActorGripInformation> OriginalArrayState)
@@ -314,7 +300,7 @@ public:
 	FORCEINLINE void TickGrip(float DeltaTime);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
-	FORCEINLINE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root);
+	FORCEINLINE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
 
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
 	FORCEINLINE FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
