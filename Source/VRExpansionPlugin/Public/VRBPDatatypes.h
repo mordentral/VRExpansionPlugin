@@ -173,29 +173,29 @@ struct VREXPANSIONPLUGIN_API FBPInteractionSettings
 public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		bool bLimitsInLocalSpace;
+		uint32 bLimitsInLocalSpace:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		bool bLimitX;
+		uint32 bLimitX:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		bool bLimitY;
+		uint32 bLimitY:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		bool bLimitZ;
+		uint32 bLimitZ:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
-		bool bLimitPitch;
+		uint32 bLimitPitch:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
-		bool bLimitYaw;
+		uint32 bLimitYaw:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
-		bool bLimitRoll;
+		uint32 bLimitRoll:1;
 
 	// Doesn't work totally correctly without using the ConvertToControllerRelativeTransform node in the motion controller
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
-		bool bIgnoreHandRotation;
+		uint32 bIgnoreHandRotation:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
 		FVector InitialLinearTranslation;
