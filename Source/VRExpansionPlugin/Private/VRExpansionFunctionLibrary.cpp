@@ -1,5 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "VRExpansionPluginPrivatePCH.h"
+
+#if WITH_EDITOR
+#include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"
+#endif
+
 #include "VRExpansionFunctionLibrary.h"
 
 //General Log
@@ -247,6 +252,20 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 	return EBPHMDDeviceType::DT_Unknown;
 }
 
+
+bool UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame()
+{
+#if WITH_EDITOR
+	if (GIsEditor)
+	{
+		UEditorEngine* EdEngine = Cast<UEditorEngine>(GEngine);
+		return EdEngine->bUseVRPreviewForPlayWorld;
+	}
+#endif
+
+	// Is not an editor build, default to true here
+	return true;
+}
 
 bool UVRExpansionFunctionLibrary::GetVRControllerPropertyString(TEnumAsByte<EVRControllerProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue)
 {

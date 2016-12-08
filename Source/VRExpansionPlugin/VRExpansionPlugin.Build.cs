@@ -12,6 +12,17 @@ public class VRExpansionPlugin : ModuleRules
     public VRExpansionPlugin(TargetInfo Target)
 	{
 
+        // To detect VR Preview, not built out in packaged builds
+        if (UEBuildConfiguration.bBuildEditor == true)
+        {
+            PrivateDependencyModuleNames.AddRange(
+                new string[] {
+                    "UnrealEd"
+                }
+            );
+        }
+
+
         PublicIncludePaths.AddRange(
 			new string[] {
 				"VRExpansionPlugin/Public",
@@ -60,8 +71,6 @@ public class VRExpansionPlugin : ModuleRules
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
-
-
 
         // Don't load APEX on incompatible platforms
         if (
