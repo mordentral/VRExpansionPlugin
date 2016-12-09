@@ -1551,21 +1551,25 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	// Don't call positional checks and don't create the late update scene view
 	if (bHasAuthority)
 	{
-		if (!ViewExtension.IsValid() && GEngine)
-		{
-			TSharedPtr< FViewExtension, ESPMode::ThreadSafe > NewViewExtension(new FViewExtension(this));
-			ViewExtension = NewViewExtension;
-			GEngine->ViewExtensions.Add(ViewExtension);
-		}
-
-		// This is the owning player, now you can get the controller's location and rotation from the correct source
 		FVector Position;
 		FRotator Orientation;
-		bTracked = PollControllerState(Position, Orientation);
 
-		if (bTracked && !bUseWithoutTracking)
+		if (!bUseWithoutTracking)
 		{
-			SetRelativeLocationAndRotation(Position, Orientation);
+			if (!ViewExtension.IsValid() && GEngine)
+			{
+				TSharedPtr< FViewExtension, ESPMode::ThreadSafe > NewViewExtension(new FViewExtension(this));
+				ViewExtension = NewViewExtension;
+				GEngine->ViewExtensions.Add(ViewExtension);
+			}
+
+			// This is the owning player, now you can get the controller's location and rotation from the correct source
+			bTracked = PollControllerState(Position, Orientation);
+
+			if (bTracked)
+			{
+				SetRelativeLocationAndRotation(Position, Orientation);
+			}
 		}
 
 		if (!bTracked && !bUseWithoutTracking)

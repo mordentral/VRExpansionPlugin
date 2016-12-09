@@ -542,7 +542,7 @@ UTexture2D * UVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* Wo
 		TArray<FVector2D> UV0;
 		TArray<FColor> vertexColors;
 		TArray<FProcMeshTangent> tangents;
-
+		
 		vr::HmdVector3_t vPosition;
 		vr::HmdVector3_t vNormal;
 		for (uint32_t i = 0; i < RenderModel->unVertexCount; ++i)
