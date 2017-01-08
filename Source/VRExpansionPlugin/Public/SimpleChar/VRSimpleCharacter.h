@@ -6,6 +6,7 @@
 #include "VRExpansionFunctionLibrary.h"
 #include "VRSimpleCharacterMovementComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
+#include "ReplicatedVRCameraComponent.h"
 //#include "VRSimpleRootComponent.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "VRSimpleCharacter.generated.h"

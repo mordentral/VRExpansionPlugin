@@ -67,6 +67,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedActors)
 	TArray<FBPActorGripInformation> GrippedActors;
 
+	UPROPERTY(BlueprintReadOnly, Category = "VRGrip")
+	TArray<FBPActorGripInformation> LocallyGrippedActors;
+
 	// Enable this to send the TickGrip event every tick even for non custom grip types - has a slight performance hit
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bAlwaysSendTickGrip;
@@ -299,6 +302,9 @@ public:
 	// Running the gripping logic in its own function as the main tick was getting bloated
 	FORCEINLINE void TickGrip(float DeltaTime);
 
+	// Splitting logic into seperate function
+	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, const FVector &MotionControllerLocDelta, float DeltaTime);
+
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
 	FORCEINLINE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
 
@@ -349,6 +355,14 @@ public:
 			}
 		}
 
+		for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+		{
+			if (LocallyGrippedActors[i] == ObjectToCheck)
+			{
+				return true;
+			}
+		}
+
 		return false;
 	}
 
@@ -362,6 +376,14 @@ public:
 		for (int i = 0; i < GrippedActors.Num(); ++i)
 		{
 			if (GrippedActors[i] == ActorToCheck)
+			{
+				return true;
+			}
+		}
+
+		for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+		{
+			if (LocallyGrippedActors[i] == ActorToCheck)
 			{
 				return true;
 			}
@@ -385,6 +407,14 @@ public:
 			}
 		}
 
+		for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+		{
+			if (LocallyGrippedActors[i] == ComponentToCheck)
+			{
+				return true;
+			}
+		}
+
 		return false;
 	}
 
@@ -400,6 +430,15 @@ public:
 			if(GrippedActors[i].bHasSecondaryAttachment && GrippedActors[i].SecondaryAttachment == ComponentToCheck)
 			{
 				Grip = GrippedActors[i];
+				return true;
+			}
+		}
+
+		for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+		{
+			if (LocallyGrippedActors[i].bHasSecondaryAttachment && LocallyGrippedActors[i].SecondaryAttachment == ComponentToCheck)
+			{
+				Grip = LocallyGrippedActors[i];
 				return true;
 			}
 		}

@@ -143,7 +143,8 @@ enum EGripMovementReplicationSettings
 {
 	KeepOriginalMovement,
 	ForceServerSideMovement,
-	ForceClientSideMovement
+	ForceClientSideMovement,
+	LocalOnly_Not_Replicated
 };
 
 // Grip Target Type
@@ -249,9 +250,12 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		TEnumAsByte<EGripTargetType> GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
+		UObject * GrippedObject;
+	/*UPROPERTY(BlueprintReadOnly)
 		AActor * Actor;
 	UPROPERTY(BlueprintReadOnly)
 		UPrimitiveComponent * Component;
+		*/
 	UPROPERTY(BlueprintReadOnly)
 		TEnumAsByte<EGripCollisionType> GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
@@ -301,8 +305,9 @@ public:
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
 		Ar << GripTargetType;
-		Ar << Actor;
-		Ar << Component;
+		Ar << GrippedObject;
+		//Ar << Actor;
+		//Ar << Component;
 		Ar << GripCollisionType;
 		Ar << GripLateUpdateSetting;
 
@@ -367,14 +372,21 @@ public:
 		return true;
 	}
 
+	FORCEINLINE AActor * GetGrippedActor() const
+	{
+		return Cast<AActor>(GrippedObject);
+	}
+
+	FORCEINLINE UPrimitiveComponent * GetGrippedComponent() const
+	{
+		return Cast<UPrimitiveComponent>(GrippedObject);
+	}
+
 	//Check if a grip is the same as another, the only things I check for are the actor / component
 	//This is here for the Find() function from TArray
 	FORCEINLINE bool operator==(const FBPActorGripInformation &Other) const
 	{
-		if (Actor && Actor == Other.Actor)
-			return true;
-
-		if (Component && Component == Other.Component)
+		if (GrippedObject && GrippedObject == Other.GrippedObject)
 			return true;
 
 		return false;
@@ -382,7 +394,7 @@ public:
 
 	FORCEINLINE bool operator==(const AActor * Other) const
 	{
-		if (Other && Actor && Actor == Other)
+		if (Other && GrippedObject && GrippedObject == Other)
 			return true;
 
 		return false;
@@ -390,7 +402,7 @@ public:
 
 	FORCEINLINE bool operator==(const UPrimitiveComponent * Other) const
 	{
-		if (Other && Component && Component == Other)
+		if (Other && GrippedObject && GrippedObject == Other)
 			return true;
 
 		return false;
@@ -399,7 +411,7 @@ public:
 
 	FORCEINLINE bool operator==(const UObject * Other) const
 	{
-		if (Other && ((Component && Component == Other) || (Actor && Actor == Other)))
+		if (Other && GrippedObject == Other)
 			return true;
 
 		return false;
@@ -410,8 +422,9 @@ public:
 		GripTargetType = EGripTargetType::ActorGrip;
 		Damping = 200.0f;
 		Stiffness = 1500.0f;
-		Component = nullptr;
-		Actor = nullptr;
+		GrippedObject = nullptr;
+		//Component = nullptr;
+		//Actor = nullptr;
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 		GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
@@ -521,9 +534,11 @@ struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
 	GENERATED_BODY()
 public:
 	UPROPERTY(BlueprintReadOnly)
-		AActor * Actor;
-	UPROPERTY(BlueprintReadOnly)
-		UPrimitiveComponent * Component;
+		UObject * HandledObject;
+	//UPROPERTY(BlueprintReadOnly)
+	//	AActor * Actor;
+	//UPROPERTY(BlueprintReadOnly)
+	//	UPrimitiveComponent * Component;
 
 	/** Physics scene index of the body we are grabbing. */
 	int32 SceneIndex;
@@ -537,15 +552,16 @@ public:
 	FBPActorPhysicsHandleInformation()
 	{
 		HandleData = NULL;
-		KinActorData = NULL;
-		Actor = nullptr;
-		Component = nullptr;
+		KinActorData = NULL;		
+		HandledObject = nullptr;
+		//Actor = nullptr;
+		//Component = nullptr;
 		COMPosition = physx::PxTransform(U2PVector(FVector::ZeroVector));
 	}
 
 	FORCEINLINE bool operator==(const FBPActorGripInformation & Other) const
 	{
-		if (Actor && Actor == Other.Actor || Component && Component == Other.Component)
+		if (HandledObject && HandledObject == Other.GrippedObject)
 			return true;
 
 		return false;
