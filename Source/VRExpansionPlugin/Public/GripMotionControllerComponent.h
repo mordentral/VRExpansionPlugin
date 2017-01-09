@@ -546,6 +546,8 @@ private:
 
 		/** Walks the component hierarchy gathering scene proxies */
 		void GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives);
+		FORCEINLINE void ProcessGripArrayLateUpdatePrimitives(TArray<FBPActorGripInformation> & GripArray);
+
 		/** Primitives that need late update before rendering */
 		TArray<LateUpdatePrimitiveInfo> LateUpdatePrimitives;
 	};

@@ -181,38 +181,13 @@ bool UGripMotionControllerComponent::Server_SendControllerTransform_Validate(FBP
 	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
 }
 
-void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
+void UGripMotionControllerComponent::FViewExtension::ProcessGripArrayLateUpdatePrimitives(TArray<FBPActorGripInformation> & GripArray)
 {
-	if (!MotionControllerComponent)
-	{
-		return;
-	}
-	FScopeLock ScopeLock(&CritSect);
-
-	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnGameThread())
-	{
-		return;
-	}	
-
-	LateUpdatePrimitives.Reset();
-	GatherLateUpdatePrimitives(MotionControllerComponent, LateUpdatePrimitives);
-
-	/*
-	Add additional late updates registered to this controller that aren't children and aren't gripped
-	This array is editable in blueprint and can be used for things like arms or the like.
-	*/
-	for (UPrimitiveComponent* primComp : MotionControllerComponent->AdditionalLateUpdateComponents)
-	{
-		if (primComp)
-			GatherLateUpdatePrimitives(primComp, LateUpdatePrimitives);
-	}	
-
-	// Duplicating the logic for now
-	for (FBPActorGripInformation actor : MotionControllerComponent->LocallyGrippedActors)
+	for (FBPActorGripInformation actor : GripArray)
 	{
 		// Skip actors that are colliding if turning off late updates during collision.
 		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
-		
+
 		// Don't allow late updates with server sided movement, there is no point
 		if (actor.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !MotionControllerComponent->IsServer())
 			continue;
@@ -247,12 +222,12 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		default:
 		{}break;
 		}
-		
+
 		// Get late update primitives
 		switch (actor.GripTargetType)
 		{
 		case EGripTargetType::ActorGrip:
-		//case EGripTargetType::InteractibleActorGrip:
+			//case EGripTargetType::InteractibleActorGrip:
 		{
 			AActor * pActor = actor.GetGrippedActor();
 			if (pActor)
@@ -262,11 +237,11 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 					GatherLateUpdatePrimitives(rootComponent, LateUpdatePrimitives);
 				}
 			}
-		
+
 		}break;
 
 		case EGripTargetType::ComponentGrip:
-		//case EGripTargetType::InteractibleComponentGrip:
+			//case EGripTargetType::InteractibleComponentGrip:
 		{
 			UPrimitiveComponent * cPrimComp = actor.GetGrippedComponent();
 			if (cPrimComp)
@@ -275,10 +250,41 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 			}
 		}break;
 		}
-
 	}
+}
 
-	for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
+void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
+{
+	if (!MotionControllerComponent)
+	{
+		return;
+	}
+	FScopeLock ScopeLock(&CritSect);
+
+	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnGameThread())
+	{
+		return;
+	}	
+
+	LateUpdatePrimitives.Reset();
+	GatherLateUpdatePrimitives(MotionControllerComponent, LateUpdatePrimitives);
+
+	/*
+	Add additional late updates registered to this controller that aren't children and aren't gripped
+	This array is editable in blueprint and can be used for things like arms or the like.
+	*/
+	for (UPrimitiveComponent* primComp : MotionControllerComponent->AdditionalLateUpdateComponents)
+	{
+		if (primComp)
+			GatherLateUpdatePrimitives(primComp, LateUpdatePrimitives);
+	}	
+
+
+	// Was going to use a lambda here but the overhead cost is higher than just using another function, even more so than using an inline one
+	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->LocallyGrippedActors);
+	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->GrippedActors);
+
+	/*for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
 	{
 		// Skip actors that are colliding if turning off late updates during collision.
 		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
@@ -346,7 +352,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 		}break;
 		}
 
-	}
+	}*/
 }
 
 void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
@@ -1483,76 +1489,67 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 	if (!GrippedActorToAddAttachment || !SecondaryPointComponent || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
 		return false;
 
-	// Duplicating the logic for now
+
+	FBPActorGripInformation * GripToUse = nullptr;
+
 	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
 	{
 		if (LocallyGrippedActors[i].GrippedObject == GrippedActorToAddAttachment)
 		{
-			if (bTransformIsAlreadyRelative)
-				LocallyGrippedActors[i].SecondaryRelativeLocation = OriginalTransform.GetLocation();
-			else
-				LocallyGrippedActors[i].SecondaryRelativeLocation = OriginalTransform.GetRelativeTransform(GrippedActorToAddAttachment->GetTransform()).GetLocation();
-
-			LocallyGrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
-			LocallyGrippedActors[i].bHasSecondaryAttachment = true;
-			LocallyGrippedActors[i].SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
-
-			if (LocallyGrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
-				LerpToTime = 0.0f;
-
-			if (LerpToTime > 0.0f)
-			{
-				LocallyGrippedActors[i].LerpToRate = LerpToTime;
-				LocallyGrippedActors[i].GripLerpState = EGripLerpState::StartLerp;
-				LocallyGrippedActors[i].curLerp = LerpToTime;
-			}
-
-			if (GrippedActorToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-			{
-				IVRGripInterface::Execute_OnSecondaryGrip(GrippedActorToAddAttachment, SecondaryPointComponent, LocallyGrippedActors[i]);
-			}
-
-			return true;
+			GripToUse = &LocallyGrippedActors[i];
+			break;
 		}
 	}
 
-	// Replicated grips need to be called from server side
-	if (!IsServer())
+	// Search replicated grips if not found in local
+	if (!GripToUse)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side"));
-		return false;
-	}
-
-	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
-	{
-		if (GrippedActors[i].GrippedObject == GrippedActorToAddAttachment)
+		// Replicated grips need to be called from server side
+		if (!IsServer())
 		{
-			if(bTransformIsAlreadyRelative)
-				GrippedActors[i].SecondaryRelativeLocation = OriginalTransform.GetLocation();
-			else
-				GrippedActors[i].SecondaryRelativeLocation = OriginalTransform.GetRelativeTransform(GrippedActorToAddAttachment->GetTransform()).GetLocation();
-
-			GrippedActors[i].SecondaryAttachment = SecondaryPointComponent;
-			GrippedActors[i].bHasSecondaryAttachment = true;	
-			GrippedActors[i].SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
-
-			if (GrippedActors[i].GripLerpState == EGripLerpState::EndLerp)
-				LerpToTime = 0.0f;
-
-			if (LerpToTime > 0.0f)
-			{
-				GrippedActors[i].LerpToRate = LerpToTime;
-				GrippedActors[i].GripLerpState = EGripLerpState::StartLerp;
-				GrippedActors[i].curLerp = LerpToTime;
-			}
-						
-			if (GrippedActorToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-			{
-				IVRGripInterface::Execute_OnSecondaryGrip(GrippedActorToAddAttachment, SecondaryPointComponent, GrippedActors[i]);
-			}
-
-			return true;
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side with a replicated grip"));
+			return false;
 		}
+
+		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+		{
+			if (GrippedActors[i].GrippedObject == GrippedActorToAddAttachment)
+			{
+				GripToUse = &GrippedActors[i];
+				break;
+			}
+		}
+	}
+
+	if (GripToUse)
+	{
+		if (bTransformIsAlreadyRelative)
+			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetLocation();
+		else
+			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetRelativeTransform(GrippedActorToAddAttachment->GetTransform()).GetLocation();
+
+		GripToUse->SecondaryAttachment = SecondaryPointComponent;
+		GripToUse->bHasSecondaryAttachment = true;
+		GripToUse->SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
+
+		if (GripToUse->GripLerpState == EGripLerpState::EndLerp)
+			LerpToTime = 0.0f;
+
+		if (LerpToTime > 0.0f)
+		{
+			GripToUse->LerpToRate = LerpToTime;
+			GripToUse->GripLerpState = EGripLerpState::StartLerp;
+			GripToUse->curLerp = LerpToTime;
+		}
+
+		if (GrippedActorToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			IVRGripInterface::Execute_OnSecondaryGrip(GrippedActorToAddAttachment, SecondaryPointComponent, *GripToUse);
+		}
+
+		GripToUse = nullptr;
+
+		return true;
 	}
 
 	return false;
@@ -1563,123 +1560,89 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * Gri
 	if (!GrippedActorToRemoveAttachment || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
 		return false;
 
+	FBPActorGripInformation * GripToUse = nullptr;
+
 	// Duplicating the logic for each array for now
 	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
 	{
 		if (LocallyGrippedActors[i].GrippedObject == GrippedActorToRemoveAttachment)
 		{
-			if (LocallyGrippedActors[i].GripLerpState == EGripLerpState::StartLerp)
-				LerpToTime = 0.0f;
-
-			if (LerpToTime > 0.0f)
-			{
-
-				UPrimitiveComponent * primComp = nullptr;
-
-				switch (LocallyGrippedActors[i].GripTargetType)
-				{
-				case EGripTargetType::ComponentGrip:
-				{
-					primComp = LocallyGrippedActors[i].GetGrippedComponent();
-				}break;
-				case EGripTargetType::ActorGrip:
-				{
-					AActor * pActor = LocallyGrippedActors[i].GetGrippedActor();
-					if (pActor)
-						primComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-				} break;
-				}
-
-				if (primComp)
-				{
-					LocallyGrippedActors[i].LerpToRate = LerpToTime;
-					LocallyGrippedActors[i].GripLerpState = EGripLerpState::EndLerp;
-					LocallyGrippedActors[i].curLerp = LerpToTime;
-				}
-				else
-				{
-					LocallyGrippedActors[i].LerpToRate = 0.0f;
-					LocallyGrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
-				}
-			}
-			else
-			{
-				LocallyGrippedActors[i].LerpToRate = 0.0f;
-				LocallyGrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
-			}
-
-			if (GrippedActorToRemoveAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-			{
-				IVRGripInterface::Execute_OnSecondaryGripRelease(GrippedActorToRemoveAttachment, LocallyGrippedActors[i].SecondaryAttachment, LocallyGrippedActors[i]);
-			}
-
-			LocallyGrippedActors[i].SecondaryAttachment = nullptr;
-			LocallyGrippedActors[i].bHasSecondaryAttachment = false;
-
-			return true;
+			GripToUse = &LocallyGrippedActors[i];
+			break;
 		}
 	}
 
-	if (!IsServer())
+	// Check replicated grips if it wasn't found in local
+	if (!GripToUse)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip"));
-		return false;
-	}
-
-	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
-	{
-		if (GrippedActors[i].GrippedObject == GrippedActorToRemoveAttachment)
+		if (!IsServer())
 		{
-			if (GrippedActors[i].GripLerpState == EGripLerpState::StartLerp)
-				LerpToTime = 0.0f;
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip"));
+			return false;
+		}
 
-			if (LerpToTime > 0.0f)
+		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+		{
+			if (GrippedActors[i].GrippedObject == GrippedActorToRemoveAttachment)
 			{
+				GripToUse = &GrippedActors[i];
+				break;
+			}
+		}
+	}
 
-				UPrimitiveComponent * primComp = nullptr;
+	// Handle the grip if it was found
+	if (GripToUse)
+	{
+		if (GripToUse->GripLerpState == EGripLerpState::StartLerp)
+			LerpToTime = 0.0f;
 
-				switch (GrippedActors[i].GripTargetType)
-				{
-				case EGripTargetType::ComponentGrip:
-				{
-					primComp = GrippedActors[i].GetGrippedComponent();
-				}break;
-				case EGripTargetType::ActorGrip:
-				{
-					AActor * pActor = GrippedActors[i].GetGrippedActor();
-					if (pActor)
-						primComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-				} break;
-				}
+		if (LerpToTime > 0.0f)
+		{
+			UPrimitiveComponent * primComp = nullptr;
 
-				if (primComp)
-				{
-					GrippedActors[i].LerpToRate = LerpToTime;
-					GrippedActors[i].GripLerpState = EGripLerpState::EndLerp;
-					GrippedActors[i].curLerp = LerpToTime;
-				}
-				else
-				{
-					GrippedActors[i].LerpToRate = 0.0f;
-					GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
-				}
+			switch (GripToUse->GripTargetType)
+			{
+			case EGripTargetType::ComponentGrip:
+			{
+				primComp = GripToUse->GetGrippedComponent();
+			}break;
+			case EGripTargetType::ActorGrip:
+			{
+				AActor * pActor = GripToUse->GetGrippedActor();
+				if (pActor)
+					primComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+			} break;
+			}
+
+			if (primComp)
+			{
+				GripToUse->LerpToRate = LerpToTime;
+				GripToUse->GripLerpState = EGripLerpState::EndLerp;
+				GripToUse->curLerp = LerpToTime;
 			}
 			else
 			{
-				GrippedActors[i].LerpToRate = 0.0f;
-				GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
+				GripToUse->LerpToRate = 0.0f;
+				GripToUse->GripLerpState = EGripLerpState::NotLerping;
 			}
-
-			if (GrippedActorToRemoveAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-			{
-				IVRGripInterface::Execute_OnSecondaryGripRelease(GrippedActorToRemoveAttachment, GrippedActors[i].SecondaryAttachment, GrippedActors[i]);
-			}
-
-			GrippedActors[i].SecondaryAttachment = nullptr;
-			GrippedActors[i].bHasSecondaryAttachment = false;
-			
-			return true;
 		}
+		else
+		{
+			GripToUse->LerpToRate = 0.0f;
+			GripToUse->GripLerpState = EGripLerpState::NotLerping;
+		}
+
+		if (GrippedActorToRemoveAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			IVRGripInterface::Execute_OnSecondaryGripRelease(GrippedActorToRemoveAttachment, GripToUse->SecondaryAttachment, *GripToUse);
+		}
+
+		GripToUse->SecondaryAttachment = nullptr;
+		GripToUse->bHasSecondaryAttachment = false;
+		GripToUse = nullptr;
+
+		return true;
 	}
 
 	return false;
@@ -2782,6 +2745,11 @@ bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInf
 		return false;
 
 	LocOut = P2UVector(HandleInfo->HandleData->getRelativeTransform().p);
+
+	// This wont work correctly, need to transform by world transform as it is local
+	//if (GrippedActor.GripCollisionType != EGripCollisionType::ManipulationGrip)
+		//LocOut -= P2UVector(HandleInfo->COMPosition);
+
 	return true;
 #else
 	return false;
