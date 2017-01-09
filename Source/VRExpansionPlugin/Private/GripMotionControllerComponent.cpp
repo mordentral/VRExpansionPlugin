@@ -1347,21 +1347,6 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 {
 	DestroyPhysicsHandle(NewDrop);
 
-	// Remove the drop from the array, can't wait around for replication as the tick function will start in on it.
-	int fIndex = 0;
-	if (LocallyGrippedActors.Find(NewDrop, fIndex))
-	{
-		LocallyGrippedActors.RemoveAt(fIndex);
-	}
-	else
-	{
-		fIndex = 0;
-		if (GrippedActors.Find(NewDrop, fIndex))
-		{
-			GrippedActors.RemoveAt(fIndex);
-		}
-	}
-
 	UPrimitiveComponent *root = NULL;
 
 	switch (NewDrop.GripTargetType)
@@ -1457,6 +1442,21 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 			}
 		}
 	}break;
+	}
+
+	// Remove the drop from the array, can't wait around for replication as the tick function will start in on it.
+	int fIndex = 0;
+	if (LocallyGrippedActors.Find(NewDrop, fIndex))
+	{
+		LocallyGrippedActors.RemoveAt(fIndex);
+	}
+	else
+	{
+		fIndex = 0;
+		if (GrippedActors.Find(NewDrop, fIndex))
+		{
+			GrippedActors.RemoveAt(fIndex);
+		}
 	}
 }
 
