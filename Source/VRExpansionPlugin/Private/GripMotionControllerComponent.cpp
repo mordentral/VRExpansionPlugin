@@ -2064,12 +2064,12 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	FVector MotionControllerLocDelta = ParentTransform.GetLocation() - LastControllerLocation;
 
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
-	HandleGripArray(GrippedActors, ParentTransform, MotionControllerLocDelta, DeltaTime);
+	HandleGripArray(GrippedActors, ParentTransform, MotionControllerLocDelta, DeltaTime, true);
 	HandleGripArray(LocallyGrippedActors, ParentTransform, MotionControllerLocDelta, DeltaTime);
 
 }
 
-void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, const FVector &MotionControllerLocDelta, float DeltaTime)
+void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, const FVector &MotionControllerLocDelta, float DeltaTime, bool bReplicatedArray)
 {
 	if (GrippedObjects.Num())
 	{
@@ -2085,7 +2085,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 			if (!Grip)
 				continue;
 
-			if (Grip->GrippedObject)
+			if (Grip->GrippedObject && !Grip->GrippedObject->IsPendingKill())
 			{
 				UPrimitiveComponent *root = NULL;
 				AActor *actor = NULL;
@@ -2433,9 +2433,23 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 			}
 			else
 			{
-				DestroyPhysicsHandle(*Grip);
+				// Object has been destroyed without notification to plugin
 
-				if (IsServer())
+				// Clean up tailing physics handles with null objects
+				for (int g = PhysicsGrips.Num() - 1; g >= 0; --g)
+				{
+					if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjects[i].GrippedObject || PhysicsGrips[g].HandledObject->IsPendingKill())
+					{
+						// Need to delete it from the physics thread
+						DestroyPhysicsHandle(PhysicsGrips[g].SceneIndex, &PhysicsGrips[g].HandleData, &PhysicsGrips[g].KinActorData);
+						PhysicsGrips.RemoveAt(g);
+					}
+				}
+
+				// Doesn't work, uses the object as the search parameter which can now be null
+				//	DestroyPhysicsHandle(*Grip);
+
+				if (!bReplicatedArray || IsServer())
 				{
 					GrippedObjects.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
 				}
