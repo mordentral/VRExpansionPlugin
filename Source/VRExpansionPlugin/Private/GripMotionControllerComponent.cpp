@@ -436,6 +436,33 @@ void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation 
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
+void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripCollisionType> NewGripCollisionType)
+{
+	int fIndex = GrippedActors.Find(Grip);
+
+	if (fIndex != INDEX_NONE)
+	{
+		GrippedActors[fIndex].GripCollisionType = NewGripCollisionType;
+		ReCreateGrip(GrippedActors[fIndex]);
+		Result = EBPVRResultSwitch::OnSucceeded;
+		return;
+	}
+	else
+	{
+		fIndex = LocallyGrippedActors.Find(Grip);
+
+		if (fIndex != INDEX_NONE)
+		{
+			LocallyGrippedActors[fIndex].GripCollisionType = NewGripCollisionType;
+			ReCreateGrip(LocallyGrippedActors[fIndex]);
+			Result = EBPVRResultSwitch::OnSucceeded;
+			return;
+		}
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+}
+
 void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting)
 {
 	int fIndex = GrippedActors.Find(Grip);
@@ -2550,11 +2577,11 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(int32 SceneIndex, phys
 
 bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInformation &Grip)
 {
-	UPrimitiveComponent * root = Grip.GetGrippedComponent();
+/*	UPrimitiveComponent * root = Grip.GetGrippedComponent();
 	AActor * pActor = Grip.GetGrippedActor();
 	if(!root && pActor)
 		root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-
+		*/
 	//if (root)
 	//	root->SetEnableGravity(true);
 

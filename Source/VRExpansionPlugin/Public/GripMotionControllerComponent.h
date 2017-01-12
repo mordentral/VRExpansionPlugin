@@ -74,6 +74,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bAlwaysSendTickGrip;
 
+	// Recreates a grip in situations where a relevant variable may have been changed
+	FORCEINLINE void ReCreateGrip(FBPActorGripInformation & GripInfo)
+	{
+		int HandleIndex = 0;
+
+		if (GetPhysicsGripIndex(GripInfo, HandleIndex))
+		{
+			DestroyPhysicsHandle(PhysicsGrips[HandleIndex].SceneIndex, &PhysicsGrips[HandleIndex].HandleData, &PhysicsGrips[HandleIndex].KinActorData);
+			PhysicsGrips.RemoveAt(HandleIndex);
+		}
+
+		// Grip Type or replication was changed
+		NotifyGrip(GripInfo);
+	}
+
 	UFUNCTION()
 	virtual void OnRep_GrippedActors(TArray<FBPActorGripInformation> OriginalArrayState)
 	{
@@ -85,6 +100,14 @@ public:
 			{
 				// Is a new grip entry
 				NotifyGrip(GrippedActors[i]);
+			}
+			else // Check to see if the important bits got changed (instant drop / pickup can cause this)
+			{
+				if (OriginalArrayState[FoundIndex].GripCollisionType != GrippedActors[i].GripCollisionType ||
+					OriginalArrayState[FoundIndex].GripMovementReplicationSetting != GrippedActors[i].GripMovementReplicationSetting)
+				{
+					ReCreateGrip(GrippedActors[i]);
+				}
 			}
 		}
 
@@ -256,6 +279,15 @@ public:
 	// Get the physics velocities of a grip
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
+
+	// Set the Grip Collision Type of a grip
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+		void SetGripCollisionType(
+			const FBPActorGripInformation &Grip,
+			TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+			TEnumAsByte<EGripCollisionType> NewGripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics
+			);
+
 
 	// Set the late update setting of a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))

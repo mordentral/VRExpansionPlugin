@@ -311,10 +311,7 @@ public:
 		Ar << GripCollisionType;
 		Ar << GripLateUpdateSetting;
 
-
-
 		Ar << RelativeTransform;
-
 
 		Ar << GripMovementReplicationSetting;
 
@@ -362,11 +359,15 @@ public:
 		}
 
 		// Don't bother replicated physics grip types if the grip type doesn't support it.
-		if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep /*|| GripCollisionType == EGripCollisionType::InteractiveCollisionWithVelocity*/)
-		{
-			Ar << Damping;
-			Ar << Stiffness;
-		}
+		/*if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || 
+			GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep || 
+			GripCollisionType == EGripCollisionType::ManipulationGrip ||
+			GripCollisionType == EGripCollisionType::CustomGrip)
+		{*/
+		// Now always replicating these two, in case people want to pass in custom values using it
+		Ar << Damping;
+		Ar << Stiffness;
+		/*}*/
 
 		bOutSuccess = true;
 		return true;
