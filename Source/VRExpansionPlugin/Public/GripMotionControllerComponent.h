@@ -519,7 +519,7 @@ public:
 	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
 	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
 	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
-	bool GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, FVector & LocOut);
+	bool GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, UPrimitiveComponent * rootComp, FVector & LocOut);
 
 	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
 	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);

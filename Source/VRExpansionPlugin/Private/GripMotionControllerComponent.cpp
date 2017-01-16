@@ -2205,7 +2205,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					if (BreakDistance > 0.0f)
 					{
 						FVector CheckDistance;
-						if (!GetPhysicsJointLength(*Grip, CheckDistance))
+						if (!GetPhysicsJointLength(*Grip, root, CheckDistance))
 						{
 							CheckDistance = (WorldTransform.GetLocation() - root->GetComponentLocation());
 						}
@@ -2771,7 +2771,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	return true;
 }
 
-bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, FVector & LocOut)
+bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, UPrimitiveComponent * rootComp, FVector & LocOut)
 {
 	if (!GrippedActor.GrippedObject)
 		return false;
@@ -2784,12 +2784,20 @@ bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInf
 #if WITH_PHYSX
 	if (!HandleInfo->HandleData)
 		return false;
+	// This is supposed to be the difference between the actor and the kinactor / constraint base
+	FTransform tran3 = P2UTransform(HandleInfo->HandleData->getLocalPose(PxJointActorIndex::eACTOR1));
+	
+	FTransform rr = rootComp->GetComponentTransform();
+	// Physx location throws out scale, this is where the problem was
+	rr.SetScale3D(FVector(1,1,1)); 
+	// Make the local pose global
+	tran3 = tran3 * rr;
 
-	LocOut = P2UVector(HandleInfo->HandleData->getRelativeTransform().p);
+	// Get the global pose for the kin actor
+	FTransform kinPose = P2UTransform(HandleInfo->KinActorData->getGlobalPose());
 
-	// This wont work correctly, need to transform by world transform as it is local
-	//if (GrippedActor.GripCollisionType != EGripCollisionType::ManipulationGrip)
-		//LocOut -= P2UVector(HandleInfo->COMPosition);
+	// Return the difference
+	LocOut = FTransform::SubtractTranslations(kinPose, tran3);
 
 	return true;
 #else
