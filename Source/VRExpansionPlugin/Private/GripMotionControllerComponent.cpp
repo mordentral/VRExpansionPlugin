@@ -1830,11 +1830,19 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 	//WorldTransform = Grip.RelativeTransform * ParentTransform;
 
 	// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
-	PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
-
+	
 	FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(Grip);
-	if (Handle && Handle->KinActorData)
+
+	if (!Handle)
 	{
+		PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
+	}
+	else if (Handle && Handle->KinActorData)
+	{
+		if(bIsPostTeleport)
+			PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
+		else
+			PrimComp->SetWorldTransform(WorldTransform, true, NULL, ETeleportType::None);
 
 		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(PrimComp);
 	//	FTransform trans = P2UTransform(Handle->KinActorData->getGlobalPose());
