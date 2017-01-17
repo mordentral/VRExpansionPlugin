@@ -22,6 +22,10 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	bUsePawnControlRotation = false;
 	bAutoSetLockToHmd = true;
 	bOffsetByHMD = false;
+
+	//bUseVRNeckOffset = true;
+	//VRNeckOffset = FTransform(FRotator::ZeroRotator, FVector(15.0f,0,0), FVector(1.0f));
+
 }
 
 
@@ -128,9 +132,9 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 		}
 	}
 
-	if (bUseAdditiveOffset)
+	if (bUseAdditiveOffset)//bUseVRNeckOffset)
 	{
-		FTransform OffsetCamToBaseCam = AdditiveOffset;
+		FTransform OffsetCamToBaseCam = AdditiveOffset;//VRNeckOffset;
 		FTransform BaseCamToWorld = GetComponentToWorld();
 		FTransform OffsetCamToWorld = OffsetCamToBaseCam * BaseCamToWorld;
 

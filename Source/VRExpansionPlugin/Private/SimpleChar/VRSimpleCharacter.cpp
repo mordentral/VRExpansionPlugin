@@ -9,6 +9,7 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
  : Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRSimpleCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 
 {
+
 	// Remove the movement jitter with slow speeds
 	this->ReplicatedMovement.LocationQuantizationLevel = EVectorQuantization::RoundTwoDecimals;
 
@@ -34,11 +35,21 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(TEXT("VR Replicated Camera"));
 	if (VRReplicatedCamera && VRSceneComponent)
 	{
+
+
+
 		VRReplicatedCamera->SetupAttachment(VRSceneComponent);
 	//	VRReplicatedCamera->AddTickPrerequisiteComponent(VRMovementReference);
 		VRReplicatedCamera->bOffsetByHMD = true;
 		//VRReplicatedCamera->SetupAttachment(RootComponent);
 	}
+
+	/*VRHeadCollider = CreateDefaultSubobject<UCapsuleComponent>(TEXT("VR Head Collider"));
+	if (VRHeadCollider && VRReplicatedCamera)
+	{
+		VRHeadCollider->SetCapsuleSize(20.0f, 25.0f);
+		VRHeadCollider->SetupAttachment(VRReplicatedCamera);
+	}*/
 
 	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Parent Relative Attachment"));
 	if (ParentRelativeAttachment && VRReplicatedCamera && VRSceneComponent)
@@ -97,7 +108,7 @@ FVector AVRSimpleCharacter::GetTeleportLocation(FVector OriginalLocation)
 	//FVector modifier = VRRootReference->GetVRLocation() - this->GetActorLocation();
 	//modifier.Z = 0.0f; // Null out Z
 	//return OriginalLocation - modifier;
-
+	
 	return OriginalLocation;
 }
 

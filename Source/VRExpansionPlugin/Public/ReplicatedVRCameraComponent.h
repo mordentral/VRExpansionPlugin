@@ -30,6 +30,15 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 		uint32 bAutoSetLockToHmd : 1;
 
+	// Would have to offset controllers by same amount or will feel off
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	//bool bUseVRNeckOffset;
+
+	/** An optional extra transform to adjust the final view without moving the component, in the camera's local space, sets additive offset */
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	//FTransform VRNeckOffset;
+
+
 	UFUNCTION(BlueprintCallable, Category = Camera)
 		virtual void GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView) override;
 

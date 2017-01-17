@@ -1517,6 +1517,14 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 		return false;
 
 
+	if (GrippedActorToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		if (!IVRGripInterface::Execute_CanHaveDoubleGrip(GrippedActorToAddAttachment))
+		{
+			return false;
+		}
+	}
+
 	FBPActorGripInformation * GripToUse = nullptr;
 
 	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
@@ -1837,12 +1845,9 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 	{
 		PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
 	}
-	else if (Handle && Handle->KinActorData)
+	else if (Handle && Handle->KinActorData && bIsPostTeleport)
 	{
-		if(bIsPostTeleport)
-			PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
-		else
-			PrimComp->SetWorldTransform(WorldTransform, true, NULL, ETeleportType::None);
+		PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
 
 		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(PrimComp);
 	//	FTransform trans = P2UTransform(Handle->KinActorData->getGlobalPose());

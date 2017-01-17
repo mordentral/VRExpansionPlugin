@@ -54,8 +54,9 @@ public:
 	//UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 	//UCapsuleComponent * VRCameraCollider;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
-	bool bAllowWalkingThroughWalls;
+	// Removing, it makes less sense now with optional secondary collision settings
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
+	//bool bAllowWalkingThroughWalls;
 
 	// Allow merging movement replication (may cause issues when >10 players due to capsule location
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")

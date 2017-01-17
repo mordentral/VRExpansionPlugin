@@ -996,7 +996,6 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	// This variable is a bit of a hack, it reduces the movement of the pawn in the direction of relative movement
 	WallRepulsionMultiplier = 0.01f;
 
-	bAllowWalkingThroughWalls = false;
 	bAllowMovementMerging = false;
 
 	bRequestedMoveUseAcceleration = false;
@@ -1007,16 +1006,13 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 {
 	if (CharacterOwner && CharacterOwner->IsLocallyControlled() && VRRootCapsule && VRRootCapsule->bHadRelativeMovement)
 	{
-		if (!bAllowWalkingThroughWalls)
-		{
-			// Fake movement is sketchy, going to find a different solution eventually?
-			// Currently just adds a slight vector in the movement direction when we detect an obstacle, this forces us to impact the wall and not penetrate
+		// Fake movement is sketchy, going to find a different solution eventually?
+		// Currently just adds a slight vector in the movement direction when we detect an obstacle, this forces us to impact the wall and not penetrate
 
-			if (VRRootCapsule->bHadRelativeMovement)
-			{
-				//RequestDirectMove(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(),false);
-				AddInputVector(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D() * WallRepulsionMultiplier);
-			}
+		if (VRRootCapsule->bHadRelativeMovement)
+		{
+			//RequestDirectMove(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(),false);
+			AddInputVector(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D() * WallRepulsionMultiplier);
 		}
 	}
 
