@@ -15,7 +15,8 @@
 
 //This is a stupid way of gaining access to this header...see build.cs
 #include "SteamVRHMD.h"
-#include "SteamVRPrivatePCH.h" // Need a define in here....this is so ugly
+//#include "SteamVRPrivatePCH.h" // Need a define in here....this is so ugly
+#include "SteamVRPrivate.h" // Now in here since 4.15
 #include "SteamVRFunctionLibrary.h"
 
 #endif // STEAMVR_SUPPORTED_PLATFORM
@@ -24,7 +25,7 @@
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 // Or procedural mesh component throws an error....
-#include "PhysicsEngine/ConvexElem.h" // Fixed in 4.13.1?
+//#include "PhysicsEngine/ConvexElem.h" // Fixed in 4.13.1?
 
 #include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"

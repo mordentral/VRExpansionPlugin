@@ -5,6 +5,7 @@
 
 #include "PhysicsPublic.h"
 #if WITH_PHYSX
+#include "PhysXPublic.h"
 #include "PhysXSupport.h"
 #endif // WITH_PHYSX
 

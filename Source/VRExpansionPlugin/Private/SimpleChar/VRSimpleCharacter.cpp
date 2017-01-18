@@ -1,7 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRExpansionPluginPrivatePCH.h"
-#include "Runtime/Engine/Private/EnginePrivate.h"
+//#include "Runtime/Engine/Private/EnginePrivate.h"
 
 #include "VRSimpleCharacter.h"
 

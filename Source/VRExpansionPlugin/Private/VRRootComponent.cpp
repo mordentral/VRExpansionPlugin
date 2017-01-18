@@ -1,7 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRExpansionPluginPrivatePCH.h"
-#include "Runtime/Engine/Private/EnginePrivate.h"
+//#include "Runtime/Engine/Private/EnginePrivate.h"
 
 #include "PhysicsPublic.h"
 
@@ -18,6 +18,10 @@
 static int32 bEnableFastOverlapCheck = 1;
 
 static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindTConsoleVariableDataFloat(TEXT("p.InitialOverlapTolerance"));
+
+
+// LOOKING_FOR_PERF_ISSUES
+#define PERF_MOVECOMPONENT_STATS 0
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.ShowInitialOverlaps"));
@@ -562,7 +566,6 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 				}
 			}
 #endif*/
-
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST) && PERF_MOVECOMPONENT_STATS
 			MoveTimer.bDidLineCheck = true;
 #endif 
