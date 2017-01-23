@@ -201,11 +201,14 @@ void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 			LFDiff = FVector::ZeroVector;
 		}
 
-		if (UCharacterMovementComponent * charMove = Cast<UCharacterMovementComponent>(VRC->GetMovementComponent()))
+		if (UVRCharacterMovementComponent * charMove = Cast<UVRCharacterMovementComponent>(VRC->GetMovementComponent()))
 		{
 			//if (!charMove->RequestedVelocity.IsNearlyZero())
 		//	{
-			RequestedVelocity = charMove->RequestedVelocity;
+			if (charMove->HasRequestedVelocity())
+				RequestedVelocity = charMove->RequestedVelocity;
+			else
+				RequestedVelocity = FVector::ZeroVector;
 			//}
 		}
 		else
@@ -508,6 +511,29 @@ void UVRCharacterMovementComponent::CallServerMoveVR
 }
 
 
+void UVRCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
+{
+	CustomVRInputVector += Movement;
+}
+
+void UVRCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
+{
+	LastPreAdditiveVRVelocity = (CustomVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
+	Velocity += LastPreAdditiveVRVelocity;
+}
+
+void UVRCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
+{
+	Velocity -= LastPreAdditiveVRVelocity;
+	LastPreAdditiveVRVelocity = FVector::ZeroVector;
+}
+
+void UVRCharacterMovementComponent::ClearVRMotionVelocity()
+{
+	VRInputVector = CustomVRInputVector;
+	CustomVRInputVector = FVector::ZeroVector;
+}
+
 bool UVRCharacterMovementComponent::ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const
 {
 	// See if we hit an edge of a surface on the lower portion of the capsule.
@@ -556,6 +582,9 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 	bool bTriedLedgeMove = false;
 	float remainingTime = deltaTime;
 
+	// Eat the reserved motion
+	ClearVRMotionVelocity();
+
 	// Perform the move
 	while ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations) && CharacterOwner && (CharacterOwner->Controller || bRunPhysicsWithNoController || HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocity() || (CharacterOwner->Role == ROLE_SimulatedProxy)))
 	{
@@ -577,6 +606,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		const FFindFloorResult OldFloor = CurrentFloor;
 
 		RestorePreAdditiveRootMotionVelocity();
+		RestorePreAdditiveVRMotionVelocity();
 
 		// Ensure velocity is horizontal.
 		MaintainHorizontalGroundVelocity();
@@ -591,6 +621,8 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		}
 
 		ApplyRootMotionToVelocity(timeTick);
+		ApplyVRMotionToVelocity(deltaTime);
+
 		checkCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 
 		if (IsFalling())

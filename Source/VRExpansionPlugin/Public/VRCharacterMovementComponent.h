@@ -66,6 +66,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
 	float WallRepulsionMultiplier;
 
+	FORCEINLINE bool HasRequestedVelocity()
+	{
+		return bHasRequestedVelocity;
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "SimpleVRCharacterMovementComponent|VRLocations")
+		void AddCustomReplicatedMovement(FVector Movement);
+
+	FVector CustomVRInputVector;
+	FVector VRInputVector;
+
+	virtual void ApplyVRMotionToVelocity(float deltaTime);
+	virtual void RestorePreAdditiveVRMotionVelocity();
+	virtual void ClearVRMotionVelocity();
+	FVector LastPreAdditiveVRVelocity;
+
 	///////////////////////////
 	// Navigation Functions
 	///////////////////////////

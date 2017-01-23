@@ -54,14 +54,19 @@ UVRSimpleCharacterMovementComponent::UVRSimpleCharacterMovementComponent(const F
 	bIsFirstTick = true;
 	//LastAdditionalVRInputVector = FVector::ZeroVector;
 	AdditionalVRInputVector = FVector::ZeroVector;	
+	CustomVRInputVector = FVector::ZeroVector;
 
 	//bMaintainHorizontalGroundVelocity = true;
 }
 
+void UVRSimpleCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
+{
+	CustomVRInputVector += Movement;
+}
 
 void UVRSimpleCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
 {
-	LastPreAdditiveVRVelocity = AdditionalVRInputVector / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick
+	LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
 	Velocity += LastPreAdditiveVRVelocity;
 }
 
@@ -795,7 +800,10 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 				DifferenceFromLastFrame.Z = 0.0f;
 
 				if (VRRootCapsule)
-					AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame); // Apply over a second
+					AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame) + CustomVRInputVector; // Apply over a second
+				
+				// Null out the custom vr input vector.
+				CustomVRInputVector = FVector::ZeroVector;
 			}
 			else
 			{
@@ -1200,8 +1208,12 @@ void FSavedMove_VRSimpleCharacter::SetInitialPosition(ACharacter* C)
 		
 		if (VRC->VRMovementReference)
 		{
-			LFDiff = VRC->VRMovementReference->AdditionalVRInputVector;
-			RequestedVelocity = VRC->VRMovementReference->RequestedVelocity;
+			LFDiff = VRC->VRMovementReference->AdditionalVRInputVector + VRC->VRMovementReference->CustomVRInputVector;
+
+			if (VRC->VRMovementReference->HasRequestedVelocity())
+				RequestedVelocity = VRC->VRMovementReference->RequestedVelocity;
+			else
+				RequestedVelocity = FVector::ZeroVector;
 		}
 		else
 		{

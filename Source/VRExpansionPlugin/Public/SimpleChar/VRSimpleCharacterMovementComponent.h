@@ -65,12 +65,20 @@ public:
 	bool IsLocallyControlled() const
 	{
 		// I like epics implementation better than my own
-		const AActor* MyOwner = GetOwner();
+		const AActor* MyOwner = GetOwner();	
 		const APawn* MyPawn = Cast<APawn>(MyOwner);
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
+	FORCEINLINE bool HasRequestedVelocity()
+	{
+		return bHasRequestedVelocity;
+	}
 
+	UFUNCTION(BlueprintCallable, Category = "SimpleVRCharacterMovementComponent|VRLocations")
+	void AddCustomReplicatedMovement(FVector Movement);
+
+	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
