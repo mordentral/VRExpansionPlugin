@@ -68,6 +68,19 @@ void UVRSimpleCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTim
 {
 	LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
 	Velocity += LastPreAdditiveVRVelocity;
+
+	// Switch to Falling if we have vertical velocity from root motion so we can lift off the ground
+	if( !LastPreAdditiveVRVelocity.IsNearlyZero() && LastPreAdditiveVRVelocity.Z != 0.f && IsMovingOnGround() )
+	{
+		float LiftoffBound;
+		// Default bounds - the amount of force gravity is applying this tick
+		LiftoffBound = FMath::Max(GetGravityZ() * deltaTime, SMALL_NUMBER);
+
+		if(LastPreAdditiveVRVelocity.Z > LiftoffBound )
+		{
+			SetMovementMode(MOVE_Falling);
+		}
+	}
 }
 
 void UVRSimpleCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()

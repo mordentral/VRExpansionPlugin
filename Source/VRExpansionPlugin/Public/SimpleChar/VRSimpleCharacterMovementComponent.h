@@ -84,8 +84,8 @@ public:
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
 
-	virtual void ApplyVRMotionToVelocity(float deltaTime);
-	virtual void RestorePreAdditiveVRMotionVelocity();
+	FORCEINLINE void ApplyVRMotionToVelocity(float deltaTime);
+	FORCEINLINE void RestorePreAdditiveVRMotionVelocity();
 	FVector LastPreAdditiveVRVelocity;
 
 	void PhysWalking(float deltaTime, int32 Iterations) override;
