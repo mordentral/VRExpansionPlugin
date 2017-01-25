@@ -536,13 +536,13 @@ void UVRCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement
 
 void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
-	if (!CustomVRInputVector.IsNearlyZero())
+	/*if (!CustomVRInputVector.IsNearlyZero())
 	{
 		// Inject the custom input vector, apply to all movement modes as direct movement.
 		FHitResult hitReol;
 		SafeMoveUpdatedComponent(CustomVRInputVector, UpdatedComponent->GetComponentQuat(), true, hitReol, ETeleportType::None);
 		CustomVRInputVector = FVector::ZeroVector;
-	}
+	}*/
 
 	Super::PerformMovement(DeltaSeconds);
 }
@@ -595,6 +595,18 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 	bool bTriedLedgeMove = false;
 	float remainingTime = deltaTime;
 
+	//Split into delta time
+	//float devider = deltaTime;
+	//FVector val = CustomVRInputVector / deltaTime;
+	//CustomVRInputVector = FVector::ZeroVector;
+	FVector lastvel = FVector::ZeroVector;
+
+
+	// Get the % of total
+	//float valler = timeTick / deltaTime;
+	//Velocity += CustomVRInputVector / deltaTime;//val * valler;
+	//lastvel = val * valler;
+
 	// Perform the move
 	while ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations) && CharacterOwner && (CharacterOwner->Controller || bRunPhysicsWithNoController || HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocity() || (CharacterOwner->Role == ROLE_SimulatedProxy)))
 	{
@@ -616,6 +628,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		const FFindFloorResult OldFloor = CurrentFloor;
 
 		RestorePreAdditiveRootMotionVelocity();
+		Velocity -= lastvel;
 
 		// Ensure velocity is horizontal.
 		MaintainHorizontalGroundVelocity();
@@ -630,6 +643,9 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		}
 
 		ApplyRootMotionToVelocity(timeTick);
+		lastvel = CustomVRInputVector / deltaTime;
+		Velocity += lastvel;
+
 
 		checkCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 
@@ -790,6 +806,9 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			break;
 		}
 	}
+
+	CustomVRInputVector = FVector::ZeroVector;
+	Velocity -= lastvel; // Remove the extra velocity, this is important as the injected velocity is only put in over a single frame
 
 	if (IsMovingOnGround())
 	{
