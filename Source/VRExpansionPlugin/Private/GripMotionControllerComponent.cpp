@@ -1973,9 +1973,6 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	// Process the gripped actors
 	TickGrip(DeltaTime);
 
-
-	// Set the last controller world location for next frame
-	LastControllerLocation = this->GetComponentLocation();
 }
 
 void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
@@ -2101,7 +2098,10 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 
 	FTransform ParentTransform = this->GetComponentTransform();
-	FVector MotionControllerLocDelta = ParentTransform.GetLocation() - LastControllerLocation;
+	FVector MotionControllerLocDelta = this->GetComponentLocation() - LastControllerLocation;
+
+	// Set the last controller world location for next frame
+	LastControllerLocation = this->GetComponentLocation();
 
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
 	HandleGripArray(GrippedActors, ParentTransform, MotionControllerLocDelta, DeltaTime, true);

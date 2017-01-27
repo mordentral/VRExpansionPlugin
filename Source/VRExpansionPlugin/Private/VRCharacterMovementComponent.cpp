@@ -531,20 +531,52 @@ void UVRCharacterMovementComponent::CallServerMoveVR
 
 void UVRCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
 {
+
+	/*if (!Movement.IsNearlyZero())
+		 {
+		FHitResult hitReol;
+		const FVector NewWorldLocation = Movement + UpdatedComponent->ComponentToWorld.GetTranslation();
+		UpdatedComponent->SetWorldLocation(NewWorldLocation, true, &hitReol, ETeleportType::None);
+				// Inject the custom input vector, apply to all movement modes as direct movement.
+
+		//SafeMoveUpdatedComponent(Movement, UpdatedComponent->GetComponentQuat(), true, hitReol, ETeleportType::None);
+		//CustomVRInputVector = FVector::ZeroVector;
+		}*/
 	CustomVRInputVector += Movement;
+}
+
+void UVRCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
+{
+	LastPreAdditiveVRVelocity = (CustomVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
+	Velocity += LastPreAdditiveVRVelocity;
+
+	// Switch to Falling if we have vertical velocity from root motion so we can lift off the ground
+	/*if (!LastPreAdditiveVRVelocity.IsNearlyZero() && LastPreAdditiveVRVelocity.Z != 0.f && IsMovingOnGround())
+	{
+		float LiftoffBound;
+		// Default bounds - the amount of force gravity is applying this tick
+		LiftoffBound = FMath::Max(GetGravityZ() * deltaTime, SMALL_NUMBER);
+
+		if (LastPreAdditiveVRVelocity.Z > LiftoffBound)
+		{
+			SetMovementMode(MOVE_Falling);
+		}
+	}*/
+}
+
+void UVRCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
+{
+	Velocity -= LastPreAdditiveVRVelocity;
+	LastPreAdditiveVRVelocity = FVector::ZeroVector;
 }
 
 void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
-	/*if (!CustomVRInputVector.IsNearlyZero())
-	{
-		// Inject the custom input vector, apply to all movement modes as direct movement.
-		FHitResult hitReol;
-		SafeMoveUpdatedComponent(CustomVRInputVector, UpdatedComponent->GetComponentQuat(), true, hitReol, ETeleportType::None);
-		CustomVRInputVector = FVector::ZeroVector;
-	}*/
-
 	Super::PerformMovement(DeltaSeconds);
+
+	// Ensure that any injected velocity is cleared post move
+	RestorePreAdditiveVRMotionVelocity();
+	CustomVRInputVector = FVector::ZeroVector;
 }
 
 bool UVRCharacterMovementComponent::ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const
@@ -595,18 +627,6 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 	bool bTriedLedgeMove = false;
 	float remainingTime = deltaTime;
 
-	//Split into delta time
-	//float devider = deltaTime;
-	//FVector val = CustomVRInputVector / deltaTime;
-	//CustomVRInputVector = FVector::ZeroVector;
-	FVector lastvel = FVector::ZeroVector;
-
-
-	// Get the % of total
-	//float valler = timeTick / deltaTime;
-	//Velocity += CustomVRInputVector / deltaTime;//val * valler;
-	//lastvel = val * valler;
-
 	// Perform the move
 	while ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations) && CharacterOwner && (CharacterOwner->Controller || bRunPhysicsWithNoController || HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocity() || (CharacterOwner->Role == ROLE_SimulatedProxy)))
 	{
@@ -628,7 +648,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		const FFindFloorResult OldFloor = CurrentFloor;
 
 		RestorePreAdditiveRootMotionVelocity();
-		Velocity -= lastvel;
+		RestorePreAdditiveVRMotionVelocity();
 
 		// Ensure velocity is horizontal.
 		MaintainHorizontalGroundVelocity();
@@ -643,9 +663,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		}
 
 		ApplyRootMotionToVelocity(timeTick);
-		lastvel = CustomVRInputVector / deltaTime;
-		Velocity += lastvel;
-
+		ApplyVRMotionToVelocity(deltaTime);
 
 		checkCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 
@@ -806,9 +824,6 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			break;
 		}
 	}
-
-	CustomVRInputVector = FVector::ZeroVector;
-	Velocity -= lastvel; // Remove the extra velocity, this is important as the injected velocity is only put in over a single frame
 
 	if (IsMovingOnGround())
 	{
@@ -2102,7 +2117,9 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 	{
 		return;
 	}
+
 	RestorePreAdditiveRootMotionVelocity();
+	RestorePreAdditiveVRMotionVelocity();
 
 	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
@@ -2115,6 +2132,7 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 	}
 
 	ApplyRootMotionToVelocity(deltaTime);
+	ApplyVRMotionToVelocity(deltaTime);
 
 	Iterations++;
 	bJustTeleported = false;
@@ -2180,6 +2198,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		bJustTeleported = false;
 
 		RestorePreAdditiveRootMotionVelocity();
+		RestorePreAdditiveVRMotionVelocity();
 
 		FVector OldVelocity = Velocity;
 		FVector VelocityNoAirControl = Velocity;
@@ -2221,6 +2240,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		const FVector AirControlAccel = (Velocity - VelocityNoAirControl) / timeTick;
 
 		ApplyRootMotionToVelocity(timeTick);
+		ApplyVRMotionToVelocity(deltaTime);
 
 		if (bNotifyApex && CharacterOwner->Controller && (Velocity.Z <= 0.f))
 		{
