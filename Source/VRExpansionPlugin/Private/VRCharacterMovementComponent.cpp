@@ -531,27 +531,17 @@ void UVRCharacterMovementComponent::CallServerMoveVR
 
 void UVRCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
 {
-
-	/*if (!Movement.IsNearlyZero())
-		 {
-		FHitResult hitReol;
-		const FVector NewWorldLocation = Movement + UpdatedComponent->ComponentToWorld.GetTranslation();
-		UpdatedComponent->SetWorldLocation(NewWorldLocation, true, &hitReol, ETeleportType::None);
-				// Inject the custom input vector, apply to all movement modes as direct movement.
-
-		//SafeMoveUpdatedComponent(Movement, UpdatedComponent->GetComponentQuat(), true, hitReol, ETeleportType::None);
-		//CustomVRInputVector = FVector::ZeroVector;
-		}*/
 	CustomVRInputVector += Movement;
 }
 
 void UVRCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
 {
-	LastPreAdditiveVRVelocity = (CustomVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
+
+	/*LastPreAdditiveVRVelocity = (CustomVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
 	Velocity += LastPreAdditiveVRVelocity;
 
 	// Switch to Falling if we have vertical velocity from root motion so we can lift off the ground
-	/*if (!LastPreAdditiveVRVelocity.IsNearlyZero() && LastPreAdditiveVRVelocity.Z != 0.f && IsMovingOnGround())
+	if (!LastPreAdditiveVRVelocity.IsNearlyZero() && LastPreAdditiveVRVelocity.Z != 0.f && IsMovingOnGround())
 	{
 		float LiftoffBound;
 		// Default bounds - the amount of force gravity is applying this tick
@@ -566,17 +556,29 @@ void UVRCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
 
 void UVRCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
 {
-	Velocity -= LastPreAdditiveVRVelocity;
-	LastPreAdditiveVRVelocity = FVector::ZeroVector;
+	//Velocity -= LastPreAdditiveVRVelocity;
+	//LastPreAdditiveVRVelocity = FVector::ZeroVector;
 }
 
 void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
+
+	if (!CustomVRInputVector.IsNearlyZero())
+	{
+		FHitResult hitReol;
+		const FVector NewWorldLocation = CustomVRInputVector + UpdatedComponent->ComponentToWorld.GetTranslation();
+		UpdatedComponent->SetWorldLocation(NewWorldLocation, true, &hitReol, ETeleportType::None);
+		// Inject the custom input vector, apply to all movement modes as direct movement.
+
+		//SafeMoveUpdatedComponent(Movement, UpdatedComponent->GetComponentQuat(), true, hitReol, ETeleportType::None);
+		CustomVRInputVector = FVector::ZeroVector;
+	}
+
 	Super::PerformMovement(DeltaSeconds);
 
 	// Ensure that any injected velocity is cleared post move
-	RestorePreAdditiveVRMotionVelocity();
-	CustomVRInputVector = FVector::ZeroVector;
+//	RestorePreAdditiveVRMotionVelocity();
+	//CustomVRInputVector = FVector::ZeroVector;
 }
 
 bool UVRCharacterMovementComponent::ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const
@@ -648,7 +650,6 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		const FFindFloorResult OldFloor = CurrentFloor;
 
 		RestorePreAdditiveRootMotionVelocity();
-		RestorePreAdditiveVRMotionVelocity();
 
 		// Ensure velocity is horizontal.
 		MaintainHorizontalGroundVelocity();
@@ -663,7 +664,6 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		}
 
 		ApplyRootMotionToVelocity(timeTick);
-		ApplyVRMotionToVelocity(deltaTime);
 
 		checkCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 
@@ -2119,7 +2119,6 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 	}
 
 	RestorePreAdditiveRootMotionVelocity();
-	RestorePreAdditiveVRMotionVelocity();
 
 	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
@@ -2132,7 +2131,6 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 	}
 
 	ApplyRootMotionToVelocity(deltaTime);
-	ApplyVRMotionToVelocity(deltaTime);
 
 	Iterations++;
 	bJustTeleported = false;
@@ -2198,7 +2196,6 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		bJustTeleported = false;
 
 		RestorePreAdditiveRootMotionVelocity();
-		RestorePreAdditiveVRMotionVelocity();
 
 		FVector OldVelocity = Velocity;
 		FVector VelocityNoAirControl = Velocity;
@@ -2240,7 +2237,6 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		const FVector AirControlAccel = (Velocity - VelocityNoAirControl) / timeTick;
 
 		ApplyRootMotionToVelocity(timeTick);
-		ApplyVRMotionToVelocity(deltaTime);
 
 		if (bNotifyApex && CharacterOwner->Controller && (Velocity.Z <= 0.f))
 		{
