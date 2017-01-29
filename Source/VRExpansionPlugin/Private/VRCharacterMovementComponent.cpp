@@ -534,32 +534,6 @@ void UVRCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement
 	CustomVRInputVector += Movement;
 }
 
-void UVRCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
-{
-
-	/*LastPreAdditiveVRVelocity = (CustomVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
-	Velocity += LastPreAdditiveVRVelocity;
-
-	// Switch to Falling if we have vertical velocity from root motion so we can lift off the ground
-	if (!LastPreAdditiveVRVelocity.IsNearlyZero() && LastPreAdditiveVRVelocity.Z != 0.f && IsMovingOnGround())
-	{
-		float LiftoffBound;
-		// Default bounds - the amount of force gravity is applying this tick
-		LiftoffBound = FMath::Max(GetGravityZ() * deltaTime, SMALL_NUMBER);
-
-		if (LastPreAdditiveVRVelocity.Z > LiftoffBound)
-		{
-			SetMovementMode(MOVE_Falling);
-		}
-	}*/
-}
-
-void UVRCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
-{
-	//Velocity -= LastPreAdditiveVRVelocity;
-	//LastPreAdditiveVRVelocity = FVector::ZeroVector;
-}
-
 void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
 
@@ -575,10 +549,6 @@ void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	}
 
 	Super::PerformMovement(DeltaSeconds);
-
-	// Ensure that any injected velocity is cleared post move
-//	RestorePreAdditiveVRMotionVelocity();
-	//CustomVRInputVector = FVector::ZeroVector;
 }
 
 bool UVRCharacterMovementComponent::ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const

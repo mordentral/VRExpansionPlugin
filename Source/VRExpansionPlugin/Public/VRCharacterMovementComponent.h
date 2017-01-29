@@ -74,10 +74,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimpleVRCharacterMovementComponent|VRLocations")
 		void AddCustomReplicatedMovement(FVector Movement);
 
-	FORCEINLINE void ApplyVRMotionToVelocity(float deltaTime);
-	FORCEINLINE void RestorePreAdditiveVRMotionVelocity();
-	FVector LastPreAdditiveVRVelocity;
-
 	FVector CustomVRInputVector;
 	virtual void PerformMovement(float DeltaSeconds) override;
 
