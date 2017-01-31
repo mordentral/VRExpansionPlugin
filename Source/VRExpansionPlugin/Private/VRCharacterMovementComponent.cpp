@@ -541,7 +541,7 @@ void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	{
 		FHitResult hitReol;
 		const FVector NewWorldLocation = CustomVRInputVector + UpdatedComponent->ComponentToWorld.GetTranslation();
-		UpdatedComponent->SetWorldLocation(NewWorldLocation, true, &hitReol, ETeleportType::None);
+		UpdatedComponent->SetWorldLocation(NewWorldLocation, bSweepCustomReplicatedMovement, &hitReol, ETeleportType::None);
 		// Inject the custom input vector, apply to all movement modes as direct movement.
 
 		//SafeMoveUpdatedComponent(Movement, UpdatedComponent->GetComponentQuat(), true, hitReol, ETeleportType::None);
@@ -1041,7 +1041,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	WallRepulsionMultiplier = 0.01f;
 
 	bAllowMovementMerging = false;
-
+	bSweepCustomReplicatedMovement = true;
 	bRequestedMoveUseAcceleration = false;
 }
 

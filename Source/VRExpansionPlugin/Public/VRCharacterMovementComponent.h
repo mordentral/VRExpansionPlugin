@@ -75,6 +75,11 @@ public:
 		void AddCustomReplicatedMovement(FVector Movement);
 
 	FVector CustomVRInputVector;
+	
+	// Whether the custom replicated movement should be swept or not
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
+		bool bSweepCustomReplicatedMovement;
+	
 	virtual void PerformMovement(float DeltaSeconds) override;
 
 
