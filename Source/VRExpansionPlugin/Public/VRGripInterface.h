@@ -119,6 +119,14 @@ public:
 	// Call to stop using an object
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRGripInterface")
 		void OnEndUsed();
+
+	// Call to use an object
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnSecondaryUsed();
+
+	// Call to stop using an object
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnEndSecondaryUsed();
 		
 	// Check if the object is an interactable
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
