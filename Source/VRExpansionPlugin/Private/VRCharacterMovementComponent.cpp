@@ -539,11 +539,44 @@ void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 
 	if (!CustomVRInputVector.IsNearlyZero())
 	{
-		FHitResult hitReol;
+		// Trying using fly movement so that it supports sliding now instead and step up.
+		// Need to test
+		FVector OldLocation = UpdatedComponent->GetComponentLocation();
+		const FVector Adjusted = CustomVRInputVector;// / DeltaSeconds;
+		FHitResult Hit(1.f);
+		SafeMoveUpdatedComponent(Adjusted, UpdatedComponent->GetComponentQuat(), true, Hit);
+
+		if (Hit.Time < 1.f)
+		{
+			const FVector GravDir = FVector(0.f, 0.f, -1.f);
+			const FVector VelDir = Velocity.GetSafeNormal();
+			const float UpDown = GravDir | VelDir;
+
+			bool bSteppedUp = false;
+			if ((FMath::Abs(Hit.ImpactNormal.Z) < 0.2f) && (UpDown < 0.5f) && (UpDown > -0.2f) && CanStepUp(Hit))
+			{
+				float stepZ = UpdatedComponent->GetComponentLocation().Z;
+				bSteppedUp = StepUp(GravDir, Adjusted * (1.f - Hit.Time), Hit, nullptr);
+				if (bSteppedUp)
+				{
+					OldLocation.Z = UpdatedComponent->GetComponentLocation().Z + (OldLocation.Z - stepZ);
+				}
+			}
+
+			if (!bSteppedUp)
+			{
+				// Just block with direct movement
+				//adjust and try again
+				HandleImpact(Hit, DeltaSeconds, Adjusted);
+				SlideAlongSurface(Adjusted, (1.f - Hit.Time), Hit.Normal, Hit, true);
+			}
+		}
+
+		/*FHitResult hitReol;
 		const FVector NewWorldLocation = CustomVRInputVector + UpdatedComponent->ComponentToWorld.GetTranslation();
 		UpdatedComponent->SetWorldLocation(NewWorldLocation, bSweepCustomReplicatedMovement, &hitReol, ETeleportType::None);
 		// Inject the custom input vector, apply to all movement modes as direct movement.
-
+		*/
 		//SafeMoveUpdatedComponent(Movement, UpdatedComponent->GetComponentQuat(), true, hitReol, ETeleportType::None);
 		CustomVRInputVector = FVector::ZeroVector;
 	}
