@@ -71,49 +71,16 @@ void UVRBaseCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterat
 	}
 }
 
+bool UVRBaseCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult)
+{
+	return StepUp(GravDir, Delta, InHit, OutStepDownResult);
+}
+
 void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int32 Iterations)
 {
 	if (deltaTime < MIN_TICK_TIME)
 	{
 		return;
-	}
-
-	if (false)//!CustomVRInputVector.IsNearlyZero())
-	{
-		// Trying using fly movement so that it supports sliding now instead and step up.
-		// Need to test
-		FVector OldLocation = UpdatedComponent->GetComponentLocation();
-		const FVector Adjusted = CustomVRInputVector;// / DeltaSeconds;
-		FHitResult Hit1(1.f);
-		SafeMoveUpdatedComponent(Adjusted, UpdatedComponent->GetComponentQuat(), true, Hit1);
-
-		if (Hit1.Time < 1.f)
-		{
-			const FVector GravDir = FVector(0.f, 0.f, -1.f);
-			const FVector VelDir = Velocity.GetSafeNormal();
-			const float UpDown = GravDir | VelDir;
-
-			bool bSteppedUp = false;
-			if ((FMath::Abs(Hit1.ImpactNormal.Z) < 0.2f) && (UpDown < 0.5f) && (UpDown > -0.2f) && CanStepUp(Hit1))
-			{
-				float stepZ = UpdatedComponent->GetComponentLocation().Z;
-				bSteppedUp = StepUp(GravDir, Adjusted * (1.f - Hit1.Time), Hit1, nullptr);
-				if (bSteppedUp)
-				{
-					OldLocation.Z = UpdatedComponent->GetComponentLocation().Z + (OldLocation.Z - stepZ);
-				}
-			}
-
-			if (!bSteppedUp)
-			{
-				// Just block with direct movement
-				//adjust and try again
-				HandleImpact(Hit1, deltaTime, Adjusted);
-				SlideAlongSurface(Adjusted, (1.f - Hit1.Time), Hit1.Normal, Hit1, true);
-			}
-		}
-
-		CustomVRInputVector = FVector::ZeroVector;
 	}
 
 	//RestorePreAdditiveRootMotionVelocity();
@@ -134,13 +101,14 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 
 	// Root motion should never happen in VR, lets just not even check for it
 	//ApplyRootMotionToVelocity(deltaTime);
-	ApplyVRMotionToVelocity(deltaTime);
+	//ApplyVRMotionToVelocity(deltaTime);
 
 	Iterations++;
 	bJustTeleported = false;
 
 	FVector OldLocation = UpdatedComponent->GetComponentLocation();
 	const FVector Adjusted = /*(Velocity * deltaTime) + */CustomVRInputVector + AdditionalVRInputVector;
+
 	FHitResult Hit(1.f);
 	SafeMoveUpdatedComponent(Adjusted, UpdatedComponent->GetComponentQuat(), true, Hit);
 	bool bSteppedUp = false;
@@ -162,7 +130,7 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 			MaxStepHeight = VRClimbingStepHeight;
 
 			// Making it easier to step up here with the multiplier, helps avoid falling back off
-			bSteppedUp = StepUp(GravDir, (Adjusted * VRClimbingStepUpMultiplier) * (1.f - Hit.Time), Hit);
+			bSteppedUp = VRClimbStepUp(GravDir, (Adjusted * VRClimbingStepUpMultiplier) * (1.f - Hit.Time), Hit);
 
 			MaxStepHeight = OldMaxStepHeight;
 
@@ -200,6 +168,14 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 			ownerCharacter->OnClimbingSteppedUp();
 		}
 	}
+}
 
+
+void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
+{
+	Super::PerformMovement(DeltaSeconds);
+
+	// Make sure these are cleaned out for the next frame
+	AdditionalVRInputVector = FVector::ZeroVector;
 	CustomVRInputVector = FVector::ZeroVector;
 }

@@ -100,6 +100,8 @@ public:
 	*/
 	UVRSimpleCharacterMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	virtual bool VRClimbStepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = nullptr) override;
+
 	///////////////////////////
 	// Replication Functions
 	///////////////////////////

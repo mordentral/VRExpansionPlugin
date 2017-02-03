@@ -33,6 +33,8 @@ public:
 
 	UVRBaseCharacterMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	virtual void PerformMovement(float DeltaSeconds) override;
+
 	FORCEINLINE bool HasRequestedVelocity()
 	{
 		return bHasRequestedVelocity;
@@ -54,6 +56,9 @@ public:
 
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 	virtual void PhysCustom_Climbing(float deltaTime, int32 Iterations);
+
+	// Need to use actual capsule location for step up
+	virtual bool VRClimbStepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = nullptr);
 
 	// Height to auto step up
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
