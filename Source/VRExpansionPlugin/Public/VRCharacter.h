@@ -2,6 +2,7 @@
 
 #pragma once
 #include "VRBPDatatypes.h"
+#include "VRBaseCharacter.h"
 #include "GripMotionControllerComponent.h"
 #include "VRExpansionFunctionLibrary.h"
 #include "ReplicatedVRCameraComponent.h"
@@ -13,7 +14,7 @@
 
 
 UCLASS()
-class VREXPANSIONPLUGIN_API AVRCharacter : public ACharacter
+class VREXPANSIONPLUGIN_API AVRCharacter : public AVRBaseCharacter
 {
 	GENERATED_BODY()
 

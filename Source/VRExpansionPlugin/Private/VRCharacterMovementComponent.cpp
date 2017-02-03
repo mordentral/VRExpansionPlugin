@@ -224,17 +224,17 @@ void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 	FSavedMove_Character::SetInitialPosition(C);
 }
 
-bool UVRCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 AdditionalVRInputVector, uint8 CapsuleYaw, uint8 MoveFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+bool UVRCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 CustVRInputVector, uint8 CapsuleYaw, uint8 MoveFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
 {
 	return true;
 }
 
-bool UVRCharacterMovementComponent::ServerMoveVRDual_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVector_NetQuantize100 rOldRequestedVelocity, FVector_NetQuantize100 OldLFDiff, FVector_NetQuantize100 OldAdditionalVRInputVector, uint8 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 AdditionalVRInputVector, uint8 CapsuleYaw, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+bool UVRCharacterMovementComponent::ServerMoveVRDual_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVector_NetQuantize100 rOldRequestedVelocity, FVector_NetQuantize100 OldLFDiff, FVector_NetQuantize100 OldCustVRInputVector, uint8 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 CustVRInputVector, uint8 CapsuleYaw, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
 {
 	return true;
 }
 
-bool UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVector_NetQuantize100 rOldRequestedVelocity, FVector_NetQuantize100 OldLFDiff, FVector_NetQuantize100 OldAdditionalVRInputVector, uint8 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 AdditionalVRInputVector, uint8 CapsuleYaw, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+bool UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVector_NetQuantize100 rOldRequestedVelocity, FVector_NetQuantize100 OldLFDiff, FVector_NetQuantize100 OldCustVRInputVector, uint8 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 CustVRInputVector, uint8 CapsuleYaw, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
 {
 	return true;
 }
@@ -247,7 +247,7 @@ void UVRCharacterMovementComponent::ServerMoveVRDual_Implementation(
 	FVector_NetQuantize100 OldCapsuleLoc, 
 	FVector_NetQuantize100 rOldRequestedVelocity,
 	FVector_NetQuantize100 OldLFDiff,
-	FVector_NetQuantize100 OldAdditionalVRInputVector,
+	FVector_NetQuantize100 OldCustVRInputVector,
 	uint8 OldCapsuleYaw,
 	float TimeStamp,
 	FVector_NetQuantize10 InAccel,
@@ -255,7 +255,7 @@ void UVRCharacterMovementComponent::ServerMoveVRDual_Implementation(
 	FVector_NetQuantize100 CapsuleLoc,
 	FVector_NetQuantize100 rRequestedVelocity,
 	FVector_NetQuantize100 LFDiff,
-	FVector_NetQuantize100 AdditionalVRInputVector,
+	FVector_NetQuantize100 CustVRInputVector,
 	uint8 CapsuleYaw,
 	uint8 NewFlags,
 	uint8 ClientRoll,
@@ -264,8 +264,8 @@ void UVRCharacterMovementComponent::ServerMoveVRDual_Implementation(
 	FName ClientBaseBone,
 	uint8 ClientMovementMode)
 {
-	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, rOldRequestedVelocity, OldLFDiff, OldAdditionalVRInputVector, OldCapsuleYaw, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
-	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, rRequestedVelocity, LFDiff, AdditionalVRInputVector, CapsuleYaw, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, rOldRequestedVelocity, OldLFDiff, OldCustVRInputVector, OldCapsuleYaw, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, rRequestedVelocity, LFDiff, CustVRInputVector, CapsuleYaw, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
 }
 
 void UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementation(
@@ -276,7 +276,7 @@ void UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementat
 	FVector_NetQuantize100 OldCapsuleLoc,
 	FVector_NetQuantize100 rOldRequestedVelocity,
 	FVector_NetQuantize100 OldLFDiff,
-	FVector_NetQuantize100 OldAdditionalVRInputVector,
+	FVector_NetQuantize100 OldCustVRInputVector,
 	uint8 OldCapsuleYaw,
 	float TimeStamp,
 	FVector_NetQuantize10 InAccel,
@@ -284,7 +284,7 @@ void UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementat
 	FVector_NetQuantize100 CapsuleLoc,
 	FVector_NetQuantize100 rRequestedVelocity,
 	FVector_NetQuantize100 LFDiff,
-	FVector_NetQuantize100 AdditionalVRInputVector,
+	FVector_NetQuantize100 CustVRInputVector,
 	uint8 CapsuleYaw,
 	uint8 NewFlags,
 	uint8 ClientRoll,
@@ -295,10 +295,10 @@ void UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementat
 {
 	// First move received didn't use root motion, process it as such.
 	CharacterOwner->bServerMoveIgnoreRootMotion = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
-	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, rOldRequestedVelocity, OldLFDiff, OldAdditionalVRInputVector, OldCapsuleYaw, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, rOldRequestedVelocity, OldLFDiff, OldCustVRInputVector, OldCapsuleYaw, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
 	CharacterOwner->bServerMoveIgnoreRootMotion = false;
 
-	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, rRequestedVelocity, LFDiff, AdditionalVRInputVector, CapsuleYaw, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, rRequestedVelocity, LFDiff, CustVRInputVector, CapsuleYaw, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
 }
 
 void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
@@ -308,7 +308,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	FVector_NetQuantize100 CapsuleLoc,
 	FVector_NetQuantize100 rRequestedVelocity,
 	FVector_NetQuantize100 LFDiff,
-	FVector_NetQuantize100 AdditionalVRInputVector,
+	FVector_NetQuantize100 CustVRInputVector,
 	uint8 CapsuleYaw,
 	uint8 MoveFlags,
 	uint8 ClientRoll,
@@ -376,7 +376,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 		}
 
 		RequestedVelocity = rRequestedVelocity;
-		CustomVRInputVector = AdditionalVRInputVector;
+		CustomVRInputVector = CustVRInputVector;
 
 		if (!rRequestedVelocity.IsNearlyZero())
 		{
@@ -528,12 +528,7 @@ void UVRCharacterMovementComponent::CallServerMoveVR
 	}
 }
 
-
-void UVRCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
-{
-	CustomVRInputVector += Movement;
-}
-
+/*
 void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
 
@@ -572,17 +567,17 @@ void UVRCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 			}
 		}
 
-		/*FHitResult hitReol;
-		const FVector NewWorldLocation = CustomVRInputVector + UpdatedComponent->ComponentToWorld.GetTranslation();
-		UpdatedComponent->SetWorldLocation(NewWorldLocation, bSweepCustomReplicatedMovement, &hitReol, ETeleportType::None);
+		//FHitResult hitReol;
+		//const FVector NewWorldLocation = CustomVRInputVector + UpdatedComponent->ComponentToWorld.GetTranslation();
+		//UpdatedComponent->SetWorldLocation(NewWorldLocation, bSweepCustomReplicatedMovement, &hitReol, ETeleportType::None);
 		// Inject the custom input vector, apply to all movement modes as direct movement.
-		*/
+		
 		//SafeMoveUpdatedComponent(Movement, UpdatedComponent->GetComponentQuat(), true, hitReol, ETeleportType::None);
 		CustomVRInputVector = FVector::ZeroVector;
 	}
 
 	Super::PerformMovement(DeltaSeconds);
-}
+}*/
 
 bool UVRCharacterMovementComponent::ShouldCheckForValidLandingSpot(float DeltaTime, const FVector& Delta, const FHitResult& Hit) const
 {
@@ -1074,7 +1069,6 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	WallRepulsionMultiplier = 0.01f;
 
 	bAllowMovementMerging = false;
-	bSweepCustomReplicatedMovement = true;
 	bRequestedMoveUseAcceleration = false;
 }
 

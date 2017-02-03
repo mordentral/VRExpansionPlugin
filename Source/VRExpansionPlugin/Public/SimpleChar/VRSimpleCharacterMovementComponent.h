@@ -44,7 +44,7 @@ class AVRSimpleCharacter;
 
 
 UCLASS()
-class VREXPANSIONPLUGIN_API UVRSimpleCharacterMovementComponent : public UCharacterMovementComponent
+class VREXPANSIONPLUGIN_API UVRSimpleCharacterMovementComponent : public UVRBaseCharacterMovementComponent
 {
 	GENERATED_BODY()
 public:
@@ -70,7 +70,7 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
-	FORCEINLINE bool HasRequestedVelocity()
+	/*FORCEINLINE bool HasRequestedVelocity()
 	{
 		return bHasRequestedVelocity;
 	}
@@ -80,17 +80,17 @@ public:
 
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;
-
+	*/
 	// Injecting custom movement in here, bypasses floor detection
-	virtual void PerformMovement(float DeltaSeconds) override;
+	//virtual void PerformMovement(float DeltaSeconds) override;
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
 
-	FORCEINLINE void ApplyVRMotionToVelocity(float deltaTime);
+/*	FORCEINLINE void ApplyVRMotionToVelocity(float deltaTime);
 	FORCEINLINE void RestorePreAdditiveVRMotionVelocity();
 	FVector LastPreAdditiveVRVelocity;
-
+	*/
 	void PhysWalking(float deltaTime, int32 Iterations) override;
 	void PhysFlying(float deltaTime, int32 Iterations) override;
 	void PhysFalling(float deltaTime, int32 Iterations) override;

@@ -3017,7 +3017,7 @@ bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRot
 		{
 			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position))
 			{
-				CurrentTrackingStatus = (EBPTrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
+				CurrentTrackingStatus = (ETrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
 				
 				if (bOffsetByHMD)
 				{

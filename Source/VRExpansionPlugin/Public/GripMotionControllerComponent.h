@@ -46,7 +46,7 @@ private:
 
 	/** The tracking status for the device (e.g. full tracking, inertial tracking only, no tracking) */
 	UPROPERTY(BlueprintReadOnly, Category = "MotionController")
-		EBPTrackingStatus CurrentTrackingStatus;
+		ETrackingStatus CurrentTrackingStatus;
 
 	/** Whether or not this component had a valid tracked device this frame */
 	UFUNCTION(BlueprintPure, Category = "MotionController")
