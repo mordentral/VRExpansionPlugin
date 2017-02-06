@@ -167,7 +167,7 @@ bool UVRSimpleCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, 
 		// Don't adjust or slide, just fail here in VR
 		ScopedStepUpMovement.RevertMove();
 		return false;
-
+		/*
 		// adjust and try again
 		const float ForwardHitTime = Hit.Time;
 		const float ForwardSlideAmount = SlideAlongSurface(Delta, 1.f - Hit.Time, Hit.Normal, Hit, true);
@@ -183,7 +183,7 @@ bool UVRSimpleCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, 
 		{
 			ScopedStepUpMovement.RevertMove();
 			return false;
-		}
+		}*/
 	}
 
 	// Step down

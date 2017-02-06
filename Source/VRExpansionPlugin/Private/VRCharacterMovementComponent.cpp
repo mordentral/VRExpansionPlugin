@@ -1625,7 +1625,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 			return true;
 		}
 
-		//Don't adjust
+		//Don't adjust for VR, it doesn't work correctly
 		ScopedStepUpMovement.RevertMove();
 		return false;
 
