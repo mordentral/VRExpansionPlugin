@@ -23,7 +23,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(TEXT("VR Replicated Camera"));
 	if (VRReplicatedCamera)
 	{
-		VRReplicatedCamera->bOffsetByHMD = true;
+		VRReplicatedCamera->bOffsetByHMD = false;
 		VRReplicatedCamera->SetupAttachment(RootComponent);
 	}
 
@@ -46,7 +46,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		// Moved this to be root relative as the camera late updates were killing how it worked
 		ParentRelativeAttachment->SetupAttachment(RootComponent);
-		ParentRelativeAttachment->bOffsetByHMD = true;
+		ParentRelativeAttachment->bOffsetByHMD = false;
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Left Grip Motion Controller"));
@@ -54,7 +54,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		LeftMotionController->SetupAttachment(RootComponent);
 		LeftMotionController->Hand = EControllerHand::Left;
-		LeftMotionController->bOffsetByHMD = true;
+		LeftMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
 		if (VRReplicatedCamera)
 		{
@@ -69,7 +69,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		RightMotionController->SetupAttachment(RootComponent);
 		RightMotionController->Hand = EControllerHand::Right;
-		RightMotionController->bOffsetByHMD = true;
+		RightMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
 		if (VRReplicatedCamera)
 		{

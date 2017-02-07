@@ -26,6 +26,7 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 	//VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(TEXT("VR Replicated Camera"));
 	if (VRReplicatedCamera && VRSceneComponent)
 	{
+		VRReplicatedCamera->bOffsetByHMD = true;
 		VRReplicatedCamera->SetupAttachment(VRSceneComponent);
 	}
 
@@ -39,11 +40,14 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 //	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Parent Relative Attachment"));
 	if (ParentRelativeAttachment && VRReplicatedCamera && VRSceneComponent)
 	{
+		ParentRelativeAttachment->bOffsetByHMD = true;
 		ParentRelativeAttachment->SetupAttachment(VRSceneComponent);
 	}
 
 	if (LeftMotionController)
 	{
+		LeftMotionController->bOffsetByHMD = true;
+
 		if (VRSceneComponent)
 		{
 			LeftMotionController->SetupAttachment(VRSceneComponent);
@@ -53,6 +57,8 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 	//RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Right Grip Motion Controller"));
 	if (RightMotionController)
 	{
+		RightMotionController->bOffsetByHMD = true;
+
 		if (VRSceneComponent)
 		{
 			RightMotionController->SetupAttachment(VRSceneComponent);
