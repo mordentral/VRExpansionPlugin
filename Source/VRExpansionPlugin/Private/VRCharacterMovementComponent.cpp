@@ -536,7 +536,7 @@ bool UVRCharacterMovementComponent::ShouldCheckForValidLandingSpot(float DeltaTi
 	{
 		FVector PawnLocation = UpdatedComponent->GetComponentLocation();
 		if (VRRootCapsule)
-			PawnLocation = VRRootCapsule->GetVRLocation();
+			PawnLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
 
 		if (IsWithinEdgeTolerance(PawnLocation, Hit.ImpactPoint, CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleRadius()))
 		{
@@ -592,7 +592,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		// Used for ledge check
 		FVector OldCapsuleLocation = OldLocation;
 		if(VRRootCapsule)
-			OldCapsuleLocation = VRRootCapsule->GetVRLocation();
+			OldCapsuleLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
 
 		const FFindFloorResult OldFloor = CurrentFloor;
 
@@ -791,10 +791,10 @@ void UVRCharacterMovementComponent::CapsuleTouched(UPrimitiveComponent* Overlapp
 		/*const*/FVector OtherLoc = OtherComp->GetComponentLocation();
 		if (UVRRootComponent * rCap = Cast<UVRRootComponent>(OtherComp))
 		{
-			OtherLoc = rCap->GetVRLocation();
+			OtherLoc = rCap->OffsetComponentToWorld.GetLocation();
 		}
 		
-		const FVector Loc = VRRootCapsule->GetVRLocation();//UpdatedComponent->GetComponentLocation();
+		const FVector Loc = VRRootCapsule->OffsetComponentToWorld.GetLocation();//UpdatedComponent->GetComponentLocation();
 		FVector ImpulseDir = FVector(OtherLoc.X - Loc.X, OtherLoc.Y - Loc.Y, 0.25f).GetSafeNormal();
 		ImpulseDir = (ImpulseDir + Velocity.GetSafeNormal2D()) * 0.5f;
 		ImpulseDir.Normalize();
@@ -892,7 +892,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		FVector OldStartLocation = ClientData->PendingMove->GetRevertedLocation();
 		
 		if (VRRootCapsule)
-			OldStartLocation += VRRootCapsule->GetVRLocation() - VRRootCapsule->GetComponentLocation();//VRRootCapsule->GetVROffsetFromLocationAndRotation(ClientData->PendingMove->GetRevertedLocation(), ClientData->PendingMove->StartRotation.Quaternion());
+			OldStartLocation += VRRootCapsule->OffsetComponentToWorld.GetLocation() - VRRootCapsule->GetComponentLocation();//VRRootCapsule->GetVROffsetFromLocationAndRotation(ClientData->PendingMove->GetRevertedLocation(), ClientData->PendingMove->StartRotation.Quaternion());
 
 		if (!OverlapTest(OldStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
 		{
@@ -1065,7 +1065,7 @@ void UVRCharacterMovementComponent::ApplyRepulsionForce(float DeltaSeconds)
 			FVector MyLocation;
 			
 			if (VRRootCapsule)
-				MyLocation = VRRootCapsule->GetVRLocation();
+				MyLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
 			else
 				MyLocation = UpdatedPrimitive->GetComponentLocation();
 
@@ -1295,7 +1295,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 	FVector OldLocation;
 
 	if (VRRootCapsule)
-		OldLocation = VRRootCapsule->GetVRLocation();
+		OldLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
 	else
 		OldLocation = UpdatedComponent->GetComponentLocation();
 
@@ -1526,7 +1526,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 	FVector OldLocation;
 
 	if (VRRootCapsule)
-		OldLocation = VRRootCapsule->GetVRLocation();
+		OldLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
 	else
 		OldLocation = UpdatedComponent->GetComponentLocation();
 
@@ -1926,7 +1926,7 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 	FVector UseCapsuleLocation = CapsuleLocation;
 
 	if (VRRootCapsule)
-		UseCapsuleLocation = VRRootCapsule->GetVRLocation();
+		UseCapsuleLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
 
 	check(CharacterOwner->GetCapsuleComponent());
 
@@ -2123,8 +2123,8 @@ float UVRCharacterMovementComponent::ImmersionDepth() const
 
 				if (VRRootCapsule)
 				{
-					TraceStart = VRRootCapsule->GetVRLocation() + FVector(0.f, 0.f, CollisionHalfHeight);
-					TraceEnd = VRRootCapsule->GetVRLocation() - FVector(0.f, 0.f, CollisionHalfHeight);
+					TraceStart = VRRootCapsule->OffsetComponentToWorld.GetLocation() + FVector(0.f, 0.f, CollisionHalfHeight);
+					TraceEnd = VRRootCapsule->OffsetComponentToWorld.GetLocation() - FVector(0.f, 0.f, CollisionHalfHeight);
 				}
 				else
 				{
@@ -2257,7 +2257,7 @@ bool UVRCharacterMovementComponent::TryToLeaveNavWalking()
 	{
 		FVector CollisionFreeLocation;
 		if (VRRootCapsule)
-			CollisionFreeLocation = VRRootCapsule->GetVRLocation();
+			CollisionFreeLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
 		else
 			CollisionFreeLocation =	UpdatedComponent->GetComponentLocation();
 		
@@ -2271,7 +2271,7 @@ bool UVRCharacterMovementComponent::TryToLeaveNavWalking()
 				// Technically the same actor but i am keepign the usage convention for clarity.
 				// Subtracting actor location from capsule to get difference in worldspace, then removing from collision free location
 				// So that it uses the correct location.
-				CharacterOwner->SetActorLocation(CollisionFreeLocation - (VRRootCapsule->GetVRLocation() - UpdatedComponent->GetComponentLocation()));
+				CharacterOwner->SetActorLocation(CollisionFreeLocation - (VRRootCapsule->OffsetComponentToWorld.GetLocation() - UpdatedComponent->GetComponentLocation()));
 			}
 			else
 				CharacterOwner->SetActorLocation(CollisionFreeLocation);
@@ -2442,7 +2442,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		}
 		else if (Hit.bBlockingHit)
 		{
-			if (IsValidLandingSpot(VRRootCapsule->GetVRLocation()/*UpdatedComponent->GetComponentLocation()*/, Hit))
+			if (IsValidLandingSpot(VRRootCapsule->OffsetComponentToWorld.GetLocation()/*UpdatedComponent->GetComponentLocation()*/, Hit))
 			{
 				remainingTime += subTimeTickRemaining;
 				ProcessLanded(Hit, remainingTime, Iterations);
@@ -2459,7 +2459,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 				{
 					/*const */FVector PawnLocation = UpdatedComponent->GetComponentLocation();
 					if (VRRootCapsule)
-						PawnLocation = VRRootCapsule->GetVRLocation();
+						PawnLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
 
 					FFindFloorResult FloorResult;
 					FindFloor(PawnLocation, FloorResult, false, NULL);
@@ -2511,7 +2511,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 						subTimeTickRemaining = subTimeTickRemaining * (1.f - Hit.Time);
 
 
-						if (IsValidLandingSpot(VRRootCapsule->GetVRLocation()/*UpdatedComponent->GetComponentLocation()*/, Hit))
+						if (IsValidLandingSpot(VRRootCapsule->OffsetComponentToWorld.GetLocation()/*UpdatedComponent->GetComponentLocation()*/, Hit))
 						{
 							remainingTime += subTimeTickRemaining;
 							ProcessLanded(Hit, remainingTime, Iterations);
@@ -2570,7 +2570,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 							SafeMoveUpdatedComponent(SideDelta, PawnRotation, true, Hit);
 						}
 
-						if (bDitch || IsValidLandingSpot(VRRootCapsule->GetVRLocation()/*UpdatedComponent->GetComponentLocation()*/, Hit) || Hit.Time == 0.f)
+						if (bDitch || IsValidLandingSpot(VRRootCapsule->OffsetComponentToWorld.GetLocation()/*UpdatedComponent->GetComponentLocation()*/, Hit) || Hit.Time == 0.f)
 						{
 							remainingTime = 0.f;
 							ProcessLanded(Hit, remainingTime, Iterations);

@@ -62,25 +62,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 		UCameraComponent * VRCameraComponent;
 
-	bool IsLocallyControlled() const
-	{
-		// I like epics implementation better than my own
-		const AActor* MyOwner = GetOwner();	
-		const APawn* MyPawn = Cast<APawn>(MyOwner);
-		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
-	}
+	//UFUNCTION(BlueprintCallable, Category = "SimpleVRCharacterMovementComponent|VRLocations")
+	//void AddCustomReplicatedMovement(FVector Movement);
 
-	/*FORCEINLINE bool HasRequestedVelocity()
-	{
-		return bHasRequestedVelocity;
-	}
+	//FVector CustomVRInputVector;
+	//FVector AdditionalVRInputVector;
 
-	UFUNCTION(BlueprintCallable, Category = "SimpleVRCharacterMovementComponent|VRLocations")
-	void AddCustomReplicatedMovement(FVector Movement);
-
-	FVector CustomVRInputVector;
-	FVector AdditionalVRInputVector;
-	*/
 	// Injecting custom movement in here, bypasses floor detection
 	//virtual void PerformMovement(float DeltaSeconds) override;
 

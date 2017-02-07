@@ -9,6 +9,8 @@
 //For UE4 Profiler ~ Stat Group
 //DECLARE_STATS_GROUP(TEXT("VRPhysicsUpdate"), STATGROUP_VRPhysics, STATCAT_Advanced);
 
+class AVRBaseCharacter;
+
 // EXPERIMENTAL, don't use
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
 class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent//UShapeComponent
@@ -28,7 +30,7 @@ public:
 		return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
 	}*/
 
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
+	/*UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
 	FVector GetVRForwardVector()
 	{
 		return OffsetComponentToWorld.GetRotation().GetForwardVector();
@@ -56,7 +58,7 @@ public:
 	FRotator GetVRRotation()
 	{
 		return OffsetComponentToWorld.GetRotation().Rotator();
-	}
+	}*/
 
 protected:
 
@@ -84,10 +86,13 @@ public:
 	USceneComponent * TargetPrimitiveComponent;
 
 	//UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
+	AVRBaseCharacter * owningVRChar;
+
+	//UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	//UCapsuleComponent * VRCameraCollider;
 
 	FVector DifferenceFromLastFrame;
-	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
+	//UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
 
 	// Used to offset the collision (IE backwards from the player slightly.

@@ -260,6 +260,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	curCameraRot = FRotator::ZeroRotator;
 	curCameraLoc = FVector::ZeroVector;
 	TargetPrimitiveComponent = NULL;
+	owningVRChar = NULL;
 	//VRCameraCollider = NULL;
 
 	bUseWalkingCollisionOverride = false;
@@ -283,9 +284,10 @@ void UVRRootComponent::BeginPlay()
 	Super::BeginPlay();
 
 
-	if(AVRCharacter * vrOwner = Cast<AVRCharacter>(this->GetOwner()))
+	if(AVRBaseCharacter * vrOwner = Cast<AVRBaseCharacter>(this->GetOwner()))
 	{ 
 		TargetPrimitiveComponent = vrOwner->VRReplicatedCamera;
+		owningVRChar = vrOwner;
 		//VRCameraCollider = vrOwner->VRCameraCollider;
 		return;
 	}
@@ -298,6 +300,7 @@ void UVRRootComponent::BeginPlay()
 			if (children[i]->IsA(UCameraComponent::StaticClass()))
 			{
 				TargetPrimitiveComponent = children[i];
+				owningVRChar = NULL;
 				return;
 			}
 		}
@@ -305,6 +308,7 @@ void UVRRootComponent::BeginPlay()
 
 	//VRCameraCollider = NULL;
 	TargetPrimitiveComponent = NULL;
+	owningVRChar = NULL;
 }
 
 
@@ -388,6 +392,11 @@ void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
+
+	if (owningVRChar)
+	{
+		owningVRChar->OffsetComponentToWorld = OffsetComponentToWorld;
+	}
 
 	if (bUpdateBounds)
 		UpdateBounds();
@@ -501,7 +510,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 	// Init HitResult
 	FHitResult BlockingHit(1.f);
-	/*const*/ FVector TraceStart = GetVRLocation();// .GetLocation();//GetComponentLocation();
+	/*const*/ FVector TraceStart = OffsetComponentToWorld.GetLocation();// .GetLocation();//GetComponentLocation();
 	/*const*/ FVector TraceEnd = TraceStart + Delta;
 	BlockingHit.TraceStart = TraceStart;
 	BlockingHit.TraceEnd = TraceEnd;
