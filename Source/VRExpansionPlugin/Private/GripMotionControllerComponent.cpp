@@ -3099,6 +3099,9 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 
 void UGripMotionControllerComponent::FViewExtension::GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives)
 {
+	if (!Component || Component->IsPendingKill())
+		return;
+
 	// If a scene proxy is present, cache it
 	UPrimitiveComponent* PrimitiveComponent = dynamic_cast<UPrimitiveComponent*>(Component);
 	if (PrimitiveComponent && PrimitiveComponent->SceneProxy)

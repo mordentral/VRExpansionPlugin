@@ -739,7 +739,6 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 {
 //	SCOPE_CYCLE_COUNTER(STAT_CharPhysWalking);
 
-
 	if (deltaTime < MIN_TICK_TIME)
 	{
 		return;
@@ -767,7 +766,6 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 
 	//bool bHasLastAdditiveVelocity = false;
 	//FVector LastPreAdditiveVRVelocity;
-
 	// Perform the move
 	while ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations) && CharacterOwner && (CharacterOwner->Controller || bRunPhysicsWithNoController || HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocity() || (CharacterOwner->Role == ROLE_SimulatedProxy)))
 	{

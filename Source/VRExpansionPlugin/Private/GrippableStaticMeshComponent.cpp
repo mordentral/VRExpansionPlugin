@@ -23,6 +23,9 @@ UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitia
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
+
+	// Setting this for default with multiplayer
+	this->bReplicates = true;
 }
 
 //=============================================================================

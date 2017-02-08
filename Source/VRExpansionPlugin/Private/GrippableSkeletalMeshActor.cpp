@@ -23,6 +23,11 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
+
+	// Default replication on for multiplayer
+	this->bNetLoadOnClient = false;
+	this->bReplicateMovement = true;
+	this->bReplicates = true;
 }
 
 //=============================================================================

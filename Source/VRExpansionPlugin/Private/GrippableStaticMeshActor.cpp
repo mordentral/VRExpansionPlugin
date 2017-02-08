@@ -23,8 +23,12 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
-
 	this->SetMobility(EComponentMobility::Movable);
+
+	// Default replication on for multiplayer
+	this->bNetLoadOnClient = false;
+	this->bReplicateMovement = true;
+	this->bReplicates = true;
 }
 
 //=============================================================================
