@@ -170,12 +170,62 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 	}
 }
 
+void UVRBaseCharacterMovementComponent::SetClimbingMode(bool bIsClimbing)
+{
+	bStartedClimbing = bIsClimbing;
+	bEndedClimbing = !bIsClimbing;
+}
 
 void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
+	// Run bToggledClimbingMode in here
+	if (bStartedClimbing)
+	{
+		SetMovementMode(EMovementMode::MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Climbing);
+		bStartedClimbing = false;
+	}
+	else if (bEndedClimbing)
+	{
+		SetMovementMode(EMovementMode::MOVE_Falling);
+		bEndedClimbing = false;
+	}
+
 	Super::PerformMovement(DeltaSeconds);
 
 	// Make sure these are cleaned out for the next frame
 	AdditionalVRInputVector = FVector::ZeroVector;
 	CustomVRInputVector = FVector::ZeroVector;
+}
+
+void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
+{
+	// See if we can get the VR capsule location
+	if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
+	{
+		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
+		{
+			bStartedClimbing = moveComp->bStartedClimbing;
+			bEndedClimbing = moveComp->bEndedClimbing;
+		}
+		else
+		{
+			bStartedClimbing = false;
+			bEndedClimbing = false;
+		}
+	}
+	else
+	{
+		bStartedClimbing = false;
+		bEndedClimbing = false;
+	}
+
+	FSavedMove_Character::SetInitialPosition(C);
+}
+
+void FSavedMove_VRBaseCharacter::Clear()
+{
+	bStartedClimbing = false;
+	bEndedClimbing = false;
+
+	FSavedMove_Character::Clear();
 }

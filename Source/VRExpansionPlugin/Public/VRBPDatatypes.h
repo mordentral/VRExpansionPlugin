@@ -63,22 +63,35 @@ public:
 	UPROPERTY()
 		uint32 YawPitchINT;
 	UPROPERTY()
-		uint8 RollBYTE;
-//		FRotator Orientation;
+		uint16 RollSHORT;
 
+	// Removed roll BYTE, it was too inaccurate, using a short now
+	//FRotator Orientation;
+
+	// This removes processing time from lerping
+	FRotator UnpackedRotation;
+	FVector UnpackedLocation;
+
+	FORCEINLINE void Unpack()
+	{
+		UnpackedLocation = (FVector)Position;
+		UnpackedRotation = GetRotation();
+	}
 
 	FORCEINLINE void SetRotation(FRotator NewRot)
 	{
+		//Orientation = NewRot;
 		YawPitchINT = (FRotator::CompressAxisToShort(NewRot.Yaw) << 16) | FRotator::CompressAxisToShort(NewRot.Pitch);
-		RollBYTE = FRotator::CompressAxisToByte(NewRot.Roll);
+		RollSHORT = FRotator::CompressAxisToShort(NewRot.Roll);
 	}
 
 	FORCEINLINE FRotator GetRotation()
 	{
+		//return Orientation;
 		const uint16 nPitch = (YawPitchINT & 65535);
 		const uint16 nYaw = (YawPitchINT >> 16);
 
-		return FRotator(FRotator::DecompressAxisFromShort(nPitch), FRotator::DecompressAxisFromShort(nYaw), FRotator::DecompressAxisFromByte(RollBYTE));
+		return FRotator(FRotator::DecompressAxisFromShort(nPitch), FRotator::DecompressAxisFromShort(nYaw), FRotator::DecompressAxisFromShort(RollSHORT)/*DecompressAxisFromByte(RollBYTE)*/);
 	}
 };
 

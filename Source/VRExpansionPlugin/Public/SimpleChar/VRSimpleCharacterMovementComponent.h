@@ -124,7 +124,7 @@ public:
 	///////////////////////////
 };
 
-class VREXPANSIONPLUGIN_API FSavedMove_VRSimpleCharacter : public FSavedMove_Character
+class VREXPANSIONPLUGIN_API FSavedMove_VRSimpleCharacter : public FSavedMove_VRBaseCharacter
 {
 
 public:
@@ -138,7 +138,7 @@ public:
 	void Clear();
 	virtual void SetInitialPosition(ACharacter* C);
 
-	FSavedMove_VRSimpleCharacter() : FSavedMove_Character()
+	FSavedMove_VRSimpleCharacter() : FSavedMove_VRBaseCharacter()
 	{
 		//VRCapsuleLocation = FVector::ZeroVector;
 		LFDiff = FVector::ZeroVector;
@@ -149,95 +149,12 @@ public:
 
 	bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
 	{
-		if (bForceNoCombine || NewMove->bForceNoCombine)
-		{
-			return false;
-		}
-
 		FSavedMove_VRSimpleCharacter * nMove = (FSavedMove_VRSimpleCharacter *)NewMove.Get();
 
 		if (!nMove || (!LFDiff.IsNearlyZero() && !nMove->LFDiff.IsNearlyZero()) || (!RequestedVelocity.IsNearlyZero() && !nMove->RequestedVelocity.IsNearlyZero()) || (!CustomVRInputVector.IsNearlyZero() && !nMove->CustomVRInputVector.IsNearlyZero()))
 			return false;
 
-		// Cannot combine moves which contain root motion for now.
-		// @fixme laurent - we should be able to combine most of them though, but current scheme of resetting pawn location and resimulating forward doesn't work.
-		// as we don't want to tick montage twice (so we don't fire events twice). So we need to rearchitecture this so we tick only the second part of the move, and reuse the first part.
-		if ((RootMotionMontage != NULL) || (NewMove->RootMotionMontage != NULL))
-		{
-			return false;
-		}
-
-		if (NewMove->Acceleration.IsZero())
-		{
-			if (!Acceleration.IsZero())
-			{
-				return false;
-			}
-
-			if (!StartVelocity.IsZero() || !NewMove->StartVelocity.IsZero())
-			{
-				return false;
-			}
-		}
-		else
-		{
-			if (NewMove->DeltaTime + DeltaTime >= MaxDelta)
-			{
-				return false;
-			}
-
-			if (!FVector::Coincident(AccelNormal, NewMove->AccelNormal, AccelDotThresholdCombine))
-			{
-				return false;
-			}
-		}
-
-		if (bPressedJump || NewMove->bPressedJump)
-		{
-			return false;
-		}
-
-		if (bWantsToCrouch != NewMove->bWantsToCrouch)
-		{
-			return false;
-		}
-
-		if (StartBase != NewMove->StartBase)
-		{
-			return false;
-		}
-
-		if (StartBoneName != NewMove->StartBoneName)
-		{
-			return false;
-		}
-
-		if (MovementMode != NewMove->MovementMode)
-		{
-			return false;
-		}
-
-		if (StartCapsuleRadius != NewMove->StartCapsuleRadius)
-		{
-			return false;
-		}
-
-		if (StartCapsuleHalfHeight != NewMove->StartCapsuleHalfHeight)
-		{
-			return false;
-		}
-
-		if (!StartBaseRotation.Equals(NewMove->StartBaseRotation)) // only if base hasn't rotated
-		{
-			return false;
-		}
-
-		if (CustomTimeDilation != NewMove->CustomTimeDilation)
-		{
-			return false;
-		}
-
-		return true;
+		return FSavedMove_VRBaseCharacter::CanCombineWith(NewMove, Character, MaxDelta);
 	}
 
 };

@@ -54,7 +54,9 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	//bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
-
+	bReplicateWithoutTracking = false;
+	bLerpingPosition = false;
+	bSmoothReplicatedMotion = false;
 }
 
 //=============================================================================
@@ -1175,16 +1177,18 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 		return false;
 	}
 	
-	if(bWasLocalGrip)
-		NotifyDrop_Implementation(LocallyGrippedActors[FoundIndex], bSimulate);
-	else
-		NotifyDrop(GrippedActors[FoundIndex], bSimulate);
 
+	// Had to move in front of deletion to properly set velocity
 	if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement && (OptionalLinearVelocity != FVector::ZeroVector || OptionalAngularVelocity != FVector::ZeroVector))
 	{
 		PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
 		PrimComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
 	}
+
+	if(bWasLocalGrip)
+		NotifyDrop_Implementation(LocallyGrippedActors[FoundIndex], bSimulate);
+	else
+		NotifyDrop(GrippedActors[FoundIndex], bSimulate);
 
 	//GrippedActors.RemoveAt(FoundIndex);		
 	return true;
@@ -1953,10 +1957,18 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			return; // Don't update anything including location
 
 		// Don't bother with any of this if not replicating transform
-		if (bReplicates && bTracked)
+		if (bReplicates && (bTracked || bReplicateWithoutTracking))
 		{
-			ReplicatedControllerTransform.Position = Position;
-			ReplicatedControllerTransform.SetRotation(Orientation);//.Orientation = Orientation;
+			if (bTracked)
+			{
+				ReplicatedControllerTransform.Position = Position;
+				ReplicatedControllerTransform.SetRotation(Orientation);//.Orientation = Orientation;
+			}
+			else
+			{
+				ReplicatedControllerTransform.Position = this->RelativeLocation;
+				ReplicatedControllerTransform.SetRotation(this->RelativeRotation);
+			}
 
 			if (GetNetMode() == NM_Client)//bReplicateControllerTransform)
 			{
@@ -1966,6 +1978,35 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 					ControllerNetUpdateCount = 0.0f;
 					Server_SendControllerTransform(ReplicatedControllerTransform);
 				}
+			}
+		}
+	}
+	else
+	{
+		if (bLerpingPosition)
+		{
+			ControllerNetUpdateCount += DeltaTime;
+			float LerpVal = FMath::Clamp(ControllerNetUpdateCount / (1.0f / ControllerNetUpdateRate), 0.0f, 1.0f);
+
+			if (LerpVal >= 1.0f)
+			{
+				SetRelativeLocationAndRotation(ReplicatedControllerTransform.UnpackedLocation, ReplicatedControllerTransform.UnpackedRotation);
+
+				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
+				// Actual prediction might be something to consider in the future, but rough to do in VR
+				// considering the speed and accuracy of movements
+				// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
+				// and might be perf taxing enough to not make it worth it.
+				bLerpingPosition = false;
+				ControllerNetUpdateCount = 0.0f;
+			}
+			else
+			{
+				// Removed variables to speed this up a bit
+				SetRelativeLocationAndRotation(
+					FMath::Lerp(LastUpdatesRelativePosition, ReplicatedControllerTransform.UnpackedLocation, LerpVal), 
+					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedControllerTransform.UnpackedRotation, LerpVal)
+				);
 			}
 		}
 	}
@@ -2094,8 +2135,6 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 	// Debug test that we aren't floating physics handles
 	check(PhysicsGrips.Num() <= (GrippedActors.Num() + LocallyGrippedActors.Num()));
-
-
 
 	FTransform ParentTransform = this->GetComponentTransform();
 	FVector MotionControllerLocDelta = this->GetComponentLocation() - LastControllerLocation;

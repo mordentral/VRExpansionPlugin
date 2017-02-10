@@ -1389,7 +1389,7 @@ void FSavedMove_VRSimpleCharacter::Clear()
 	CustomVRInputVector = FVector::ZeroVector;
 	RequestedVelocity = FVector::ZeroVector;
 
-	FSavedMove_Character::Clear();
+	FSavedMove_VRBaseCharacter::Clear();
 }
 
 void FSavedMove_VRSimpleCharacter::SetInitialPosition(ACharacter* C)
@@ -1430,7 +1430,7 @@ void FSavedMove_VRSimpleCharacter::SetInitialPosition(ACharacter* C)
 		}
 
 	}
-	FSavedMove_Character::SetInitialPosition(C);
+	FSavedMove_VRBaseCharacter::SetInitialPosition(C);
 }
 
 bool UVRSimpleCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 CustVRInputVector, uint8 MoveFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)

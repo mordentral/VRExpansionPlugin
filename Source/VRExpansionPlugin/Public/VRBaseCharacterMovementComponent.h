@@ -48,7 +48,7 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "SimpleVRCharacterMovementComponent|VRLocations")
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
 	void AddCustomReplicatedMovement(FVector Movement);
 
 	FVector CustomVRInputVector;
@@ -82,5 +82,77 @@ public:
 	// Max velocity on releasing a climbing grip
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		float VRClimbingMaxReleaseVelocitySize;
+	
+	UFUNCTION(BlueprintCallable, Category = "VRMovement|Climbing")
+		void SetClimbingMode(bool bIsClimbing);
+
+	
+	bool bStartedClimbing;
+	bool bEndedClimbing;
+
+	void UVRBaseCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags) override
+	{
+		bStartedClimbing = ((Flags & FSavedMove_Character::FLAG_Custom_0) != 0);
+		bEndedClimbing = ((Flags & FSavedMove_Character::FLAG_Custom_1) != 0);
+		Super::UpdateFromCompressedFlags(Flags);
+	}
+
+};
+
+class VREXPANSIONPLUGIN_API FSavedMove_VRBaseCharacter : public FSavedMove_Character
+{
+
+public:
+
+	bool bStartedClimbing;
+	bool bEndedClimbing;
+
+	void Clear();
+	virtual void SetInitialPosition(ACharacter* C);
+
+	FSavedMove_VRBaseCharacter() : FSavedMove_Character()
+	{
+		bStartedClimbing = false;
+		bEndedClimbing = false;
+	}
+
+	uint8 GetCompressedFlags() const
+	{
+		uint8 Result = FSavedMove_Character::GetCompressedFlags();
+
+		if (bStartedClimbing)
+		{
+			Result |= FLAG_Custom_0;
+		}
+
+		if (bEndedClimbing)
+		{
+			Result |= FLAG_Custom_1;
+		}
+
+		return Result;
+	}
+
+	bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
+	{
+		FSavedMove_VRBaseCharacter * nMove = (FSavedMove_VRBaseCharacter *)NewMove.Get();
+
+		if (!nMove || (bStartedClimbing != nMove->bStartedClimbing) || (bEndedClimbing != nMove->bEndedClimbing))
+			return false;
+
+		return FSavedMove_Character::CanCombineWith(NewMove, Character, MaxDelta);
+	}
+
+
+	bool IsImportantMove(const FSavedMovePtr& LastAckedMove) const override
+	{
+
+		// Auto important if toggled climbing
+		if (bStartedClimbing || bEndedClimbing)
+			return true;
+
+		// Else check parent class
+		return FSavedMove_Character::IsImportantMove(LastAckedMove);
+	}
 
 };

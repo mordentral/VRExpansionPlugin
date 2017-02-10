@@ -122,21 +122,44 @@ public:
 	//  Movement Replication
 	// Actor needs to be replicated for this to work
 
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedControllerTransform, Category = "VRGrip")
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedControllerTransform, Category = "GripMotionController|Networking")
 	FBPVRComponentPosRep ReplicatedControllerTransform;
+
+	FVector LastUpdatesRelativePosition;
+	FRotator LastUpdatesRelativeRotation;
+	float LerpTimeFromLastUpdate;
+	bool bLerpingPosition;
 
 	UFUNCTION()
 	virtual void OnRep_ReplicatedControllerTransform()
 	{
-		SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.GetRotation()/*ReplicatedControllerTransform.Orientation*/);
+		ReplicatedControllerTransform.Unpack();
+
+		if (bSmoothReplicatedMotion)
+		{
+			bLerpingPosition = true;
+			ControllerNetUpdateCount = 0.0f;
+			LastUpdatesRelativePosition = this->RelativeLocation;
+			LastUpdatesRelativeRotation =  this->RelativeRotation;
+		}
+		else
+			SetRelativeLocationAndRotation(ReplicatedControllerTransform.UnpackedLocation, ReplicatedControllerTransform.UnpackedRotation);
 	}
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRGrip", meta = (ClampMin = "0", UIMin = "0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking", meta = (ClampMin = "0", UIMin = "0"))
 	float ControllerNetUpdateRate;
-
-	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case.
+	
+	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case, also used for remotes to lerp position
 	float ControllerNetUpdateCount;
+
+	// Whether to smooth (lerp) between ticks for the replicated motion, DOES NOTHING if update rate is larger than FPS!
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
+		bool bSmoothReplicatedMotion;
+
+	// Whether to replicate even if no tracking (FPS or test characters)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
+		bool bReplicateWithoutTracking;
 
 	// I'm sending it unreliable because it is being resent pretty often
 	UFUNCTION(Unreliable, Server, WithValidation)

@@ -22,44 +22,6 @@ public:
 
 	FORCEINLINE void GenerateOffsetToWorld(bool bUpdateBounds = true);
 
-	/*FVector GetVROffsetFromLocationAndRotation(FVector Location, const FQuat &Rotation)
-	{
-		FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
-		FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
-
-		return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
-	}*/
-
-	/*UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FVector GetVRForwardVector()
-	{
-		return OffsetComponentToWorld.GetRotation().GetForwardVector();
-	}
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FVector GetVRRightVector()
-	{
-		return OffsetComponentToWorld.GetRotation().GetRightVector();
-	}
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FVector GetVRUpVector()
-	{
-		return OffsetComponentToWorld.GetRotation().GetUpVector();
-	}
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FVector GetVRLocation()
-	{
-		return OffsetComponentToWorld.GetLocation();
-	}
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FRotator GetVRRotation()
-	{
-		return OffsetComponentToWorld.GetRotation().Rotator();
-	}*/
-
 protected:
 
 	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;
