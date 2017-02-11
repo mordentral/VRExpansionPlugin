@@ -376,7 +376,7 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 	LinearVelocity = primComp->GetPhysicsLinearVelocity();
 }
 
-void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result)
+void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, EBPVRResultSwitch &Result)
 {
 	if (!ActorToLookForGrip)
 	{
@@ -407,7 +407,7 @@ void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Gri
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result)
+void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, EBPVRResultSwitch &Result)
 {
 	if (!ComponentToLookForGrip)
 	{
@@ -438,7 +438,7 @@ void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation 
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripCollisionType> NewGripCollisionType)
+void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripCollisionType NewGripCollisionType)
 {
 	int fIndex = GrippedActors.Find(Grip);
 
@@ -465,7 +465,7 @@ void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInfo
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting)
+void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripLateUpdateSettings NewGripLateUpdateSetting)
 {
 	int fIndex = GrippedActors.Find(Grip);
 
@@ -492,7 +492,7 @@ void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGrip
 
 void UGripMotionControllerComponent::SetGripRelativeTransform(
 	const FBPActorGripInformation &Grip,
-	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+	EBPVRResultSwitch &Result,
 	const FTransform & NewRelativeTransform
 	)
 {
@@ -521,7 +521,7 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 
 void UGripMotionControllerComponent::SetGripAdditionTransform(
 	const FBPActorGripInformation &Grip,
-	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+	EBPVRResultSwitch &Result,
 	const FTransform & NewAdditionTransform, bool bMakeGripRelative
 	)
 {
@@ -588,9 +588,9 @@ bool UGripMotionControllerComponent::GripObject(
 	const FTransform &WorldOffset,
 	bool bWorldOffsetIsRelative,
 	FName OptionalSnapToSocketName,
-	TEnumAsByte<EGripCollisionType> GripCollisionType,
-	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
-	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	EGripCollisionType GripCollisionType,
+	EGripLateUpdateSettings GripLateUpdateSetting,
+	EGripMovementReplicationSettings GripMovementReplicationSetting,
 	float GripStiffness,
 	float GripDamping)
 {
@@ -774,9 +774,9 @@ bool UGripMotionControllerComponent::GripActor(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
-	TEnumAsByte<EGripCollisionType> GripCollisionType, 
-	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
-	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	EGripCollisionType GripCollisionType, 
+	EGripLateUpdateSettings GripLateUpdateSetting,
+	EGripMovementReplicationSettings GripMovementReplicationSetting,
 	float GripStiffness, 
 	float GripDamping
 	)
@@ -959,9 +959,9 @@ bool UGripMotionControllerComponent::GripComponent(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
-	TEnumAsByte<EGripCollisionType> GripCollisionType,
-	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
-	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	EGripCollisionType GripCollisionType,
+	EGripLateUpdateSettings GripLateUpdateSetting,
+	EGripMovementReplicationSettings GripMovementReplicationSetting,
 	float GripStiffness, 
 	float GripDamping
 	)
@@ -1323,7 +1323,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 
 	bool bHasMovementAuthority = HasGripMovementAuthority(NewGrip);
 
-	switch (NewGrip.GripCollisionType.GetValue())
+	switch (NewGrip.GripCollisionType)
 	{
 	case EGripCollisionType::InteractiveCollisionWithPhysics:
 	case EGripCollisionType::ManipulationGrip:
@@ -1915,7 +1915,6 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
 
 	if (!bIsActive)
 		return;

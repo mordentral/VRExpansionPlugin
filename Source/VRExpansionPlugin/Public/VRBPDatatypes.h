@@ -40,17 +40,13 @@ enum class EBPSteamVRTrackedDeviceType : uint8
 
 // This makes a lot of the blueprint functions cleaner
 UENUM()
-namespace EBPVRResultSwitch
+enum class EBPVRResultSwitch : uint8
 {
-	enum Type
-	{
-		// On Success
-		OnSucceeded,
-
-		// On Failure
-		OnFailed
-	};
-}
+	// On Success
+	OnSucceeded,
+	// On Failure
+	OnFailed
+};
 
 
 USTRUCT()
@@ -103,7 +99,7 @@ Physics Only = Does not sweep at all (does not trigger OnHitEvents), still pushe
 Custom grip is to be handled by the object itself, it just sends the TickGrip event every frame but doesn't move the object.
 */
 UENUM(Blueprintable)
-enum EGripCollisionType
+enum class EGripCollisionType : uint8
 {
 	InteractiveCollisionWithPhysics,
 //	InteractiveCollisionWithVelocity,
@@ -117,7 +113,7 @@ enum EGripCollisionType
 
 // This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
 UENUM(Blueprintable)
-enum EBPHMDDeviceType
+enum class EBPHMDDeviceType : uint8
 {
 	DT_OculusRift,
 	DT_Morpheus,
@@ -129,7 +125,7 @@ enum EBPHMDDeviceType
 
 // Lerp states
 UENUM(Blueprintable)
-enum EGripLerpState
+enum class EGripLerpState : uint8
 {
 	StartLerp,
 	EndLerp,
@@ -139,7 +135,7 @@ enum EGripLerpState
 
 // Grip Late Update informaiton
 UENUM(Blueprintable)
-enum EGripLateUpdateSettings
+enum class EGripLateUpdateSettings : uint8
 {
 	LateUpdatesAlwaysOn,
 	LateUpdatesAlwaysOff,
@@ -151,7 +147,7 @@ enum EGripLateUpdateSettings
 // Grip movement replication settings
 // ServerSideMovementOnlyWhenColliding is not InteractivePhysicsGripCompatible
 UENUM(Blueprintable)
-enum EGripMovementReplicationSettings
+enum class EGripMovementReplicationSettings : uint8
 {
 	KeepOriginalMovement,
 	ForceServerSideMovement,
@@ -161,7 +157,7 @@ enum EGripMovementReplicationSettings
 
 // Grip Target Type
 UENUM(Blueprintable)
-enum EGripTargetType
+enum class EGripTargetType : uint8
 {
 	ActorGrip,
 	ComponentGrip
@@ -171,7 +167,7 @@ enum EGripTargetType
 
 // Lerp states
 UENUM(Blueprintable)
-enum EGripInterfaceTeleportBehavior
+enum class EGripInterfaceTeleportBehavior : uint8
 {
 	TeleportAllComponents,
 	OnlyTeleportRootComponent,
@@ -260,7 +256,7 @@ struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 public:
 
 	UPROPERTY(BlueprintReadOnly)
-		TEnumAsByte<EGripTargetType> GripTargetType;
+		EGripTargetType GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
 		UObject * GrippedObject;
 	/*UPROPERTY(BlueprintReadOnly)
@@ -269,16 +265,16 @@ public:
 		UPrimitiveComponent * Component;
 		*/
 	UPROPERTY(BlueprintReadOnly)
-		TEnumAsByte<EGripCollisionType> GripCollisionType;
+		EGripCollisionType GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
-		TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting;
+		EGripLateUpdateSettings GripLateUpdateSetting;
 	//UPROPERTY(BlueprintReadOnly)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
 		FTransform RelativeTransform;
 
 	UPROPERTY(BlueprintReadOnly)
-		TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting;
+		EGripMovementReplicationSettings GripMovementReplicationSetting;
 	UPROPERTY(BlueprintReadOnly)
 		bool bOriginalReplicatesMovement;
 
@@ -302,7 +298,7 @@ public:
 		float LerpToRate;
 	
 	// These are not replicated, they don't need to be
-	TEnumAsByte<EGripLerpState> GripLerpState;
+	EGripLerpState GripLerpState;
 	FVector LastRelativeLocation;
 	float curLerp;
 
@@ -473,7 +469,7 @@ public:
 		bool bDenyGripping;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		TEnumAsByte<EGripInterfaceTeleportBehavior> OnTeleportBehavior;
+		EGripInterfaceTeleportBehavior OnTeleportBehavior;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bSimulateOnDrop;
@@ -482,21 +478,21 @@ public:
 		uint8 EnumObjectType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		TEnumAsByte<EGripCollisionType> SlotDefaultGripType;
+		EGripCollisionType SlotDefaultGripType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		TEnumAsByte<EGripCollisionType> FreeDefaultGripType;
+		EGripCollisionType FreeDefaultGripType;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bCanHaveDoubleGrip;
 
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-	//	TEnumAsByte<EGripTargetType> GripTarget;
+	//	EGripTargetType GripTarget;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		TEnumAsByte<EGripMovementReplicationSettings> MovementReplicationType;
+		EGripMovementReplicationSettings MovementReplicationType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		TEnumAsByte<EGripLateUpdateSettings> LateUpdateSetting;
+		EGripLateUpdateSettings LateUpdateSetting;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintStiffness;
