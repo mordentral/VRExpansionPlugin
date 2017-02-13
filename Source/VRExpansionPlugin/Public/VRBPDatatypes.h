@@ -11,6 +11,9 @@
 
 #include "VRBPDatatypes.generated.h"
 
+class UGripMotionControllerComponent;
+
+
 // Custom movement modes for the characters
 UENUM(BlueprintType)
 enum class EVRCustomMovementMode : uint8
@@ -482,11 +485,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripCollisionType FreeDefaultGripType;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bCanHaveDoubleGrip;
-
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-	//	EGripTargetType GripTarget;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripMovementReplicationSettings MovementReplicationType;
@@ -512,6 +513,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bIsInteractible;
 
+	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+		bool bIsHeld;
+
+	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+		UGripMotionControllerComponent * HoldingController;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		FBPInteractionSettings InteractionSettings;
 
@@ -533,6 +540,9 @@ public:
 		SecondarySlotRange = 20.0f;
 		PrimarySlotRange = 20.0f;
 		bIsInteractible = false;
+
+		bIsHeld = false;
+		HoldingController = nullptr;
 	}
 };
 

@@ -24,6 +24,9 @@ UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitia
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
 
+	VRGripInterfaceSettings.bIsHeld = false;
+	VRGripInterfaceSettings.HoldingController = nullptr;
+
 	// Setting this for default with multiplayer
 	this->bReplicates = true;
 }
@@ -112,6 +115,22 @@ void UGrippableStaticMeshComponent::ClosestPrimarySlotInRange_Implementation(FVe
 bool UGrippableStaticMeshComponent::IsInteractible_Implementation()
 {
 	return VRGripInterfaceSettings.bIsInteractible;
+}
+
+void UGrippableStaticMeshComponent::IsHeld_Implementation(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld)
+{
+	HoldingController = VRGripInterfaceSettings.HoldingController;
+	bIsHeld = VRGripInterfaceSettings.bIsHeld;
+}
+
+void UGrippableStaticMeshComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
+{
+	if (bIsHeld)
+		VRGripInterfaceSettings.HoldingController = HoldingController;
+	else
+		VRGripInterfaceSettings.HoldingController = nullptr;
+
+	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }
 
 FBPInteractionSettings UGrippableStaticMeshComponent::GetInteractionSettings_Implementation()

@@ -48,10 +48,6 @@ class VREXPANSIONPLUGIN_API UGrippableSkeletalMeshComponent : public USkeletalMe
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool CanHaveDoubleGrip();
 
-	// Define which grip target to use for gripping
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-	//	EGripTargetType GripTargetType();
-
 	// Define which movement repliation setting to use
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripMovementReplicationSettings GripMovementReplicationType();
@@ -83,6 +79,14 @@ class VREXPANSIONPLUGIN_API UGrippableSkeletalMeshComponent : public USkeletalMe
 	// Check if the object is an interactable
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool IsInteractible();
+
+	// Returns if the object is held and if so, which pawn is holding it
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void IsHeld(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld);
+
+	// Sets is held, used by the plugin
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void SetHeld(UGripMotionControllerComponent * HoldingController, bool bIsHeld);
 
 	// Get interactable settings
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

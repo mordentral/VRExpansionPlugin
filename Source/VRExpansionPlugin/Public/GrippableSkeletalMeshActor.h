@@ -85,6 +85,14 @@ class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshAc
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool IsInteractible();
 
+	// Returns if the object is held and if so, which pawn is holding it
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void IsHeld(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld);
+
+	// Sets is held, used by the plugin
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void SetHeld(UGripMotionControllerComponent * HoldingController, bool bIsHeld);
+
 	// Get interactable settings
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		FBPInteractionSettings GetInteractionSettings();

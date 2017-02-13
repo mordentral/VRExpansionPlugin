@@ -1218,6 +1218,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
+				IVRGripInterface::Execute_SetHeld(pActor, this, true);
 			}
 
 			if (root)
@@ -1257,6 +1258,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			if (primComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				IVRGripInterface::Execute_OnGrip(primComp, this, NewGrip);
+				IVRGripInterface::Execute_SetHeld(primComp, this, true);
 			}
 
 			// Have to turn off gravity locally
@@ -1422,6 +1424,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryAttachment, NewDrop);
 
 				IVRGripInterface::Execute_OnGripRelease(pActor, this, NewDrop);
+				IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
 			}
 		}
 	}break;
@@ -1470,6 +1473,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 					IVRGripInterface::Execute_OnSecondaryGripRelease(primComp, NewDrop.SecondaryAttachment, NewDrop);
 
 				IVRGripInterface::Execute_OnGripRelease(primComp, this, NewDrop);
+				IVRGripInterface::Execute_SetHeld(primComp, nullptr, false);
 			}
 		}
 	}break;

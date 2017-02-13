@@ -24,6 +24,9 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
 
+	VRGripInterfaceSettings.bIsHeld = false;
+	VRGripInterfaceSettings.HoldingController = nullptr;
+
 	// Default replication on for multiplayer
 	this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
@@ -116,6 +119,23 @@ bool AGrippableSkeletalMeshActor::IsInteractible_Implementation()
 {
 	return VRGripInterfaceSettings.bIsInteractible;
 }
+
+void AGrippableSkeletalMeshActor::IsHeld_Implementation(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld)
+{
+	HoldingController = VRGripInterfaceSettings.HoldingController;
+	bIsHeld = VRGripInterfaceSettings.bIsHeld;
+}
+
+void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
+{
+	if (bIsHeld)
+		VRGripInterfaceSettings.HoldingController = HoldingController;
+	else
+		VRGripInterfaceSettings.HoldingController = nullptr;
+
+	VRGripInterfaceSettings.bIsHeld = bIsHeld;
+}
+
 
 FBPInteractionSettings AGrippableSkeletalMeshActor::GetInteractionSettings_Implementation()
 {

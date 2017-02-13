@@ -23,6 +23,8 @@ UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectI
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
+	VRGripInterfaceSettings.bIsHeld = false;
+	VRGripInterfaceSettings.HoldingController = nullptr;
 }
 
 //=============================================================================
@@ -109,6 +111,22 @@ void UGrippableBoxComponent::ClosestPrimarySlotInRange_Implementation(FVector Wo
 bool UGrippableBoxComponent::IsInteractible_Implementation()
 {
 	return VRGripInterfaceSettings.bIsInteractible;
+}
+
+void UGrippableBoxComponent::IsHeld_Implementation(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld)
+{
+	HoldingController = VRGripInterfaceSettings.HoldingController;
+	bIsHeld = VRGripInterfaceSettings.bIsHeld;
+}
+
+void UGrippableBoxComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
+{
+	if (bIsHeld)
+		VRGripInterfaceSettings.HoldingController = HoldingController;
+	else
+		VRGripInterfaceSettings.HoldingController = nullptr;
+
+	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }
 
 FBPInteractionSettings UGrippableBoxComponent::GetInteractionSettings_Implementation()

@@ -23,6 +23,10 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
+
+	VRGripInterfaceSettings.bIsHeld = false;
+	VRGripInterfaceSettings.HoldingController = nullptr;
+
 	this->SetMobility(EComponentMobility::Movable);
 
 	// Default replication on for multiplayer
@@ -116,6 +120,22 @@ void AGrippableStaticMeshActor::ClosestPrimarySlotInRange_Implementation(FVector
 bool AGrippableStaticMeshActor::IsInteractible_Implementation()
 {
 	return VRGripInterfaceSettings.bIsInteractible;
+}
+
+void AGrippableStaticMeshActor::IsHeld_Implementation(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld)
+{
+	HoldingController = VRGripInterfaceSettings.HoldingController;
+	bIsHeld = VRGripInterfaceSettings.bIsHeld;
+}
+
+void AGrippableStaticMeshActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
+{
+	if (bIsHeld)
+		VRGripInterfaceSettings.HoldingController = HoldingController;
+	else
+		VRGripInterfaceSettings.HoldingController = nullptr;
+
+	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }
 
 FBPInteractionSettings AGrippableStaticMeshActor::GetInteractionSettings_Implementation()
