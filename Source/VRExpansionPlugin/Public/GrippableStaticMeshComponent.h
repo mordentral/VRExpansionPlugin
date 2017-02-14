@@ -82,7 +82,7 @@ class VREXPANSIONPLUGIN_API UGrippableStaticMeshComponent : public UStaticMeshCo
 
 	// Returns if the object is held and if so, which pawn is holding it
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void IsHeld(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld);
+		void IsHeld(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld);
 
 	// Sets is held, used by the plugin
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

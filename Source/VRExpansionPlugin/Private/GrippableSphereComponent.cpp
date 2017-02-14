@@ -114,7 +114,7 @@ bool UGrippableSphereComponent::IsInteractible_Implementation()
 	return VRGripInterfaceSettings.bIsInteractible;
 }
 
-void UGrippableSphereComponent::IsHeld_Implementation(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld)
+void UGrippableSphereComponent::IsHeld_Implementation(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld)
 {
 	HoldingController = VRGripInterfaceSettings.HoldingController;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;

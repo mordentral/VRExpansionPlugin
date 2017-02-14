@@ -117,7 +117,7 @@ bool UGrippableSkeletalMeshComponent::IsInteractible_Implementation()
 	return VRGripInterfaceSettings.bIsInteractible;
 }
 
-void UGrippableSkeletalMeshComponent::IsHeld_Implementation(const UGripMotionControllerComponent * HoldingController, bool & bIsHeld)
+void UGrippableSkeletalMeshComponent::IsHeld_Implementation(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld)
 {
 	HoldingController = VRGripInterfaceSettings.HoldingController;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
