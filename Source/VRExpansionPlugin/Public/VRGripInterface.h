@@ -119,10 +119,26 @@ public:
 	// Call to stop using an object
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRGripInterface")
 		void OnEndUsed();
+
+	// Call to use an object
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnSecondaryUsed();
+
+	// Call to stop using an object
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnEndSecondaryUsed();
 		
 	// Check if the object is an interactable
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool IsInteractible();
+
+	// Returns if the object is held and if so, which pawn is holding it
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void IsHeld(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld);
+
+	// Sets is held, used by the plugin
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void SetHeld(UGripMotionControllerComponent * HoldingController, bool bIsHeld);
 
 	// Get interactable settings
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

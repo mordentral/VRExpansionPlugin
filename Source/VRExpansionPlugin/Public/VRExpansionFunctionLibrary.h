@@ -15,7 +15,8 @@
 
 //This is a stupid way of gaining access to this header...see build.cs
 #include "SteamVRHMD.h"
-#include "SteamVRPrivatePCH.h" // Need a define in here....this is so ugly
+//#include "SteamVRPrivatePCH.h" // Need a define in here....this is so ugly
+#include "SteamVRPrivate.h" // Now in here since 4.15
 #include "SteamVRFunctionLibrary.h"
 
 #endif // STEAMVR_SUPPORTED_PLATFORM
@@ -24,7 +25,7 @@
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 // Or procedural mesh component throws an error....
-#include "PhysicsEngine/ConvexElem.h" // Fixed in 4.13.1?
+//#include "PhysicsEngine/ConvexElem.h" // Fixed in 4.13.1?
 
 #include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"
@@ -35,18 +36,15 @@ DECLARE_LOG_CATEGORY_EXTERN(VRExpansionFunctionLibraryLog, Log, All);
 
 // This will make using the load model as async easier to understand
 UENUM()
-namespace EAsyncBlueprintResultSwitch
+enum class EAsyncBlueprintResultSwitch : uint8
 {
-	enum Type
-	{
-		// On Success
-		OnSuccess,
-		// On still loading async
-		AsyncLoading,
-		// On Failure
-		OnFailure
-	};
-}
+	// On Success 
+	OnSuccess,
+	// On still loading async
+	AsyncLoading,
+	// On Failure
+	OnFailure
+};
 
 UENUM(BlueprintType)
 enum class EBPWorldType : uint8
@@ -75,7 +73,7 @@ enum class EVRDeviceProperty_String : uint8
 };
 
 UENUM(BlueprintType)
-enum EVRDeviceProperty_Bool
+enum class EVRDeviceProperty_Bool : uint8
 {	
 	Prop_WillDriftInYaw_Bool = 4,	
 	Prop_DeviceIsWireless_Bool = 10,
@@ -89,13 +87,13 @@ enum EVRDeviceProperty_Bool
 };
 
 UENUM(BlueprintType)
-enum EVRDeviceProperty_Float
+enum class EVRDeviceProperty_Float : uint8
 {
 	Prop_DeviceBatteryPercentage_Float = 12 // 0 is empty, 1 is full
 };
 
 UENUM(BlueprintType)
-enum EVRControllerProperty_String
+enum class EVRControllerProperty_String : uint8
 {
 	Prop_AttachedDeviceId_String = 0
 };
@@ -253,7 +251,7 @@ public:
 
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result"))
-	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, TEnumAsByte<EAsyncBlueprintResultSwitch::Type> &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
+	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
 	
 	// Gets a String device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString"))
@@ -261,14 +259,18 @@ public:
 
 	// Gets a Bool device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyBool"))
-	bool GetVRDevicePropertyBool(TEnumAsByte<EVRDeviceProperty_Bool> PropertyToRetrieve, int32 DeviceID, bool & BoolValue);
+	bool GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue);
 
 	// Gets a Float device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyFloat"))
-	bool GetVRDevicePropertyFloat(TEnumAsByte<EVRDeviceProperty_Float> PropertyToRetrieve, int32 DeviceID, float & FloatValue);
+	bool GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue);
 
 	// Gets a String controller property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRControllerPropertyString"))
-	bool GetVRControllerPropertyString(TEnumAsByte<EVRControllerProperty_String> PropertyToRetrieve, int32 DeviceID, FString & StringValue);
+	bool GetVRControllerPropertyString(EVRControllerProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
 
+
+	/* Returns true if the values are equal (A == B) */
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal VR Grip", CompactNodeTitle = "==", Keywords = "== equal"), Category = "VRExpansionFunctions")
+	static bool EqualEqual_FBPActorGripInformation(const FBPActorGripInformation &A, const FBPActorGripInformation &B);
 };	

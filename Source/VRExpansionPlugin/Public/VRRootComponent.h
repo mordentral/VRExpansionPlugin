@@ -9,6 +9,8 @@
 //For UE4 Profiler ~ Stat Group
 //DECLARE_STATS_GROUP(TEXT("VRPhysicsUpdate"), STATGROUP_VRPhysics, STATCAT_Advanced);
 
+class AVRBaseCharacter;
+
 // EXPERIMENTAL, don't use
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
 class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent//UShapeComponent
@@ -19,44 +21,6 @@ public:
 	friend class FDrawCylinderSceneProxy;
 
 	FORCEINLINE void GenerateOffsetToWorld(bool bUpdateBounds = true);
-
-	/*FVector GetVROffsetFromLocationAndRotation(FVector Location, const FQuat &Rotation)
-	{
-		FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
-		FTransform testComponentToWorld = FTransform(Rotation, Location, RelativeScale3D);
-
-		return testComponentToWorld.TransformPosition(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset));
-	}*/
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FVector GetVRForwardVector()
-	{
-		return OffsetComponentToWorld.GetRotation().GetForwardVector();
-	}
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FVector GetVRRightVector()
-	{
-		return OffsetComponentToWorld.GetRotation().GetRightVector();
-	}
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FVector GetVRUpVector()
-	{
-		return OffsetComponentToWorld.GetRotation().GetUpVector();
-	}
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FVector GetVRLocation()
-	{
-		return OffsetComponentToWorld.GetLocation();
-	}
-
-	UFUNCTION(BlueprintPure, Category = "VRCharacter|VRLocations")
-	FRotator GetVRRotation()
-	{
-		return OffsetComponentToWorld.GetRotation().Rotator();
-	}
 
 protected:
 
@@ -84,10 +48,13 @@ public:
 	USceneComponent * TargetPrimitiveComponent;
 
 	//UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
+	AVRBaseCharacter * owningVRChar;
+
+	//UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	//UCapsuleComponent * VRCameraCollider;
 
 	FVector DifferenceFromLastFrame;
-	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
+	//UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
 
 	// Used to offset the collision (IE backwards from the player slightly.

@@ -54,7 +54,9 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	//bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
 	ControllerNetUpdateCount = 0.0f;
-
+	bReplicateWithoutTracking = false;
+	bLerpingPosition = false;
+	bSmoothReplicatedMotion = false;
 }
 
 //=============================================================================
@@ -374,7 +376,7 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 	LinearVelocity = primComp->GetPhysicsLinearVelocity();
 }
 
-void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result)
+void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, EBPVRResultSwitch &Result)
 {
 	if (!ActorToLookForGrip)
 	{
@@ -405,7 +407,7 @@ void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Gri
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, TEnumAsByte<EBPVRResultSwitch::Type> &Result)
+void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, EBPVRResultSwitch &Result)
 {
 	if (!ComponentToLookForGrip)
 	{
@@ -436,7 +438,7 @@ void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation 
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripCollisionType> NewGripCollisionType)
+void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripCollisionType NewGripCollisionType)
 {
 	int fIndex = GrippedActors.Find(Grip);
 
@@ -463,7 +465,7 @@ void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInfo
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, TEnumAsByte<EBPVRResultSwitch::Type> &Result, TEnumAsByte<EGripLateUpdateSettings> NewGripLateUpdateSetting)
+void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripLateUpdateSettings NewGripLateUpdateSetting)
 {
 	int fIndex = GrippedActors.Find(Grip);
 
@@ -490,7 +492,7 @@ void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGrip
 
 void UGripMotionControllerComponent::SetGripRelativeTransform(
 	const FBPActorGripInformation &Grip,
-	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+	EBPVRResultSwitch &Result,
 	const FTransform & NewRelativeTransform
 	)
 {
@@ -519,7 +521,7 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 
 void UGripMotionControllerComponent::SetGripAdditionTransform(
 	const FBPActorGripInformation &Grip,
-	TEnumAsByte<EBPVRResultSwitch::Type> &Result,
+	EBPVRResultSwitch &Result,
 	const FTransform & NewAdditionTransform, bool bMakeGripRelative
 	)
 {
@@ -586,9 +588,9 @@ bool UGripMotionControllerComponent::GripObject(
 	const FTransform &WorldOffset,
 	bool bWorldOffsetIsRelative,
 	FName OptionalSnapToSocketName,
-	TEnumAsByte<EGripCollisionType> GripCollisionType,
-	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
-	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	EGripCollisionType GripCollisionType,
+	EGripLateUpdateSettings GripLateUpdateSetting,
+	EGripMovementReplicationSettings GripMovementReplicationSetting,
 	float GripStiffness,
 	float GripDamping)
 {
@@ -772,9 +774,9 @@ bool UGripMotionControllerComponent::GripActor(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
-	TEnumAsByte<EGripCollisionType> GripCollisionType, 
-	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
-	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	EGripCollisionType GripCollisionType, 
+	EGripLateUpdateSettings GripLateUpdateSetting,
+	EGripMovementReplicationSettings GripMovementReplicationSetting,
 	float GripStiffness, 
 	float GripDamping
 	)
@@ -957,9 +959,9 @@ bool UGripMotionControllerComponent::GripComponent(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
-	TEnumAsByte<EGripCollisionType> GripCollisionType,
-	TEnumAsByte<EGripLateUpdateSettings> GripLateUpdateSetting,
-	TEnumAsByte<EGripMovementReplicationSettings> GripMovementReplicationSetting,
+	EGripCollisionType GripCollisionType,
+	EGripLateUpdateSettings GripLateUpdateSetting,
+	EGripMovementReplicationSettings GripMovementReplicationSetting,
 	float GripStiffness, 
 	float GripDamping
 	)
@@ -1175,16 +1177,18 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 		return false;
 	}
 	
-	if(bWasLocalGrip)
-		NotifyDrop_Implementation(LocallyGrippedActors[FoundIndex], bSimulate);
-	else
-		NotifyDrop(GrippedActors[FoundIndex], bSimulate);
 
+	// Had to move in front of deletion to properly set velocity
 	if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement && (OptionalLinearVelocity != FVector::ZeroVector || OptionalAngularVelocity != FVector::ZeroVector))
 	{
 		PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
 		PrimComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
 	}
+
+	if(bWasLocalGrip)
+		NotifyDrop_Implementation(LocallyGrippedActors[FoundIndex], bSimulate);
+	else
+		NotifyDrop(GrippedActors[FoundIndex], bSimulate);
 
 	//GrippedActors.RemoveAt(FoundIndex);		
 	return true;
@@ -1214,6 +1218,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
+				IVRGripInterface::Execute_SetHeld(pActor, this, true);
 			}
 
 			if (root)
@@ -1253,6 +1258,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 			if (primComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				IVRGripInterface::Execute_OnGrip(primComp, this, NewGrip);
+				IVRGripInterface::Execute_SetHeld(primComp, this, true);
 			}
 
 			// Have to turn off gravity locally
@@ -1319,7 +1325,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 
 	bool bHasMovementAuthority = HasGripMovementAuthority(NewGrip);
 
-	switch (NewGrip.GripCollisionType.GetValue())
+	switch (NewGrip.GripCollisionType)
 	{
 	case EGripCollisionType::InteractiveCollisionWithPhysics:
 	case EGripCollisionType::ManipulationGrip:
@@ -1418,6 +1424,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryAttachment, NewDrop);
 
 				IVRGripInterface::Execute_OnGripRelease(pActor, this, NewDrop);
+				IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
 			}
 		}
 	}break;
@@ -1466,6 +1473,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 					IVRGripInterface::Execute_OnSecondaryGripRelease(primComp, NewDrop.SecondaryAttachment, NewDrop);
 
 				IVRGripInterface::Execute_OnGripRelease(primComp, this, NewDrop);
+				IVRGripInterface::Execute_SetHeld(primComp, nullptr, false);
 			}
 		}
 	}break;
@@ -1912,7 +1920,6 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-
 	if (!bIsActive)
 		return;
 
@@ -1953,10 +1960,18 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			return; // Don't update anything including location
 
 		// Don't bother with any of this if not replicating transform
-		if (bReplicates && bTracked)
+		if (bReplicates && (bTracked || bReplicateWithoutTracking))
 		{
-			ReplicatedControllerTransform.Position = Position;
-			ReplicatedControllerTransform.SetRotation(Orientation);//.Orientation = Orientation;
+			if (bTracked)
+			{
+				ReplicatedControllerTransform.Position = Position;
+				ReplicatedControllerTransform.SetRotation(Orientation);//.Orientation = Orientation;
+			}
+			else
+			{
+				ReplicatedControllerTransform.Position = this->RelativeLocation;
+				ReplicatedControllerTransform.SetRotation(this->RelativeRotation);
+			}
 
 			if (GetNetMode() == NM_Client)//bReplicateControllerTransform)
 			{
@@ -1969,13 +1984,39 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			}
 		}
 	}
+	else
+	{
+		if (bLerpingPosition)
+		{
+			ControllerNetUpdateCount += DeltaTime;
+			float LerpVal = FMath::Clamp(ControllerNetUpdateCount / (1.0f / ControllerNetUpdateRate), 0.0f, 1.0f);
+
+			if (LerpVal >= 1.0f)
+			{
+				SetRelativeLocationAndRotation(ReplicatedControllerTransform.UnpackedLocation, ReplicatedControllerTransform.UnpackedRotation);
+
+				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
+				// Actual prediction might be something to consider in the future, but rough to do in VR
+				// considering the speed and accuracy of movements
+				// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
+				// and might be perf taxing enough to not make it worth it.
+				bLerpingPosition = false;
+				ControllerNetUpdateCount = 0.0f;
+			}
+			else
+			{
+				// Removed variables to speed this up a bit
+				SetRelativeLocationAndRotation(
+					FMath::Lerp(LastUpdatesRelativePosition, ReplicatedControllerTransform.UnpackedLocation, LerpVal), 
+					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedControllerTransform.UnpackedRotation, LerpVal)
+				);
+			}
+		}
+	}
 
 	// Process the gripped actors
 	TickGrip(DeltaTime);
 
-
-	// Set the last controller world location for next frame
-	LastControllerLocation = this->GetComponentLocation();
 }
 
 void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
@@ -2098,10 +2139,11 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	// Debug test that we aren't floating physics handles
 	check(PhysicsGrips.Num() <= (GrippedActors.Num() + LocallyGrippedActors.Num()));
 
-
-
 	FTransform ParentTransform = this->GetComponentTransform();
-	FVector MotionControllerLocDelta = ParentTransform.GetLocation() - LastControllerLocation;
+	FVector MotionControllerLocDelta = this->GetComponentLocation() - LastControllerLocation;
+
+	// Set the last controller world location for next frame
+	LastControllerLocation = this->GetComponentLocation();
 
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
 	HandleGripArray(GrippedActors, ParentTransform, MotionControllerLocDelta, DeltaTime, true);
@@ -3017,7 +3059,7 @@ bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRot
 		{
 			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position))
 			{
-				CurrentTrackingStatus = (EBPTrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
+				CurrentTrackingStatus = (ETrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
 				
 				if (bOffsetByHMD)
 				{
@@ -3099,6 +3141,9 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 
 void UGripMotionControllerComponent::FViewExtension::GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives)
 {
+	if (!Component || Component->IsPendingKill())
+		return;
+
 	// If a scene proxy is present, cache it
 	UPrimitiveComponent* PrimitiveComponent = dynamic_cast<UPrimitiveComponent*>(Component);
 	if (PrimitiveComponent && PrimitiveComponent->SceneProxy)
