@@ -57,6 +57,18 @@ enum class EBPWorldType : uint8
 	wInactive	// An editor world that was loaded but not currently being edited in the level editor
 };
 
+/**
+* Redefining this for blueprint as it wasn't declared as BlueprintType
+* Stores if the user is wearing the HMD or not. For HMDs without a sensor to detect the user wearing it, the state defaults to Unknown.
+*/
+UENUM(BlueprintType)
+enum class EBPHMDWornState : uint8
+{
+	Unknown UMETA(DisplayName = "Unknown"),
+	Worn UMETA(DisplayName = "Worn"),
+	NotWorn UMETA(DisplayName = "Not Worn"),
+};
+
 UENUM(BlueprintType)
 enum class EVRDeviceProperty_String : uint8
 {
@@ -228,6 +240,10 @@ public:
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))
 	static bool GetIsHMDConnected();
+
+	// Gets whether an HMD device is connected
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDWorn"))
+	static EBPHMDWornState GetIsHMDWorn();
 
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDType"))

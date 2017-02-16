@@ -224,6 +224,16 @@ void UVRExpansionFunctionLibrary::UnloadOpenVRModule()
 #endif
 }
 
+EBPHMDWornState UVRExpansionFunctionLibrary::GetIsHMDWorn()
+{
+	if (GEngine && GEngine->HMDDevice.IsValid())
+	{
+		return ((EBPHMDWornState)GEngine->HMDDevice->GetHMDWornState());
+	}
+
+	return EBPHMDWornState::Unknown;
+}
+
 bool UVRExpansionFunctionLibrary::GetIsHMDConnected()
 {
 	if (GEngine && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHMDConnected())
