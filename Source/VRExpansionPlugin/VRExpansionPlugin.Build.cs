@@ -57,7 +57,8 @@ public class VRExpansionPlugin : ModuleRules
                 "ShaderCore",
                 "NetworkReplayStreaming",
                 "AIModule",
-                "ProceduralMeshComponent"
+                "ProceduralMeshComponent",
+                "EngineSettings"
             });
 
         PrivateDependencyModuleNames.AddRange(
