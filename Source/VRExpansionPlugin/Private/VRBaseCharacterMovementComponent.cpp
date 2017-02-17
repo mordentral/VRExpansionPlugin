@@ -19,6 +19,23 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	VRClimbingStepUpMultiplier = 2.0f;
 	VRClimbingSetFallOnStepUp = true;
 	VRClimbingMaxReleaseVelocitySize = 800.0f;
+
+	VRWallSlideScaler = 1.0f;
+}
+
+
+float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta, float Time, const FVector& InNormal, FHitResult& Hit, bool bHandleImpact)
+{
+	/*if ((Delta | InNormal) <= -0.2)
+	{
+
+	}*/
+
+	if (IsMovingOnGround() || (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing))
+		return Super::SlideAlongSurface(Delta, Time * VRWallSlideScaler, InNormal, Hit, bHandleImpact);
+	else
+		return Super::SlideAlongSurface(Delta, Time, InNormal, Hit, bHandleImpact);
+
 }
 
 void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)

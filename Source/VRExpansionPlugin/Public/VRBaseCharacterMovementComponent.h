@@ -48,6 +48,13 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
+	// Setting this higher will divide the wall slide effect by this value, to reduce collision sliding.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement",meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))
+		float VRWallSlideScaler;
+
+	/** Custom version of SlideAlongSurface that handles different movement modes separately; namely during walking physics we might not want to slide up slopes. */
+	virtual float SlideAlongSurface(const FVector& Delta, float Time, const FVector& Normal, FHitResult& Hit, bool bHandleImpact) override;
+
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
 	void AddCustomReplicatedMovement(FVector Movement);
 

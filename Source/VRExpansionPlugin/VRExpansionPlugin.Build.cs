@@ -58,7 +58,7 @@ public class VRExpansionPlugin : ModuleRules
                 "NetworkReplayStreaming",
                 "AIModule",
                 "ProceduralMeshComponent",
-                "EngineSettings"
+               // "EngineSettings"
             });
 
         PrivateDependencyModuleNames.AddRange(
