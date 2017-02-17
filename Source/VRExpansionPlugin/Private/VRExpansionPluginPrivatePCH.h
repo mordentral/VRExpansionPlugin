@@ -13,7 +13,6 @@
 #include "VRPathFollowingComponent.h"
 #include "VRPlayerController.h"
 #include "VRGripInterface.h"
-#include "VRSpectatorClientViewport.h"
 #include "Runtime/Launch/Resources/Version.h"
 
 // You should place include statements to your module's private header files here.  You only need to
