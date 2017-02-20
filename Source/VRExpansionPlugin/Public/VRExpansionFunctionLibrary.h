@@ -171,13 +171,15 @@ public:
 	//pVRShutdown VRShutdownFn;
 	//pVRIsHmdPresent VRIsHmdPresentFn;
 	//pVRGetStringForHmdError VRGetStringForHmdErrorFn;
+
+
 #if STEAMVR_SUPPORTED_PLATFORM
 	pVRGetGenericInterface VRGetGenericInterfaceFn;
+	//vr::IVRChaperone* VRChaperone;
 #endif
 
 	bool LoadOpenVRModule();
 	void UnloadOpenVRModule();
-
 
 	bool IsLocallyControlled() const
 	{
@@ -198,7 +200,7 @@ public:
 		return Owner->IsLocallyControlled();
 	}
 
-	// Opends the handles for the library
+	// Opens the handles for the library
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
 	bool OpenVRHandles();
 
@@ -252,6 +254,20 @@ public:
 	// Gets whether the game is running in VRPreview or is a non editor build game (returns true for either).
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "IsInVREditorPreviewOrGame"))
 	static bool IsInVREditorPreviewOrGame();
+
+	/**
+	* Finds the minimum area rectangle that encloses all of the points in InVerts
+	* Engine default version is server only for some reason
+	* Uses algorithm found in http://www.geometrictools.com/Documentation/MinimumAreaRectangle.pdf
+	*
+	* @param		InVerts	- Points to enclose in the rectangle
+	* @outparam	OutRectCenter - Center of the enclosing rectangle
+	* @outparam	OutRectSideA - Vector oriented and sized to represent one edge of the enclosing rectangle, orthogonal to OutRectSideB
+	* @outparam	OutRectSideB - Vector oriented and sized to represent one edge of the enclosing rectangle, orthogonal to OutRectSideA
+	*/
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+	static void NonAuthorityMinimumAreaRectangle(UObject* WorldContextObject, const TArray<FVector>& InVerts, const FVector& SampleSurfaceNormal, FVector& OutRectCenter, FRotator& OutRectRotation, float& OutSideLengthX, float& OutSideLengthY, bool bDebugDraw = false);
+
 
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsActorMovable"))

@@ -26,15 +26,54 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 
 float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta, float Time, const FVector& InNormal, FHitResult& Hit, bool bHandleImpact)
 {
+	// Am running the CharacterMovementComponents calculations manually here now prior to scaling down the delta
+
+	if (!Hit.bBlockingHit)
+	{
+		return 0.f;
+	}
+
+	FVector Normal(InNormal);
+	if (IsMovingOnGround())
+	{
+		// We don't want to be pushed up an unwalkable surface.
+		if (Normal.Z > 0.f)
+		{
+			if (!IsWalkable(Hit))
+			{
+				Normal = Normal.GetSafeNormal2D();
+			}
+		}
+		else if (Normal.Z < -KINDA_SMALL_NUMBER)
+		{
+			// Don't push down into the floor when the impact is on the upper portion of the capsule.
+			if (CurrentFloor.FloorDist < MIN_FLOOR_DIST && CurrentFloor.bBlockingHit)
+			{
+				const FVector FloorNormal = CurrentFloor.HitResult.Normal;
+				const bool bFloorOpposedToMovement = (Delta | FloorNormal) < 0.f && (FloorNormal.Z < 1.f - DELTA);
+				if (bFloorOpposedToMovement)
+				{
+					Normal = FloorNormal;
+				}
+
+				Normal = Normal.GetSafeNormal2D();
+			}
+		}
+	}
+
+
 	/*if ((Delta | InNormal) <= -0.2)
 	{
 
 	}*/
 
+	// If the movement mode is one where sliding is an issue in VR, scale the delta by the custom scaler now
+	// that we have already validated the floor normal.
+	// Otherwise just pass in as normal, either way skip the parents implementation as we are doing it now.
 	if (IsMovingOnGround() || (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing))
-		return Super::SlideAlongSurface(Delta, Time * VRWallSlideScaler, InNormal, Hit, bHandleImpact);
+		return Super::Super::SlideAlongSurface(Delta * VRWallSlideScaler, Time, Normal, Hit, bHandleImpact);
 	else
-		return Super::SlideAlongSurface(Delta, Time, InNormal, Hit, bHandleImpact);
+		return Super::Super::SlideAlongSurface(Delta, Time, Normal, Hit, bHandleImpact);
 
 }
 
