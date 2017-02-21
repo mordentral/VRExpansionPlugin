@@ -250,7 +250,71 @@ public:
 		MaxAngularTranslation = FRotator::ZeroRotator;
 	}
 
+	/** Network serialization */
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		// pack bitfield with flags
+		uint8 Flags;
+		if (Ar.IsSaving())
+		{
+			Flags =
+				(bLimitsInLocalSpace << 0) |
+				(bLimitX << 1) |
+				(bLimitY << 2) |
+				(bLimitZ << 3) |
+				(bLimitPitch << 4) |
+				(bLimitYaw << 5) |
+				(bLimitRoll << 6) |
+				(bIgnoreHandRotation << 7);
+		}
+
+		Ar.SerializeBits(&Flags, 8);
+
+		if (Ar.IsLoading())
+		{
+			// We should technically be safe just bit shifting
+			// to the right as these are :1 bitfield values.
+			// however to be totally sure I am enforcing only first
+			// bit being set with the &0x01
+			// I didn't like epics ternary version as it should technically have more overhead
+			// But what do I know
+			bLimitsInLocalSpace = (Flags >> 0) & 0x01;
+			bLimitX = (Flags >> 1) & 0x01;
+			bLimitY = (Flags >> 2) & 0x01;
+			bLimitZ = (Flags >> 3) & 0x01;
+			bLimitPitch = (Flags >> 4) & 0x01;
+			bLimitYaw = (Flags >> 5) & 0x01;
+			bLimitRoll = (Flags >> 6) & 0x01;	
+			bIgnoreHandRotation = (Flags >> 7) & 0x01;
+		}
+
+		// Shouldn't need full precision for these, but letting them rep as it anyway to not cause issues if someone ever wants it
+		//bOutSuccess &= SerializeQuantizedVector(Ar, InitialLinearTranslation, EVectorQuantization::RoundTwoDecimals);
+		//bOutSuccess &= SerializeQuantizedVector(Ar, MinLinearTranslation, EVectorQuantization::RoundTwoDecimals);
+		//bOutSuccess &= SerializeQuantizedVector(Ar, MaxLinearTranslation, EVectorQuantization::RoundTwoDecimals);
+
+		Ar << InitialLinearTranslation;
+		Ar << MinLinearTranslation;
+		Ar << MaxLinearTranslation;
+		Ar << InitialAngularTranslation;
+		Ar << MinAngularTranslation;
+		Ar << MaxAngularTranslation;
+
+		bOutSuccess = true;
+		return true;
+	}
+
 };
+
+template<>
+struct TStructOpsTypeTraits< FBPInteractionSettings > : public TStructOpsTypeTraitsBase
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorGripInformation
@@ -262,11 +326,6 @@ public:
 		EGripTargetType GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
 		UObject * GrippedObject;
-	/*UPROPERTY(BlueprintReadOnly)
-		AActor * Actor;
-	UPROPERTY(BlueprintReadOnly)
-		UPrimitiveComponent * Component;
-		*/
 	UPROPERTY(BlueprintReadOnly)
 		EGripCollisionType GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
@@ -317,8 +376,6 @@ public:
 	{
 		Ar << GripTargetType;
 		Ar << GrippedObject;
-		//Ar << Actor;
-		//Ar << Component;
 		Ar << GripCollisionType;
 		Ar << GripLateUpdateSetting;
 
@@ -369,16 +426,9 @@ public:
 			}
 		}
 
-		// Don't bother replicated physics grip types if the grip type doesn't support it.
-		/*if (GripCollisionType == EGripCollisionType::InteractiveCollisionWithPhysics || 
-			GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep || 
-			GripCollisionType == EGripCollisionType::ManipulationGrip ||
-			GripCollisionType == EGripCollisionType::CustomGrip)
-		{*/
 		// Now always replicating these two, in case people want to pass in custom values using it
 		Ar << Damping;
 		Ar << Stiffness;
-		/*}*/
 
 		bOutSuccess = true;
 		return true;
@@ -435,8 +485,6 @@ public:
 		Damping = 200.0f;
 		Stiffness = 1500.0f;
 		GrippedObject = nullptr;
-		//Component = nullptr;
-		//Actor = nullptr;
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 		GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
@@ -554,10 +602,6 @@ struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
 public:
 	UPROPERTY(BlueprintReadOnly)
 		UObject * HandledObject;
-	//UPROPERTY(BlueprintReadOnly)
-	//	AActor * Actor;
-	//UPROPERTY(BlueprintReadOnly)
-	//	UPrimitiveComponent * Component;
 
 	/** Physics scene index of the body we are grabbing. */
 	int32 SceneIndex;

@@ -33,6 +33,11 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 	this->bReplicates = true;
 }
 
+/*void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+	DOREPLIFETIME(AGrippableSkeletalMeshActor, VRGripInterfaceSettings);
+}*/
+
 //=============================================================================
 AGrippableSkeletalMeshActor::~AGrippableSkeletalMeshActor()
 {

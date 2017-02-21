@@ -49,10 +49,6 @@ class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshAc
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool CanHaveDoubleGrip();
 
-	// Define which grip target to use for gripping
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		//EGripTargetType GripTargetType();
-
 	// Define which movement repliation setting to use
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripMovementReplicationSettings GripMovementReplicationType();
