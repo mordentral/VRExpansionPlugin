@@ -2448,7 +2448,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 								root->SetSimulatePhysics(true);
 
 								SetUpPhysicsHandle(*Grip);
-							//	UpdatePhysicsHandleTransform(*Grip, OrigTransform);
+								UpdatePhysicsHandleTransform(*Grip, WorldTransform);
 							}
 							else
 							{
