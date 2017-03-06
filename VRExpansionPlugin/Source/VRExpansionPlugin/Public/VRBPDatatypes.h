@@ -21,26 +21,6 @@ enum class EVRCustomMovementMode : uint8
 	VRMOVE_Climbing UMETA(DisplayName = "Climbing")
 };
 
-
-// Redefined here so that non windows packages can compile
-/** Defines the class of tracked devices in SteamVR*/
-UENUM(BlueprintType)
-enum class EBPSteamVRTrackedDeviceType : uint8
-{
-	/** Represents a Steam VR Controller */
-	Controller,
-
-	/** Represents a static tracking reference device, such as a Lighthouse or tracking camera */
-	TrackingReference,
-
-	/** Misc. device types, for future expansion */
-	Other,
-
-	/** DeviceId is invalid */
-	Invalid
-};
-
-
 // This makes a lot of the blueprint functions cleaner
 UENUM()
 enum class EBPVRResultSwitch : uint8

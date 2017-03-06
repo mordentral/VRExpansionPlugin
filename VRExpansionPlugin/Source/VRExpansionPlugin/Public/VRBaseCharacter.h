@@ -2,6 +2,7 @@
 
 #pragma once
 #include "VRBPDatatypes.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "VRBaseCharacter.generated.h"
 
 

@@ -29,10 +29,10 @@
 
 #include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"
-#include "VRExpansionFunctionLibrary.generated.h"
+#include "OpenVRExpansionFunctionLibrary.generated.h"
 
 //General Advanced Sessions Log
-DECLARE_LOG_CATEGORY_EXTERN(VRExpansionFunctionLibraryLog, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(OpenVRExpansionFunctionLibraryLog, Log, All);
 
 // This will make using the load model as async easier to understand
 UENUM()
@@ -46,27 +46,22 @@ enum class EAsyncBlueprintResultSwitch : uint8
 	OnFailure
 };
 
+// Redefined here so that non windows packages can compile
+/** Defines the class of tracked devices in SteamVR*/
 UENUM(BlueprintType)
-enum class EBPWorldType : uint8
+enum class EBPSteamVRTrackedDeviceType : uint8
 {
-	wNone,		// An untyped world, in most cases this will be the vestigial worlds of streamed in sub-levels
-	wGame,		// The game world
-	wEditor,	// A world being edited in the editor
-	wPIE,		// A Play In Editor world
-	wPreview,	// A preview world for an editor tool
-	wInactive	// An editor world that was loaded but not currently being edited in the level editor
-};
+	/** Represents a Steam VR Controller */
+	Controller,
 
-/**
-* Redefining this for blueprint as it wasn't declared as BlueprintType
-* Stores if the user is wearing the HMD or not. For HMDs without a sensor to detect the user wearing it, the state defaults to Unknown.
-*/
-UENUM(BlueprintType)
-enum class EBPHMDWornState : uint8
-{
-	Unknown UMETA(DisplayName = "Unknown"),
-	Worn UMETA(DisplayName = "Worn"),
-	NotWorn UMETA(DisplayName = "Not Worn"),
+	/** Represents a static tracking reference device, such as a Lighthouse or tracking camera */
+	TrackingReference,
+
+	/** Misc. device types, for future expansion */
+	Other,
+
+	/** DeviceId is invalid */
+	Invalid
 };
 
 UENUM(BlueprintType)
@@ -157,11 +152,11 @@ Prop_TrackingRangeMaximumMeters_Float		= 4005,
 // Had to turn this in to a UObject, I felt the easiest way to use it was as an actor component to the player controller
 // It can be returned to just a blueprint library if epic ever upgrade steam to 1.33 or above
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
-class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UActorComponent//UBlueprintFunctionLibrary
+class OPENVREXPANSIONPLUGIN_API UOpenVRExpansionFunctionLibrary : public UActorComponent//UBlueprintFunctionLibrary
 {
 	//GENERATED_BODY()
 	GENERATED_UCLASS_BODY()
-	~UVRExpansionFunctionLibrary();
+	~UOpenVRExpansionFunctionLibrary();
 public:
 
 	void* OpenVRDLLHandle;
@@ -211,76 +206,6 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	bool bInitialized;
 
-	// Gets the unwound yaw of the HMD
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDPureYaw"))
-	static FRotator GetHMDPureYaw(FRotator HMDRotation);
-
-	FORCEINLINE static FRotator GetHMDPureYaw_I(FRotator HMDRotation)
-	{
-		// Took this from UnityVRToolkit, no shame, I liked it
-		FRotationMatrix HeadMat(HMDRotation);
-		FVector forward = HeadMat.GetScaledAxis(EAxis::X);
-		FVector forwardLeveled = forward;
-		forwardLeveled.Z = 0;
-		forwardLeveled.Normalize();
-		FVector mixedInLocalForward = HeadMat.GetScaledAxis(EAxis::Z);
-
-		if (forward.Z > 0)
-		{
-			mixedInLocalForward = -mixedInLocalForward;
-		}
-
-		mixedInLocalForward.Z = 0;
-		mixedInLocalForward.Normalize();
-		float dot = FMath::Clamp(FVector::DotProduct(forwardLeveled, forward), 0.0f, 1.0f);
-		FVector finalForward = FMath::Lerp(mixedInLocalForward, forwardLeveled, dot * dot);
-
-		return FRotationMatrix::MakeFromXZ(finalForward, FVector::UpVector).Rotator();
-	}
-
-
-	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))
-	static bool GetIsHMDConnected();
-
-	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDWorn"))
-	static EBPHMDWornState GetIsHMDWorn();
-
-	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDType"))
-	static EBPHMDDeviceType GetHMDType();
-
-	// Gets whether the game is running in VRPreview or is a non editor build game (returns true for either).
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "IsInVREditorPreviewOrGame"))
-	static bool IsInVREditorPreviewOrGame();
-
-	/**
-	* Finds the minimum area rectangle that encloses all of the points in InVerts
-	* Engine default version is server only for some reason
-	* Uses algorithm found in http://www.geometrictools.com/Documentation/MinimumAreaRectangle.pdf
-	*
-	* @param		InVerts	- Points to enclose in the rectangle
-	* @outparam	OutRectCenter - Center of the enclosing rectangle
-	* @outparam	OutRectSideA - Vector oriented and sized to represent one edge of the enclosing rectangle, orthogonal to OutRectSideB
-	* @outparam	OutRectSideB - Vector oriented and sized to represent one edge of the enclosing rectangle, orthogonal to OutRectSideA
-	*/
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-	static void NonAuthorityMinimumAreaRectangle(UObject* WorldContextObject, const TArray<FVector>& InVerts, const FVector& SampleSurfaceNormal, FVector& OutRectCenter, FRotator& OutRectRotation, float& OutSideLengthX, float& OutSideLengthY, bool bDebugDraw = false);
-
-
-	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsActorMovable"))
-	static bool GetIsActorMovable(AActor * ActorToCheck);
-
-	// Gets if an actors root component contains a grip slot within range
-	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bIgnoreSelf = "true", DisplayName = "GetGripSlotInRangeByTypeName"))
-	static void GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
-
-	// Gets if an actors root component contains a grip slot within range
-	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bIgnoreSelf = "true", DisplayName = "GetGripSlotInRangeByTypeName_Component"))
-	static void GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform);
-
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result"))
 	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result/*, TArray<uint8> & OutRawTexture, bool bReturnRawTexture = false*/);
@@ -301,8 +226,4 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRControllerPropertyString"))
 	bool GetVRControllerPropertyString(EVRControllerProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
 
-
-	/* Returns true if the values are equal (A == B) */
-	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal VR Grip", CompactNodeTitle = "==", Keywords = "== equal"), Category = "VRExpansionFunctions")
-	static bool EqualEqual_FBPActorGripInformation(const FBPActorGripInformation &A, const FBPActorGripInformation &B);
 };	
