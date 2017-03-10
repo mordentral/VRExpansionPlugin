@@ -22,10 +22,21 @@ public:
 
 	FORCEINLINE void GenerateOffsetToWorld(bool bUpdateBounds = true);
 
+	/**
+	* This is overidden for the VR Character to re-set physics location
+	* Change the capsule size. This is the unscaled size, before component scale is applied.
+	* @param	InRadius : radius of end-cap hemispheres and center cylinder.
+	* @param	InHalfHeight : half-height, from capsule center to end of top or bottom hemisphere.
+	* @param	bUpdateOverlaps: if true and this shape is registered and collides, updates touching array for owner actor.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Components|Capsule")
+		virtual void SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true);
+
 protected:
 
 	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;
 	virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
+
 	void SendPhysicsTransform(ETeleportType Teleport);
 
 	const TArray<FOverlapInfo>* ConvertRotationOverlapsToCurrentOverlaps(TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& CurrentOverlaps);

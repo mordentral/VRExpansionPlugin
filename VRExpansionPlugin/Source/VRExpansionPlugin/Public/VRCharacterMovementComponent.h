@@ -68,22 +68,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
 	float WallRepulsionMultiplier;
 
-	/*FORCEINLINE bool HasRequestedVelocity()
-	{
-		return bHasRequestedVelocity;
-	}*/
-
-	/*UFUNCTION(BlueprintCallable, Category = "SimpleVRCharacterMovementComponent|VRLocations")
-		void AddCustomReplicatedMovement(FVector Movement);
-
-	FVector CustomVRInputVector;
-	
-	// Whether the custom replicated movement should be swept or not
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
-		bool bSweepCustomReplicatedMovement;
-	
-	virtual void PerformMovement(float DeltaSeconds) override;
+	/**
+	* Checks if new capsule size fits (no encroachment), and call CharacterOwner->OnStartCrouch() if successful.
+	* In general you should set bWantsToCrouch instead to have the crouch persist during movement, or just use the crouch functions on the owning Character.
+	* @param	bClientSimulation	true when called when bIsCrouched is replicated to non owned clients, to update collision cylinder and offset.
 	*/
+	virtual void Crouch(bool bClientSimulation = false) override;
+
+	/**
+	* Checks if default capsule size fits (no encroachment), and trigger OnEndCrouch() on the owner if successful.
+	* @param	bClientSimulation	true when called when bIsCrouched is replicated to non owned clients, to update collision cylinder and offset.
+	*/
+	virtual void UnCrouch(bool bClientSimulation = false) override;
+
+	/** @return true if the character is allowed to crouch in the current state. By default it is allowed when walking or falling, if CanEverCrouch() is true. */
+	//virtual bool CanCrouchInCurrentState() const;
 
 	///////////////////////////
 	// Navigation Functions

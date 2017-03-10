@@ -386,6 +386,28 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
+void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
+{
+	CapsuleHalfHeight = FMath::Max3(0.f, NewHalfHeight, NewRadius);
+	CapsuleRadius = FMath::Max(0.f, NewRadius);
+	UpdateBounds();
+	UpdateBodySetup();
+	MarkRenderStateDirty();
+	GenerateOffsetToWorld();
+
+	// do this if already created
+	// otherwise, it hasn't been really created yet
+	if (bPhysicsStateCreated)
+	{
+		// Update physics engine collision shapes
+		BodyInstance.UpdateBodyScale(ComponentToWorld.GetScale3D(), true);
+
+		if (bUpdateOverlaps && IsCollisionEnabled() && GetOwner())
+		{
+			UpdateOverlaps();
+		}
+	}
+}
 
 void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 {
