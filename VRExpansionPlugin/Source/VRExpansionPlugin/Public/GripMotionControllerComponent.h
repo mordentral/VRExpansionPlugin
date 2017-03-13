@@ -74,6 +74,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bAlwaysSendTickGrip;
 
+
+	// Clean up a grip that is "bad", object is being destroyed or was a bad destructible mesh
+	void CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjects, int GripIndex, bool bReplicatedArray);
+
 	// Recreates a grip in situations where a relevant variable may have been changed
 	FORCEINLINE void ReCreateGrip(FBPActorGripInformation & GripInfo)
 	{

@@ -2198,6 +2198,19 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				if (!root || !actor)
 					continue;
 
+				// #TODO: Should this even be here? Or should I enforce destructible components being sub components and users doing proper cleanup?
+#if WITH_APEX
+				// Checking for a gripped destructible object, and if held and is fractured, auto drop it and continue
+				if (UDestructibleComponent * dest = Cast<UDestructibleComponent>(root))
+				{
+					if (!dest->ApexDestructibleActor->getChunkPhysXActor(0)) // Fractured - lost its scene actor
+					{
+						UE_LOG(LogVRMotionController, Warning, TEXT("Gripped Destructible Component has been fractured, auto dropping it"));
+						CleanUpBadGrip(GrippedObjects, i, bReplicatedArray);
+						continue;
+					}
+				}
+#endif // #if WITH_APEX
 
 				// Check if either implements the interface
 				bool bRootHasInterface = false;
@@ -2541,29 +2554,38 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 			else
 			{
 				// Object has been destroyed without notification to plugin
-
-				// Clean up tailing physics handles with null objects
-				for (int g = PhysicsGrips.Num() - 1; g >= 0; --g)
-				{
-					if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjects[i].GrippedObject || PhysicsGrips[g].HandledObject->IsPendingKill())
-					{
-						// Need to delete it from the physics thread
-						DestroyPhysicsHandle(PhysicsGrips[g].SceneIndex, &PhysicsGrips[g].HandleData, &PhysicsGrips[g].KinActorData);
-						PhysicsGrips.RemoveAt(g);
-					}
-				}
-
-				// Doesn't work, uses the object as the search parameter which can now be null
-				//	DestroyPhysicsHandle(*Grip);
-
-				if (!bReplicatedArray || IsServer())
-				{
-					GrippedObjects.RemoveAt(i); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
-				}
+				CleanUpBadGrip(GrippedObjects, i, bReplicatedArray);
 			}
 		}
 	}
 }
+
+
+void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjects, int GripIndex, bool bReplicatedArray)
+{
+	// Object has been destroyed without notification to plugin
+
+	// Clean up tailing physics handles with null objects
+	for (int g = PhysicsGrips.Num() - 1; g >= 0; --g)
+	{
+		if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjects[GripIndex].GrippedObject || PhysicsGrips[g].HandledObject->IsPendingKill())
+		{
+			// Need to delete it from the physics thread
+			DestroyPhysicsHandle(PhysicsGrips[g].SceneIndex, &PhysicsGrips[g].HandleData, &PhysicsGrips[g].KinActorData);
+			PhysicsGrips.RemoveAt(g);
+		}
+	}
+
+	// Doesn't work, uses the object as the search parameter which can now be null
+	//	DestroyPhysicsHandle(*Grip);
+
+	if (!bReplicatedArray || IsServer())
+	{
+		UE_LOG(LogVRMotionController, Warning, TEXT("Gripped object was null or destroying, auto dropping it"));
+		GrippedObjects.RemoveAt(GripIndex); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
+	}
+}
+
 
 FTransform UGripMotionControllerComponent::HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo)
 {
