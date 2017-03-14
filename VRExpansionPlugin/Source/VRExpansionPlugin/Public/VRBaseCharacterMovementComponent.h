@@ -97,7 +97,7 @@ public:
 	bool bStartedClimbing;
 	bool bEndedClimbing;
 
-	void UVRBaseCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags) override
+	void UpdateFromCompressedFlags(uint8 Flags) override
 	{
 		bStartedClimbing = ((Flags & FSavedMove_Character::FLAG_Custom_0) != 0);
 		bEndedClimbing = ((Flags & FSavedMove_Character::FLAG_Custom_1) != 0);
