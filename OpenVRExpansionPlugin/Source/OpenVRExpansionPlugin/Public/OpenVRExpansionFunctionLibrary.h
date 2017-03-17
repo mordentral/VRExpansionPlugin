@@ -5,9 +5,15 @@
 #include "Engine.h"
 #include "IMotionController.h"
 
+// #Note: Can now access VRSystem from the SteamHMD directly, however still cannot use the static pVRGenericInterface point due to 
+// linking errors since can't attain .cpp reference. So useless to convert to blueprint library as the render models wouldn't work.
+
+
 //Re-defined here as I can't load ISteamVRPlugin on non windows platforms
 // Make sure to update if it changes
 #define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_WINDOWS && WINVER > 0x0502)
+// #TODO: Check for #isdef and value instead?
+
 
 #if STEAMVR_SUPPORTED_PLATFORM
 #include "openvr.h"
