@@ -3,8 +3,10 @@
 #pragma once
 #include "VRBPDatatypes.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "VRBaseCharacterMovementComponent.h"
+#include "ReplicatedVRCameraComponent.h"
+#include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.generated.h"
-
 
 UCLASS()
 class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ACharacter
