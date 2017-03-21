@@ -14,11 +14,11 @@
 #include "Interfaces/NetworkPredictionInterface.h"
 #include "WorldCollision.h"
 #include "Runtime/Launch/Resources/Version.h"
+#include "VRBaseCharacterMovementComponent.h"
 #include "VRSimpleCharacterMovementComponent.generated.h"
 
 class FDebugDisplayInfo;
 class ACharacter;
-class UVRSimpleCharacterMovementComponent;
 class AVRSimpleCharacter;
 //class UVRSimpleRootComponent;
 
@@ -62,22 +62,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 		UCameraComponent * VRCameraComponent;
 
-	//UFUNCTION(BlueprintCallable, Category = "SimpleVRCharacterMovementComponent|VRLocations")
-	//void AddCustomReplicatedMovement(FVector Movement);
-
-	//FVector CustomVRInputVector;
-	//FVector AdditionalVRInputVector;
-
-	// Injecting custom movement in here, bypasses floor detection
-	//virtual void PerformMovement(float DeltaSeconds) override;
-
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
 
-/*	FORCEINLINE void ApplyVRMotionToVelocity(float deltaTime);
-	FORCEINLINE void RestorePreAdditiveVRMotionVelocity();
-	FVector LastPreAdditiveVRVelocity;
-	*/
 	void PhysWalking(float deltaTime, int32 Iterations) override;
 	void PhysFlying(float deltaTime, int32 Iterations) override;
 	void PhysFalling(float deltaTime, int32 Iterations) override;

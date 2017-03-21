@@ -14,11 +14,11 @@
 #include "Interfaces/NetworkPredictionInterface.h"
 #include "WorldCollision.h"
 #include "Runtime/Launch/Resources/Version.h"
+#include "VRBaseCharacterMovementComponent.h"
 #include "VRCharacterMovementComponent.generated.h"
 
 class FDebugDisplayInfo;
 class ACharacter;
-class UVRCharacterMovementComponent;
 class AVRCharacter;
 
 /** Shared pointer for easy memory management of FSavedMove_Character, for accumulating and replaying network moves. */
@@ -50,13 +50,6 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 	UVRRootComponent * VRRootCapsule;
-
-	//UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
-	//UCapsuleComponent * VRCameraCollider;
-
-	// Removing, it makes less sense now with optional secondary collision settings
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
-	//bool bAllowWalkingThroughWalls;
 
 	virtual bool VRClimbStepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = nullptr) override;
 

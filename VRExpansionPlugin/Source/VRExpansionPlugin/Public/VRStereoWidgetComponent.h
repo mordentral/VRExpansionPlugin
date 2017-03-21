@@ -34,12 +34,12 @@ class VREXPANSIONPLUGIN_API UVRStereoWidgetComponent : public UWidgetComponent
 	* Change the quad size. This is the unscaled height and width, before component scale is applied.
 	* @param	InQuadSize: new quad size.
 	*/
-	UFUNCTION(BlueprintCallable, Category = "Components|Stereo Layer")
-		void SetQuadSize(FVector2D InQuadSize);
+	//UFUNCTION(BlueprintCallable, Category = "Components|Stereo Layer")
+		//void SetQuadSize(FVector2D InQuadSize);
 
 	// Manually mark the stereo layer texture for updating
-	UFUNCTION(BlueprintCallable, Category = "Components|Stereo Layer")
-		void MarkTextureForUpdate();
+	//UFUNCTION(BlueprintCallable, Category = "Components|Stereo Layer")
+	//	void MarkTextureForUpdate();
 
 
 	/**
@@ -77,8 +77,8 @@ protected:
 
 public:
 	/** Size of the rendered stereo layer quad **/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, export, Category = "StereoLayer | Quad Overlay Properties")
-		FVector2D StereoLayerQuadSize;
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, export, Category = "StereoLayer | Quad Overlay Properties")
+	//	FVector2D StereoLayerQuadSize;
 
 	/** UV coordinates mapped to the quad face **/
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly, export, Category = "StereoLayer | Quad Overlay Properties")

@@ -37,7 +37,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	//, Texture(nullptr)
 	//, LeftTexture(nullptr)
 	, bQuadPreserveTextureRatio(false)
-	, StereoLayerQuadSize(FVector2D(500.0f, 500.0f))
+	//, StereoLayerQuadSize(FVector2D(500.0f, 500.0f))
 	, UVRect(FBox2D(FVector2D(0.0f, 0.0f), FVector2D(1.0f, 1.0f)))
 	//, CylinderRadius(100)
 	//, CylinderOverlayArc(100)
@@ -75,10 +75,22 @@ void UVRStereoWidgetComponent::BeginDestroy()
 	}
 }
 
-
 void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+
+	// Precaching what the widget uses for draw time here as it gets modified in the super tick
+	bool bWidgetDrew = ShouldDrawWidget();
+
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+
+#if !UE_SERVER
+
+	// Same check that the widget runs prior to ticking
+	if (IsRunningDedicatedServer() || (Widget == nullptr && !SlateWidget.IsValid()))
+	{
+		return;
+	}
 
 	IStereoLayers* StereoLayers;
 	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->HMDDevice.IsValid() || (StereoLayers = GEngine->HMDDevice->GetStereoLayers()) == nullptr || !RenderTarget)
@@ -93,16 +105,30 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	{
 		Transform = GetComponentTransform();
 	}
-	else
+	else if (Space == EWidgetSpace::Screen)
+	{
+		Transform = FTransform::Identity;
+	}
+	else // World locked here now
 	{
 		// Fix this when stereo world locked works again
 		// Thanks to mitch for the temp work around idea
-		APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);//GetWorld()->GetFirstPlayerController();
+
+		// Get first local player controller
+		APlayerController* PC = nullptr;
+		for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		{
+			if (Iterator->Get()->IsLocalPlayerController())
+			{
+				PC = Iterator->Get();
+				break;
+			}
+		}
 		
 		if (PC)
 		{
 			APawn * mpawn = PC->GetPawnOrSpectator();
-			bTextureNeedsUpdate = true;
+			//bTextureNeedsUpdate = true;
 			if (mpawn)
 			{
 				// Set transform to this relative transform
@@ -111,6 +137,17 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 				//Transform = mpawn->GetActorTransform().GetRelativeTransform(GetComponentTransform());
 			}
+		}
+		else
+		{
+			// No PC, destroy the layer and enable drawing it normally.
+			bShouldCreateProxy = true;
+			if (LayerId)
+			{
+				StereoLayers->DestroyLayer(LayerId);
+				LayerId = 0;
+			}
+			return;
 		}
 		//
 		//Transform = GetRelativeTransform();
@@ -142,7 +179,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		{
 			IStereoLayers::FLayerDesc LayerDsec;
 			LayerDsec.Priority = Priority;
-			LayerDsec.QuadSize = StereoLayerQuadSize;
+			LayerDsec.QuadSize = FVector2D(DrawSize);//StereoLayerQuadSize;
 			LayerDsec.UVRect = UVRect;
 			LayerDsec.Transform = Transform;
 			if (RenderTarget)
@@ -170,7 +207,20 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			LayerDsec.Flags |= (bSupportsDepth) ? IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH : 0;
 
 			// Fix this later when WorldLocked is no longer wrong.
-			LayerDsec.PositionType = IStereoLayers::TrackerLocked;
+			switch (Space)
+			{
+			case EWidgetSpace::World:
+			{
+				//LayerDsec.PositionType = IStereoLayers::WorldLocked;
+				LayerDsec.PositionType = IStereoLayers::TrackerLocked;
+			}break;
+
+			case EWidgetSpace::Screen:
+			default:
+			{
+				LayerDsec.PositionType = IStereoLayers::FaceLocked;
+			}break;
+			}
 
 			/*switch (StereoLayerType)
 			{
@@ -235,24 +285,15 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		StereoLayers->MarkTextureForUpdate(LayerId);
 		bTextureNeedsUpdate = false;
 	}
+#endif
 }
 
 
-void UVRStereoWidgetComponent::SetQuadSize(FVector2D InQuadSize)
-{
-	if (StereoLayerQuadSize == InQuadSize)
-	{
-		return;
-	}
 
-	StereoLayerQuadSize = InQuadSize;
-	bIsDirty = true;
-}
-
-void UVRStereoWidgetComponent::MarkTextureForUpdate()
-{
-	bTextureNeedsUpdate = true;
-}
+//void UVRStereoWidgetComponent::MarkTextureForUpdate()
+//{
+//	bTextureNeedsUpdate = true;
+//}
 
 void UVRStereoWidgetComponent::SetPriority(int32 InPriority)
 {
@@ -564,7 +605,7 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 	{
 		MaterialInstance = nullptr;
 	}
-
+	
 	if (Space != EWidgetSpace::Screen && WidgetRenderer.IsValid())
 	{
 		// Create a new MID for the current base material
