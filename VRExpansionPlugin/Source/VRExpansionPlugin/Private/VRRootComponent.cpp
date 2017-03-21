@@ -898,3 +898,5 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertRotationOverlapsToCurrentOv
 
 	return Result;
 }
+
+#undef LOCTEXT_NAMESPACE

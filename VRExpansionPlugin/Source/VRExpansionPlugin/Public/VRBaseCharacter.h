@@ -55,7 +55,7 @@ public:
 	}
 
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	UVRBaseCharacterMovementComponent * VRMovementReference;
+		UVRBaseCharacterMovementComponent * VRMovementReference;
 
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		UReplicatedVRCameraComponent * VRReplicatedCamera;
@@ -68,6 +68,20 @@ public:
 
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		UGripMotionControllerComponent * RightMotionController;
+
+
+	/** Name of the LeftMotionController component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
+	static FName LeftMotionControllerComponentName;
+
+	/** Name of the RightMotionController component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
+	static FName RightMotionControllerComponentName;
+
+	/** Name of the VRReplicatedCamera component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
+	static FName ReplicatedCameraComponentName;
+
+	/** Name of the ParentRelativeAttachment component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
+	static FName ParentRelativeAttachmentComponentName;
+
 
 	/*
 	A helper function that offsets a given vector by the roots collision location

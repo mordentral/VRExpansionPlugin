@@ -5,6 +5,12 @@
 
 #include "VRBaseCharacter.h"
 
+FName AVRBaseCharacter::LeftMotionControllerComponentName(TEXT("Left Grip Motion Controller"));
+FName AVRBaseCharacter::RightMotionControllerComponentName(TEXT("Right Grip Motion Controller"));
+FName AVRBaseCharacter::ReplicatedCameraComponentName(TEXT("VR Replicated Camera"));
+FName AVRBaseCharacter::ParentRelativeAttachmentComponentName(TEXT("Parent Relative Attachment"));
+
+
 AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
  : Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRBaseCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 
@@ -20,7 +26,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		cap->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 	}
 
-	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(TEXT("VR Replicated Camera"));
+	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(AVRBaseCharacter::ReplicatedCameraComponentName);
 	if (VRReplicatedCamera)
 	{
 		VRReplicatedCamera->bOffsetByHMD = false;
@@ -41,7 +47,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		VRHeadCollider->SetupAttachment(VRReplicatedCamera);
 	}*/
 
-	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(TEXT("Parent Relative Attachment"));
+	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(AVRBaseCharacter::ParentRelativeAttachmentComponentName);
 	if (ParentRelativeAttachment && VRReplicatedCamera)
 	{
 		// Moved this to be root relative as the camera late updates were killing how it worked
@@ -49,7 +55,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		ParentRelativeAttachment->bOffsetByHMD = false;
 	}
 
-	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Left Grip Motion Controller"));
+	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::LeftMotionControllerComponentName);
 	if (LeftMotionController)
 	{
 		LeftMotionController->SetupAttachment(RootComponent);
@@ -64,7 +70,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 
 	}
 
-	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(TEXT("Right Grip Motion Controller"));
+	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::RightMotionControllerComponentName);
 	if (RightMotionController)
 	{
 		RightMotionController->SetupAttachment(RootComponent);

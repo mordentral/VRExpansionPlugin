@@ -57,6 +57,7 @@ public class VRExpansionPlugin : ModuleRules
                 "ShaderCore",
                 "NetworkReplayStreaming",
                 "AIModule",
+                "UMG"
                 //"ProceduralMeshComponent",
                // "EngineSettings"
             });
