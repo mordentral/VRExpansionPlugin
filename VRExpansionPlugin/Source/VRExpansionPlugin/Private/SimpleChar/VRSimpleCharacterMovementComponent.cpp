@@ -1003,7 +1003,10 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 				DifferenceFromLastFrame.Z = 0.0f;
 
 				if (VRRootCapsule)
+				{
+					DifferenceFromLastFrame *= VRRootCapsule->GetComponentScale(); // Scale up with character
 					AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame); // Apply over a second
+				}
 			}
 			else
 			{

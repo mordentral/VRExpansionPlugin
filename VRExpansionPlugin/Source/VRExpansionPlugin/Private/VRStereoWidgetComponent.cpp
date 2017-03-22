@@ -32,7 +32,7 @@
 UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 //	, bLiveTexture(false)
-	, bSupportsDepth(false)
+	//, bSupportsDepth(true)
 	, bNoAlphaChannel(false)
 	//, Texture(nullptr)
 	//, LeftTexture(nullptr)
@@ -43,7 +43,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	//, CylinderOverlayArc(100)
 	//, CylinderHeight(50)
 	//, StereoLayerType(SLT_TrackerLocked)
-	, StereoLayerShape(SLSH_QuadLayer)
+	//, StereoLayerShape(SLSH_QuadLayer)
 	, Priority(0)
 	, bIsDirty(true)
 	, bTextureNeedsUpdate(false)
@@ -52,6 +52,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	, bLastVisible(false)
 {
 	bShouldCreateProxy = true;
+	bLastWidgetDrew = false;
 	// Replace quad size with DrawSize instead
 	//StereoLayerQuadSize = DrawSize;
 
@@ -84,6 +85,15 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 
+	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetStereoLayers() == nullptr))
+	{
+		bShouldCreateProxy = true;
+	}
+	else
+	{
+		bShouldCreateProxy = false;
+	}
+
 #if !UE_SERVER
 
 	// Same check that the widget runs prior to ticking
@@ -107,7 +117,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 	else if (Space == EWidgetSpace::Screen)
 	{
-		Transform = FTransform::Identity;
+		Transform = GetRelativeTransform();
 	}
 	else // World locked here now
 	{
@@ -130,9 +140,11 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			APawn * mpawn = PC->GetPawnOrSpectator();
 			//bTextureNeedsUpdate = true;
 			if (mpawn)
-			{
+			{		
 				// Set transform to this relative transform
+				
 				Transform = GetComponentTransform().GetRelativeTransform(mpawn->GetTransform());
+				Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
 				// I might need to inverse X axis here to get it facing the correct way, we'll see
 
 				//Transform = mpawn->GetActorTransform().GetRelativeTransform(GetComponentTransform());
@@ -154,16 +166,18 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 
 	// If the transform changed dirty the layer and push the new transform
-	if (!bIsDirty && (bLastVisible != bVisible || FMemory::Memcmp(&LastTransform, &Transform, sizeof(Transform)) != 0))
+	if (!bIsDirty && (bLastVisible != bVisible || bWidgetDrew != bLastWidgetDrew || FMemory::Memcmp(&LastTransform, &Transform, sizeof(Transform)) != 0))
 	{
 		bIsDirty = true;
 	}
 
 	bool bCurrVisible = bVisible;
-	if (!RenderTarget || !RenderTarget->Resource)
+	if (!RenderTarget || !RenderTarget->Resource || !bWidgetDrew)
 	{
 		bCurrVisible = false;
 	}
+
+	bLastWidgetDrew = bWidgetDrew;
 
 	if (bIsDirty)
 	{
@@ -180,6 +194,16 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			IStereoLayers::FLayerDesc LayerDsec;
 			LayerDsec.Priority = Priority;
 			LayerDsec.QuadSize = FVector2D(DrawSize);//StereoLayerQuadSize;
+
+			if (DrawSize.X != DrawSize.Y)
+			{
+				// This might be a SteamVR only thing, it appears to always make the quad the largest of the two on the back end
+				if (DrawSize.X > DrawSize.Y) 
+					LayerDsec.QuadSize.Y = LayerDsec.QuadSize.X;
+				else
+					LayerDsec.QuadSize.X = LayerDsec.QuadSize.Y;
+			}
+
 			LayerDsec.UVRect = UVRect;
 			LayerDsec.Transform = Transform;
 			if (RenderTarget)
@@ -204,7 +228,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE;// (/*bLiveTexture*/true) ? IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE : 0;
 			LayerDsec.Flags |= (bNoAlphaChannel) ? IStereoLayers::LAYER_FLAG_TEX_NO_ALPHA_CHANNEL : 0;
 			LayerDsec.Flags |= (bQuadPreserveTextureRatio) ? IStereoLayers::LAYER_FLAG_QUAD_PRESERVE_TEX_RATIO : 0;
-			LayerDsec.Flags |= (bSupportsDepth) ? IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH : 0;
+			//LayerDsec.Flags |= (bSupportsDepth) ? IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH : 0;
 
 			// Fix this later when WorldLocked is no longer wrong.
 			switch (Space)
@@ -213,6 +237,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			{
 				//LayerDsec.PositionType = IStereoLayers::WorldLocked;
 				LayerDsec.PositionType = IStereoLayers::TrackerLocked;
+				LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH;
 			}break;
 
 			case EWidgetSpace::Screen:
@@ -289,12 +314,6 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 }
 
 
-
-//void UVRStereoWidgetComponent::MarkTextureForUpdate()
-//{
-//	bTextureNeedsUpdate = true;
-//}
-
 void UVRStereoWidgetComponent::SetPriority(int32 InPriority)
 {
 	if (Priority == InPriority)
@@ -309,9 +328,6 @@ void UVRStereoWidgetComponent::SetPriority(int32 InPriority)
 void UVRStereoWidgetComponent::UpdateRenderTarget(FIntPoint DesiredRenderTargetSize)
 {
 	Super::UpdateRenderTarget(DesiredRenderTargetSize);
-
-	//if (!Texture)
-		//Texture = RenderTarget;
 }
 
 /** Represents a billboard sprite to the scene manager. */
@@ -365,7 +381,7 @@ public:
 
 		const FMatrix& ViewportLocalToWorld = GetLocalToWorld();
 
-		if (RenderTarget)// && bCreateSceneProxy)//false)//RenderTarget)
+		if (RenderTarget && bCreateSceneProxy)//false)//RenderTarget)
 		{
 			FTextureResource* TextureResource = RenderTarget->Resource;
 			if (TextureResource)
@@ -591,15 +607,6 @@ private:
 
 FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 {
-	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetStereoLayers() == nullptr) )
-	{
-		bShouldCreateProxy = true;
-	}
-	else
-	{
-		bShouldCreateProxy = false;
-	}
-
 	// Always clear the material instance in case we're going from 3D to 2D.
 	if (MaterialInstance)
 	{

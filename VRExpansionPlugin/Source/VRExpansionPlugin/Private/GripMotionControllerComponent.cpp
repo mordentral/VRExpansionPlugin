@@ -2433,8 +2433,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							if (GripHandle)
 							{
-								if (GripHandle)
-									DestroyPhysicsHandle(*Grip);
+								DestroyPhysicsHandle(*Grip);
 
 								switch (Grip->GripTargetType)
 								{
@@ -2671,7 +2670,9 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(int32 SceneIndex, phys
 			*HandleData = NULL;
 		}
 		else
-		return false;
+		{
+			return false;
+		}
 	#endif // WITH_PHYSX
 
 	return true;
@@ -2679,14 +2680,6 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(int32 SceneIndex, phys
 
 bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInformation &Grip)
 {
-/*	UPrimitiveComponent * root = Grip.GetGrippedComponent();
-	AActor * pActor = Grip.GetGrippedActor();
-	if(!root && pActor)
-		root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-		*/
-	//if (root)
-	//	root->SetEnableGravity(true);
-
 	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(Grip);
 
 	if (!HandleInfo)

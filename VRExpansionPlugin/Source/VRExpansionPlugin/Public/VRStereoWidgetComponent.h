@@ -54,8 +54,8 @@ class VREXPANSIONPLUGIN_API UVRStereoWidgetComponent : public UWidgetComponent
 		int32 GetPriority() const { return Priority; }
 
 	/** True if the stereo layer needs to support depth intersections with the scene geometry, if available on the platform */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
-		uint32 bSupportsDepth : 1;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+	//	uint32 bSupportsDepth : 1;
 
 	/** True if the texture should not use its own alpha channel (1.0 will be substituted) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
@@ -103,13 +103,14 @@ public:
 	// Forcing quad layer so that it works with the widget better
 	/** Specifies which type of layer it is.  Note that some shapes will be supported only on certain platforms! **/
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly, export, Category = "StereoLayer")
-		TEnumAsByte<enum EStereoLayerShape> StereoLayerShape;
+	//	TEnumAsByte<enum EStereoLayerShape> StereoLayerShape;
 
 	/** Render priority among all stereo layers, higher priority render on top of lower priority **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, export, Category = "StereoLayer")
 		int32 Priority;
 
 	bool bShouldCreateProxy;
+	bool bLastWidgetDrew;
 
 private:
 	/** Dirty state determines whether the stereo layer needs updating **/
