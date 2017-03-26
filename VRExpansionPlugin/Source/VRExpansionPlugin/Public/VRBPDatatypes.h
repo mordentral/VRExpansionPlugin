@@ -13,7 +13,6 @@
 
 class UGripMotionControllerComponent;
 
-
 // Custom movement modes for the characters
 UENUM(BlueprintType)
 enum class EVRCustomMovementMode : uint8

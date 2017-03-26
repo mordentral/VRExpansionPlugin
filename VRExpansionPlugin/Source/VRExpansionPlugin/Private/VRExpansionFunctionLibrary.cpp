@@ -11,6 +11,17 @@
 DEFINE_LOG_CATEGORY(VRExpansionFunctionLibraryLog);
 
 
+void UVRExpansionFunctionLibrary::LowPassFilter_RollingAverage(FVector lastAverage, FVector newSample, FVector & newAverage, int32 numSamples)
+{
+	newAverage = lastAverage;
+	newAverage -= newAverage / numSamples;
+	newAverage += newSample / numSamples;
+}
+
+void UVRExpansionFunctionLibrary::LowPassFilter_Exponential(FVector lastAverage, FVector newSample, FVector & newAverage, float sampleFactor)
+{
+	newAverage = (newSample * sampleFactor) + ((1 - sampleFactor) * lastAverage);
+}
 
 bool UVRExpansionFunctionLibrary::GetIsActorMovable(AActor * ActorToCheck)
 {
