@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "Engine.h"
 #include "IMotionController.h"
 
 // Or procedural mesh component throws an error....

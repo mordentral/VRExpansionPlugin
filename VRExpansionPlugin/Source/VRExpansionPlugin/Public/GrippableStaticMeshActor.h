@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Engine/StaticMeshActor.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
 #include "GrippableStaticMeshActor.generated.h"

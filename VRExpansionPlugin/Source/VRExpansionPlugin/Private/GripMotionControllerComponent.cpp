@@ -1,10 +1,12 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRExpansionPluginPrivatePCH.h"
+#include "Components/DestructibleComponent.h"
 #include "GripMotionControllerComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "KismetMathLibrary.h"
 #include "PrimitiveSceneInfo.h"
+#include "DrawDebugHelpers.h"
 
 #include "PhysicsPublic.h"
 
@@ -438,6 +440,37 @@ void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation 
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
+void UGripMotionControllerComponent::GetGripByObject(FBPActorGripInformation &Grip, UObject * ObjectToLookForGrip, EBPVRResultSwitch &Result)
+{
+	if (!ObjectToLookForGrip)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	for (int i = 0; i < GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i] == ObjectToLookForGrip)
+		{
+			Grip = GrippedActors[i];
+			Result = EBPVRResultSwitch::OnSucceeded;
+			return;
+		}
+	}
+
+	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	{
+		if (LocallyGrippedActors[i] == ObjectToLookForGrip)
+		{
+			Grip = LocallyGrippedActors[i];
+			Result = EBPVRResultSwitch::OnSucceeded;
+			return;
+		}
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+}
+
 void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripCollisionType NewGripCollisionType)
 {
 	int fIndex = GrippedActors.Find(Grip);
@@ -772,7 +805,7 @@ bool UGripMotionControllerComponent::DropObjectByInterface(UObject * ObjectToDro
 bool UGripMotionControllerComponent::GripActor(
 	AActor* ActorToGrip, 
 	const FTransform &WorldOffset, 
-	bool bWorldOffsetIsRelative, 
+	bool bWorldOffsetIsRelative,
 	FName OptionalSnapToSocketName, 
 	EGripCollisionType GripCollisionType, 
 	EGripLateUpdateSettings GripLateUpdateSetting,
@@ -860,6 +893,7 @@ bool UGripMotionControllerComponent::GripActor(
 	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
+
 
 	// Ignore late update setting if it doesn't make sense with the grip
 	switch(newActorGrip.GripCollisionType)
@@ -2140,6 +2174,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	check(PhysicsGrips.Num() <= (GrippedActors.Num() + LocallyGrippedActors.Num()));
 
 	FTransform ParentTransform = this->GetComponentTransform();
+
 	FVector MotionControllerLocDelta = this->GetComponentLocation() - LastControllerLocation;
 
 	// Set the last controller world location for next frame
@@ -2732,7 +2767,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 		if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip)
 		{
-
 			FTransform WorldTransform;
 			WorldTransform = NewGrip.RelativeTransform * this->GetComponentTransform();
 			trans.SetLocation(root->GetComponentTransform().GetLocation() - (WorldTransform.GetLocation() - this->GetComponentLocation()));
@@ -2927,11 +2961,19 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 	{
 		FTransform terns = NewTransform;
 
+
+
 		if (GrippedActor.GripCollisionType == EGripCollisionType::ManipulationGrip)
 		{
 			terns.SetLocation(this->GetComponentLocation());
 
 			KinActor->setKinematicTarget(PxTransform(U2PTransform(terns))/*PNewLocation, PNewOrientation*/);
+
+/*#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+
+				 DrawDebugSphere(GetWorld(), terns.GetLocation(), 4, 32, FColor::Cyan, false);
+				//DrawDebugSphere(GetWorld(), terns.GetLocation(), 4, 32, FColor::Cyan, false);
+#endif*/
 		}
 		else
 		{
@@ -2953,7 +2995,11 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 			{
 				terns.ConcatenateRotation(skele->GetBoneTransform(0, FTransform::Identity).GetRotation());
 			}
+/*#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
+			DrawDebugSphere(GetWorld(), terns.GetLocation(), 4, 32, FColor::Cyan, false);
+			//DrawDebugSphere(GetWorld(), terns.GetLocation(), 4, 32, FColor::Cyan, false);
+#endif*/
 			KinActor->setKinematicTarget(PxTransform(U2PTransform(terns)) * HandleInfo->COMPosition/*PNewLocation, PNewOrientation*/);
 		}
 		

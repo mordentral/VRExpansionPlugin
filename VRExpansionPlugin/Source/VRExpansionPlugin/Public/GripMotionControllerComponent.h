@@ -2,7 +2,8 @@
 
 #pragma once
 
-#include "Engine.h"
+#include "EngineMinimal.h"
+#include "Engine/Engine.h"
 #include "IMotionController.h"
 #include "SceneViewExtension.h"
 #include "VRBPDatatypes.h"
@@ -33,11 +34,11 @@ private:
 	~UGripMotionControllerComponent();
 
 	/** Which player index this motion controller should automatically follow */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController|Types")
 		int32 PlayerIndex;
 
 	/** Which hand this component should automatically follow */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController|Types")
 		EControllerHand Hand;
 
 	/** If false, render transforms within the motion controller hierarchy will be updated a second time immediately before rendering. */
@@ -197,10 +198,22 @@ public:
 		return false;
 	}
 
-	// Auto grip any uobject that is/root is a primitive component and has the VR Grip Interface	
+	/* Auto grip any uobject that is/root is a primitive component and has the VR Grip Interface
+	these are stored in a Tarray that will prevent destruction of the object, you MUST ungrip an actor if you want to kill it
+	The WorldOffset is the transform that it will remain away from the controller, if you use the world position of the actor then it will grab
+	at the point of intersection.
+
+	If WorldOffsetIsRelative is true then it will not convert the transform from world space but will instead use that offset directly.
+	You could pass in a socket relative transform with this set for snapping or an empty transform to snap the object at its 0,0,0 point.
+
+	If you declare a valid world hit location than the manipulation grip will use that location for its offset
+
+	If you declare a valid OptionSnapToSocketName then it will instead snap the actor to the relative offset
+	location that the socket is to its parent actor.
+	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 		bool GripObject(
-			UObject * ObjectToGrip, 
+			UObject * ObjectToGrip,
 			const FTransform &WorldOffset,
 			bool bWorldOffsetIsRelative = false,
 			FName OptionalSnapToSocketName = NAME_None,
@@ -233,6 +246,8 @@ public:
 	   If WorldOffsetIsRelative is true then it will not convert the transform from world space but will instead use that offset directly.
 	   You could pass in a socket relative transform with this set for snapping or an empty transform to snap the object at its 0,0,0 point.
 	   
+	   If you declare a valid world hit location than the manipulation grip will use that location for its offset
+
 	   If you declare a valid OptionSnapToSocketName then it will instead snap the actor to the relative offset
 	   location that the socket is to its parent actor.
 	*/
@@ -302,6 +317,10 @@ public:
 	// Get a grip by component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void GetGripByComponent(FBPActorGripInformation &Grip, UPrimitiveComponent * ComponentToLookForGrip, EBPVRResultSwitch &Result);
+
+	// Get a grip by component
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+	void GetGripByObject(FBPActorGripInformation &Grip, UObject * ObjectToLookForGrip, EBPVRResultSwitch &Result);
 
 	// Get the physics velocities of a grip
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
@@ -554,18 +573,18 @@ public:
 	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
 	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
 
-private:
+	/** If true, the Position and Orientation args will contain the most recent controller state */
+	virtual bool PollControllerState(FVector& Position, FRotator& Orientation);
+
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/
 	bool bTracked;
 
 	/** Whether or not this component has authority within the frame*/
 	bool bHasAuthority;
 
+private:
 	/** Whether or not this component is currently on the network server*/
 	//bool bIsServer;
-
-	/** If true, the Position and Orientation args will contain the most recent controller state */
-	bool PollControllerState(FVector& Position, FRotator& Orientation);
 
 	/** View extension object that can persist on the render thread without the motion controller component */
 	class FViewExtension : public ISceneViewExtension, public TSharedFromThis<FViewExtension, ESPMode::ThreadSafe>

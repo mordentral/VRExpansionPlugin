@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "Engine.h"
 #include "Components/ShapeComponent.h"
 #include "VRRootComponent.generated.h"
 
