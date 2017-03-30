@@ -206,8 +206,6 @@ public:
 	If WorldOffsetIsRelative is true then it will not convert the transform from world space but will instead use that offset directly.
 	You could pass in a socket relative transform with this set for snapping or an empty transform to snap the object at its 0,0,0 point.
 
-	If you declare a valid world hit location than the manipulation grip will use that location for its offset
-
 	If you declare a valid OptionSnapToSocketName then it will instead snap the actor to the relative offset
 	location that the socket is to its parent actor.
 	*/
@@ -245,8 +243,6 @@ public:
 
 	   If WorldOffsetIsRelative is true then it will not convert the transform from world space but will instead use that offset directly.
 	   You could pass in a socket relative transform with this set for snapping or an empty transform to snap the object at its 0,0,0 point.
-	   
-	   If you declare a valid world hit location than the manipulation grip will use that location for its offset
 
 	   If you declare a valid OptionSnapToSocketName then it will instead snap the actor to the relative offset
 	   location that the socket is to its parent actor.

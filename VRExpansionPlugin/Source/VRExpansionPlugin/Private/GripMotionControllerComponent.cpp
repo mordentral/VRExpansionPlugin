@@ -899,6 +899,7 @@ bool UGripMotionControllerComponent::GripActor(
 	switch(newActorGrip.GripCollisionType)
 	{
 	case EGripCollisionType::ManipulationGrip:
+	case EGripCollisionType::ManipulationGripWithWristTwist:
 	{
 		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff; // Late updates are bad for this grip
 	}break;
@@ -1077,6 +1078,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	switch (newActorGrip.GripCollisionType)
 	{
 	case EGripCollisionType::ManipulationGrip:
+	case EGripCollisionType::ManipulationGripWithWristTwist:
 	{
 		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff; // Late updates are bad for this grip
 	}break;
@@ -1363,6 +1365,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	{
 	case EGripCollisionType::InteractiveCollisionWithPhysics:
 	case EGripCollisionType::ManipulationGrip:
+	case EGripCollisionType::ManipulationGripWithWristTwist:
 	{
 		if(bHasMovementAuthority)
 			SetUpPhysicsHandle(NewGrip);
@@ -1905,7 +1908,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 			PxScene* PScene = GetPhysXSceneFromIndex(Handle->SceneIndex);
 			if (PScene)
 			{
-				if (Grip.GripCollisionType == EGripCollisionType::ManipulationGrip)
+				if (Grip.GripCollisionType == EGripCollisionType::ManipulationGrip || Grip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 				{
 					FTransform WTransform = WorldTransform;
 					WTransform.SetLocation(this->GetComponentLocation());
@@ -2562,6 +2565,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					}break;
 
 					case EGripCollisionType::ManipulationGrip:
+					case EGripCollisionType::ManipulationGripWithWristTwist:
 					{
 						UpdatePhysicsHandleTransform(*Grip, WorldTransform);
 					}break;
@@ -2765,7 +2769,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		FTransform trans = root->GetComponentTransform();
 
 
-		if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip)
+		if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip || NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 		{
 			FTransform WorldTransform;
 			WorldTransform = NewGrip.RelativeTransform * this->GetComponentTransform();
@@ -2808,7 +2812,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			HandleInfo->KinActorData = KinActor;
 			PxD6Joint* NewJoint = NULL;
 
-			if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip)
+			if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip || NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 			{
 				// Create the joint
 				NewJoint = PxD6JointCreate(Scene->getPhysics(), KinActor, PxTransform(PxIdentity), Actor, Actor->getGlobalPose().transformInv(KinPose));
@@ -2838,7 +2842,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				NewJoint->setBreakForce(PX_MAX_REAL, PX_MAX_REAL);
 
 				// Different settings for manip grip
-				if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip)
+				if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip || NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 				{
 					
 					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
@@ -2853,7 +2857,9 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					NewJoint->setDrive(PxD6Drive::eX, drive);
 					NewJoint->setDrive(PxD6Drive::eY, drive);
 					NewJoint->setDrive(PxD6Drive::eZ, drive);
-					NewJoint->setDrive(PxD6Drive::eTWIST, drive);
+
+					if( NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
+						NewJoint->setDrive(PxD6Drive::eTWIST, drive);
 				}
 				else
 				{
@@ -2963,7 +2969,7 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 
 
 
-		if (GrippedActor.GripCollisionType == EGripCollisionType::ManipulationGrip)
+		if (GrippedActor.GripCollisionType == EGripCollisionType::ManipulationGrip || GrippedActor.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 		{
 			terns.SetLocation(this->GetComponentLocation());
 
