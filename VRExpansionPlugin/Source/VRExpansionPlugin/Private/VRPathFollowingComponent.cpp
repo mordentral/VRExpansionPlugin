@@ -208,7 +208,9 @@ int32 UVRPathFollowingComponent::DetermineStartingPathPoint(const FNavigationPat
 				// would influence the result
 				const float SqDistToFirstPoint = (CurrentLocation - PathPt0).SizeSquared2D();
 				const float SqDistToSecondPoint = (CurrentLocation - PathPt1).SizeSquared2D();
-				PickedPathPoint = (SqDistToFirstPoint < SqDistToSecondPoint) ? 0 : 1;
+				PickedPathPoint = FMath::IsNearlyEqual(SqDistToFirstPoint, SqDistToSecondPoint) ?
+					((FMath::Abs(CurrentLocation.Z - PathPt0.Z) < FMath::Abs(CurrentLocation.Z - PathPt1.Z)) ? 0 : 1) :
+					((SqDistToFirstPoint < SqDistToSecondPoint) ? 0 : 1);
 			}
 			else
 			{
@@ -264,6 +266,8 @@ void UVRPathFollowingComponent::UpdatePathSegment()
 		return;
 	}
 
+	FMetaNavMeshPath* MetaNavPath = bIsUsingMetaPath ? Path->CastPath<FMetaNavMeshPath>() : nullptr;
+
 	// if agent has control over its movement, check finish conditions
 	const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
 	const bool bCanUpdateState = HasMovementAuthority();
@@ -271,6 +275,7 @@ void UVRPathFollowingComponent::UpdatePathSegment()
 	{
 		const int32 LastSegmentEndIndex = Path->GetPathPoints().Num() - 1;
 		const bool bFollowingLastSegment = (MoveSegmentEndIndex >= LastSegmentEndIndex);
+		const bool bLastPathChunk = (MetaNavPath == nullptr || MetaNavPath->IsLastSection());
 
 		if (bCollidedWithGoal)
 		{
@@ -284,7 +289,7 @@ void UVRPathFollowingComponent::UpdatePathSegment()
 			OnSegmentFinished();
 			OnPathFinished(EPathFollowingResult::Success, FPathFollowingResultFlags::None);
 		}
-		else if (bFollowingLastSegment)
+		else if (bFollowingLastSegment && bMoveToGoalOnLastSegment && bLastPathChunk)
 		{
 			// use goal actor for end of last path segment
 			// UNLESS it's partial path (can't reach goal)
@@ -314,7 +319,6 @@ void UVRPathFollowingComponent::UpdatePathSegment()
 	if (bCanUpdateState && Status == EPathFollowingStatus::Moving)
 	{
 		// check waypoint switch condition in meta paths
-		FMetaNavMeshPath* MetaNavPath = bIsUsingMetaPath ? Path->CastPath<FMetaNavMeshPath>() : nullptr;
 		if (MetaNavPath && Status == EPathFollowingStatus::Moving)
 		{
 			MetaNavPath->ConditionalMoveToNextSection(CurrentLocation, EMetaPathUpdateReason::MoveTick);
@@ -352,6 +356,9 @@ void UVRPathFollowingComponent::FollowPathSegment(float DeltaTime)
 	const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
 	const FVector CurrentTarget = GetCurrentTargetLocation();
 
+	// set to false by default, we will set set this back to true if appropriate
+	bIsDecelerating = false;
+
 	const bool bAccelerationBased = MovementComp->UseAccelerationForPathFollowing();
 	if (bAccelerationBased)
 	{
@@ -364,6 +371,8 @@ void UVRPathFollowingComponent::FollowPathSegment(float DeltaTime)
 			const bool bShouldDecelerate = DistToEndSq < FMath::Square(CachedBrakingDistance);
 			if (bShouldDecelerate)
 			{
+				bIsDecelerating = true;
+
 				const float SpeedPct = FMath::Clamp(FMath::Sqrt(DistToEndSq) / CachedBrakingDistance, 0.0f, 1.0f);
 				CurrentMoveInput *= SpeedPct;
 			}
@@ -434,8 +443,8 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 		GoalLocation = *Path->GetPathPointLocation(Path->GetPathPoints().Num() - 1);
 		AgentRadiusPct = MinAgentRadiusPct;
 
-		// take goal's current location, unless path is partial
-		if (DestinationActor.IsValid() && !Path->IsPartial())
+		// take goal's current location, unless path is partial or last segment doesn't reach goal actor (used by tethered AI)
+		if (DestinationActor.IsValid() && !Path->IsPartial() && bMoveToGoalOnLastSegment)
 		{
 			if (DestinationAgent)
 			{

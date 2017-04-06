@@ -633,7 +633,10 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	}
 
 	// Perform actual movement
+	//Comment out 4.16
 	if ((CharacterOwner->GetWorldSettings()->Pauser == NULL) && (DeltaTime > 0.f))
+	// Add 4.16
+	//if ((GetWorld()->GetWorldSettings()->Pauser == NULL) && (DeltaTime > 0.f))
 	{
 		if (PC)
 		{
@@ -1223,6 +1226,8 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		if (bCanDelayMove && ClientData->PendingMove.IsValid() == false)
 		{
 			// Decide whether to hold off on move
+
+			//COMMENT HERE
 			// send moves more frequently in small games where server isn't likely to be saturated
 			float NetMoveDelta;
 			UPlayer* Player = (PC ? PC->Player : NULL);
@@ -1241,6 +1246,11 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 			}
 
 			if ((GetWorld()->TimeSeconds - ClientData->ClientUpdateTime) * CharacterOwner->GetWorldSettings()->GetEffectiveTimeDilation() < NetMoveDelta)
+			// TO HERE for 4.16
+		
+			/*const float NetMoveDelta = FMath::Clamp(GetClientNetSendDeltaTime(PC, ClientData, NewMove), 1.f / 120.f, 1.f / 15.f);
+			
+			if ((MyWorld->TimeSeconds - ClientData->ClientUpdateTime) * MyWorld->GetWorldSettings()->GetEffectiveTimeDilation() < NetMoveDelta)*/
 			{
 				// Delay sending this move.
 				ClientData->PendingMove = NewMove;
@@ -1248,7 +1258,11 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 			}
 		}
 
+		// Remove 4.16
 		ClientData->ClientUpdateTime = GetWorld()->TimeSeconds;
+		
+		// Uncomment 4.16
+		//ClientData->ClientUpdateTime = MyWorld->TimeSeconds;
 
 		UE_LOG(LogNetPlayerMovement, Verbose, TEXT("Client ReplicateMove Time %f Acceleration %s Position %s DeltaTime %f"),
 			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);

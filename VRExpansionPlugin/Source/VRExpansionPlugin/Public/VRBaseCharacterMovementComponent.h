@@ -71,6 +71,10 @@ public:
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 	virtual void PhysCustom_Climbing(float deltaTime, int32 Iterations);
 
+	// Added in 4.16
+	///* Allow custom handling when character hits a wall while swimming. */
+	//virtual void HandleSwimmingWallHit(const FHitResult& Hit, float DeltaTime);
+
 	// If true will never count a simulating component as the floor, to prevent jitter / physics problems.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
 		bool bIgnoreSimulatingComponentsInFloorCheck;
