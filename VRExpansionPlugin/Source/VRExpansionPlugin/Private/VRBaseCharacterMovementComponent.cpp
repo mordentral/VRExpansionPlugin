@@ -21,8 +21,100 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	VRClimbingStepUpMultiplier = 2.0f;
 	VRClimbingSetFallOnStepUp = true;
 	VRClimbingMaxReleaseVelocitySize = 800.0f;
+	bIgnoreSimulatingComponentsInFloorCheck = true;
 
 	VRWallSlideScaler = 1.0f;
+}
+
+bool UVRBaseCharacterMovementComponent::FloorSweepTest(
+	FHitResult& OutHit,
+	const FVector& Start,
+	const FVector& End,
+	ECollisionChannel TraceChannel,
+	const struct FCollisionShape& CollisionShape,
+	const struct FCollisionQueryParams& Params,
+	const struct FCollisionResponseParams& ResponseParam
+) const
+{
+	bool bBlockingHit = false;
+	TArray<FHitResult> OutHits;
+
+	if (!bUseFlatBaseForFloorChecks)
+	{
+		if (bIgnoreSimulatingComponentsInFloorCheck)
+		{
+			// Testing all components in the way, skipping simulating components
+			GetWorld()->SweepMultiByChannel(OutHits, Start, End, FQuat::Identity, TraceChannel, CollisionShape, Params, ResponseParam);
+
+			for (int i = 0; i < OutHits.Num(); i++)
+			{
+				if (OutHits[i].bBlockingHit && (OutHits[i].Component.IsValid() && !OutHits[i].Component->IsSimulatingPhysics()))
+				{
+					OutHit = OutHits[i];
+					bBlockingHit = true;
+					break;
+				}
+			}
+		}
+		else
+			bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, TraceChannel, CollisionShape, Params, ResponseParam);
+	}
+	else
+	{
+		// Test with a box that is enclosed by the capsule.
+		const float CapsuleRadius = CollisionShape.GetCapsuleRadius();
+		const float CapsuleHeight = CollisionShape.GetCapsuleHalfHeight();
+		const FCollisionShape BoxShape = FCollisionShape::MakeBox(FVector(CapsuleRadius * 0.707f, CapsuleRadius * 0.707f, CapsuleHeight));
+
+		// First test with the box rotated so the corners are along the major axes (ie rotated 45 degrees).
+		//TArray<FHitResult> OutHits;
+		OutHits.Reset();
+
+		if (bIgnoreSimulatingComponentsInFloorCheck)
+		{
+			// Testing all components in the way, skipping simulating components
+			GetWorld()->SweepMultiByChannel(OutHits, Start, End, FQuat(FVector(0.f, 0.f, -1.f), PI * 0.25f), TraceChannel, BoxShape, Params, ResponseParam);
+
+			for (int i = 0; i < OutHits.Num(); i++)
+			{
+				if (OutHits[i].bBlockingHit && (OutHits[i].Component.IsValid() && !OutHits[i].Component->IsSimulatingPhysics()))
+				{
+					OutHit = OutHits[i];
+					bBlockingHit = true;
+					break;
+				}
+			}
+		}
+		else
+			bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, FQuat(FVector(0.f, 0.f, -1.f), PI * 0.25f), TraceChannel, BoxShape, Params, ResponseParam);
+
+		if (!bBlockingHit)
+		{
+			// Test again with the same box, not rotated.
+			OutHit.Reset(1.f, false);
+
+			if (bIgnoreSimulatingComponentsInFloorCheck)
+			{
+				OutHits.Reset();
+				// Testing all components in the way, skipping simulating components
+				GetWorld()->SweepMultiByChannel(OutHits, Start, End, FQuat::Identity, TraceChannel, BoxShape, Params, ResponseParam);
+
+				for (int i = 0; i < OutHits.Num(); i++)
+				{
+					if (OutHits[i].bBlockingHit && (OutHits[i].Component.IsValid() && !OutHits[i].Component->IsSimulatingPhysics()))
+					{
+						OutHit = OutHits[i];
+						bBlockingHit = true;
+						break;
+					}
+				}
+			}
+			else
+				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, TraceChannel, BoxShape, Params, ResponseParam);
+		}
+	}
+
+	return bBlockingHit;
 }
 
 

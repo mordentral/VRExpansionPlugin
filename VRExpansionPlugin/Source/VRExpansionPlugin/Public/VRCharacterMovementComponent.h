@@ -194,8 +194,10 @@ public:
 	// Need to use actual capsule location for step up
 	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult);
 
+	// MOVED THIS TO THE BASE VR CHARACTER MOVEMENT COMPONENT
+	// Also added a control variable for it there
 	// Skip physics channels when looking for floor
-	virtual bool FloorSweepTest(
+	/*virtual bool FloorSweepTest(
 		FHitResult& OutHit,
 		const FVector& Start,
 		const FVector& End,
@@ -203,7 +205,7 @@ public:
 		const struct FCollisionShape& CollisionShape,
 		const struct FCollisionQueryParams& Params,
 		const struct FCollisionResponseParams& ResponseParam
-		) const override;
+		) const override;*/
 
 	// Multiple changes to support relative motion and ledge sweeps
 	virtual void PhysWalking(float deltaTime, int32 Iterations) override;

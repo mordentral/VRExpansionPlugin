@@ -287,76 +287,6 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	// Was going to use a lambda here but the overhead cost is higher than just using another function, even more so than using an inline one
 	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->LocallyGrippedActors);
 	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->GrippedActors);
-
-	/*for (FBPActorGripInformation actor : MotionControllerComponent->GrippedActors)
-	{
-		// Skip actors that are colliding if turning off late updates during collision.
-		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
-
-		// Don't allow late updates with server sided movement, there is no point
-		if (actor.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !MotionControllerComponent->IsServer())
-			continue;
-
-		switch (actor.GripLateUpdateSetting)
-		{
-		case EGripLateUpdateSettings::LateUpdatesAlwaysOff:
-		{
-			continue;
-		}break;
-		case EGripLateUpdateSettings::NotWhenColliding:
-		{
-			if (actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly)
-				continue;
-		}break;
-		case EGripLateUpdateSettings::NotWhenDoubleGripping:
-		{
-			if (actor.bHasSecondaryAttachment)
-				continue;
-		}break;
-		case EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping:
-		{
-			if (
-				(actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly) ||
-				(actor.bHasSecondaryAttachment)
-				)
-			{
-				continue;
-			}
-		}break;
-		case EGripLateUpdateSettings::LateUpdatesAlwaysOn:
-		default:
-		{}break;
-		}
-
-		// Get late update primitives
-		switch (actor.GripTargetType)
-		{
-		case EGripTargetType::ActorGrip:
-			//case EGripTargetType::InteractibleActorGrip:
-		{
-			AActor * pActor = actor.GetGrippedActor();
-			if (pActor)
-			{
-				if (USceneComponent * rootComponent = pActor->GetRootComponent())
-				{
-					GatherLateUpdatePrimitives(rootComponent, LateUpdatePrimitives);
-				}
-			}
-
-		}break;
-
-		case EGripTargetType::ComponentGrip:
-			//case EGripTargetType::InteractibleComponentGrip:
-		{
-			UPrimitiveComponent * cPrimComp = actor.GetGrippedComponent();
-			if (cPrimComp)
-			{
-				GatherLateUpdatePrimitives(cPrimComp, LateUpdatePrimitives);
-			}
-		}break;
-		}
-
-	}*/
 }
 
 void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
@@ -1054,7 +984,7 @@ bool UGripMotionControllerComponent::GripComponent(
 		ObjectToCheck = ComponentToGrip;
 	}
 
-	ComponentToGrip->IgnoreActorWhenMoving(this->GetOwner(), true);
+	//ComponentToGrip->IgnoreActorWhenMoving(this->GetOwner(), true);
 	// So that events caused by sweep and the like will trigger correctly
 
 	ComponentToGrip->AddTickPrerequisiteComponent(this);
@@ -1431,7 +1361,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
 
 			pActor->RemoveTickPrerequisiteComponent(this);
-			this->IgnoreActorWhenMoving(pActor, false);
+			//this->IgnoreActorWhenMoving(pActor, false);
 
 			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
 			{
@@ -3197,7 +3127,7 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 		FTransform OldLocalToWorldTransform = MotionControllerComponent->CalcNewComponentToWorld(MotionControllerComponent->GetRelativeTransform());
 		FTransform NewLocalToWorldTransform = MotionControllerComponent->CalcNewComponentToWorld(FTransform(Orientation, Position));
 		FMatrix LateUpdateTransform = (OldLocalToWorldTransform.Inverse() * NewLocalToWorldTransform).ToMatrixWithScale();
-		
+
 		FPrimitiveSceneInfo* RetrievedSceneInfo;
 		FPrimitiveSceneInfo* CachedSceneInfo;
 		
@@ -3210,6 +3140,8 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 			// If the retrieved scene info is different than our cached scene info then the primitive was removed from the scene
 			if (CachedSceneInfo == RetrievedSceneInfo && CachedSceneInfo->Proxy)
 			{
+				// Doesn't actually update the proxies ActorPosition, may be the cause of high velocity issues with late updates
+				// Tried to manually override this and set transform manually but all variables are private
 				CachedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
 			}
 		}

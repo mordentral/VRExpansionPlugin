@@ -2288,6 +2288,9 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 	}
 }
 
+// MOVED TO BASE VR CHARCTER MOVEMENT COMPONENT
+// Also added a control variable for it there
+/*
 bool UVRCharacterMovementComponent::FloorSweepTest(
 	FHitResult& OutHit,
 	const FVector& Start,
@@ -2363,7 +2366,7 @@ bool UVRCharacterMovementComponent::FloorSweepTest(
 	}
 
 	return bBlockingHit;
-}
+}*/
 
 
 float UVRCharacterMovementComponent::ImmersionDepth() const

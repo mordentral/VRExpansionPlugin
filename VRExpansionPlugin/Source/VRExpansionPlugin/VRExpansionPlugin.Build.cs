@@ -12,6 +12,8 @@ public class VRExpansionPlugin : ModuleRules
     public VRExpansionPlugin(TargetInfo Target)
 	{
 
+        Definitions.Add("WITH_VR_EXPANSION=1");
+
         // To detect VR Preview, not built out in packaged builds
         if (UEBuildConfiguration.bBuildEditor == true)
         {
@@ -51,6 +53,7 @@ public class VRExpansionPlugin : ModuleRules
                 "Engine",
                 "InputCore",
                 "PhysX",
+                //"FLEX", remove comment if building in the NVIDIA flex branch - NOTE when put in place FLEX only listed win32 and win64 at compatible platforms
                 "HeadMountedDisplay",
                 "RHI",
                 "RenderCore",
@@ -58,15 +61,15 @@ public class VRExpansionPlugin : ModuleRules
                 "NetworkReplayStreaming",
                 "AIModule",
                 "UMG"
-                //"ProceduralMeshComponent",
-               // "EngineSettings"
             });
+
+
 
         PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"CoreUObject",
-				"Engine",
+				//"CoreUObject",
+				//"Engine",
 				"Slate",
 				"SlateCore"
 
@@ -87,32 +90,5 @@ public class VRExpansionPlugin : ModuleRules
              "APEX"
             });
         }
-
-
-        // Locking steamVR out of non windows builds
-       /* if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64)
-        {
-
-            PublicIncludePaths.AddRange(
-            new string[] {
-                        "../Plugins/Runtime/Steam/SteamVR/Source/SteamVR/Private", // This is dumb but it isn't very open
-
-                // ... add public include paths required here ...
-            }
-            );
-
-
-            PublicDependencyModuleNames.AddRange(
-                new string[]
-                {
-                "SteamVR",
-                "OpenVR",
-                "SteamVRController"
-                });
-                
-            // AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenVR");
-            //  PrivateDependencyModuleNames.AddRange(new string[] { "D3D11RHI" });     //@todo steamvr: multiplatform
-        }*/
-
     }
 }

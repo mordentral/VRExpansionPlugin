@@ -71,6 +71,21 @@ public:
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 	virtual void PhysCustom_Climbing(float deltaTime, int32 Iterations);
 
+	// If true will never count a simulating component as the floor, to prevent jitter / physics problems.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
+		bool bIgnoreSimulatingComponentsInFloorCheck;
+
+	// Option to Skip simulating components when looking for floor
+	virtual bool FloorSweepTest(
+		FHitResult& OutHit,
+		const FVector& Start,
+		const FVector& End,
+		ECollisionChannel TraceChannel,
+		const struct FCollisionShape& CollisionShape,
+		const struct FCollisionQueryParams& Params,
+		const struct FCollisionResponseParams& ResponseParam
+	) const override;
+
 	// Need to use actual capsule location for step up
 	virtual bool VRClimbStepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = nullptr);
 
