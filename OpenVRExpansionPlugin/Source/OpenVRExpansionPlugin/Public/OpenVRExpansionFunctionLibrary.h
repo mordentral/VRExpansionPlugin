@@ -45,14 +45,25 @@ DECLARE_LOG_CATEGORY_EXTERN(OpenVRExpansionFunctionLibraryLog, Log, All);
 UENUM()
 enum class EBPVRDeviceIndex : uint8
 {
+	/*0 TrackedDeviceClass_HMD
+	1 TrackedDeviceClass_TrackingReference
+	2 TrackedDeviceClass_TrackingReference
+	3 TrackedDeviceClass_Controller
+	4 TrackedDeviceClass_Controller
+	5 TrackedDeviceClass_GenericTracker
+	6 TrackedDeviceClass_GenericTracker
+	7 TrackedDeviceClass_GenericTracker
+	*/
+
 	// On Success
 	HMD = 0,
 	FirstController = 1,
 	SecondController = 2,
-	TrackedDevice1 = 3,
-	TrackedDevice2 = 4,
-	TrackedDevice3 = 5,
-	TrackedDevice4 = 6,
+	FirstTracking_Reference = 3,
+	SecondTracking_Reference = 4,
+	TrackedDevice1 = 5,
+	TrackedDevice2 = 6,
+	TrackedDevice3 = 7,
 	None = 255
 };
 

@@ -44,7 +44,7 @@ DECLARE_CYCLE_STAT(TEXT("Char PhysNavWalking"), STAT_CharPhysNavWalking, STATGRO
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectPoint"), STAT_CharNavProjectPoint, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectLocation"), STAT_CharNavProjectLocation, STATGROUP_Character);
 
-static const auto CVarNetEnableMoveCombining = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableMoveCombining"));
+
 
 // MAGIC NUMBERS
 const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
@@ -995,11 +995,20 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			{
 				// The floor check failed because it started in penetration
 				// We do not want to try to move downward because the downward sweep failed, rather we'd like to try to pop out of the floor.
-				FHitResult Hit(CurrentFloor.HitResult);
-				Hit.TraceEnd = Hit.TraceStart + FVector(0.f, 0.f, MAX_FLOOR_DIST);
-				const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
-				ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
-				bForceNextFloorCheck = true;
+				
+				/// This skips this if we are free walking and there was no HMD collision or controller input
+				if (bZeroDelta && VRRootCapsule && !VRRootCapsule->bHadRelativeMovement)
+				{
+					bForceNextFloorCheck = true;
+				}
+				else
+				{
+					FHitResult Hit(CurrentFloor.HitResult);
+					Hit.TraceEnd = Hit.TraceStart + FVector(0.f, 0.f, MAX_FLOOR_DIST);
+					const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
+					ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
+					bForceNextFloorCheck = true;
+				}
 			}
 
 			// check if just entered water
@@ -1221,6 +1230,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	{
 		ClientData->SavedMoves.Push(NewMove);
 		
+		static const auto CVarNetEnableMoveCombining = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableMoveCombining"));
 		const bool bCanDelayMove = (CVarNetEnableMoveCombining->GetInt() != 0) && CanDelaySendingMove(NewMove);
 
 		if (bCanDelayMove && ClientData->PendingMove.IsValid() == false)

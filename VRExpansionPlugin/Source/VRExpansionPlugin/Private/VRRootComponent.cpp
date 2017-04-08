@@ -17,17 +17,9 @@
 
 static int32 bEnableFastOverlapCheck = 1;
 
-static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindTConsoleVariableDataFloat(TEXT("p.InitialOverlapTolerance"));
-
 
 // LOOKING_FOR_PERF_ISSUES
 #define PERF_MOVECOMPONENT_STATS 0
-
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.ShowInitialOverlaps"));
-#endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-
-static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
 
 namespace PrimitiveComponentStatics
 {
@@ -101,6 +93,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 		// This helps prevent getting stuck in walls.
 		if (TestHit.bStartPenetrating && !(MoveFlags & MOVECOMP_NeverIgnoreBlockingOverlaps))
 		{
+			static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindTConsoleVariableDataFloat(TEXT("p.InitialOverlapTolerance"));
 			const float DotTolerance = CVarInitialOverlapTolerance->GetValueOnGameThread();
 
 			// Dot product of movement direction against 'exit' direction
@@ -111,6 +104,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
+				static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.ShowInitialOverlaps"));
 				if (CVarShowInitialOverlaps->GetValueOnGameThread() != 0)
 				{
 					UE_LOG(LogTemp, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
@@ -825,6 +819,8 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 {
 	checkSlow(SweptOverlapsIndex >= 0);
 
+	static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
+
 	const TArray<FOverlapInfo>* Result = nullptr;
 	if (bGenerateOverlapEvents && CVarAllowCachedOverlaps->GetInt())
 	{
@@ -881,6 +877,8 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 
 const TArray<FOverlapInfo>* UVRRootComponent::ConvertRotationOverlapsToCurrentOverlaps(TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& CurrentOverlaps)
 {
+	static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
+
 	const TArray<FOverlapInfo>* Result = nullptr;
 	if (bGenerateOverlapEvents && CVarAllowCachedOverlaps->GetInt())
 	{

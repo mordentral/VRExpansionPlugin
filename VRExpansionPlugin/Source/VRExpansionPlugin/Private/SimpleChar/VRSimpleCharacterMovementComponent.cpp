@@ -28,7 +28,7 @@
 
 DECLARE_CYCLE_STAT(TEXT("Char ReplicateMoveToServerVRSimple"), STAT_CharacterMovementReplicateMoveToServerVRSimple, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char CallServerMoveVRSimple"), STAT_CharacterMovementCallServerMoveVRSimple, STATGROUP_Character);
-static const auto CVarNetEnableMoveCombiningVRSimple = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableMoveCombining"));
+
 
 //#include "PerfCountersHelpers.h"
 //DECLARE_CYCLE_STAT(TEXT("Char PhysWalking"), STAT_CharPhysWalking, STATGROUP_Character);
@@ -1306,6 +1306,7 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 		ClientData->SavedMoves.Push(NewMove);
 
 		//const bool bCanDelayMove = (CharacterMovementCVars::NetEnableMoveCombining != 0) && CanDelaySendingMove(NewMove);
+		static const auto CVarNetEnableMoveCombiningVRSimple = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableMoveCombining"));
 		const bool bCanDelayMove = (CVarNetEnableMoveCombiningVRSimple->GetInt() != 0) && CanDelaySendingMove(NewMove);
 
 		if (bCanDelayMove && ClientData->PendingMove.IsValid() == false)

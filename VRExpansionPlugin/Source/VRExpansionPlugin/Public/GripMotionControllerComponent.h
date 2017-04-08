@@ -63,6 +63,14 @@ private:
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void OnUnregister() override;
 
+protected:
+	//~ Begin UActorComponent Interface.
+	virtual void SendRenderTransform_Concurrent() override;
+	//~ End UActorComponent Interface.
+
+	FTransform RenderThreadRelativeTransform;
+	FVector RenderThreadComponentScale;
+
 public:
 
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedActors)
@@ -570,7 +578,7 @@ public:
 	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
 
 	/** If true, the Position and Orientation args will contain the most recent controller state */
-	virtual bool PollControllerState(FVector& Position, FRotator& Orientation);
+	virtual bool PollControllerState(FVector& Position, FRotator& Orientation/*4.16 ,float WorldToMetersScale */);
 
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/
 	bool bTracked;

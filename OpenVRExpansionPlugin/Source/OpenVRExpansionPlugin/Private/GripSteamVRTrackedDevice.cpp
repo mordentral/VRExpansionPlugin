@@ -30,7 +30,7 @@ bool UGripSteamVRTrackedDevice::PollControllerState(FVector& Position, FRotator&
 		// So I would have to check against a valid tracking frame anyway and this already does it for me through a table
 		// that is not at all accessible outside of the module it is in.....
 		TArray<int32> ValidTrackedIDs;
-		USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Other, ValidTrackedIDs);
+		USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Invalid, ValidTrackedIDs);
 
 		if (ValidTrackedIDs.Find((int32)TrackedDeviceIndex) != INDEX_NONE)
 		{

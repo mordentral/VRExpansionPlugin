@@ -30,8 +30,6 @@ namespace {
 
 } // anonymous namespace
 
-static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
-
 
   //=============================================================================
 UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInitializer& ObjectInitializer)
@@ -106,6 +104,13 @@ void UGripMotionControllerComponent::OnUnregister()
 	PhysicsGrips.Empty();
 
 	Super::OnUnregister();
+}
+
+void UGripMotionControllerComponent::SendRenderTransform_Concurrent()
+{
+	RenderThreadRelativeTransform = GetRelativeTransform();
+	RenderThreadComponentScale = GetComponentScale();
+	Super::SendRenderTransform_Concurrent();
 }
 
 FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::GetPhysicsGrip(const FBPActorGripInformation & GripInfo)
@@ -265,6 +270,7 @@ void UGripMotionControllerComponent::FViewExtension::BeginRenderViewFamily(FScen
 	}
 	FScopeLock ScopeLock(&CritSect);
 
+	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
 	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnGameThread())
 	{
 		return;
@@ -1914,8 +1920,10 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 				GEngine->ViewExtensions.Add(ViewExtension);
 			}
 
+			//float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+
 			// This is the owning player, now you can get the controller's location and rotation from the correct source
-			bTracked = PollControllerState(Position, Orientation);
+			bTracked = PollControllerState(Position, Orientation/*4.16 , WorldToMetersScale*/);
 
 			if (bTracked)
 			{
@@ -2060,8 +2068,8 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 				{
 					FVector Position;
 					FRotator Orientation;
-
-					if (OtherController->PollControllerState(Position, Orientation))
+					//float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+					if (OtherController->PollControllerState(Position, Orientation/*4.16 WorldToMeters*/))
 					{
 						curLocation = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
 						bPulledControllerLoc = true;
@@ -3057,7 +3065,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 }
 
 //=============================================================================
-bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation)
+bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation/*4.16 , float WorldToMetersScale*/)
 {
 	if ((PlayerIndex != INDEX_NONE) && bHasAuthority)
 	{
@@ -3065,7 +3073,7 @@ bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRot
 		TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
 		for (auto MotionController : MotionControllers)
 		{
-			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position))
+			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position/*4.16 , WorldToMetersScale*/))
 			{
 				CurrentTrackingStatus = (ETrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
 				
@@ -3106,17 +3114,37 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 	}
 	FScopeLock ScopeLock(&CritSect);
 
+	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
 	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnRenderThread())
 	{
 		return;
 	}
 
+	// 4.16
+	/*
+	// Find a view that is associated with this player.
+	float WorldToMetersScale = -1.0f;
+	for (const FSceneView* SceneView : InViewFamily.Views)
+	{
+		if (SceneView && SceneView->PlayerIndex == MotionControllerComponent->PlayerIndex)
+		{
+			WorldToMetersScale = SceneView->WorldToMetersScale;
+			break;
+		}
+	}
+	// If there are no views associated with this player use view 0.
+	if (WorldToMetersScale < 0.0f)
+	{
+		check(InViewFamily.Views.Num() > 0);
+		WorldToMetersScale = InViewFamily.Views[0]->WorldToMetersScale;
+	}*/
+
+
 	// Poll state for the most recent controller transform
 	FVector Position;
 	FRotator Orientation;
 
-	//bool bRenderTracked = bRenderTracked = MotionControllerComponent->PollControllerState(Position, Orientation);
-	if (!MotionControllerComponent->PollControllerState(Position, Orientation))
+	if (!MotionControllerComponent->PollControllerState(Position, Orientation/* 4.16 , WorldToMetersScale*/))
 	{
 		return;
 	}
@@ -3124,8 +3152,8 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 	if (LateUpdatePrimitives.Num())
 	{
 		// Calculate the late update transform that will rebase all children proxies within the frame of reference
-		FTransform OldLocalToWorldTransform = MotionControllerComponent->CalcNewComponentToWorld(MotionControllerComponent->GetRelativeTransform());
-		FTransform NewLocalToWorldTransform = MotionControllerComponent->CalcNewComponentToWorld(FTransform(Orientation, Position));
+		FTransform OldLocalToWorldTransform = MotionControllerComponent->CalcNewComponentToWorld(MotionControllerComponent->RenderThreadRelativeTransform/*MotionControllerComponent->GetRelativeTransform()*/);
+		FTransform NewLocalToWorldTransform = MotionControllerComponent->CalcNewComponentToWorld(FTransform(Orientation, Position, MotionControllerComponent->RenderThreadComponentScale));
 		FMatrix LateUpdateTransform = (OldLocalToWorldTransform.Inverse() * NewLocalToWorldTransform).ToMatrixWithScale();
 
 		FPrimitiveSceneInfo* RetrievedSceneInfo;
@@ -3143,6 +3171,7 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 				// Doesn't actually update the proxies ActorPosition, may be the cause of high velocity issues with late updates
 				// Tried to manually override this and set transform manually but all variables are private
 				CachedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
+
 			}
 		}
 		LateUpdatePrimitives.Reset();

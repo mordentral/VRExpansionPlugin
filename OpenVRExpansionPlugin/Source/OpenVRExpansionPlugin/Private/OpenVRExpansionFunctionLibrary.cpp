@@ -662,14 +662,27 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 	{
 		DeviceID = (uint32)OverrideDeviceID;
 
-		TArray<int32> ValidTrackedIDs;
-		USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Other, ValidTrackedIDs);
-
-		if (ValidTrackedIDs.Find(DeviceID) == INDEX_NONE)
+		// Only check if not HMD, it doesn't show up in these lists
+		if (OverrideDeviceID != EBPVRDeviceIndex::HMD)
 		{
-			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Override Tracked Device Was Missing!!"));
-			Result = EAsyncBlueprintResultSwitch::OnFailure;
-			return nullptr;
+			TArray<int32> ValidTrackedIDs;
+			TArray<int32> Temp;
+			USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Other, Temp);
+			ValidTrackedIDs.Append(Temp);
+			USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Controller, Temp);
+			ValidTrackedIDs.Append(Temp);
+			USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Invalid, Temp);
+			ValidTrackedIDs.Append(Temp);
+			USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::TrackingReference, Temp);
+			ValidTrackedIDs.Append(Temp);
+
+
+			if (ValidTrackedIDs.Find(DeviceID) == INDEX_NONE)
+			{
+				UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Override Tracked Device Was Missing!!"));
+				Result = EAsyncBlueprintResultSwitch::OnFailure;
+				return nullptr;
+			}
 		}
 	}
 	else
