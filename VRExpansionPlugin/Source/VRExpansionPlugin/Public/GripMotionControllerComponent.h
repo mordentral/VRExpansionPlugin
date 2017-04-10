@@ -553,11 +553,11 @@ public:
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f);
+	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f);
 
-	// Adds a secondary attachment point to the grip
+	// Removes a secondary attachment point from a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool RemoveSecondaryAttachmentPoint(AActor * GrippedActorToRemoveAttachment, float LerpToTime = 0.25f);
+	bool RemoveSecondaryAttachmentPoint(UObject * GrippedObjectToRemoveAttachment, float LerpToTime = 0.25f);
 
 	// This is for testing, setting it to true allows you to test grip with a non VR enabled pawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")

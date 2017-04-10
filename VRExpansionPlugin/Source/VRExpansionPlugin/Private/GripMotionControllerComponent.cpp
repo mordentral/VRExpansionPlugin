@@ -1492,15 +1492,15 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 	return false;
 }
 
-bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * GrippedActorToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, float SecondarySmoothingScaler)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, float SecondarySmoothingScaler)
 {
-	if (!GrippedActorToAddAttachment || !SecondaryPointComponent || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
+	if (!GrippedObjectToAddAttachment || !SecondaryPointComponent || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
 		return false;
 
 
-	if (GrippedActorToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	if (GrippedObjectToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		if (!IVRGripInterface::Execute_CanHaveDoubleGrip(GrippedActorToAddAttachment))
+		if (!IVRGripInterface::Execute_CanHaveDoubleGrip(GrippedObjectToAddAttachment))
 		{
 			return false;
 		}
@@ -1510,7 +1510,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 
 	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject == GrippedActorToAddAttachment)
+		if (LocallyGrippedActors[i].GrippedObject == GrippedObjectToAddAttachment)
 		{
 			GripToUse = &LocallyGrippedActors[i];
 			break;
@@ -1529,7 +1529,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 
 		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 		{
-			if (GrippedActors[i].GrippedObject == GrippedActorToAddAttachment)
+			if (GrippedActors[i].GrippedObject == GrippedObjectToAddAttachment)
 			{
 				GripToUse = &GrippedActors[i];
 				break;
@@ -1539,10 +1539,37 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 
 	if (GripToUse)
 	{
+		UPrimitiveComponent * root = nullptr;
+
+		switch (GripToUse->GripTargetType)
+		{
+		case EGripTargetType::ActorGrip:
+		{
+			AActor * pActor = GripToUse->GetGrippedActor();
+
+			if (pActor)
+			{
+				root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+			}
+		}
+			break;
+		case EGripTargetType::ComponentGrip:
+		{
+			root = GripToUse->GetGrippedComponent();
+		}
+			break;
+		}
+
+		if (!root)
+		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was unable to get root component or gripped component."));
+			return false;
+		}
+
 		if (bTransformIsAlreadyRelative)
 			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetLocation();
 		else
-			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetRelativeTransform(GrippedActorToAddAttachment->GetTransform()).GetLocation();
+			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetRelativeTransform(root->GetComponentTransform()).GetLocation();
 
 		GripToUse->SecondaryAttachment = SecondaryPointComponent;
 		GripToUse->bHasSecondaryAttachment = true;
@@ -1558,9 +1585,9 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 			GripToUse->curLerp = LerpToTime;
 		}
 
-		if (GrippedActorToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		if (GrippedObjectToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
-			IVRGripInterface::Execute_OnSecondaryGrip(GrippedActorToAddAttachment, SecondaryPointComponent, *GripToUse);
+			IVRGripInterface::Execute_OnSecondaryGrip(GrippedObjectToAddAttachment, SecondaryPointComponent, *GripToUse);
 		}
 
 		GripToUse = nullptr;
@@ -1571,9 +1598,9 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(AActor * Grippe
 	return false;
 }
 
-bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * GrippedActorToRemoveAttachment, float LerpToTime)
+bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * GrippedObjectToRemoveAttachment, float LerpToTime)
 {
-	if (!GrippedActorToRemoveAttachment || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
+	if (!GrippedObjectToRemoveAttachment || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
 		return false;
 
 	FBPActorGripInformation * GripToUse = nullptr;
@@ -1581,7 +1608,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * Gri
 	// Duplicating the logic for each array for now
 	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject == GrippedActorToRemoveAttachment)
+		if (LocallyGrippedActors[i].GrippedObject == GrippedObjectToRemoveAttachment)
 		{
 			GripToUse = &LocallyGrippedActors[i];
 			break;
@@ -1599,7 +1626,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * Gri
 
 		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
 		{
-			if (GrippedActors[i].GrippedObject == GrippedActorToRemoveAttachment)
+			if (GrippedActors[i].GrippedObject == GrippedObjectToRemoveAttachment)
 			{
 				GripToUse = &GrippedActors[i];
 				break;
@@ -1649,9 +1676,9 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(AActor * Gri
 			GripToUse->GripLerpState = EGripLerpState::NotLerping;
 		}
 
-		if (GrippedActorToRemoveAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		if (GrippedObjectToRemoveAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
-			IVRGripInterface::Execute_OnSecondaryGripRelease(GrippedActorToRemoveAttachment, GripToUse->SecondaryAttachment, *GripToUse);
+			IVRGripInterface::Execute_OnSecondaryGripRelease(GrippedObjectToRemoveAttachment, GripToUse->SecondaryAttachment, *GripToUse);
 		}
 
 		GripToUse->SecondaryAttachment = nullptr;
