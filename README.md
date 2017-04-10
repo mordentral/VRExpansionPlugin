@@ -12,6 +12,12 @@ This Plugin is intended to add additional functionality to Open/SteamVR/(All VR 
 
 ### How do I install it? ###
 
+Option 1:
+Go to forum thread and downloaded the pre-built binary version for the engine version you are using (not updated with every daily change, only weekly or with large patches).
+
+Install it into your Engine/Plugins directoy or ProjectName/Plugins Directory.
+
+Option 2:
 * Clone Or Download Zip and extract this repository to a folder named "VRExpansionPlugin" in your "ProjectName/Plugins" directory, create this directory if it is missing.
 
 * Add the VRExpansionPlugin to your projects PublicDependencyModuleNames in the projects build.cs if you have c++ code included.
