@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "OpenVRExpansionPluginPrivatePCH.h"
 #include "GripSteamVRTrackedDevice.h"
 #include "OpenVRExpansionFunctionLibrary.h"
 #include "GripMotionControllerComponent.h"

@@ -1,9 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRExpansionPluginPrivatePCH.h"
-//#include "Runtime/Engine/Private/EnginePrivate.h"
-
 #include "VRCharacter.h"
+//#include "Runtime/Engine/Private/EnginePrivate.h"
 
 AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UVRRootComponent>(ACharacter::CapsuleComponentName).SetDefaultSubobjectClass<UVRCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))

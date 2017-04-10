@@ -2,9 +2,11 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Engine/StaticMeshActor.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
+#include "VRExpansionFunctionLibrary.h"
 #include "GrippableStaticMeshActor.generated.h"
 
 /**

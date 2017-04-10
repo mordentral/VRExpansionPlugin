@@ -2,8 +2,10 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
+#include "VRExpansionFunctionLibrary.h"
 #include "GrippableStaticMeshComponent.generated.h"
 
 /**

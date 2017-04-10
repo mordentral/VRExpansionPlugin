@@ -5,11 +5,10 @@
 
 =============================================================================*/
 
-#include "VRExpansionPluginPrivatePCH.h"
+#include "VRCharacterMovementComponent.h"
 #include "GameFramework/PhysicsVolume.h"
 #include "GameFramework/GameNetworkManager.h"
 #include "GameFramework/Character.h"
-#include "VRCharacterMovementComponent.h"
 #include "GameFramework/GameState.h"
 #include "Components/PrimitiveComponent.h"
 #include "Animation/AnimMontage.h"

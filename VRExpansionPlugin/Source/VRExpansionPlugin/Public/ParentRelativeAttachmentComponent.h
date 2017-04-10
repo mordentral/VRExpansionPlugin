@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Components/ShapeComponent.h"
 #include "ParentRelativeAttachmentComponent.generated.h"
 

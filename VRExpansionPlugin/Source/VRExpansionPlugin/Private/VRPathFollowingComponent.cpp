@@ -1,6 +1,6 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRExpansionPluginPrivatePCH.h"
+#include "VRPathFollowingComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 //#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 13
@@ -8,7 +8,6 @@
 #include "AI/Navigation/NavLinkCustomInterface.h"
 //#endif
 
-#include "VRPathFollowingComponent.h"
 // Force to use new movement comp
 
 DEFINE_LOG_CATEGORY(LogPathFollowingVR);

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "EngineMinimal.h"
+#include "CoreMinimal.h"
 #include "Engine/Engine.h"
 #include "IMotionController.h"
 #include "SceneViewExtension.h"

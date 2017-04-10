@@ -1,12 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-#include "VRExpansionPluginPrivatePCH.h"
+#include "VRExpansionFunctionLibrary.h"
 #include "DrawDebugHelpers.h"
 
 #if WITH_EDITOR
 #include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"
 #endif
-
-#include "VRExpansionFunctionLibrary.h"
 
 //General Log
 DEFINE_LOG_CATEGORY(VRExpansionFunctionLibraryLog);

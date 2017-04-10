@@ -1,9 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRExpansionPluginPrivatePCH.h"
-//#include "Runtime/Engine/Private/EnginePrivate.h"
-
 #include "VRBaseCharacter.h"
+#include "VRPathFollowingComponent.h"
+//#include "Runtime/Engine/Private/EnginePrivate.h"
 
 FName AVRBaseCharacter::LeftMotionControllerComponentName(TEXT("Left Grip Motion Controller"));
 FName AVRBaseCharacter::RightMotionControllerComponentName(TEXT("Right Grip Motion Controller"));

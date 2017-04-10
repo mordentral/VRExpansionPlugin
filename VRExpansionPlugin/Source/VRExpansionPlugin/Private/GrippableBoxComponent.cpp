@@ -1,7 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRExpansionPluginPrivatePCH.h"
 #include "GrippableBoxComponent.h"
+
 
   //=============================================================================
 UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectInitializer)

@@ -1,12 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-#include "OpenVRExpansionPluginPrivatePCH.h"
+#include "OpenVRExpansionFunctionLibrary.h"
 #include "Engine/Texture2D.h"
 
 #if WITH_EDITOR
 #include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"
 #endif
-
-#include "OpenVRExpansionFunctionLibrary.h"
 
 //General Log
 DEFINE_LOG_CATEGORY(OpenVRExpansionFunctionLibraryLog);

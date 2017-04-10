@@ -1,6 +1,6 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRExpansionPluginPrivatePCH.h"
+#include "VRRootComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 #include "PhysicsPublic.h"
@@ -11,7 +11,6 @@
 
 #include "Components/PrimitiveComponent.h"
 
-#include "VRRootComponent.h"
 
 #define LOCTEXT_NAMESPACE "VRRootComponent"
 

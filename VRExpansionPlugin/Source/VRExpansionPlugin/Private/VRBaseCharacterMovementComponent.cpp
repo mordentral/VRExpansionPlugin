@@ -5,7 +5,6 @@
 
 =============================================================================*/
 
-#include "VRExpansionPluginPrivatePCH.h"
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDataTypes.h"
 

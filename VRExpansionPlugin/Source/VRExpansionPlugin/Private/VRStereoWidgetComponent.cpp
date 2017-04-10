@@ -1,6 +1,6 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRExpansionPluginPrivatePCH.h"
+#include "VRStereoWidgetComponent.h"
 #include "VRExpansionFunctionLibrary.h"
 #include "TextureResource.h"
 #include "Engine/Texture.h"
@@ -26,7 +26,6 @@
 #include "Slate/WidgetRenderer.h"
 #include "Slate/SWorldWidgetScreenLayer.h"
 #include "SViewport.h"
-#include "VRStereoWidgetComponent.h"
 
   //=============================================================================
 UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& ObjectInitializer)

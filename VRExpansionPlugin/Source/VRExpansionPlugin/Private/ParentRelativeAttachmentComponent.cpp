@@ -1,9 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRExpansionPluginPrivatePCH.h"
+#include "ParentRelativeAttachmentComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 #include "KismetMathLibrary.h"
-#include "ParentRelativeAttachmentComponent.h"
 #include "VRSimpleCharacter.h"
 
 

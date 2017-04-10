@@ -1,6 +1,6 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "OpenVRExpansionPluginPrivatePCH.h"
+#include "OpenVRExpansionPlugin.h"
 
 #define LOCTEXT_NAMESPACE "FVRExpansionPluginModule"
 
