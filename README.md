@@ -31,8 +31,6 @@ Install it into your Engine/Plugins directoy or ProjectName/Plugins Directory.
 
 You need to have visual studio installed and follow the UE4 setup guide for it: https://docs.unrealengine.com/latest/INT/Programming/Development/VisualStudioSetup/
 
-I will offer pre-compiled binaries for all builds as well eventually when the plugin is stable enough for it, but until then installing it in the project instead of the engine is better.
-
 ### How do I use it? ###
 
 [VR Character Actor Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Character%20Actor)
