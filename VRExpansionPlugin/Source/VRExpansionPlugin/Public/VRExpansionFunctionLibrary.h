@@ -92,7 +92,7 @@ public:
 			NewLocation = OriginalLocation + OriginalRotation.RotateVector(PivotPoint);
 
 			// Combine rotations
-			OriginalRotation.Yaw = (RotationDelta.Quaternion() * OriginalRotation.Quaternion()).Rotator().Yaw;
+			OriginalRotation.Yaw = (OriginalRotation.Quaternion() * RotationDelta.Quaternion()).Rotator().Yaw;
 			NewRotation.Yaw = OriginalRotation.Yaw;
 
 			// Remove pivot point offset
@@ -102,7 +102,7 @@ public:
 		else
 		{
 			NewLocation = OriginalLocation + OriginalRotation.RotateVector(PivotPoint);
-			NewRotation = (RotationDelta.Quaternion() * OriginalRotation.Quaternion()).Rotator();
+			NewRotation = (OriginalRotation.Quaternion() * RotationDelta.Quaternion()).Rotator();
 			NewLocation -= NewRotation.RotateVector(PivotPoint);
 		}
 	}
