@@ -65,6 +65,13 @@ enum class EBPVRDeviceIndex : uint8
 	TrackedDevice1 = 5,
 	TrackedDevice2 = 6,
 	TrackedDevice3 = 7,
+	TrackedDevice4 = 8,
+	TrackedDevice5 = 9,
+	TrackedDevice6 = 10,
+	TrackedDevice7 = 11,
+	TrackedDevice8 = 12,
+	TrackedDevice9 = 13,
+	TrackedDevice10 = 14,
 	None = 255
 };
 

@@ -74,6 +74,39 @@ public:
 		return FRotationMatrix::MakeFromXZ(finalForward, FVector::UpVector).Rotator();
 	}
 
+	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "RotateAroundPivot"))
+	static void RotateAroundPivot(FRotator RotationDelta, FVector OriginalLocation, FRotator OriginalRotation, FVector PivotPoint, FVector & NewLocation, FRotator & NewRotation,bool bUseOriginalYawOnly = true)
+	{		
+		if (bUseOriginalYawOnly)
+		{
+			// Keep original pitch/roll
+			NewRotation.Pitch = OriginalRotation.Pitch;
+			NewRotation.Roll = OriginalRotation.Roll;
+
+			// Throw out pitch/roll before calculating offset
+			OriginalRotation.Roll = 0;
+			OriginalRotation.Pitch = 0;
+
+			// Offset to pivot point
+			NewLocation = OriginalLocation + OriginalRotation.RotateVector(PivotPoint);
+
+			// Combine rotations
+			OriginalRotation.Yaw = (RotationDelta.Quaternion() * OriginalRotation.Quaternion()).Rotator().Yaw;
+			NewRotation.Yaw = OriginalRotation.Yaw;
+
+			// Remove pivot point offset
+			NewLocation -= OriginalRotation.RotateVector(PivotPoint);
+
+		}
+		else
+		{
+			NewLocation = OriginalLocation + OriginalRotation.RotateVector(PivotPoint);
+			NewRotation = (RotationDelta.Quaternion() * OriginalRotation.Quaternion()).Rotator();
+			NewLocation -= NewRotation.RotateVector(PivotPoint);
+		}
+	}
+
 
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))

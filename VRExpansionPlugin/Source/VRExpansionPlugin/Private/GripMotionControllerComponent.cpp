@@ -57,6 +57,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bReplicateWithoutTracking = false;
 	bLerpingPosition = false;
 	bSmoothReplicatedMotion = false;
+	bOffsetByHMD = false;
 }
 
 //=============================================================================
