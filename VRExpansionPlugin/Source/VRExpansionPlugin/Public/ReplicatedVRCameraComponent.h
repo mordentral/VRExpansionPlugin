@@ -20,7 +20,8 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	bool bIsServer;
 
 //public:
-	// If to use HMD offset
+// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
 	bool bOffsetByHMD;
 
 //protected:
