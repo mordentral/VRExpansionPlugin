@@ -777,17 +777,27 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 		
 		vr::HmdVector3_t vPosition;
 		vr::HmdVector3_t vNormal;
+
+		vertices.Reserve(RenderModel->unVertexCount);
+		normals.Reserve(RenderModel->unVertexCount);
+		UV0.Reserve(RenderModel->unVertexCount);
+	
 		for (uint32_t i = 0; i < RenderModel->unVertexCount; ++i)
 		{
 			vPosition = RenderModel->rVertexData[i].vPosition;
-			vertices.Add(FVector(vPosition.v[2], vPosition.v[1], vPosition.v[0]));
+			// OpenVR y+ Up, +x Right, -z Going away
+			// UE4 z+ up, +y right, +x forward
+
+			vertices.Add(FVector(-vPosition.v[2], vPosition.v[0], vPosition.v[1]));
 
 			vNormal = RenderModel->rVertexData[i].vNormal;
-			normals.Add(FVector(vNormal.v[2], vNormal.v[1], vNormal.v[0]));
+
+			normals.Add(FVector(-vNormal.v[2], vNormal.v[0], vNormal.v[1]));
 
 			UV0.Add(FVector2D(RenderModel->rVertexData[i].rfTextureCoord[0], RenderModel->rVertexData[i].rfTextureCoord[1]));
 		}
 
+		triangles.Reserve(RenderModel->unTriangleCount);
 		for (uint32_t i = 0; i < RenderModel->unTriangleCount * 3; i += 3)
 		{
 			triangles.Add(RenderModel->rIndexData[i]);
@@ -799,8 +809,8 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 		for (int i = 0; i < ProceduralMeshComponentsToFill.Num(); ++i)
 		{
 			ProceduralMeshComponentsToFill[i]->ClearAllMeshSections();
-			ProceduralMeshComponentsToFill[i]->CreateMeshSection(1, vertices, triangles, normals, UV0, vertexColors, tangents, bCreateCollision);
-			ProceduralMeshComponentsToFill[i]->SetMeshSectionVisible(1, true);
+			ProceduralMeshComponentsToFill[i]->CreateMeshSection(0, vertices, triangles, normals, UV0, vertexColors, tangents, bCreateCollision);
+			ProceduralMeshComponentsToFill[i]->SetMeshSectionVisible(0, true);
 			ProceduralMeshComponentsToFill[i]->SetWorldScale3D(FVector(scale, scale, scale));
 		}
 	}
