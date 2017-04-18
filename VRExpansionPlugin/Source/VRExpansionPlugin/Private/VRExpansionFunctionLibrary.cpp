@@ -142,6 +142,7 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 		case EHMDDeviceType::DT_Morpheus: return EBPHMDDeviceType::DT_Morpheus; break;
 		case EHMDDeviceType::DT_OculusRift: return EBPHMDDeviceType::DT_OculusRift; break;
 		case EHMDDeviceType::DT_SteamVR: return EBPHMDDeviceType::DT_SteamVR; break;
+		case EHMDDeviceType::DT_GoogleVR: return EBPHMDDeviceType::DT_GoogleVR; break;
 	
 		// Return unknown if not a matching enum, may need to add new entries in the copied enum if the original adds new ones in this case
 		default: return EBPHMDDeviceType::DT_Unknown; break;

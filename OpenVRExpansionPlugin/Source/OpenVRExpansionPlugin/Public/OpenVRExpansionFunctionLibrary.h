@@ -8,9 +8,14 @@
 // #Note: Can now access VRSystem from the SteamHMD directly, however still cannot use the static pVRGenericInterface point due to 
 // linking errors since can't attain .cpp reference. So useless to convert to blueprint library as the render models wouldn't work.
 
-
 //Re-defined here as I can't load ISteamVRPlugin on non windows platforms
 // Make sure to update if it changes
+
+/*4.16 linux now support under steamvr supported platforms*/
+// 4.16 UNCOMMENT
+//#define STEAMVR_SUPPORTED_PLATFORMS(PLATFORM_LINUX || (PLATFORM_WINDOWS && WINVER > 0x0502))
+
+// 4.16 COMMENT
 #define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_WINDOWS && WINVER > 0x0502)
 // #TODO: Check for #isdef and value instead?
 
@@ -74,6 +79,35 @@ enum class EBPVRDeviceIndex : uint8
 	TrackedDevice10 = 14,
 	None = 255
 };
+
+//USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR")
+struct OPENVREXPANSIONPLUGIN_API FBPOpenVRKeyboardHandle
+{
+	//GENERATED_BODY()
+public:
+
+	uint64_t VRKeyboardHandle;
+
+	FBPOpenVRKeyboardHandle()
+	{
+		VRKeyboardHandle = vr::k_ulOverlayHandleInvalid;
+	}
+	const bool IsValid()
+	{
+		return VRKeyboardHandle != vr::k_ulOverlayHandleInvalid;
+	}
+
+	//This is here for the Find() and Remove() functions from TArray
+	FORCEINLINE bool operator==(const FBPOpenVRKeyboardHandle &Other) const
+	{
+		if (VRKeyboardHandle == Other.VRKeyboardHandle)
+			return true;
+
+		return false;
+	}
+	//#define INVALID_TRACKED_CAMERA_HANDLE
+};
+
 
 USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|VRCamera")
 struct OPENVREXPANSIONPLUGIN_API FBPOpenVRCameraHandle
@@ -229,18 +263,17 @@ Prop_TrackingRangeMaximumMeters_Float		= 4005,
 // Had to turn this in to a UObject, I felt the easiest way to use it was as an actor component to the player controller
 // It can be returned to just a blueprint library if epic ever upgrade steam to 1.33 or above
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
-class OPENVREXPANSIONPLUGIN_API UOpenVRExpansionFunctionLibrary : public UActorComponent//UBlueprintFunctionLibrary
+class OPENVREXPANSIONPLUGIN_API UOpenVRExpansionFunctionLibrary : public /*UActorComponent*/UBlueprintFunctionLibrary
 {
 	//GENERATED_BODY()
 	GENERATED_UCLASS_BODY()
 	~UOpenVRExpansionFunctionLibrary();
 public:
 
-	void* OpenVRDLLHandle;
+	//void* OpenVRDLLHandle;
 
 	// Currently OpenVR only supports a single HMD camera as it only supports a single HMD (default index 0)
 	// So support auto releasing it with this, in case the user messes up and doesn't do so.
-	FBPOpenVRCameraHandle OpenCamera;
 
 	//@todo steamvr: Remove GetProcAddress() workaround once we have updated to Steamworks 1.33 or higher
 //	pVRInit VRInitFn;
@@ -248,112 +281,61 @@ public:
 	//pVRIsHmdPresent VRIsHmdPresentFn;
 	//pVRGetStringForHmdError VRGetStringForHmdErrorFn;
 
-
 #if STEAMVR_SUPPORTED_PLATFORM
-	pVRGetGenericInterface VRGetGenericInterfaceFn;
+	//static pVRIsHmdPresent VRIsHmdPresentFn;
+	static pVRGetGenericInterface VRGetGenericInterfaceFn;
+	static FBPOpenVRCameraHandle OpenCamera;
 	//vr::IVRChaperone* VRChaperone;
 #endif
 
-	bool LoadOpenVRModule();
-	void UnloadOpenVRModule();
-
-	bool IsLocallyControlled() const
-	{
-		// Epic used a check for a player controller to control has authority, however the controllers are always attached to a pawn
-		// So this check would have always failed to work in the first place.....
-
-		APawn* Owner = Cast<APawn>(GetOwner());
-
-		if (!Owner)
-		{
-			//const APlayerController* Actor = Cast<APlayerController>(GetOwner());
-			//if (!Actor)
-			return false;
-
-			//return Actor->IsLocalPlayerController();
-		}
-
-		return Owner->IsLocallyControlled();
-	}
-
-	// Opens the handles for the library
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
-	bool OpenVRHandles();
-
-	// Closes the handles for the library
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
-	bool CloseVRHandles();
-
-	UPROPERTY(BlueprintReadOnly)
-	bool bInitialized;
+	//UPROPERTY(BlueprintReadOnly)
+	//bool VRGetGenericInterfaceFn;
 
 	// Closes the handles for the library
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
-	bool IsOpenVRDeviceConnected(EBPVRDeviceIndex OpenVRDeviceIndex);
+	static bool IsOpenVRDeviceConnected(EBPVRDeviceIndex OpenVRDeviceIndex);
 
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result"))
-	UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, EBPVRDeviceIndex OverrideDeviceID = EBPVRDeviceIndex::None);
+	static UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, EBPVRDeviceIndex OverrideDeviceID = EBPVRDeviceIndex::None);
 	
 	// Gets a String device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString"))
-	bool GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
+	static bool GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
 
 	// Gets a Bool device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyBool"))
-	bool GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue);
+	static bool GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue);
 
 	// Gets a Float device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyFloat"))
-	bool GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue);
+	static bool GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue);
 
 	// Gets a String controller property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRControllerPropertyString"))
-	bool GetVRControllerPropertyString(EVRControllerProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
+	static bool GetVRControllerPropertyString(EVRControllerProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
 
 	// VR Camera options
 
-
-	/* For Reference
-
-	static const uint32_t k_unTrackedDeviceIndex_Hmd = 0;
-	static const uint32_t k_unMaxTrackedDeviceCount = 16;
-	static const uint32_t k_unTrackedDeviceIndexOther = 0xFFFFFFFE;
-	static const uint32_t k_unTrackedDeviceIndexInvalid = 0xFFFFFFFF;
-
-	// Describes what kind of object is being tracked at a given ID
-	//enum ETrackedDeviceClass
-	//{
-	//TrackedDeviceClass_Invalid = 0,				// the ID was not valid.
-	//TrackedDeviceClass_HMD = 1,					// Head-Mounted Displays
-	//TrackedDeviceClass_Controller = 2,			// Tracked controllers
-	//TrackedDeviceClass_TrackingReference = 4,	// Camera and base stations that serve as tracking reference points
-
-	//		TrackedDeviceClass_Other = 1000,
-	//	};
-
-	*/
-
-
 	// Returns if there is a VR camera and what its pixel height / width is
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "HasVRCamera"))
-	bool HasVRCamera(EOpenVRCameraFrameType FrameType, int32 &Width, int32 &Height);
+	static bool HasVRCamera(EOpenVRCameraFrameType FrameType, int32 &Width, int32 &Height);
 
 	// Gets a screen cap from the HMD camera if there is one
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "GetVRCameraFrame", ExpandEnumAsExecs = "Result"))
-	void GetVRCameraFrame(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPVRResultSwitch & Result, UTexture2D * TargetRenderTarget = nullptr);
+	static void GetVRCameraFrame(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPVRResultSwitch & Result, UTexture2D * TargetRenderTarget = nullptr);
 
 	// Create Camera Render Target
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "CreateCameraTexture2D", ExpandEnumAsExecs = "Result"))
-	UTexture2D * CreateCameraTexture2D(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPVRResultSwitch & Result);
+	static UTexture2D * CreateCameraTexture2D(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPVRResultSwitch & Result);
 
 	// Acquire the vr camera for access (wakes it up)
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "AcquireVRCamera", ExpandEnumAsExecs = "Result"))
-	void AcquireVRCamera(FBPOpenVRCameraHandle & CameraHandle, EBPVRResultSwitch & Result);
+	static void AcquireVRCamera(FBPOpenVRCameraHandle & CameraHandle, EBPVRResultSwitch & Result);
 
 	// Releases the vr camera from access - you MUST call this when done with the camera
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "ReleaseVRCamera", ExpandEnumAsExecs = "Result"))
-	void ReleaseVRCamera(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EBPVRResultSwitch & Result);
+	static void ReleaseVRCamera(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EBPVRResultSwitch & Result);
 
 	// Releases the vr camera from access
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "IsValid"))

@@ -106,6 +106,7 @@ enum class EBPHMDDeviceType : uint8
 	DT_ES2GenericStereoMesh,
 	DT_SteamVR,
 	DT_GearVR,
+	DT_GoogleVR,
 	DT_Unknown
 };
 

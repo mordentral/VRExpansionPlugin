@@ -9,147 +9,29 @@
 //General Log
 DEFINE_LOG_CATEGORY(OpenVRExpansionFunctionLibraryLog);
 
+#if STEAMVR_SUPPORTED_PLATFORM
+
+pVRGetGenericInterface UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn = nullptr;
+FBPOpenVRCameraHandle UOpenVRExpansionFunctionLibrary::OpenCamera = FBPOpenVRCameraHandle();
+#endif
+
 UOpenVRExpansionFunctionLibrary::UOpenVRExpansionFunctionLibrary(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	//PrimaryComponentTick.bCanEverTick = true;
+	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
+	//PrimaryComponentTick.bStartWithTickEnabled = false;
+	//PrimaryComponentTick.bCanEverTick = true;
+	//bAutoActivate = true;
+	//SetComponentTickEnabled(true);
 }
 
 //=============================================================================
 UOpenVRExpansionFunctionLibrary::~UOpenVRExpansionFunctionLibrary()
 {
 #if STEAMVR_SUPPORTED_PLATFORM
-	if(bInitialized)
-		UnloadOpenVRModule();
-#endif
-}
-
-
-bool UOpenVRExpansionFunctionLibrary::OpenVRHandles()
-{
-#if !STEAMVR_SUPPORTED_PLATFORM
-	return false;
-#else
-	if (IsLocallyControlled() && !bInitialized)
-		bInitialized = LoadOpenVRModule();
-	else if (bInitialized)
-		return true;
-	else
-		bInitialized = false;
-
-	return bInitialized;
-#endif
-}
-
-bool UOpenVRExpansionFunctionLibrary::CloseVRHandles()
-{
-#if !STEAMVR_SUPPORTED_PLATFORM
-	return false;
-#else
-	if (OpenCamera.IsValid())
-	{
-		EBPVRResultSwitch Result;
-		ReleaseVRCamera(OpenCamera, Result);
-	}
-
-	if (bInitialized)
-	{
-		UnloadOpenVRModule();
-		bInitialized = false;
-		return true;
-	}
-	else
-		return false;
-#endif
-}
-
-bool UOpenVRExpansionFunctionLibrary::LoadOpenVRModule()
-{
-#if !STEAMVR_SUPPORTED_PLATFORM
-	return false;
-#else
-#if PLATFORM_WINDOWS
-#if PLATFORM_64BITS
-
-	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Failed to load OpenVR library, HMD device either not connected or not using SteamVR"));
-		return false;
-	}
-
-	FString RootOpenVRPath;
-	TCHAR VROverridePath[MAX_PATH];
-	FPlatformMisc::GetEnvironmentVariable(TEXT("VR_OVERRIDE"), VROverridePath, MAX_PATH);
-
-	if (FCString::Strlen(VROverridePath) > 0)
-	{
-		RootOpenVRPath = FString::Printf(TEXT("%s\\bin\\win64\\"), VROverridePath);
-	}
-	else
-	{
-		RootOpenVRPath = FPaths::EngineDir() / FString::Printf(TEXT("Binaries/ThirdParty/OpenVR/%s/Win64/"), OPENVR_SDK_VER);
-	}
-
-	FPlatformProcess::PushDllDirectory(*RootOpenVRPath);
-	OpenVRDLLHandle = FPlatformProcess::GetDllHandle(*(RootOpenVRPath + "openvr_api.dll"));
-	FPlatformProcess::PopDllDirectory(*RootOpenVRPath);
-#else
-	FString RootOpenVRPath = FPaths::EngineDir() / FString::Printf(TEXT("Binaries/ThirdParty/OpenVR/%s/Win32/"), OPENVR_SDK_VER);
-	FPlatformProcess::PushDllDirectory(*RootOpenVRPath);
-	OpenVRDLLHandle = FPlatformProcess::GetDllHandle(*(RootOpenVRPath + "openvr_api.dll"));
-	FPlatformProcess::PopDllDirectory(*RootOpenVRPath);
-#endif
-#elif PLATFORM_MAC
-	OpenVRDLLHandle = FPlatformProcess::GetDllHandle(TEXT("libopenvr_api.dylib"));
-#endif	//PLATFORM_WINDOWS
-
-	if (!OpenVRDLLHandle)
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Failed to load OpenVR library."));
-		return false;
-	}
-
-	//@todo steamvr: Remove GetProcAddress() workaround once we update to Steamworks 1.33 or higher
-	//VRInitFn = (pVRInit)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_Init"));
-	//VRShutdownFn = (pVRShutdown)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_Shutdown"));
-	//VRIsHmdPresentFn = (pVRIsHmdPresent)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_IsHmdPresent"));
-//VRGetStringForHmdErrorFn = (pVRGetStringForHmdError)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_GetStringForHmdError"));
-	VRGetGenericInterfaceFn = (pVRGetGenericInterface)FPlatformProcess::GetDllExport(OpenVRDLLHandle, TEXT("VR_GetGenericInterface"));
-
-	if (!VRGetGenericInterfaceFn)
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Failed to GetProcAddress() on openvr_api.dll"));
-		UnloadOpenVRModule();
-		return false;
-	}
-
-	// Grab the chaperone
-	vr::EVRInitError ChaperoneErr = vr::VRInitError_None;
-	//VRChaperone = (vr::IVRChaperone*)vr::VR_GetGenericInterface(vr::IVRChaperone_Version, &ChaperoneErr);
-	//VRChaperone = (vr::IVRChaperone*)(*VRGetGenericInterfaceFn)(vr::IVRChaperone_Version, &ChaperoneErr);
-	/*if ((VRChaperone != nullptr) && (ChaperoneErr == vr::VRInitError_None))
-	{
-		//ChaperoneBounds = FChaperoneBounds(VRChaperone);
-	}
-	else
-	{
-		VRChaperone = nullptr;
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Failed to initialize Chaperone system"));
-	}*/
-
-	return true;
-#endif
-}
-
-void UOpenVRExpansionFunctionLibrary::UnloadOpenVRModule()
-{
-#if STEAMVR_SUPPORTED_PLATFORM
-	if (OpenVRDLLHandle != nullptr)
-	{
-		FPlatformProcess::FreeDllHandle(OpenVRDLLHandle);
-		OpenVRDLLHandle = nullptr;
-		//(*VRShutdownFn)();
-	}
+	//if(VRGetGenericInterfaceFn)
+	//	UnloadOpenVRModule();
 #endif
 }
 
@@ -160,6 +42,9 @@ bool UOpenVRExpansionFunctionLibrary::HasVRCamera(EOpenVRCameraFrameType FrameTy
 #else
 	Width = 0;
 	Height = 0;
+
+	if (!VRGetGenericInterfaceFn)
+		return false;
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
@@ -196,10 +81,24 @@ void UOpenVRExpansionFunctionLibrary::AcquireVRCamera(FBPOpenVRCameraHandle & Ca
 	Result = EBPVRResultSwitch::OnFailed;
 	return;
 #else
+	if (!VRGetGenericInterfaceFn)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
 	{
 		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	// If already have a valid camera handle
+	if (OpenCamera.IsValid())
+	{
+		CameraHandle = OpenCamera;
+		Result = EBPVRResultSwitch::OnSucceeded;
 		return;
 	}
 
@@ -235,6 +134,13 @@ void UOpenVRExpansionFunctionLibrary::ReleaseVRCamera(UPARAM(ref) FBPOpenVRCamer
 	Result = EBPVRResultSwitch::OnFailed;
 	return;
 #else
+
+	if (!VRGetGenericInterfaceFn)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
 	{
@@ -279,6 +185,12 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) 
 	Result = EBPVRResultSwitch::OnFailed;
 	return nullptr;
 #else
+	if (!VRGetGenericInterfaceFn)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return false;
+	}
+
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
 	{
@@ -332,6 +244,12 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 	Result = EBPVRResultSwitch::OnFailed;
 	return;
 #else
+	if (!VRGetGenericInterfaceFn)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
 	{
@@ -432,7 +350,7 @@ bool UOpenVRExpansionFunctionLibrary::GetVRControllerPropertyString(EVRControlle
 	return false;
 #else
 
-	if (!bInitialized)
+	if (!VRGetGenericInterfaceFn)
 		return false;
 
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
@@ -466,7 +384,7 @@ bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDevicePropert
 	return false;
 #else
 
-	if (!bInitialized)
+	if (!VRGetGenericInterfaceFn)
 		return false;
 
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
@@ -500,7 +418,7 @@ bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_
 	return false;
 #else
 
-	if (!bInitialized)
+	if (!VRGetGenericInterfaceFn)
 		return false;
 
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
@@ -532,7 +450,7 @@ bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty
 	return false;
 #else
 
-	if (!bInitialized)
+	if (!VRGetGenericInterfaceFn)
 		return false;
 
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
@@ -573,7 +491,7 @@ bool UOpenVRExpansionFunctionLibrary::IsOpenVRDeviceConnected(EBPVRDeviceIndex O
 	}
 
 	return true;
-	/*if (!bInitialized)
+	/*if (!VRGetGenericInterfaceFn)
 	{
 		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("OpenVR Library not initialized!!"));
 		return false;
@@ -608,7 +526,7 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 	return NULL;
 #else
 
-	if (!bInitialized)
+	if (!VRGetGenericInterfaceFn)
 	{
 		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("OpenVR Library not initialized!!"));
 		Result = EAsyncBlueprintResultSwitch::OnFailure;

@@ -14,17 +14,6 @@
 //General Advanced Sessions Log
 DECLARE_LOG_CATEGORY_EXTERN(VRExpansionFunctionLibraryLog, Log, All);
 
-UENUM(BlueprintType)
-enum class EBPWorldType : uint8
-{
-	wNone,		// An untyped world, in most cases this will be the vestigial worlds of streamed in sub-levels
-	wGame,		// The game world
-	wEditor,	// A world being edited in the editor
-	wPIE,		// A Play In Editor world
-	wPreview,	// A preview world for an editor tool
-	wInactive	// An editor world that was loaded but not currently being edited in the level editor
-};
-
 /**
 * Redefining this for blueprint as it wasn't declared as BlueprintType
 * Stores if the user is wearing the HMD or not. For HMDs without a sensor to detect the user wearing it, the state defaults to Unknown.

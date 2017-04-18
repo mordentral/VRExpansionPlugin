@@ -8,7 +8,17 @@ class FOpenVRExpansionPluginModule : public IModuleInterface
 {
 public:
 
+	FOpenVRExpansionPluginModule()
+	{
+		OpenVRDLLHandle = nullptr;
+	}
+
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+
+	bool LoadOpenVRModule();
+	void UnloadOpenVRModule();
+
+	void* OpenVRDLLHandle;
 };

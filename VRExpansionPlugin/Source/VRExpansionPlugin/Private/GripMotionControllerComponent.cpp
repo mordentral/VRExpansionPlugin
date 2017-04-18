@@ -3,6 +3,7 @@
 #include "GripMotionControllerComponent.h"
 #include "IHeadMountedDisplay.h"
 #include "Components/DestructibleComponent.h"
+#include "Misc/ScopeLock.h"
 #include "Net/UnrealNetwork.h"
 #include "KismetMathLibrary.h"
 #include "PrimitiveSceneInfo.h"
@@ -3202,6 +3203,7 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 
 			}
 		}
+
 		LateUpdatePrimitives.Reset();
 	}
 }

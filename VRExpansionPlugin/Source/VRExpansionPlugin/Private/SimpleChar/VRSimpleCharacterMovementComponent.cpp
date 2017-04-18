@@ -458,9 +458,15 @@ void UVRSimpleCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 
 
 		if (!AdjustedDelta.IsNearlyZero())
 		{
+			/* 4.16 UNCOMMENT
+			FHitResult HitResult;
+			SafeMoveUpdatedComponent(AdjustedDelta, UpdatedComponent->GetComponentQuat(), bSweepWhileNavWalking, HitResult);
+			*/
+			/* 4.16 Delete*/
 			const bool bSweep = UpdatedPrimitive ? UpdatedPrimitive->bGenerateOverlapEvents : false;
 			FHitResult HitResult;
 			SafeMoveUpdatedComponent(AdjustedDelta, UpdatedComponent->GetComponentQuat(), bSweep, HitResult);
+			// End 4.16 delete
 		}
 
 		// Update velocity to reflect actual move
