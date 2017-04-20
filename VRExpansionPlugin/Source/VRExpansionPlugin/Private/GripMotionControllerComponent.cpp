@@ -1296,23 +1296,8 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	{
 		if (IsServer())
 		{
-			switch (NewGrip.GripTargetType)
-			{
-			case EGripTargetType::ComponentGrip:
-			{
-				//UPrimitiveComponent * primComp = NewGrip.GetGrippedComponent();
-				if (pActor)
-					pActor->SetReplicateMovement(false);
-				//if (root && root->GetOwner())
-					//root->GetOwner()->SetReplicateMovement(false);
-			}break;
-			case EGripTargetType::ActorGrip:
-			{
-				//AActor * pActor = NewGrip.GetGrippedActor();
-				if(pActor)
-					pActor->SetReplicateMovement(false);
-			} break;
-			}
+			if (pActor)
+				pActor->SetReplicateMovement(false);
 		}
 	}break;
 
@@ -1320,19 +1305,8 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	{
 		if (IsServer())
 		{
-			switch (NewGrip.GripTargetType)
-			{
-			case EGripTargetType::ComponentGrip:
-			{	
-				if (pActor)
-					pActor->SetReplicateMovement(true);
-			}break;
-			case EGripTargetType::ActorGrip:
-			{
-				if (pActor)
-					pActor->SetReplicateMovement(true);
-			} break;
-			}
+			if (pActor)
+				pActor->SetReplicateMovement(true);
 		}
 	}break;
 
@@ -1364,31 +1338,8 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	case EGripCollisionType::InteractiveCollisionWithSweep:
 	default: 
 	{
-
-		switch (NewGrip.GripTargetType)
-		{
-		case EGripTargetType::ComponentGrip:
-		{
-			if (root)
-				root->SetSimulatePhysics(false);
-		}break;
-		case EGripTargetType::ActorGrip:
-		{
-			if (root)
-				root->SetSimulatePhysics(false);
-			/*AActor * pActor = NewGrip.GetGrippedActor();
-			if (pActor)
-				pActor->DisableComponentsSimulatePhysics();*/
-		} break;
-		}
-
-		/*if (IsServer())
-		{
-			if (NewGrip.Component && NewGrip.Component->GetOwner())
-				NewGrip.Component->GetOwner()->SetReplicateMovement(false);
-			else if(NewGrip.Actor)
-				NewGrip.Actor->SetReplicateMovement(false);
-		}*/
+		if (root)
+			root->SetSimulatePhysics(false);
 	} break;
 
 	}

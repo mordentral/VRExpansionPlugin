@@ -134,7 +134,10 @@ enum class EGripLateUpdateSettings : uint8
 };
 
 // Grip movement replication settings
-// ServerSideMovementOnlyWhenColliding is not InteractivePhysicsGripCompatible
+// LocalOnly_Not_Replicated is useful for instant client grips 
+// that can be sent to the server and everyone locally grips it (IE: inventories that don't ever leave a player)
+// Objects that need to be handled possibly by multiple players should be ran
+// non locally gripped instead so that the server can validate grips instead.
 UENUM(Blueprintable)
 enum class EGripMovementReplicationSettings : uint8
 {

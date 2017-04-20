@@ -642,14 +642,14 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 			PC->UpdateRotation(DeltaTime);
 		}
 
-		RequestedVelocity = rRequestedVelocity;
-		CustomVRInputVector = CustVRInputVector;
-
 		if (!rRequestedVelocity.IsNearlyZero())
 		{
+			RequestedVelocity = rRequestedVelocity;
 			bHasRequestedVelocity = true;
-			//RequestedVelocity = rRequestedVelocity;
 		}
+
+		CustomVRInputVector = CustVRInputVector;
+
 		// Set capsule location prior to testing movement
 		// I am overriding the replicated value here when movement is made on purpose
 		if (VRRootCapsule)

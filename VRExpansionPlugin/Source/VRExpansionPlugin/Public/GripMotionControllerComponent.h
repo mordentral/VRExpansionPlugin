@@ -342,7 +342,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
-	// Set the Grip Collision Type of a grip
+	// Set the Grip Collision Type of a grip, call server side if not a local grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripCollisionType(
 			const FBPActorGripInformation &Grip,
@@ -351,7 +351,7 @@ public:
 			);
 
 
-	// Set the late update setting of a grip
+	// Set the late update setting of a grip, call server side if not a local grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripLateUpdateSetting(
 			const FBPActorGripInformation &Grip, 
@@ -359,7 +359,7 @@ public:
 			EGripLateUpdateSettings NewGripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping	
 			);
 
-	// Set the relative transform of a grip
+	// Set the relative transform of a grip, call server side if not a local grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripRelativeTransform(
 			const FBPActorGripInformation &Grip,
@@ -367,7 +367,7 @@ public:
 			const FTransform & NewRelativeTransform
 			);
 
-	// Set the addition transform of a grip
+	// Set the addition transform of a grip, call server side if not a local grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripAdditionTransform(
 			const FBPActorGripInformation &Grip,
@@ -375,7 +375,7 @@ public:
 			const FTransform & NewAdditionTransform, bool bMakeGripRelative = false
 			);
 
-	// Set the constraint stiffness and dampening of a grip
+	// Set the constraint stiffness and dampening of a grip, call server side if not a local grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripStiffnessAndDamping(
 			const FBPActorGripInformation &Grip,

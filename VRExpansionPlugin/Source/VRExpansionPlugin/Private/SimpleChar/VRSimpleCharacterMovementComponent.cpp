@@ -1612,11 +1612,10 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 			PC->UpdateRotation(DeltaTime);
 		}
 
-		RequestedVelocity = rRequestedVelocity;
 		if (!rRequestedVelocity.IsNearlyZero())
 		{
+			RequestedVelocity = rRequestedVelocity;
 			bHasRequestedVelocity = true;
-			//RequestedVelocity = rRequestedVelocity;
 		}
 
 		// Add in VR Input velocity
