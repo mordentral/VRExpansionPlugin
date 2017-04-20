@@ -114,7 +114,8 @@ public:
 	///////////////////////////
 	// Replication Functions
 	///////////////////////////
-	void CallServerMoveVR(const class FSavedMove_VRCharacter* NewMove, const class FSavedMove_VRCharacter* OldMove);
+	// Using my own as I don't want to cast the standard fsavedmove
+	virtual void CallServerMove(const class FSavedMove_Character* NewMove, const class FSavedMove_Character* OldMove) override;
 
 	/** Replicated function sent by client to server - contains client movement and view info. */
 	UFUNCTION(unreliable, server, WithValidation)

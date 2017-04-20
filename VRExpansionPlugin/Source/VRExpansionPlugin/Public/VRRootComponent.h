@@ -77,13 +77,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	TEnumAsByte<ECollisionChannel> WalkingCollisionOverride;
 
-	ECollisionChannel GetVRCollisionObjectType()
+	/*ECollisionChannel GetVRCollisionObjectType()
 	{
 		if (bUseWalkingCollisionOverride)
 			return WalkingCollisionOverride;
 		else
 			return GetCollisionObjectType();
-	}
+	}*/
 
 	FVector curCameraLoc;
 	FRotator curCameraRot;

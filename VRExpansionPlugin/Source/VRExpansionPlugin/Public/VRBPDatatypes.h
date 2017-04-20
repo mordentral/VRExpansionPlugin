@@ -82,6 +82,7 @@ Physics Only = Does not sweep at all (does not trigger OnHitEvents), still pushe
 Manipulation grip = free constraint to controller base, no rotational drives
 ManipulationGripWithWristTwise = free constraint to controller base with a twist drive
 Custom grip is to be handled by the object itself, it just sends the TickGrip event every frame but doesn't move the object.
+InteractiveHybridCollisionWithPhysics = Uses Stiffness and damping settings on collision, on no collision uses stiffness values 10x stronger so it has less play.
 */
 UENUM(Blueprintable)
 enum class EGripCollisionType : uint8
@@ -89,6 +90,7 @@ enum class EGripCollisionType : uint8
 	InteractiveCollisionWithPhysics,
 //	InteractiveCollisionWithVelocity,
 	InteractiveCollisionWithSweep,
+	InteractiveHybridCollisionWithPhysics,
 	InteractiveHybridCollisionWithSweep,
 	SweepWithPhysics,
 	PhysicsOnly,

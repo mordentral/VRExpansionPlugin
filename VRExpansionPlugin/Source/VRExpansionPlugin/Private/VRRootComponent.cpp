@@ -340,9 +340,30 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 			InitSweepCollisionParams(Params, ResponseParam);
 			Params.bFindInitialOverlaps = true;
+			bool bBlockingHit = false;
 
-			bool bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), GetVRCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
-			// If we had a valid blocking hit
+			if (bUseWalkingCollisionOverride)
+			{
+				ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner());
+
+				bool bAllowWalkingCollision = false;
+				if (OwningCharacter)
+				{
+					if (UCharacterMovementComponent * CharMove = Cast<UCharacterMovementComponent>(OwningCharacter->GetCharacterMovement()))
+					{
+						if (CharMove->MovementMode == EMovementMode::MOVE_Walking || CharMove->MovementMode == EMovementMode::MOVE_NavWalking)
+							bAllowWalkingCollision = true;
+					}
+				}
+
+				if (bAllowWalkingCollision)
+					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
+				else
+					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
+				// If we had a valid blocking hit
+			}
+			else
+				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
 
 			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
 			{

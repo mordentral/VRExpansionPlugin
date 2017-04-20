@@ -125,6 +125,14 @@ public:
 				{
 					ReCreateGrip(GrippedActors[i]);
 				}
+				else // If re-creating the grip anyway we don't need to do the below
+				{
+					// If the stiffness and damping got changed server side
+					if (OriginalArrayState[FoundIndex].Stiffness != GrippedActors[i].Stiffness || OriginalArrayState[FoundIndex].Damping != GrippedActors[i].Damping)
+					{
+						SetGripConstraintStiffnessAndDamping(&GrippedActors[i], GrippedActors[i].Stiffness, GrippedActors[i].Damping);
+					}
+				}
 			}
 		}
 
@@ -367,6 +375,14 @@ public:
 			const FTransform & NewAdditionTransform, bool bMakeGripRelative = false
 			);
 
+	// Set the constraint stiffness and dampening of a grip
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+		void SetGripStiffnessAndDamping(
+			const FBPActorGripInformation &Grip,
+			EBPVRResultSwitch &Result,
+			float NewStiffness, float NewDamping
+		);
+
 	// Used to convert an offset transform to grip relative, useful for storing an initial offset and then lerping back to 0 without re-calculating every tick
 	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (DisplayName = "CreateGripRelativeAdditionTransform"))
 		FTransform CreateGripRelativeAdditionTransform_BP(
@@ -574,6 +590,7 @@ public:
 	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
 	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
 	bool GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, UPrimitiveComponent * rootComp, FVector & LocOut);
+	bool SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, float NewStiffness, float NewDamping, bool bIncreaseStiffness = false);
 
 	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
 	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);

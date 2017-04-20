@@ -79,7 +79,7 @@ public:
 	///////////////////////////
 	// Replication Functions
 	///////////////////////////
-	void CallServerMoveVR(const class FSavedMove_VRSimpleCharacter* NewMove, const class FSavedMove_VRSimpleCharacter* OldMove);
+	virtual void CallServerMove(const class FSavedMove_Character* NewMove, const class FSavedMove_Character* OldMove) override;
 	
 	// Use ServerMoveVR instead
 	virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;

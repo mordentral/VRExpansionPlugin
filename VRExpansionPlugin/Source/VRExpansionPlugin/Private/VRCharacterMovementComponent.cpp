@@ -672,12 +672,19 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 
 
 
-void UVRCharacterMovementComponent::CallServerMoveVR
+void UVRCharacterMovementComponent::CallServerMove
 (
-	const class FSavedMove_VRCharacter* NewMove,
-	const class FSavedMove_VRCharacter* OldMove
+	const class FSavedMove_Character* NewCMove,
+	const class FSavedMove_Character* OldCMove
 	)
 {
+	// This is technically "safe", I know for sure that I am using my own FSavedMove
+	// I would have like to not override any of this, but I need a lot more specific information about the pawn
+	// So just setting flags in the FSaved Move doesn't cut it
+	// I could see a problem if someone overrides this override though
+	const FSavedMove_VRCharacter * NewMove = (const FSavedMove_VRCharacter *)NewCMove;
+	const FSavedMove_VRCharacter * OldMove = (const FSavedMove_VRCharacter *)OldCMove;
+
 	check(NewMove != NULL);
 
 	// Compress rotation down to 5 bytes
@@ -1279,7 +1286,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		// Send move to server if this character is replicating movement
 		{
 			SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCallServerMove);
-			CallServerMoveVR((FSavedMove_VRCharacter *)NewMove.Get(), (FSavedMove_VRCharacter *)OldMove.Get());
+			CallServerMove(/*(FSavedMove_VRCharacter *)*/NewMove.Get(), /*(FSavedMove_VRCharacter *)*/OldMove.Get());
 		}
 	}
 
@@ -2244,9 +2251,9 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 			
 			ECollisionChannel CollisionChannel;
 			
-			if (VRRootCapsule)
-				CollisionChannel = VRRootCapsule->GetVRCollisionObjectType();
-			else
+			//if (VRRootCapsule)
+			//	CollisionChannel = VRRootCapsule->GetVRCollisionObjectType();
+			//else
 				CollisionChannel = UpdatedComponent->GetCollisionObjectType();
 
 			if (MovementBase != NULL)

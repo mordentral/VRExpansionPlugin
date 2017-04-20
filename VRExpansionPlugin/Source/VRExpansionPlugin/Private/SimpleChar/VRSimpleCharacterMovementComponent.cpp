@@ -1064,12 +1064,20 @@ void UVRSimpleCharacterMovementComponent::SetUpdatedComponent(USceneComponent* N
 
 /////////////////////////////// REPLICATION ///////////////////////////
 
-void UVRSimpleCharacterMovementComponent::CallServerMoveVR
+void UVRSimpleCharacterMovementComponent::CallServerMove
 (
-	const class FSavedMove_VRSimpleCharacter* NewMove,
-	const class FSavedMove_VRSimpleCharacter* OldMove
+	const class FSavedMove_Character* NewCMove,
+	const class FSavedMove_Character* OldCMove
 )
 {
+
+	// This is technically "safe", I know for sure that I am using my own FSavedMove
+	// I would have like to not override any of this, but I need a lot more specific information about the pawn
+	// So just setting flags in the FSaved Move doesn't cut it
+	// I could see a problem if someone overrides this override though
+	const FSavedMove_VRSimpleCharacter * NewMove = (const FSavedMove_VRSimpleCharacter *)NewCMove;
+	const FSavedMove_VRSimpleCharacter * OldMove = (const FSavedMove_VRSimpleCharacter *)OldCMove;
+
 	check(NewMove != NULL);
 
 	// Compress rotation down to 5 bytes
@@ -1361,7 +1369,7 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 		{
 			SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCallServerMoveVRSimple);
 			//CallServerMove(NewMove.Get(), OldMove.Get());
-			CallServerMoveVR((FSavedMove_VRSimpleCharacter *)NewMove.Get(), (FSavedMove_VRSimpleCharacter *)OldMove.Get());
+			CallServerMove(/*(FSavedMove_VRSimpleCharacter *)*/NewMove.Get(), /*(FSavedMove_VRSimpleCharacter *)*/OldMove.Get());
 		}
 	}
 
