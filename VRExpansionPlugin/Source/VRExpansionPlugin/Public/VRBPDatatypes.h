@@ -31,47 +31,100 @@ enum class EBPVRResultSwitch : uint8
 	OnFailed
 };
 
+// Wasn't needed when final setup was realized
+// Tracked device waist location
+UENUM(Blueprintable)
+enum class EBPVRWaistTrackingMode : uint8
+{
+	// Waist is tracked from the front
+	VRWaist_Tracked_Front,
+	// Waist is tracked from the rear
+	VRWaist_Tracked_Rear,
+	// Waist is tracked from the left (self perspective)
+	VRWaist_Tracked_Left,
+	// Waist is tracked from the right (self perspective)
+	VRWaist_Tracked_Right
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPVRWaistTracking_Info
+{
+	GENERATED_BODY()
+public:
+
+	// Initial "Resting" location of the tracker parent, assumed to be the calibration zero
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		FRotator RestingRotation;
+
+
+	// Distance to offset to get center of waist from tracked parent location
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		float WaistRadius;
+
+	// Controls forward vector
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EBPVRWaistTrackingMode TrackingMode;
+
+	// Tracked parent reference
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UPrimitiveComponent * TrackedDevice;
+
+	bool IsValid()
+	{
+		return TrackedDevice != nullptr;
+	}
+
+	void Clear()
+	{
+		TrackedDevice = nullptr;
+	}
+
+	FBPVRWaistTracking_Info()
+	{
+		WaistRadius = 0.0f;
+		TrackedDevice = nullptr;
+		TrackingMode = EBPVRWaistTrackingMode::VRWaist_Tracked_Rear;
+	}
+
+};
 
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FBPVRComponentPosRep
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY()
+
+	// #TODO: Should make this Quantize10? It just takes it down to 24 bits per element maximum instead of 30
+	// 100 saves min of 2 bits per float, so 6 bits, 10 saves min of 8 bits per float, so 24, 3 bytes per rep is a decent amount
+	// Maybe make it configurable instead.
+	UPROPERTY(Transient)
 		FVector_NetQuantize100 Position;
-	UPROPERTY()
-		uint32 YawPitchINT;
-	UPROPERTY()
-		uint16 RollSHORT;
+	UPROPERTY(Transient)
+		FRotator Rotation;
 
-	// Removed roll BYTE, it was too inaccurate, using a short now
-	//FRotator Orientation;
-
-	// This removes processing time from lerping
-	FRotator UnpackedRotation;
-	FVector UnpackedLocation;
-
-	FORCEINLINE void Unpack()
+	/** Network serialization */
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
-		UnpackedLocation = (FVector)Position;
-		UnpackedRotation = GetRotation();
+		Ar << Position;
+
+		// Rolling my own may be slightly faster (No extra function call, less checks, was using int + short instead)
+		// However it is cleaner to use built in engine methods, and CPU overhead isn't my concern here.
+		// Also if a segment is zero they don't write more than one bit with their implementation
+		Rotation.SerializeCompressedShort(Ar);
+
+		bOutSuccess = true;
+		return true;
 	}
 
-	FORCEINLINE void SetRotation(FRotator NewRot)
-	{
-		//Orientation = NewRot;
-		YawPitchINT = (FRotator::CompressAxisToShort(NewRot.Yaw) << 16) | FRotator::CompressAxisToShort(NewRot.Pitch);
-		RollSHORT = FRotator::CompressAxisToShort(NewRot.Roll);
-	}
+};
 
-	FORCEINLINE FRotator GetRotation()
+template<>
+struct TStructOpsTypeTraits< FBPVRComponentPosRep > : public TStructOpsTypeTraitsBase
+{
+	enum
 	{
-		//return Orientation;
-		const uint16 nPitch = (YawPitchINT & 65535);
-		const uint16 nYaw = (YawPitchINT >> 16);
-
-		return FRotator(FRotator::DecompressAxisFromShort(nPitch), FRotator::DecompressAxisFromShort(nYaw), FRotator::DecompressAxisFromShort(RollSHORT)/*DecompressAxisFromByte(RollBYTE)*/);
-	}
+		WithNetSerializer = true
+	};
 };
 
 /*
@@ -310,7 +363,7 @@ struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
 	GENERATED_BODY()
 public:
-
+	// #TODO serialize this more efficiently over the network
 	UPROPERTY(BlueprintReadOnly)
 		EGripTargetType GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
@@ -343,7 +396,6 @@ public:
 		float SecondarySmoothingScaler;
 	UPROPERTY()
 		FVector SecondaryRelativeLocation;
-
 	// Lerp transitions
 	UPROPERTY()
 		float LerpToRate;

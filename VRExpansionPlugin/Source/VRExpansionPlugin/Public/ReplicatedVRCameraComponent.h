@@ -21,7 +21,7 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 
 //public:
 // If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	bool bOffsetByHMD;
 
 //protected:
@@ -30,27 +30,16 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 		uint32 bAutoSetLockToHmd : 1;
 
-	// Would have to offset controllers by same amount or will feel off
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
-	//bool bUseVRNeckOffset;
-
-	/** An optional extra transform to adjust the final view without moving the component, in the camera's local space, sets additive offset */
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
-	//FTransform VRNeckOffset;
-
-
 	UFUNCTION(BlueprintCallable, Category = Camera)
 		virtual void GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView) override;
 
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedTransform, Category = "VRExpansionLibrary")
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedTransform, Category = "VRExpansionLibrary|Networking")
 	FBPVRComponentPosRep ReplicatedTransform;
 
 	UFUNCTION()
 	virtual void OnRep_ReplicatedTransform()
 	{
-		ReplicatedTransform.Unpack();
-
-		SetRelativeLocationAndRotation(ReplicatedTransform.UnpackedLocation, ReplicatedTransform.UnpackedRotation);
+		SetRelativeLocationAndRotation(ReplicatedTransform.Position, ReplicatedTransform.Rotation);
 	}
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).

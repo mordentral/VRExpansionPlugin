@@ -309,7 +309,13 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 {		
 	if (IsLocallyControlled())
 	{
-		if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
+		if (OptionalWaistTrackingParent.IsValid())
+		{
+			FTransform NewTrans = IVRTrackedParentInterface::Default_GetWaistOrientationAndPosition(OptionalWaistTrackingParent);
+			curCameraLoc = NewTrans.GetTranslation();
+			curCameraRot = NewTrans.Rotator();
+		}
+		else if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 		{
 			FQuat curRot;
 			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);

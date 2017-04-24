@@ -3,6 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
+#include "UObject/Interface.h"
 
 #include "VRGripInterface.generated.h"
 

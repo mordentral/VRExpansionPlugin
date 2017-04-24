@@ -12,7 +12,7 @@ class AVRBaseCharacter;
 
 // EXPERIMENTAL, don't use
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
-class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent//UShapeComponent
+class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent, public IVRTrackedParentInterface
 {
 	GENERATED_UCLASS_BODY()
 
@@ -20,6 +20,15 @@ public:
 	friend class FDrawCylinderSceneProxy;
 
 	FORCEINLINE void GenerateOffsetToWorld(bool bUpdateBounds = true);
+
+	// If valid will use this as the tracked parent instead of the HMD / Parent
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRTrackedParentInterface")
+		FBPVRWaistTracking_Info OptionalWaistTrackingParent;
+
+	virtual void SetTrackedParent(UPrimitiveComponent * NewParentComponent, float WaistRadius, EBPVRWaistTrackingMode WaistTrackingMode) override
+	{
+		IVRTrackedParentInterface::Default_SetTrackedParent_Impl(NewParentComponent, WaistRadius, WaistTrackingMode, OptionalWaistTrackingParent, this);
+	}
 
 	/**
 	* This is overidden for the VR Character to re-set physics location

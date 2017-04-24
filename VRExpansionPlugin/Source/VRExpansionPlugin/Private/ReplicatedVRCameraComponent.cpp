@@ -65,13 +65,13 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 {
 	bHasAuthority = IsLocallyControlled();
 	//bIsServer = IsServer();
-
+	
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	if (bHasAuthority && bReplicates)
 	{
-		ReplicatedTransform.Position = this->RelativeLocation;//Position;
-		ReplicatedTransform.SetRotation(this->RelativeRotation);//.Orientation = this->RelativeRotation;//Orientation;
+		ReplicatedTransform.Position = this->RelativeLocation;
+		ReplicatedTransform.Rotation = this->RelativeRotation;
 
 		// Don't bother with any of this if not replicating transform
 		if (GetNetMode() == NM_Client)	//if (bHasAuthority && bReplicateTransform)

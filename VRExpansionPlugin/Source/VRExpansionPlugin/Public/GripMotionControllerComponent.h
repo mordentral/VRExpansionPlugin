@@ -158,7 +158,7 @@ public:
 	UFUNCTION()
 	virtual void OnRep_ReplicatedControllerTransform()
 	{
-		ReplicatedControllerTransform.Unpack();
+		//ReplicatedControllerTransform.Unpack();
 
 		if (bSmoothReplicatedMotion)
 		{
@@ -168,7 +168,7 @@ public:
 			LastUpdatesRelativeRotation =  this->RelativeRotation;
 		}
 		else
-			SetRelativeLocationAndRotation(ReplicatedControllerTransform.UnpackedLocation, ReplicatedControllerTransform.UnpackedRotation);
+			SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
 	}
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).

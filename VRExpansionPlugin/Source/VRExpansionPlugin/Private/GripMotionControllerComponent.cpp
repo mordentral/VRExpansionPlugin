@@ -1969,12 +1969,12 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			if (bTracked)
 			{
 				ReplicatedControllerTransform.Position = Position;
-				ReplicatedControllerTransform.SetRotation(Orientation);//.Orientation = Orientation;
+				ReplicatedControllerTransform.Rotation = Orientation;
 			}
 			else
 			{
 				ReplicatedControllerTransform.Position = this->RelativeLocation;
-				ReplicatedControllerTransform.SetRotation(this->RelativeRotation);
+				ReplicatedControllerTransform.Rotation = this->RelativeRotation;
 			}
 
 			if (GetNetMode() == NM_Client)//bReplicateControllerTransform)
@@ -1997,7 +1997,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 			if (LerpVal >= 1.0f)
 			{
-				SetRelativeLocationAndRotation(ReplicatedControllerTransform.UnpackedLocation, ReplicatedControllerTransform.UnpackedRotation);
+				SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
 
 				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
 				// Actual prediction might be something to consider in the future, but rough to do in VR
@@ -2011,8 +2011,8 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			{
 				// Removed variables to speed this up a bit
 				SetRelativeLocationAndRotation(
-					FMath::Lerp(LastUpdatesRelativePosition, ReplicatedControllerTransform.UnpackedLocation, LerpVal), 
-					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedControllerTransform.UnpackedRotation, LerpVal)
+					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedControllerTransform.Position, LerpVal), 
+					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedControllerTransform.Rotation, LerpVal)
 				);
 			}
 		}
