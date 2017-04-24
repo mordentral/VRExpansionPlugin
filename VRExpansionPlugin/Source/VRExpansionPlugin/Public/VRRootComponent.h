@@ -3,6 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Components/ShapeComponent.h"
+#include "VRTrackedParentInterface.h"
 #include "VRRootComponent.generated.h"
 
 //For UE4 Profiler ~ Stat Group
