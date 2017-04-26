@@ -600,7 +600,7 @@ public:
 	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
 
 	/** If true, the Position and Orientation args will contain the most recent controller state */
-	virtual bool PollControllerState(FVector& Position, FRotator& Orientation/*4.16 ,float WorldToMetersScale */);
+	virtual bool PollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale);
 
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/
 	bool bTracked;

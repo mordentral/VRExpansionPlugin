@@ -7,6 +7,8 @@
 #include "Net/UnrealNetwork.h"
 #include "KismetMathLibrary.h"
 #include "PrimitiveSceneInfo.h"
+#include "Engine/World.h"
+#include "GameFramework/WorldSettings.h"
 #include "DrawDebugHelpers.h"
 
 #include "PhysicsPublic.h"
@@ -1949,10 +1951,10 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 				GEngine->ViewExtensions.Add(ViewExtension);
 			}
 
-			//float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
 
 			// This is the owning player, now you can get the controller's location and rotation from the correct source
-			bTracked = PollControllerState(Position, Orientation/*4.16 , WorldToMetersScale*/);
+			bTracked = PollControllerState(Position, Orientation, WorldToMeters);
 
 			if (bTracked)
 			{
@@ -2097,8 +2099,8 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 				{
 					FVector Position;
 					FRotator Orientation;
-					//float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
-					if (OtherController->PollControllerState(Position, Orientation/*4.16 WorldToMeters*/))
+					float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+					if (OtherController->PollControllerState(Position, Orientation, WorldToMeters))
 					{
 						curLocation = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
 						bPulledControllerLoc = true;
@@ -3199,7 +3201,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 }
 
 //=============================================================================
-bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation/*4.16 , float WorldToMetersScale*/)
+bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation , float WorldToMetersScale)
 {
 	if ((PlayerIndex != INDEX_NONE) && bHasAuthority)
 	{
@@ -3207,7 +3209,7 @@ bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRot
 		TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
 		for (auto MotionController : MotionControllers)
 		{
-			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position/*4.16 , WorldToMetersScale*/))
+			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position, WorldToMetersScale))
 			{
 				CurrentTrackingStatus = (ETrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
 				
@@ -3254,7 +3256,7 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 	}
 
 	// 4.16
-	/*
+	
 	// Find a view that is associated with this player.
 	float WorldToMetersScale = -1.0f;
 	for (const FSceneView* SceneView : InViewFamily.Views)
@@ -3270,14 +3272,13 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 	{
 		check(InViewFamily.Views.Num() > 0);
 		WorldToMetersScale = InViewFamily.Views[0]->WorldToMetersScale;
-	}*/
-
+	}
 
 	// Poll state for the most recent controller transform
 	FVector Position;
 	FRotator Orientation;
 
-	if (!MotionControllerComponent->PollControllerState(Position, Orientation/* 4.16 , WorldToMetersScale*/))
+	if (!MotionControllerComponent->PollControllerState(Position, Orientation, WorldToMetersScale))
 	{
 		return;
 	}

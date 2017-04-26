@@ -35,5 +35,5 @@ public:
 	}*/
 
 	/** If true, the Position and Orientation args will contain the most recent controller state */
-	virtual bool PollControllerState(FVector& Position, FRotator& Orientation) override;
+	virtual bool PollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale) override;
 };

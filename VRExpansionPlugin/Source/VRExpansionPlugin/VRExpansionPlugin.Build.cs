@@ -9,8 +9,8 @@ public class VRExpansionPlugin : ModuleRules
         get { return Path.GetFullPath(BuildConfiguration.RelativeEnginePath) + "Plugins/Runtime/"; }
     }
 
-    public VRExpansionPlugin(TargetInfo Target)
-	{
+    public VRExpansionPlugin(ReadOnlyTargetRules Target) : base(Target)
+    {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
 

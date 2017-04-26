@@ -13,10 +13,10 @@
 
 /*4.16 linux now support under steamvr supported platforms*/
 // 4.16 UNCOMMENT
-//#define STEAMVR_SUPPORTED_PLATFORMS(PLATFORM_LINUX || (PLATFORM_WINDOWS && WINVER > 0x0502))
+#define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_LINUX || (PLATFORM_WINDOWS && WINVER > 0x0502))
 
 // 4.16 COMMENT
-#define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_WINDOWS && WINVER > 0x0502)
+//#define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_WINDOWS && WINVER > 0x0502)
 // #TODO: Check for #isdef and value instead?
 
 
@@ -90,6 +90,7 @@ public:
 
 	FBPOpenVRKeyboardHandle()
 	{
+		//static const VROverlayHandle_t k_ulOverlayHandleInvalid = 0;	
 		VRKeyboardHandle = vr::k_ulOverlayHandleInvalid;
 	}
 	const bool IsValid()
