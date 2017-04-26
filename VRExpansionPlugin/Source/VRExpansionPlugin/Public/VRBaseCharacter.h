@@ -26,31 +26,31 @@ public:
 	FTransform OffsetComponentToWorld;
 
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
-	FVector GetVRForwardVector()
+	FVector GetVRForwardVector() const
 	{
 		return OffsetComponentToWorld.GetRotation().GetForwardVector();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
-		FVector GetVRRightVector()
+		FVector GetVRRightVector() const
 	{
 		return OffsetComponentToWorld.GetRotation().GetRightVector();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
-		FVector GetVRUpVector()
+		FVector GetVRUpVector() const
 	{
 		return OffsetComponentToWorld.GetRotation().GetUpVector();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
-		FVector GetVRLocation()
+		FVector GetVRLocation() const
 	{
 		return OffsetComponentToWorld.GetLocation();
 	}
 
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
-		FRotator GetVRRotation()
+		FRotator GetVRRotation() const
 	{
 		return OffsetComponentToWorld.GetRotation().Rotator();
 	}

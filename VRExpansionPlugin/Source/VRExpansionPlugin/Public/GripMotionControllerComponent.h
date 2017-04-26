@@ -147,11 +147,12 @@ public:
 	//  Movement Replication
 	// Actor needs to be replicated for this to work
 
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ReplicatedControllerTransform, Category = "GripMotionController|Networking")
+	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedControllerTransform, Category = "GripMotionController|Networking")
 	FBPVRComponentPosRep ReplicatedControllerTransform;
 
 	FVector LastUpdatesRelativePosition;
 	FRotator LastUpdatesRelativeRotation;
+
 	float LerpTimeFromLastUpdate;
 	bool bLerpingPosition;
 
@@ -165,7 +166,7 @@ public:
 			bLerpingPosition = true;
 			ControllerNetUpdateCount = 0.0f;
 			LastUpdatesRelativePosition = this->RelativeLocation;
-			LastUpdatesRelativeRotation =  this->RelativeRotation;
+			LastUpdatesRelativeRotation = this->RelativeRotation;
 		}
 		else
 			SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
