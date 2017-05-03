@@ -11,7 +11,6 @@
 
 class AVRBaseCharacter;
 
-// EXPERIMENTAL, don't use
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
 class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent, public IVRTrackedParentInterface
 {

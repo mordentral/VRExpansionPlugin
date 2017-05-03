@@ -387,6 +387,8 @@ public:
 			bIgnoreHandRotation = (Flags >> 7) & 0x01;
 		}
 		
+		// Might need to change this
+
 		//Ar << InitialLinearTranslation;
 		//Ar << MinLinearTranslation;
 		//Ar << MaxLinearTranslation;
@@ -394,12 +396,12 @@ public:
 		bOutSuccess &= SerializePackedVector<100, 30>(MinLinearTranslation, Ar);
 		bOutSuccess &= SerializePackedVector<100, 30>(MaxLinearTranslation, Ar);
 
-		//InitialAngularTranslation.SerializeCompressedShort(Ar);
-		//MinAngularTranslation.SerializeCompressedShort(Ar);
-		//MaxAngularTranslation.SerializeCompressedShort(Ar);
-		Ar << InitialAngularTranslation;
-		Ar << MinAngularTranslation;
-		Ar << MaxAngularTranslation;
+		InitialAngularTranslation.SerializeCompressedShort(Ar);
+		MinAngularTranslation.SerializeCompressedShort(Ar);
+		MaxAngularTranslation.SerializeCompressedShort(Ar);
+		//Ar << InitialAngularTranslation;
+		//Ar << MinAngularTranslation;
+		//Ar << MaxAngularTranslation;
 
 
 		return bOutSuccess;
@@ -431,7 +433,7 @@ public:
 		EGripCollisionType GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
 		EGripLateUpdateSettings GripLateUpdateSetting;
-	//UPROPERTY(BlueprintReadOnly)
+	//UPROPERTY(BlueprintReadOnly) // If this was a UProperty it would trigger replication when changed
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
 		FTransform RelativeTransform;
@@ -456,9 +458,10 @@ public:
 	UPROPERTY()
 		FVector SecondaryRelativeLocation;
 	// Lerp transitions
+	// Max value is 16 seconds with two decimal precision, this is to reduce replication overhead
 	UPROPERTY()
 		float LerpToRate;
-	
+
 	// These are not replicated, they don't need to be
 	EGripLerpState GripLerpState;
 	FVector LastRelativeLocation;
@@ -476,16 +479,22 @@ public:
 	{
 		//#TODO Start compressing Transforms / Vectors / Floats?
 
-		Ar << GripTargetType;
-		Ar << GrippedObject;
-		Ar << GripCollisionType;
-		Ar << GripLateUpdateSetting;
+		bOutSuccess = true;
 
+
+
+		Ar << GrippedObject;
 		Ar << RelativeTransform;
 
+		// #TODO
+		// In the future I can compress these down to half a byte each, none go over 4 bits of data
+		// Its only a 2 byte savings on something that rarely replicates so not worried about it at the moment.
+		Ar << GripTargetType;
+		Ar << GripCollisionType;
+		Ar << GripLateUpdateSetting;
 		Ar << GripMovementReplicationSetting;
 
-		// If on colliding server, otherwise doesn't matter to client
+		// Doesn't matter to client
 		//	Ar << bColliding;
 
 		// This doesn't matter to clients
@@ -493,15 +502,34 @@ public:
 		
 		bool bHadAttachment = bHasSecondaryAttachment;
 	
-		Ar << bHasSecondaryAttachment;
-		Ar << LerpToRate;
+		//Ar << bHasSecondaryAttachment;
+		uint8 Flags = bHasSecondaryAttachment;
+		Ar.SerializeBits(&Flags, 1);
+		bHasSecondaryAttachment = (Flags >> 0) & 0x01;	// The compiler should optimize out bitshifts by 0, so keeping it for clarity
+		
+		//Ar << LerpToRate;
+		if(Ar.IsSaving())
+		{ 
+			bOutSuccess &= WriteFixedCompressedFloat<16, 12>(LerpToRate, Ar); // 4 bits up to 16 seconds lerp time, 1 bit sign, 7 bits 2 decimal precision
+		}
+		else
+			bOutSuccess &= ReadFixedCompressedFloat<16, 12>(LerpToRate, Ar);
+
 
 		// If this grip has a secondary attachment
 		if (bHasSecondaryAttachment)
 		{
 			Ar << SecondaryAttachment;
 			Ar << SecondaryRelativeLocation;
-			Ar << SecondarySmoothingScaler;
+
+			//Ar << SecondarySmoothingScaler;
+			if (Ar.IsSaving())
+			{
+				bOutSuccess &= WriteFixedCompressedFloat<1, 9>(SecondarySmoothingScaler, Ar); // 1 bits up to 1 value, 1 bit sign, 7 bits 2 decimal precision
+			}
+			else
+				bOutSuccess &= ReadFixedCompressedFloat<1, 9>(SecondarySmoothingScaler, Ar);
+
 		}
 
 		// Manage lerp states
@@ -509,7 +537,7 @@ public:
 		{
 			if (bHadAttachment != bHasSecondaryAttachment)
 			{
-				if (LerpToRate < 0.01f)
+				if (LerpToRate < 0.01f) // Zero, could use IsNearlyZero instead
 					GripLerpState = EGripLerpState::NotLerping;
 				else
 				{
@@ -532,8 +560,7 @@ public:
 		Ar << Damping;
 		Ar << Stiffness;
 
-		bOutSuccess = true;
-		return true;
+		return bOutSuccess;
 	}
 
 	FORCEINLINE AActor * GetGrippedActor() const

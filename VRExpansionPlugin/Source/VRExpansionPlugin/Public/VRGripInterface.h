@@ -2,13 +2,15 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#include "UObject/ObjectMacros.h"
+#include "UObject/ScriptMacros.h"
 #include "VRBPDatatypes.h"
 #include "UObject/Interface.h"
 
 #include "VRGripInterface.generated.h"
 
 
-UINTERFACE(BlueprintType)
+UINTERFACE(Blueprintable)
 class VREXPANSIONPLUGIN_API UVRGripInterface: public UInterface
 {
 	GENERATED_UINTERFACE_BODY()
