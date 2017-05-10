@@ -230,6 +230,17 @@ enum class EGripLerpState : uint8
 	NotLerping
 };
 
+// Secondary Grip Type
+UENUM(Blueprintable)
+enum class ESecondaryGripType : uint8
+{
+	SG_None,
+	SG_Free,
+	SG_SlotOnly,
+	SG_FreeWithScaling,
+	SG_SlotOnlyWithScaling
+};
+
 // Grip Late Update information
 UENUM(Blueprintable)
 enum class EGripLateUpdateSettings : uint8
@@ -664,8 +675,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripCollisionType FreeDefaultGripType;
 
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+	//	bool bCanHaveDoubleGrip;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		bool bCanHaveDoubleGrip;
+		ESecondaryGripType SecondaryGripType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripMovementReplicationSettings MovementReplicationType;
@@ -708,7 +722,8 @@ public:
 		EnumObjectType = 0;
 		SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 		FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-		bCanHaveDoubleGrip = false;
+		//bCanHaveDoubleGrip = false;
+		SecondaryGripType = ESecondaryGripType::SG_None;
 		//GripTarget = EGripTargetType::ComponentGrip;
 		MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 		LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;

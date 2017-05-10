@@ -9,7 +9,6 @@
 //General Log
 DEFINE_LOG_CATEGORY(VRExpansionFunctionLibraryLog);
 
-
 void UVRExpansionFunctionLibrary::LowPassFilter_RollingAverage(FVector lastAverage, FVector newSample, FVector & newAverage, int32 numSamples)
 {
 	newAverage = lastAverage;
@@ -69,7 +68,9 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 		}
 
 		if (bHadSlotInRange)
+		{
 			SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
+		}
 	}
 }
 
@@ -105,7 +106,9 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 	}
 
 	if (bHadSlotInRange)
+	{
 		SlotWorldTransform = Component->GetSocketTransform(SocketNames[foundIndex]);
+	}
 }
 
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)

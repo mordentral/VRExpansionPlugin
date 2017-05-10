@@ -46,7 +46,6 @@
 //General Advanced Sessions Log
 DECLARE_LOG_CATEGORY_EXTERN(OpenVRExpansionFunctionLibraryLog, Log, All);
 
-
 // This makes a lot of the blueprint functions cleaner
 UENUM()
 enum class EBPVRDeviceIndex : uint8

@@ -17,6 +17,7 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	this->RelativeLocation = FVector(0, 0, 0);
 	YawTolerance = 0.0f;
 	bOffsetByHMD = false;
+	
 }
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)

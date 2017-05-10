@@ -48,8 +48,12 @@ class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshAc
 		EGripCollisionType FreeGripType();
 
 	// Can have secondary grip
+	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	//	bool CanHaveDoubleGrip();
+
+	// Secondary grip type
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		bool CanHaveDoubleGrip();
+		ESecondaryGripType SecondaryGripType();
 
 	// Define which movement repliation setting to use
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -95,4 +99,51 @@ class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshAc
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		FBPInteractionSettings GetInteractionSettings();
 
+	// Events //
+
+	// Event triggered each tick on the interfaced object when gripped, can be used for custom movement or grip based logic
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
+		void TickGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime);
+
+	// Event triggered on the interfaced object when gripped
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
+		void OnGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation);
+
+	// Event triggered on the interfaced object when grip is released
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
+		void OnGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation);
+
+	// Event triggered on the interfaced object when child component is gripped
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
+		void OnChildGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation);
+
+	// Event triggered on the interfaced object when child component is released
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
+		void OnChildGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation);
+
+	// Event triggered on the interfaced object when secondary gripped
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
+		void OnSecondaryGrip(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation);
+
+	// Event triggered on the interfaced object when secondary grip is released
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
+		void OnSecondaryGripRelease(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation);
+
+	// Interaction Functions
+
+	// Call to use an object
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnUsed();
+
+	// Call to stop using an object
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnEndUsed();
+
+	// Call to use an object
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnSecondaryUsed();
+
+	// Call to stop using an object
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnEndSecondaryUsed();
 };

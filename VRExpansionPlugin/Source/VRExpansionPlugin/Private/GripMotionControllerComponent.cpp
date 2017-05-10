@@ -1504,10 +1504,13 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 
 	if (GrippedObjectToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		if (!IVRGripInterface::Execute_CanHaveDoubleGrip(GrippedObjectToAddAttachment))
+		ESecondaryGripType SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GrippedObjectToAddAttachment);
+		if (SecondaryType == ESecondaryGripType::SG_None)
 		{
 			return false;
 		}
+		else if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
+			LerpToTime = 0.0f;
 	}
 
 	FBPActorGripInformation * GripToUse = nullptr;
@@ -1641,6 +1644,13 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 	// Handle the grip if it was found
 	if (GripToUse)
 	{
+		if (GrippedObjectToRemoveAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			ESecondaryGripType SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GrippedObjectToRemoveAttachment);
+			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
+				LerpToTime = 0.0f;
+		}
+
 		if (GripToUse->GripLerpState == EGripLerpState::StartLerp)
 			LerpToTime = 0.0f;
 
@@ -2041,7 +2051,6 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 	{
 		// Just simple transform setting
 		WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
-
 	}
 
 	// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
@@ -2126,11 +2135,28 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			Grip.LastRelativeLocation = frontLoc;//curLocation;// -BasePoint;
 		}
 
+		// Checking secondary grip type for the scaling setting
+		ESecondaryGripType SecondaryType = ESecondaryGripType::SG_None;
+
+		if (bRootHasInterface)
+			SecondaryType = IVRGripInterface::Execute_SecondaryGripType(root);
+		else if (bActorHasInterface)
+			SecondaryType = IVRGripInterface::Execute_SecondaryGripType(actor);
+
+		float Scaler = 1.0f;
+		if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
+		{
+			if (Grip.GripLerpState == EGripLerpState::EndLerp)
+				Scaler = frontLocOrig.Size() / frontLoc.Size();
+			else
+				Scaler = frontLoc.Size() / frontLocOrig.Size();
+		}
+
 		// Get the rotation difference from the initial second grip
 		FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
 
 		// Create a transform from it
-		FTransform RotationOffsetTransform(rotVal, FVector::ZeroVector);
+		FTransform RotationOffsetTransform(rotVal, FVector::ZeroVector, FVector(Scaler));
 
 		// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
 		WorldTransform = WorldTransform * WorldToPivot * RotationOffsetTransform * PivotToWorld;

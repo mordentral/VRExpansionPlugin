@@ -403,13 +403,13 @@ public:
 	FORCEINLINE bool HasGripMovementAuthority(const FBPActorGripInformation &Grip);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
-	FORCEINLINE void TickGrip(float DeltaTime);
+	FORCEINLINE_DEBUGGABLE void TickGrip(float DeltaTime);
 
 	// Splitting logic into seperate function
 	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, const FVector &MotionControllerLocDelta, float DeltaTime, bool bReplicatedArray = false);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
-	FORCEINLINE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
+	FORCEINLINE_DEBUGGABLE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
 
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
 	FORCEINLINE FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);

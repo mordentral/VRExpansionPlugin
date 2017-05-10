@@ -27,7 +27,6 @@ enum class EBPHMDWornState : uint8
 };
 
 
-
 UCLASS()//, meta = (BlueprintSpawnableComponent))
 class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UBlueprintFunctionLibrary
 {
@@ -95,7 +94,6 @@ public:
 			NewLocation -= NewRotation.RotateVector(PivotPoint);
 		}
 	}
-
 
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))
