@@ -29,7 +29,25 @@ UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectIn
 
 	// Setting this for default with multiplayer
 	this->bReplicates = true;
+	bReplicateGripInterfaceSettings = true;
 }
+
+void UGrippableSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME_CONDITION(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, COND_Custom);
+}
+
+void UGrippableSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't replicate if set to not do it
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, bReplicateGripInterfaceSettings);
+}
+
 
 //=============================================================================
 UGrippableSkeletalMeshComponent::~UGrippableSkeletalMeshComponent()

@@ -237,8 +237,10 @@ enum class ESecondaryGripType : uint8
 	SG_None,
 	SG_Free,
 	SG_SlotOnly,
-	SG_FreeWithScaling,
-	SG_SlotOnlyWithScaling
+	SG_Free_Retain,
+	SG_SlotOnly_Retain,
+	SG_FreeWithScaling_Retain,
+	SG_SlotOnlyWithScaling_Retain
 };
 
 // Grip Late Update information
@@ -481,6 +483,9 @@ public:
 	// Optional Additive Transform for programatic animation
 	FTransform AdditionTransform;
 
+	// Specifically for secondary grip retaining size / scale after grip
+	float SecondaryScaler;
+
 	// Locked transitions
 	bool bIsLocked;
 	FQuat LastLockedRotation;
@@ -491,8 +496,6 @@ public:
 		//#TODO Start compressing Transforms / Vectors / Floats?
 
 		bOutSuccess = true;
-
-
 
 		Ar << GrippedObject;
 		Ar << RelativeTransform;
@@ -548,7 +551,7 @@ public:
 		{
 			if (bHadAttachment != bHasSecondaryAttachment)
 			{
-				if (LerpToRate < 0.01f) // Zero, could use IsNearlyZero instead
+				if (FMath::IsNearlyZero(LerpToRate)) // Zero, could use IsNearlyZero instead
 					GripLerpState = EGripLerpState::NotLerping;
 				else
 				{
@@ -639,6 +642,7 @@ public:
 
 		RelativeTransform = FTransform::Identity;
 		AdditionTransform = FTransform::Identity;
+		SecondaryScaler = 1.0f;
 	}
 };
 

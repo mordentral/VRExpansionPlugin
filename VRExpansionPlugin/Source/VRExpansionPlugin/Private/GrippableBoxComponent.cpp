@@ -2,6 +2,10 @@
 
 #include "GrippableBoxComponent.h"
 
+//=============================================================================
+UGrippableBoxComponent::~UGrippableBoxComponent()
+{
+}
 
   //=============================================================================
 UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectInitializer)
@@ -26,13 +30,25 @@ UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectI
 	VRGripInterfaceSettings.bIsInteractible = false;
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
+
+	bReplicateGripInterfaceSettings = true;
 }
 
-//=============================================================================
-UGrippableBoxComponent::~UGrippableBoxComponent()
+void UGrippableBoxComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
+	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UGrippableBoxComponent, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, VRGripInterfaceSettings, COND_Custom);
 }
 
+void UGrippableBoxComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't replicate if set to not do it
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, VRGripInterfaceSettings, bReplicateGripInterfaceSettings);
+}
 
 void UGrippableBoxComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime) {}
 void UGrippableBoxComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}

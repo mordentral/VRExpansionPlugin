@@ -26,7 +26,25 @@ UGrippableCapsuleComponent::UGrippableCapsuleComponent(const FObjectInitializer&
 
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
+	bReplicateGripInterfaceSettings = true;
 }
+
+void UGrippableCapsuleComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UGrippableCapsuleComponent, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME_CONDITION(UGrippableCapsuleComponent, VRGripInterfaceSettings, COND_Custom);
+}
+
+void UGrippableCapsuleComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't replicate if set to not do it
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableCapsuleComponent, VRGripInterfaceSettings, bReplicateGripInterfaceSettings);
+}
+
 
 //=============================================================================
 UGrippableCapsuleComponent::~UGrippableCapsuleComponent()

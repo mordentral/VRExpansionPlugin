@@ -1505,12 +1505,21 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 	if (GrippedObjectToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
 		ESecondaryGripType SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GrippedObjectToAddAttachment);
-		if (SecondaryType == ESecondaryGripType::SG_None)
+	
+		switch (SecondaryType)
 		{
-			return false;
+		case ESecondaryGripType::SG_None:return false; break;
+
+		//case ESecondaryGripType::SG_FreeWithScaling_Retain:
+		//case ESecondaryGripType::SG_SlotOnly_Retain:
+		//case ESecondaryGripType::SG_SlotOnlyWithScaling_Retain:
+		//case ESecondaryGripType::SG_Free_Retain:
+		//{
+		//	LerpToTime = 0.0f;
+		//}break;
+
+		default:break;
 		}
-		else if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
-			LerpToTime = 0.0f;
 	}
 
 	FBPActorGripInformation * GripToUse = nullptr;
@@ -1644,45 +1653,62 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 	// Handle the grip if it was found
 	if (GripToUse)
 	{
-		if (GrippedObjectToRemoveAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-		{
-			ESecondaryGripType SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GrippedObjectToRemoveAttachment);
-			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
-				LerpToTime = 0.0f;
-		}
-
 		if (GripToUse->GripLerpState == EGripLerpState::StartLerp)
 			LerpToTime = 0.0f;
 
-		if (LerpToTime > 0.0f)
+		//if (LerpToTime > 0.0f)
+		//{
+		UPrimitiveComponent * primComp = nullptr;
+
+		switch (GripToUse->GripTargetType)
 		{
-			UPrimitiveComponent * primComp = nullptr;
+		case EGripTargetType::ComponentGrip:
+		{
+			primComp = GripToUse->GetGrippedComponent();
+		}break;
+		case EGripTargetType::ActorGrip:
+		{
+			AActor * pActor = GripToUse->GetGrippedActor();
+			if (pActor)
+				primComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+		} break;
+		}
 
-			switch (GripToUse->GripTargetType)
+		if (primComp)
+		{
+			ESecondaryGripType SecondaryType = ESecondaryGripType::SG_None;
+			if (GripToUse->GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-			case EGripTargetType::ComponentGrip:
-			{
-				primComp = GripToUse->GetGrippedComponent();
-			}break;
-			case EGripTargetType::ActorGrip:
-			{
-				AActor * pActor = GripToUse->GetGrippedActor();
-				if (pActor)
-					primComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-			} break;
+				SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GripToUse->GrippedObject);
+				//else if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
+				//LerpToTime = 0.0f;
 			}
 
-			if (primComp)
+			switch (SecondaryType)
 			{
-				GripToUse->LerpToRate = LerpToTime;
-				GripToUse->GripLerpState = EGripLerpState::EndLerp;
-				GripToUse->curLerp = LerpToTime;
-			}
-			else
+			// All of these retain the position on release
+			case ESecondaryGripType::SG_FreeWithScaling_Retain:
+			case ESecondaryGripType::SG_SlotOnlyWithScaling_Retain:
+			case ESecondaryGripType::SG_Free_Retain:
+			case ESecondaryGripType::SG_SlotOnly_Retain:
 			{
+				GripToUse->RelativeTransform = primComp->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform());
 				GripToUse->LerpToRate = 0.0f;
 				GripToUse->GripLerpState = EGripLerpState::NotLerping;
+			}break;
+			default:
+			{
+				if (LerpToTime > 0.0f)
+				{
+					// #TODO: This had a hitch in it just prior to lerping back, fix it eventually and allow lerping from scaling secondaries
+					//GripToUse->RelativeTransform.SetScale3D(GripToUse->RelativeTransform.GetScale3D() * FVector(GripToUse->SecondaryScaler));
+					GripToUse->LerpToRate = LerpToTime;
+					GripToUse->GripLerpState = EGripLerpState::EndLerp;
+					GripToUse->curLerp = LerpToTime;
+				}
+			}break;
 			}
+
 		}
 		else
 		{
@@ -2099,7 +2125,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 		}
 		else // Is in a multi grip, might be lerping into it as well.
 		{
-			FVector curLocation;
+			FVector curLocation; // Current location of the secondary grip
 
 			bool bPulledControllerLoc = false;
 			if (bHasAuthority && Grip.SecondaryAttachment->GetOwner() == this->GetOwner())
@@ -2117,7 +2143,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 				}
 			}
 
-			if(!bPulledControllerLoc)
+			if (!bPulledControllerLoc)
 				curLocation = Grip.SecondaryAttachment->GetComponentLocation() - BasePoint;
 
 
@@ -2135,31 +2161,30 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			Grip.LastRelativeLocation = frontLoc;//curLocation;// -BasePoint;
 		}
 
-		// Checking secondary grip type for the scaling setting
-		ESecondaryGripType SecondaryType = ESecondaryGripType::SG_None;
-
-		if (bRootHasInterface)
-			SecondaryType = IVRGripInterface::Execute_SecondaryGripType(root);
-		else if (bActorHasInterface)
-			SecondaryType = IVRGripInterface::Execute_SecondaryGripType(actor);
-
 		float Scaler = 1.0f;
-		if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
+		if (Grip.GripLerpState != EGripLerpState::EndLerp)
 		{
-			if (Grip.GripLerpState == EGripLerpState::EndLerp)
-				Scaler = frontLocOrig.Size() / frontLoc.Size();
-			else
-				Scaler = frontLoc.Size() / frontLocOrig.Size();
+			// Checking secondary grip type for the scaling setting
+			ESecondaryGripType SecondaryType = ESecondaryGripType::SG_None;
+
+			if (bRootHasInterface)
+				SecondaryType = IVRGripInterface::Execute_SecondaryGripType(root);
+			else if (bActorHasInterface)
+				SecondaryType = IVRGripInterface::Execute_SecondaryGripType(actor);
+
+			//float Scaler = 1.0f;
+			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain)
+			{
+				/*	Scaler*/Grip.SecondaryScaler = frontLoc.Size() / frontLocOrig.Size();
+				Scaler = Grip.SecondaryScaler;
+			}
 		}
 
 		// Get the rotation difference from the initial second grip
 		FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
 
-		// Create a transform from it
-		FTransform RotationOffsetTransform(rotVal, FVector::ZeroVector, FVector(Scaler));
-
 		// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
-		WorldTransform = WorldTransform * WorldToPivot * RotationOffsetTransform * PivotToWorld;
+		WorldTransform = WorldTransform * WorldToPivot * FTransform(rotVal, FVector::ZeroVector, FVector(Scaler)) * PivotToWorld;
 	}
 }
 

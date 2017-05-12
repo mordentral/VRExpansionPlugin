@@ -19,9 +19,13 @@ class VREXPANSIONPLUGIN_API UGrippableSkeletalMeshComponent : public USkeletalMe
 
 	~UGrippableSkeletalMeshComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-	FBPInterfaceProperties VRGripInterfaceSettings;
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
+		bool bReplicateGripInterfaceSettings;
+
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
+		FBPInterfaceProperties VRGripInterfaceSettings;
 	// Set up as deny instead of allow so that default allows for gripping
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool DenyGripping();

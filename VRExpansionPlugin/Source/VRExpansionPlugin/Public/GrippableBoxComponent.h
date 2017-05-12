@@ -19,7 +19,12 @@ class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, publi
 
 	~UGrippableBoxComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
+	bool bReplicateGripInterfaceSettings;
+
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 	FBPInterfaceProperties VRGripInterfaceSettings;
 
 	// Set up as deny instead of allow so that default allows for gripping
