@@ -27,8 +27,6 @@ UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitia
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
 
-	// Setting this for default with multiplayer
-	this->bReplicates = true;
 	bReplicateGripInterfaceSettings = true;
 }
 

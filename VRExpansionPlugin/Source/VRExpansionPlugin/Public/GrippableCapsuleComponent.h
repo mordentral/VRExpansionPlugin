@@ -21,6 +21,7 @@ class VREXPANSIONPLUGIN_API UGrippableCapsuleComponent : public UCapsuleComponen
 
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
+	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bReplicateGripInterfaceSettings;
 

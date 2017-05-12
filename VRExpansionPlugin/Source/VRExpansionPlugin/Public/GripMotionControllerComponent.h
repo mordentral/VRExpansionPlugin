@@ -107,38 +107,67 @@ public:
 	}
 
 	UFUNCTION()
-	virtual void OnRep_GrippedActors(TArray<FBPActorGripInformation> OriginalArrayState)
+	virtual void OnRep_GrippedActors(/*TArray<FBPActorGripInformation> OriginalArrayState*/) // Original array state is useless without full serialize, it just hold last delta
 	{
+		// Need to think about how best to handle the simulating flag here, don't handle for now
+		// Check for removed gripped actors
+		// This might actually be better left as an RPC multicast
+
 		// Check for new gripped actors
 		for (int i = 0; i < GrippedActors.Num(); i++)
 		{
-			int FoundIndex = 0;
-			if (!OriginalArrayState.Find(GrippedActors[i], FoundIndex))
+			if (!GrippedActors[i].ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
 			{
-				// Is a new grip entry
-				NotifyGrip(GrippedActors[i]);
+				NotifyGrip(GrippedActors[i]); // Grip it
+				GrippedActors[i].ValueCache.bWasInitiallyRepped = true; // Set has been initialized
 			}
-			else // Check to see if the important bits got changed (instant drop / pickup can cause this)
+			else // Check for changes from cached information
 			{
-				if (OriginalArrayState[FoundIndex].GripCollisionType != GrippedActors[i].GripCollisionType ||
-					OriginalArrayState[FoundIndex].GripMovementReplicationSetting != GrippedActors[i].GripMovementReplicationSetting)
+				// Manage lerp states
+				if (GrippedActors[i].ValueCache.bCachedHasSecondaryAttachment != GrippedActors[i].bHasSecondaryAttachment)
+				{
+					if (FMath::IsNearlyZero(GrippedActors[i].LerpToRate)) // Zero, could use IsNearlyZero instead
+						GrippedActors[i].GripLerpState = EGripLerpState::NotLerping;
+					else
+					{
+						// New lerp
+						if (GrippedActors[i].bHasSecondaryAttachment)
+						{
+							GrippedActors[i].curLerp = GrippedActors[i].LerpToRate;
+							GrippedActors[i].GripLerpState = EGripLerpState::StartLerp;
+						}
+						else // Post Lerp
+						{
+							GrippedActors[i].curLerp = GrippedActors[i].LerpToRate;
+							GrippedActors[i].GripLerpState = EGripLerpState::EndLerp;
+						}
+					}
+				}
+
+				if (GrippedActors[i].ValueCache.CachedGripCollisionType != GrippedActors[i].GripCollisionType ||
+					GrippedActors[i].ValueCache.CachedGripMovementReplicationSetting != GrippedActors[i].GripMovementReplicationSetting)
 				{
 					ReCreateGrip(GrippedActors[i]);
 				}
 				else // If re-creating the grip anyway we don't need to do the below
 				{
 					// If the stiffness and damping got changed server side
-					if (OriginalArrayState[FoundIndex].Stiffness != GrippedActors[i].Stiffness || OriginalArrayState[FoundIndex].Damping != GrippedActors[i].Damping)
+					if (GrippedActors[i].ValueCache.CachedStiffness != GrippedActors[i].Stiffness || GrippedActors[i].ValueCache.CachedDamping != GrippedActors[i].Damping)
 					{
 						SetGripConstraintStiffnessAndDamping(&GrippedActors[i], GrippedActors[i].Stiffness, GrippedActors[i].Damping);
 					}
 				}
-			}
-		}
 
-		// Need to think about how best to handle the simulating flag here, don't handle for now
-		// Check for removed gripped actors
-		// This might actually be better left as an RPC multicast
+			}
+
+			// Set caches now for next rep
+			GrippedActors[i].ValueCache.bCachedHasSecondaryAttachment = GrippedActors[i].bHasSecondaryAttachment;
+			GrippedActors[i].ValueCache.CachedGripCollisionType = GrippedActors[i].GripCollisionType;
+			GrippedActors[i].ValueCache.CachedGripMovementReplicationSetting = GrippedActors[i].GripMovementReplicationSetting;
+			GrippedActors[i].ValueCache.CachedStiffness = GrippedActors[i].Stiffness;
+			GrippedActors[i].ValueCache.CachedDamping = GrippedActors[i].Damping;
+
+		}
 	}
 
 	UPROPERTY(BlueprintReadWrite, Category = "VRGrip")

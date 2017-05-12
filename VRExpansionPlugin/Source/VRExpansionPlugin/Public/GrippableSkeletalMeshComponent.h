@@ -21,6 +21,7 @@ class VREXPANSIONPLUGIN_API UGrippableSkeletalMeshComponent : public USkeletalMe
 
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
+	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bReplicateGripInterfaceSettings;
 

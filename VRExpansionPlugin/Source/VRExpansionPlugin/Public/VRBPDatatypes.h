@@ -117,6 +117,7 @@ public:
 	}
 
 	/** Network serialization */
+	// Doing a custom NetSerialize here because this is sent via RPCs and should change on every update
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
 		bOutSuccess = true;
@@ -359,76 +360,6 @@ public:
 		MinAngularTranslation = FRotator::ZeroRotator;
 		MaxAngularTranslation = FRotator::ZeroRotator;
 	}
-
-	/** Network serialization */
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
-	{
-		bOutSuccess = true;
-
-		// pack bitfield with flags
-		uint8 Flags;
-		if (Ar.IsSaving())
-		{
-			Flags =
-				(bLimitsInLocalSpace << 0) |
-				(bLimitX << 1) |
-				(bLimitY << 2) |
-				(bLimitZ << 3) |
-				(bLimitPitch << 4) |
-				(bLimitYaw << 5) |
-				(bLimitRoll << 6) |
-				(bIgnoreHandRotation << 7);
-		}
-
-		Ar.SerializeBits(&Flags, 8);
-
-		if (Ar.IsLoading())
-		{
-			// We should technically be safe just bit shifting
-			// to the right as these are :1 bitfield values.
-			// however to be totally sure I am enforcing only first
-			// bit being set with the &0x01
-			// I didn't like epics ternary version as it should technically have more overhead
-			// But what do I know
-			bLimitsInLocalSpace = (Flags >> 0) & 0x01;
-			bLimitX = (Flags >> 1) & 0x01;
-			bLimitY = (Flags >> 2) & 0x01;
-			bLimitZ = (Flags >> 3) & 0x01;
-			bLimitPitch = (Flags >> 4) & 0x01;
-			bLimitYaw = (Flags >> 5) & 0x01;
-			bLimitRoll = (Flags >> 6) & 0x01;	
-			bIgnoreHandRotation = (Flags >> 7) & 0x01;
-		}
-		
-		// Might need to change this
-
-		//Ar << InitialLinearTranslation;
-		//Ar << MinLinearTranslation;
-		//Ar << MaxLinearTranslation;
-		bOutSuccess &= SerializePackedVector<100, 30>(InitialLinearTranslation, Ar);
-		bOutSuccess &= SerializePackedVector<100, 30>(MinLinearTranslation, Ar);
-		bOutSuccess &= SerializePackedVector<100, 30>(MaxLinearTranslation, Ar);
-
-		InitialAngularTranslation.SerializeCompressedShort(Ar);
-		MinAngularTranslation.SerializeCompressedShort(Ar);
-		MaxAngularTranslation.SerializeCompressedShort(Ar);
-		//Ar << InitialAngularTranslation;
-		//Ar << MinAngularTranslation;
-		//Ar << MaxAngularTranslation;
-
-
-		return bOutSuccess;
-	}
-
-};
-
-template<>
-struct TStructOpsTypeTraits< FBPInteractionSettings > : public TStructOpsTypeTraitsBase2<FBPInteractionSettings>
-{
-	enum
-	{
-		WithNetSerializer = true
-	};
 };
 
 
@@ -437,7 +368,7 @@ struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
 	GENERATED_BODY()
 public:
-	// #TODO serialize this more efficiently over the network
+
 	UPROPERTY(BlueprintReadOnly)
 		EGripTargetType GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
@@ -446,7 +377,7 @@ public:
 		EGripCollisionType GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
 		EGripLateUpdateSettings GripLateUpdateSetting;
-	//UPROPERTY(BlueprintReadOnly) // If this was a UProperty it would trigger replication when changed
+	UPROPERTY(BlueprintReadOnly, NotReplicated)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
 		FTransform RelativeTransform;
@@ -481,6 +412,7 @@ public:
 	float curLerp;
 
 	// Optional Additive Transform for programatic animation
+	UPROPERTY(BlueprintReadWrite, NotReplicated)
 	FTransform AdditionTransform;
 
 	// Specifically for secondary grip retaining size / scale after grip
@@ -490,92 +422,30 @@ public:
 	bool bIsLocked;
 	FQuat LastLockedRotation;
 
-	/** Network serialization */
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	// Cached values - since not using a full serialize now the old array state may not contain what i need to diff
+	// I set these in On_Rep now and check against them when new replications happen to control some actions.
+	struct FGripValueCache
 	{
-		//#TODO Start compressing Transforms / Vectors / Floats?
+		bool bWasInitiallyRepped;
+		bool bCachedHasSecondaryAttachment;
+		EGripCollisionType CachedGripCollisionType;
+		EGripMovementReplicationSettings CachedGripMovementReplicationSetting;
+		float CachedStiffness;
+		float CachedDamping;
 
-		bOutSuccess = true;
-
-		Ar << GrippedObject;
-		Ar << RelativeTransform;
-
-		// #TODO
-		// In the future I can compress these down to half a byte each, none go over 4 bits of data
-		// Its only a 2 byte savings on something that rarely replicates so not worried about it at the moment.
-		Ar << GripTargetType;
-		Ar << GripCollisionType;
-		Ar << GripLateUpdateSetting;
-		Ar << GripMovementReplicationSetting;
-
-		// Doesn't matter to client
-		//	Ar << bColliding;
-
-		// This doesn't matter to clients
-		//Ar << bOriginalReplicatesMovement;
-		
-		bool bHadAttachment = bHasSecondaryAttachment;
-	
-		//Ar << bHasSecondaryAttachment;
-		uint8 Flags = bHasSecondaryAttachment;
-		Ar.SerializeBits(&Flags, 1);
-		bHasSecondaryAttachment = (Flags >> 0) & 0x01;	// The compiler should optimize out bitshifts by 0, so keeping it for clarity
-		
-		//Ar << LerpToRate;
-		if(Ar.IsSaving())
-		{ 
-			bOutSuccess &= WriteFixedCompressedFloat<16, 12>(LerpToRate, Ar); // 4 bits up to 16 seconds lerp time, 1 bit sign, 7 bits 2 decimal precision
-		}
-		else
-			bOutSuccess &= ReadFixedCompressedFloat<16, 12>(LerpToRate, Ar);
-
-
-		// If this grip has a secondary attachment
-		if (bHasSecondaryAttachment)
+		FGripValueCache()
 		{
-			Ar << SecondaryAttachment;
-			Ar << SecondaryRelativeLocation;
-
-			//Ar << SecondarySmoothingScaler;
-			if (Ar.IsSaving())
-			{
-				bOutSuccess &= WriteFixedCompressedFloat<1, 9>(SecondarySmoothingScaler, Ar); // 1 bits up to 1 value, 1 bit sign, 7 bits 2 decimal precision
-			}
-			else
-				bOutSuccess &= ReadFixedCompressedFloat<1, 9>(SecondarySmoothingScaler, Ar);
-
+			// Since i'm not full serializing now I need to check against cached values
+			// The OnRep last value only holds delta now so finding object off of it will not work
+			bWasInitiallyRepped = false;
+			bCachedHasSecondaryAttachment = false;
+			CachedGripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
+			CachedGripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
+			CachedStiffness = 1500.0f;
+			CachedDamping = 200.0f;
 		}
 
-		// Manage lerp states
-		if (Ar.IsLoading())
-		{
-			if (bHadAttachment != bHasSecondaryAttachment)
-			{
-				if (FMath::IsNearlyZero(LerpToRate)) // Zero, could use IsNearlyZero instead
-					GripLerpState = EGripLerpState::NotLerping;
-				else
-				{
-					// New lerp
-					if (bHasSecondaryAttachment)
-					{
-						curLerp = LerpToRate;
-						GripLerpState = EGripLerpState::StartLerp;
-					}
-					else // Post Lerp
-					{
-						curLerp = LerpToRate;
-						GripLerpState = EGripLerpState::EndLerp;
-					}
-				}
-			}
-		}
-
-		// Now always replicating these two, in case people want to pass in custom values using it
-		Ar << Damping;
-		Ar << Stiffness;
-
-		return bOutSuccess;
-	}
+	}ValueCache;
 
 	FORCEINLINE AActor * GetGrippedActor() const
 	{
@@ -631,6 +501,7 @@ public:
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 		GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
+		GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 		bIsLocked = false;
 		curLerp = 0.0f;
 		LerpToRate = 0.0f;
@@ -644,16 +515,9 @@ public:
 		AdditionTransform = FTransform::Identity;
 		//SecondaryScaler = 1.0f;
 	}
+
 };
 
-template<>
-struct TStructOpsTypeTraits< FBPActorGripInformation > : public TStructOpsTypeTraitsBase2<FBPActorGripInformation>
-{
-	enum
-	{
-		WithNetSerializer = true
-	};
-};
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPInterfaceProperties
@@ -700,20 +564,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintBreakDistance;
 
+	// 10k max / min now so I save bits on serialize
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float SecondarySlotRange;
 
+	// 10k max / min now so I save bits on serialize
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float PrimarySlotRange;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bIsInteractible;
 
-	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
-		bool bIsHeld;
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
+		bool bIsHeld; // Set on grip notify, not net serializing
 
-	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
-		UGripMotionControllerComponent * HoldingController;
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
+		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		FBPInteractionSettings InteractionSettings;

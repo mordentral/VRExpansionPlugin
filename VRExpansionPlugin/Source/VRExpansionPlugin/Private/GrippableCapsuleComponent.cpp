@@ -26,6 +26,7 @@ UGrippableCapsuleComponent::UGrippableCapsuleComponent(const FObjectInitializer&
 
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
+
 	bReplicateGripInterfaceSettings = true;
 }
 
