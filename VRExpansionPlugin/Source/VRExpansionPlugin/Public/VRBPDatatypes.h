@@ -234,12 +234,12 @@ enum class EGripLerpState : uint8
 UENUM(Blueprintable)
 enum class ESecondaryGripType : uint8
 {
-	SG_None,
-	SG_Free,
-	SG_SlotOnly,
-	SG_Free_Retain,
-	SG_SlotOnly_Retain,
-	SG_FreeWithScaling_Retain,
+	SG_None, // No secondary grip
+	SG_Free, // Free secondary grip
+	SG_SlotOnly, // Only secondary grip at a slot
+	SG_Free_Retain, // Retain pos on drop
+	SG_SlotOnly_Retain, 
+	SG_FreeWithScaling_Retain, // Scaling with retain pos on drop
 	SG_SlotOnlyWithScaling_Retain
 };
 
@@ -484,7 +484,7 @@ public:
 	FTransform AdditionTransform;
 
 	// Specifically for secondary grip retaining size / scale after grip
-	float SecondaryScaler;
+	//float SecondaryScaler;
 
 	// Locked transitions
 	bool bIsLocked;
@@ -642,7 +642,7 @@ public:
 
 		RelativeTransform = FTransform::Identity;
 		AdditionTransform = FTransform::Identity;
-		SecondaryScaler = 1.0f;
+		//SecondaryScaler = 1.0f;
 	}
 };
 

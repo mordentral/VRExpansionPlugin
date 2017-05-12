@@ -2175,8 +2175,8 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			//float Scaler = 1.0f;
 			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain)
 			{
-				/*	Scaler*/Grip.SecondaryScaler = frontLoc.Size() / frontLocOrig.Size();
-				Scaler = Grip.SecondaryScaler;
+				/*Grip.SecondaryScaler*/ Scaler = frontLoc.Size() / frontLocOrig.Size();
+				//Scaler = Grip.SecondaryScaler;
 			}
 		}
 
