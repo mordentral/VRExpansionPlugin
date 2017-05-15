@@ -88,6 +88,110 @@ public:
 
 };
 
+USTRUCT()
+struct FTransform_NetQuantize : public FTransform
+{
+	GENERATED_USTRUCT_BODY()
+
+	FORCEINLINE FTransform_NetQuantize() : FTransform()
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(ENoInit Init) : FTransform(Init)
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(const FVector& InTranslation) : FTransform(InTranslation)
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(const FQuat& InRotation) : FTransform(InRotation)
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(const FRotator& InRotation) : FTransform(InRotation)
+	{}
+
+	FORCEINLINE FTransform_NetQuantize(const FQuat& InRotation, const FVector& InTranslation, const FVector& InScale3D = FVector::OneVector)
+		: FTransform(InRotation, InTranslation, InScale3D)
+	{}
+
+	FORCEINLINE FTransform_NetQuantize(const FRotator& InRotation, const FVector& InTranslation, const FVector& InScale3D = FVector::OneVector) 
+		: FTransform(InRotation, InTranslation, InScale3D)
+	{}
+
+	FORCEINLINE FTransform_NetQuantize(const FTransform& InTransform) : FTransform(InTransform)
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(const FMatrix& InMatrix) : FTransform(InMatrix)
+	{}
+
+	FORCEINLINE FTransform_NetQuantize(const FVector& InX, const FVector& InY, const FVector& InZ, const FVector& InTranslation) 
+		: FTransform(InX, InY, InZ, InTranslation)
+	{}
+
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+
+		FVector rTranslation;
+		FVector rScale3D;
+		//FQuat rRotation;
+		FRotator rRotation;
+
+		uint16 ShortPitch = 0;
+		uint16 ShortYaw = 0;
+		uint16 ShortRoll = 0;
+
+		if (Ar.IsSaving())
+		{
+			// Because transforms can be vectorized or not, need to use the inline retrievers
+			rTranslation = this->GetTranslation();
+			rScale3D = this->GetScale3D();
+			rRotation = this->Rotator();//this->GetRotation();
+
+			// Translation set to 2 decimal precision
+			bOutSuccess &= SerializePackedVector<100, 30>(rTranslation, Ar);
+
+			// Scale set to 2 decimal precision, had it 1 but realized that I used two already even
+			bOutSuccess &= SerializePackedVector<100, 30>(rScale3D, Ar);
+
+			// Rotation converted to FRotator and short compressed, see below for conversion reason
+			// FRotator already serializes compressed short by default but I can save a func call here
+			rRotation.SerializeCompressedShort(Ar);
+
+			//Ar << rRotation;
+
+			// If I converted it to a rotator and serialized as shorts I would save 6 bytes.
+			// I am unsure about a safe method of compressed serializing a quat, though I read through smallest three
+			// Epic already drops W from the Quat and reconstructs it after the send.
+			// Converting to rotator first may have conversion issues and has a perf cost....needs testing, epic attempts to handle
+			// Singularities in their conversion but I haven't tested it in all circumstances
+			//rRotation.SerializeCompressedShort(Ar);
+		}
+		else // If loading
+		{
+			bOutSuccess &= SerializePackedVector<100, 30>(rTranslation, Ar);
+			bOutSuccess &= SerializePackedVector<100, 30>(rScale3D, Ar);
+
+			rRotation.SerializeCompressedShort(Ar);
+
+			//Ar << rRotation;
+
+			// Set it
+			this->SetComponents(rRotation.Quaternion(), rTranslation, rScale3D);
+		}
+
+		return bOutSuccess;
+	}
+};
+
+template<>
+struct TStructOpsTypeTraits< FTransform_NetQuantize > : public TStructOpsTypeTraitsBase2<FTransform_NetQuantize>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
+
 UENUM()
 enum class EVRVectorQuantization : uint8
 {
@@ -125,7 +229,7 @@ public:
 		// Defines the level of Quantization
 		uint8 Flags = (uint8)QuantizationLevel;
 		Ar.SerializeBits(&Flags, 1);
-		
+
 		// No longer using their built in rotation rep, as controllers will rarely if ever be at 0 rot on an axis and 
 		// so the 1 bit overhead per axis is just that, overhead
 		//Rotation.SerializeCompressedShort(Ar);
@@ -321,14 +425,15 @@ public:
 		uint32 bIgnoreHandRotation:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector InitialLinearTranslation;
+		FVector_NetQuantize100 InitialLinearTranslation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector MinLinearTranslation;
+		FVector_NetQuantize100 MinLinearTranslation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector MaxLinearTranslation;
+		FVector_NetQuantize100 MaxLinearTranslation;
 
+	// FRotators already by default NetSerialize as shorts
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		FRotator InitialAngularTranslation;
 
@@ -380,7 +485,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, NotReplicated)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
-		FTransform RelativeTransform;
+		FTransform_NetQuantize RelativeTransform;
 
 	UPROPERTY(BlueprintReadOnly)
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
@@ -400,7 +505,7 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 		float SecondarySmoothingScaler;
 	UPROPERTY()
-		FVector SecondaryRelativeLocation;
+		FVector_NetQuantize100 SecondaryRelativeLocation;
 	// Lerp transitions
 	// Max value is 16 seconds with two decimal precision, this is to reduce replication overhead
 	UPROPERTY()
@@ -413,7 +518,7 @@ public:
 
 	// Optional Additive Transform for programatic animation
 	UPROPERTY(BlueprintReadWrite, NotReplicated)
-	FTransform AdditionTransform;
+	FTransform_NetQuantize AdditionTransform;
 
 	// Specifically for secondary grip retaining size / scale after grip
 	//float SecondaryScaler;
@@ -507,6 +612,7 @@ public:
 		LerpToRate = 0.0f;
 		GripLerpState = EGripLerpState::NotLerping;
 		SecondarySmoothingScaler = 1.0f;
+		SecondaryRelativeLocation = FVector::ZeroVector;
 
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;
@@ -514,10 +620,8 @@ public:
 		RelativeTransform = FTransform::Identity;
 		AdditionTransform = FTransform::Identity;
 		//SecondaryScaler = 1.0f;
-	}
-
+	}	
 };
-
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPInterfaceProperties
@@ -564,11 +668,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintBreakDistance;
 
-	// 10k max / min now so I save bits on serialize
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float SecondarySlotRange;
 
-	// 10k max / min now so I save bits on serialize
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float PrimarySlotRange;
 

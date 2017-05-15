@@ -157,7 +157,6 @@ public:
 						SetGripConstraintStiffnessAndDamping(&GrippedActors[i], GrippedActors[i].Stiffness, GrippedActors[i].Damping);
 					}
 				}
-
 			}
 
 			// Set caches now for next rep
@@ -166,7 +165,6 @@ public:
 			GrippedActors[i].ValueCache.CachedGripMovementReplicationSetting = GrippedActors[i].GripMovementReplicationSetting;
 			GrippedActors[i].ValueCache.CachedStiffness = GrippedActors[i].Stiffness;
 			GrippedActors[i].ValueCache.CachedDamping = GrippedActors[i].Damping;
-
 		}
 	}
 
