@@ -425,13 +425,13 @@ public:
 		uint32 bIgnoreHandRotation:1;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector_NetQuantize100 InitialLinearTranslation;
+		FVector/*_NetQuantize100*/ InitialLinearTranslation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector_NetQuantize100 MinLinearTranslation;
+		FVector/*_NetQuantize100*/ MinLinearTranslation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector_NetQuantize100 MaxLinearTranslation;
+		FVector/*_NetQuantize100*/ MaxLinearTranslation;
 
 	// FRotators already by default NetSerialize as shorts
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
@@ -485,7 +485,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, NotReplicated)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
-		FTransform_NetQuantize RelativeTransform;
+		FTransform/*_NetQuantize*/ RelativeTransform;
 
 	UPROPERTY(BlueprintReadOnly)
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
@@ -505,7 +505,7 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 		float SecondarySmoothingScaler;
 	UPROPERTY()
-		FVector_NetQuantize100 SecondaryRelativeLocation;
+		FVector/*_NetQuantize100*/ SecondaryRelativeLocation;
 	// Lerp transitions
 	// Max value is 16 seconds with two decimal precision, this is to reduce replication overhead
 	UPROPERTY()
@@ -518,7 +518,7 @@ public:
 
 	// Optional Additive Transform for programatic animation
 	UPROPERTY(BlueprintReadWrite, NotReplicated)
-	FTransform_NetQuantize AdditionTransform;
+	FTransform AdditionTransform;
 
 	// Specifically for secondary grip retaining size / scale after grip
 	//float SecondaryScaler;
