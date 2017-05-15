@@ -424,9 +424,15 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		uint32 bIgnoreHandRotation:1;
 
+	// #TODO: Net quantize the initai and min/max values.
+	// I wanted to do it already but the editor treats it like a different type
+	// and reinitializes ALL values, which obviously is bad as it would force people
+	// to re-enter their offsets all over again......
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
 		FVector/*_NetQuantize100*/ InitialLinearTranslation;
 
+	// To use property, set value as -Distance
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
 		FVector/*_NetQuantize100*/ MinLinearTranslation;
 
@@ -437,6 +443,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		FRotator InitialAngularTranslation;
 
+	// To use property, set value as -Rotation
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		FRotator MinAngularTranslation;
 
@@ -485,7 +492,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, NotReplicated)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
-		FTransform/*_NetQuantize*/ RelativeTransform;
+		FTransform_NetQuantize RelativeTransform;
 
 	UPROPERTY(BlueprintReadOnly)
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
@@ -505,7 +512,8 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 		float SecondarySmoothingScaler;
 	UPROPERTY()
-		FVector/*_NetQuantize100*/ SecondaryRelativeLocation;
+		FVector_NetQuantize100 SecondaryRelativeLocation;
+
 	// Lerp transitions
 	// Max value is 16 seconds with two decimal precision, this is to reduce replication overhead
 	UPROPERTY()

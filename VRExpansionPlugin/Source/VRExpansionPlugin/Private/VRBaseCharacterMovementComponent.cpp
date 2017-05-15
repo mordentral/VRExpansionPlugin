@@ -23,6 +23,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bIgnoreSimulatingComponentsInFloorCheck = true;
 
 	VRWallSlideScaler = 1.0f;
+	
 }
 
 bool UVRBaseCharacterMovementComponent::FloorSweepTest(
@@ -172,7 +173,11 @@ float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta,
 
 void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
 {
-	CustomVRInputVector += Movement;
+	// if we are a client then lets round this to match what it will be after net Replication
+	if (GetNetMode() == NM_Client)
+		CustomVRInputVector += RoundDirectMovement(Movement);
+	else
+		CustomVRInputVector += Movement; // If not a client, don't bother to round this down.
 }
 
 
@@ -291,6 +296,7 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 
 		if (!bSteppedUp)
 		{
+			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Some variable values: x: %f, y: %f"), x, y));
 			//adjust and try again
 			HandleImpact(Hit, deltaTime, Adjusted);
 			SlideAlongSurface(Adjusted, (1.f - Hit.Time), Hit.Normal, Hit, true);
@@ -355,17 +361,26 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		{
 			bStartedClimbing = moveComp->bStartedClimbing;
 			bEndedClimbing = moveComp->bEndedClimbing;
+			CustomVRInputVector = moveComp->CustomVRInputVector;
+
+			if (moveComp->HasRequestedVelocity())
+				RequestedVelocity = moveComp->RequestedVelocity;
+			else
+				RequestedVelocity = FVector::ZeroVector;
 		}
 		else
 		{
 			bStartedClimbing = false;
 			bEndedClimbing = false;
+			CustomVRInputVector = FVector::ZeroVector;
+			RequestedVelocity = FVector::ZeroVector;
 		}
 	}
 	else
 	{
 		bStartedClimbing = false;
 		bEndedClimbing = false;
+		CustomVRInputVector = FVector::ZeroVector;
 	}
 
 	FSavedMove_Character::SetInitialPosition(C);
@@ -375,6 +390,36 @@ void FSavedMove_VRBaseCharacter::Clear()
 {
 	bStartedClimbing = false;
 	bEndedClimbing = false;
+	CustomVRInputVector = FVector::ZeroVector;
+
+	VRCapsuleLocation = FVector::ZeroVector;
+	VRCapsuleRotation = FRotator::ZeroRotator;
+	LFDiff = FVector::ZeroVector;
+	RequestedVelocity = FVector::ZeroVector;
 
 	FSavedMove_Character::Clear();
+}
+
+void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
+{
+	UVRBaseCharacterMovementComponent * BaseCharMove = Cast<UVRBaseCharacterMovementComponent>(Character->GetCharacterMovement());
+
+	if (BaseCharMove)
+	{
+		BaseCharMove->CustomVRInputVector = this->CustomVRInputVector;
+		BaseCharMove->bStartedClimbing = this->bStartedClimbing;
+		BaseCharMove->bEndedClimbing = this->bEndedClimbing;
+	}
+	
+	if (!RequestedVelocity.IsNearlyZero())
+	{
+		BaseCharMove->RequestedVelocity = RequestedVelocity;
+		BaseCharMove->SetHasRequestedVelocity(true);
+	}
+	else
+	{
+		BaseCharMove->SetHasRequestedVelocity(false);
+	}
+
+	FSavedMove_Character::PrepMoveFor(Character);
 }

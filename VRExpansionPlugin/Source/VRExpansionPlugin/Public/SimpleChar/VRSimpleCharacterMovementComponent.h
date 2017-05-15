@@ -124,6 +124,7 @@ public:
 
 	void Clear();
 	virtual void SetInitialPosition(ACharacter* C);
+	virtual void PrepMoveFor(ACharacter* Character) override;
 
 	FSavedMove_VRSimpleCharacter() : FSavedMove_VRBaseCharacter()
 	{

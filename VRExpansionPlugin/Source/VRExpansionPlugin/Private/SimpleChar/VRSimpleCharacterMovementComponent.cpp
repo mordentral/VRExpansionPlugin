@@ -1420,42 +1420,43 @@ void FSavedMove_VRSimpleCharacter::SetInitialPosition(ACharacter* C)
 {
 	// See if we can get the VR capsule location
 	if (AVRSimpleCharacter * VRC = Cast<AVRSimpleCharacter>(C))
-	{
-		/*if (VRC->VRRootReference)
-		{
-			VRCapsuleLocation = VRC->VRRootReference->curCameraLoc;
-			VRCapsuleRotation = VRC->VRRootReference->curCameraRot;
-			LFDiff = VRC->VRRootReference->DifferenceFromLastFrame;
-		}
-		else
-		{
-			VRCapsuleLocation = FVector::ZeroVector;
-			VRCapsuleRotation = FRotator::ZeroRotator;
-			LFDiff = FVector::ZeroVector;
-		}*/
-
-		
+	{	
 		if (VRC->VRMovementReference)
 		{
 			LFDiff = VRC->VRMovementReference->AdditionalVRInputVector;
 
-			CustomVRInputVector = VRC->VRMovementReference->CustomVRInputVector;
+			//CustomVRInputVector = VRC->VRMovementReference->CustomVRInputVector;
 
-			if (VRC->VRMovementReference->HasRequestedVelocity())
+		/*	if (VRC->VRMovementReference->HasRequestedVelocity())
 				RequestedVelocity = VRC->VRMovementReference->RequestedVelocity;
 			else
-				RequestedVelocity = FVector::ZeroVector;
+				RequestedVelocity = FVector::ZeroVector;*/
 		}
 		else
 		{
 			LFDiff = FVector::ZeroVector;
-			CustomVRInputVector = FVector::ZeroVector;
-			RequestedVelocity = FVector::ZeroVector;
+			//CustomVRInputVector = FVector::ZeroVector;
+		//	RequestedVelocity = FVector::ZeroVector;
 		}
 
 	}
 	FSavedMove_VRBaseCharacter::SetInitialPosition(C);
 }
+
+void FSavedMove_VRSimpleCharacter::PrepMoveFor(ACharacter* Character)
+{
+	UVRSimpleCharacterMovementComponent * CharMove = Cast<UVRSimpleCharacterMovementComponent>(Character->GetCharacterMovement());
+
+	// Set capsule location prior to testing movement
+	// I am overriding the replicated value here when movement is made on purpose
+	if (CharMove)
+	{
+		CharMove->AdditionalVRInputVector = LFDiff;
+	}
+
+	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
+}
+
 
 bool UVRSimpleCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 CustVRInputVector, uint8 MoveFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
 {

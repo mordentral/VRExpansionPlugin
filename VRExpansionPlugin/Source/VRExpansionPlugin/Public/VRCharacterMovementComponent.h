@@ -42,6 +42,29 @@ class AVRCharacter;
 
 //DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FAIMoveCompletedSignature, FAIRequestID, RequestID, EPathFollowingResult::Type, Result);
 
+// Using this fixes the problem where the character capsule isn't reset after a scoped movement update revert (pretty much just in StepUp operations)
+class VREXPANSIONPLUGIN_API FVRCharacterScopedMovementUpdate : public FScopedMovementUpdate
+{
+public:
+
+	FVRCharacterScopedMovementUpdate(USceneComponent* Component, EScopedUpdate::Type ScopeBehavior = EScopedUpdate::DeferredUpdates, bool bRequireOverlapsEventFlagToQueueOverlaps = true)
+		: FScopedMovementUpdate(Component, ScopeBehavior, bRequireOverlapsEventFlagToQueueOverlaps)
+	{}
+
+	/** Revert movement to the initial location of the Component at the start of the scoped update. Also clears pending overlaps and sets bHasMoved to false. */
+	void RevertMove()
+	{
+		FScopedMovementUpdate::RevertMove();
+
+		UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
+		if (RootComponent)
+		{
+			RootComponent->GenerateOffsetToWorld();
+		}
+
+	}
+};
+
 
 UCLASS()
 class VREXPANSIONPLUGIN_API UVRCharacterMovementComponent : public UVRBaseCharacterMovementComponent
@@ -236,33 +259,11 @@ class VREXPANSIONPLUGIN_API FSavedMove_VRCharacter : public FSavedMove_VRBaseCha
 
 public:
 
-	FVector VRCapsuleLocation;
-	FVector LFDiff;
-	FRotator VRCapsuleRotation;
-	FVector RequestedVelocity;
-	FVector AdditionalInputVector;
-
-	void Clear();
 	virtual void SetInitialPosition(ACharacter* C);
+	virtual void PrepMoveFor(ACharacter* Character) override;
 
 	FSavedMove_VRCharacter() : FSavedMove_VRBaseCharacter()
-	{
-		VRCapsuleLocation = FVector::ZeroVector;
-		LFDiff = FVector::ZeroVector;
-		AdditionalInputVector = FVector::ZeroVector;
-		VRCapsuleRotation = FRotator::ZeroRotator;
-		RequestedVelocity = FVector::ZeroVector;
-	}
-
-	bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
-	{
-		FSavedMove_VRCharacter * nMove = (FSavedMove_VRCharacter *)NewMove.Get();
-
-		if (!nMove || (!LFDiff.IsNearlyZero() && !nMove->LFDiff.IsNearlyZero()) || (!RequestedVelocity.IsNearlyZero() && !nMove->RequestedVelocity.IsNearlyZero()) || (!AdditionalInputVector.IsNearlyZero() && !nMove->AdditionalInputVector.IsNearlyZero()))
-			return false;
-		
-		return FSavedMove_VRBaseCharacter::CanCombineWith(NewMove, Character, MaxDelta);
-	}
+	{}
 
 };
 

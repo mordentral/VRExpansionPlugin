@@ -436,18 +436,6 @@ FNetworkPredictionData_Server* UVRCharacterMovementComponent::GetPredictionData_
 	return ServerPredictionData;
 }
 
-
-void FSavedMove_VRCharacter::Clear()
-{
-	VRCapsuleLocation = FVector::ZeroVector;
-	VRCapsuleRotation = FRotator::ZeroRotator;
-	LFDiff = FVector::ZeroVector;
-	AdditionalInputVector = FVector::ZeroVector;
-	RequestedVelocity = FVector::ZeroVector;
-
-	FSavedMove_VRBaseCharacter::Clear();
-}
-
 void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 {
 	// See if we can get the VR capsule location
@@ -466,26 +454,25 @@ void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 			LFDiff = FVector::ZeroVector;
 		}
 
-		if (UVRCharacterMovementComponent * charMove = Cast<UVRCharacterMovementComponent>(VRC->GetMovementComponent()))
-		{
-			//if (!charMove->RequestedVelocity.IsNearlyZero())
-		//	{
-			if (charMove->HasRequestedVelocity())
-				RequestedVelocity = charMove->RequestedVelocity;
-			else
-				RequestedVelocity = FVector::ZeroVector;
-
-			AdditionalInputVector = charMove->CustomVRInputVector;
-			//}
-		}
-		else
-		{
-			RequestedVelocity = FVector::ZeroVector;
-			AdditionalInputVector = FVector::ZeroVector;
-		}
-
 	}
 	FSavedMove_VRBaseCharacter::SetInitialPosition(C);
+}
+
+void FSavedMove_VRCharacter::PrepMoveFor(ACharacter* Character)
+{
+	UVRCharacterMovementComponent * CharMove = Cast<UVRCharacterMovementComponent>(Character->GetCharacterMovement());
+
+	// Set capsule location prior to testing movement
+	// I am overriding the replicated value here when movement is made on purpose
+	if (CharMove && CharMove->VRRootCapsule)
+	{
+		CharMove->VRRootCapsule->curCameraLoc = this->VRCapsuleLocation;
+		CharMove->VRRootCapsule->curCameraRot = this->VRCapsuleRotation;//FRotator(0.0f, FRotator::DecompressAxisFromByte(CapsuleYaw), 0.0f);
+		CharMove->VRRootCapsule->GenerateOffsetToWorld(false);
+		CharMove->VRRootCapsule->DifferenceFromLastFrame = this->LFDiff;
+	}
+
+	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
 }
 
 bool UVRCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 CustVRInputVector, uint8 CapsuleYaw, uint8 MoveFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
@@ -723,7 +710,7 @@ void UVRCharacterMovementComponent::CallServerMove
 					oldMove->VRCapsuleLocation,
 					oldMove->RequestedVelocity,
 					oldMove->LFDiff,
-					oldMove->AdditionalInputVector,
+					oldMove->CustomVRInputVector,//AdditionalInputVector,
 					OldCapsuleYawBYTE,
 					NewMove->TimeStamp,
 					NewMove->Acceleration,
@@ -731,7 +718,7 @@ void UVRCharacterMovementComponent::CallServerMove
 					NewMove->VRCapsuleLocation,
 					NewMove->RequestedVelocity,
 					NewMove->LFDiff,
-					NewMove->AdditionalInputVector,
+					NewMove->CustomVRInputVector,//AdditionalInputVector,
 					CapsuleYawBYTE,
 					NewMove->GetCompressedFlags(),
 					ClientRollBYTE,
@@ -753,7 +740,7 @@ void UVRCharacterMovementComponent::CallServerMove
 					oldMove->VRCapsuleLocation,
 					oldMove->RequestedVelocity,
 					oldMove->LFDiff,
-					oldMove->AdditionalInputVector,
+					oldMove->CustomVRInputVector,//AdditionalInputVector,
 					OldCapsuleYawBYTE,
 					NewMove->TimeStamp,
 					NewMove->Acceleration,
@@ -761,7 +748,7 @@ void UVRCharacterMovementComponent::CallServerMove
 					NewMove->VRCapsuleLocation,
 					NewMove->RequestedVelocity,
 					NewMove->LFDiff,
-					NewMove->AdditionalInputVector,
+					NewMove->CustomVRInputVector,//AdditionalInputVector,
 					CapsuleYawBYTE,
 					NewMove->GetCompressedFlags(),
 					ClientRollBYTE,
@@ -782,7 +769,7 @@ void UVRCharacterMovementComponent::CallServerMove
 				NewMove->VRCapsuleLocation,
 				NewMove->RequestedVelocity,
 				NewMove->LFDiff,
-				NewMove->AdditionalInputVector,
+				NewMove->CustomVRInputVector,//AdditionalInputVector,
 				CapsuleYawBYTE,
 				NewMove->GetCompressedFlags(),
 				ClientRollBYTE,
@@ -1179,7 +1166,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 
 		if (!OverlapTest(OldStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
 		{
-			FScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
+			/*FScopedMovementUpdate*/  FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 			UE_LOG(LogNetPlayerMovement, VeryVerbose, TEXT("CombineMove: add delta %f + %f and revert from %f %f to %f %f"), DeltaTime, ClientData->PendingMove->DeltaTime, UpdatedComponent->GetComponentLocation().X, UpdatedComponent->GetComponentLocation().Y, OldStartLocation.X, OldStartLocation.Y);
 
 			// to combine move, first revert pawn position to PendingMove start position, before playing combined move on client
@@ -1646,7 +1633,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 	}
 
 	// Scope our movement updates, and do not apply them until all intermediate moves are completed.
-	FScopedMovementUpdate ScopedStepUpMovement(UpdatedComponent, EScopedUpdate::DeferredUpdates);
+	/*FScopedMovementUpdate*/ FVRCharacterScopedMovementUpdate ScopedStepUpMovement(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 
 	// step up - treat as vertical wall
 	FHitResult SweepUpHit(1.f);
@@ -1659,6 +1646,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		ScopedStepUpMovement.RevertMove();
 		return false;
 	}
+
 
 	// step fwd
 	FHitResult Hit(1.f);
@@ -1877,7 +1865,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 	}
 
 	// Scope our movement updates, and do not apply them until all intermediate moves are completed.
-	FScopedMovementUpdate ScopedStepUpMovement(UpdatedComponent, EScopedUpdate::DeferredUpdates);
+	/*FScopedMovementUpdate*/ FVRCharacterScopedMovementUpdate ScopedStepUpMovement(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 
 	// step up - treat as vertical wall
 	FHitResult SweepUpHit(1.f);
@@ -1911,6 +1899,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		// In the case of hitting something above but not forward, we are not blocked from moving so we don't need the notification.
 		if (SweepUpHit.bBlockingHit && Hit.bBlockingHit)
 		{
+
 			HandleImpact(SweepUpHit);
 		}
 
@@ -1952,6 +1941,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		ScopedStepUpMovement.RevertMove();
 		return false;
 	}
+
 
 	FStepDownResult StepDownResult;
 	if (Hit.IsValidBlockingHit())
@@ -2000,7 +1990,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		{
 			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
 			ScopedStepUpMovement.RevertMove();
-			return false;
+			return false;		
 		}
 
 		// See if we can validate the floor as a result of this step down. In almost all cases this should succeed, and we can avoid computing the floor outside this method.
