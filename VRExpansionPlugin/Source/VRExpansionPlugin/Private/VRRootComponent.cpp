@@ -387,11 +387,6 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
 			DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);// .GetSafeNormal2D();
-
-			// Make it match its net Quanitize value
-			DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
-			DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
-			DifferenceFromLastFrame.Z = FMath::RoundToFloat(DifferenceFromLastFrame.Z * 100.f) / 100.f;
 		}
 		else
 			bHadRelativeMovement = false;
