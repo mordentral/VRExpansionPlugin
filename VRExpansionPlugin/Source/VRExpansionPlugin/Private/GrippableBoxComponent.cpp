@@ -14,7 +14,6 @@ UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectI
 	VRGripInterfaceSettings.bDenyGripping = false;
 	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
-	VRGripInterfaceSettings.EnumObjectType = 0;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
 	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
@@ -31,15 +30,16 @@ UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectI
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
 
-	bReplicateGripInterfaceSettings = true;
+	bRepGripSettingsAndGameplayTags = true;
 }
 
 void UGrippableBoxComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UGrippableBoxComponent, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME(UGrippableBoxComponent, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, VRGripInterfaceSettings, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, GameplayTags, COND_Custom);
 }
 
 void UGrippableBoxComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -47,7 +47,8 @@ void UGrippableBoxComponent::PreReplication(IRepChangedPropertyTracker & Changed
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Don't replicate if set to not do it
-	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, VRGripInterfaceSettings, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
 }
 
 void UGrippableBoxComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime) {}
@@ -75,11 +76,6 @@ EGripInterfaceTeleportBehavior UGrippableBoxComponent::TeleportBehavior_Implemen
 bool UGrippableBoxComponent::SimulateOnDrop_Implementation()
 {
 	return VRGripInterfaceSettings.bSimulateOnDrop;
-}
-
-void UGrippableBoxComponent::ObjectType_Implementation(uint8 & ObjectType)
-{
-	ObjectType = VRGripInterfaceSettings.EnumObjectType;
 }
 
 EGripCollisionType UGrippableBoxComponent::SlotGripType_Implementation()

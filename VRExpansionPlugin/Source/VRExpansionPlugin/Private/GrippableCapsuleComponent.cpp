@@ -9,7 +9,6 @@ UGrippableCapsuleComponent::UGrippableCapsuleComponent(const FObjectInitializer&
 	VRGripInterfaceSettings.bDenyGripping = false;
 	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
-	VRGripInterfaceSettings.EnumObjectType = 0;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
 	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
@@ -27,15 +26,16 @@ UGrippableCapsuleComponent::UGrippableCapsuleComponent(const FObjectInitializer&
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
 
-	bReplicateGripInterfaceSettings = true;
+	bRepGripSettingsAndGameplayTags = true;
 }
 
 void UGrippableCapsuleComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UGrippableCapsuleComponent, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME(UGrippableCapsuleComponent, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_CONDITION(UGrippableCapsuleComponent, VRGripInterfaceSettings, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGrippableCapsuleComponent, GameplayTags, COND_Custom);
 }
 
 void UGrippableCapsuleComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -43,7 +43,8 @@ void UGrippableCapsuleComponent::PreReplication(IRepChangedPropertyTracker & Cha
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Don't replicate if set to not do it
-	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableCapsuleComponent, VRGripInterfaceSettings, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableCapsuleComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableCapsuleComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
 }
 
 
@@ -77,11 +78,6 @@ EGripInterfaceTeleportBehavior UGrippableCapsuleComponent::TeleportBehavior_Impl
 bool UGrippableCapsuleComponent::SimulateOnDrop_Implementation()
 {
 	return VRGripInterfaceSettings.bSimulateOnDrop;
-}
-
-void UGrippableCapsuleComponent::ObjectType_Implementation(uint8 & ObjectType)
-{
-	ObjectType = VRGripInterfaceSettings.EnumObjectType;
 }
 
 EGripCollisionType UGrippableCapsuleComponent::SlotGripType_Implementation()

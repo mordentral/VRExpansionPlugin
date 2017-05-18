@@ -282,3 +282,20 @@ bool UVRExpansionFunctionLibrary::EqualEqual_FBPActorGripInformation(const FBPAc
 	return A == B;
 }
 
+
+FTransform_NetQuantize UVRExpansionFunctionLibrary::MakeTransform_NetQuantize(FVector Translation, FRotator Rotation, FVector Scale)
+{
+	return FTransform_NetQuantize(Rotation, Translation, Scale);
+}
+
+void UVRExpansionFunctionLibrary::BreakTransform_NetQuantize(const FTransform_NetQuantize& InTransform, FVector& Translation, FRotator& Rotation, FVector& Scale)
+{
+	Translation = InTransform.GetLocation();
+	Rotation = InTransform.Rotator();
+	Scale = InTransform.GetScale3D();
+}
+
+FTransform_NetQuantize UVRExpansionFunctionLibrary::Conv_TransformToTransformNetQuantize(FTransform InTransform)
+{
+	return FTransform_NetQuantize(InTransform);
+}

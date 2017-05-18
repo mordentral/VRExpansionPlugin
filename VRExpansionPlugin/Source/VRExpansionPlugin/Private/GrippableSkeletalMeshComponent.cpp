@@ -9,7 +9,6 @@ UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectIn
 	VRGripInterfaceSettings.bDenyGripping = false;
 	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
-	VRGripInterfaceSettings.EnumObjectType = 0;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
 	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
@@ -27,15 +26,16 @@ UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectIn
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
 
-	bReplicateGripInterfaceSettings = true;
+	bRepGripSettingsAndGameplayTags = true;
 }
 
 void UGrippableSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_CONDITION(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGrippableSkeletalMeshComponent, GameplayTags, COND_Custom);
 }
 
 void UGrippableSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -43,7 +43,8 @@ void UGrippableSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker 
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Don't replicate if set to not do it
-	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSkeletalMeshComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
 }
 
 
@@ -77,11 +78,6 @@ EGripInterfaceTeleportBehavior UGrippableSkeletalMeshComponent::TeleportBehavior
 bool UGrippableSkeletalMeshComponent::SimulateOnDrop_Implementation()
 {
 	return VRGripInterfaceSettings.bSimulateOnDrop;
-}
-
-void UGrippableSkeletalMeshComponent::ObjectType_Implementation(uint8 & ObjectType)
-{
-	ObjectType = VRGripInterfaceSettings.EnumObjectType;
 }
 
 EGripCollisionType UGrippableSkeletalMeshComponent::SlotGripType_Implementation()

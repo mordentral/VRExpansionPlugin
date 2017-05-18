@@ -9,7 +9,6 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	VRGripInterfaceSettings.bDenyGripping = false;
 	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::TeleportAllComponents;
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
-	VRGripInterfaceSettings.EnumObjectType = 0;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::InteractiveCollisionWithPhysics;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::InteractiveCollisionWithPhysics;
 	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
@@ -33,15 +32,16 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
-	bReplicateGripInterfaceSettings = true;
+	bRepGripSettingsAndGameplayTags = true;
 }
 
 void AGrippableStaticMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(AGrippableStaticMeshActor, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME(AGrippableStaticMeshActor, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, VRGripInterfaceSettings, COND_Custom);
+	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, GameplayTags, COND_Custom);
 }
 
 void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -49,7 +49,8 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Don't replicate if set to not do it
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, VRGripInterfaceSettings, bReplicateGripInterfaceSettings);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
 }
 
 
@@ -84,11 +85,6 @@ EGripInterfaceTeleportBehavior AGrippableStaticMeshActor::TeleportBehavior_Imple
 bool AGrippableStaticMeshActor::SimulateOnDrop_Implementation()
 {
 	return VRGripInterfaceSettings.bSimulateOnDrop;
-}
-
-void AGrippableStaticMeshActor::ObjectType_Implementation(uint8 & ObjectType)
-{
-	ObjectType = VRGripInterfaceSettings.EnumObjectType;
 }
 
 EGripCollisionType AGrippableStaticMeshActor::SlotGripType_Implementation()

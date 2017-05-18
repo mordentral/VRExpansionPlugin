@@ -35,10 +35,6 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool SimulateOnDrop();
 
-	// Type of object, fill in with your own enum
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ObjectType(uint8 & ObjectType);
-
 	// Grip type to use when gripping a slot
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripCollisionType SlotGripType();

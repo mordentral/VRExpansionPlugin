@@ -6,6 +6,8 @@
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
 #include "VRExpansionFunctionLibrary.h"
+#include "GameplayTagContainer.h"
+#include "GameplayTagAssetInterface.h"
 #include "GrippableStaticMeshComponent.generated.h"
 
 /**
@@ -13,17 +15,33 @@
 */
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
-class VREXPANSIONPLUGIN_API UGrippableStaticMeshComponent : public UStaticMeshComponent, public IVRGripInterface
+class VREXPANSIONPLUGIN_API UGrippableStaticMeshComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_UCLASS_BODY()
 
 	~UGrippableStaticMeshComponent();
 
+	// ------------------------------------------------
+	// Gameplay tag interface
+	// ------------------------------------------------
+
+	/** Overridden to return requirements tags */
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override
+	{
+		TagContainer = GameplayTags;
+	}
+
+	/** Tags that are set on this object */
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "GameplayTags")
+		FGameplayTagContainer GameplayTags;
+
+	// End Gameplay Tag Interface
+
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
 	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
-		bool bReplicateGripInterfaceSettings;
+		bool bRepGripSettingsAndGameplayTags;
 
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		FBPInterfaceProperties VRGripInterfaceSettings;
@@ -39,10 +57,6 @@ class VREXPANSIONPLUGIN_API UGrippableStaticMeshComponent : public UStaticMeshCo
 	// Should this object simulate on drop
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool SimulateOnDrop();
-
-	// Type of object, fill in with your own enum
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ObjectType(uint8 & ObjectType);
 
 	// Grip type to use when gripping a slot
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
