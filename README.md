@@ -12,12 +12,19 @@ This Plugin is intended to add additional functionality to Open/SteamVR/(All VR 
 
 ### How do I install it? ###
 
+##Wiki Pages for Installation##
+[Basic Installation Step-By-Step](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/How%20to%20add%20the%20plugin%20to%20a%20blueprint%20only%20project%20-%20Step%20by%20Step)
+
+[Specific Commit Download Tutorial](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Retrieving%20specific%20commit%20version%20of%20the%20plugin%20or%20template)
+
+[Pre-built binary useage](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Getting%20pre-built%20binary%20packages)
+
+
 **Option 1:**
 
 Go to forum thread and downloaded the pre-built binary version for the engine version you are using (not updated with every daily change, only weekly or with large patches).
 
 Install it into your Engine/Plugins directoy or ProjectName/Plugins Directory.
-
 
 **Option 2 (More up to date - preferred if possible):**
 
