@@ -77,10 +77,4 @@ https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Player%20Controller
 
 ### How do I VR? ###
 
-Here is a list of VR quick tips  that I will begin to assemble
-
-
-For Temporal AA I found the following two console commands to greatly increase clarity and reduce blur.
-
- * r.temporalAAsamples 1
- * r.temporalAAsharpness 1
+The template project contains use examples of most of the features of the plugin as well as locomotion modes, interaction methods, and basic multiplayer.
