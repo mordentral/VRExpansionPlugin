@@ -9,10 +9,10 @@ UGrippableSphereComponent::UGrippableSphereComponent(const FObjectInitializer& O
 	VRGripInterfaceSettings.bDenyGripping = false;
 	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
-	VRGripInterfaceSettings.EnumObjectType = 0;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-	VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	VRGripInterfaceSettings.SecondaryGripType = ESecondaryGripType::SG_None;
 	//VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
@@ -25,13 +25,44 @@ UGrippableSphereComponent::UGrippableSphereComponent(const FObjectInitializer& O
 
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
+	bRepGripSettingsAndGameplayTags = true;
 }
+
+void UGrippableSphereComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UGrippableSphereComponent, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_CONDITION(UGrippableSphereComponent, VRGripInterfaceSettings, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGrippableSphereComponent, GameplayTags, COND_Custom);
+}
+
+void UGrippableSphereComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't replicate if set to not do it
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSphereComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSphereComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
+}
+
 
 //=============================================================================
 UGrippableSphereComponent::~UGrippableSphereComponent()
 {
 }
 
+void UGrippableSphereComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime) {}
+void UGrippableSphereComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableSphereComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableSphereComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableSphereComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableSphereComponent::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void UGrippableSphereComponent::OnSecondaryGripRelease_Implementation(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void UGrippableSphereComponent::OnUsed_Implementation() {}
+void UGrippableSphereComponent::OnEndUsed_Implementation() {}
+void UGrippableSphereComponent::OnSecondaryUsed_Implementation() {}
+void UGrippableSphereComponent::OnEndSecondaryUsed_Implementation() {}
 
 bool UGrippableSphereComponent::DenyGripping_Implementation()
 {
@@ -48,11 +79,6 @@ bool UGrippableSphereComponent::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-void UGrippableSphereComponent::ObjectType_Implementation(uint8 & ObjectType)
-{
-	ObjectType = VRGripInterfaceSettings.EnumObjectType;
-}
-
 EGripCollisionType UGrippableSphereComponent::SlotGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SlotDefaultGripType;
@@ -63,10 +89,16 @@ EGripCollisionType UGrippableSphereComponent::FreeGripType_Implementation()
 	return VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
-bool UGrippableSphereComponent::CanHaveDoubleGrip_Implementation()
+/*bool UGrippableSphereComponent::CanHaveDoubleGrip_Implementation()
 {
 	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
+}*/
+
+ESecondaryGripType UGrippableSphereComponent::SecondaryGripType_Implementation()
+{
+	return VRGripInterfaceSettings.SecondaryGripType;
 }
+
 
 /*EGripTargetType UGrippableSphereComponent::GripTargetType_Implementation()
 {

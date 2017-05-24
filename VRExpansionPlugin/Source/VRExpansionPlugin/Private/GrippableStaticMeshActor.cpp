@@ -9,10 +9,10 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	VRGripInterfaceSettings.bDenyGripping = false;
 	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::TeleportAllComponents;
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
-	VRGripInterfaceSettings.EnumObjectType = 0;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::InteractiveCollisionWithPhysics;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::InteractiveCollisionWithPhysics;
-	VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	VRGripInterfaceSettings.SecondaryGripType = ESecondaryGripType::SG_None;
 	//VRGripInterfaceSettings.GripTarget = EGripTargetType::ActorGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
@@ -32,13 +32,44 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
+	bRepGripSettingsAndGameplayTags = true;
 }
+
+void AGrippableStaticMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AGrippableStaticMeshActor, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, VRGripInterfaceSettings, COND_Custom);
+	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, GameplayTags, COND_Custom);
+}
+
+void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't replicate if set to not do it
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
+}
+
 
 //=============================================================================
 AGrippableStaticMeshActor::~AGrippableStaticMeshActor()
 {
 }
 
+void AGrippableStaticMeshActor::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime) {}
+void AGrippableStaticMeshActor::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void AGrippableStaticMeshActor::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void AGrippableStaticMeshActor::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void AGrippableStaticMeshActor::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void AGrippableStaticMeshActor::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void AGrippableStaticMeshActor::OnSecondaryGripRelease_Implementation(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void AGrippableStaticMeshActor::OnUsed_Implementation() {}
+void AGrippableStaticMeshActor::OnEndUsed_Implementation() {}
+void AGrippableStaticMeshActor::OnSecondaryUsed_Implementation() {}
+void AGrippableStaticMeshActor::OnEndSecondaryUsed_Implementation() {}
 
 bool AGrippableStaticMeshActor::DenyGripping_Implementation()
 {
@@ -56,11 +87,6 @@ bool AGrippableStaticMeshActor::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-void AGrippableStaticMeshActor::ObjectType_Implementation(uint8 & ObjectType)
-{
-	ObjectType = VRGripInterfaceSettings.EnumObjectType;
-}
-
 EGripCollisionType AGrippableStaticMeshActor::SlotGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SlotDefaultGripType;
@@ -71,10 +97,16 @@ EGripCollisionType AGrippableStaticMeshActor::FreeGripType_Implementation()
 	return VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
-bool AGrippableStaticMeshActor::CanHaveDoubleGrip_Implementation()
+/*bool AGrippableStaticMeshActor::CanHaveDoubleGrip_Implementation()
 {
 	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
+}*/
+
+ESecondaryGripType AGrippableStaticMeshActor::SecondaryGripType_Implementation()
+{
+	return VRGripInterfaceSettings.SecondaryGripType;
 }
+
 
 /*EGripTargetType AGrippableStaticMeshActor::GripTargetType_Implementation()
 {

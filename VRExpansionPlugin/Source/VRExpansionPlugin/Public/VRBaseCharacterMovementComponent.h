@@ -41,6 +41,11 @@ public:
 		return bHasRequestedVelocity;
 	}
 
+	void SetHasRequestedVelocity(bool bNewHasRequestedVelocity)
+	{
+		bHasRequestedVelocity = bNewHasRequestedVelocity;
+	}
+
 	bool IsLocallyControlled() const
 	{
 		// I like epics implementation better than my own
@@ -50,14 +55,14 @@ public:
 	}
 
 	// Setting this higher will divide the wall slide effect by this value, to reduce collision sliding.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement",meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement", meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))
 		float VRWallSlideScaler;
 
 	/** Custom version of SlideAlongSurface that handles different movement modes separately; namely during walking physics we might not want to slide up slopes. */
 	virtual float SlideAlongSurface(const FVector& Delta, float Time, const FVector& Normal, FHitResult& Hit, bool bHandleImpact) override;
 
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
-	void AddCustomReplicatedMovement(FVector Movement);
+		void AddCustomReplicatedMovement(FVector Movement);
 
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;
@@ -109,11 +114,11 @@ public:
 	// Max velocity on releasing a climbing grip
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		float VRClimbingMaxReleaseVelocitySize;
-	
+
 	UFUNCTION(BlueprintCallable, Category = "VRMovement|Climbing")
 		void SetClimbingMode(bool bIsClimbing);
 
-	
+
 	bool bStartedClimbing;
 	bool bEndedClimbing;
 
@@ -124,7 +129,36 @@ public:
 		Super::UpdateFromCompressedFlags(Flags);
 	}
 
+	FVector RoundDirectMovement(FVector InMovement) const
+	{
+		// Match FVector_NetQuantize100 (2 decimal place of precision).
+		InMovement.X = FMath::RoundToFloat(InMovement.X * 100.f) / 100.f;
+		InMovement.Y = FMath::RoundToFloat(InMovement.Y * 100.f) / 100.f;
+		InMovement.Z = FMath::RoundToFloat(InMovement.Z * 100.f) / 100.f;
+		return InMovement;
+	}
+
+	/** Replicate position correction to client, associated with a timestamped servermove.  Client will replay subsequent moves after applying adjustment.  */
+	UFUNCTION(unreliable, client)
+		virtual void ClientAdjustPosition(float TimeStamp, FVector NewLoc, FVector NewVel, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode) override;
+	virtual void ClientAdjustPosition_Implementation(float TimeStamp, FVector NewLoc, FVector NewVel, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode) override
+	{
+		//this->CustomVRInputVector = FVector::ZeroVector;
+
+		Super::ClientAdjustPosition_Implementation(TimeStamp, NewLoc, NewVel, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+	}
+
+	/* Bandwidth saving version, when velocity is zeroed */
+	UFUNCTION(unreliable, client)
+	virtual void ClientVeryShortAdjustPosition(float TimeStamp, FVector NewLoc, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode) override;
+	virtual void ClientVeryShortAdjustPosition_Implementation(float TimeStamp, FVector NewLoc, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode) override
+	{
+		//this->CustomVRInputVector = FVector::ZeroVector;
+
+		Super::ClientVeryShortAdjustPosition_Implementation(TimeStamp, NewLoc, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+	}
 };
+
 
 class VREXPANSIONPLUGIN_API FSavedMove_VRBaseCharacter : public FSavedMove_Character
 {
@@ -134,6 +168,12 @@ public:
 	bool bStartedClimbing;
 	bool bEndedClimbing;
 
+	FVector CustomVRInputVector;
+	FVector VRCapsuleLocation;
+	FVector LFDiff;
+	FRotator VRCapsuleRotation;
+	FVector RequestedVelocity;
+
 	void Clear();
 	virtual void SetInitialPosition(ACharacter* C);
 
@@ -141,9 +181,15 @@ public:
 	{
 		bStartedClimbing = false;
 		bEndedClimbing = false;
+		CustomVRInputVector = FVector::ZeroVector;
+
+		VRCapsuleLocation = FVector::ZeroVector;
+		LFDiff = FVector::ZeroVector;
+		VRCapsuleRotation = FRotator::ZeroRotator;
+		RequestedVelocity = FVector::ZeroVector;
 	}
 
-	uint8 GetCompressedFlags() const
+	virtual uint8 GetCompressedFlags() const override
 	{
 		uint8 Result = FSavedMove_Character::GetCompressedFlags();
 
@@ -160,18 +206,20 @@ public:
 		return Result;
 	}
 
-	bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
+	virtual bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
 	{
 		FSavedMove_VRBaseCharacter * nMove = (FSavedMove_VRBaseCharacter *)NewMove.Get();
 
-		if (!nMove || (bStartedClimbing != nMove->bStartedClimbing) || (bEndedClimbing != nMove->bEndedClimbing))
+		if (!nMove || (bStartedClimbing != nMove->bStartedClimbing) || (bEndedClimbing != nMove->bEndedClimbing) || (CustomVRInputVector != nMove->CustomVRInputVector)
+			|| (!LFDiff.IsNearlyZero() && !nMove->LFDiff.IsNearlyZero()) || (!RequestedVelocity.IsNearlyZero() && !nMove->RequestedVelocity.IsNearlyZero())
+			)
 			return false;
 
 		return FSavedMove_Character::CanCombineWith(NewMove, Character, MaxDelta);
 	}
 
 
-	bool IsImportantMove(const FSavedMovePtr& LastAckedMove) const override
+	virtual bool IsImportantMove(const FSavedMovePtr& LastAckedMove) const override
 	{
 
 		// Auto important if toggled climbing
@@ -182,4 +230,6 @@ public:
 		return FSavedMove_Character::IsImportantMove(LastAckedMove);
 	}
 
+	virtual void PrepMoveFor(ACharacter* Character) override;
 };
+

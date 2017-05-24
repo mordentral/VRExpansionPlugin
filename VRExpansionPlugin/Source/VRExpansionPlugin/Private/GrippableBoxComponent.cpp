@@ -2,6 +2,10 @@
 
 #include "GrippableBoxComponent.h"
 
+//=============================================================================
+UGrippableBoxComponent::~UGrippableBoxComponent()
+{
+}
 
   //=============================================================================
 UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectInitializer)
@@ -10,10 +14,10 @@ UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectI
 	VRGripInterfaceSettings.bDenyGripping = false;
 	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
-	VRGripInterfaceSettings.EnumObjectType = 0;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-	VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	VRGripInterfaceSettings.SecondaryGripType = ESecondaryGripType::SG_None;
 	//VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
@@ -25,13 +29,39 @@ UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectI
 	VRGripInterfaceSettings.bIsInteractible = false;
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
+
+	bRepGripSettingsAndGameplayTags = true;
 }
 
-//=============================================================================
-UGrippableBoxComponent::~UGrippableBoxComponent()
+void UGrippableBoxComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
+	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UGrippableBoxComponent, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, VRGripInterfaceSettings, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, GameplayTags, COND_Custom);
 }
 
+void UGrippableBoxComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't replicate if set to not do it
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
+}
+
+void UGrippableBoxComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime) {}
+void UGrippableBoxComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableBoxComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableBoxComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableBoxComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableBoxComponent::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void UGrippableBoxComponent::OnSecondaryGripRelease_Implementation(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void UGrippableBoxComponent::OnUsed_Implementation() {}
+void UGrippableBoxComponent::OnEndUsed_Implementation() {}
+void UGrippableBoxComponent::OnSecondaryUsed_Implementation() {}
+void UGrippableBoxComponent::OnEndSecondaryUsed_Implementation() {}
 
 bool UGrippableBoxComponent::DenyGripping_Implementation()
 {
@@ -48,11 +78,6 @@ bool UGrippableBoxComponent::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-void UGrippableBoxComponent::ObjectType_Implementation(uint8 & ObjectType)
-{
-	ObjectType = VRGripInterfaceSettings.EnumObjectType;
-}
-
 EGripCollisionType UGrippableBoxComponent::SlotGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SlotDefaultGripType;
@@ -63,10 +88,16 @@ EGripCollisionType UGrippableBoxComponent::FreeGripType_Implementation()
 	return VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
-bool UGrippableBoxComponent::CanHaveDoubleGrip_Implementation()
+/*bool UGrippableBoxComponent::CanHaveDoubleGrip_Implementation()
 {
 	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
+}*/
+
+ESecondaryGripType UGrippableBoxComponent::SecondaryGripType_Implementation()
+{
+	return VRGripInterfaceSettings.SecondaryGripType;
 }
+
 
 /*EGripTargetType UGrippableBoxComponent::GripTargetType_Implementation()
 {

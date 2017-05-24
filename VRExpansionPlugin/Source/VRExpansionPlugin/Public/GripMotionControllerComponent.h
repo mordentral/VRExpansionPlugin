@@ -80,13 +80,38 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedActors)
 	TArray<FBPActorGripInformation> GrippedActors;
 
-	UPROPERTY(BlueprintReadOnly, Category = "VRGrip")
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_LocallyGrippedActors)
 	TArray<FBPActorGripInformation> LocallyGrippedActors;
+
+	// Locally Gripped Array functions
+
+	// Notify a client that their local grip was bad
+	UFUNCTION(BlueprintCallable, Reliable, Client, WithValidation)
+	void Client_NotifyInvalidLocalGrip(UObject * LocallyGrippedObject);
+
+	// Notify the server that we locally gripped something
+	UFUNCTION(BlueprintCallable, Reliable, Server, WithValidation)
+	void Server_NotifyLocalGripAddedOrChanged(const FBPActorGripInformation & newGrip);
+
+	// Notify the server that we changed some secondary attachment information
+	UFUNCTION(Reliable, Server, WithValidation)
+		void Server_NotifySecondaryAttachmentChanged(
+			UObject * GrippedObject,
+			bool bHasSecondaryAttachment,
+			USceneComponent* SecondaryAttachment,
+			float SecondarySmoothingScaler,
+			const FVector_NetQuantize100 & SecondaryRelativeLocation,
+			float LerpToRate);
+
+	// Notify change on relative position editing as well, make RPCS callable in blueprint
+	// Notify the server that we locally gripped something
+	UFUNCTION(Reliable, Server, WithValidation)
+	void Server_NotifyLocalGripRemoved(const FBPActorGripInformation & removeGrip);
+	
 
 	// Enable this to send the TickGrip event every tick even for non custom grip types - has a slight performance hit
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGrip")
 	bool bAlwaysSendTickGrip;
-
 
 	// Clean up a grip that is "bad", object is being destroyed or was a bad destructible mesh
 	void CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjects, int GripIndex, bool bReplicatedArray);
@@ -107,38 +132,94 @@ public:
 	}
 
 	UFUNCTION()
-	virtual void OnRep_GrippedActors(TArray<FBPActorGripInformation> OriginalArrayState)
+	virtual void OnRep_GrippedActors(/*TArray<FBPActorGripInformation> OriginalArrayState*/) // Original array state is useless without full serialize, it just hold last delta
 	{
-		// Check for new gripped actors
-		for (int i = 0; i < GrippedActors.Num(); i++)
+		// Need to think about how best to handle the simulating flag here, don't handle for now
+		// Check for removed gripped actors
+		// This might actually be better left as an RPC multicast
+
+		for (FBPActorGripInformation & Grip : GrippedActors)
 		{
-			int FoundIndex = 0;
-			if (!OriginalArrayState.Find(GrippedActors[i], FoundIndex))
+			HandleGripReplication(Grip);
+		}
+	}
+
+	UFUNCTION()
+	virtual void OnRep_LocallyGrippedActors()
+	{
+		for (FBPActorGripInformation & Grip : LocallyGrippedActors)
+		{
+			HandleGripReplication(Grip);
+		}
+	}
+
+	FORCEINLINE void HandleGripReplication(FBPActorGripInformation & Grip)
+	{
+		if (!Grip.ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
+		{
+			NotifyGrip(Grip); // Grip it
+			Grip.ValueCache.bWasInitiallyRepped = true; // Set has been initialized
+		}
+		else // Check for changes from cached information
+		{
+			// Manage lerp states
+			if (Grip.ValueCache.bCachedHasSecondaryAttachment != Grip.bHasSecondaryAttachment)
 			{
-				// Is a new grip entry
-				NotifyGrip(GrippedActors[i]);
-			}
-			else // Check to see if the important bits got changed (instant drop / pickup can cause this)
-			{
-				if (OriginalArrayState[FoundIndex].GripCollisionType != GrippedActors[i].GripCollisionType ||
-					OriginalArrayState[FoundIndex].GripMovementReplicationSetting != GrippedActors[i].GripMovementReplicationSetting)
+				if (FMath::IsNearlyZero(Grip.LerpToRate)) // Zero, could use IsNearlyZero instead
+					Grip.GripLerpState = EGripLerpState::NotLerping;
+				else
 				{
-					ReCreateGrip(GrippedActors[i]);
-				}
-				else // If re-creating the grip anyway we don't need to do the below
-				{
-					// If the stiffness and damping got changed server side
-					if (OriginalArrayState[FoundIndex].Stiffness != GrippedActors[i].Stiffness || OriginalArrayState[FoundIndex].Damping != GrippedActors[i].Damping)
+					// New lerp
+					if (Grip.bHasSecondaryAttachment)
 					{
-						SetGripConstraintStiffnessAndDamping(&GrippedActors[i], GrippedActors[i].Stiffness, GrippedActors[i].Damping);
+						Grip.curLerp = Grip.LerpToRate;
+						Grip.GripLerpState = EGripLerpState::StartLerp;
 					}
+					else // Post Lerp
+					{
+						Grip.curLerp = Grip.LerpToRate;
+						Grip.GripLerpState = EGripLerpState::EndLerp;
+					}
+				}
+
+				// Now calling the on secondary grip interface function client side as well
+				if (Grip.bHasSecondaryAttachment)
+				{
+					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					{
+						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, Grip.SecondaryAttachment, Grip);
+					}
+				}
+				else
+				{
+					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					{
+						IVRGripInterface::Execute_OnSecondaryGripRelease(Grip.GrippedObject, Grip.SecondaryAttachment, Grip);
+					}
+				}
+			}
+
+			if (Grip.ValueCache.CachedGripCollisionType != Grip.GripCollisionType ||
+				Grip.ValueCache.CachedGripMovementReplicationSetting != Grip.GripMovementReplicationSetting)
+			{
+				ReCreateGrip(Grip);
+			}
+			else // If re-creating the grip anyway we don't need to do the below
+			{
+				// If the stiffness and damping got changed server side
+				if (Grip.ValueCache.CachedStiffness != Grip.Stiffness || Grip.ValueCache.CachedDamping != Grip.Damping)
+				{
+					SetGripConstraintStiffnessAndDamping(&Grip, Grip.Stiffness, Grip.Damping);
 				}
 			}
 		}
 
-		// Need to think about how best to handle the simulating flag here, don't handle for now
-		// Check for removed gripped actors
-		// This might actually be better left as an RPC multicast
+		// Set caches now for next rep
+		Grip.ValueCache.bCachedHasSecondaryAttachment = Grip.bHasSecondaryAttachment;
+		Grip.ValueCache.CachedGripCollisionType = Grip.GripCollisionType;
+		Grip.ValueCache.CachedGripMovementReplicationSetting = Grip.GripMovementReplicationSetting;
+		Grip.ValueCache.CachedStiffness = Grip.Stiffness;
+		Grip.ValueCache.CachedDamping = Grip.Damping;
 	}
 
 	UPROPERTY(BlueprintReadWrite, Category = "VRGrip")
@@ -327,6 +408,9 @@ public:
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);
 
+	// Used so drop logic can be filtered
+	void Drop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate);
+
 	// Get a grip by actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, EBPVRResultSwitch &Result);
@@ -403,13 +487,13 @@ public:
 	FORCEINLINE bool HasGripMovementAuthority(const FBPActorGripInformation &Grip);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
-	FORCEINLINE void TickGrip(float DeltaTime);
+	FORCEINLINE_DEBUGGABLE void TickGrip(float DeltaTime);
 
 	// Splitting logic into seperate function
 	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, const FVector &MotionControllerLocDelta, float DeltaTime, bool bReplicatedArray = false);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
-	FORCEINLINE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
+	FORCEINLINE_DEBUGGABLE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
 
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
 	FORCEINLINE FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
@@ -549,6 +633,17 @@ public:
 		return false;
 	}
 
+	// Get if we have gripped objects, local or replicated
+	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	bool HasGrippedObjects()
+	{
+		return GrippedActors.Num() > 0 || LocallyGrippedActors.Num() > 0;
+	}
+
+	// Get list of all gripped actors 
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+		void GetGrippedObjects(TArray<UObject*> &GrippedObjectsArray);
+
 	// Get list of all gripped actors 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	void GetGrippedActors(TArray<AActor*> &GrippedActorsArray);
@@ -600,7 +695,7 @@ public:
 	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
 
 	/** If true, the Position and Orientation args will contain the most recent controller state */
-	virtual bool PollControllerState(FVector& Position, FRotator& Orientation/*4.16 ,float WorldToMetersScale */);
+	virtual bool PollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale);
 
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/
 	bool bTracked;

@@ -92,8 +92,10 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 		// This helps prevent getting stuck in walls.
 		if (TestHit.bStartPenetrating && !(MoveFlags & MOVECOMP_NeverIgnoreBlockingOverlaps))
 		{
-			static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindTConsoleVariableDataFloat(TEXT("p.InitialOverlapTolerance"));
-			const float DotTolerance = CVarInitialOverlapTolerance->GetValueOnGameThread();
+			// 4.16 converted to AutoConsoleVariable
+			//static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindTConsoleVariableDataFloat(TEXT("p.InitialOverlapTolerance"));
+			static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindConsoleVariable(TEXT("p.InitialOverlapTolerance"));
+			const float DotTolerance = CVarInitialOverlapTolerance->GetFloat();
 
 			// Dot product of movement direction against 'exit' direction
 			const FVector MovementDir = MovementDirDenormalized.GetSafeNormal();
@@ -103,16 +105,18 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
-				static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.ShowInitialOverlaps"));
-				if (CVarShowInitialOverlaps->GetValueOnGameThread() != 0)
+			// 4.16 converted to autoconsole variable
+			//static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.ShowInitialOverlaps"));
+			static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ShowInitialOverlaps"));
+			if (CVarShowInitialOverlaps->GetInt() != 0)
+			{
+				UE_LOG(LogTemp, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
+				DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
+				if (TestHit.PenetrationDepth > KINDA_SMALL_NUMBER)
 				{
-					UE_LOG(LogTemp, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
-					DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
-					if (TestHit.PenetrationDepth > KINDA_SMALL_NUMBER)
-					{
-						DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + TestHit.PenetrationDepth * TestHit.Normal, 5.f, FColor(64, 255, 64), true, 4.f);
-					}
+					DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + TestHit.PenetrationDepth * TestHit.Normal, 5.f, FColor(64, 255, 64), true, 4.f);
 				}
+			}
 		//	}
 #endif
 

@@ -9,7 +9,6 @@
 //General Log
 DEFINE_LOG_CATEGORY(VRExpansionFunctionLibraryLog);
 
-
 void UVRExpansionFunctionLibrary::LowPassFilter_RollingAverage(FVector lastAverage, FVector newSample, FVector & newAverage, int32 numSamples)
 {
 	newAverage = lastAverage;
@@ -69,7 +68,9 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 		}
 
 		if (bHadSlotInRange)
+		{
 			SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
+		}
 	}
 }
 
@@ -105,7 +106,9 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 	}
 
 	if (bHadSlotInRange)
+	{
 		SlotWorldTransform = Component->GetSocketTransform(SocketNames[foundIndex]);
+	}
 }
 
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
@@ -158,6 +161,7 @@ bool UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame()
 #if WITH_EDITOR
 	if (GIsEditor)
 	{
+		
 		UEditorEngine* EdEngine = Cast<UEditorEngine>(GEngine);
 		return EdEngine->bUseVRPreviewForPlayWorld;
 	}
@@ -279,3 +283,20 @@ bool UVRExpansionFunctionLibrary::EqualEqual_FBPActorGripInformation(const FBPAc
 	return A == B;
 }
 
+
+FTransform_NetQuantize UVRExpansionFunctionLibrary::MakeTransform_NetQuantize(FVector Translation, FRotator Rotation, FVector Scale)
+{
+	return FTransform_NetQuantize(Rotation, Translation, Scale);
+}
+
+void UVRExpansionFunctionLibrary::BreakTransform_NetQuantize(const FTransform_NetQuantize& InTransform, FVector& Translation, FRotator& Rotation, FVector& Scale)
+{
+	Translation = InTransform.GetLocation();
+	Rotation = InTransform.Rotator();
+	Scale = InTransform.GetScale3D();
+}
+
+FTransform_NetQuantize UVRExpansionFunctionLibrary::Conv_TransformToTransformNetQuantize(const FTransform &InTransform)
+{
+	return FTransform_NetQuantize(InTransform);
+}

@@ -51,12 +51,11 @@ bool FOpenVRExpansionPluginModule::LoadOpenVRModule()
 #elif PLATFORM_MAC
 	OpenVRDLLHandle = FPlatformProcess::GetDllHandle(TEXT("libopenvr_api.dylib"));
 
-	// 4.16 Uncomment below	
-	/*#elif PLATFORM_LINUX
+#elif PLATFORM_LINUX
 	FString RootOpenVRPath = FPaths::EngineDir() / FString::Printf(TEXT("Binaries/ThirdParty/OpenVR/%s/linux64/"), OPENVR_SDK_VER);
 	OpenVRDLLHandle = FPlatformProcess::GetDllHandle(*(RootOpenVRPath + "libopenvr_api.so"));
 #else
-	#error "SteamVRHMD is not supported for this platform."*/
+	#error "SteamVRHMD is not supported for this platform."
 #endif	//PLATFORM_WINDOWS
 
 	if (!OpenVRDLLHandle)

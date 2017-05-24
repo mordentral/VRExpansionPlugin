@@ -9,10 +9,10 @@ UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitia
 	VRGripInterfaceSettings.bDenyGripping = false;
 	VRGripInterfaceSettings.OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
-	VRGripInterfaceSettings.EnumObjectType = 0;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-	VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
+	VRGripInterfaceSettings.SecondaryGripType = ESecondaryGripType::SG_None;
 	//VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
@@ -26,15 +26,44 @@ UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitia
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
 
-	// Setting this for default with multiplayer
-	this->bReplicates = true;
+	bRepGripSettingsAndGameplayTags = true;
 }
+
+void UGrippableStaticMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UGrippableStaticMeshComponent, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_CONDITION(UGrippableStaticMeshComponent, VRGripInterfaceSettings, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGrippableStaticMeshComponent, GameplayTags, COND_Custom);
+}
+
+void UGrippableStaticMeshComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't replicate if set to not do it
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableStaticMeshComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableStaticMeshComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
+}
+
 
 //=============================================================================
 UGrippableStaticMeshComponent::~UGrippableStaticMeshComponent()
 {
 }
 
+void UGrippableStaticMeshComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime) {}
+void UGrippableStaticMeshComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableStaticMeshComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableStaticMeshComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableStaticMeshComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UGrippableStaticMeshComponent::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void UGrippableStaticMeshComponent::OnSecondaryGripRelease_Implementation(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void UGrippableStaticMeshComponent::OnUsed_Implementation() {}
+void UGrippableStaticMeshComponent::OnEndUsed_Implementation() {}
+void UGrippableStaticMeshComponent::OnSecondaryUsed_Implementation() {}
+void UGrippableStaticMeshComponent::OnEndSecondaryUsed_Implementation() {}
 
 bool UGrippableStaticMeshComponent::DenyGripping_Implementation()
 {
@@ -51,11 +80,6 @@ bool UGrippableStaticMeshComponent::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-void UGrippableStaticMeshComponent::ObjectType_Implementation(uint8 & ObjectType)
-{
-	ObjectType = VRGripInterfaceSettings.EnumObjectType;
-}
-
 EGripCollisionType UGrippableStaticMeshComponent::SlotGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SlotDefaultGripType;
@@ -66,9 +90,14 @@ EGripCollisionType UGrippableStaticMeshComponent::FreeGripType_Implementation()
 	return VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
-bool UGrippableStaticMeshComponent::CanHaveDoubleGrip_Implementation()
+/*bool UGrippableStaticMeshComponent::CanHaveDoubleGrip_Implementation()
 {
 	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
+}*/
+
+ESecondaryGripType UGrippableStaticMeshComponent::SecondaryGripType_Implementation()
+{
+	return VRGripInterfaceSettings.SecondaryGripType;
 }
 
 /*EGripTargetType UGrippableStaticMeshComponent::GripTargetType_Implementation()

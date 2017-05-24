@@ -4,11 +4,11 @@
 #include "CoreMinimal.h"
 #include "IMotionController.h"
 
-// Or procedural mesh component throws an error....
-//#include "PhysicsEngine/ConvexElem.h" // Fixed in 4.13.1?
-
 #include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"
+
+#include "VRBPDatatypes.h"
+
 #include "VRExpansionFunctionLibrary.generated.h"
 
 //General Advanced Sessions Log
@@ -25,7 +25,6 @@ enum class EBPHMDWornState : uint8
 	Worn UMETA(DisplayName = "Worn"),
 	NotWorn UMETA(DisplayName = "Not Worn"),
 };
-
 
 
 UCLASS()//, meta = (BlueprintSpawnableComponent))
@@ -96,7 +95,6 @@ public:
 		}
 	}
 
-
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))
 	static bool GetIsHMDConnected();
@@ -149,4 +147,17 @@ public:
 	/* Returns true if the values are equal (A == B) */
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal VR Grip", CompactNodeTitle = "==", Keywords = "== equal"), Category = "VRExpansionFunctions")
 	static bool EqualEqual_FBPActorGripInformation(const FBPActorGripInformation &A, const FBPActorGripInformation &B);
+
+
+	/** Make a transform net quantize from location, rotation and scale */
+	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|TransformNetQuantize")
+		static FTransform_NetQuantize MakeTransform_NetQuantize(FVector Location, FRotator Rotation, FVector Scale);
+
+	/** Breaks apart a transform net quantize into location, rotation and scale */
+	UFUNCTION(BlueprintPure, Category = "VRExpansionLibrary|TransformNetQuantize", meta = (NativeBreakFunc))
+		static void BreakTransform_NetQuantize(const FTransform_NetQuantize& InTransform, FVector& Location, FRotator& Rotation, FVector& Scale);
+
+	/** Converts a FTransform into a FTransform_NetQuantize */
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToTransform_NetQuantize (Transform)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary|TransformNetQuantize")
+		static FTransform_NetQuantize Conv_TransformToTransformNetQuantize(const FTransform &InTransform);
 };	

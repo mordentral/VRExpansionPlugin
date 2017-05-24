@@ -7,6 +7,8 @@
 #include "Net/UnrealNetwork.h"
 #include "KismetMathLibrary.h"
 #include "PrimitiveSceneInfo.h"
+#include "Engine/World.h"
+#include "GameFramework/WorldSettings.h"
 #include "DrawDebugHelpers.h"
 
 #include "PhysicsPublic.h"
@@ -95,15 +97,16 @@ void UGripMotionControllerComponent::OnUnregister()
 	{
 		DestroyPhysicsHandle(GrippedActors[i]);
 
-		DropObject(GrippedActors[i].GrippedObject, false);	
+		DropObjectByInterface(GrippedActors[i].GrippedObject);
+		//DropObject(GrippedActors[i].GrippedObject, false);	
 	}
 	GrippedActors.Empty();
 
 	for (int i = 0; i < LocallyGrippedActors.Num(); i++)
 	{
 		DestroyPhysicsHandle(LocallyGrippedActors[i]);
-
-		DropObject(LocallyGrippedActors[i].GrippedObject, false);
+		DropObjectByInterface(LocallyGrippedActors[i].GrippedObject);
+		//DropObject(LocallyGrippedActors[i].GrippedObject, false);
 	}
 	LocallyGrippedActors.Empty();
 
@@ -181,6 +184,8 @@ void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FL
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, ReplicatedControllerTransform, COND_SkipOwner);
 	DOREPLIFETIME(UGripMotionControllerComponent, GrippedActors);
 	DOREPLIFETIME(UGripMotionControllerComponent, ControllerNetUpdateRate);
+
+	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, LocallyGrippedActors, COND_SkipOwner);
 //	DOREPLIFETIME(UGripMotionControllerComponent, bReplicateControllerTransform);
 }
 
@@ -795,7 +800,7 @@ bool UGripMotionControllerComponent::GripActor(
 	float GripDamping
 	)
 {
-	bool bIsLocalGrip = GripMovementReplicationSetting == EGripMovementReplicationSettings::LocalOnly_Not_Replicated;
+	bool bIsLocalGrip = GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive;
 
 	if (!IsServer() && !bIsLocalGrip)
 	{
@@ -929,7 +934,11 @@ bool UGripMotionControllerComponent::GripActor(
 	if (!bIsLocalGrip)
 		GrippedActors.Add(newActorGrip);
 	else
+	{
 		LocallyGrippedActors.Add(newActorGrip);
+		if(GetNetMode() == ENetMode::NM_Client && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			Server_NotifyLocalGripAddedOrChanged(newActorGrip);
+	}
 
 	NotifyGrip(newActorGrip);
 
@@ -983,7 +992,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	)
 {
 
-	bool bIsLocalGrip = GripMovementReplicationSetting == EGripMovementReplicationSettings::LocalOnly_Not_Replicated;
+	bool bIsLocalGrip = GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive;
 
 	if (!IsServer() && !bIsLocalGrip)
 	{
@@ -1107,7 +1116,12 @@ bool UGripMotionControllerComponent::GripComponent(
 	if (!bIsLocalGrip)
 		GrippedActors.Add(newActorGrip);
 	else
+	{
 		LocallyGrippedActors.Add(newActorGrip);
+
+		if (GetNetMode() == ENetMode::NM_Client && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			Server_NotifyLocalGripAddedOrChanged(newActorGrip);
+	}
 
 	NotifyGrip(newActorGrip);
 
@@ -1202,8 +1216,20 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 		PrimComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
 	}
 
-	if(bWasLocalGrip)
-		NotifyDrop_Implementation(LocallyGrippedActors[FoundIndex], bSimulate);
+	if (bWasLocalGrip)
+	{
+		if (GetNetMode() == ENetMode::NM_Client)
+		{
+			Server_NotifyLocalGripRemoved(LocallyGrippedActors[FoundIndex]);
+				
+			// Have to call this ourselves
+			Drop_Implementation(LocallyGrippedActors[FoundIndex], bSimulate);
+		}
+		else // Server notifyDrop it
+		{
+			NotifyDrop(LocallyGrippedActors[FoundIndex], bSimulate);
+		}
+	}
 	else
 		NotifyDrop(GrippedActors[FoundIndex], bSimulate);
 
@@ -1211,10 +1237,10 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	return true;
 }
 
-// No longer an RPC, now is called from RepNotify so that joining clients also correctly set up grips
-void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActorGripInformation &NewGrip)
-{
 
+// No longer an RPC, now is called from RepNotify so that joining clients also correctly set up grips
+void UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &NewGrip)
+{
 	UPrimitiveComponent *root = NULL;
 	AActor *pActor = NULL;
 
@@ -1293,6 +1319,7 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	switch (NewGrip.GripMovementReplicationSetting)
 	{
 	case EGripMovementReplicationSettings::ForceClientSideMovement:
+	case EGripMovementReplicationSettings::ClientSide_Authoritive:
 	{
 		if (IsServer())
 		{
@@ -1311,7 +1338,6 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 	}break;
 
 	case EGripMovementReplicationSettings::KeepOriginalMovement:
-	case EGripMovementReplicationSettings::LocalOnly_Not_Replicated:
 	default:
 	{}break;
 	}
@@ -1351,6 +1377,17 @@ void UGripMotionControllerComponent::NotifyGrip/*_Implementation*/(const FBPActo
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
+	// Don't do this if we are the owning player on a local grip, there is no filter for multicast to not send to owner
+	if (NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && IsLocallyControlled() && GetNetMode() == ENetMode::NM_Client)
+	{
+		return;
+	}
+
+	Drop_Implementation(NewDrop, bSimulate);
+}
+
+void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
+{
 	DestroyPhysicsHandle(NewDrop);
 
 	UPrimitiveComponent *root = NULL;
@@ -1359,7 +1396,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	switch (NewDrop.GripTargetType)
 	{
 	case EGripTargetType::ActorGrip:
-	//case EGripTargetType::InteractibleActorGrip:
+		//case EGripTargetType::InteractibleActorGrip:
 	{
 		pActor = NewDrop.GetGrippedActor();
 
@@ -1378,7 +1415,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 			if (root)
 			{
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
-				
+
 				root->SetSimulatePhysics(bSimulate);
 				if (bSimulate)
 					root->WakeAllRigidBodies();
@@ -1404,7 +1441,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	}break;
 
 	case EGripTargetType::ComponentGrip:
-	//case EGripTargetType::InteractibleComponentGrip:
+		//case EGripTargetType::InteractibleComponentGrip:
 	{
 		root = NewDrop.GetGrippedComponent();
 		if (root)
@@ -1421,7 +1458,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 			if (root)
 			{
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
-			
+
 				root->SetSimulatePhysics(bSimulate);
 				if (bSimulate)
 					root->WakeAllRigidBodies();
@@ -1478,7 +1515,7 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 	}
 	else
 	{
-		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement || Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::LocalOnly_Not_Replicated)
+		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement || Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 		{
 			return true;
 		}
@@ -1502,9 +1539,21 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 
 	if (GrippedObjectToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		if (!IVRGripInterface::Execute_CanHaveDoubleGrip(GrippedObjectToAddAttachment))
+		ESecondaryGripType SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GrippedObjectToAddAttachment);
+	
+		switch (SecondaryType)
 		{
-			return false;
+		case ESecondaryGripType::SG_None:return false; break;
+
+		//case ESecondaryGripType::SG_FreeWithScaling_Retain:
+		//case ESecondaryGripType::SG_SlotOnly_Retain:
+		//case ESecondaryGripType::SG_SlotOnlyWithScaling_Retain:
+		//case ESecondaryGripType::SG_Free_Retain:
+		//{
+		//	LerpToTime = 0.0f;
+		//}break;
+
+		default:break;
 		}
 	}
 
@@ -1592,6 +1641,12 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 			IVRGripInterface::Execute_OnSecondaryGrip(GrippedObjectToAddAttachment, SecondaryPointComponent, *GripToUse);
 		}
 
+		if (GripToUse->GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && GetNetMode() == ENetMode::NM_Client)
+		{
+			Server_NotifySecondaryAttachmentChanged(GripToUse->GrippedObject, GripToUse->bHasSecondaryAttachment, 
+				GripToUse->SecondaryAttachment, GripToUse->SecondarySmoothingScaler, GripToUse->SecondaryRelativeLocation, GripToUse->LerpToRate);
+		}
+
 		GripToUse = nullptr;
 
 		return true;
@@ -1642,35 +1697,59 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 		if (GripToUse->GripLerpState == EGripLerpState::StartLerp)
 			LerpToTime = 0.0f;
 
-		if (LerpToTime > 0.0f)
+		//if (LerpToTime > 0.0f)
+		//{
+		UPrimitiveComponent * primComp = nullptr;
+
+		switch (GripToUse->GripTargetType)
 		{
-			UPrimitiveComponent * primComp = nullptr;
+		case EGripTargetType::ComponentGrip:
+		{
+			primComp = GripToUse->GetGrippedComponent();
+		}break;
+		case EGripTargetType::ActorGrip:
+		{
+			AActor * pActor = GripToUse->GetGrippedActor();
+			if (pActor)
+				primComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+		} break;
+		}
 
-			switch (GripToUse->GripTargetType)
+		if (primComp)
+		{
+			ESecondaryGripType SecondaryType = ESecondaryGripType::SG_None;
+			if (GripToUse->GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-			case EGripTargetType::ComponentGrip:
-			{
-				primComp = GripToUse->GetGrippedComponent();
-			}break;
-			case EGripTargetType::ActorGrip:
-			{
-				AActor * pActor = GripToUse->GetGrippedActor();
-				if (pActor)
-					primComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-			} break;
+				SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GripToUse->GrippedObject);
+				//else if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
+				//LerpToTime = 0.0f;
 			}
 
-			if (primComp)
+			switch (SecondaryType)
 			{
-				GripToUse->LerpToRate = LerpToTime;
-				GripToUse->GripLerpState = EGripLerpState::EndLerp;
-				GripToUse->curLerp = LerpToTime;
-			}
-			else
+			// All of these retain the position on release
+			case ESecondaryGripType::SG_FreeWithScaling_Retain:
+			case ESecondaryGripType::SG_SlotOnlyWithScaling_Retain:
+			case ESecondaryGripType::SG_Free_Retain:
+			case ESecondaryGripType::SG_SlotOnly_Retain:
 			{
+				GripToUse->RelativeTransform = primComp->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform());
 				GripToUse->LerpToRate = 0.0f;
 				GripToUse->GripLerpState = EGripLerpState::NotLerping;
+			}break;
+			default:
+			{
+				if (LerpToTime > 0.0f)
+				{
+					// #TODO: This had a hitch in it just prior to lerping back, fix it eventually and allow lerping from scaling secondaries
+					//GripToUse->RelativeTransform.SetScale3D(GripToUse->RelativeTransform.GetScale3D() * FVector(GripToUse->SecondaryScaler));
+					GripToUse->LerpToRate = LerpToTime;
+					GripToUse->GripLerpState = EGripLerpState::EndLerp;
+					GripToUse->curLerp = LerpToTime;
+				}
+			}break;
 			}
+
 		}
 		else
 		{
@@ -1685,8 +1764,14 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 
 		GripToUse->SecondaryAttachment = nullptr;
 		GripToUse->bHasSecondaryAttachment = false;
-		GripToUse = nullptr;
 
+		if (GripToUse->GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && GetNetMode() == ENetMode::NM_Client)
+		{
+			Server_NotifySecondaryAttachmentChanged(GripToUse->GrippedObject, GripToUse->bHasSecondaryAttachment, GripToUse->SecondaryAttachment, GripToUse->SecondarySmoothingScaler, 
+				GripToUse->SecondaryRelativeLocation, GripToUse->LerpToRate);
+		}
+
+		GripToUse = nullptr;
 		return true;
 	}
 
@@ -1827,9 +1912,9 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 		}
 		else if (TeleportBehavior == EGripInterfaceTeleportBehavior::DropOnTeleport)
 		{
-			if (IsServer() || Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::LocalOnly_Not_Replicated)
-				DropGrip(Grip, bSimulateOnDrop);
-
+			if (IsServer() || Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+				DropObjectByInterface(Grip.GrippedObject);
+			
 			return false; // Didn't teleport
 		}
 		else if (TeleportBehavior == EGripInterfaceTeleportBehavior::DontTeleport)
@@ -1949,10 +2034,10 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 				GEngine->ViewExtensions.Add(ViewExtension);
 			}
 
-			//float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
 
 			// This is the owning player, now you can get the controller's location and rotation from the correct source
-			bTracked = PollControllerState(Position, Orientation/*4.16 , WorldToMetersScale*/);
+			bTracked = PollControllerState(Position, Orientation, WorldToMeters);
 
 			if (bTracked)
 			{
@@ -1966,24 +2051,21 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 		// Don't bother with any of this if not replicating transform
 		if (bReplicates && (bTracked || bReplicateWithoutTracking))
 		{
-			if (bTracked)
+			// Don't rep if no changes
+			if (this->RelativeLocation != ReplicatedControllerTransform.Position || this->RelativeRotation != ReplicatedControllerTransform.Rotation)
 			{
-				ReplicatedControllerTransform.Position = Position;
-				ReplicatedControllerTransform.Rotation = Orientation;
-			}
-			else
-			{
+				// Tracked doesn't matter, already set the relative location above in that case
 				ReplicatedControllerTransform.Position = this->RelativeLocation;
 				ReplicatedControllerTransform.Rotation = this->RelativeRotation;
-			}
 
-			if (GetNetMode() == NM_Client)//bReplicateControllerTransform)
-			{
-				ControllerNetUpdateCount += DeltaTime;
-				if (ControllerNetUpdateCount >= (1.0f / ControllerNetUpdateRate))
+				if (GetNetMode() == NM_Client)//bReplicateControllerTransform)
 				{
-					ControllerNetUpdateCount = 0.0f;
-					Server_SendControllerTransform(ReplicatedControllerTransform);
+					ControllerNetUpdateCount += DeltaTime;
+					if (ControllerNetUpdateCount >= (1.0f / ControllerNetUpdateRate))
+					{
+						ControllerNetUpdateCount = 0.0f;
+						Server_SendControllerTransform(ReplicatedControllerTransform);
+					}
 				}
 			}
 		}
@@ -2039,7 +2121,6 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 	{
 		// Just simple transform setting
 		WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
-
 	}
 
 	// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
@@ -2084,11 +2165,11 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
 			frontLoc = Grip.LastRelativeLocation;
 
-			frontLocOrig = FMath::Lerp(frontLoc, frontLocOrig, Grip.curLerp / Grip.LerpToRate);
+			frontLocOrig = FMath::Lerp(frontLoc, frontLocOrig, FMath::Clamp(Grip.curLerp / Grip.LerpToRate, 0.0f, 1.0f));
 		}
 		else // Is in a multi grip, might be lerping into it as well.
 		{
-			FVector curLocation;
+			FVector curLocation; // Current location of the secondary grip
 
 			bool bPulledControllerLoc = false;
 			if (bHasAuthority && Grip.SecondaryAttachment->GetOwner() == this->GetOwner())
@@ -2097,8 +2178,8 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 				{
 					FVector Position;
 					FRotator Orientation;
-					//float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
-					if (OtherController->PollControllerState(Position, Orientation/*4.16 WorldToMeters*/))
+					float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+					if (OtherController->PollControllerState(Position, Orientation, WorldToMeters))
 					{
 						curLocation = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
 						bPulledControllerLoc = true;
@@ -2106,32 +2187,47 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 				}
 			}
 
-			if(!bPulledControllerLoc)
+			if (!bPulledControllerLoc)
 				curLocation = Grip.SecondaryAttachment->GetComponentLocation() - BasePoint;
-
 
 			frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
 			frontLoc = curLocation;// -BasePoint;
 
 			if (Grip.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transtion
 			{
-				frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, Grip.curLerp / Grip.LerpToRate);
+				frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, FMath::Clamp(Grip.curLerp / Grip.LerpToRate, 0.0f, 1.0f));
 			}
 			else if (Grip.GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
 			{
 				frontLoc = FMath::Lerp(Grip.LastRelativeLocation, frontLoc, Grip.SecondarySmoothingScaler);
 			}
-			Grip.LastRelativeLocation = frontLoc;//curLocation;// -BasePoint;
+			Grip.LastRelativeLocation = frontLoc;
+		}
+
+		float Scaler = 1.0f;
+		if (Grip.GripLerpState != EGripLerpState::EndLerp)
+		{
+			// Checking secondary grip type for the scaling setting
+			ESecondaryGripType SecondaryType = ESecondaryGripType::SG_None;
+
+			if (bRootHasInterface)
+				SecondaryType = IVRGripInterface::Execute_SecondaryGripType(root);
+			else if (bActorHasInterface)
+				SecondaryType = IVRGripInterface::Execute_SecondaryGripType(actor);
+
+			//float Scaler = 1.0f;
+			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain)
+			{
+				/*Grip.SecondaryScaler*/ Scaler = frontLoc.Size() / frontLocOrig.Size();
+				//Scaler = Grip.SecondaryScaler;
+			}
 		}
 
 		// Get the rotation difference from the initial second grip
 		FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
 
-		// Create a transform from it
-		FTransform RotationOffsetTransform(rotVal, FVector::ZeroVector);
-
 		// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
-		WorldTransform = WorldTransform * WorldToPivot * RotationOffsetTransform * PivotToWorld;
+		WorldTransform = WorldTransform * WorldToPivot * FTransform(rotVal, FVector::ZeroVector, FVector(Scaler)) * PivotToWorld;
 	}
 }
 
@@ -3199,7 +3295,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 }
 
 //=============================================================================
-bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation/*4.16 , float WorldToMetersScale*/)
+bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRotator& Orientation , float WorldToMetersScale)
 {
 	if ((PlayerIndex != INDEX_NONE) && bHasAuthority)
 	{
@@ -3207,7 +3303,7 @@ bool UGripMotionControllerComponent::PollControllerState(FVector& Position, FRot
 		TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
 		for (auto MotionController : MotionControllers)
 		{
-			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position/*4.16 , WorldToMetersScale*/))
+			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position, WorldToMetersScale))
 			{
 				CurrentTrackingStatus = (ETrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
 				
@@ -3254,7 +3350,7 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 	}
 
 	// 4.16
-	/*
+	
 	// Find a view that is associated with this player.
 	float WorldToMetersScale = -1.0f;
 	for (const FSceneView* SceneView : InViewFamily.Views)
@@ -3270,14 +3366,13 @@ void UGripMotionControllerComponent::FViewExtension::PreRenderViewFamily_RenderT
 	{
 		check(InViewFamily.Views.Num() > 0);
 		WorldToMetersScale = InViewFamily.Views[0]->WorldToMetersScale;
-	}*/
-
+	}
 
 	// Poll state for the most recent controller transform
 	FVector Position;
 	FRotator Orientation;
 
-	if (!MotionControllerComponent->PollControllerState(Position, Orientation/* 4.16 , WorldToMetersScale*/))
+	if (!MotionControllerComponent->PollControllerState(Position, Orientation, WorldToMetersScale))
 	{
 		return;
 	}
@@ -3345,6 +3440,22 @@ void UGripMotionControllerComponent::FViewExtension::GatherLateUpdatePrimitives(
 	}
 }
 
+void UGripMotionControllerComponent::GetGrippedObjects(TArray<UObject*> &GrippedObjectsArray)
+{
+	for (int i = 0; i < GrippedActors.Num(); ++i)
+	{
+		if (GrippedActors[i].GrippedObject)
+			GrippedObjectsArray.Add(GrippedActors[i].GrippedObject);
+	}
+
+	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	{
+		if (LocallyGrippedActors[i].GrippedObject)
+			GrippedObjectsArray.Add(LocallyGrippedActors[i].GrippedObject);
+	}
+
+}
+
 void UGripMotionControllerComponent::GetGrippedActors(TArray<AActor*> &GrippedActorsArray)
 {
 	for (int i = 0; i < GrippedActors.Num(); ++i)
@@ -3376,3 +3487,122 @@ void UGripMotionControllerComponent::GetGrippedComponents(TArray<UPrimitiveCompo
 	}
 }
 
+// Locally gripped functions
+
+bool UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Validate(UObject * LocallyGrippedObject)
+{
+	return true;
+}
+
+void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementation(UObject * LocallyGrippedObject)
+{
+	FBPActorGripInformation FoundGrip;
+	EBPVRResultSwitch Result;
+	GetGripByObject(FoundGrip, LocallyGrippedObject, Result);
+
+	if (Result == EBPVRResultSwitch::OnFailed)
+		return;
+
+	// Drop it, server told us that it was a bad grip
+	DropObjectByInterface(FoundGrip.GrippedObject);
+}
+
+bool UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Validate(const FBPActorGripInformation & newGrip)
+{
+	return true;
+}
+
+void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implementation(const FBPActorGripInformation & newGrip)
+{
+	if (!newGrip.GrippedObject || newGrip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive)
+	{
+		Client_NotifyInvalidLocalGrip(newGrip.GrippedObject);
+		return;
+	}
+
+	if (!LocallyGrippedActors.Contains(newGrip))
+	{
+		LocallyGrippedActors.Add(newGrip);
+
+		// Initialize the differences, clients will do this themselves on the rep back, this sets up the cache
+		HandleGripReplication(LocallyGrippedActors[LocallyGrippedActors.Num() - 1]);
+	}
+	else
+	{
+		FBPActorGripInformation FoundGrip;
+		EBPVRResultSwitch Result;
+		GetGripByObject(FoundGrip, newGrip.GrippedObject, Result);
+
+		if (Result == EBPVRResultSwitch::OnFailed)
+			return;
+
+		FoundGrip = newGrip;
+	}
+
+	// Server has to call this themselves
+	OnRep_LocallyGrippedActors();
+}
+
+
+bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(const FBPActorGripInformation & removeGrip)
+{
+	return true;
+}
+
+void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(const FBPActorGripInformation & removeGrip)
+{
+	FBPActorGripInformation FoundGrip;
+	EBPVRResultSwitch Result;
+	GetGripByObject(FoundGrip, removeGrip.GrippedObject, Result);
+
+	if (Result == EBPVRResultSwitch::OnFailed)
+		return;
+
+	FVector AngularVelocity;
+	FVector LinearVelocity;
+	GetPhysicsVelocities(removeGrip, AngularVelocity, LinearVelocity);
+
+	DropObjectByInterface(FoundGrip.GrippedObject, AngularVelocity, LinearVelocity);
+}
+
+
+bool UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Validate(
+	UObject * GrippedObject,
+	bool bHasSecondaryAttachment,
+	USceneComponent* SecondaryAttachment,
+	float SecondarySmoothingScaler,
+	const FVector_NetQuantize100 & SecondaryRelativeLocation,
+	float LerpToRate)
+{
+	return true;
+}
+
+void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Implementation(
+	UObject * GrippedObject,
+	bool bHasSecondaryAttachment,
+	USceneComponent* SecondaryAttachment,
+	float SecondarySmoothingScaler,
+	const FVector_NetQuantize100 & SecondaryRelativeLocation,
+	float LerpToRate)
+{
+
+	if (!GrippedObject)
+		return;
+
+	for (FBPActorGripInformation & Grip : LocallyGrippedActors)
+	{
+		if (Grip == GrippedObject)
+		{
+			Grip.bHasSecondaryAttachment = bHasSecondaryAttachment;
+			Grip.SecondaryAttachment = SecondaryAttachment;
+			Grip.SecondarySmoothingScaler = SecondarySmoothingScaler;
+			Grip.SecondaryRelativeLocation = SecondaryRelativeLocation;
+			Grip.LerpToRate = LerpToRate;
+
+			// Initialize the differences, clients will do this themselves on the rep back
+			HandleGripReplication(Grip);
+			break;
+		}
+	}
+
+}

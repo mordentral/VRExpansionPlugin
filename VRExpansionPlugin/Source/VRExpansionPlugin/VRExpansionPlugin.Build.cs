@@ -9,8 +9,8 @@ public class VRExpansionPlugin : ModuleRules
         get { return Path.GetFullPath(BuildConfiguration.RelativeEnginePath) + "Plugins/Runtime/"; }
     }
 
-    public VRExpansionPlugin(TargetInfo Target)
-	{
+    public VRExpansionPlugin(ReadOnlyTargetRules Target) : base(Target)
+    {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
 
@@ -48,21 +48,47 @@ public class VRExpansionPlugin : ModuleRules
 			);
 
         PublicDependencyModuleNames.AddRange(
+        new string[]
+        {
+                    "Core",
+                    "CoreUObject",
+                    "Engine",
+                   // "InputCore",
+                    "PhysX",
+                    //"FLEX", remove comment if building in the NVIDIA flex branch - NOTE when put in place FLEX only listed win32 and win64 at compatible platforms
+                    "HeadMountedDisplay",
+                   // "RHI",
+                    //"RenderCore",
+                    //"ShaderCore",
+                    //"NetworkReplayStreaming",
+                    //"AIModule",
+                    "UMG",
+
+                    //"Renderer",
+                    //"UtilityShaders"
+        });
+
+
+        PrivateDependencyModuleNames.AddRange(
             new string[] 
             {
-                "Core",
-                "CoreUObject",
-                "Engine",
+               // "Core",
+               // "CoreUObject",
+                //"Engine",
                 "InputCore",
-                "PhysX",
+               // "PhysX",
                 //"FLEX", remove comment if building in the NVIDIA flex branch - NOTE when put in place FLEX only listed win32 and win64 at compatible platforms
-                "HeadMountedDisplay",
+                //"HeadMountedDisplay",
                 "RHI",
                 "RenderCore",
                 "ShaderCore",
                 "NetworkReplayStreaming",
                 "AIModule",
-                "UMG"
+                "UMG",
+                "GameplayTags"
+
+                //"Renderer",
+               // "UtilityShaders"
             });
 
 

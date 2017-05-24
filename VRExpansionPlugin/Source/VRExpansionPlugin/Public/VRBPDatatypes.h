@@ -88,6 +88,113 @@ public:
 
 };
 
+
+//USTRUCT(BlueprintType, Category = "VRExpansionLibrary|Transform")
+
+USTRUCT(/*noexport, */BlueprintType, Category = "VRExpansionLibrary|Transform", meta = (HasNativeMake = "VRExpansionPlugin.VRExpansionPluginFunctionLibrary.MakeTransform_NetQuantize", HasNativeBreak = "VRExpansionPlugin.VRExpansionPluginFunctionLibrary.BreakTransform_NetQuantize"))
+struct FTransform_NetQuantize : public FTransform
+{
+	GENERATED_USTRUCT_BODY()
+
+	FORCEINLINE FTransform_NetQuantize() : FTransform()
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(ENoInit Init) : FTransform(Init)
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(const FVector& InTranslation) : FTransform(InTranslation)
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(const FQuat& InRotation) : FTransform(InRotation)
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(const FRotator& InRotation) : FTransform(InRotation)
+	{}
+
+	FORCEINLINE FTransform_NetQuantize(const FQuat& InRotation, const FVector& InTranslation, const FVector& InScale3D = FVector::OneVector)
+		: FTransform(InRotation, InTranslation, InScale3D)
+	{}
+
+	FORCEINLINE FTransform_NetQuantize(const FRotator& InRotation, const FVector& InTranslation, const FVector& InScale3D = FVector::OneVector) 
+		: FTransform(InRotation, InTranslation, InScale3D)
+	{}
+
+	FORCEINLINE FTransform_NetQuantize(const FTransform& InTransform) : FTransform(InTransform)
+	{}
+
+	FORCEINLINE explicit FTransform_NetQuantize(const FMatrix& InMatrix) : FTransform(InMatrix)
+	{}
+
+	FORCEINLINE FTransform_NetQuantize(const FVector& InX, const FVector& InY, const FVector& InZ, const FVector& InTranslation) 
+		: FTransform(InX, InY, InZ, InTranslation)
+	{}
+
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+
+		FVector rTranslation;
+		FVector rScale3D;
+		//FQuat rRotation;
+		FRotator rRotation;
+
+		uint16 ShortPitch = 0;
+		uint16 ShortYaw = 0;
+		uint16 ShortRoll = 0;
+
+		if (Ar.IsSaving())
+		{
+			// Because transforms can be vectorized or not, need to use the inline retrievers
+			rTranslation = this->GetTranslation();
+			rScale3D = this->GetScale3D();
+			rRotation = this->Rotator();//this->GetRotation();
+
+			// Translation set to 2 decimal precision
+			bOutSuccess &= SerializePackedVector<100, 30>(rTranslation, Ar);
+
+			// Scale set to 2 decimal precision, had it 1 but realized that I used two already even
+			bOutSuccess &= SerializePackedVector<100, 30>(rScale3D, Ar);
+
+			// Rotation converted to FRotator and short compressed, see below for conversion reason
+			// FRotator already serializes compressed short by default but I can save a func call here
+			rRotation.SerializeCompressedShort(Ar);
+
+			//Ar << rRotation;
+
+			// If I converted it to a rotator and serialized as shorts I would save 6 bytes.
+			// I am unsure about a safe method of compressed serializing a quat, though I read through smallest three
+			// Epic already drops W from the Quat and reconstructs it after the send.
+			// Converting to rotator first may have conversion issues and has a perf cost....needs testing, epic attempts to handle
+			// Singularities in their conversion but I haven't tested it in all circumstances
+			//rRotation.SerializeCompressedShort(Ar);
+		}
+		else // If loading
+		{
+			bOutSuccess &= SerializePackedVector<100, 30>(rTranslation, Ar);
+			bOutSuccess &= SerializePackedVector<100, 30>(rScale3D, Ar);
+
+			rRotation.SerializeCompressedShort(Ar);
+
+			//Ar << rRotation;
+
+			// Set it
+			this->SetComponents(rRotation.Quaternion(), rTranslation, rScale3D);
+		}
+
+		return bOutSuccess;
+	}
+};
+
+template<>
+struct TStructOpsTypeTraits< FTransform_NetQuantize > : public TStructOpsTypeTraitsBase2<FTransform_NetQuantize>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
+
 UENUM()
 enum class EVRVectorQuantization : uint8
 {
@@ -117,6 +224,7 @@ public:
 	}
 
 	/** Network serialization */
+	// Doing a custom NetSerialize here because this is sent via RPCs and should change on every update
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
 		bOutSuccess = true;
@@ -124,7 +232,7 @@ public:
 		// Defines the level of Quantization
 		uint8 Flags = (uint8)QuantizationLevel;
 		Ar.SerializeBits(&Flags, 1);
-		
+
 		// No longer using their built in rotation rep, as controllers will rarely if ever be at 0 rot on an axis and 
 		// so the 1 bit overhead per axis is just that, overhead
 		//Rotation.SerializeCompressedShort(Ar);
@@ -174,7 +282,7 @@ public:
 };
 
 template<>
-struct TStructOpsTypeTraits< FBPVRComponentPosRep > : public TStructOpsTypeTraitsBase
+struct TStructOpsTypeTraits< FBPVRComponentPosRep > : public TStructOpsTypeTraitsBase2<FBPVRComponentPosRep>
 {
 	enum
 	{
@@ -230,6 +338,19 @@ enum class EGripLerpState : uint8
 	NotLerping
 };
 
+// Secondary Grip Type
+UENUM(Blueprintable)
+enum class ESecondaryGripType : uint8
+{
+	SG_None, // No secondary grip
+	SG_Free, // Free secondary grip
+	SG_SlotOnly, // Only secondary grip at a slot
+	SG_Free_Retain, // Retain pos on drop
+	SG_SlotOnly_Retain, 
+	SG_FreeWithScaling_Retain, // Scaling with retain pos on drop
+	SG_SlotOnlyWithScaling_Retain
+};
+
 // Grip Late Update information
 UENUM(Blueprintable)
 enum class EGripLateUpdateSettings : uint8
@@ -246,13 +367,15 @@ enum class EGripLateUpdateSettings : uint8
 // that can be sent to the server and everyone locally grips it (IE: inventories that don't ever leave a player)
 // Objects that need to be handled possibly by multiple players should be ran
 // non locally gripped instead so that the server can validate grips instead.
+// ClientSide_Authoritive will grip on the client instantly without server intervention and then send a notice to the server
+// that the grip was made
 UENUM(Blueprintable)
 enum class EGripMovementReplicationSettings : uint8
 {
 	KeepOriginalMovement,
 	ForceServerSideMovement,
 	ForceClientSideMovement,
-	LocalOnly_Not_Replicated
+	ClientSide_Authoritive
 };
 
 // Grip Target Type
@@ -306,18 +429,26 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		uint32 bIgnoreHandRotation:1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector InitialLinearTranslation;
+	// #TODO: Net quantize the initai and min/max values.
+	// I wanted to do it already but the editor treats it like a different type
+	// and reinitializes ALL values, which obviously is bad as it would force people
+	// to re-enter their offsets all over again......
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector MinLinearTranslation;
+		FVector/*_NetQuantize100*/ InitialLinearTranslation;
+
+	// To use property, set value as -Distance
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+		FVector/*_NetQuantize100*/ MinLinearTranslation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
-		FVector MaxLinearTranslation;
+		FVector/*_NetQuantize100*/ MaxLinearTranslation;
 
+	// FRotators already by default NetSerialize as shorts
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		FRotator InitialAngularTranslation;
 
+	// To use property, set value as -Rotation
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		FRotator MinAngularTranslation;
 
@@ -346,74 +477,6 @@ public:
 		MinAngularTranslation = FRotator::ZeroRotator;
 		MaxAngularTranslation = FRotator::ZeroRotator;
 	}
-
-	/** Network serialization */
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
-	{
-		bOutSuccess = true;
-
-		// pack bitfield with flags
-		uint8 Flags;
-		if (Ar.IsSaving())
-		{
-			Flags =
-				(bLimitsInLocalSpace << 0) |
-				(bLimitX << 1) |
-				(bLimitY << 2) |
-				(bLimitZ << 3) |
-				(bLimitPitch << 4) |
-				(bLimitYaw << 5) |
-				(bLimitRoll << 6) |
-				(bIgnoreHandRotation << 7);
-		}
-
-		Ar.SerializeBits(&Flags, 8);
-
-		if (Ar.IsLoading())
-		{
-			// We should technically be safe just bit shifting
-			// to the right as these are :1 bitfield values.
-			// however to be totally sure I am enforcing only first
-			// bit being set with the &0x01
-			// I didn't like epics ternary version as it should technically have more overhead
-			// But what do I know
-			bLimitsInLocalSpace = (Flags >> 0) & 0x01;
-			bLimitX = (Flags >> 1) & 0x01;
-			bLimitY = (Flags >> 2) & 0x01;
-			bLimitZ = (Flags >> 3) & 0x01;
-			bLimitPitch = (Flags >> 4) & 0x01;
-			bLimitYaw = (Flags >> 5) & 0x01;
-			bLimitRoll = (Flags >> 6) & 0x01;	
-			bIgnoreHandRotation = (Flags >> 7) & 0x01;
-		}
-		
-		//Ar << InitialLinearTranslation;
-		//Ar << MinLinearTranslation;
-		//Ar << MaxLinearTranslation;
-		bOutSuccess &= SerializePackedVector<100, 30>(InitialLinearTranslation, Ar);
-		bOutSuccess &= SerializePackedVector<100, 30>(MinLinearTranslation, Ar);
-		bOutSuccess &= SerializePackedVector<100, 30>(MaxLinearTranslation, Ar);
-
-		//InitialAngularTranslation.SerializeCompressedShort(Ar);
-		//MinAngularTranslation.SerializeCompressedShort(Ar);
-		//MaxAngularTranslation.SerializeCompressedShort(Ar);
-		Ar << InitialAngularTranslation;
-		Ar << MinAngularTranslation;
-		Ar << MaxAngularTranslation;
-
-
-		return bOutSuccess;
-	}
-
-};
-
-template<>
-struct TStructOpsTypeTraits< FBPInteractionSettings > : public TStructOpsTypeTraitsBase
-{
-	enum
-	{
-		WithNetSerializer = true
-	};
 };
 
 
@@ -422,7 +485,7 @@ struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
 	GENERATED_BODY()
 public:
-	// #TODO serialize this more efficiently over the network
+
 	UPROPERTY(BlueprintReadOnly)
 		EGripTargetType GripTargetType;
 	UPROPERTY(BlueprintReadOnly)
@@ -431,10 +494,10 @@ public:
 		EGripCollisionType GripCollisionType;
 	UPROPERTY(BlueprintReadWrite)
 		EGripLateUpdateSettings GripLateUpdateSetting;
-	//UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, NotReplicated)
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
-		FTransform RelativeTransform;
+		FTransform_NetQuantize RelativeTransform;
 
 	UPROPERTY(BlueprintReadOnly)
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
@@ -454,85 +517,53 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 		float SecondarySmoothingScaler;
 	UPROPERTY()
-		FVector SecondaryRelativeLocation;
+		FVector_NetQuantize100 SecondaryRelativeLocation;
+
 	// Lerp transitions
+	// Max value is 16 seconds with two decimal precision, this is to reduce replication overhead
 	UPROPERTY()
 		float LerpToRate;
-	
+
 	// These are not replicated, they don't need to be
 	EGripLerpState GripLerpState;
 	FVector LastRelativeLocation;
 	float curLerp;
 
 	// Optional Additive Transform for programatic animation
+	UPROPERTY(BlueprintReadWrite, NotReplicated)
 	FTransform AdditionTransform;
+
+	// Specifically for secondary grip retaining size / scale after grip
+	//float SecondaryScaler;
 
 	// Locked transitions
 	bool bIsLocked;
 	FQuat LastLockedRotation;
 
-	/** Network serialization */
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	// Cached values - since not using a full serialize now the old array state may not contain what i need to diff
+	// I set these in On_Rep now and check against them when new replications happen to control some actions.
+	struct FGripValueCache
 	{
-		Ar << GripTargetType;
-		Ar << GrippedObject;
-		Ar << GripCollisionType;
-		Ar << GripLateUpdateSetting;
+		bool bWasInitiallyRepped;
+		bool bCachedHasSecondaryAttachment;
+		EGripCollisionType CachedGripCollisionType;
+		EGripMovementReplicationSettings CachedGripMovementReplicationSetting;
+		float CachedStiffness;
+		float CachedDamping;
 
-		Ar << RelativeTransform;
-
-		Ar << GripMovementReplicationSetting;
-
-		// If on colliding server, otherwise doesn't matter to client
-		//	Ar << bColliding;
-
-		// This doesn't matter to clients
-		//Ar << bOriginalReplicatesMovement;
-		
-		bool bHadAttachment = bHasSecondaryAttachment;
-	
-		Ar << bHasSecondaryAttachment;
-		Ar << LerpToRate;
-
-		// If this grip has a secondary attachment
-		if (bHasSecondaryAttachment)
+		FGripValueCache()
 		{
-			Ar << SecondaryAttachment;
-			Ar << SecondaryRelativeLocation;
-			Ar << SecondarySmoothingScaler;
+			// Since i'm not full serializing now I need to check against cached values
+			// The OnRep last value only holds delta now so finding object off of it will not work
+			bWasInitiallyRepped = false;
+			bCachedHasSecondaryAttachment = false;
+			CachedGripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
+			CachedGripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
+			CachedStiffness = 1500.0f;
+			CachedDamping = 200.0f;
 		}
 
-		// Manage lerp states
-		if (Ar.IsLoading())
-		{
-			if (bHadAttachment != bHasSecondaryAttachment)
-			{
-				if (LerpToRate < 0.01f)
-					GripLerpState = EGripLerpState::NotLerping;
-				else
-				{
-					// New lerp
-					if (bHasSecondaryAttachment)
-					{
-						curLerp = LerpToRate;
-						GripLerpState = EGripLerpState::StartLerp;
-					}
-					else // Post Lerp
-					{
-						curLerp = LerpToRate;
-						GripLerpState = EGripLerpState::EndLerp;
-					}
-				}
-			}
-		}
-
-		// Now always replicating these two, in case people want to pass in custom values using it
-		Ar << Damping;
-		Ar << Stiffness;
-
-		bOutSuccess = true;
-		return true;
-	}
+	}ValueCache;
 
 	FORCEINLINE AActor * GetGrippedActor() const
 	{
@@ -588,28 +619,95 @@ public:
 		bColliding = false;
 		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 		GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
+		GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 		bIsLocked = false;
 		curLerp = 0.0f;
 		LerpToRate = 0.0f;
 		GripLerpState = EGripLerpState::NotLerping;
 		SecondarySmoothingScaler = 1.0f;
+		SecondaryRelativeLocation = FVector::ZeroVector;
 
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;
 
 		RelativeTransform = FTransform::Identity;
 		AdditionTransform = FTransform::Identity;
-	}
+		//SecondaryScaler = 1.0f;
+	}	
+
+	/** Network serialization */
+	/*bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		Ar << GripTargetType;
+		Ar << GrippedObject;
+		Ar << GripCollisionType;
+		Ar << GripLateUpdateSetting;
+
+		Ar << RelativeTransform;
+
+		Ar << GripMovementReplicationSetting;
+
+		// If on colliding server, otherwise doesn't matter to client
+		//	Ar << bColliding;
+
+		// This doesn't matter to clients
+		//Ar << bOriginalReplicatesMovement;
+
+		bool bHadAttachment = bHasSecondaryAttachment;
+
+		Ar << bHasSecondaryAttachment;
+		Ar << LerpToRate;
+
+		// If this grip has a secondary attachment
+		if (bHasSecondaryAttachment)
+		{
+			Ar << SecondaryAttachment;
+			Ar << SecondaryRelativeLocation;
+			Ar << SecondarySmoothingScaler;
+		}
+
+		// Manage lerp states
+		if (Ar.IsLoading())
+		{
+			if (bHadAttachment != bHasSecondaryAttachment)
+			{
+				if (LerpToRate < 0.01f)
+					GripLerpState = EGripLerpState::NotLerping;
+				else
+				{
+					// New lerp
+					if (bHasSecondaryAttachment)
+					{
+						curLerp = LerpToRate;
+						GripLerpState = EGripLerpState::StartLerp;
+					}
+					else // Post Lerp
+					{
+						curLerp = LerpToRate;
+						GripLerpState = EGripLerpState::EndLerp;
+					}
+				}
+			}
+		}
+
+		// Now always replicating these two, in case people want to pass in custom values using it
+		Ar << Damping;
+		Ar << Stiffness;
+
+		bOutSuccess = true;
+		return true;
+	}*/
 };
 
-template<>
-struct TStructOpsTypeTraits< FBPActorGripInformation > : public TStructOpsTypeTraitsBase
+/*template<>
+struct TStructOpsTypeTraits< FBPActorGripInformation > : public TStructOpsTypeTraitsBase2<FBPActorGripInformation>
 {
 	enum
 	{
 		WithNetSerializer = true
 	};
-};
+};*/
+
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPInterfaceProperties
@@ -626,8 +724,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bSimulateOnDrop;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		uint8 EnumObjectType;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+	//	uint8 EnumObjectType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripCollisionType SlotDefaultGripType;
@@ -635,8 +733,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripCollisionType FreeDefaultGripType;
 
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+	//	bool bCanHaveDoubleGrip;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		bool bCanHaveDoubleGrip;
+		ESecondaryGripType SecondaryGripType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripMovementReplicationSettings MovementReplicationType;
@@ -662,11 +763,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bIsInteractible;
 
-	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
-		bool bIsHeld;
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
+		bool bIsHeld; // Set on grip notify, not net serializing
 
-	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
-		UGripMotionControllerComponent * HoldingController;
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
+		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		FBPInteractionSettings InteractionSettings;
@@ -676,10 +777,10 @@ public:
 		bDenyGripping = false;
 		OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
 		bSimulateOnDrop = true;
-		EnumObjectType = 0;
 		SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 		FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-		bCanHaveDoubleGrip = false;
+		//bCanHaveDoubleGrip = false;
+		SecondaryGripType = ESecondaryGripType::SG_None;
 		//GripTarget = EGripTargetType::ComponentGrip;
 		MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 		LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
