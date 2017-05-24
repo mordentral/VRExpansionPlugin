@@ -2208,20 +2208,30 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 
 			frontLoc = curLocation - BasePoint;// -BasePoint;
 
-			if (Grip.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transtion
+			if (Grip.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
 			{
 				frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, FMath::Clamp(Grip.curLerp / Grip.LerpToRate, 0.0f, 1.0f));
 			}
 			else if (Grip.GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
-			{
+			{		
+				// #TODO: Fix with non legacy setup
 				frontLoc = FMath::Lerp(Grip.LastRelativeLocation, frontLoc, Grip.SecondarySmoothingScaler);
 			}
 
 			// Set failure state if this is the first tick of a secondary grip and the grip is in singularity mode
-			if (!Grip.bUseLegacySecondaryLogic && Grip.LastRotation == FQuat::Identity && FVector::DotProduct(frontLocOrig, frontLoc) < 0.0f)
+			if (!Grip.bUseLegacySecondaryLogic)
 			{
-				// Retain current settings, otherwise a possible singularity will retain through-out the grip
-				bIsInFailureState = true;
+				if (Grip.LastRotation == FQuat::Identity && FVector::DotProduct(frontLocOrig, frontLoc) < 0.0f)
+				{
+					// Retain current settings, otherwise a possible singularity will retain through-out the grip
+					bIsInFailureState = true;
+				}
+				else
+				{
+					// Don't set this value during lerps
+					if (Grip.GripLerpState != EGripLerpState::StartLerp)
+						Grip.LastRelativeLocation = WorldTransform.InverseTransformPosition(curLocation);
+				}
 			}
 			else
 				Grip.LastRelativeLocation = WorldTransform.InverseTransformPosition(curLocation);
@@ -2248,7 +2258,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 		// Get the rotation difference from the initial second grip
 		FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);// *Grip.LastRotation;
 
-		if (!Grip.bUseLegacySecondaryLogic && Grip.GripLerpState != EGripLerpState::EndLerp)
+		if (!Grip.bUseLegacySecondaryLogic && (Grip.GripLerpState == EGripLerpState::ConstantLerp || Grip.GripLerpState == EGripLerpState::NotLerping))
 		{
 			// Add in last rotation value
 			rotVal = rotVal * Grip.LastRotation;
