@@ -109,7 +109,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	FTransform Transform;
 	// Never true until epic fixes back end code
-	// #TODO: FIXME when they FIXIT
+	// #TODO: FIXME when they FIXIT (Slated 4.17)
 	if (false)//StereoLayerType == SLT_WorldLocked)
 	{
 		Transform = GetComponentTransform();

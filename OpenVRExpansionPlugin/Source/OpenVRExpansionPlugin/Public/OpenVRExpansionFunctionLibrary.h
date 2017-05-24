@@ -159,6 +159,7 @@ enum class EAsyncBlueprintResultSwitch : uint8
 
 // Redefined here so that non windows packages can compile
 /** Defines the class of tracked devices in SteamVR*/
+// #TODO: Update these
 UENUM(BlueprintType)
 enum class EBPSteamVRTrackedDeviceType : uint8
 {
@@ -175,6 +176,7 @@ enum class EBPSteamVRTrackedDeviceType : uint8
 	Invalid
 };
 
+// #TODO: Update these
 UENUM(BlueprintType)
 enum class EVRDeviceProperty_String : uint8
 {

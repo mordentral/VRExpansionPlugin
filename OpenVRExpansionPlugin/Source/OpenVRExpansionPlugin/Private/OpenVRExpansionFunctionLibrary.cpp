@@ -526,6 +526,11 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 	return NULL;
 #else
 
+	// #TODO: Test this now that steamworks is on 1.39, it should work
+/*	vr::HmdError HmdErr2;
+	vr::IVRSystem * VRSystem1 = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr2);
+	*/
+
 	if (!VRGetGenericInterfaceFn)
 	{
 		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("OpenVR Library not initialized!!"));

@@ -429,7 +429,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		uint32 bIgnoreHandRotation:1;
 
-	// #TODO: Net quantize the initai and min/max values.
+	// #TODO: Net quantize the initial and min/max values.
 	// I wanted to do it already but the editor treats it like a different type
 	// and reinitializes ALL values, which obviously is bad as it would force people
 	// to re-enter their offsets all over again......
@@ -512,6 +512,12 @@ public:
 	// For multi grip situations
 	UPROPERTY(BlueprintReadOnly)
 		bool bHasSecondaryAttachment;
+
+	// When true, secondary grips use a frame by frame reference for rotation, removing singularities
+	// An optional feature currently due to potential bugs, may be merged as default later and this
+	// boolean removed #TODO: full bug test
+	UPROPERTY(BlueprintReadOnly)
+		bool bUseLegacySecondaryLogic;
 	UPROPERTY(BlueprintReadOnly)
 		USceneComponent * SecondaryAttachment;
 	UPROPERTY(BlueprintReadWrite)
@@ -526,17 +532,17 @@ public:
 
 	// These are not replicated, they don't need to be
 	EGripLerpState GripLerpState;
-	FVector LastRelativeLocation;
 	float curLerp;
 
-	// Optional Additive Transform for programatic animation
+	// Store values for frame by frame changes of secondary grips
+	FVector LastRelativeLocation;
+	FQuat LastRotation;
+
+	// Optional Additive Transform for programmatic animation
 	UPROPERTY(BlueprintReadWrite, NotReplicated)
 	FTransform AdditionTransform;
 
-	// Specifically for secondary grip retaining size / scale after grip
-	//float SecondaryScaler;
-
-	// Locked transitions
+	// Locked transitions for swept movement so they don't just rotate in place on contact
 	bool bIsLocked;
 	FQuat LastLockedRotation;
 
@@ -546,6 +552,7 @@ public:
 	{
 		bool bWasInitiallyRepped;
 		bool bCachedHasSecondaryAttachment;
+		FVector CachedSecondaryRelativeLocation;
 		EGripCollisionType CachedGripCollisionType;
 		EGripMovementReplicationSettings CachedGripMovementReplicationSetting;
 		float CachedStiffness;
@@ -557,6 +564,7 @@ public:
 			// The OnRep last value only holds delta now so finding object off of it will not work
 			bWasInitiallyRepped = false;
 			bCachedHasSecondaryAttachment = false;
+			CachedSecondaryRelativeLocation = FVector::ZeroVector;
 			CachedGripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
 			CachedGripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 			CachedStiffness = 1500.0f;
@@ -627,8 +635,10 @@ public:
 		SecondarySmoothingScaler = 1.0f;
 		SecondaryRelativeLocation = FVector::ZeroVector;
 
+		bUseLegacySecondaryLogic = true;
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;
+		LastRotation = FQuat::Identity;
 
 		RelativeTransform = FTransform::Identity;
 		AdditionTransform = FTransform::Identity;

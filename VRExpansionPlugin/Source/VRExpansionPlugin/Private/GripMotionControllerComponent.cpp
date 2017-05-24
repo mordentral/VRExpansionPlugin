@@ -1531,7 +1531,7 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 	return false;
 }
 
-bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, float SecondarySmoothingScaler)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, float SecondarySmoothingScaler, bool bUseLegacySecondaryLogic)
 {
 	if (!GrippedObjectToAddAttachment || !SecondaryPointComponent || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
 		return false;
@@ -1621,6 +1621,15 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetLocation();
 		else
 			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetRelativeTransform(root->GetComponentTransform()).GetLocation();
+
+		GripToUse->bUseLegacySecondaryLogic = bUseLegacySecondaryLogic;
+
+		if (!bUseLegacySecondaryLogic)
+		{
+			// Additional variables used for secondary grips to use loc history
+			GripToUse->LastRelativeLocation = GripToUse->SecondaryRelativeLocation;
+			GripToUse->LastRotation = FQuat::Identity;
+		}
 
 		GripToUse->SecondaryAttachment = SecondaryPointComponent;
 		GripToUse->bHasSecondaryAttachment = true;
@@ -2159,11 +2168,13 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 		FVector frontLocOrig;
 		FVector frontLoc;
 
+		bool bIsInFailureState = false;
+
 		// Ending lerp out of a multi grip
 		if (Grip.GripLerpState == EGripLerpState::EndLerp)
 		{
 			frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
-			frontLoc = Grip.LastRelativeLocation;
+			frontLoc = WorldTransform.TransformPosition(Grip.LastRelativeLocation) - BasePoint;
 
 			frontLocOrig = FMath::Lerp(frontLoc, frontLocOrig, FMath::Clamp(Grip.curLerp / Grip.LerpToRate, 0.0f, 1.0f));
 		}
@@ -2181,17 +2192,21 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 					float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
 					if (OtherController->PollControllerState(Position, Orientation, WorldToMeters))
 					{
-						curLocation = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
+						curLocation = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation();// -BasePoint;
 						bPulledControllerLoc = true;
 					}
 				}
 			}
 
 			if (!bPulledControllerLoc)
-				curLocation = Grip.SecondaryAttachment->GetComponentLocation() - BasePoint;
+				curLocation = Grip.SecondaryAttachment->GetComponentLocation();// -BasePoint;
+			
+			if(!Grip.bUseLegacySecondaryLogic)
+				frontLocOrig = (WorldTransform.TransformPosition(Grip.LastRelativeLocation)) - BasePoint;
+			else
+				frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
 
-			frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
-			frontLoc = curLocation;// -BasePoint;
+			frontLoc = curLocation - BasePoint;// -BasePoint;
 
 			if (Grip.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transtion
 			{
@@ -2201,7 +2216,15 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			{
 				frontLoc = FMath::Lerp(Grip.LastRelativeLocation, frontLoc, Grip.SecondarySmoothingScaler);
 			}
-			Grip.LastRelativeLocation = frontLoc;
+
+			// Set failure state if this is the first tick of a secondary grip and the grip is in singularity mode
+			if (!Grip.bUseLegacySecondaryLogic && Grip.LastRotation == FQuat::Identity && FVector::DotProduct(frontLocOrig, frontLoc) < 0.0f)
+			{
+				// Retain current settings, otherwise a possible singularity will retain through-out the grip
+				bIsInFailureState = true;
+			}
+			else
+				Grip.LastRelativeLocation = WorldTransform.InverseTransformPosition(curLocation);
 		}
 
 		float Scaler = 1.0f;
@@ -2218,13 +2241,26 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			//float Scaler = 1.0f;
 			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain)
 			{
-				/*Grip.SecondaryScaler*/ Scaler = frontLoc.Size() / frontLocOrig.Size();
-				//Scaler = Grip.SecondaryScaler;
+				Scaler = frontLoc.Size() / frontLocOrig.Size();
 			}
 		}
 
 		// Get the rotation difference from the initial second grip
-		FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
+		FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);// *Grip.LastRotation;
+
+		if (!Grip.bUseLegacySecondaryLogic && Grip.GripLerpState != EGripLerpState::EndLerp)
+		{
+			// Add in last rotation value
+			rotVal = rotVal * Grip.LastRotation;
+
+			// If initial loc and cur secondary loc doc product is negative, should not set last yet...
+			// Otherwise new joins if the hands are reversed will see it constantly effected by the singularity that appears
+			if (!bIsInFailureState)
+			{
+				// Store last rotation, to clear up singularity
+				Grip.LastRotation = rotVal;
+			}
+		}
 
 		// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
 		WorldTransform = WorldTransform * WorldToPivot * FTransform(rotVal, FVector::ZeroVector, FVector(Scaler)) * PivotToWorld;
@@ -2962,14 +2998,14 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				else
 				{
 					float Stiffness = NewGrip.Stiffness;
-					float AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier - magic number #TODO: Either define or expose to blueprint
+					float AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER;
 					float Damping = NewGrip.Damping;
-					float AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier - magic number #TODO: Either define or expose to blueprint
+					float AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER;
 
 					if (NewGrip.GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithPhysics)
 					{
 						// Do not effect damping, just increase stiffness so that it is stronger
-						// Default multiplier - magic number #TODO: Either define or expose to blueprint
+						// Default multiplier
 						Stiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;//PX_MAX_F32 / 2;
 						//Damping = 100.0f;// 0.0f;
 						AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;// PX_MAX_F32;
@@ -3031,15 +3067,15 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 			else
 			{
 				float Stiffness = NewStiffness;
-				float AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier - magic number #TODO: Either define or expose to blueprint
+				float AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier
 				float Damping = NewDamping;
-				float AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier - magic number #TODO: Either define or expose to blueprint
+				float AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
 
 				// Used for interactive hybrid with physics grip when not colliding
 				if (bIncreaseStiffness)
 				{
 					// Do not effect damping, just increase stiffness so that it is stronger
-					// Default multiplier - magic number #TODO: Either define or expose to blueprint
+					// Default multiplier
 					Stiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;//PX_MAX_F32 / 2;
 					//Damping = 100.0f;// 0.0f;
 					AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;// PX_MAX_F32;

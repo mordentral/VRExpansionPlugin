@@ -153,7 +153,7 @@ public:
 		}
 	}
 
-	FORCEINLINE void HandleGripReplication(FBPActorGripInformation & Grip)
+	FORCEINLINE_DEBUGGABLE void HandleGripReplication(FBPActorGripInformation & Grip)
 	{
 		if (!Grip.ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
 		{
@@ -163,7 +163,7 @@ public:
 		else // Check for changes from cached information
 		{
 			// Manage lerp states
-			if (Grip.ValueCache.bCachedHasSecondaryAttachment != Grip.bHasSecondaryAttachment)
+			if (Grip.ValueCache.bCachedHasSecondaryAttachment != Grip.bHasSecondaryAttachment || Grip.ValueCache.CachedSecondaryRelativeLocation != Grip.SecondaryRelativeLocation)
 			{
 				if (FMath::IsNearlyZero(Grip.LerpToRate)) // Zero, could use IsNearlyZero instead
 					Grip.GripLerpState = EGripLerpState::NotLerping;
@@ -185,6 +185,13 @@ public:
 				// Now calling the on secondary grip interface function client side as well
 				if (Grip.bHasSecondaryAttachment)
 				{
+					// Is a new secondary grip
+					if (!Grip.bUseLegacySecondaryLogic)
+					{
+						Grip.LastRelativeLocation = Grip.SecondaryRelativeLocation;
+						Grip.LastRotation = FQuat::Identity;
+					}
+
 					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, Grip.SecondaryAttachment, Grip);
@@ -216,6 +223,7 @@ public:
 
 		// Set caches now for next rep
 		Grip.ValueCache.bCachedHasSecondaryAttachment = Grip.bHasSecondaryAttachment;
+		Grip.ValueCache.CachedSecondaryRelativeLocation = Grip.SecondaryRelativeLocation;
 		Grip.ValueCache.CachedGripCollisionType = Grip.GripCollisionType;
 		Grip.ValueCache.CachedGripMovementReplicationSetting = Grip.GripMovementReplicationSetting;
 		Grip.ValueCache.CachedStiffness = Grip.Stiffness;
@@ -668,8 +676,9 @@ public:
 	bool TeleportMoveGrip(const FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
 
 	// Adds a secondary attachment point to the grip
+	// bUseLegacySecondaryLogic enables new singularity removal code, leave true to keep original behavior
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f);
+	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f, bool bUseLegacySecondaryLogic = true);
 
 	// Removes a secondary attachment point from a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
