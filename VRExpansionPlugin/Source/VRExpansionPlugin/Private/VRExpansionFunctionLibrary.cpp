@@ -161,6 +161,7 @@ bool UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame()
 #if WITH_EDITOR
 	if (GIsEditor)
 	{
+		
 		UEditorEngine* EdEngine = Cast<UEditorEngine>(GEngine);
 		return EdEngine->bUseVRPreviewForPlayWorld;
 	}
@@ -295,7 +296,7 @@ void UVRExpansionFunctionLibrary::BreakTransform_NetQuantize(const FTransform_Ne
 	Scale = InTransform.GetScale3D();
 }
 
-FTransform_NetQuantize UVRExpansionFunctionLibrary::Conv_TransformToTransformNetQuantize(FTransform InTransform)
+FTransform_NetQuantize UVRExpansionFunctionLibrary::Conv_TransformToTransformNetQuantize(const FTransform &InTransform)
 {
 	return FTransform_NetQuantize(InTransform);
 }

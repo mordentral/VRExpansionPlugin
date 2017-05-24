@@ -91,7 +91,7 @@ public:
 
 	// Notify the server that we locally gripped something
 	UFUNCTION(BlueprintCallable, Reliable, Server, WithValidation)
-	void Server_NotifyLocalGripAddedOrChanged(FBPActorGripInformation newGrip);
+	void Server_NotifyLocalGripAddedOrChanged(const FBPActorGripInformation & newGrip);
 
 	// Notify the server that we changed some secondary attachment information
 	UFUNCTION(Reliable, Server, WithValidation)
@@ -100,13 +100,13 @@ public:
 			bool bHasSecondaryAttachment,
 			USceneComponent* SecondaryAttachment,
 			float SecondarySmoothingScaler,
-			FVector_NetQuantize100 SecondaryRelativeLocation,
+			const FVector_NetQuantize100 & SecondaryRelativeLocation,
 			float LerpToRate);
 
 	// Notify change on relative position editing as well, make RPCS callable in blueprint
 	// Notify the server that we locally gripped something
 	UFUNCTION(Reliable, Server, WithValidation)
-	void Server_NotifyLocalGripRemoved(FBPActorGripInformation removeGrip);
+	void Server_NotifyLocalGripRemoved(const FBPActorGripInformation & removeGrip);
 	
 
 	// Enable this to send the TickGrip event every tick even for non custom grip types - has a slight performance hit

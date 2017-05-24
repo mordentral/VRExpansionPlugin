@@ -3507,12 +3507,12 @@ void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementatio
 	DropObjectByInterface(FoundGrip.GrippedObject);
 }
 
-bool UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Validate(FBPActorGripInformation newGrip)
+bool UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Validate(const FBPActorGripInformation & newGrip)
 {
 	return true;
 }
 
-void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implementation(FBPActorGripInformation newGrip)
+void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implementation(const FBPActorGripInformation & newGrip)
 {
 	if (!newGrip.GrippedObject || newGrip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive)
 	{
@@ -3544,12 +3544,12 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 }
 
 
-bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(FBPActorGripInformation removeGrip)
+bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(const FBPActorGripInformation & removeGrip)
 {
 	return true;
 }
 
-void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(FBPActorGripInformation removeGrip)
+void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(const FBPActorGripInformation & removeGrip)
 {
 	FBPActorGripInformation FoundGrip;
 	EBPVRResultSwitch Result;
@@ -3571,7 +3571,7 @@ bool UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Val
 	bool bHasSecondaryAttachment,
 	USceneComponent* SecondaryAttachment,
 	float SecondarySmoothingScaler,
-	FVector_NetQuantize100 SecondaryRelativeLocation,
+	const FVector_NetQuantize100 & SecondaryRelativeLocation,
 	float LerpToRate)
 {
 	return true;
@@ -3582,7 +3582,7 @@ void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Imp
 	bool bHasSecondaryAttachment,
 	USceneComponent* SecondaryAttachment,
 	float SecondarySmoothingScaler,
-	FVector_NetQuantize100 SecondaryRelativeLocation,
+	const FVector_NetQuantize100 & SecondaryRelativeLocation,
 	float LerpToRate)
 {
 

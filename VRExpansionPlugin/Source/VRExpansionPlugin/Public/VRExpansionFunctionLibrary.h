@@ -159,5 +159,5 @@ public:
 
 	/** Converts a FTransform into a FTransform_NetQuantize */
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToTransform_NetQuantize (Transform)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary|TransformNetQuantize")
-		static FTransform_NetQuantize Conv_TransformToTransformNetQuantize(FTransform InTransform);
+		static FTransform_NetQuantize Conv_TransformToTransformNetQuantize(const FTransform &InTransform);
 };	

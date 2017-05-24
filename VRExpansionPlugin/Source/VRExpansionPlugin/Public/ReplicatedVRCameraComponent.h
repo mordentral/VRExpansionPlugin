@@ -19,6 +19,10 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	/** Whether or not this component is currently on the network server*/
 	bool bIsServer;
 
+	// For non view target positional updates
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		bool bSetPositionDuringTick;
+
 //public:
 // If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
