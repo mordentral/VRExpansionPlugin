@@ -1531,7 +1531,7 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 	return false;
 }
 
-bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, float SecondarySmoothingScaler, bool bUseLegacySecondaryLogic)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, float SecondarySmoothingScaler)
 {
 	if (!GrippedObjectToAddAttachment || !SecondaryPointComponent || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
 		return false;
@@ -1621,15 +1621,6 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetLocation();
 		else
 			GripToUse->SecondaryRelativeLocation = OriginalTransform.GetRelativeTransform(root->GetComponentTransform()).GetLocation();
-
-		GripToUse->bUseLegacySecondaryLogic = bUseLegacySecondaryLogic;
-
-		if (!bUseLegacySecondaryLogic)
-		{
-			// Additional variables used for secondary grips to use loc history
-			GripToUse->LastRelativeLocation = GripToUse->SecondaryRelativeLocation;
-			GripToUse->LastRotation = FQuat::Identity;
-		}
 
 		GripToUse->SecondaryAttachment = SecondaryPointComponent;
 		GripToUse->bHasSecondaryAttachment = true;
@@ -2168,19 +2159,17 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 		FVector frontLocOrig;
 		FVector frontLoc;
 
-		bool bIsInFailureState = false;
-
 		// Ending lerp out of a multi grip
 		if (Grip.GripLerpState == EGripLerpState::EndLerp)
 		{
 			frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
-			frontLoc = WorldTransform.TransformPosition(Grip.LastRelativeLocation) - BasePoint;
+			frontLoc = Grip.LastRelativeLocation;
 
 			frontLocOrig = FMath::Lerp(frontLoc, frontLocOrig, FMath::Clamp(Grip.curLerp / Grip.LerpToRate, 0.0f, 1.0f));
 		}
 		else // Is in a multi grip, might be lerping into it as well.
 		{
-			FVector curLocation; // Current location of the secondary grip
+			//FVector curLocation; // Current location of the secondary grip
 
 			bool bPulledControllerLoc = false;
 			if (bHasAuthority && Grip.SecondaryAttachment->GetOwner() == this->GetOwner())
@@ -2192,49 +2181,27 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 					float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
 					if (OtherController->PollControllerState(Position, Orientation, WorldToMeters))
 					{
-						curLocation = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation();// -BasePoint;
+						/*curLocation*/ frontLoc = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
 						bPulledControllerLoc = true;
 					}
 				}
 			}
 
 			if (!bPulledControllerLoc)
-				curLocation = Grip.SecondaryAttachment->GetComponentLocation();// -BasePoint;
-			
-			if(!Grip.bUseLegacySecondaryLogic)
-				frontLocOrig = (WorldTransform.TransformPosition(Grip.LastRelativeLocation)) - BasePoint;
-			else
-				frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
+				/*curLocation*/ frontLoc = Grip.SecondaryAttachment->GetComponentLocation() - BasePoint;
 
-			frontLoc = curLocation - BasePoint;// -BasePoint;
+			frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryRelativeLocation)) - BasePoint;
+			//frontLoc = curLocation;// -BasePoint;
 
-			if (Grip.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
+			if (Grip.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transtion
 			{
 				frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, FMath::Clamp(Grip.curLerp / Grip.LerpToRate, 0.0f, 1.0f));
 			}
 			else if (Grip.GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
-			{		
-				// #TODO: Fix with non legacy setup
+			{
 				frontLoc = FMath::Lerp(Grip.LastRelativeLocation, frontLoc, Grip.SecondarySmoothingScaler);
 			}
-
-			// Set failure state if this is the first tick of a secondary grip and the grip is in singularity mode
-			if (!Grip.bUseLegacySecondaryLogic)
-			{
-				if (Grip.LastRotation == FQuat::Identity && FVector::DotProduct(frontLocOrig, frontLoc) < 0.0f)
-				{
-					// Retain current settings, otherwise a possible singularity will retain through-out the grip
-					bIsInFailureState = true;
-				}
-				else
-				{
-					// Don't set this value during lerps
-					if (Grip.GripLerpState != EGripLerpState::StartLerp)
-						Grip.LastRelativeLocation = WorldTransform.InverseTransformPosition(curLocation);
-				}
-			}
-			else
-				Grip.LastRelativeLocation = WorldTransform.InverseTransformPosition(curLocation);
+			Grip.LastRelativeLocation = frontLoc;
 		}
 
 		float Scaler = 1.0f;
@@ -2251,26 +2218,13 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			//float Scaler = 1.0f;
 			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain)
 			{
-				Scaler = frontLoc.Size() / frontLocOrig.Size();
+				/*Grip.SecondaryScaler*/ Scaler = frontLoc.Size() / frontLocOrig.Size();
+				//Scaler = Grip.SecondaryScaler;
 			}
 		}
 
 		// Get the rotation difference from the initial second grip
-		FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);// *Grip.LastRotation;
-
-		if (!Grip.bUseLegacySecondaryLogic && (Grip.GripLerpState == EGripLerpState::ConstantLerp || Grip.GripLerpState == EGripLerpState::NotLerping))
-		{
-			// Add in last rotation value
-			rotVal = rotVal * Grip.LastRotation;
-
-			// If initial loc and cur secondary loc doc product is negative, should not set last yet...
-			// Otherwise new joins if the hands are reversed will see it constantly effected by the singularity that appears
-			if (!bIsInFailureState)
-			{
-				// Store last rotation, to clear up singularity
-				Grip.LastRotation = rotVal;
-			}
-		}
+		FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
 
 		// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
 		WorldTransform = WorldTransform * WorldToPivot * FTransform(rotVal, FVector::ZeroVector, FVector(Scaler)) * PivotToWorld;

@@ -8,17 +8,17 @@
 void FOpenVRExpansionPluginModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	LoadOpenVRModule();
+	//LoadOpenVRModule();
 }
 
 void FOpenVRExpansionPluginModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
-	UnloadOpenVRModule();
+//	UnloadOpenVRModule();
 }
 
-bool FOpenVRExpansionPluginModule::LoadOpenVRModule()
+/*bool FOpenVRExpansionPluginModule::LoadOpenVRModule()
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
@@ -77,15 +77,15 @@ bool FOpenVRExpansionPluginModule::LoadOpenVRModule()
 		UnloadOpenVRModule();
 		return false;
 	}
-
+	
 	return true;
 #endif
-}
+}*/
 
-void FOpenVRExpansionPluginModule::UnloadOpenVRModule()
+/*void FOpenVRExpansionPluginModule::UnloadOpenVRModule()
 {
 #if STEAMVR_SUPPORTED_PLATFORM
-	if (OpenVRDLLHandle != nullptr)
+	/*if (OpenVRDLLHandle != nullptr)
 	{
 		FPlatformProcess::FreeDllHandle(OpenVRDLLHandle);
 		OpenVRDLLHandle = nullptr;
@@ -94,7 +94,7 @@ void FOpenVRExpansionPluginModule::UnloadOpenVRModule()
 
 	UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn = nullptr;
 #endif
-}
+}*/
 
 #undef LOCTEXT_NAMESPACE
 	

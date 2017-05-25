@@ -10,15 +10,15 @@ public:
 
 	FOpenVRExpansionPluginModule()
 	{
-		OpenVRDLLHandle = nullptr;
+		//OpenVRDLLHandle = nullptr;
 	}
 
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
-	bool LoadOpenVRModule();
-	void UnloadOpenVRModule();
+	//bool LoadOpenVRModule();
+	//void UnloadOpenVRModule();
 
-	void* OpenVRDLLHandle;
+	//void* OpenVRDLLHandle;
 };

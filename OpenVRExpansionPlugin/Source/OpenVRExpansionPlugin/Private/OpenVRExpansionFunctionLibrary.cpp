@@ -11,7 +11,7 @@ DEFINE_LOG_CATEGORY(OpenVRExpansionFunctionLibraryLog);
 
 #if STEAMVR_SUPPORTED_PLATFORM
 
-pVRGetGenericInterface UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn = nullptr;
+//pVRGetGenericInterface UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn = nullptr;
 FBPOpenVRCameraHandle UOpenVRExpansionFunctionLibrary::OpenCamera = FBPOpenVRCameraHandle();
 #endif
 
@@ -43,15 +43,17 @@ bool UOpenVRExpansionFunctionLibrary::HasVRCamera(EOpenVRCameraFrameType FrameTy
 	Width = 0;
 	Height = 0;
 
-	if (!VRGetGenericInterfaceFn)
-		return false;
+	//if (!VRGetGenericInterfaceFn)
+	//	return false;
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
 		return false;
 
 	vr::HmdError HmdErr;
-	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	//vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)vr::VR_GetGenericInterface(vr::IVRTrackedCamera_Version, &HmdErr);
+
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 		return false;
@@ -81,11 +83,11 @@ void UOpenVRExpansionFunctionLibrary::AcquireVRCamera(FBPOpenVRCameraHandle & Ca
 	Result = EBPVRResultSwitch::OnFailed;
 	return;
 #else
-	if (!VRGetGenericInterfaceFn)
+	/*if (!VRGetGenericInterfaceFn)
 	{
 		Result = EBPVRResultSwitch::OnFailed;
 		return;
-	}
+	}*/
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
@@ -103,7 +105,8 @@ void UOpenVRExpansionFunctionLibrary::AcquireVRCamera(FBPOpenVRCameraHandle & Ca
 	}
 
 	vr::HmdError HmdErr;
-	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	//vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)vr::VR_GetGenericInterface(vr::IVRTrackedCamera_Version, &HmdErr);
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 	{
@@ -135,11 +138,11 @@ void UOpenVRExpansionFunctionLibrary::ReleaseVRCamera(UPARAM(ref) FBPOpenVRCamer
 	return;
 #else
 
-	if (!VRGetGenericInterfaceFn)
+	/*if (!VRGetGenericInterfaceFn)
 	{
 		Result = EBPVRResultSwitch::OnFailed;
 		return;
-	}
+	}*/
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
@@ -155,7 +158,8 @@ void UOpenVRExpansionFunctionLibrary::ReleaseVRCamera(UPARAM(ref) FBPOpenVRCamer
 	}
 
 	vr::HmdError HmdErr;
-	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	//vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)vr::VR_GetGenericInterface(vr::IVRTrackedCamera_Version, &HmdErr);
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 	{
@@ -185,11 +189,11 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) 
 	Result = EBPVRResultSwitch::OnFailed;
 	return nullptr;
 #else
-	if (!VRGetGenericInterfaceFn)
+	/*if (!VRGetGenericInterfaceFn)
 	{
 		Result = EBPVRResultSwitch::OnFailed;
 		return false;
-	}
+	}*/
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
@@ -205,7 +209,8 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) 
 	}
 
 	vr::HmdError HmdErr;
-	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	//vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)vr::VR_GetGenericInterface(vr::IVRTrackedCamera_Version, &HmdErr);
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 	{
@@ -244,11 +249,11 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 	Result = EBPVRResultSwitch::OnFailed;
 	return;
 #else
-	if (!VRGetGenericInterfaceFn)
+	/*if (!VRGetGenericInterfaceFn)
 	{
 		Result = EBPVRResultSwitch::OnFailed;
 		return;
-	}
+	}*/
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->HMDDevice.IsValid() || (GEngine->HMDDevice->GetHMDDeviceType() != EHMDDeviceType::DT_SteamVR))
@@ -264,7 +269,8 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 	}
 
 	vr::HmdError HmdErr;
-	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	//vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)(*VRGetGenericInterfaceFn)(vr::IVRTrackedCamera_Version, &HmdErr);
+	vr::IVRTrackedCamera * VRCamera = (vr::IVRTrackedCamera*)vr::VR_GetGenericInterface(vr::IVRTrackedCamera_Version, &HmdErr);
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 	{
@@ -350,15 +356,15 @@ bool UOpenVRExpansionFunctionLibrary::GetVRControllerPropertyString(EVRControlle
 	return false;
 #else
 
-	if (!VRGetGenericInterfaceFn)
-		return false;
+//	if (!VRGetGenericInterfaceFn)
+	//	return false;
 
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
 		return false;
 
 	vr::HmdError HmdErr;
-	vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
 		return false;
@@ -384,15 +390,15 @@ bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDevicePropert
 	return false;
 #else
 
-	if (!VRGetGenericInterfaceFn)
-		return false;
+	//if (!VRGetGenericInterfaceFn)
+	//	return false;
 
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
 		return false;
 
 	vr::HmdError HmdErr;
-	vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
 		return false;
@@ -418,15 +424,15 @@ bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_
 	return false;
 #else
 
-	if (!VRGetGenericInterfaceFn)
-		return false;
+//	if (!VRGetGenericInterfaceFn)
+	//	return false;
 
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
 		return false;
 
 	vr::HmdError HmdErr;
-	vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
 		return false;
@@ -450,15 +456,15 @@ bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty
 	return false;
 #else
 
-	if (!VRGetGenericInterfaceFn)
-		return false;
+	//if (!VRGetGenericInterfaceFn)
+	//	return false;
 
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
 		return false;
 
 	vr::HmdError HmdErr;
-	vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
 		return false;
@@ -498,8 +504,8 @@ bool UOpenVRExpansionFunctionLibrary::IsOpenVRDeviceConnected(EBPVRDeviceIndex O
 	}
 
 	vr::HmdError HmdErr;
-	vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
 	{
@@ -526,17 +532,12 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 	return NULL;
 #else
 
-	// #TODO: Test this now that steamworks is on 1.39, it should work
-/*	vr::HmdError HmdErr2;
-	vr::IVRSystem * VRSystem1 = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr2);
-	*/
-
-	if (!VRGetGenericInterfaceFn)
+	/*if (!VRGetGenericInterfaceFn)
 	{
 		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("OpenVR Library not initialized!!"));
 		Result = EAsyncBlueprintResultSwitch::OnFailure;
 		return NULL;
-	}
+	}*/
 
 	/*if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
 	{
@@ -554,16 +555,16 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 	}*/
 
 	vr::HmdError HmdErr;
-	vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
 	{
 		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VRSystem InterfaceErrorCode %i"), (int32)HmdErr);
 	}
 
-	vr::IVRRenderModels * VRRenderModels = (vr::IVRRenderModels*)(*VRGetGenericInterfaceFn)(vr::IVRRenderModels_Version, &HmdErr);
-	//vr::IVRRenderModels * VRRenderModels = (vr::IVRRenderModels*)vr::VR_GetGenericInterface(vr::IVRRenderModels_Version, &HmdErr);
+	//vr::IVRRenderModels * VRRenderModels = (vr::IVRRenderModels*)(*VRGetGenericInterfaceFn)(vr::IVRRenderModels_Version, &HmdErr);
+	vr::IVRRenderModels * VRRenderModels = (vr::IVRRenderModels*)vr::VR_GetGenericInterface(vr::IVRRenderModels_Version, &HmdErr);
 
 	if (!VRRenderModels)
 	{

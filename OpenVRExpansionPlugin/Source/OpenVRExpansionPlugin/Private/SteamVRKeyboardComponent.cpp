@@ -40,7 +40,7 @@ Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 #if !STEAMVR_SUPPORTED_PLATFORM
 return;
 #else
-	if (!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn || !KeyboardHandle.IsValid())
+	if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ !KeyboardHandle.IsValid())
 	{
 		return;
 	}
@@ -51,7 +51,8 @@ return;
 	}
 
 	vr::HmdError HmdErr;
-	vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+	//vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+	vr::IVROverlay * VROverlay = (vr::IVROverlay*)vr::VR_GetGenericInterface(vr::IVROverlay_Version, &HmdErr);
 
 	if (!VROverlay)
 	{

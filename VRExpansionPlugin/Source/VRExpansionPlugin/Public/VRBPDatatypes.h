@@ -513,11 +513,6 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		bool bHasSecondaryAttachment;
 
-	// When true, secondary grips use a frame by frame reference for rotation, removing singularities
-	// An optional feature currently due to potential bugs, may be merged as default later and this
-	// boolean removed #TODO: full bug test
-	UPROPERTY(BlueprintReadOnly)
-		bool bUseLegacySecondaryLogic;
 	UPROPERTY(BlueprintReadOnly)
 		USceneComponent * SecondaryAttachment;
 	UPROPERTY(BlueprintReadWrite)
@@ -536,7 +531,6 @@ public:
 
 	// Store values for frame by frame changes of secondary grips
 	FVector LastRelativeLocation;
-	FQuat LastRotation;
 
 	// Optional Additive Transform for programmatic animation
 	UPROPERTY(BlueprintReadWrite, NotReplicated)
@@ -635,10 +629,8 @@ public:
 		SecondarySmoothingScaler = 1.0f;
 		SecondaryRelativeLocation = FVector::ZeroVector;
 
-		bUseLegacySecondaryLogic = true;
 		SecondaryAttachment = nullptr;
 		bHasSecondaryAttachment = false;
-		LastRotation = FQuat::Identity;
 
 		RelativeTransform = FTransform::Identity;
 		AdditionTransform = FTransform::Identity;

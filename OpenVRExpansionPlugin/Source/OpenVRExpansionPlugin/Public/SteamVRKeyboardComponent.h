@@ -49,7 +49,7 @@ public:
 		Result = EBPVRResultSwitch::OnFailed;
 		return;
 #else
-		if (!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn || KeyboardHandle.IsValid())
+		if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ KeyboardHandle.IsValid())
 		{
 			Result = EBPVRResultSwitch::OnFailed;
 			return;
@@ -68,7 +68,8 @@ public:
 		}
 
 		vr::HmdError HmdErr;
-		vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+		//vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+		vr::IVROverlay * VROverlay = (vr::IVROverlay*)vr::VR_GetGenericInterface(vr::IVROverlay_Version, &HmdErr);
 
 		if (!VROverlay)
 		{
@@ -133,7 +134,7 @@ public:
 		Result = EBPVRResultSwitch::OnFailed;
 		return;
 #else
-		if (!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn || !KeyboardHandle.IsValid())
+		if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ !KeyboardHandle.IsValid())
 		{
 			Result = EBPVRResultSwitch::OnFailed;
 			return;
@@ -146,7 +147,8 @@ public:
 		}
 
 		vr::HmdError HmdErr;
-		vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+		//vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+		vr::IVROverlay * VROverlay = (vr::IVROverlay*)vr::VR_GetGenericInterface(vr::IVROverlay_Version, &HmdErr);
 
 		if (!VROverlay)
 		{
@@ -174,7 +176,7 @@ public:
 		Result = EBPVRResultSwitch::OnFailed;
 		return;
 #else
-		if (!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn || !KeyboardHandle.IsValid())
+		if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ !KeyboardHandle.IsValid())
 		{
 			Result = EBPVRResultSwitch::OnFailed;
 			return;
@@ -187,7 +189,8 @@ public:
 		}
 
 		vr::HmdError HmdErr;
-		vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+		//vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+		vr::IVROverlay * VROverlay = (vr::IVROverlay*)vr::VR_GetGenericInterface(vr::IVROverlay_Version, &HmdErr);
 
 		if (!VROverlay)
 		{
@@ -229,7 +232,7 @@ public:
 		Result = EBPVRResultSwitch::OnFailed;
 		return;
 #else
-		if (!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn || !KeyboardHandle.IsValid())
+		if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ !KeyboardHandle.IsValid())
 		{
 			Result = EBPVRResultSwitch::OnFailed;
 			return;
@@ -242,7 +245,8 @@ public:
 		}
 
 		vr::HmdError HmdErr;
-		vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+		//vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
+		vr::IVROverlay * VROverlay = (vr::IVROverlay*)vr::VR_GetGenericInterface(vr::IVROverlay_Version, &HmdErr);
 
 		if (!VROverlay)
 		{

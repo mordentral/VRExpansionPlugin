@@ -185,13 +185,6 @@ public:
 				// Now calling the on secondary grip interface function client side as well
 				if (Grip.bHasSecondaryAttachment)
 				{
-					// Is a new secondary grip
-					if (!Grip.bUseLegacySecondaryLogic)
-					{
-						Grip.LastRelativeLocation = Grip.SecondaryRelativeLocation;
-						Grip.LastRotation = FQuat::Identity;
-					}
-
 					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, Grip.SecondaryAttachment, Grip);
@@ -678,7 +671,7 @@ public:
 	// Adds a secondary attachment point to the grip
 	// bUseLegacySecondaryLogic enables new singularity removal code, leave true to keep original behavior
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f, bool bUseLegacySecondaryLogic = true);
+	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f);
 
 	// Removes a secondary attachment point from a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")

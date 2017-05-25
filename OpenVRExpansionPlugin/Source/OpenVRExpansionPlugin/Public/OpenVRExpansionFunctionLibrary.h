@@ -285,7 +285,7 @@ public:
 
 #if STEAMVR_SUPPORTED_PLATFORM
 	//static pVRIsHmdPresent VRIsHmdPresentFn;
-	static pVRGetGenericInterface VRGetGenericInterfaceFn;
+	//static pVRGetGenericInterface VRGetGenericInterfaceFn;
 	static FBPOpenVRCameraHandle OpenCamera;
 	//vr::IVRChaperone* VRChaperone;
 #endif
