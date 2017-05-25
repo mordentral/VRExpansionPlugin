@@ -84,6 +84,10 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 
 	OffsetComponentToWorld = FTransform(FQuat(0.0f, 0.0f, 0.0f, 1.0f), FVector::ZeroVector, FVector(1.0f));
 
+
+	// Setting a minimum of every other frame (VR 90fps) for replication consideration
+	// Otherwise we will get some massive slow downs if the replication is allowed to hit the 2 per second minimum default
+	MinNetUpdateFrequency = 45.0f;
 }
 
 FVector AVRBaseCharacter::GetTeleportLocation(FVector OriginalLocation)

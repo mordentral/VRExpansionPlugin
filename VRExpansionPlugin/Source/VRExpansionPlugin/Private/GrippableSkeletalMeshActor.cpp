@@ -31,6 +31,10 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
 	bRepGripSettingsAndGameplayTags = true;
+
+	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration
+	// Otherwise we will get some massive slow downs if the replication is allowed to hit the 2 per second minimum default
+	MinNetUpdateFrequency = 30.0f;
 }
 
 void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
