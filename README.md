@@ -10,8 +10,8 @@ https://bitbucket.org/mordentral/vrexppluginexample
 ***
 
 
-Feature Request Submission:
-Lists at: [VR Expansion Feature Request Trello](https://trello.com/b/VqcBoeZr/vr-expansion-feature-requests)
+**Feature Request Submission:**
+[VR Expansion Feature Request Trello](https://trello.com/b/VqcBoeZr/vr-expansion-feature-requests)
 
 Send an e-mail to
 [Feature Submission E-mail](mordentral+vw6cepx4r1jdmtrlvfks@boards.trello.com)
