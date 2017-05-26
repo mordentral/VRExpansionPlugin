@@ -6,6 +6,13 @@ https://forums.unrealengine.com/showthread.php?116782-VR-(OpenVR)-Expansion-Plug
 Example Template Project
 https://bitbucket.org/mordentral/vrexppluginexample
 
+Feature Request Submission:
+Lists at: [VR Expansion Feature Request Trello](https://trello.com/b/VqcBoeZr/vr-expansion-feature-requests)
+
+Send an e-mail to
+[Feature Submission E-mail](mordentral+vw6cepx4r1jdmtrlvfks@boards.trello.com)
+With the subject being the Card title and the body being the card body.
+
 ### Use Of This Plugin ###
 
 This Plugin is intended to add additional functionality to Open/SteamVR/(All VR now) in UE4. 
