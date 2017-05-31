@@ -58,14 +58,29 @@ enum class EBPVRDeviceIndex : uint8
 	5 TrackedDeviceClass_GenericTracker
 	6 TrackedDeviceClass_GenericTracker
 	7 TrackedDeviceClass_GenericTracker
+
+	// Describes what kind of object is being tracked at a given ID 
+	enum ETrackedDeviceClass
+{
+	TrackedDeviceClass_Invalid = 0,				// the ID was not valid.
+	TrackedDeviceClass_HMD = 1,					// Head-Mounted Displays
+	TrackedDeviceClass_Controller = 2,			// Tracked controllers
+	TrackedDeviceClass_GenericTracker = 3,		// Generic trackers, similar to controllers
+	TrackedDeviceClass_TrackingReference = 4,	// Camera and base stations that serve as tracking reference points
+};
 	*/
 
 	// On Success
 	HMD = 0,
-	FirstController = 1,
-	SecondController = 2,
-	FirstTracking_Reference = 3,
-	SecondTracking_Reference = 4,
+	FirstTracking_Reference = 1,
+	SecondTracking_Reference = 2,
+	FirstController = 3,
+	SecondController = 4,
+
+	//FirstController = 1,
+	//SecondController = 2,
+	//FirstTracking_Reference = 3,
+	//SecondTracking_Reference = 4,
 	TrackedDevice1 = 5,
 	TrackedDevice2 = 6,
 	TrackedDevice3 = 7,
@@ -180,6 +195,7 @@ enum class EBPSteamVRTrackedDeviceType : uint8
 UENUM(BlueprintType)
 enum class EVRDeviceProperty_String : uint8
 {
+	// No prefix = 1000 series
 	Prop_TrackingSystemName_String				= 0, ////
 	Prop_ModelNumber_String						= 1,
 	Prop_SerialNumber_String					= 2,
@@ -189,77 +205,135 @@ enum class EVRDeviceProperty_String : uint8
 	Prop_HardwareRevision_String				= 7,
 	Prop_AllWirelessDongleDescriptions_String	= 8,
 	Prop_ConnectedWirelessDongle_String			= 9,
-	Prop_Firmware_ManualUpdateURL_String		= 16
+	Prop_Firmware_ManualUpdateURL_String		= 16,
+	Prop_Firmware_ProgrammingTarget_String		= 28,
+	Prop_DriverVersion_String					= 31,
+
+	// 1 prefix = 2000 series
+	HMDProp_DisplayMCImageLeft_String			= 112,
+	HMDProp_DisplayMCImageRight_String			= 113,
+	HMDProp_DisplayGCImage_String				= 121,
+	HMDProp_CameraFirmwareDescription_String	= 128,
+
+	// 2 prefix = 3000 series
+	ControllerProp_AttachedDeviceId_String		= 200
 };
 
 UENUM(BlueprintType)
 enum class EVRDeviceProperty_Bool : uint8
 {	
-	Prop_WillDriftInYaw_Bool = 4,	
-	Prop_DeviceIsWireless_Bool = 10,
-	Prop_DeviceIsCharging_Bool = 11,
-	Prop_Firmware_UpdateAvailable_Bool = 14,
-	Prop_Firmware_ManualUpdate_Bool = 15,
-	Prop_BlockServerShutdown_Bool = 23,
-	Prop_CanUnifyCoordinateSystemWithHmd_Bool = 24,
-	Prop_ContainsProximitySensor_Bool = 25,
-	Prop_DeviceProvidesBatteryStatus_Bool = 26 ///////
+	// No prefix = 1000 series
+	Prop_WillDriftInYaw_Bool					= 4,	
+	Prop_DeviceIsWireless_Bool					= 10,
+	Prop_DeviceIsCharging_Bool					= 11,
+	Prop_Firmware_UpdateAvailable_Bool			= 14,
+	Prop_Firmware_ManualUpdate_Bool				= 15,
+	Prop_BlockServerShutdown_Bool				= 23,
+	Prop_CanUnifyCoordinateSystemWithHmd_Bool	= 24,
+	Prop_ContainsProximitySensor_Bool			= 25,
+	Prop_DeviceProvidesBatteryStatus_Bool		= 26,
+	Prop_DeviceCanPowerOff_Bool					= 27,
+	Prop_HasCamera_Bool							= 30,
+	Prop_Firmware_ForceUpdateRequired_Bool		= 32,
+	Prop_ViveSystemButtonFixRequired_Bool		= 33,
+
+	// 1 prefix = 2000 series
+	HMDProp_ReportsTimeSinceVSync_Bool			= 100,
+	HMDProp_IsOnDesktop_Bool					= 107,
+	HMDProp_DisplaySuppressed_Bool				= 136,
+	HMDProp_DisplayAllowNightMode_Bool			= 137,
+	HMDProp_UsesDriverDirectMode_Bool			= 142
 };
 
 UENUM(BlueprintType)
 enum class EVRDeviceProperty_Float : uint8
 {
-	Prop_DeviceBatteryPercentage_Float = 12 // 0 is empty, 1 is full
+	// No Prefix = 1000 series
+	Prop_DeviceBatteryPercentage_Float						= 12, // 0 is empty, 1 is full
+
+	// 1 Prefix = 2000 series
+	HMDProp_SecondsFromVsyncToPhotons_Float					= 101,
+	HMDProp_DisplayFrequency_Float							= 102,
+	HMDProp_UserIpdMeters_Float								= 103,
+	HMDProp_DisplayMCOffset_Float							= 109,
+	HMDProp_DisplayMCScale_Float							= 110,
+	HMDProp_DisplayGCBlackClamp_Float						= 114,
+	HMDProp_DisplayGCOffset_Float							= 118,
+	HMDProp_DisplayGCScale_Float							= 119,
+	HMDProp_DisplayGCPrescale_Float							= 120,
+	HMDProp_LensCenterLeftU_Float							= 122,
+	HMDProp_LensCenterLeftV_Float							= 123,
+	HMDProp_LensCenterRightU_Float							= 124,
+	HMDProp_LensCenterRightV_Float							= 125,
+	HMDProp_UserHeadToEyeDepthMeters_Float					= 126,
+	HMDProp_ScreenshotHorizontalFieldOfViewDegrees_Float	= 134,
+	HMDProp_ScreenshotVerticalFieldOfViewDegrees_Float		= 135
 };
 
 UENUM(BlueprintType)
-enum class EVRControllerProperty_String : uint8
+enum class EVRDeviceProperty_Int32 : uint8
 {
-	Prop_AttachedDeviceId_String = 0
+	// No prefix = 1000 series
+	Prop_DeviceClass_Int32					= 29,
+
+	// 1 Prefix = 2000 series
+	HMDProp_DisplayMCType_Int32				= 108,
+	HMDProp_EdidVendorID_Int32				= 111,
+	HMDProp_EdidProductID_Int32				= 115,
+	HMDProp_DisplayGCType_Int32				= 117,
+	HMDProp_CameraCompatibilityMode_Int32	= 133,
+	HMDProp_DisplayMCImageWidth_Int32		= 138,
+	HMDProp_DisplayMCImageHeight_Int32		= 139,
+	HMDProp_DisplayMCImageNumChannels_Int32 = 140,
+
+	// 2 Prefix = 3000 series
+	ControllerProp_Axis0Type_Int32			= 202, // Return value is of type EVRControllerAxisType
+	ControllerPropProp_Axis1Type_Int32		= 203, // Return value is of type EVRControllerAxisType
+	ControllerPropProp_Axis2Type_Int32		= 204, // Return value is of type EVRControllerAxisType
+	ControllerPropProp_Axis3Type_Int32		= 205, // Return value is of type EVRControllerAxisType
+	ControllerPropProp_Axis4Type_Int32		= 206, // Return value is of type EVRControllerAxisType
+	ControllerProp_ControllerRoleHint_Int32 = 207 // Return value is of type ETrackedControllerRole
 };
 
-// Not using due to BP incompatibility
+UENUM(BlueprintType)
+enum class EVRDeviceProperty_UInt64 : uint8
+{
+	// No prefix = 1000 series
+	Prop_HardwareRevision_Uint64			= 17,
+	Prop_FirmwareVersion_Uint64				= 18,
+	Prop_FPGAVersion_Uint64					= 19,
+	Prop_VRCVersion_Uint64					= 20,
+	Prop_RadioVersion_Uint64				= 21,
+	Prop_DongleVersion_Uint64				= 22,
+	Prop_ParentDriver_Uint64				= 34,
+
+	// 1 Prefix = 2000 series
+	HMDProp_CurrentUniverseId_Uint64		= 104,
+	HMDProp_PreviousUniverseId_Uint64		= 105,
+	HMDProp_DisplayFirmwareVersion_Uint64	= 106,
+	HMDProp_CameraFirmwareVersion_Uint64	= 127,
+	HMDProp_DisplayFPGAVersion_Uint64		= 129,
+	HMDProp_DisplayBootloaderVersion_Uint64 = 130,
+	HMDProp_DisplayHardwareVersion_Uint64	= 131,
+	HMDProp_AudioFirmwareVersion_Uint64		= 132,
+
+	// 2 Prefix = 3000 series
+	ControllerProp_SupportedButtons_Uint64	= 201
+
+};
+
+
 /*
-UENUM(BlueprintType)
-enum class EVRDeviceProperty_UInt64
-{
-	Prop_HardwareRevision_Uint64 = 17,
-	Prop_FirmwareVersion_Uint64 = 18,
-	Prop_FPGAVersion_Uint64 = 19,
-	Prop_VRCVersion_Uint64 = 20,
-	Prop_RadioVersion_Uint64 = 21,
-	Prop_DongleVersion_Uint64 = 22
-};
+// Not implementing currently
+Prop_StatusDisplayTransform_Matrix34 = 1013
 */
 
 /*
+// Not implementing currently
+
 // Properties that are unique to TrackedDeviceClass_HMD
-Prop_ReportsTimeSinceVSync_Bool				= 2000,
-Prop_SecondsFromVsyncToPhotons_Float		= 2001,
-Prop_DisplayFrequency_Float					= 2002,
-Prop_UserIpdMeters_Float					= 2003,
-Prop_CurrentUniverseId_Uint64				= 2004,
-Prop_PreviousUniverseId_Uint64				= 2005,
-Prop_DisplayFirmwareVersion_String			= 2006,
-Prop_IsOnDesktop_Bool						= 2007,
-Prop_DisplayMCType_Int32					= 2008,
-Prop_DisplayMCOffset_Float					= 2009,
-Prop_DisplayMCScale_Float					= 2010,
-Prop_EdidVendorID_Int32						= 2011,
-Prop_DisplayMCImageLeft_String              = 2012,
-Prop_DisplayMCImageRight_String             = 2013,
-Prop_DisplayGCBlackClamp_Float				= 2014,
-Prop_EdidProductID_Int32					= 2015,
-Prop_CameraToHeadTransform_Matrix34		    = 2016,
-
-// Properties that are unique to TrackedDeviceClass_TrackingReference
-Prop_FieldOfViewLeftDegrees_Float			= 4000,
-Prop_FieldOfViewRightDegrees_Float			= 4001,
-Prop_FieldOfViewTopDegrees_Float			= 4002,
-Prop_FieldOfViewBottomDegrees_Float			= 4003,
-Prop_TrackingRangeMinimumMeters_Float		= 4004,
-Prop_TrackingRangeMaximumMeters_Float		= 4005,
-
+Prop_CameraToHeadTransform_Matrix34			= 2016,
+Prop_DisplayMCImageData_Binary				= 2041,
 */
 
 // Had to turn this in to a UObject, I felt the easiest way to use it was as an actor component to the player controller
@@ -302,20 +376,24 @@ public:
 	static UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, EBPVRDeviceIndex OverrideDeviceID = EBPVRDeviceIndex::None);
 	
 	// Gets a String device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString"))
-	static bool GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString", ExpandEnumAsExecs = "Result"))
+	static void GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue, EBPVRResultSwitch & Result);
 
 	// Gets a Bool device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyBool"))
-	static bool GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue);
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyBool", ExpandEnumAsExecs = "Result"))
+	static void GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue, EBPVRResultSwitch & Result);
 
 	// Gets a Float device property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyFloat"))
-	static bool GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue);
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyFloat", ExpandEnumAsExecs = "Result"))
+	static void GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue, EBPVRResultSwitch & Result);
 
-	// Gets a String controller property
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRControllerPropertyString"))
-	static bool GetVRControllerPropertyString(EVRControllerProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue);
+	// Gets a Int32 device property
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyInt32", ExpandEnumAsExecs = "Result"))
+	static void GetVRDevicePropertyInt32(EVRDeviceProperty_Int32 PropertyToRetrieve, int32 DeviceID, int32 & IntValue, EBPVRResultSwitch & Result);
+
+	// Gets a UInt64 device property as a string (Blueprints do not support int64)
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyUInt64", ExpandEnumAsExecs = "Result"))
+	static void GetVRDevicePropertyUInt64(EVRDeviceProperty_UInt64 PropertyToRetrieve, int32 DeviceID, FString & UInt64Value, EBPVRResultSwitch & Result);
 
 	// VR Camera options
 

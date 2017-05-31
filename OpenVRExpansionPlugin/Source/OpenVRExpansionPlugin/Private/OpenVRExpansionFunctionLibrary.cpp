@@ -350,134 +350,209 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 #endif
 }
 
-bool UOpenVRExpansionFunctionLibrary::GetVRControllerPropertyString(EVRControllerProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue, EBPVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	return false;
+	Result = EBPVRResultSwitch::OnFailed;
+	return;
 #else
 
-//	if (!VRGetGenericInterfaceFn)
-	//	return false;
-
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	vr::HmdError HmdErr;
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
 	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
 
+	uint32 EnumPropertyValue = ((uint32)PropertyToRetrieve % 100) + 1000 + (((uint32)PropertyToRetrieve / 100) * 1000);
+
 	char charvalue[vr::k_unMaxPropertyStringSize];
 	uint32_t buffersize = 255;
-	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 3000), charvalue, buffersize, &pError);
+	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty)EnumPropertyValue, charvalue, buffersize, &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	StringValue = FString(ANSI_TO_TCHAR(charvalue));
-	return true;
+	Result = EBPVRResultSwitch::OnSucceeded;
+	return;
 
 #endif
 }
 
-bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue, EBPVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	return false;
+	Result = EBPVRResultSwitch::OnFailed;
+	return;
 #else
 
-	//if (!VRGetGenericInterfaceFn)
-	//	return false;
-
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	vr::HmdError HmdErr;
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
 	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
 
-	char charvalue[vr::k_unMaxPropertyStringSize];
-	uint32_t buffersize = 255;
-	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 1000), charvalue, buffersize, &pError);
+	uint32 EnumPropertyValue = ((uint32)PropertyToRetrieve % 100) + 1000 + (((uint32)PropertyToRetrieve / 100) * 1000);
+
+	bool ret = VRSystem->GetBoolTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty)EnumPropertyValue, &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
-		return false;
-
-	StringValue = FString(ANSI_TO_TCHAR(charvalue));
-	return true;
-
-#endif
-}
-
-bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue)
-{
-#if !STEAMVR_SUPPORTED_PLATFORM
-	return false;
-#else
-
-//	if (!VRGetGenericInterfaceFn)
-	//	return false;
-
-	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
-		return false;
-
-	vr::HmdError HmdErr;
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
-	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
-
-	if (!VRSystem)
-		return false;
-
-	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
-
-	bool ret = VRSystem->GetBoolTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 1000), &pError);
-
-	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	BoolValue = ret;
-	return true;
+	Result = EBPVRResultSwitch::OnSucceeded;
+	return;
 
 #endif
 }
 
-bool UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue, EBPVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	return false;
+	Result = EBPVRResultSwitch::OnFailed;
+	return;
 #else
 
-	//if (!VRGetGenericInterfaceFn)
-	//	return false;
-
 	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	vr::HmdError HmdErr;
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
 	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
 	if (!VRSystem)
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
 
-	float ret = VRSystem->GetFloatTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty) (((int32)PropertyToRetrieve) + 1000), &pError);
+	uint32 EnumPropertyValue = ((uint32)PropertyToRetrieve % 100) + 1000 + (((uint32)PropertyToRetrieve / 100) * 1000);
+
+	float ret = VRSystem->GetFloatTrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty)EnumPropertyValue, &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
-		return false;
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
 
 	FloatValue = ret;
-	return true;
+	Result = EBPVRResultSwitch::OnSucceeded;
+	return;
+
+#endif
+}
+
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyInt32(EVRDeviceProperty_Int32 PropertyToRetrieve, int32 DeviceID, int32 & IntValue, EBPVRResultSwitch & Result)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	Result = EBPVRResultSwitch::OnFailed;
+	return;
+#else
+
+	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	vr::HmdError HmdErr;
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+
+	if (!VRSystem)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
+
+	uint32 EnumPropertyValue = ((uint32)PropertyToRetrieve % 100) + 1000 + (((uint32)PropertyToRetrieve / 100) * 1000);
+
+	int32 ret = VRSystem->GetInt32TrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty)EnumPropertyValue, &pError);
+
+	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	IntValue = ret;
+	Result = EBPVRResultSwitch::OnSucceeded;
+	return;
+
+#endif
+}
+
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyUInt64(EVRDeviceProperty_UInt64 PropertyToRetrieve, int32 DeviceID, FString & UInt64Value, EBPVRResultSwitch & Result)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	Result = EBPVRResultSwitch::OnFailed;
+	return;
+#else
+
+	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	vr::HmdError HmdErr;
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+
+	if (!VRSystem)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
+
+	uint32 EnumPropertyValue = ((uint32)PropertyToRetrieve % 100) + 1000 + (((uint32)PropertyToRetrieve / 100) * 1000);
+
+	uint64 ret = VRSystem->GetUint64TrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty)EnumPropertyValue, &pError);
+
+	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	UInt64Value = FString::Printf(TEXT("%llu"), ret);
+	Result = EBPVRResultSwitch::OnSucceeded;
+	return;
 
 #endif
 }

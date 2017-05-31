@@ -40,6 +40,7 @@ bool UGripSteamVRTrackedDevice::PollControllerState(FVector& Position, FRotator&
 			CurrentTrackingStatus = ETrackingStatus::NotTracked;
 			return false;
 		}
+		
 
 		// Wanted to access SteamVRHMD directly but the linkage was bad due to how the module exports
 		if (!USteamVRFunctionLibrary::GetTrackedDevicePositionAndOrientation((int32)TrackedDeviceIndex, Position, Orientation))
