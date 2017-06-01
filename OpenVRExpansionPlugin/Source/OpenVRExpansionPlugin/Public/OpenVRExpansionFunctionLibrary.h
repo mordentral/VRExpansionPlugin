@@ -322,6 +322,16 @@ enum class EVRDeviceProperty_UInt64 : uint8
 
 };
 
+UENUM(BlueprintType)
+enum class EVRDeviceProperty_Matrix34 : uint8
+{
+	// No prefix = 1000 series
+	Prop_StatusDisplayTransform_Matrix34	= 13,
+
+	// 1 Prefix = 2000 series
+	HMDProp_CameraToHeadTransform_Matrix34	= 116
+};
+
 
 /*
 // Not implementing currently
@@ -332,7 +342,6 @@ Prop_StatusDisplayTransform_Matrix34 = 1013
 // Not implementing currently
 
 // Properties that are unique to TrackedDeviceClass_HMD
-Prop_CameraToHeadTransform_Matrix34			= 2016,
 Prop_DisplayMCImageData_Binary				= 2041,
 */
 
@@ -394,6 +403,10 @@ public:
 	// Gets a UInt64 device property as a string (Blueprints do not support int64)
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyUInt64", ExpandEnumAsExecs = "Result"))
 	static void GetVRDevicePropertyUInt64(EVRDeviceProperty_UInt64 PropertyToRetrieve, int32 DeviceID, FString & UInt64Value, EBPVRResultSwitch & Result);
+
+	// Gets a Matrix34 device property as a Transform
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyMatrix34AsTransform", ExpandEnumAsExecs = "Result"))
+	static void GetVRDevicePropertyMatrix34AsTransform(EVRDeviceProperty_Matrix34 PropertyToRetrieve, int32 DeviceID, FTransform & TransformValue, EBPVRResultSwitch & Result);
 
 	// VR Camera options
 

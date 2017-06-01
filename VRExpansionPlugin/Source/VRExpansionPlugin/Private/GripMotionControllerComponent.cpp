@@ -1929,7 +1929,8 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 
 	FBPActorGripInformation copyGrip = Grip;
 
-	GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface);
+	bool bRescalePhysicsGrips = false;
+	GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface, bRescalePhysicsGrips);
 
 	//WorldTransform = Grip.RelativeTransform * ParentTransform;
 
@@ -2106,7 +2107,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 }
 
-void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
+void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips)
 {
 	// Check for interaction interface and modify transform by it
 	if (bRootHasInterface && IVRGripInterface::Execute_IsInteractible(root))
@@ -2220,6 +2221,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain)
 			{
 				/*Grip.SecondaryScaler*/ Scaler = frontLoc.Size() / frontLocOrig.Size();
+				bRescalePhysicsGrips = true; // This is for the physics grips
 				//Scaler = Grip.SecondaryScaler;
 			}
 		}
@@ -2343,9 +2345,11 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 					continue;
 				}
+
+				bool bRescalePhysicsGrips = false;
 				
 				// Get the world transform for this grip after handling secondary grips and interaction differences
-				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface);
+				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface, bRescalePhysicsGrips);
 
 				// Auto drop based on distance from expected point
 				// Not perfect, should be done post physics or in next frame prior to changing controller location
@@ -2414,6 +2418,9 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					case EGripCollisionType::InteractiveCollisionWithPhysics:
 					{
 						UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+						
+						if(bRescalePhysicsGrips)
+							root->SetWorldScale3D(WorldTransform.GetScale3D());
 
 						// Sweep current collision state, only used for client side late update removal
 						if (
@@ -2478,6 +2485,9 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					case EGripCollisionType::InteractiveHybridCollisionWithPhysics:
 					{
 						UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+
+						if (bRescalePhysicsGrips)
+							root->SetWorldScale3D(WorldTransform.GetScale3D());
 
 						// Always Sweep current collision state with this, used for constraint strength
 						TArray<FOverlapResult> Hits;
@@ -2598,6 +2608,8 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 								SetUpPhysicsHandle(*Grip);
 								UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+								if (bRescalePhysicsGrips)
+									root->SetWorldScale3D(WorldTransform.GetScale3D());
 							}
 							else
 							{
@@ -2611,12 +2623,18 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 							SetUpPhysicsHandle(*Grip);
 							UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+							if (bRescalePhysicsGrips)
+								root->SetWorldScale3D(WorldTransform.GetScale3D());
 						}
 						else
 						{
 							// Shouldn't be a grip handle if not server when server side moving
 							if (GripHandle)
+							{
 								UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+								if (bRescalePhysicsGrips)
+									root->SetWorldScale3D(WorldTransform.GetScale3D());
+							}
 						}
 
 					}break;
@@ -2667,6 +2685,8 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					case EGripCollisionType::ManipulationGripWithWristTwist:
 					{
 						UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+						if (bRescalePhysicsGrips)
+							root->SetWorldScale3D(WorldTransform.GetScale3D());
 					}break;
 
 					default:

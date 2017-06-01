@@ -44,6 +44,8 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 
 	if (USceneComponent *rootComp = Actor->GetRootComponent())
 	{
+		FTransform RelTransform = rootComp->GetComponentTransform().Inverse();
+
 		float ClosestSlotDistance = -0.1f;
 
 		TArray<FName> SocketNames = rootComp->GetAllSocketNames();
@@ -56,7 +58,9 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 		{
 			if (SocketNames[i].ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
 			{
-				float vecLen = (rootComp->GetSocketLocation(SocketNames[i]) - WorldLocation).Size();
+			
+				float vecLen = (rootComp->GetSocketTransform(SocketNames[i], ERelativeTransformSpace::RTS_Component).GetLocation() - RelTransform.TransformPosition(WorldLocation)).Size();
+				//float vecLen = (rootComp->GetSocketLocation(SocketNames[i]) - WorldLocation).Size();
 
 				if (MaxRange >= vecLen && (ClosestSlotDistance < 0.0f || vecLen < ClosestSlotDistance))
 				{
@@ -70,6 +74,7 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 		if (bHadSlotInRange)
 		{
 			SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
+			SlotWorldTransform.SetScale3D(FVector(1.0f));
 		}
 	}
 }
@@ -81,6 +86,8 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 
 	if (!Component)
 		return;
+
+	FTransform RelTransform = Component->GetComponentTransform().Inverse();
 
 	float ClosestSlotDistance = -0.1f;
 
@@ -94,7 +101,8 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 	{
 		if (SocketNames[i].ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
 		{
-			float vecLen = (Component->GetSocketLocation(SocketNames[i]) - WorldLocation).Size();
+			float vecLen = (Component->GetSocketTransform(SocketNames[i], ERelativeTransformSpace::RTS_Component).GetLocation() - RelTransform.TransformPosition(WorldLocation)).Size();
+			//float vecLen = (Component->GetSocketLocation(SocketNames[i]) - WorldLocation).Size();
 
 			if (MaxRange >= vecLen && (ClosestSlotDistance < 0.0f || vecLen < ClosestSlotDistance))
 			{
@@ -108,6 +116,7 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 	if (bHadSlotInRange)
 	{
 		SlotWorldTransform = Component->GetSocketTransform(SocketNames[foundIndex]);
+		SlotWorldTransform.SetScale3D(FVector(1.0f));
 	}
 }
 

@@ -557,6 +557,47 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyUInt64(EVRDevicePropert
 #endif
 }
 
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyMatrix34AsTransform(EVRDeviceProperty_Matrix34 PropertyToRetrieve, int32 DeviceID, FTransform & TransformValue, EBPVRResultSwitch & Result)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	Result = EBPVRResultSwitch::OnFailed;
+	return;
+#else
+
+	if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	vr::HmdError HmdErr;
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+
+	if (!VRSystem)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
+
+	uint32 EnumPropertyValue = ((uint32)PropertyToRetrieve % 100) + 1000 + (((uint32)PropertyToRetrieve / 100) * 1000);
+
+	vr::HmdMatrix34_t ret = VRSystem->GetMatrix34TrackedDeviceProperty(DeviceID, (vr::ETrackedDeviceProperty)EnumPropertyValue, &pError);
+
+	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	TransformValue = FTransform(FSteamVRHMD::ToFMatrix(ret));
+	Result = EBPVRResultSwitch::OnSucceeded;
+	return;
+
+#endif
+}
+
 bool UOpenVRExpansionFunctionLibrary::IsOpenVRDeviceConnected(EBPVRDeviceIndex OpenVRDeviceIndex)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
