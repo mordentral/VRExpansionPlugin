@@ -8,8 +8,6 @@ https://bitbucket.org/mordentral/vrexppluginexample
 
 ***
 
-[Tips & Tricks](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Plugin%20Tips%20&%20Information)
-
 ### Use Of This Plugin ###
 
 This Plugin is intended to add additional functionality to Open/SteamVR/(All VR now) in UE4. 
@@ -43,6 +41,8 @@ Install it into your Engine/Plugins directoy or ProjectName/Plugins Directory.
 You need to have visual studio installed and follow the UE4 setup guide for it: https://docs.unrealengine.com/latest/INT/Programming/Development/VisualStudioSetup/
 
 ### How do I use it? ###
+
+[Tips & Tricks](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Plugin%20Tips%20&%20Information)
 
 [VR Character Actor Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Character%20Actor)
 
