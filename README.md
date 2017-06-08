@@ -6,6 +6,9 @@ https://forums.unrealengine.com/showthread.php?116782-VR-(OpenVR)-Expansion-Plug
 Example Template Project
 https://bitbucket.org/mordentral/vrexppluginexample
 
+[Consider supporting me on patreon](https://www.patreon.com/mordentral)
+
+
 ***
 
 ### Use Of This Plugin ###
