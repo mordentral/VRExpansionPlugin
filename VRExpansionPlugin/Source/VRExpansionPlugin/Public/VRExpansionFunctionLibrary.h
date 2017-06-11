@@ -160,4 +160,8 @@ public:
 	/** Converts a FTransform into a FTransform_NetQuantize */
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToTransform_NetQuantize (Transform)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary|TransformNetQuantize")
 		static FTransform_NetQuantize Conv_TransformToTransformNetQuantize(const FTransform &InTransform);
+
+	// Adds a USceneComponent Subclass, that is based on the passed in Class, and added to the Outer(Actor) object
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Add Scene Component By Class"), Category = "VRExpansionLibrary")
+		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, FTransform ComponentRelativeTransform);
 };	

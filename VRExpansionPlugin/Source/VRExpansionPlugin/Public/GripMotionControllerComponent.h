@@ -116,7 +116,7 @@ public:
 	// Clean up a grip that is "bad", object is being destroyed or was a bad destructible mesh
 	void CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjects, int GripIndex, bool bReplicatedArray);
 
-	// Recreates a grip in situations where a relevant variable may have been changed
+	// Recreates a grip in situations where the collision type or movement replication type may have been changed
 	FORCEINLINE void ReCreateGrip(FBPActorGripInformation & GripInfo)
 	{
 		int HandleIndex = 0;
@@ -128,7 +128,7 @@ public:
 		}
 
 		// Grip Type or replication was changed
-		NotifyGrip(GripInfo);
+		NotifyGrip(GripInfo, true);
 	}
 
 	UFUNCTION()
@@ -404,7 +404,7 @@ public:
 
 	// No Longer replicated, called via on rep now instead.
 	//UFUNCTION(Reliable, NetMulticast)
-	void NotifyGrip(const FBPActorGripInformation &NewGrip);
+	void NotifyGrip(const FBPActorGripInformation &NewGrip, bool bIsReInit = false);
 
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);

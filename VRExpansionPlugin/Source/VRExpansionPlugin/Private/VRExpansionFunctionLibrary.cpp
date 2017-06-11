@@ -309,3 +309,27 @@ FTransform_NetQuantize UVRExpansionFunctionLibrary::Conv_TransformToTransformNet
 {
 	return FTransform_NetQuantize(InTransform);
 }
+
+USceneComponent* UVRExpansionFunctionLibrary::AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, FTransform ComponentRelativeTransform)
+{
+	if (Class != nullptr && Outer != nullptr)
+	{
+		USceneComponent* Component = NewObject<USceneComponent>(Outer, *Class);
+		if (Component != nullptr)
+		{
+			if (USceneComponent * ParentComp = Cast<USceneComponent>(Outer))
+				Component->SetupAttachment(ParentComp);
+
+			Component->RegisterComponent();
+			Component->SetRelativeTransform(ComponentRelativeTransform);
+			
+			return Component;
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
+
+	return nullptr;
+}

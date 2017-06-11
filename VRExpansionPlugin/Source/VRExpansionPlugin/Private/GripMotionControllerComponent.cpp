@@ -1240,7 +1240,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 
 
 // No longer an RPC, now is called from RepNotify so that joining clients also correctly set up grips
-void UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &NewGrip)
+void UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &NewGrip, bool bIsReInit)
 {
 	UPrimitiveComponent *root = NULL;
 	AActor *pActor = NULL;
@@ -1261,7 +1261,7 @@ void UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 				OwningPawn->MoveIgnoreActorAdd(pActor);
 			}
 
-			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			if (!bIsReInit && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
 				IVRGripInterface::Execute_SetHeld(pActor, this, true);
@@ -1296,13 +1296,13 @@ void UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 					OwningPawn->MoveIgnoreActorAdd(root->GetOwner());
 				}
 
-				if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				if (!bIsReInit && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 				{
 					IVRGripInterface::Execute_OnChildGrip(pActor, this, NewGrip);
 				}
 			}
 
-			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			if (!bIsReInit && root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				IVRGripInterface::Execute_OnGrip(root, this, NewGrip);
 				IVRGripInterface::Execute_SetHeld(root, this, true);
