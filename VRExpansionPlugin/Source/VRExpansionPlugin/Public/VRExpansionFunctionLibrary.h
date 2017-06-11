@@ -163,5 +163,5 @@ public:
 
 	// Adds a USceneComponent Subclass, that is based on the passed in Class, and added to the Outer(Actor) object
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Add Scene Component By Class"), Category = "VRExpansionLibrary")
-		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, FTransform ComponentRelativeTransform);
+		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, const FTransform & ComponentRelativeTransform);
 };	
