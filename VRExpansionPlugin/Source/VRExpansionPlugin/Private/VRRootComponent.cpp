@@ -20,6 +20,10 @@ static int32 bEnableFastOverlapCheck = 1;
 // LOOKING_FOR_PERF_ISSUES
 #define PERF_MOVECOMPONENT_STATS 0
 
+DECLARE_STATS_GROUP(TEXT("VRRootComponent"), STATGROUP_VRRootComponent, STATCAT_Advanced);
+DECLARE_CYCLE_STAT(TEXT("VR Root Set Half Height"), STAT_VRRootSetHalfHeight, STATGROUP_VRRootComponent);
+DECLARE_CYCLE_STAT(TEXT("VR Root Set Capsule Size"), STAT_VRRootSetCapsuleSize, STATGROUP_VRRootComponent);
+
 namespace PrimitiveComponentStatics
 {
 	static const FName MoveComponentName(TEXT("MoveComponent"));
@@ -411,8 +415,15 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
+FORCEINLINE void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
 {
+	SCOPE_CYCLE_COUNTER(STAT_VRRootSetCapsuleSize);
+
+	if (FMath::IsNearlyEqual(NewRadius, CapsuleRadius) && FMath::IsNearlyEqual(NewHalfHeight, CapsuleHalfHeight))
+	{
+		return;
+	}
+
 	CapsuleHalfHeight = FMath::Max3(0.f, NewHalfHeight, NewRadius);
 	CapsuleRadius = FMath::Max(0.f, NewRadius);
 	UpdateBounds();
@@ -432,6 +443,18 @@ void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bo
 			UpdateOverlaps();
 		}
 	}
+}
+
+FORCEINLINE void UVRRootComponent::SetCapsuleHalfHeightVR(float HalfHeight, bool bUpdateOverlaps)
+{
+	SCOPE_CYCLE_COUNTER(STAT_VRRootSetHalfHeight);
+	
+	if (FMath::IsNearlyEqual(HalfHeight, CapsuleHalfHeight))
+	{
+		return;
+	}
+
+	SetCapsuleSizeVR(GetUnscaledCapsuleRadius(), HalfHeight, bUpdateOverlaps);
 }
 
 void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)

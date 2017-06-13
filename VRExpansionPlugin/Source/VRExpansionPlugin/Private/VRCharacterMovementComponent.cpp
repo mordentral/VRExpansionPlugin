@@ -85,7 +85,11 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 	{
 		// restore collision size before crouching
 		ACharacter* DefaultCharacter = CharacterOwner->GetClass()->GetDefaultObject<ACharacter>();
-		CharacterOwner->GetCapsuleComponent()->SetCapsuleSize(DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleRadius(), DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
+		if (VRRootCapsule)
+			VRRootCapsule->SetCapsuleSizeVR(DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleRadius(), DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
+		else
+			CharacterOwner->GetCapsuleComponent()->SetCapsuleSize(DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleRadius(), DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
+
 		bShrinkProxyCapsule = true;
 	}
 
@@ -468,13 +472,14 @@ void FSavedMove_VRCharacter::PrepMoveFor(ACharacter* Character)
 	{
 		CharMove->VRRootCapsule->curCameraLoc = this->VRCapsuleLocation;
 		CharMove->VRRootCapsule->curCameraRot = this->VRCapsuleRotation;//FRotator(0.0f, FRotator::DecompressAxisFromByte(CapsuleYaw), 0.0f);
-		CharMove->VRRootCapsule->GenerateOffsetToWorld(false);
 		CharMove->VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 
-		if (CharMove->VRReplicateCapsuleHeight && this->LFDiff.Z != CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight())
+		if (CharMove->VRReplicateCapsuleHeight && !FMath::IsNearlyEqual(this->LFDiff.Z,CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 		{
 			CharMove->VRRootCapsule->SetCapsuleHalfHeight(this->LFDiff.Z, false);
 		}
+
+		CharMove->VRRootCapsule->GenerateOffsetToWorld(false);
 	}
 
 	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
@@ -648,11 +653,12 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 		{
 			VRRootCapsule->curCameraLoc = CapsuleLoc;
 			VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromByte(CapsuleYaw), 0.0f);
-			VRRootCapsule->GenerateOffsetToWorld(false);
 			VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 		
-			if (VRReplicateCapsuleHeight && LFDiff.Z != VRRootCapsule->GetUnscaledCapsuleHalfHeight())
+			if (VRReplicateCapsuleHeight && !FMath::IsNearlyEqual(LFDiff.Z,VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 				VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+
+			VRRootCapsule->GenerateOffsetToWorld(false);
 
 			// #TODO: Should I actually implement the mesh translation from "Crouch"? Generally people are going to be
 			//	IKing any mesh from the HMD instead.
@@ -1678,6 +1684,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 	// Probably entirely wrong as Delta is divided by movement ticks but I want the effect to be stronger anyway
 	// This won't effect control based movement unless stepping forward at the same time, but gives RW movement
 	// the extra boost to get up over a lip
+	// #TODO test this more, is likely not needed?
 	if(VRRootCapsule)
 		MoveUpdatedComponent(Delta + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), PawnRotation, true, &Hit);
 	else

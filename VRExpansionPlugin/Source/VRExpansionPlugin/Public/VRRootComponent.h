@@ -40,6 +40,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Components|Capsule")
 		virtual void SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true);
 
+	// Used to update the capsule half height and calculate the new offset value for VR
+	UFUNCTION(BlueprintCallable, Category = "Components|Capsule")
+		void SetCapsuleHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true);
+
 protected:
 
 	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;

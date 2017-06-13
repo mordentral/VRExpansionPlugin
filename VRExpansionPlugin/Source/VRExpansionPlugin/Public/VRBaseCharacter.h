@@ -55,6 +55,26 @@ public:
 		return OffsetComponentToWorld.GetRotation().Rotator();
 	}
 
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
+	virtual void SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true)
+	{
+		if (UCapsuleComponent * Capsule = Cast<UCapsuleComponent>(this->RootComponent))
+		{		
+			if(!FMath::IsNearlyEqual(NewRadius, Capsule->GetUnscaledCapsuleRadius()) || !FMath::IsNearlyEqual(NewHalfHeight,Capsule->GetUnscaledCapsuleHalfHeight()))
+				Capsule->SetCapsuleSize(NewRadius, NewHalfHeight, bUpdateOverlaps);
+		}
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
+	virtual void SetCharacterHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true)
+	{
+		if (UCapsuleComponent * Capsule = Cast<UCapsuleComponent>(this->RootComponent))
+		{
+			if (!FMath::IsNearlyEqual(HalfHeight, Capsule->GetUnscaledCapsuleHalfHeight()))
+				Capsule->SetCapsuleHalfHeight(HalfHeight, bUpdateOverlaps);
+		}
+	}
+
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		UVRBaseCharacterMovementComponent * VRMovementReference;
 

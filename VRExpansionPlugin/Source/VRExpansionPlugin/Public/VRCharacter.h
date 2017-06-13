@@ -28,6 +28,32 @@ public:
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))	
 	UVRRootComponent * VRRootReference;
 
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
+	virtual void SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true) override
+	{
+		if (VRRootReference)
+		{
+			VRRootReference->SetCapsuleSizeVR(NewRadius, NewHalfHeight, bUpdateOverlaps);
+		}
+		else
+		{
+			Super::SetCharacterSizeVR(NewRadius, NewHalfHeight, bUpdateOverlaps);
+		}
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
+	virtual void SetCharacterHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true) override
+	{
+		if (VRRootReference)
+		{
+			VRRootReference->SetCapsuleHalfHeightVR(HalfHeight, bUpdateOverlaps);
+		}
+		else
+		{
+			Super::SetCharacterHalfHeightVR(HalfHeight, bUpdateOverlaps);
+		}
+	}
+
 	/* 
 	A helper function that offsets a given vector by the roots collision location
 	pass in a teleport location and it provides the correct spot for it to be at your feet
