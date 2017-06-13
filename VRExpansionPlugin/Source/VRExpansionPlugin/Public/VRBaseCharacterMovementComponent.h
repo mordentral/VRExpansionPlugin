@@ -115,6 +115,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		float VRClimbingMaxReleaseVelocitySize;
 
+	// If true will replicate the capsule height on to clients, allows for dynamic capsule height changes in multiplayer
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
+		bool VRReplicateCapsuleHeight;
+
 	UFUNCTION(BlueprintCallable, Category = "VRMovement|Climbing")
 		void SetClimbingMode(bool bIsClimbing);
 

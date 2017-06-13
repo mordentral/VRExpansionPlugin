@@ -999,12 +999,13 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 			if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.001f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.001f))
 			{
 				FVector DifferenceFromLastFrame = (curCameraLoc - lastCameraLoc);
-				DifferenceFromLastFrame.Z = 0.0f;
+				//DifferenceFromLastFrame.Z = 0.0f;
 
 				if (VRRootCapsule)
 				{
 					DifferenceFromLastFrame *= VRRootCapsule->GetComponentScale(); // Scale up with character
 					AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame); // Apply over a second
+					AdditionalVRInputVector.Z = 0.0f; // Don't use the Z value anyway, and lets me repurpose it for the CapsuleHalfHeight
 				}
 			}
 			else
@@ -1451,8 +1452,11 @@ void FSavedMove_VRSimpleCharacter::PrepMoveFor(ACharacter* Character)
 	// I am overriding the replicated value here when movement is made on purpose
 	if (CharMove)
 	{
-		CharMove->AdditionalVRInputVector = LFDiff;
+		CharMove->AdditionalVRInputVector = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 	}
+
+	if (CharMove->VRReplicateCapsuleHeight && LFDiff.Z != CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight())
+		CharMove->VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
 
 	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
 }
@@ -1616,7 +1620,11 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 		}
 
 		// Add in VR Input velocity
-		AdditionalVRInputVector = LFDiff;
+		AdditionalVRInputVector = FVector(LFDiff.Z, LFDiff.Y, 0.0f);
+
+		if (VRReplicateCapsuleHeight && LFDiff.Z != VRRootCapsule->GetUnscaledCapsuleHalfHeight())
+			VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+
 		CustomVRInputVector = CustVRInputVector;
 
 		MoveAutonomous(TimeStamp, DeltaTime, MoveFlags, Accel);

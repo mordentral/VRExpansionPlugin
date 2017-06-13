@@ -453,8 +453,8 @@ void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 			VRCapsuleRotation = FRotator::ZeroRotator;
 			LFDiff = FVector::ZeroVector;
 		}
-
 	}
+
 	FSavedMove_VRBaseCharacter::SetInitialPosition(C);
 }
 
@@ -469,7 +469,12 @@ void FSavedMove_VRCharacter::PrepMoveFor(ACharacter* Character)
 		CharMove->VRRootCapsule->curCameraLoc = this->VRCapsuleLocation;
 		CharMove->VRRootCapsule->curCameraRot = this->VRCapsuleRotation;//FRotator(0.0f, FRotator::DecompressAxisFromByte(CapsuleYaw), 0.0f);
 		CharMove->VRRootCapsule->GenerateOffsetToWorld(false);
-		CharMove->VRRootCapsule->DifferenceFromLastFrame = this->LFDiff;
+		CharMove->VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
+
+		if (CharMove->VRReplicateCapsuleHeight && this->LFDiff.Z != CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight())
+		{
+			CharMove->VRRootCapsule->SetCapsuleHalfHeight(this->LFDiff.Z, false);
+		}
 	}
 
 	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
@@ -644,7 +649,25 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 			VRRootCapsule->curCameraLoc = CapsuleLoc;
 			VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromByte(CapsuleYaw), 0.0f);
 			VRRootCapsule->GenerateOffsetToWorld(false);
-			VRRootCapsule->DifferenceFromLastFrame = LFDiff;
+			VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
+		
+			if (VRReplicateCapsuleHeight && LFDiff.Z != VRRootCapsule->GetUnscaledCapsuleHalfHeight())
+				VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+
+			// #TODO: Should I actually implement the mesh translation from "Crouch"? Generally people are going to be
+			//	IKing any mesh from the HMD instead.
+			/*
+				// Don't smooth this change in mesh position
+				if (bClientSimulation && CharacterOwner->Role == ROLE_SimulatedProxy)
+				{
+					FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
+					if (ClientData && ClientData->MeshTranslationOffset.Z != 0.f)
+					{
+						ClientData->MeshTranslationOffset += FVector(0.f, 0.f, MeshAdjust);
+						ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
+					}
+				}
+			*/
 		}
 
 		MoveAutonomous(TimeStamp, DeltaTime, MoveFlags, Accel);

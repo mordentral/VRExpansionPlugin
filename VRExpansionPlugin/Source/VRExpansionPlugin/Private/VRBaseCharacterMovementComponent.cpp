@@ -21,6 +21,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	VRClimbingSetFallOnStepUp = true;
 	VRClimbingMaxReleaseVelocitySize = 800.0f;
 	bIgnoreSimulatingComponentsInFloorCheck = true;
+	VRReplicateCapsuleHeight = false;
 
 	VRWallSlideScaler = 1.0f;
 	
@@ -367,6 +368,11 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 				RequestedVelocity = moveComp->RequestedVelocity;
 			else
 				RequestedVelocity = FVector::ZeroVector;
+
+			// Throw out the Z value of the headset, its not used anyway for movement
+			// Instead, re-purpose it to be the capsule half height
+			if (moveComp->VRReplicateCapsuleHeight && C)
+				LFDiff.Z = C->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
 		}
 		else
 		{
