@@ -11,6 +11,10 @@
 
 class AVRBaseCharacter;
 
+DECLARE_STATS_GROUP(TEXT("VRRootComponent"), STATGROUP_VRRootComponent, STATCAT_Advanced);
+DECLARE_CYCLE_STAT(TEXT("VR Root Set Half Height"), STAT_VRRootSetHalfHeight, STATGROUP_VRRootComponent);
+DECLARE_CYCLE_STAT(TEXT("VR Root Set Capsule Size"), STAT_VRRootSetCapsuleSize, STATGROUP_VRRootComponent);
+
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
 class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent, public IVRTrackedParentInterface
 {
@@ -119,3 +123,64 @@ public:
 
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
 };
+
+
+// Have to declare inlines here for blueprint
+
+void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
+{
+	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+
+	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
+
+	if (owningVRChar)
+	{
+		owningVRChar->OffsetComponentToWorld = OffsetComponentToWorld;
+	}
+
+	if (bUpdateBounds)
+		UpdateBounds();
+}
+
+
+FORCEINLINE void UVRRootComponent::SetCapsuleHalfHeightVR(float HalfHeight, bool bUpdateOverlaps)
+{
+	SCOPE_CYCLE_COUNTER(STAT_VRRootSetHalfHeight);
+
+	if (FMath::IsNearlyEqual(HalfHeight, CapsuleHalfHeight))
+	{
+		return;
+	}
+
+	SetCapsuleSizeVR(GetUnscaledCapsuleRadius(), HalfHeight, bUpdateOverlaps);
+}
+
+FORCEINLINE void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
+{
+	SCOPE_CYCLE_COUNTER(STAT_VRRootSetCapsuleSize);
+
+	if (FMath::IsNearlyEqual(NewRadius, CapsuleRadius) && FMath::IsNearlyEqual(NewHalfHeight, CapsuleHalfHeight))
+	{
+		return;
+	}
+
+	CapsuleHalfHeight = FMath::Max3(0.f, NewHalfHeight, NewRadius);
+	CapsuleRadius = FMath::Max(0.f, NewRadius);
+	UpdateBounds();
+	UpdateBodySetup();
+	MarkRenderStateDirty();
+	GenerateOffsetToWorld();
+
+	// do this if already created
+	// otherwise, it hasn't been really created yet
+	if (bPhysicsStateCreated)
+	{
+		// Update physics engine collision shapes
+		BodyInstance.UpdateBodyScale(ComponentToWorld.GetScale3D(), true);
+
+		if (bUpdateOverlaps && IsCollisionEnabled() && GetOwner())
+		{
+			UpdateOverlaps();
+		}
+	}
+}

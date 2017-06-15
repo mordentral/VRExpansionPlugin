@@ -1684,8 +1684,8 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 	// Probably entirely wrong as Delta is divided by movement ticks but I want the effect to be stronger anyway
 	// This won't effect control based movement unless stepping forward at the same time, but gives RW movement
 	// the extra boost to get up over a lip
-	// #TODO test this more, is likely not needed?
-	if(VRRootCapsule)
+	// #TODO test this more, currently appears to be needed for walking, but is harmful for other modes
+	if(VRRootCapsule && MovementMode == EMovementMode::MOVE_Walking)
 		MoveUpdatedComponent(Delta + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), PawnRotation, true, &Hit);
 	else
 		MoveUpdatedComponent(Delta, PawnRotation, true, &Hit);
@@ -1912,7 +1912,18 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 	// step fwd
 	FHitResult Hit(1.f);
 
-	MoveUpdatedComponent(Delta, PawnRotation, true, &Hit);
+
+	// Adding in the directional difference of the last HMD movement to promote stepping up
+	// Probably entirely wrong as Delta is divided by movement ticks but I want the effect to be stronger anyway
+	// This won't effect control based movement unless stepping forward at the same time, but gives RW movement
+	// the extra boost to get up over a lip
+	// #TODO test this more, currently appears to be needed for walking, but is harmful for other modes
+	if (VRRootCapsule)
+		MoveUpdatedComponent(Delta + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), PawnRotation, true, &Hit);
+	else
+		MoveUpdatedComponent(Delta, PawnRotation, true, &Hit);
+
+	//MoveUpdatedComponent(Delta, PawnRotation, true, &Hit);
 
 	// Check result of forward movement
 	if (Hit.bBlockingHit)

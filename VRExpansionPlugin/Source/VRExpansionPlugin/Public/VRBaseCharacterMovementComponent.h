@@ -2,6 +2,7 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#include "VRBPDataTypes.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
 
@@ -76,6 +77,7 @@ public:
 
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 	virtual void PhysCustom_Climbing(float deltaTime, int32 Iterations);
+	virtual void PhysCustom_LowGrav(float deltaTime, int32 Iterations);
 
 	// Added in 4.16
 	///* Allow custom handling when character hits a wall while swimming. */
@@ -109,7 +111,7 @@ public:
 
 	// If true will automatically set falling when a stepup occurs during climbing
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
-		bool VRClimbingSetFallOnStepUp;
+		bool SetDefaultPostClimbMovementOnStepUp;
 
 	// Max velocity on releasing a climbing grip
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
@@ -122,14 +124,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRMovement|Climbing")
 		void SetClimbingMode(bool bIsClimbing);
 
+	// Default movement mode to switch to post climb ended, only used if SetDefaultPostClimbMovementOnStepUp is true
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
+		EVRConjoinedMovementModes DefaultPostClimbMovement;
 
-	bool bStartedClimbing;
-	bool bEndedClimbing;
+	// This is called client side
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void SetReplicatedMovementMode(EVRConjoinedMovementModes NewMovementMode);
+
+	// We use 4 bits for this so a maximum of 16 elements
+	EVRConjoinedMovementModes VRReplicatedMovementMode;
 
 	void UpdateFromCompressedFlags(uint8 Flags) override
 	{
-		bStartedClimbing = ((Flags & FSavedMove_Character::FLAG_Custom_0) != 0);
-		bEndedClimbing = ((Flags & FSavedMove_Character::FLAG_Custom_1) != 0);
+		// If is a custom or VR custom movement mode
+		int32 MovementFlags = (Flags >> 2) & 15;
+		VRReplicatedMovementMode = (EVRConjoinedMovementModes)MovementFlags;
+
 		Super::UpdateFromCompressedFlags(Flags);
 	}
 
@@ -142,6 +153,13 @@ public:
 		return InMovement;
 	}
 
+	// Setting this below 1.0 will change how fast you de-accelerate when touching a wall
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|LowGrav", meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))
+		float VRLowGravWallFrictionScaler;
+
+	// Setting this below 1.0 will change how fast you de-accelerate when touching a wall
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|LowGrav")
+		bool VRLowGravIgnoresDefaultFluidFriction;
 
 	/** Replicate position correction to client, associated with a timestamped servermove.  Client will replay subsequent moves after applying adjustment.  */
 	UFUNCTION(unreliable, client)
@@ -170,8 +188,7 @@ class VREXPANSIONPLUGIN_API FSavedMove_VRBaseCharacter : public FSavedMove_Chara
 
 public:
 
-	bool bStartedClimbing;
-	bool bEndedClimbing;
+	EVRConjoinedMovementModes VRReplicatedMovementMode;
 
 	FVector CustomVRInputVector;
 	FVector VRCapsuleLocation;
@@ -184,29 +201,27 @@ public:
 
 	FSavedMove_VRBaseCharacter() : FSavedMove_Character()
 	{
-		bStartedClimbing = false;
-		bEndedClimbing = false;
 		CustomVRInputVector = FVector::ZeroVector;
 
 		VRCapsuleLocation = FVector::ZeroVector;
 		LFDiff = FVector::ZeroVector;
 		VRCapsuleRotation = FRotator::ZeroRotator;
 		RequestedVelocity = FVector::ZeroVector;
+		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
 	}
 
 	virtual uint8 GetCompressedFlags() const override
 	{
+		// Fills in 01 and 02 for Jump / Crouch
 		uint8 Result = FSavedMove_Character::GetCompressedFlags();
 
-		if (bStartedClimbing)
-		{
-			Result |= FLAG_Custom_0;
-		}
+		// Not supporting custom movement mode directly at this time by replicating custom index
+		// We use 4 bits for this so a maximum of 16 elements
+		Result |= (uint8)VRReplicatedMovementMode << 2;
 
-		if (bEndedClimbing)
-		{
-			Result |= FLAG_Custom_1;
-		}
+		// Reserved_1, and Reserved_2, Flag_Custom_0 and Flag_Custom_1 are used up
+		// By the VRReplicatedMovementMode packing
+		// Only custom_2 and custom_3 are left
 
 		return Result;
 	}
@@ -215,7 +230,7 @@ public:
 	{
 		FSavedMove_VRBaseCharacter * nMove = (FSavedMove_VRBaseCharacter *)NewMove.Get();
 
-		if (!nMove || (bStartedClimbing != nMove->bStartedClimbing) || (bEndedClimbing != nMove->bEndedClimbing) || (CustomVRInputVector != nMove->CustomVRInputVector)
+		if (!nMove || (VRReplicatedMovementMode != nMove->VRReplicatedMovementMode) || (CustomVRInputVector != nMove->CustomVRInputVector)
 			|| (!LFDiff.IsNearlyZero() && !nMove->LFDiff.IsNearlyZero()) || (!RequestedVelocity.IsNearlyZero() && !nMove->RequestedVelocity.IsNearlyZero())
 			)
 			return false;
@@ -226,9 +241,8 @@ public:
 
 	virtual bool IsImportantMove(const FSavedMovePtr& LastAckedMove) const override
 	{
-
 		// Auto important if toggled climbing
-		if (bStartedClimbing || bEndedClimbing)
+		if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_None)
 			return true;
 
 		// Else check parent class

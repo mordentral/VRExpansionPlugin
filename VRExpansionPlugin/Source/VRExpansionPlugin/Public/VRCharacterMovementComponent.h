@@ -217,7 +217,7 @@ public:
 	virtual void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const override;
 
 	// Need to use actual capsule location for step up
-	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult);
+	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult) override;
 
 	// MOVED THIS TO THE BASE VR CHARACTER MOVEMENT COMPONENT
 	// Also added a control variable for it there
