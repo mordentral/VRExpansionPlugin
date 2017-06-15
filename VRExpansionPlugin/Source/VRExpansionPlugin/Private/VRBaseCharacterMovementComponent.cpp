@@ -229,6 +229,7 @@ void UVRBaseCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterat
 		PhysCustom_LowGrav(deltaTime, Iterations);
 		break;
 	default:
+		Super::PhysCustom(deltaTime, Iterations);
 		break;
 	}
 }
@@ -305,17 +306,11 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 		{
 			if (SetDefaultPostClimbMovementOnStepUp)
 			{
-				// Force falling movement, this prevents climbing interfering with stepup.
-				if (DefaultPostClimbMovement < EVRConjoinedMovementModes::C_MOVE_MAX)
-				{
-					SetMovementMode((EMovementMode)DefaultPostClimbMovement);
-				}
-				else
-				{
-					SetMovementMode(EMovementMode::MOVE_Custom, (uint8)DefaultPostClimbMovement -(uint8)EVRConjoinedMovementModes::C_MOVE_MAX);
-				}
+				// Takes effect next frame, this allows server rollback to correctly handle auto step up
+				SetReplicatedMovementMode(DefaultPostClimbMovement);
 
-				StartNewPhysics(0.0f, Iterations);
+				// Before doing this the server could rollback the client from a bad step up and leave it hanging in climb mode
+				// This way the rollback replay correctly sets the movement mode from the step up request
 			}
 
 			// Notify the end user that they probably want to stop gripping now
@@ -398,13 +393,12 @@ void UVRBaseCharacterMovementComponent::SetClimbingMode(bool bIsClimbing)
 	if (bIsClimbing)
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_VRMOVE_Climbing;
 	else
-		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Falling;
-	//bStartedClimbing = bIsClimbing;
-	//bEndedClimbing = !bIsClimbing;
+		VRReplicatedMovementMode = DefaultPostClimbMovement;
 }
 
 void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMovementModes NewMovementMode)
 {
+	// Only have up to 15 that it can go up to, the previous 7 index's are used up for std movement modes
 	VRReplicatedMovementMode = NewMovementMode;
 }
 
@@ -414,19 +408,23 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	{
 		if (VRReplicatedMovementMode <= EVRConjoinedMovementModes::C_MOVE_MAX)
 		{
+			// Is a default movement mode, just directly set it
 			SetMovementMode((EMovementMode)VRReplicatedMovementMode);
 		}
 		else // Is Custom
 		{
-			// Auto calculates the difference for our VR movements
-			SetMovementMode(EMovementMode::MOVE_Custom, ((int8)VRReplicatedMovementMode - (uint8)EVRConjoinedMovementModes::C_MOVE_MAX));
+			// Auto calculates the difference for our VR movements, index is from 0 so using climbing should get me correct index's as it is the first custom mode
+			SetMovementMode(EMovementMode::MOVE_Custom, (((int8)VRReplicatedMovementMode - (uint8)EVRConjoinedMovementModes::C_VRMOVE_Climbing)) );
 		}
+
+		// Clearing it here instead now, as this way the code can inject it during PerformMovement
+		// Specifically used by the Climbing Step up, so that server rollbacks are supported
+		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
 	}
 
 	Super::PerformMovement(DeltaSeconds);
 
 	// Make sure these are cleaned out for the next frame
-	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
 	AdditionalVRInputVector = FVector::ZeroVector;
 	CustomVRInputVector = FVector::ZeroVector;
 }
@@ -439,8 +437,6 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
 		{
 			VRReplicatedMovementMode = moveComp->VRReplicatedMovementMode;
-			//bStartedClimbing = moveComp->bStartedClimbing;
-			//bEndedClimbing = moveComp->bEndedClimbing;
 			CustomVRInputVector = moveComp->CustomVRInputVector;
 
 			if (moveComp->HasRequestedVelocity())
@@ -455,8 +451,6 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		}
 		else
 		{
-			//bStartedClimbing = false;
-			//bEndedClimbing = false;
 			VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
 			CustomVRInputVector = FVector::ZeroVector;
 			RequestedVelocity = FVector::ZeroVector;
@@ -464,8 +458,6 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 	}
 	else
 	{
-		//bStartedClimbing = false;
-		//bEndedClimbing = false;
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
 		CustomVRInputVector = FVector::ZeroVector;
 	}
@@ -475,8 +467,6 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 
 void FSavedMove_VRBaseCharacter::Clear()
 {
-	//bStartedClimbing = false;
-	//bEndedClimbing = false;
 	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
 	CustomVRInputVector = FVector::ZeroVector;
 
@@ -496,8 +486,6 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 	{
 		BaseCharMove->CustomVRInputVector = this->CustomVRInputVector;
 		BaseCharMove->VRReplicatedMovementMode = this->VRReplicatedMovementMode;
-		//	BaseCharMove->bStartedClimbing = this->bStartedClimbing;
-	//	BaseCharMove->bEndedClimbing = this->bEndedClimbing;
 	}
 	
 	if (!RequestedVelocity.IsNearlyZero())
