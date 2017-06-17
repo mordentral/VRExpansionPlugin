@@ -176,6 +176,11 @@ float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta,
 
 }
 
+void UVRBaseCharacterMovementComponent::SetCrouchedHalfHeight(float NewCrouchedHalfHeight)
+{
+	this->CrouchedHalfHeight = NewCrouchedHalfHeight;
+}
+
 void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
 {
 	// if we are a client then lets round this to match what it will be after net Replication

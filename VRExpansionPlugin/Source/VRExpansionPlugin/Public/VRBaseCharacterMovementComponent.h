@@ -55,6 +55,10 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
+	// Sets the crouching half height since it isn't exposed during runtime to blueprints
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void SetCrouchedHalfHeight(float NewCrouchedHalfHeight);
+
 	// Setting this higher will divide the wall slide effect by this value, to reduce collision sliding.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement", meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))
 		float VRWallSlideScaler;
@@ -163,7 +167,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|LowGrav", meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))
 		float VRLowGravWallFrictionScaler;
 
-	// Setting this below 1.0 will change how fast you de-accelerate when touching a wall
+	// If true then low grav will ignore the default physics volume fluid friction, useful if you have a mix of low grav and normal movement
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|LowGrav")
 		bool VRLowGravIgnoresDefaultFluidFriction;
 
