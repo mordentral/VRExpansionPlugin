@@ -1937,7 +1937,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 	// the extra boost to get up over a lip
 	// #TODO test this more, currently appears to be needed for walking, but is harmful for other modes
 	if (VRRootCapsule)
-		MoveUpdatedComponent(Delta + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), PawnRotation, true, &Hit);
+		MoveUpdatedComponent(Delta/* + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D()*/, PawnRotation, true, &Hit);
 	else
 		MoveUpdatedComponent(Delta, PawnRotation, true, &Hit);
 

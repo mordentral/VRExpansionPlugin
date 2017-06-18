@@ -293,7 +293,6 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 
 		if (!bSteppedUp)
 		{
-			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Some variable values: x: %f, y: %f"), x, y));
 			//adjust and try again
 			HandleImpact(Hit, deltaTime, Adjusted);
 			SlideAlongSurface(Adjusted, (1.f - Hit.Time), Hit.Normal, Hit, true);
@@ -313,7 +312,6 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 			{
 				// Takes effect next frame, this allows server rollback to correctly handle auto step up
 				SetReplicatedMovementMode(DefaultPostClimbMovement);
-
 				// Before doing this the server could rollback the client from a bad step up and leave it hanging in climb mode
 				// This way the rollback replay correctly sets the movement mode from the step up request
 			}
