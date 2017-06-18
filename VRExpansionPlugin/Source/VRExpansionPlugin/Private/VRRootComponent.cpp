@@ -342,7 +342,8 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
 
-			GenerateOffsetToWorld(false);
+			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+			//GenerateOffsetToWorld(false);
 
 			FHitResult OutHit;
 			FCollisionQueryParams Params("RelativeMovementSweep", false, GetOwner());
@@ -375,6 +376,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			else
 				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
 
+			// #TODO: should i consider the ignore physics objects setting for the sim check here?
 			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
 			{
 				bHadRelativeMovement = true;
@@ -385,7 +387,6 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			lastCameraLoc = curCameraLoc;
 			lastCameraRot = curCameraRot;
 
-			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
 			DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);// .GetSafeNormal2D();
 			DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
 		}
@@ -415,7 +416,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 {
 	BodyInstance.SetBodyTransform(OffsetComponentToWorld, Teleport);
-	BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
+	//BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
 }
 
 // Override this so that the physics representation is in the correct location
