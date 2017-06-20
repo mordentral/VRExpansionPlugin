@@ -860,7 +860,6 @@ bool UGripMotionControllerComponent::GripActor(
 		return false; // It is not movable, can't grip it
 	}
 
-	bool bIsInteractible = false;
 	FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
 	UObject * ObjectToCheck = NULL; // Used if having to calculate the transform
 
@@ -869,7 +868,6 @@ bool UGripMotionControllerComponent::GripActor(
 		if(IVRGripInterface::Execute_DenyGripping(root))
 			return false; // Interface is saying not to grip it right now
 
-		bIsInteractible = IVRGripInterface::Execute_IsInteractible(root);
 		AdvancedPhysicsSettings = IVRGripInterface::Execute_AdvancedPhysicsSettings(root);
 		ObjectToCheck = root;
 	}
@@ -878,7 +876,6 @@ bool UGripMotionControllerComponent::GripActor(
 		if(IVRGripInterface::Execute_DenyGripping(ActorToGrip))
 			return false; // Interface is saying not to grip it right now
 
-		bIsInteractible = IVRGripInterface::Execute_IsInteractible(ActorToGrip);
 		AdvancedPhysicsSettings = IVRGripInterface::Execute_AdvancedPhysicsSettings(ActorToGrip);
 		ObjectToCheck = ActorToGrip;
 	}
@@ -924,9 +921,6 @@ bool UGripMotionControllerComponent::GripActor(
 	else
 		newActorGrip.GripMovementReplicationSetting = GripMovementReplicationSetting;
 
-	//if (bIsInteractible)
-	//	newActorGrip.GripTargetType = EGripTargetType::InteractibleActorGrip;
-	//else
 	newActorGrip.GripTargetType = EGripTargetType::ActorGrip;
 
 	if (OptionalSnapToSocketName.IsValid() && root->DoesSocketExist(OptionalSnapToSocketName))
@@ -1046,7 +1040,6 @@ bool UGripMotionControllerComponent::GripComponent(
 		return false; // It is not movable, can't grip it
 	}
 
-	bool bIsInteractible = false;
 	FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
 	UObject * ObjectToCheck = NULL;
 
@@ -1055,7 +1048,6 @@ bool UGripMotionControllerComponent::GripComponent(
 		if(IVRGripInterface::Execute_DenyGripping(ComponentToGrip))
 		return false; // Interface is saying not to grip it right now
 
-		bIsInteractible = IVRGripInterface::Execute_IsInteractible(ComponentToGrip);
 		AdvancedPhysicsSettings = IVRGripInterface::Execute_AdvancedPhysicsSettings(ComponentToGrip);
 		ObjectToCheck = ComponentToGrip;
 	}
@@ -1075,10 +1067,6 @@ bool UGripMotionControllerComponent::GripComponent(
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
 	newActorGrip.AdvancedPhysicsSettings = AdvancedPhysicsSettings;
-
-//	if (bIsInteractible)
-//		newActorGrip.GripTargetType = EGripTargetType::InteractibleComponentGrip;
-//	else
 	newActorGrip.GripTargetType = EGripTargetType::ComponentGrip;
 
 	// Ignore late update setting if it doesn't make sense with the grip
