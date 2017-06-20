@@ -43,8 +43,6 @@ DECLARE_CYCLE_STAT(TEXT("Char PhysNavWalking"), STAT_CharPhysNavWalking, STATGRO
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectPoint"), STAT_CharNavProjectPoint, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectLocation"), STAT_CharNavProjectLocation, STATGROUP_Character);
 
-
-
 // MAGIC NUMBERS
 const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
 const float VERTICAL_SLOPE_NORMAL_Z = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
@@ -55,8 +53,6 @@ namespace CharacterMovementComponentStatics
 	static const FName CrouchTraceName = FName(TEXT("CrouchTrace"));
 	static const FName ImmersionDepthName = FName(TEXT("MovementComp_Character_ImmersionDepth"));
 }
-
-
 
 void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 {
@@ -921,8 +917,8 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		if (bZeroDelta)
 		{
 			remainingTime = 0.f;
-
-			if (VRRootCapsule && VRRootCapsule->bUseWalkingCollisionOverride)
+			// TODO: Bugged currently
+			/*if (VRRootCapsule && VRRootCapsule->bUseWalkingCollisionOverride)
 			{
 
 				FHitResult HitRes;
@@ -938,7 +934,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 				const FVector GravDir(0.f, 0.f, -1.f);
 				if (CanStepUp(HitRes) || (CharacterOwner->GetMovementBase() != NULL && CharacterOwner->GetMovementBase()->GetOwner() == HitRes.GetActor()))
 					StepUp(GravDir,VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), HitRes, &StepDownResult);
-			}
+			}*/
 		}
 		else
 		{
@@ -1033,21 +1029,11 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			}
 			else if (CurrentFloor.HitResult.bStartPenetrating && remainingTime <= 0.f)
 			{
-				// The floor check failed because it started in penetration
-				// We do not want to try to move downward because the downward sweep failed, rather we'd like to try to pop out of the floor.
-				/// This skips this if we are free walking and there was no HMD collision or controller input				
-				if (bZeroDelta && VRRootCapsule && !VRRootCapsule->bHadRelativeMovement)
-				{
-					bForceNextFloorCheck = true;
-				}
-				else
-				{
-					FHitResult Hit(CurrentFloor.HitResult);
-					Hit.TraceEnd = Hit.TraceStart + FVector(0.f, 0.f, MAX_FLOOR_DIST);
-					const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
-					ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
-					bForceNextFloorCheck = true;
-				}
+				FHitResult Hit(CurrentFloor.HitResult);
+				Hit.TraceEnd = Hit.TraceStart + FVector(0.f, 0.f, MAX_FLOOR_DIST);
+				const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
+				ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
+				bForceNextFloorCheck = true;
 			}
 
 			// check if just entered water
@@ -1845,9 +1831,15 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 	return true;
 }
 
+bool UVRCharacterMovementComponent::IsWithinClimbingEdgeTolerance(const FVector& CapsuleLocation, const FVector& TestImpactPoint, const float CapsuleRadius) const
+{
+	const float DistFromCenterSq = (TestImpactPoint - CapsuleLocation).SizeSquared2D();
+	const float ReducedRadiusSq = FMath::Square(FMath::Max(VRClimbingEdgeRejectDistance + KINDA_SMALL_NUMBER, CapsuleRadius - VRClimbingEdgeRejectDistance));
+	return DistFromCenterSq < ReducedRadiusSq;
+}
+
 bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult)
 {
-
 	SCOPE_CYCLE_COUNTER(STAT_CharStepUp);
 
 	if (!CanStepUp(InHit) || MaxStepHeight <= 0.f)
@@ -1892,28 +1884,8 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 	float PawnInitialFloorBaseZ = OldLocation.Z - PawnHalfHeight;
 	float PawnFloorPointZ = PawnInitialFloorBaseZ;
 
-	if (IsMovingOnGround() && CurrentFloor.IsWalkableFloor())
-	{
-		// Since we float a variable amount off the floor, we need to enforce max step height off the actual point of impact with the floor.
-		const float FloorDist = FMath::Max(0.f, CurrentFloor.FloorDist);
-		PawnInitialFloorBaseZ -= FloorDist;
-		StepTravelUpHeight = FMath::Max(StepTravelUpHeight - FloorDist, 0.f);
-		StepTravelDownHeight = (MaxStepHeight + MAX_FLOOR_DIST*2.f);
-
-		const bool bHitVerticalFace = !IsWithinEdgeTolerance(InHit.Location, InHit.ImpactPoint, PawnRadius);
-		if (!CurrentFloor.bLineTrace && !bHitVerticalFace)
-		{
-			PawnFloorPointZ = CurrentFloor.HitResult.ImpactPoint.Z;
-		}
-		else
-		{
-			// Base floor point is the base of the capsule moved down by how far we are hovering over the surface we are hitting.
-			PawnFloorPointZ -= CurrentFloor.FloorDist;
-		}
-	}
-
 	// Scope our movement updates, and do not apply them until all intermediate moves are completed.
-	/*FScopedMovementUpdate*/ FVRCharacterScopedMovementUpdate ScopedStepUpMovement(UpdatedComponent, EScopedUpdate::DeferredUpdates);
+	FVRCharacterScopedMovementUpdate ScopedStepUpMovement(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 
 	// step up - treat as vertical wall
 	FHitResult SweepUpHit(1.f);
@@ -1936,9 +1908,9 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 	// This won't effect control based movement unless stepping forward at the same time, but gives RW movement
 	// the extra boost to get up over a lip
 	// #TODO test this more, currently appears to be needed for walking, but is harmful for other modes
-	if (VRRootCapsule)
-		MoveUpdatedComponent(Delta/* + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D()*/, PawnRotation, true, &Hit);
-	else
+//	if (VRRootCapsule)
+//		MoveUpdatedComponent(Delta + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), PawnRotation, true, &Hit);
+//	else
 		MoveUpdatedComponent(Delta, PawnRotation, true, &Hit);
 
 	//MoveUpdatedComponent(Delta, PawnRotation, true, &Hit);
@@ -1974,21 +1946,21 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		return false;
 
 		// adjust and try again
-		/*const float ForwardHitTime = Hit.Time;
-		const float ForwardSlideAmount = SlideAlongSurface(Delta, 1.f - Hit.Time, Hit.Normal, Hit, true);
+		//const float ForwardHitTime = Hit.Time;
+		//const float ForwardSlideAmount = SlideAlongSurface(Delta, 1.f - Hit.Time, Hit.Normal, Hit, true);
 
-		if (IsFalling())
-		{
-			ScopedStepUpMovement.RevertMove();
-			return false;
-		}
+		//if (IsFalling())
+		//{
+		//	ScopedStepUpMovement.RevertMove();
+		//	return false;
+		//}
 
 		// If both the forward hit and the deflection got us nowhere, there is no point in this step up.
-		if (ForwardHitTime == 0.f && ForwardSlideAmount == 0.f)
-		{
-			ScopedStepUpMovement.RevertMove();
-			return false;
-		}*/
+		//if (ForwardHitTime == 0.f && ForwardSlideAmount == 0.f)
+		//{
+		//	ScopedStepUpMovement.RevertMove();
+		//	return false;
+		//}
 	}
 
 	// Step down
@@ -2000,7 +1972,6 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		ScopedStepUpMovement.RevertMove();
 		return false;
 	}
-
 
 	FStepDownResult StepDownResult;
 	if (Hit.IsValidBlockingHit())
@@ -2037,7 +2008,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		}
 
 		// Reject moves where the downward sweep hit something very close to the edge of the capsule. This maintains consistency with FindFloor as well.
-		if (!IsWithinEdgeTolerance(Hit.Location, Hit.ImpactPoint, PawnRadius))
+		if (!IsWithinClimbingEdgeTolerance(Hit.Location, Hit.ImpactPoint, PawnRadius))
 		{
 			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
 			ScopedStepUpMovement.RevertMove();
@@ -2082,7 +2053,6 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 
 	// Don't recalculate velocity based on this height adjustment, if considering vertical adjustments.
 	bJustTeleported |= !bMaintainHorizontalGroundVelocity;
-
 	return true;
 }
 
@@ -2328,10 +2298,23 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 	}
 
 	// #TODO: Modify the floor compute floor distance instead? Or just run movement logic differently for the bWalkingCollisionOverride setup.
-	// #VR Specific - ignore floor traces that are negative, this can be caused by capsule offset values and rotating in place
-	if (VRRootCapsule && VRRootCapsule->bUseWalkingCollisionOverride && bZeroDelta && OutFloorResult.bBlockingHit && OutFloorResult.FloorDist <  0.0f)
+	// #VR Specific - ignore floor traces that are negative, this can be caused by a failed floor check while starting in penetration
+	if (VRRootCapsule && VRRootCapsule->bUseWalkingCollisionOverride && OutFloorResult.bBlockingHit && OutFloorResult.FloorDist <= 0.0f)
 	{ 
-		OutFloorResult = LastFloor; // Move back to the last floor value, we are in penetration
+
+		if (OutFloorResult.FloorDist <= -FMath::Max(MAX_FLOOR_DIST, CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleRadius()))
+		{
+			// This was a negative trace result, the game wants us to pull out of penetration
+			// But with walking collision override we don't want to do that, so check for the correct channel and throw away
+			// the new floor if it matches
+			ECollisionResponse FloorResponse;
+			if (OutFloorResult.HitResult.Component.IsValid())
+			{
+				FloorResponse = OutFloorResult.HitResult.Component->GetCollisionResponseToChannel(VRRootCapsule->WalkingCollisionOverride);
+				if (FloorResponse == ECR_Ignore || FloorResponse == ECR_Overlap)
+					OutFloorResult = LastFloor;	// Move back to the last floor value, we are in penetration with a walking override
+			}
+		}
 	}
 
 	// OutFloorResult.HitResult is now the result of the vertical floor check.

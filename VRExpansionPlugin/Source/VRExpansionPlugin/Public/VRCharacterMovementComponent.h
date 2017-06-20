@@ -75,6 +75,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 	UVRRootComponent * VRRootCapsule;
 
+	/** Reject sweep impacts that are this close to the edge of the vertical portion of the capsule when performing vertical sweeps, and try again with a smaller capsule. */
+	static const float CLIMB_SWEEP_EDGE_REJECT_DISTANCE;
+	virtual bool IsWithinClimbingEdgeTolerance(const FVector& CapsuleLocation, const FVector& TestImpactPoint, const float CapsuleRadius) const;
 	virtual bool VRClimbStepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = nullptr) override;
 
 	// Allow merging movement replication (may cause issues when >10 players due to capsule location
@@ -219,6 +222,38 @@ public:
 	// Need to use actual capsule location for step up
 	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult) override;
 
+	virtual FVector GetPenetrationAdjustment(const FHitResult& Hit) const override
+	{
+		// This checks for a walking collision override on the penetrated object
+		// If found then it stops penetration adjustments.
+		if (MovementMode == EMovementMode::MOVE_Walking && VRRootCapsule && VRRootCapsule->bUseWalkingCollisionOverride && Hit.Component.IsValid())
+		{
+			ECollisionResponse WalkingResponse;
+			WalkingResponse = Hit.Component->GetCollisionResponseToChannel(VRRootCapsule->WalkingCollisionOverride);
+
+			if (WalkingResponse == ECR_Ignore || WalkingResponse == ECR_Overlap)
+			{
+				return FVector::ZeroVector;
+			}
+		}
+
+		FVector Result = Super::GetPenetrationAdjustment(Hit);
+
+		if (CharacterOwner)
+		{
+			const bool bIsProxy = (CharacterOwner->Role == ROLE_SimulatedProxy);
+			float MaxDistance = bIsProxy ? MaxDepenetrationWithGeometryAsProxy : MaxDepenetrationWithGeometry;
+			const AActor* HitActor = Hit.GetActor();
+			if (Cast<APawn>(HitActor))
+			{
+				MaxDistance = bIsProxy ? MaxDepenetrationWithPawnAsProxy : MaxDepenetrationWithPawn;
+			}
+
+			Result = Result.GetClampedToMaxSize(MaxDistance);
+		}
+
+		return Result;
+	}
 	// MOVED THIS TO THE BASE VR CHARACTER MOVEMENT COMPONENT
 	// Also added a control variable for it there
 	// Skip physics channels when looking for floor

@@ -109,7 +109,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		float VRClimbingStepHeight;
 
-	// Higher values make it easier to trigger a step up onto a platform and moves you farther in to the base
+	/* Custom distance that is required before accepting a climbing stepup
+	*  This is to help with cases where head wobble causes falling backwards
+	*  Do NOT set to larger than capsule radius!
+	*  #TODO: Port to SimpleCharacter as well
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
+		float VRClimbingEdgeRejectDistance;
+
+	// Higher values make it easier to trigger a step up onto a platform and moves you farther in to the base *DEFUNCT*
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		float VRClimbingStepUpMultiplier;
 

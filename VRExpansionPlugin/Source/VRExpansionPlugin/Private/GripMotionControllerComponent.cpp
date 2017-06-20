@@ -1351,6 +1351,7 @@ void UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 	case EGripCollisionType::InteractiveHybridCollisionWithPhysics:
 	case EGripCollisionType::ManipulationGrip:
 	case EGripCollisionType::ManipulationGripWithWristTwist:
+	case EGripCollisionType::InteractiveWeightedCollisionWithPhysics:
 	{
 		if(bHasMovementAuthority)
 			SetUpPhysicsHandle(NewGrip);
@@ -2416,6 +2417,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				switch (Grip->GripCollisionType)
 				{
 					case EGripCollisionType::InteractiveCollisionWithPhysics:
+					case EGripCollisionType::InteractiveWeightedCollisionWithPhysics:
 					{
 						UpdatePhysicsHandleTransform(*Grip, WorldTransform);
 						
@@ -2963,7 +2965,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				// Different settings for manip grip
 				if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip || NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 				{
-					
 					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
 					NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eFREE);
 					NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eFREE);
@@ -2996,9 +2997,20 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 						AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;// PX_MAX_F32;
 						//AngularDamping = 100.0f;// 0.0f;
 					}
+					
+					PxD6JointDrive drive;
+					PxD6JointDrive Angledrive;
 
-					PxD6JointDrive drive = PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
-					PxD6JointDrive Angledrive = PxD6JointDrive(AngularStiffness, AngularDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+					if (NewGrip.GripCollisionType == EGripCollisionType::InteractiveWeightedCollisionWithPhysics)
+					{
+						drive = PxD6JointDrive(Stiffness, Damping, PX_MAX_F32);
+						Angledrive = PxD6JointDrive(AngularStiffness * 1000.0f, AngularDamping * 1000.0f, PX_MAX_F32);
+					}
+					else
+					{
+						drive = PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+						Angledrive = PxD6JointDrive(AngularStiffness , AngularDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+					}
 
 					// Setting up the joint
 					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);

@@ -322,6 +322,7 @@ Manipulation grip = free constraint to controller base, no rotational drives
 ManipulationGripWithWristTwise = free constraint to controller base with a twist drive
 Custom grip is to be handled by the object itself, it just sends the TickGrip event every frame but doesn't move the object.
 InteractiveHybridCollisionWithPhysics = Uses Stiffness and damping settings on collision, on no collision uses stiffness values 10x stronger so it has less play.
+InteractiveWeightedCollisionWithPhysics = Uses force instead of accelleration to control object movements, less precise on purpose, takes mass into account for reactions
 */
 UENUM(Blueprintable)
 enum class EGripCollisionType : uint8
@@ -331,6 +332,7 @@ enum class EGripCollisionType : uint8
 	InteractiveCollisionWithSweep,
 	InteractiveHybridCollisionWithPhysics,
 	InteractiveHybridCollisionWithSweep,
+	InteractiveWeightedCollisionWithPhysics,
 	SweepWithPhysics,
 	PhysicsOnly,
 	ManipulationGrip,

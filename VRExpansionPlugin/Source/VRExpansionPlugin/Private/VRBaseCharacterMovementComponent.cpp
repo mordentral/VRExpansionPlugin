@@ -17,6 +17,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	AdditionalVRInputVector = FVector::ZeroVector;	
 	CustomVRInputVector = FVector::ZeroVector;
 	VRClimbingStepHeight = 96.0f;
+	VRClimbingEdgeRejectDistance = 5.0f;
 	VRClimbingStepUpMultiplier = 1.0f;
 	VRClimbingMaxReleaseVelocitySize = 800.0f;
 	SetDefaultPostClimbMovementOnStepUp = true;
