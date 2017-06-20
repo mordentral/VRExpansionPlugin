@@ -125,6 +125,11 @@ float UGrippableStaticMeshComponent::GripDamping_Implementation()
 	return VRGripInterfaceSettings.ConstraintDamping;
 }
 
+FBPAdvGripPhysicsSettings UGrippableStaticMeshComponent::AdvancedPhysicsSettings_Implementation()
+{
+	return VRGripInterfaceSettings.AdvancedPhysicsSettings;
+}
+
 float UGrippableStaticMeshComponent::GripBreakDistance_Implementation()
 {
 	return VRGripInterfaceSettings.ConstraintBreakDistance;

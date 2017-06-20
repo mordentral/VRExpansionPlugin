@@ -94,6 +94,10 @@ class VREXPANSIONPLUGIN_API UGrippableSphereComponent : public USphereComponent,
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripDamping();
 
+	// Get the advanced physics settings for this grip
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		FBPAdvGripPhysicsSettings AdvancedPhysicsSettings();
+
 	// What distance to break a grip at (only relevent with physics enabled grips
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripBreakDistance();

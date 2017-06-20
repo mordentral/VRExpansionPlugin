@@ -537,12 +537,10 @@ void UGripMotionControllerComponent::SetGripAdditionTransform(
 void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 	const FBPActorGripInformation &Grip,
 	EBPVRResultSwitch &Result,
-	float NewStiffness, float NewDamping
+	float NewStiffness, float NewDamping, bool bAlsoSetAngularValues, float OptionalAngularStiffness, float OptionalAngularDamping
 	)
 {
-	
-	SetGripConstraintStiffnessAndDamping(&Grip, NewStiffness, NewDamping, false);
-
+	Result = EBPVRResultSwitch::OnFailed;
 	int fIndex = GrippedActors.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
@@ -550,8 +548,14 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 		GrippedActors[fIndex].Stiffness = NewStiffness;
 		GrippedActors[fIndex].Damping = NewDamping;
 
+		if (bAlsoSetAngularValues)
+		{
+			GrippedActors[fIndex].AdvancedPhysicsSettings.AngularStiffness = OptionalAngularStiffness;
+			GrippedActors[fIndex].AdvancedPhysicsSettings.AngularDamping = OptionalAngularDamping;
+		}
+
 		Result = EBPVRResultSwitch::OnSucceeded;
-		return;
+		//return;
 	}
 	else
 	{
@@ -562,11 +566,18 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 			LocallyGrippedActors[fIndex].Stiffness = NewStiffness;
 			LocallyGrippedActors[fIndex].Damping = NewDamping;
 
+			if (bAlsoSetAngularValues)
+			{
+				LocallyGrippedActors[fIndex].AdvancedPhysicsSettings.AngularStiffness = OptionalAngularStiffness;
+				LocallyGrippedActors[fIndex].AdvancedPhysicsSettings.AngularDamping = OptionalAngularDamping;
+			}
+
 			Result = EBPVRResultSwitch::OnSucceeded;
-			return;
+		//	return;
 		}
 	}
-	Result = EBPVRResultSwitch::OnFailed;
+
+	SetGripConstraintStiffnessAndDamping(&Grip, false);
 }
 
 FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform_BP(
@@ -850,6 +861,7 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 
 	bool bIsInteractible = false;
+	FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
 	UObject * ObjectToCheck = NULL; // Used if having to calculate the transform
 
 	if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -858,7 +870,7 @@ bool UGripMotionControllerComponent::GripActor(
 			return false; // Interface is saying not to grip it right now
 
 		bIsInteractible = IVRGripInterface::Execute_IsInteractible(root);
-
+		AdvancedPhysicsSettings = IVRGripInterface::Execute_AdvancedPhysicsSettings(root);
 		ObjectToCheck = root;
 	}
 	else if (ActorToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -867,7 +879,7 @@ bool UGripMotionControllerComponent::GripActor(
 			return false; // Interface is saying not to grip it right now
 
 		bIsInteractible = IVRGripInterface::Execute_IsInteractible(ActorToGrip);
-
+		AdvancedPhysicsSettings = IVRGripInterface::Execute_AdvancedPhysicsSettings(ActorToGrip);
 		ObjectToCheck = ActorToGrip;
 	}
 
@@ -880,6 +892,7 @@ bool UGripMotionControllerComponent::GripActor(
 	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
+	newActorGrip.AdvancedPhysicsSettings = AdvancedPhysicsSettings;
 
 
 	// Ignore late update setting if it doesn't make sense with the grip
@@ -1034,6 +1047,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 
 	bool bIsInteractible = false;
+	FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
 	UObject * ObjectToCheck = NULL;
 
 	if (ComponentToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -1042,6 +1056,7 @@ bool UGripMotionControllerComponent::GripComponent(
 		return false; // Interface is saying not to grip it right now
 
 		bIsInteractible = IVRGripInterface::Execute_IsInteractible(ComponentToGrip);
+		AdvancedPhysicsSettings = IVRGripInterface::Execute_AdvancedPhysicsSettings(ComponentToGrip);
 		ObjectToCheck = ComponentToGrip;
 	}
 
@@ -1059,6 +1074,7 @@ bool UGripMotionControllerComponent::GripComponent(
 
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
+	newActorGrip.AdvancedPhysicsSettings = AdvancedPhysicsSettings;
 
 //	if (bIsInteractible)
 //		newActorGrip.GripTargetType = EGripTargetType::InteractibleComponentGrip;
@@ -1351,10 +1367,17 @@ void UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 	case EGripCollisionType::InteractiveHybridCollisionWithPhysics:
 	case EGripCollisionType::ManipulationGrip:
 	case EGripCollisionType::ManipulationGripWithWristTwist:
-	case EGripCollisionType::InteractiveWeightedCollisionWithPhysics:
 	{
-		if(bHasMovementAuthority)
+		if (bHasMovementAuthority)
+		{
+			// #TODO: Set center of mass from advanced physics settings
+			/*if (root && NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewGrip.AdvancedPhysicsSettings.bSetCOMToGripLocation)
+			{
+				root->SetCenterOfMass();
+			}*/
+
 			SetUpPhysicsHandle(NewGrip);
+		}
 
 	} break;
 
@@ -2417,7 +2440,6 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				switch (Grip->GripCollisionType)
 				{
 					case EGripCollisionType::InteractiveCollisionWithPhysics:
-					case EGripCollisionType::InteractiveWeightedCollisionWithPhysics:
 					{
 						UpdatePhysicsHandleTransform(*Grip, WorldTransform);
 						
@@ -2505,7 +2527,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							if (!Grip->bColliding)
 							{
-								SetGripConstraintStiffnessAndDamping(Grip, Grip->Stiffness, Grip->Damping, false);
+								SetGripConstraintStiffnessAndDamping(Grip, false);
 							}
 							Grip->bColliding = true;
 						}
@@ -2513,8 +2535,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							if (Grip->bColliding)
 							{
-								SetGripConstraintStiffnessAndDamping(Grip, Grip->Stiffness, Grip->Damping, true);
-								//SetGripConstraintStiffnessAndDamping(Grip, 0.0f, 0.0f, true);
+								SetGripConstraintStiffnessAndDamping(Grip, true);
 							}
 
 							Grip->bColliding = false;
@@ -2973,7 +2994,17 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					NewJoint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
 					NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
 
-					PxD6JointDrive drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+					PxD6JointDrive drive;
+
+					if (NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewGrip.AdvancedPhysicsSettings.PhysicsConstraintType == EPhysicsGripConstraintType::ForceConstraint)
+					{
+						PxD6JointDrive drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32);
+					}
+					else
+					{
+						PxD6JointDrive drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+					}
+
 					NewJoint->setDrive(PxD6Drive::eX, drive);
 					NewJoint->setDrive(PxD6Drive::eY, drive);
 					NewJoint->setDrive(PxD6Drive::eZ, drive);
@@ -2984,32 +3015,41 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				else
 				{
 					float Stiffness = NewGrip.Stiffness;
-					float AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER;
 					float Damping = NewGrip.Damping;
-					float AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER;
+					float AngularStiffness;
+					float AngularDamping;
+
+					if (NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewGrip.AdvancedPhysicsSettings.bUseCustomAngularValues)
+					{
+						AngularStiffness = NewGrip.AdvancedPhysicsSettings.AngularStiffness;
+						AngularDamping = NewGrip.AdvancedPhysicsSettings.AngularDamping;
+					}
+					else
+					{
+						AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier
+						AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
+					}
 
 					if (NewGrip.GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithPhysics)
 					{
 						// Do not effect damping, just increase stiffness so that it is stronger
 						// Default multiplier
-						Stiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;//PX_MAX_F32 / 2;
-						//Damping = 100.0f;// 0.0f;
-						AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;// PX_MAX_F32;
-						//AngularDamping = 100.0f;// 0.0f;
+						Stiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;
+						AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;
 					}
-					
+
 					PxD6JointDrive drive;
 					PxD6JointDrive Angledrive;
 
-					if (NewGrip.GripCollisionType == EGripCollisionType::InteractiveWeightedCollisionWithPhysics)
+					if (NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewGrip.AdvancedPhysicsSettings.PhysicsConstraintType == EPhysicsGripConstraintType::ForceConstraint)
 					{
 						drive = PxD6JointDrive(Stiffness, Damping, PX_MAX_F32);
-						Angledrive = PxD6JointDrive(AngularStiffness * 1000.0f, AngularDamping * 1000.0f, PX_MAX_F32);
+						Angledrive = PxD6JointDrive(AngularStiffness, AngularDamping, PX_MAX_F32);
 					}
 					else
 					{
 						drive = PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
-						Angledrive = PxD6JointDrive(AngularStiffness , AngularDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+						Angledrive = PxD6JointDrive(AngularStiffness, AngularDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
 					}
 
 					// Setting up the joint
@@ -3038,7 +3078,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	return true;
 }
 
-bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, float NewStiffness, float NewDamping, bool bIncreaseStiffness)
+bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, bool bUseHybridMultiplier)
 {
 	if (!Grip)
 		return false;
@@ -3053,7 +3093,17 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 			// Different settings for manip grip
 			if (Grip->GripCollisionType == EGripCollisionType::ManipulationGrip || Grip->GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 			{
-				PxD6JointDrive drive = PxD6JointDrive(NewStiffness, NewDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+				PxD6JointDrive drive;
+
+				if (Grip->AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && Grip->AdvancedPhysicsSettings.PhysicsConstraintType == EPhysicsGripConstraintType::ForceConstraint)
+				{
+					drive = PxD6JointDrive(Grip->Stiffness, Grip->Damping, PX_MAX_F32);
+				}
+				else
+				{
+					drive = PxD6JointDrive(Grip->Stiffness, Grip->Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+				}
+
 				Handle->HandleData->setDrive(PxD6Drive::eX, drive);
 				Handle->HandleData->setDrive(PxD6Drive::eY, drive);
 				Handle->HandleData->setDrive(PxD6Drive::eZ, drive);
@@ -3063,24 +3113,44 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 			}
 			else
 			{
-				float Stiffness = NewStiffness;
-				float AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier
-				float Damping = NewDamping;
-				float AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
+				float Stiffness = Grip->Stiffness;
+				float Damping = Grip->Damping;
+				float AngularStiffness;
+				float AngularDamping;
+
+				if (Grip->AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && Grip->AdvancedPhysicsSettings.bUseCustomAngularValues)
+				{
+					AngularStiffness = Grip->AdvancedPhysicsSettings.AngularStiffness;
+					AngularDamping = Grip->AdvancedPhysicsSettings.AngularDamping;
+				}
+				else
+				{
+					AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier
+					AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
+				}
 
 				// Used for interactive hybrid with physics grip when not colliding
-				if (bIncreaseStiffness)
+				if (bUseHybridMultiplier)
 				{
 					// Do not effect damping, just increase stiffness so that it is stronger
 					// Default multiplier
-					Stiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;//PX_MAX_F32 / 2;
-					//Damping = 100.0f;// 0.0f;
-					AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;// PX_MAX_F32;
-					//AngularDamping = 100.0f;// 0.0f;
+					Stiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;
+					AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;
 				}
 
-				PxD6JointDrive drive = PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
-				PxD6JointDrive Angledrive = PxD6JointDrive(AngularStiffness, AngularDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+				PxD6JointDrive drive;
+				PxD6JointDrive Angledrive;
+
+				if (Grip->AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && Grip->AdvancedPhysicsSettings.PhysicsConstraintType == EPhysicsGripConstraintType::ForceConstraint)
+				{
+					drive = PxD6JointDrive(Stiffness, Damping, PX_MAX_F32);
+					Angledrive = PxD6JointDrive(AngularStiffness, AngularDamping, PX_MAX_F32);
+				}
+				else
+				{
+					drive = PxD6JointDrive(Stiffness, Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+					Angledrive = PxD6JointDrive(AngularStiffness, AngularDamping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+				}
 
 				Handle->HandleData->setDrive(PxD6Drive::eX, drive);
 				Handle->HandleData->setDrive(PxD6Drive::eY, drive);

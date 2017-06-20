@@ -124,6 +124,11 @@ float UGrippableBoxComponent::GripDamping_Implementation()
 	return VRGripInterfaceSettings.ConstraintDamping;
 }
 
+FBPAdvGripPhysicsSettings UGrippableBoxComponent::AdvancedPhysicsSettings_Implementation()
+{
+	return VRGripInterfaceSettings.AdvancedPhysicsSettings;
+}
+
 float UGrippableBoxComponent::GripBreakDistance_Implementation()
 {
 	return VRGripInterfaceSettings.ConstraintBreakDistance;

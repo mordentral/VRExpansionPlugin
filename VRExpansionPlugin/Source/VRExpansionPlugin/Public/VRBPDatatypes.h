@@ -322,7 +322,6 @@ Manipulation grip = free constraint to controller base, no rotational drives
 ManipulationGripWithWristTwise = free constraint to controller base with a twist drive
 Custom grip is to be handled by the object itself, it just sends the TickGrip event every frame but doesn't move the object.
 InteractiveHybridCollisionWithPhysics = Uses Stiffness and damping settings on collision, on no collision uses stiffness values 10x stronger so it has less play.
-InteractiveWeightedCollisionWithPhysics = Uses force instead of accelleration to control object movements, less precise on purpose, takes mass into account for reactions
 */
 UENUM(Blueprintable)
 enum class EGripCollisionType : uint8
@@ -332,7 +331,6 @@ enum class EGripCollisionType : uint8
 	InteractiveCollisionWithSweep,
 	InteractiveHybridCollisionWithPhysics,
 	InteractiveHybridCollisionWithSweep,
-	InteractiveWeightedCollisionWithPhysics,
 	SweepWithPhysics,
 	PhysicsOnly,
 	ManipulationGrip,
@@ -421,6 +419,103 @@ enum class EGripInterfaceTeleportBehavior : uint8
 	OnlyTeleportRootComponent,
 	DropOnTeleport,
 	DontTeleport
+};
+
+// Type of physics constraint to use
+UENUM(Blueprintable)
+enum class EPhysicsGripConstraintType : uint8
+{
+	AccelerationConstraint,
+	ForceConstraint
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPAdvGripPhysicsSettings
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings")
+		bool bUseAdvancedPhysicsSettings;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+		EPhysicsGripConstraintType PhysicsConstraintType;
+
+	// #TODO: Implement this
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+	//	bool bSetCOMToGripLocation;
+
+	// Use the custom angular values on this grip
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+		bool bUseCustomAngularValues;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
+		float AngularStiffness;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
+		float AngularDamping;
+
+	FBPAdvGripPhysicsSettings()
+	{
+		bUseAdvancedPhysicsSettings = false;
+		bUseCustomAngularValues = false;
+		//bSetCOMToGripLocation = false;
+		AngularStiffness = 0.0f;
+		AngularDamping = 0.0f;
+		PhysicsConstraintType = EPhysicsGripConstraintType::AccelerationConstraint;
+	}
+
+	FORCEINLINE bool operator==(const FBPAdvGripPhysicsSettings &Other) const
+	{
+		return (bUseAdvancedPhysicsSettings == Other.bUseAdvancedPhysicsSettings &&
+			//bSetCOMToGripLocation == Other.bSetCOMToGripLocation &&
+			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
+			FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) &&
+			FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) &&
+			PhysicsConstraintType == Other.PhysicsConstraintType);
+	}
+
+	FORCEINLINE bool operator!=(const FBPAdvGripPhysicsSettings &Other) const
+	{
+		return (bUseAdvancedPhysicsSettings != Other.bUseAdvancedPhysicsSettings ||
+			//bSetCOMToGripLocation != Other.bSetCOMToGripLocation ||
+			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
+			!FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) ||
+			!FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) ||
+			PhysicsConstraintType != Other.PhysicsConstraintType);
+	}
+
+	/** Network serialization */
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		Ar << bUseAdvancedPhysicsSettings;
+
+		if (bUseAdvancedPhysicsSettings)
+		{
+			//Ar << bSetCOMToGripLocation;
+			Ar << PhysicsConstraintType;
+
+			Ar << bUseCustomAngularValues;
+
+			if (bUseCustomAngularValues)
+			{
+				Ar << AngularStiffness;
+				Ar << AngularDamping;
+			}
+		}
+
+		bOutSuccess = true;
+		return true;
+	}
+};
+
+template<>
+struct TStructOpsTypeTraits< FBPAdvGripPhysicsSettings > : public TStructOpsTypeTraitsBase2<FBPAdvGripPhysicsSettings>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
@@ -534,6 +629,9 @@ public:
 	UPROPERTY()
 		float Stiffness;
 
+	UPROPERTY()
+		FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
+
 	// For multi grip situations
 	UPROPERTY(BlueprintReadOnly)
 		bool bHasSecondaryAttachment;
@@ -576,6 +674,7 @@ public:
 		EGripMovementReplicationSettings CachedGripMovementReplicationSetting;
 		float CachedStiffness;
 		float CachedDamping;
+		FBPAdvGripPhysicsSettings CachedAdvancedPhysicsSettings;
 
 		FGripValueCache()
 		{
@@ -735,7 +834,6 @@ struct TStructOpsTypeTraits< FBPActorGripInformation > : public TStructOpsTypeTr
 	};
 };*/
 
-
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPInterfaceProperties
 {
@@ -779,6 +877,9 @@ public:
 		float ConstraintDamping;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintBreakDistance;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
@@ -796,7 +897,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (editcondition = "bIsInteractible"))
 		FBPInteractionSettings InteractionSettings;
 
 	FBPInterfaceProperties()

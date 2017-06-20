@@ -207,9 +207,9 @@ public:
 			else // If re-creating the grip anyway we don't need to do the below
 			{
 				// If the stiffness and damping got changed server side
-				if (Grip.ValueCache.CachedStiffness != Grip.Stiffness || Grip.ValueCache.CachedDamping != Grip.Damping)
+				if ( !FMath::IsNearlyEqual(Grip.ValueCache.CachedStiffness, Grip.Stiffness) || !FMath::IsNearlyEqual(Grip.ValueCache.CachedDamping, Grip.Damping) || Grip.ValueCache.CachedAdvancedPhysicsSettings != Grip.AdvancedPhysicsSettings)
 				{
-					SetGripConstraintStiffnessAndDamping(&Grip, Grip.Stiffness, Grip.Damping);
+					SetGripConstraintStiffnessAndDamping(&Grip);
 				}
 			}
 		}
@@ -221,6 +221,7 @@ public:
 		Grip.ValueCache.CachedGripMovementReplicationSetting = Grip.GripMovementReplicationSetting;
 		Grip.ValueCache.CachedStiffness = Grip.Stiffness;
 		Grip.ValueCache.CachedDamping = Grip.Damping;
+		Grip.ValueCache.CachedAdvancedPhysicsSettings = Grip.AdvancedPhysicsSettings;
 	}
 
 	UPROPERTY(BlueprintReadWrite, Category = "VRGrip")
@@ -360,8 +361,7 @@ public:
 		EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping, 
 		EGripMovementReplicationSettings GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
 		float GripStiffness = 1500.0f, 
-		float GripDamping = 200.0f
-		);
+		float GripDamping = 200.0f);
 
 	// Drop a gripped actor
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -382,8 +382,7 @@ public:
 		EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
 		EGripMovementReplicationSettings GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
 		float GripStiffness = 1500.0f, 
-		float GripDamping = 200.0f
-		);
+		float GripDamping = 200.0f);
 
 	// Drop a gripped component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -466,7 +465,7 @@ public:
 		void SetGripStiffnessAndDamping(
 			const FBPActorGripInformation &Grip,
 			EBPVRResultSwitch &Result,
-			float NewStiffness, float NewDamping
+			float NewStiffness, float NewDamping, bool bAlsoSetAngularValues = false, float OptionalAngularStiffness = 0.0f, float OptionalAngularDamping = 0.0f
 		);
 
 	// Used to convert an offset transform to grip relative, useful for storing an initial offset and then lerping back to 0 without re-calculating every tick
@@ -688,7 +687,7 @@ public:
 	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
 	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
 	bool GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, UPrimitiveComponent * rootComp, FVector & LocOut);
-	bool SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, float NewStiffness, float NewDamping, bool bIncreaseStiffness = false);
+	bool SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, bool bUseHybridMultiplier = false);
 
 	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
 	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);

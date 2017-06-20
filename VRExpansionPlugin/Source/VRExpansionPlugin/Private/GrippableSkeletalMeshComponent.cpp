@@ -125,6 +125,11 @@ float UGrippableSkeletalMeshComponent::GripDamping_Implementation()
 	return VRGripInterfaceSettings.ConstraintDamping;
 }
 
+FBPAdvGripPhysicsSettings UGrippableSkeletalMeshComponent::AdvancedPhysicsSettings_Implementation()
+{
+	return VRGripInterfaceSettings.AdvancedPhysicsSettings;
+}
+
 float UGrippableSkeletalMeshComponent::GripBreakDistance_Implementation()
 {
 	return VRGripInterfaceSettings.ConstraintBreakDistance;
