@@ -2998,11 +2998,11 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 					if (NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewGrip.AdvancedPhysicsSettings.PhysicsConstraintType == EPhysicsGripConstraintType::ForceConstraint)
 					{
-						PxD6JointDrive drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32);
+						drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32);
 					}
 					else
 					{
-						PxD6JointDrive drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
+						drive = PxD6JointDrive(NewGrip.Stiffness, NewGrip.Damping, PX_MAX_F32, PxD6JointDriveFlag::eACCELERATION);
 					}
 
 					NewJoint->setDrive(PxD6Drive::eX, drive);
