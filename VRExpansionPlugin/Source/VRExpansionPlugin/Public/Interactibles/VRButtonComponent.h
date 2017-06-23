@@ -3,6 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GripMotionControllerComponent.h"
+#include "MotionControllerComponent.h"
+#include "VRGripInterface.h"
 //#include "VRBPDatatypes.h"
 //#include "VRExpansionFunctionLibrary.h"
 #include "VRButtonComponent.generated.h"
@@ -15,8 +18,9 @@
 UENUM(Blueprintable)
 enum class EVRButtonType : uint8
 {
-	Btn_Toggle,
-	Btn_Press
+	Btn_Press,
+	Btn_Toggle_Return,
+	Btn_Toggle_Stay
 };
 
 // VR Button Press Axis
@@ -40,6 +44,7 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);	
+
 	UFUNCTION()
 	void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
@@ -52,9 +57,17 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 		return InteractingComponent.IsValid();
 	}
 
+	// Should be called after the button is moved post begin play
+	UFUNCTION(BlueprintCallable, Category = "VRButtonComponent")
+	void ResetInitialButtonLocation()
+	{
+		// Get our initial relative transform to our parent (or not if un-parented).
+		InitialRelativeTransform = this->GetRelativeTransform();
+	}
+
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
-	FVRButtonStateChangedSignature OnButtonStateChanged;
+		FVRButtonStateChangedSignature OnButtonStateChanged;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
 		TWeakObjectPtr<UPrimitiveComponent> InteractingComponent;
@@ -89,6 +102,51 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
 	float MinTimeBetweenEngaging;
 
+
+	virtual bool IsValidOverlap(UPrimitiveComponent * OverlapComponent)
+	{
+
+		// Early out on the simple checks
+		if (!OverlapComponent || OverlapComponent == GetAttachParent() || OverlapComponent->GetAttachParent() == GetAttachParent())
+			return false;
+
+		// Should return faster checking for owning character
+		AActor * OverlapOwner = OverlapComponent->GetOwner();
+		if (OverlapOwner && OverlapOwner->IsA(ACharacter::StaticClass()))
+			return true;
+
+		// Because epic motion controllers are not owned by characters have to check here too in case someone implements it like that
+		USceneComponent * AttachParent = OverlapComponent->GetAttachParent();
+		if (AttachParent && (OverlapComponent->GetAttachParent()->IsA(UGripMotionControllerComponent::StaticClass()) || OverlapComponent->GetAttachParent()->IsA(UMotionControllerComponent::StaticClass())))
+			return true;
+
+		// Now check for if it is a grippable object and if it is currently held
+		if (OverlapComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			UGripMotionControllerComponent *Controller;
+			bool bIsHeld;
+			IVRGripInterface::Execute_IsHeld(OverlapComponent, Controller, bIsHeld);
+
+			if (bIsHeld)
+				return true;
+		}
+
+		return false;
+	}
+
+	virtual FVector GetTargetRelativeLocation()
+	{
+		// If target is the half pressed
+		if (ButtonType == EVRButtonType::Btn_Toggle_Stay && bButtonState)
+		{
+			// 1.e-2f = MORE_KINDA_SMALL_NUMBER
+			return InitialRelativeTransform.GetTranslation() + SetAxisValue(-(ButtonEngageDepth + (1.e-2f)));
+		}
+		
+		// Else return going all the way back
+		return InitialRelativeTransform.GetTranslation();
+
+	}
 
 protected:
 

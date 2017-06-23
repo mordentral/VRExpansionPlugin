@@ -16,7 +16,7 @@ UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializ
 	DepressSpeed = 50.0f;
 
 	ButtonAxis = EVRButtonDepressAxis::Btn_Axis_Z;
-	ButtonType = EVRButtonType::Btn_Toggle;
+	ButtonType = EVRButtonType::Btn_Toggle_Return;
 
 	MinTimeBetweenEngaging = 0.1f;
 
@@ -34,8 +34,7 @@ void UVRButtonComponent::BeginPlay()
 	// Call the base class 
 	Super::BeginPlay();
 
-	// Get our initial relative transform to our parent (or not if un-parented).
-	InitialRelativeTransform = this->GetRelativeTransform();
+	ResetInitialButtonLocation();
 }
 
 void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -53,15 +52,25 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 		if (CheckDepth > 0.0f)
 		{
-			float NewDepth = FMath::Clamp(GetAxisValue(InitialComponentLoc) + (-CheckDepth), -DepressDistance, 0.0f);
+
+			float ClampMinDepth = 0.0f;
+			
+			// If active and a toggled stay, then clamp min to the toggled stay location
+			if (ButtonType == EVRButtonType::Btn_Toggle_Stay && bButtonState)
+				ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_KINDA_SMALL_NUMBER
+
+			float NewDepth = FMath::Clamp(GetAxisValue(InitialComponentLoc) + (-CheckDepth), -DepressDistance, ClampMinDepth);
 			this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(SetAxisValue(NewDepth)), false);
 
-			if (ButtonType == EVRButtonType::Btn_Toggle && !bToggledThisTouch && NewDepth <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
+			if (ButtonType == EVRButtonType::Btn_Toggle_Return || ButtonType == EVRButtonType::Btn_Toggle_Stay)
 			{
-				LastToggleTime = WorldTime;
-				bToggledThisTouch = true;
-				bButtonState = !bButtonState;
-				OnButtonStateChanged.Broadcast(bButtonState);
+				if (!bToggledThisTouch && NewDepth <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
+				{
+					LastToggleTime = WorldTime;
+					bToggledThisTouch = true;
+					bButtonState = !bButtonState;
+					OnButtonStateChanged.Broadcast(bButtonState);
+				}
 			}
 		}
 	}
@@ -70,12 +79,12 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 		InteractingComponent.Reset();
 
 		// Std precision tolerance should be fine
-		if (this->RelativeLocation.Equals(InitialRelativeTransform.GetTranslation()))
+		if (this->RelativeLocation.Equals(GetTargetRelativeLocation()))
 		{
 			this->SetComponentTickEnabled(false);
 		}
 		else
-			this->SetRelativeLocation(FMath::VInterpConstantTo(this->RelativeLocation, InitialRelativeTransform.GetTranslation(), DeltaTime, DepressSpeed), false);
+			this->SetRelativeLocation(FMath::VInterpConstantTo(this->RelativeLocation, GetTargetRelativeLocation(), DeltaTime, DepressSpeed), false);
 	}
 
 
@@ -97,7 +106,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 void UVRButtonComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// Other Actor is the actor that triggered the event. Check that is not ourself.  
-	if (!InteractingComponent.IsValid() && OtherComp)
+	if (!InteractingComponent.IsValid() && IsValidOverlap(OtherComp))
 	{
 		InteractingComponent = OtherComp;
 
