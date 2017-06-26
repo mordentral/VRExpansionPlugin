@@ -20,6 +20,8 @@ UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializ
 
 	MinTimeBetweenEngaging = 0.1f;
 
+	bIsEnabled = true;
+
 	OnComponentBeginOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapBegin);
 	OnComponentEndOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapEnd);
 }
@@ -46,6 +48,14 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 	if (InteractingComponent.IsValid())
 	{
+		// If button was set to inactive during use
+		if (!bIsEnabled)
+		{
+			// Remove interacting component and return, next tick with begin lerping back
+			InteractingComponent.Reset();
+			return;
+		}
+
 		FTransform OriginalBaseTransform = CalcNewComponentToWorld(InitialRelativeTransform);
 
 		float CheckDepth = FMath::Clamp(GetAxisValue(InitialLocation) - GetAxisValue(OriginalBaseTransform.InverseTransformPosition(InteractingComponent->GetComponentLocation())), 0.0f, DepressDistance);
@@ -76,12 +86,11 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 	}
 	else
 	{
-		InteractingComponent.Reset();
-
 		// Std precision tolerance should be fine
 		if (this->RelativeLocation.Equals(GetTargetRelativeLocation()))
 		{
 			this->SetComponentTickEnabled(false);
+			InteractingComponent.Reset(); // Just reset it here so it only does it once
 		}
 		else
 			this->SetRelativeLocation(FMath::VInterpConstantTo(this->RelativeLocation, GetTargetRelativeLocation(), DeltaTime, DepressSpeed), false);
@@ -106,7 +115,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 void UVRButtonComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// Other Actor is the actor that triggered the event. Check that is not ourself.  
-	if (!InteractingComponent.IsValid() && IsValidOverlap(OtherComp))
+	if (bIsEnabled && !InteractingComponent.IsValid() && IsValidOverlap(OtherComp))
 	{
 		InteractingComponent = OtherComp;
 

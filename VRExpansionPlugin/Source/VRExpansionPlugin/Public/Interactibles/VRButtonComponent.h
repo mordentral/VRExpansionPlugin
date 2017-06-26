@@ -72,6 +72,11 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
 		TWeakObjectPtr<UPrimitiveComponent> InteractingComponent;
 
+
+	// Whether the button is enabled or not (can be interacted with)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
+	bool bIsEnabled;
+
 	// Current state of the button, writable to set initial value
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "VRButtonComponent")
 	bool bButtonState;
@@ -116,8 +121,8 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 			return true;
 
 		// Because epic motion controllers are not owned by characters have to check here too in case someone implements it like that
-		USceneComponent * AttachParent = OverlapComponent->GetAttachParent();
-		if (AttachParent && (OverlapComponent->GetAttachParent()->IsA(UGripMotionControllerComponent::StaticClass()) || OverlapComponent->GetAttachParent()->IsA(UMotionControllerComponent::StaticClass())))
+		USceneComponent * OurAttachParent = OverlapComponent->GetAttachParent();
+		if (OurAttachParent && (OurAttachParent->IsA(UGripMotionControllerComponent::StaticClass()) || OurAttachParent->IsA(UMotionControllerComponent::StaticClass())))
 			return true;
 
 		// Now check for if it is a grippable object and if it is currently held
@@ -140,7 +145,7 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 		if (ButtonType == EVRButtonType::Btn_Toggle_Stay && bButtonState)
 		{
 			// 1.e-2f = MORE_KINDA_SMALL_NUMBER
-			return InitialRelativeTransform.GetTranslation() + SetAxisValue(-(ButtonEngageDepth + (1.e-2f)));
+			return InitialRelativeTransform.TransformPosition(SetAxisValue(-(ButtonEngageDepth + (1.e-2f))));
 		}
 		
 		// Else return going all the way back
