@@ -4,12 +4,14 @@
 #include "CoreMinimal.h"
 #include "Components/ShapeComponent.h"
 #include "VRTrackedParentInterface.h"
+#include "VRBaseCharacter.h"
+#include "VRExpansionFunctionLibrary.h"
 #include "VRRootComponent.generated.h"
 
 //For UE4 Profiler ~ Stat Group
 //DECLARE_STATS_GROUP(TEXT("VRPhysicsUpdate"), STATGROUP_VRPhysics, STATCAT_Advanced);
 
-class AVRBaseCharacter;
+//class AVRBaseCharacter;
 
 DECLARE_STATS_GROUP(TEXT("VRRootComponent"), STATGROUP_VRRootComponent, STATCAT_Advanced);
 DECLARE_CYCLE_STAT(TEXT("VR Root Set Half Height"), STAT_VRRootSetHalfHeight, STATGROUP_VRRootComponent);
