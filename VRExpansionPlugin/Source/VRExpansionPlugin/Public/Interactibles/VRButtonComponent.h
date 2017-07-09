@@ -23,15 +23,6 @@ enum class EVRButtonType : uint8
 	Btn_Toggle_Stay
 };
 
-// VR Button Press Axis
-UENUM(Blueprintable)
-enum class EVRButtonDepressAxis : uint8
-{
-	Btn_Axis_X,
-	Btn_Axis_Y,
-	Btn_Axis_Z
-};
-
 /** Delegate for notification when the button state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRButtonStateChangedSignature, bool, ButtonState);
 
@@ -97,7 +88,7 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 
 	// Negative on this axis is the depress direction
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
-	EVRButtonDepressAxis ButtonAxis;
+	EVRInteractibleAxis ButtonAxis;
 
 	// Depth at which the button engages (switches)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
@@ -121,8 +112,9 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 			return true;
 
 		// Because epic motion controllers are not owned by characters have to check here too in case someone implements it like that
+		// Now since our grip controllers are a subclass to the std ones we only need to check for the base one instead of both.
 		USceneComponent * OurAttachParent = OverlapComponent->GetAttachParent();
-		if (OurAttachParent && (OurAttachParent->IsA(UGripMotionControllerComponent::StaticClass()) || OurAttachParent->IsA(UMotionControllerComponent::StaticClass())))
+		if (OurAttachParent && OurAttachParent->IsA(UMotionControllerComponent::StaticClass()))
 			return true;
 
 		// Now check for if it is a grippable object and if it is currently held
@@ -166,11 +158,11 @@ protected:
 	{
 		switch (ButtonAxis)
 		{
-		case EVRButtonDepressAxis::Btn_Axis_X:
+		case EVRInteractibleAxis::Axis_X:
 			return CheckLocation.X; break;
-		case EVRButtonDepressAxis::Btn_Axis_Y:
+		case EVRInteractibleAxis::Axis_Y:
 			return CheckLocation.Y; break;
-		case EVRButtonDepressAxis::Btn_Axis_Z:
+		case EVRInteractibleAxis::Axis_Z:
 			return CheckLocation.Z; break;
 		default:return 0.0f; break;
 		}
@@ -182,11 +174,11 @@ protected:
 
 		switch (ButtonAxis)
 		{
-		case EVRButtonDepressAxis::Btn_Axis_X:
+		case EVRInteractibleAxis::Axis_X:
 			vec.X = SetValue; break;
-		case EVRButtonDepressAxis::Btn_Axis_Y:
+		case EVRInteractibleAxis::Axis_Y:
 			vec.Y = SetValue; break;
-		case EVRButtonDepressAxis::Btn_Axis_Z:
+		case EVRInteractibleAxis::Axis_Z:
 			vec.Z = SetValue; break;
 		}
 

@@ -15,7 +15,7 @@ UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializ
 	ButtonEngageDepth = 8.0f;
 	DepressSpeed = 50.0f;
 
-	ButtonAxis = EVRButtonDepressAxis::Btn_Axis_Z;
+	ButtonAxis = EVRInteractibleAxis::Axis_Z;
 	ButtonType = EVRButtonType::Btn_Toggle_Return;
 
 	MinTimeBetweenEngaging = 0.1f;
@@ -51,7 +51,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 		// If button was set to inactive during use
 		if (!bIsEnabled)
 		{
-			// Remove interacting component and return, next tick with begin lerping back
+			// Remove interacting component and return, next tick will begin lerping back
 			InteractingComponent.Reset();
 			return;
 		}

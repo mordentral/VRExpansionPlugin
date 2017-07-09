@@ -17,7 +17,7 @@ UGripSteamVRTrackedDevice::~UGripSteamVRTrackedDevice()
 {
 }
 
-bool UGripSteamVRTrackedDevice::PollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale)
+bool UGripSteamVRTrackedDevice::GripPollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;

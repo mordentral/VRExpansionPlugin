@@ -14,6 +14,16 @@
 
 class UGripMotionControllerComponent;
 
+// VR lever axis
+UENUM(Blueprintable)
+enum class EVRInteractibleAxis : uint8
+{
+	Axis_X,
+	Axis_Y,
+	Axis_Z
+};
+
+
 // Custom movement modes for the characters
 UENUM(BlueprintType)
 enum class EVRCustomMovementMode : uint8
@@ -441,9 +451,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
 		EPhysicsGripConstraintType PhysicsConstraintType;
 
-	// #TODO: Implement this
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
-	//	bool bSetCOMToGripLocation;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+		bool bDoNotSetCOMToGripLocation;
 
 	// Use the custom angular values on this grip
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
@@ -459,7 +468,7 @@ public:
 	{
 		bUseAdvancedPhysicsSettings = false;
 		bUseCustomAngularValues = false;
-		//bSetCOMToGripLocation = false;
+		bDoNotSetCOMToGripLocation = false;
 		AngularStiffness = 0.0f;
 		AngularDamping = 0.0f;
 		PhysicsConstraintType = EPhysicsGripConstraintType::AccelerationConstraint;
@@ -468,7 +477,7 @@ public:
 	FORCEINLINE bool operator==(const FBPAdvGripPhysicsSettings &Other) const
 	{
 		return (bUseAdvancedPhysicsSettings == Other.bUseAdvancedPhysicsSettings &&
-			//bSetCOMToGripLocation == Other.bSetCOMToGripLocation &&
+			bDoNotSetCOMToGripLocation == Other.bDoNotSetCOMToGripLocation &&
 			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
 			FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) &&
 			FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) &&
@@ -478,7 +487,7 @@ public:
 	FORCEINLINE bool operator!=(const FBPAdvGripPhysicsSettings &Other) const
 	{
 		return (bUseAdvancedPhysicsSettings != Other.bUseAdvancedPhysicsSettings ||
-			//bSetCOMToGripLocation != Other.bSetCOMToGripLocation ||
+			bDoNotSetCOMToGripLocation != Other.bDoNotSetCOMToGripLocation ||
 			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
 			!FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) ||
 			!FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) ||
@@ -492,7 +501,7 @@ public:
 
 		if (bUseAdvancedPhysicsSettings)
 		{
-			//Ar << bSetCOMToGripLocation;
+			Ar << bDoNotSetCOMToGripLocation;
 			Ar << PhysicsConstraintType;
 
 			Ar << bUseCustomAngularValues;
@@ -511,6 +520,84 @@ public:
 
 template<>
 struct TStructOpsTypeTraits< FBPAdvGripPhysicsSettings > : public TStructOpsTypeTraitsBase2<FBPAdvGripPhysicsSettings>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPSecondaryGripInfo
+{
+	GENERATED_BODY()
+public:
+
+	// For multi grip situations
+	UPROPERTY(BlueprintReadOnly, Category = "SecondaryGripInfo")
+		bool bHasSecondaryAttachment;
+
+	UPROPERTY(BlueprintReadOnly, Category = "SecondaryGripInfo")
+		USceneComponent * SecondaryAttachment;
+
+	UPROPERTY(BlueprintReadWrite, Category = "SecondaryGripInfo")
+		float SecondarySmoothingScaler;
+
+	UPROPERTY()
+		FVector_NetQuantize100 SecondaryRelativeLocation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "SecondaryGripInfo")
+		bool bIsSlotGrip;
+
+	// Lerp transitions
+	// Max value is 16 seconds with two decimal precision, this is to reduce replication overhead
+	UPROPERTY()
+		float LerpToRate;
+
+	// These are not replicated, they don't need to be
+	EGripLerpState GripLerpState;
+	float curLerp;
+
+	// Store values for frame by frame changes of secondary grips
+	FVector LastRelativeLocation;
+
+	FBPSecondaryGripInfo()
+	{
+		LerpToRate = 0.0f;
+		SecondarySmoothingScaler = 1.0f;
+		SecondaryRelativeLocation = FVector::ZeroVector;
+
+		curLerp = 0.0f;
+		GripLerpState = EGripLerpState::NotLerping;
+
+		SecondaryAttachment = nullptr;
+		bHasSecondaryAttachment = false;
+		bIsSlotGrip = false;
+	}
+
+	/** Network serialization */
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		Ar << bHasSecondaryAttachment;
+		
+		if (bHasSecondaryAttachment)
+		{
+			Ar << SecondaryAttachment;
+			Ar << SecondaryRelativeLocation;
+			Ar << SecondarySmoothingScaler;
+
+			Ar << bIsSlotGrip;
+		}
+
+		Ar << LerpToRate;
+
+		bOutSuccess = true;
+		return true;
+	}
+};
+
+template<>
+struct TStructOpsTypeTraits< FBPSecondaryGripInfo > : public TStructOpsTypeTraitsBase2<FBPSecondaryGripInfo>
 {
 	enum
 	{
@@ -618,6 +705,8 @@ public:
 		bool bColliding;
 	UPROPERTY(BlueprintReadWrite)
 		FTransform_NetQuantize RelativeTransform;
+	UPROPERTY(BlueprintReadWrite)
+		bool bIsSlotGrip;
 
 	UPROPERTY(BlueprintReadOnly)
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
@@ -632,28 +721,13 @@ public:
 	UPROPERTY()
 		FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
 
+	// When true the grips movement logic will not be performed until it is false again
+	//UPROPERTY(BlueprintReadWrite)
+		//bool bPauseGrip;
+
 	// For multi grip situations
 	UPROPERTY(BlueprintReadOnly)
-		bool bHasSecondaryAttachment;
-
-	UPROPERTY(BlueprintReadOnly)
-		USceneComponent * SecondaryAttachment;
-	UPROPERTY(BlueprintReadWrite)
-		float SecondarySmoothingScaler;
-	UPROPERTY()
-		FVector_NetQuantize100 SecondaryRelativeLocation;
-
-	// Lerp transitions
-	// Max value is 16 seconds with two decimal precision, this is to reduce replication overhead
-	UPROPERTY()
-		float LerpToRate;
-
-	// These are not replicated, they don't need to be
-	EGripLerpState GripLerpState;
-	float curLerp;
-
-	// Store values for frame by frame changes of secondary grips
-	FVector LastRelativeLocation;
+		FBPSecondaryGripInfo SecondaryGripInfo;
 
 	// Optional Additive Transform for programmatic animation
 	UPROPERTY(BlueprintReadWrite, NotReplicated)
@@ -747,18 +821,10 @@ public:
 		GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
 		GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 		bIsLocked = false;
-		curLerp = 0.0f;
-		LerpToRate = 0.0f;
-		GripLerpState = EGripLerpState::NotLerping;
-		SecondarySmoothingScaler = 1.0f;
-		SecondaryRelativeLocation = FVector::ZeroVector;
-
-		SecondaryAttachment = nullptr;
-		bHasSecondaryAttachment = false;
 
 		RelativeTransform = FTransform::Identity;
 		AdditionTransform = FTransform::Identity;
-		//SecondaryScaler = 1.0f;
+		bIsSlotGrip = false;
 	}	
 
 	/** Network serialization */

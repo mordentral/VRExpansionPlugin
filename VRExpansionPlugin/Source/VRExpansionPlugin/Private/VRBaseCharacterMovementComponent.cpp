@@ -425,7 +425,7 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 		// Specifically used by the Climbing Step up, so that server rollbacks are supported
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
 	}
-
+	
 	Super::PerformMovement(DeltaSeconds);
 
 	// Make sure these are cleaned out for the next frame
