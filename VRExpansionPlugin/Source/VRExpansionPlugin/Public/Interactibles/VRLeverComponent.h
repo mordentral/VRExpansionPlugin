@@ -6,6 +6,8 @@
 #include "GripMotionControllerComponent.h"
 #include "MotionControllerComponent.h"
 #include "VRGripInterface.h"
+#include "GameplayTagContainer.h"
+#include "GameplayTagAssetInterface.h"
 #include "PhysicsEngine/ConstraintInstance.h"
 
 #include "PhysicsPublic.h"
