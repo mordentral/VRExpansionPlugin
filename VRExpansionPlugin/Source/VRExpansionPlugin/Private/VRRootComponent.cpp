@@ -243,7 +243,9 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	this->RelativeLocation = FVector(0, 0, 0);
 
 	VRCapsuleOffset = FVector(0.0f, 0.0f, 0.0f);
-	
+	bCenterCapsuleOnHMD = false;
+
+
 	ShapeColor = FColor(223, 149, 157, 255);
 
 	CapsuleRadius = 20.0f;
