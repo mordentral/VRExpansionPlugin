@@ -2894,18 +2894,21 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(int32 SceneIndex, phys
 bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInformation &Grip)
 {
 
-	// Reset center of mass to zero
-	if (!Grip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings || (Grip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && !Grip.AdvancedPhysicsSettings.bDoNotSetCOMToGripLocation))
+	if (Grip.GripCollisionType != EGripCollisionType::ManipulationGrip && Grip.GripCollisionType != EGripCollisionType::ManipulationGripWithWristTwist)
 	{
-		UPrimitiveComponent *root = Grip.GetGrippedComponent();
-		AActor * pActor = Grip.GetGrippedActor();
-
-		if (!root && pActor)
-			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-
-		if (root)
+		// Reset center of mass to zero
+		if (!Grip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings || (Grip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && !Grip.AdvancedPhysicsSettings.bDoNotSetCOMToGripLocation))
 		{
-			root->SetCenterOfMass(FVector(0, 0, 0));
+			UPrimitiveComponent *root = Grip.GetGrippedComponent();
+			AActor * pActor = Grip.GetGrippedActor();
+
+			if (!root && pActor)
+				root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+
+			if (root)
+			{
+				root->SetCenterOfMass(FVector(0, 0, 0));
+			}
 		}
 	}
 
@@ -2961,21 +2964,19 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		FTransform WorldTransform = NewGrip.RelativeTransform * controllerTransform;
 
 
-		// #TODO: Set center of mass from advanced physics settings
-		if (!NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings || (NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && !NewGrip.AdvancedPhysicsSettings.bDoNotSetCOMToGripLocation))
-		{
-			FVector curCOMPosition = rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(rBodyInstance->GetCOMPosition());
-			rBodyInstance->COMNudge = controllerTransform.GetRelativeTransform(WorldTransform).GetLocation() - curCOMPosition;
-			rBodyInstance->UpdateMassProperties();	
-		}
-
-
 		if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip || NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 		{
 			trans.SetLocation(root->GetComponentTransform().GetLocation() - (WorldTransform.GetLocation() - this->GetComponentLocation()));
 		}
 		else
 		{
+			if (!NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings || (NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && !NewGrip.AdvancedPhysicsSettings.bDoNotSetCOMToGripLocation))
+			{
+				FVector curCOMPosition = rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(rBodyInstance->GetCOMPosition());
+				rBodyInstance->COMNudge = controllerTransform.GetRelativeTransform(WorldTransform).GetLocation() - curCOMPosition;
+				rBodyInstance->UpdateMassProperties();
+			}
+
 			trans.SetLocation(rBodyInstance->GetCOMPosition());
 			USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
 			if (skele)
