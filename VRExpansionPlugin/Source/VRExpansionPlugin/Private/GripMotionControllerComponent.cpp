@@ -2952,6 +2952,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		return false;
 	}
 
+	rBodyInstance->SetBodyTransform(root->GetComponentTransform(), ETeleportType::TeleportPhysics);
+
 	ExecuteOnPxRigidDynamicReadWrite(rBodyInstance, [&](PxRigidDynamic* Actor)
 	{
 		PxScene* Scene = Actor->getScene();
@@ -2963,10 +2965,9 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		FTransform controllerTransform = this->GetComponentTransform();
 		FTransform WorldTransform = NewGrip.RelativeTransform * controllerTransform;
 
-
 		if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip || NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 		{
-			trans.SetLocation(root->GetComponentTransform().GetLocation() - (WorldTransform.GetLocation() - this->GetComponentLocation()));
+			trans.SetLocation(/*root->GetComponentTransform()*/trans.GetLocation() - (WorldTransform.GetLocation() - this->GetComponentLocation()));
 		}
 		else
 		{

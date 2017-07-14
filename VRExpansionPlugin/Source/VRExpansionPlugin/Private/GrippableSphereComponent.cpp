@@ -23,6 +23,8 @@ UGrippableSphereComponent::UGrippableSphereComponent(const FObjectInitializer& O
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
 
+	this->bReplicates = true;
+
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
 	bRepGripSettingsAndGameplayTags = true;

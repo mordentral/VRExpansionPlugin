@@ -26,6 +26,8 @@ UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectIn
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
 
+	this->bReplicates = true;
+
 	bRepGripSettingsAndGameplayTags = true;
 }
 
