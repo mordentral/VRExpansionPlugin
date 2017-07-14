@@ -30,6 +30,10 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 	this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
+	
+	if (USkeletalMeshComponent * skel = this->GetSkeletalMeshComponent())
+		skel->SetIsReplicated(true);
+
 	bRepGripSettingsAndGameplayTags = true;
 
 	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration

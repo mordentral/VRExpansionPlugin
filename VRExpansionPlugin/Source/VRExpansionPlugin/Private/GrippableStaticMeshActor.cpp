@@ -32,6 +32,10 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
+
+	if (UStaticMeshComponent * stam = this->GetStaticMeshComponent())
+		stam->SetIsReplicated(true);
+	
 	bRepGripSettingsAndGameplayTags = true;
 
 	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration
