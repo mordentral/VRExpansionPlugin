@@ -5,7 +5,6 @@
 #include "Components/DestructibleComponent.h"
 #include "Misc/ScopeLock.h"
 #include "Net/UnrealNetwork.h"
-#include "KismetMathLibrary.h"
 #include "PrimitiveSceneInfo.h"
 #include "Engine/World.h"
 #include "GameFramework/WorldSettings.h"
@@ -2405,14 +2404,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				// Not perfect, should be done post physics or in next frame prior to changing controller location
 				// However I don't want to recalculate world transform
 				// Maybe add a grip variable of "expected loc" and use that to check next frame, but for now this will do.
-				if (
-					(HasGripAuthority(*Grip)) && (bRootHasInterface || bActorHasInterface) &&
+				if ((HasGripAuthority(*Grip)) && (bRootHasInterface || bActorHasInterface) &&
 					(
-						(
-							Grip->GripCollisionType != EGripCollisionType::PhysicsOnly &&
-							Grip->GripCollisionType != EGripCollisionType::SweepWithPhysics) &&
-						(Grip->GripCollisionType != EGripCollisionType::InteractiveHybridCollisionWithSweep ||
-							Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep && Grip->bColliding)
+							((Grip->GripCollisionType != EGripCollisionType::PhysicsOnly) && (Grip->GripCollisionType != EGripCollisionType::SweepWithPhysics)) &&
+							((Grip->GripCollisionType != EGripCollisionType::InteractiveHybridCollisionWithSweep) || ((Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep) && Grip->bColliding))
 						)
 					)
 				{
@@ -3468,7 +3463,15 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 		TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
 		for (auto MotionController : MotionControllers)
 		{
-			if ((MotionController != nullptr) && MotionController->GetControllerOrientationAndPosition(PlayerIndex, Hand, Orientation, Position, WorldToMetersScale))
+
+			if (MotionController == nullptr)
+			{
+				continue;
+			}
+			
+			EControllerHand QueryHand = (Hand == EControllerHand::AnyHand) ? EControllerHand::Left : Hand;
+
+			if (MotionController->GetControllerOrientationAndPosition(PlayerIndex, QueryHand, Orientation, Position, WorldToMetersScale))
 			{
 				CurrentTrackingStatus = (ETrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
 				
@@ -3492,6 +3495,34 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 					Position -= LastLocationForLateUpdate;
 				}
 							
+				return true;
+			}
+
+			// If we've made it here, we need to see if there's a right hand controller that reports back the position
+			if (Hand == EControllerHand::AnyHand && MotionController->GetControllerOrientationAndPosition(PlayerIndex, EControllerHand::Right, Orientation, Position, WorldToMetersScale))
+			{
+				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, EControllerHand::Right);
+				
+				if (bOffsetByHMD)
+				{
+					if (IsInGameThread())
+					{
+						if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+						{
+							FQuat curRot;
+							FVector curLoc;
+							GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curLoc);
+							curLoc.Z = 0;
+
+							LastLocationForLateUpdate = curLoc;
+						}
+						else
+							LastLocationForLateUpdate = FVector::ZeroVector;
+					}
+
+					Position -= LastLocationForLateUpdate;
+				}
+
 				return true;
 			}
 		}

@@ -63,6 +63,24 @@ bool UReplicatedVRCameraComponent::Server_SendTransform_Validate(FBPVRComponentP
 	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
 }
 
+/*bool UReplicatedVRCameraComponent::IsServer()
+{
+	if (GEngine != nullptr && GWorld != nullptr)
+	{
+		switch (GEngine->GetNetMode(GWorld))
+		{
+		case NM_Client:
+		{return false; } break;
+		case NM_DedicatedServer:
+		case NM_ListenServer:
+		default:
+		{return true; } break;
+		}
+	}
+
+	return false;
+}*/
+
 void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	bHasAuthority = IsLocallyControlled();

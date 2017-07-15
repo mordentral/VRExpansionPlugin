@@ -4,8 +4,9 @@
 #include "CoreMinimal.h"
 #include "IMotionController.h"
 
-#include "HeadMountedDisplay.h" 
+//#include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"
+//#include "HeadMountedDisplayFunctionLibrary.h"
 
 #include "VRBPDatatypes.h"
 

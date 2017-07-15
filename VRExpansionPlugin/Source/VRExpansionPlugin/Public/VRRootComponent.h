@@ -138,7 +138,7 @@ void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
 {
 	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 
-	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * ComponentToWorld;
+	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
 
 	if (owningVRChar)
 	{
@@ -183,7 +183,7 @@ FORCEINLINE void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHa
 	if (bPhysicsStateCreated)
 	{
 		// Update physics engine collision shapes
-		BodyInstance.UpdateBodyScale(ComponentToWorld.GetScale3D(), true);
+		BodyInstance.UpdateBodyScale(GetComponentTransform().GetScale3D(), true);
 
 		if (bUpdateOverlaps && IsCollisionEnabled() && GetOwner())
 		{

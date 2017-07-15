@@ -219,8 +219,10 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
 			const float Radius = GetDrawSize().X / ArcAngleRadians;
 
-			LayerDsec.CylinderSize = FVector2D(/*CylinderRadius*/Radius, /*CylinderOverlayArc*/CylinderArcAngle);
-			
+			//LayerDsec.CylinderSize = FVector2D(/*CylinderRadius*/Radius, /*CylinderOverlayArc*/CylinderArcAngle);
+			LayerDsec.CylinderRadius = Radius;
+			LayerDsec.CylinderOverlayArc = CylinderArcAngle;
+
 			// This needs to be auto set from variables, need to work on it
 			LayerDsec.CylinderHeight = GetDrawSize().Y;//CylinderHeight;
 
