@@ -7,6 +7,8 @@
 // Or procedural mesh component throws an error....
 //#include "PhysicsEngine/ConvexElem.h" // Fixed in 4.13.1?
 
+#include "VRBPDatatypes.h"
+
 #include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "VRExpansionFunctionLibrary.generated.h"
