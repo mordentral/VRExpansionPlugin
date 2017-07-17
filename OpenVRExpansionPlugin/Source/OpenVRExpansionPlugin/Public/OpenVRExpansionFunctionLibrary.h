@@ -3,7 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "IMotionController.h"
-#include "VRBPDataTypes.h"
+#include "VRBPDatatypes.h"
 
 // #Note: Can now access VRSystem from the SteamHMD directly, however still cannot use the static pVRGenericInterface point due to 
 // linking errors since can't attain .cpp reference. So useless to convert to blueprint library as the render models wouldn't work.
@@ -23,22 +23,17 @@
 #if STEAMVR_SUPPORTED_PLATFORM
 #include "openvr.h"
 #include "ISteamVRPlugin.h"
-
-//This is a stupid way of gaining access to this header...see build.cs
-#include "SteamVRHMD.h"
-//#include "SteamVRPrivatePCH.h" // Need a define in here....this is so ugly
-#include "SteamVRPrivate.h" // Now in here since 4.15
 #include "SteamVRFunctionLibrary.h"
 
 #endif // STEAMVR_SUPPORTED_PLATFORM
-//#include "openvr.h"
 
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 // Or procedural mesh component throws an error....
 //#include "PhysicsEngine/ConvexElem.h" // Fixed in 4.13.1?
 
-#include "HeadMountedDisplay.h" 
+//#include "HeadMountedDisplay.h" 
+//#include "HeadMountedDisplayFunctionLibrary.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
 
 #include "OpenVRExpansionFunctionLibrary.generated.h"
@@ -370,6 +365,50 @@ public:
 	//static pVRIsHmdPresent VRIsHmdPresentFn;
 	//static pVRGetGenericInterface VRGetGenericInterfaceFn;
 	static FBPOpenVRCameraHandle OpenCamera;
+
+	static FORCEINLINE FMatrix ToFMatrix(const vr::HmdMatrix34_t& tm)
+	{
+		// Rows and columns are swapped between vr::HmdMatrix34_t and FMatrix
+		return FMatrix(
+			FPlane(tm.m[0][0], tm.m[1][0], tm.m[2][0], 0.0f),
+			FPlane(tm.m[0][1], tm.m[1][1], tm.m[2][1], 0.0f),
+			FPlane(tm.m[0][2], tm.m[1][2], tm.m[2][2], 0.0f),
+			FPlane(tm.m[0][3], tm.m[1][3], tm.m[2][3], 1.0f));
+	}
+
+	static FORCEINLINE FMatrix ToFMatrix(const vr::HmdMatrix44_t& tm)
+	{
+		// Rows and columns are swapped between vr::HmdMatrix44_t and FMatrix
+		return FMatrix(
+			FPlane(tm.m[0][0], tm.m[1][0], tm.m[2][0], tm.m[3][0]),
+			FPlane(tm.m[0][1], tm.m[1][1], tm.m[2][1], tm.m[3][1]),
+			FPlane(tm.m[0][2], tm.m[1][2], tm.m[2][2], tm.m[3][2]),
+			FPlane(tm.m[0][3], tm.m[1][3], tm.m[2][3], tm.m[3][3]));
+	}
+
+	static FORCEINLINE vr::HmdMatrix34_t ToHmdMatrix34(const FMatrix& tm)
+	{
+		// Rows and columns are swapped between vr::HmdMatrix34_t and FMatrix
+		vr::HmdMatrix34_t out;
+
+		out.m[0][0] = tm.M[0][0];
+		out.m[1][0] = tm.M[0][1];
+		out.m[2][0] = tm.M[0][2];
+
+		out.m[0][1] = tm.M[1][0];
+		out.m[1][1] = tm.M[1][1];
+		out.m[2][1] = tm.M[1][2];
+
+		out.m[0][2] = tm.M[2][0];
+		out.m[1][2] = tm.M[2][1];
+		out.m[2][2] = tm.M[2][2];
+
+		out.m[0][3] = tm.M[3][0];
+		out.m[1][3] = tm.M[3][1];
+		out.m[2][3] = tm.M[3][2];
+
+		return out;
+	}
 	//vr::IVRChaperone* VRChaperone;
 #endif
 

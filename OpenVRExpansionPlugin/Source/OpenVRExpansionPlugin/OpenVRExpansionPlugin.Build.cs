@@ -16,16 +16,17 @@ public class OpenVRExpansionPlugin : ModuleRules
 
         Definitions.Add("WITH_OPEN_VR_EXPANSION=1");
 
+		
         PublicIncludePaths.AddRange(
 			new string[] {
 				"OpenVRExpansionPlugin/Public",
                 "HeadMountedDisplay/Public",
-                "Runtime/Engine/Classes/Kismet",
                 "Runtime/Engine/Private/PhysicsEngine"
 				
 				// ... add public include paths required here ...
 			}
 			);
+	
 
         PublicDependencyModuleNames.AddRange(
             new string[] 
@@ -42,40 +43,18 @@ public class OpenVRExpansionPlugin : ModuleRules
                 "VRExpansionPlugin"
                // "EngineSettings"
             });
-
-       /* PrivateDependencyModuleNames.AddRange(
+			
+		if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64 || 
+		(Target.Platform == UnrealTargetPlatform.Linux && Target.Architecture.StartsWith("x86_64")))
+		{
+		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				//"CoreUObject",
-				//"Engine",
-
-				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-            */
-        // Locking steamVR out of non windows builds
-        if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64)
-        {
-
-            PublicIncludePaths.AddRange(
-            new string[] {
-                        "../Plugins/Runtime/Steam/SteamVR/Source/SteamVR/Private", // This is dumb but it isn't very open
-
-                // ... add public include paths required here ...
-            }
-            );
-
-            PublicDependencyModuleNames.AddRange(
-                new string[]
-                {
-                "SteamVR",
-                "OpenVR",
-                "SteamVRController"
-                });
-                
-            // AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenVR");
-            //  PrivateDependencyModuleNames.AddRange(new string[] { "D3D11RHI" });     //@todo steamvr: multiplatform
-        }
+			"SteamVR",
+			"OpenVR",
+			"SteamVRController"
+			});
+		}
 
     }
 }

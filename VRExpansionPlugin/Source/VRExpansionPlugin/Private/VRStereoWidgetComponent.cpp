@@ -92,6 +92,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	{
 		bShouldCreateProxy = false;
 	}
+	bShouldCreateProxy = true;
 
 #if !UE_SERVER
 
@@ -120,6 +121,10 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 	else // World locked here now
 	{
+		// Its incorrect......even in 4.17
+	//	Transform = GetComponentTransform();
+		//Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
+		
 		// Fix this when stereo world locked works again
 		// Thanks to mitch for the temp work around idea
 
@@ -194,14 +199,14 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			LayerDsec.Priority = Priority;
 			LayerDsec.QuadSize = FVector2D(DrawSize);//StereoLayerQuadSize;
 
-			if (DrawSize.X != DrawSize.Y)
+			/*if (DrawSize.X != DrawSize.Y)
 			{
 				// This might be a SteamVR only thing, it appears to always make the quad the largest of the two on the back end
 				if (DrawSize.X > DrawSize.Y) 
 					LayerDsec.QuadSize.Y = LayerDsec.QuadSize.X;
 				else
 					LayerDsec.QuadSize.X = LayerDsec.QuadSize.Y;
-			}
+			}*/
 
 			LayerDsec.UVRect = UVRect;
 			LayerDsec.Transform = Transform;

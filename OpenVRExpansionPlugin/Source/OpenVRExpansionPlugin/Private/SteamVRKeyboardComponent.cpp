@@ -98,7 +98,7 @@ return;
 	FVector scale = RelTransform.GetScale3D();
 	RelTransform.SetScale3D(FVector(scale.Y, scale.Z, scale.X) / WorldToMetersScale);
 
-	vr::HmdMatrix34_t NewTransform = FSteamVRHMD::ToHmdMatrix34(RelTransform.ToMatrixNoScale());
+	vr::HmdMatrix34_t NewTransform = UOpenVRExpansionFunctionLibrary::ToHmdMatrix34(RelTransform.ToMatrixNoScale());
 	VROverlay->SetKeyboardTransformAbsolute(vr::ETrackingUniverseOrigin::TrackingUniverseStanding, &NewTransform);
 
 	// Poll SteamVR events

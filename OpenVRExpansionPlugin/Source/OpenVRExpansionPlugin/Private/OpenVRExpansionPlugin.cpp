@@ -85,7 +85,7 @@ void FOpenVRExpansionPluginModule::ShutdownModule()
 /*void FOpenVRExpansionPluginModule::UnloadOpenVRModule()
 {
 #if STEAMVR_SUPPORTED_PLATFORM
-	/*if (OpenVRDLLHandle != nullptr)
+	if (OpenVRDLLHandle != nullptr)
 	{
 		FPlatformProcess::FreeDllHandle(OpenVRDLLHandle);
 		OpenVRDLLHandle = nullptr;

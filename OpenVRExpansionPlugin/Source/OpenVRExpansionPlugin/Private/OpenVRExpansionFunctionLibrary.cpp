@@ -591,7 +591,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyMatrix34AsTransform(EVR
 		return;
 	}
 
-	TransformValue = FTransform(FSteamVRHMD::ToFMatrix(ret));
+	TransformValue = FTransform(ToFMatrix(ret));
 	Result = EBPVRResultSwitch::OnSucceeded;
 	return;
 
