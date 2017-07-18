@@ -817,7 +817,7 @@ bool UGripMotionControllerComponent::GripActor(
 	float GripDamping,
 	bool bIsSlotGrip)
 {
-	bool bIsLocalGrip = GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive;
+	bool bIsLocalGrip = (GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep);
 
 	if (!IsServer() && !bIsLocalGrip)
 	{
@@ -1009,7 +1009,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	)
 {
 
-	bool bIsLocalGrip = GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive;
+	bool bIsLocalGrip = (GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep);
 
 	if (!IsServer() && !bIsLocalGrip)
 	{
@@ -1341,6 +1341,7 @@ bool UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 	{
 	case EGripMovementReplicationSettings::ForceClientSideMovement:
 	case EGripMovementReplicationSettings::ClientSide_Authoritive:
+	case EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep:
 	{
 		if (IsServer())
 		{
@@ -1403,7 +1404,10 @@ bool UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
 	// Don't do this if we are the owning player on a local grip, there is no filter for multicast to not send to owner
-	if (NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && IsLocallyControlled() && GetNetMode() == ENetMode::NM_Client)
+	if ((NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || 
+		NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && 
+		IsLocallyControlled() && 
+		GetNetMode() == ENetMode::NM_Client)
 	{
 		return;
 	}
@@ -1540,7 +1544,9 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 	}
 	else
 	{
-		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement || Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement || 
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || 
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
 		{
 			return true;
 		}
@@ -1558,8 +1564,10 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 
 bool UGripMotionControllerComponent::HasGripAuthority(const FBPActorGripInformation &Grip)
 {
-	if ((Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive && IsServer()) || 
-	   (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && bHasAuthority))
+	if (((Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive || 
+		Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && IsServer()) ||
+	   ((Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || 
+		Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && bHasAuthority))
 	{
 		return true;
 	}
@@ -1957,8 +1965,12 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 		}
 		else if (TeleportBehavior == EGripInterfaceTeleportBehavior::DropOnTeleport)
 		{
-			if (IsServer() || Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			if (IsServer() ||
+				Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
+				Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
+			{
 				DropObjectByInterface(Grip.GrippedObject);
+			}
 			
 			return false; // Didn't teleport
 		}

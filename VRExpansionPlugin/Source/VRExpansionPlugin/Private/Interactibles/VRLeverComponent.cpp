@@ -22,6 +22,11 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	ParentComponent = nullptr;
 	LeverRotationAxis = EVRInteractibleAxis::Axis_X;
 	LeverLimit = 90.0f;
+	LeverReturnSpeed = 50.0f;
+	InitialRelativeTransform = FTransform::Identity;
+	bIsLerping = false;
+	bUngripAtTargetRotation = false;
+	bLeverReturnsWhenReleased = true;
 
 	// Set to only overlap with things so that its not ruined by touching over actors
 	this->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
@@ -53,6 +58,8 @@ void UVRLeverComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
+
+	ResetInitialLeverLocation();
 }
 
 void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -60,7 +67,43 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 	// Call supers tick (though I don't think any of the base classes to this actually implement it)
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	float currentRot;
+	if (ParentComponent.IsValid())
+	{
+		currentRot = GetAxisValue(this->GetComponentTransform().GetRelativeTransform(ParentComponent->GetComponentTransform()).GetRotation().Rotator());
+	}
+	else
+	{
+		currentRot = GetAxisValue(this->RelativeRotation);
+	}
 
+	CurrentLeverAngle = currentRot - GetAxisValue(InitialRelativeTransform.GetRotation().Rotator());
+
+	if (bIsLerping)
+	{
+		// Lerp back to initial position
+		float lerpToRot = GetAxisValue(InitialRelativeTransform.GetRotation().Rotator());
+		float LerpedVal = FMath::FInterpConstantTo(GetAxisValue(this->RelativeRotation), lerpToRot, DeltaTime, LeverReturnSpeed);
+		if (FMath::IsNearlyEqual(GetAxisValue(this->RelativeRotation), lerpToRot))
+		{
+			this->SetComponentTickEnabled(false);
+			this->SetRelativeRotation(this->SetAxisValue(lerpToRot, this->RelativeRotation));
+		}
+		else
+			this->SetRelativeRotation(this->SetAxisValue(LerpedVal, this->RelativeRotation));
+	}
+	else
+	{
+		if (FMath::Abs(CurrentLeverAngle) >= LeverLimit)
+		{
+			OnLeverStateChanged.Broadcast(true);
+
+			if (bUngripAtTargetRotation && HoldingController)
+			{
+				HoldingController->DropObjectByInterface(this);
+			}
+		}
+	}
 }
 
 void UVRLeverComponent::OnUnregister()
@@ -69,19 +112,39 @@ void UVRLeverComponent::OnUnregister()
 	Super::OnUnregister();
 }
 
-void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime) {}
+void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime) 
+{
+	// Handle manual tracking here
+}
+
 void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
 	ParentComponent = this->GetAttachParent();
-	SetupConstraint();
+
+	if (bIsPhysicsLever)
+	{
+		SetupConstraint();
+	}
+
+	bIsLerping = false;
+	this->SetComponentTickEnabled(true);
 }
+
 void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) 
 {
-	DestroyConstraint();
+	if(bIsPhysicsLever)
+	{
+		DestroyConstraint();
+		FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, true);
+		this->AttachToComponent(ParentComponent.Get(), AttachRules);
+	}
 
-	FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, true);
-	this->AttachToComponent(ParentComponent, AttachRules);
+	if(bLeverReturnsWhenReleased)
+		bIsLerping = true;
+	else
+		this->SetComponentTickEnabled(false);
 }
+
 void UVRLeverComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void UVRLeverComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
 void UVRLeverComponent::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
@@ -181,12 +244,12 @@ void UVRLeverComponent::IsHeld_Implementation(UGripMotionControllerComponent *& 
 
 void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
 {
+	bIsHeld = bNewIsHeld;
+
 	if (bIsHeld)
 		HoldingController = NewHoldingController;
 	else
 		HoldingController = nullptr;
-
-	bIsHeld = bNewIsHeld;
 }
 
 FBPInteractionSettings UVRLeverComponent::GetInteractionSettings_Implementation()

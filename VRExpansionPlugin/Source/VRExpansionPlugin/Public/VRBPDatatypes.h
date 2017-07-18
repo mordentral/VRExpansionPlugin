@@ -401,6 +401,7 @@ enum class EGripLateUpdateSettings : uint8
 // Objects that need to be handled possibly by multiple players should be ran
 // non locally gripped instead so that the server can validate grips instead.
 // ClientSide_Authoritive will grip on the client instantly without server intervention and then send a notice to the server
+// ClientSide_Authoritive_NoRep will grip on the client instantly without server intervention but will not rep the grip to the server
 // that the grip was made
 UENUM(Blueprintable)
 enum class EGripMovementReplicationSettings : uint8
@@ -408,7 +409,8 @@ enum class EGripMovementReplicationSettings : uint8
 	KeepOriginalMovement,
 	ForceServerSideMovement,
 	ForceClientSideMovement,
-	ClientSide_Authoritive
+	ClientSide_Authoritive,
+	ClientSide_Authoritive_NoRep
 };
 
 // Grip Target Type
