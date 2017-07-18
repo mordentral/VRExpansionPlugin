@@ -19,6 +19,9 @@
 
 #include "VRLeverComponent.generated.h"
 
+/** Delegate for notification when the lever state changes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRLeverStateChangedSignature, bool, LeverState);
+
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
@@ -27,6 +30,12 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 	~UVRLeverComponent();
 
+	// Call to use an object
+	UPROPERTY(BlueprintAssignable, Category = "VRLeverComponent")
+		FVRLeverStateChangedSignature OnLeverStateChanged;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRLeverComponent")
+		float CurrentLeverAngle;
 
 	// ------------------------------------------------
 	// Gameplay tag interface
@@ -59,10 +68,23 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		bool bIsPhysicsLever;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
+		bool bUngripAtTargetRotation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		EVRInteractibleAxis LeverRotationAxis;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		float LeverLimit;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
+		bool bLeverReturnsWhenReleased;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
+		float LeverReturnSpeed;
+
+	bool bIsLerping;
+
+	FTransform InitialRelativeTransform;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripMovementReplicationSettings MovementReplicationSetting;
@@ -76,8 +98,15 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
 
-	USceneComponent * ParentComponent;
+	TWeakObjectPtr<USceneComponent> ParentComponent;
 
+	// Should be called after the lever is moved post begin play
+	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
+	void ResetInitialLeverLocation()
+	{
+		// Get our initial relative transform to our parent (or not if un-parented).
+		InitialRelativeTransform = this->GetRelativeTransform();
+	}
 
 	virtual void OnUnregister() override;;
 
@@ -142,9 +171,9 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 				PxD6Joint* NewJoint = NULL;
 				PxRigidDynamic * ParentBody = NULL;
 
-				if (ParentComponent)
+				if (ParentComponent.IsValid())
 				{
-					UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ParentComponent);
+					UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ParentComponent.Get());
 
 					if (PrimComp)
 						ParentBody = PrimComp->BodyInstance.GetPxRigidDynamic_AssumesLocked();
@@ -352,5 +381,54 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	// Call to stop using an object
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void OnEndSecondaryUsed();
+
+	protected:
+
+		FORCEINLINE float GetAxisValue(FRotator CheckLocation)
+		{
+			switch (LeverRotationAxis)
+			{
+			case EVRInteractibleAxis::Axis_X:
+				return CheckLocation.Roll; break;
+			case EVRInteractibleAxis::Axis_Y:
+				return CheckLocation.Pitch; break;
+			case EVRInteractibleAxis::Axis_Z:
+				return CheckLocation.Yaw; break;
+			default:return 0.0f; break;
+			}
+		}
+
+		FORCEINLINE FRotator SetAxisValue(float SetValue)
+		{
+			FRotator vec = FRotator::ZeroRotator;
+
+			switch (LeverRotationAxis)
+			{
+			case EVRInteractibleAxis::Axis_X:
+				vec.Roll = SetValue; break;
+			case EVRInteractibleAxis::Axis_Y:
+				vec.Pitch = SetValue; break;
+			case EVRInteractibleAxis::Axis_Z:
+				vec.Yaw = SetValue; break;
+			}
+
+			return vec;
+		}
+
+		FORCEINLINE FRotator SetAxisValue(float SetValue, FRotator Var)
+		{
+			FRotator vec = Var;
+			switch (LeverRotationAxis)
+			{
+			case EVRInteractibleAxis::Axis_X:
+				vec.Roll = SetValue; break;
+			case EVRInteractibleAxis::Axis_Y:
+				vec.Pitch = SetValue; break;
+			case EVRInteractibleAxis::Axis_Z:
+				vec.Yaw = SetValue; break;
+			}
+
+			return vec;
+		}
 
 };
