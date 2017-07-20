@@ -1009,6 +1009,7 @@ public:
 	physx::PxRigidDynamic* KinActorData;
 
 	physx::PxTransform COMPosition;
+	FTransform RootBoneRotation;
 
 	FBPActorPhysicsHandleInformation()
 	{
@@ -1017,7 +1018,8 @@ public:
 		HandledObject = nullptr;
 		//Actor = nullptr;
 		//Component = nullptr;
-		COMPosition = physx::PxTransform(U2PVector(FVector::ZeroVector));
+		
+		RootBoneRotation = FTransform::Identity;
 	}
 
 	FORCEINLINE bool operator==(const FBPActorGripInformation & Other) const
