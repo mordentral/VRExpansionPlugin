@@ -453,8 +453,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
 		EPhysicsGripConstraintType PhysicsConstraintType;
 
+	// Do not set the Center Of Mass to the grip location, use this if the default is buggy or you want a custom COM
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
 		bool bDoNotSetCOMToGripLocation;
+
+	// Turn off gravity during the grip, resolves the slight downward offset of the object with normal constraint strengths.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+		bool bTurnOffGravityDuringGrip;
 
 	// Use the custom angular values on this grip
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
@@ -471,6 +476,7 @@ public:
 		bUseAdvancedPhysicsSettings = false;
 		bUseCustomAngularValues = false;
 		bDoNotSetCOMToGripLocation = false;
+		bTurnOffGravityDuringGrip = false;
 		AngularStiffness = 0.0f;
 		AngularDamping = 0.0f;
 		PhysicsConstraintType = EPhysicsGripConstraintType::AccelerationConstraint;
@@ -480,6 +486,7 @@ public:
 	{
 		return (bUseAdvancedPhysicsSettings == Other.bUseAdvancedPhysicsSettings &&
 			bDoNotSetCOMToGripLocation == Other.bDoNotSetCOMToGripLocation &&
+			bTurnOffGravityDuringGrip == Other.bTurnOffGravityDuringGrip &&
 			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
 			FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) &&
 			FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) &&
@@ -490,6 +497,7 @@ public:
 	{
 		return (bUseAdvancedPhysicsSettings != Other.bUseAdvancedPhysicsSettings ||
 			bDoNotSetCOMToGripLocation != Other.bDoNotSetCOMToGripLocation ||
+			bTurnOffGravityDuringGrip != Other.bTurnOffGravityDuringGrip ||
 			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
 			!FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) ||
 			!FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) ||
@@ -505,6 +513,7 @@ public:
 		{
 			Ar << bDoNotSetCOMToGripLocation;
 			Ar << PhysicsConstraintType;
+			Ar << bTurnOffGravityDuringGrip;
 
 			Ar << bUseCustomAngularValues;
 
@@ -712,8 +721,13 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
+
+	// I would have loved to have both of these not be replicated (and in normal grips they wouldn't have to be)
+	// However for serialization purposes and Client_Authority grips they need to be....
 	UPROPERTY(BlueprintReadOnly)
 		bool bOriginalReplicatesMovement;
+	UPROPERTY(BlueprintReadOnly)
+		bool bOriginalGravity;
 
 	UPROPERTY()
 		float Damping;
