@@ -891,6 +891,7 @@ bool UGripMotionControllerComponent::GripActor(
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GrippedObject = ActorToGrip;
 	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
+	newActorGrip.bOriginalGravity = root->IsGravityEnabled();
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
 	newActorGrip.AdvancedPhysicsSettings = AdvancedPhysicsSettings;
@@ -1072,6 +1073,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	if(ComponentToGrip->GetOwner())
 		newActorGrip.bOriginalReplicatesMovement = ComponentToGrip->GetOwner()->bReplicateMovement;
 
+	newActorGrip.bOriginalGravity = ComponentToGrip->IsGravityEnabled();
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
 	newActorGrip.AdvancedPhysicsSettings = AdvancedPhysicsSettings;
@@ -1285,7 +1287,8 @@ bool UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 			if (root)
 			{
 				// Have to turn off gravity locally
-				if (NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer())
+				if ((NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewGrip.AdvancedPhysicsSettings.bTurnOffGravityDuringGrip) ||
+					(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
 					root->SetEnableGravity(false);
 
 				root->IgnoreActorWhenMoving(this->GetOwner(), true);
@@ -1325,8 +1328,8 @@ bool UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 				IVRGripInterface::Execute_SetHeld(root, this, true);
 			}
 
-			// Have to turn off gravity locally
-			if (NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer())
+			if ((NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewGrip.AdvancedPhysicsSettings.bTurnOffGravityDuringGrip) ||
+				(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
 				root->SetEnableGravity(false);
 
 			root->IgnoreActorWhenMoving(this->GetOwner(), true);
@@ -1448,8 +1451,9 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				if (bSimulate)
 					root->WakeAllRigidBodies();
 
-				if (NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer())
-					root->SetEnableGravity(true);
+				if ((NewDrop.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewDrop.AdvancedPhysicsSettings.bTurnOffGravityDuringGrip) ||
+					(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
+					root->SetEnableGravity(NewDrop.bOriginalGravity);
 			}
 
 			if (IsServer())
@@ -1491,8 +1495,9 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				if (bSimulate)
 					root->WakeAllRigidBodies();
 
-				if (NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer())
-					root->SetEnableGravity(true);
+				if ((NewDrop.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewDrop.AdvancedPhysicsSettings.bTurnOffGravityDuringGrip) ||
+					(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
+					root->SetEnableGravity(NewDrop.bOriginalGravity);
 			}
 
 			if (pActor)
@@ -2940,6 +2945,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	// Needs to be simulating in order to run physics
 	root->SetSimulatePhysics(true);
+
 
 	FBPActorPhysicsHandleInformation * HandleInfo = CreatePhysicsGrip(NewGrip);
 
