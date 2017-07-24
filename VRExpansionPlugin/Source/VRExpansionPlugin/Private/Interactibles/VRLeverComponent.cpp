@@ -22,6 +22,7 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	ParentComponent = nullptr;
 	LeverRotationAxis = EVRInteractibleAxis::Axis_X;
 	LeverLimit = 90.0f;
+	bLeverIsOneWay = false;
 	LeverReturnSpeed = 50.0f;
 	InitialRelativeTransform = FTransform::Identity;
 	bIsLerping = false;
