@@ -697,6 +697,17 @@ public:
 	/** Whether or not this component had a valid tracked controller associated with it this frame*/
 	bool bTracked;
 
+	/** Whether or not this component had a valid tracked device this frame
+	*
+	* Use this instead of the normal IsTracked() for the motion controller which will not return the correct information.
+	* This is messy but I have no access to the various private memebers of the motion controller.
+	*/
+	UFUNCTION(BlueprintPure, Category = "GripMotionController")
+	bool GripControllerIsTracked() const
+	{
+		return bTracked;
+	}
+
 	/** Whether or not this component has authority within the frame*/
 	bool bHasAuthority;
 

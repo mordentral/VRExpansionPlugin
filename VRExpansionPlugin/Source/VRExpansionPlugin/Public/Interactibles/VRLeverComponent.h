@@ -76,6 +76,10 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		float LeverLimit;
 
+	// Only currently works correctly for Twist Limited / XAxis levers in the XMinus direction
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
+		bool bLeverIsOneWay;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		bool bLeverReturnsWhenReleased;
 
@@ -161,10 +165,6 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		{
 			PxScene* Scene = Actor->getScene();
 
-			PxTransform KinPose;
-			PxVec3 KinLocation;
-			PxTransform GrabbedActorPose;
-
 			// If we don't already have a handle - make one now.
 			if (!HandleData)
 			{
@@ -241,9 +241,13 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 					PxReal ZLimitAngle = FMath::ClampAngle(LeverLimit /** InSwing1LimitScale*/, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
 					PxReal YLimitAngle = FMath::ClampAngle(LeverLimit /** InSwing2LimitScale*/, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
 					//PxReal LimitContactDistance = FMath::DegreesToRadians(FMath::Max(1.f, ProfileInstance.ConeLimit.ContactDistance * FMath::Min(InSwing1LimitScale, InSwing2LimitScale)));
-
+					
 					NewJoint->setSwingLimit(PxJointLimitCone(YLimitAngle, ZLimitAngle));
-					NewJoint->setTwistLimit(PxJointAngularLimitPair(-LeverLimitRad, LeverLimitRad));
+
+					if(bLeverIsOneWay)
+						NewJoint->setTwistLimit(PxJointAngularLimitPair(-LeverLimitRad, 0.0f));
+					else
+						NewJoint->setTwistLimit(PxJointAngularLimitPair(-LeverLimitRad, LeverLimitRad));
 
 					return true;
 				}
