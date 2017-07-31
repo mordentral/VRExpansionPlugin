@@ -154,7 +154,7 @@ protected:
 	float LastToggleTime;
 	FTransform InitialRelativeTransform;
 
-	FORCEINLINE float GetAxisValue(FVector CheckLocation)
+	inline float GetAxisValue(FVector CheckLocation)
 	{
 		switch (ButtonAxis)
 		{
@@ -168,7 +168,7 @@ protected:
 		}
 	}
 
-	FORCEINLINE FVector SetAxisValue(float SetValue)
+	inline FVector SetAxisValue(float SetValue)
 	{
 		FVector vec = FVector::ZeroVector;
 

@@ -58,7 +58,7 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	void Server_SendTransform(FBPVRComponentPosRep NewTransform);
 
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
-	FORCEINLINE bool IsLocallyControlled() const
+	inline bool IsLocallyControlled() const
 	{
 		// I like epics new authority check more than my own
 		const AActor* MyOwner = GetOwner();

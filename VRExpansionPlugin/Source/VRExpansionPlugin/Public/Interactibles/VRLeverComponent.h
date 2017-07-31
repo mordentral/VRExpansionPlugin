@@ -19,9 +19,32 @@
 
 #include "VRLeverComponent.generated.h"
 
-/** Delegate for notification when the lever state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRLeverStateChangedSignature, bool, LeverState);
 
+UENUM(Blueprintable)
+enum class EVRInteractibleLeverAxis : uint8
+{
+	Axis_X,
+	Axis_Y
+};
+
+UENUM(Blueprintable)
+enum class EVRInteractibleLeverEventType : uint8
+{
+	LeverPositive,
+	LeverNegative
+};
+
+UENUM(Blueprintable)
+enum class EVRInteractibleLeverReturnType : uint8
+{
+	Stay,
+	ReturnToZero,
+	LerpToMax,
+	LerpToMaxIfOverThreshold
+};
+
+/** Delegate for notification when the lever state changes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FVRLeverStateChangedSignature, bool, LeverStatus, EVRInteractibleLeverEventType, LeverStatusType, float, LeverAngleAtTime);
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
@@ -71,24 +94,37 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		bool bUngripAtTargetRotation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
-		EVRInteractibleAxis LeverRotationAxis;
+		EVRInteractibleLeverAxis LeverRotationAxis;
+
+	// The percentage of the angle at witch the lever will toggle
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+		float LeverTogglePercentage;
+
+	// The max angle of the lever in the positive direction
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.0", ClampMax = "179.8", UIMin = "0.0", UIMax = "180.0"))
+		float LeverLimitPositive;
+
+	// The max angle of the lever in the negative direction
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.0", ClampMax = "179.8", UIMin = "0.0", UIMax = "180.0"))
+		float LeverLimitNegative;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
-		float LeverLimit;
-
-	// Only currently works correctly for Twist Limited / XAxis levers in the XMinus direction
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
-		bool bLeverIsOneWay;
+		EVRInteractibleLeverReturnType LeverReturnTypeWhenReleased;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
-		bool bLeverReturnsWhenReleased;
+		bool bSendLeverEventsDuringLerp;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		float LeverReturnSpeed;
 
-	bool bIsLerping;
+	float lerpCounter;
 
+	bool bIsLerping;
 	FTransform InitialRelativeTransform;
+	FVector InitialInteractorLocation;
+	float InitialGripRot;
+	float RotAtGrab;
+	bool bLeverState;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripMovementReplicationSettings MovementReplicationSetting;
@@ -160,6 +196,19 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 			return false;
 		}
 
+
+		FTransform A2Transform = FTransform::Identity;//GetComponentTransform().Inverse();
+		if (ParentComponent.IsValid())
+		{
+			UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ParentComponent.Get());
+
+			if (PrimComp)
+				A2Transform = PrimComp->GetComponentTransform();
+		}
+
+		float rotationalOffset = (LeverLimitPositive - LeverLimitNegative) / 2;
+		FRotator AngularRotationOffset = SetAxisValue(/*LeverLimitOffset*/rotationalOffset, FRotator::ZeroRotator);
+		FTransform RefFrame2 = FTransform(InitialRelativeTransform.GetRotation() * AngularRotationOffset.Quaternion(), A2Transform.InverseTransformPosition(GetComponentLocation()));
 		
 		ExecuteOnPxRigidDynamicReadWrite(rBodyInstance, [&](PxRigidDynamic* Actor)
 		{
@@ -178,20 +227,9 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 					if (PrimComp)
 						ParentBody = PrimComp->BodyInstance.GetPxRigidDynamic_AssumesLocked();
 				}
-				
-				PxTransform LocalParentTrans = PxTransform(PxIdentity);
-				if (ParentBody)
-				{
-					// Get local space location of the constraint end for our parent if we have one
-					LocalParentTrans = ParentBody->getGlobalPose().getInverse() * Actor->getGlobalPose();
-				}
-				else
-				{
-					// If no parent this will fall back to world space of self
-					LocalParentTrans = Actor->getGlobalPose();
-				}
 
-				NewJoint = PxD6JointCreate(Scene->getPhysics(), ParentBody, LocalParentTrans, Actor, PxTransform(PxIdentity));
+				NewJoint = PxD6JointCreate(Scene->getPhysics(), ParentBody, U2PTransform(RefFrame2)/*LocalParentTrans*/, Actor, PxTransform(PxIdentity));
+
 				if (!NewJoint)
 				{
 					HandleData = NULL;
@@ -209,19 +247,22 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 					// Pretty Much Unbreakable
 					NewJoint->setBreakForce(PX_MAX_REAL, PX_MAX_REAL);
-					NewJoint->setConstraintFlag(PxConstraintFlag::ePROJECTION, false);
+				//	NewJoint->setConstraintFlag(PxConstraintFlag::ePROJECTION, true);
 					
-					NewJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
+				//	NewJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
 
 					PxConstraintFlags Flags = NewJoint->getConstraintFlags();
 
 					// False flags
-					Flags |= PxConstraintFlag::ePROJECTION;
+					//Flags |= PxConstraintFlag::ePROJECTION;
 					Flags |= PxConstraintFlag::eCOLLISION_ENABLED;
 					
 					// True flags
-					//Flags &= ~PxConstraintFlag::eCOLLISION_ENABLED;
+					Flags &= ~PxConstraintFlag::ePROJECTION;
 
+					NewJoint->setConstraintFlag(PxConstraintFlag::ePROJECTION, true);
+					NewJoint->setProjectionAngularTolerance(FMath::DegreesToRadians(0.1f));
+					NewJoint->setProjectionLinearTolerance(0.1f);
 					NewJoint->setConstraintFlags(Flags);
 					
 					// Setting up the joint
@@ -229,25 +270,21 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 					NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eLOCKED);
 					NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eLOCKED);
 
-					NewJoint->setMotion(PxD6Axis::eTWIST, LeverRotationAxis == EVRInteractibleAxis::Axis_X ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
-					NewJoint->setMotion(PxD6Axis::eSWING1, LeverRotationAxis == EVRInteractibleAxis::Axis_Y ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
-					NewJoint->setMotion(PxD6Axis::eSWING2, LeverRotationAxis == EVRInteractibleAxis::Axis_Z ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
-				
+					NewJoint->setMotion(PxD6Axis::eTWIST, LeverRotationAxis == EVRInteractibleLeverAxis::Axis_X ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
+					NewJoint->setMotion(PxD6Axis::eSWING1, LeverRotationAxis == EVRInteractibleLeverAxis::Axis_Y ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
+					NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
 
-					const float LeverLimitRad = LeverLimit * /*InTwistLimitScale **/ (PI / 180.0f);
+					const float CorrectedLeverLimit = (LeverLimitPositive + LeverLimitNegative) / 2;
+					const float LeverLimitRad = CorrectedLeverLimit * /*InTwistLimitScale **/ (PI / 180.0f);
 					//PxReal LimitContactDistance = FMath::DegreesToRadians(FMath::Max(1.f, ProfileInstance.ConeLimit.ContactDistance /** InTwistLimitScale*/));
 
 					//The limit values need to be clamped so it will be valid in PhysX
-					PxReal ZLimitAngle = FMath::ClampAngle(LeverLimit /** InSwing1LimitScale*/, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
-					PxReal YLimitAngle = FMath::ClampAngle(LeverLimit /** InSwing2LimitScale*/, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
+					PxReal ZLimitAngle = FMath::ClampAngle(CorrectedLeverLimit/** InSwing1LimitScale*/, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
+					PxReal YLimitAngle = FMath::ClampAngle(CorrectedLeverLimit /** InSwing2LimitScale*/, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
 					//PxReal LimitContactDistance = FMath::DegreesToRadians(FMath::Max(1.f, ProfileInstance.ConeLimit.ContactDistance * FMath::Min(InSwing1LimitScale, InSwing2LimitScale)));
 					
 					NewJoint->setSwingLimit(PxJointLimitCone(YLimitAngle, ZLimitAngle));
-
-					if(bLeverIsOneWay)
-						NewJoint->setTwistLimit(PxJointAngularLimitPair(-LeverLimitRad, 0.0f));
-					else
-						NewJoint->setTwistLimit(PxJointAngularLimitPair(-LeverLimitRad, LeverLimitRad));
+					NewJoint->setTwistLimit(PxJointAngularLimitPair(-LeverLimitRad, LeverLimitRad));
 
 					return true;
 				}
@@ -388,7 +425,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 	protected:
 
-		FORCEINLINE float GetAxisValue(FRotator CheckLocation)
+		inline float GetAxisValue(FRotator CheckLocation)
 		{
 			switch (LeverRotationAxis)
 			{
@@ -396,13 +433,11 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 				return CheckLocation.Roll; break;
 			case EVRInteractibleAxis::Axis_Y:
 				return CheckLocation.Pitch; break;
-			case EVRInteractibleAxis::Axis_Z:
-				return CheckLocation.Yaw; break;
 			default:return 0.0f; break;
 			}
 		}
 
-		FORCEINLINE FRotator SetAxisValue(float SetValue)
+		inline FRotator SetAxisValue(float SetValue)
 		{
 			FRotator vec = FRotator::ZeroRotator;
 
@@ -412,14 +447,13 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 				vec.Roll = SetValue; break;
 			case EVRInteractibleAxis::Axis_Y:
 				vec.Pitch = SetValue; break;
-			case EVRInteractibleAxis::Axis_Z:
-				vec.Yaw = SetValue; break;
+			default:break;
 			}
 
 			return vec;
 		}
 
-		FORCEINLINE FRotator SetAxisValue(float SetValue, FRotator Var)
+		inline FRotator SetAxisValue(float SetValue, FRotator Var)
 		{
 			FRotator vec = Var;
 			switch (LeverRotationAxis)
@@ -428,8 +462,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 				vec.Roll = SetValue; break;
 			case EVRInteractibleAxis::Axis_Y:
 				vec.Pitch = SetValue; break;
-			case EVRInteractibleAxis::Axis_Z:
-				vec.Yaw = SetValue; break;
+			default:break;
 			}
 
 			return vec;
