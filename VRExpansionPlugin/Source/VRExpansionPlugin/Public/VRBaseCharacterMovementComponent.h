@@ -75,8 +75,8 @@ public:
 	// Injecting custom movement in here, bypasses floor detection
 	//virtual void PerformMovement(float DeltaSeconds) override;
 
-	FORCEINLINE void ApplyVRMotionToVelocity(float deltaTime);
-	FORCEINLINE void RestorePreAdditiveVRMotionVelocity();
+	inline void ApplyVRMotionToVelocity(float deltaTime);
+	inline void RestorePreAdditiveVRMotionVelocity();
 	FVector LastPreAdditiveVRVelocity;
 
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;

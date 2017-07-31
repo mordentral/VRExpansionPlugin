@@ -91,7 +91,7 @@ public:
 	void CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjects, int GripIndex, bool bReplicatedArray);
 
 	// Recreates a grip in situations where the collision type or movement replication type may have been changed
-	FORCEINLINE void ReCreateGrip(FBPActorGripInformation & GripInfo)
+	inline void ReCreateGrip(FBPActorGripInformation & GripInfo)
 	{
 		int HandleIndex = 0;
 
@@ -127,7 +127,7 @@ public:
 		}
 	}
 
-	FORCEINLINE_DEBUGGABLE bool HandleGripReplication(FBPActorGripInformation & Grip)
+	inline bool HandleGripReplication(FBPActorGripInformation & Grip)
 	{
 		if (!Grip.ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
 		{
@@ -258,7 +258,7 @@ public:
 	void Server_SendControllerTransform(FBPVRComponentPosRep NewTransform);
 
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
-	FORCEINLINE bool IsLocallyControlled() const
+	inline bool IsLocallyControlled() const
 	{
 		// I like epics new authority check more than mine
 		const AActor* MyOwner = GetOwner();
@@ -267,7 +267,7 @@ public:
 	}
 
 
-	FORCEINLINE bool IsServer() const
+	inline bool IsServer() const
 	{
 		if (GEngine != nullptr && GWorld != nullptr)
 		{
@@ -461,7 +461,7 @@ public:
 			bool bGripRelative = false
 			);
 
-	FORCEINLINE FTransform CreateGripRelativeAdditionTransform(
+	inline FTransform CreateGripRelativeAdditionTransform(
 		const FBPActorGripInformation &GripToSample,
 		const FTransform & AdditionTransform,
 		bool bGripRelative = false
@@ -469,30 +469,30 @@ public:
 
 
 	// Checks if we have grip authority
-	FORCEINLINE bool HasGripAuthority(const FBPActorGripInformation &Grip);
+	inline bool HasGripAuthority(const FBPActorGripInformation &Grip);
 
 	// Returns if we have grip authority (can call drop / grip on this grip)
 	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (DisplayName = "HasGripAuthority"))
 		bool BP_HasGripAuthority(const FBPActorGripInformation &Grip);
 
 	// Checks if we should be handling the movement of a grip based on settings for it
-	FORCEINLINE bool HasGripMovementAuthority(const FBPActorGripInformation &Grip);
+	inline bool HasGripMovementAuthority(const FBPActorGripInformation &Grip);
 
 	// Returns if we have grip movement authority (we handle movement of the grip)
 	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (DisplayName = "HasGripMovementAuthority"))
 		bool BP_HasGripMovementAuthority(const FBPActorGripInformation &Grip);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
-	FORCEINLINE_DEBUGGABLE void TickGrip(float DeltaTime);
+	void TickGrip(float DeltaTime);
 
 	// Splitting logic into separate function
 	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, const FVector &MotionControllerLocDelta, float DeltaTime, bool bReplicatedArray = false);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
-	FORCEINLINE_DEBUGGABLE void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips);
+	inline void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips);
 
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
-	FORCEINLINE FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
+	inline FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
 
 	// Converts a worldspace transform into being relative to this motion controller, optionally can check interface settings for a given object as well to modify the given transform
 	UFUNCTION(BlueprintPure, Category = "VRGrip")

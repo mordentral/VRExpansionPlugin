@@ -39,7 +39,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDPureYaw"))
 	static FRotator GetHMDPureYaw(FRotator HMDRotation);
 
-	FORCEINLINE static FRotator GetHMDPureYaw_I(FRotator HMDRotation)
+	inline static FRotator GetHMDPureYaw_I(FRotator HMDRotation)
 	{
 		// Took this from UnityVRToolkit, no shame, I liked it
 		FRotationMatrix HeadMat(HMDRotation);
