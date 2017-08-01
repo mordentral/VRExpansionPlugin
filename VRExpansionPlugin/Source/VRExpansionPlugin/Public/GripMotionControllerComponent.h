@@ -486,7 +486,7 @@ public:
 	void TickGrip(float DeltaTime);
 
 	// Splitting logic into separate function
-	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, const FVector &MotionControllerLocDelta, float DeltaTime, bool bReplicatedArray = false);
+	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray = false);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
 	inline void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips);

@@ -3,23 +3,53 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VRBPDatatypes.h"
+#include "GripMotionControllerComponent.h"
+#include "MotionControllerComponent.h"
 #include "VRGripInterface.h"
-#include "VRExpansionFunctionLibrary.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
-#include "GrippableBoxComponent.generated.h"
 
-/**
-*
-*/
+
+#include "VRDialComponent.generated.h"
+
+
+/** Delegate for notification when the lever state changes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRDialStateChangedSignature, float, DialMilestoneAngle);
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
-class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, public IVRGripInterface, public IGameplayTagAssetInterface
+class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_UCLASS_BODY()
 
-	~UGrippableBoxComponent();
+	~UVRDialComponent();
+
+	// Call to use an object
+	UPROPERTY(BlueprintAssignable, Category = "VRDialComponent")
+		FVRDialStateChangedSignature OnDialStateChanged;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRDialComponent")
+	float CurrentDialAngle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
+	bool bDialUsesAngleSnap;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent", meta = (ClampMin = "0.0", ClampMax = "180.0", UIMin = "0.0", UIMax = "180.0"))
+	float SnapAngleIncrement;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
+	EVRInteractibleAxis DialRotationAxis;
+
+	FTransform InitialRelativeTransform;
+	float CurRotBackEnd;
+	FRotator LastRotation;
+
+	// Should be called after the moved is moved post begin play
+	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
+	void ResetInitialDialLocation()
+	{
+		// Get our initial relative transform to our parent (or not if un-parented).
+		InitialRelativeTransform = this->GetRelativeTransform();
+	}
 
 	// ------------------------------------------------
 	// Gameplay tag interface
@@ -38,15 +68,29 @@ class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, publi
 	// End Gameplay Tag Interface
 
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
-
-
+	
 
 	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
-	bool bRepGripSettingsAndGameplayTags;
+		bool bRepGameplayTags;
+		
 
-	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
-	FBPInterfaceProperties VRGripInterfaceSettings;
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void BeginPlay() override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		EGripMovementReplicationSettings MovementReplicationSetting;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		float BreakDistance;
+
+	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+		bool bIsHeld; // Set on grip notify, not net serializing
+
+	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+
+	// Grip interface setup
 
 	// Set up as deny instead of allow so that default allows for gripping
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -67,10 +111,6 @@ class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, publi
 	// Grip type to use when not gripping a slot
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripCollisionType FreeGripType();
-
-	// Can have secondary grip
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-	//	bool CanHaveDoubleGrip();
 
 	// Secondary grip type
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -114,11 +154,11 @@ class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, publi
 
 	// Returns if the object is held and if so, which pawn is holding it
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void IsHeld(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld);
+		void IsHeld(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld);
 
 	// Sets is held, used by the plugin
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void SetHeld(UGripMotionControllerComponent * HoldingController, bool bIsHeld);
+		void SetHeld(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld);
 
 	// Get interactable settings
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -173,4 +213,54 @@ class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, publi
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void OnEndSecondaryUsed();
 
+	protected:
+
+		inline float GetAxisValue(FRotator CheckRotation)
+		{
+			switch (DialRotationAxis)
+			{
+			case EVRInteractibleAxis::Axis_X:
+				return CheckRotation.Roll; break;
+			case EVRInteractibleAxis::Axis_Y:
+				return CheckRotation.Pitch; break;
+			case EVRInteractibleAxis::Axis_Z:
+				return CheckRotation.Yaw; break;
+			default:return 0.0f; break;
+			}
+		}
+
+		inline FRotator SetAxisValue(float SetValue)
+		{
+			FRotator vec = FRotator::ZeroRotator;
+
+			switch (DialRotationAxis)
+			{
+			case EVRInteractibleAxis::Axis_X:
+				vec.Roll = SetValue; break;
+			case EVRInteractibleAxis::Axis_Y:
+				vec.Pitch = SetValue; break;
+			case EVRInteractibleAxis::Axis_Z:
+				vec.Yaw = SetValue; break;
+			default:break;
+			}
+
+			return vec;
+		}
+
+		inline FRotator SetAxisValue(float SetValue, FRotator Var)
+		{
+			FRotator vec = Var;
+			switch (DialRotationAxis)
+			{
+			case EVRInteractibleAxis::Axis_X:
+				vec.Roll = SetValue; break;
+			case EVRInteractibleAxis::Axis_Y:
+				vec.Pitch = SetValue; break;
+			case EVRInteractibleAxis::Axis_Z:
+				vec.Yaw = SetValue; break;
+			default:break;
+			}
+
+			return vec;
+		}
 };

@@ -352,11 +352,11 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 	// Get closest secondary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestSecondarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName OverridePrefix);
+		void ClosestSecondarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
 	// Get closest primary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestPrimarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName OverridePrefix);
+		void ClosestPrimarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
 	// Check if the object is an interactable
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -379,7 +379,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 	// Event triggered each tick on the interfaced object when gripped, can be used for custom movement or grip based logic
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
-		void TickGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, FVector MControllerLocDelta, float DeltaTime);
+		void TickGrip(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime);
 
 	// Event triggered on the interfaced object when gripped
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
@@ -425,14 +425,14 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 	protected:
 
-		inline float GetAxisValue(FRotator CheckLocation)
+		inline float GetAxisValue(FRotator CheckRotation)
 		{
 			switch (LeverRotationAxis)
 			{
-			case EVRInteractibleAxis::Axis_X:
-				return CheckLocation.Roll; break;
-			case EVRInteractibleAxis::Axis_Y:
-				return CheckLocation.Pitch; break;
+			case EVRInteractibleLeverAxis::Axis_X:
+				return CheckRotation.Roll; break;
+			case EVRInteractibleLeverAxis::Axis_Y:
+				return CheckRotation.Pitch; break;
 			default:return 0.0f; break;
 			}
 		}
@@ -443,9 +443,9 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 			switch (LeverRotationAxis)
 			{
-			case EVRInteractibleAxis::Axis_X:
+			case EVRInteractibleLeverAxis::Axis_X:
 				vec.Roll = SetValue; break;
-			case EVRInteractibleAxis::Axis_Y:
+			case EVRInteractibleLeverAxis::Axis_Y:
 				vec.Pitch = SetValue; break;
 			default:break;
 			}
@@ -458,9 +458,9 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 			FRotator vec = Var;
 			switch (LeverRotationAxis)
 			{
-			case EVRInteractibleAxis::Axis_X:
+			case EVRInteractibleLeverAxis::Axis_X:
 				vec.Roll = SetValue; break;
-			case EVRInteractibleAxis::Axis_Y:
+			case EVRInteractibleLeverAxis::Axis_Y:
 				vec.Pitch = SetValue; break;
 			default:break;
 			}

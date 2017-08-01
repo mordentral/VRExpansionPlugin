@@ -1274,9 +1274,12 @@ bool UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 		{
 			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
 
-			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+			if (!NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings || !NewGrip.AdvancedPhysicsSettings.bDoNotMoveIgnoreEntireHeldActor)
 			{
-				OwningPawn->MoveIgnoreActorAdd(pActor);
+				APawn* OwningPawn = Cast<APawn>(GetOwner());
+
+				if(OwningPawn)
+					OwningPawn->MoveIgnoreActorAdd(pActor);
 			}
 
 			if (!bIsReInit && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -1312,9 +1315,12 @@ bool UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &N
 
 			if (pActor)
 			{
-				if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+				if (!NewGrip.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings || !NewGrip.AdvancedPhysicsSettings.bDoNotMoveIgnoreEntireHeldActor)
 				{
-					OwningPawn->MoveIgnoreActorAdd(root->GetOwner());
+					APawn* OwningPawn = Cast<APawn>(GetOwner());
+
+					if(OwningPawn)
+						OwningPawn->MoveIgnoreActorAdd(root->GetOwner());
 				}
 
 				if (!bIsReInit && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -1439,9 +1445,12 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			pActor->RemoveTickPrerequisiteComponent(this);
 			//this->IgnoreActorWhenMoving(pActor, false);
 
-			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+			if (!NewDrop.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings || !NewDrop.AdvancedPhysicsSettings.bDoNotMoveIgnoreEntireHeldActor)
 			{
-				OwningPawn->MoveIgnoreActorRemove(pActor);
+				APawn* OwningPawn = Cast<APawn>(GetOwner());
+
+				if(OwningPawn)
+					OwningPawn->MoveIgnoreActorRemove(pActor);
 			}
 
 			if (root)
@@ -1483,9 +1492,12 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 			root->RemoveTickPrerequisiteComponent(this);
 
-			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+			if (!NewDrop.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings || !NewDrop.AdvancedPhysicsSettings.bDoNotMoveIgnoreEntireHeldActor)
 			{
-				OwningPawn->MoveIgnoreActorRemove(pActor);
+				APawn* OwningPawn = Cast<APawn>(GetOwner());
+
+				if(OwningPawn)
+					OwningPawn->MoveIgnoreActorRemove(pActor);
 			}
 
 			if (root)
@@ -2298,18 +2310,16 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 	FTransform ParentTransform = this->GetComponentTransform();
 
-	FVector MotionControllerLocDelta = this->GetComponentLocation() - LastControllerLocation;
-
 	// Set the last controller world location for next frame
 	LastControllerLocation = this->GetComponentLocation();
 
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
-	HandleGripArray(GrippedActors, ParentTransform, MotionControllerLocDelta, DeltaTime, true);
-	HandleGripArray(LocallyGrippedActors, ParentTransform, MotionControllerLocDelta, DeltaTime);
+	HandleGripArray(GrippedActors, ParentTransform, DeltaTime, true);
+	HandleGripArray(LocallyGrippedActors, ParentTransform, DeltaTime);
 
 }
 
-void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, const FVector &MotionControllerLocDelta, float DeltaTime, bool bReplicatedArray)
+void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)
 {
 	if (GrippedObjects.Num())
 	{
@@ -2394,12 +2404,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					// Don't perform logic on the movement for this object, just pass in the GripTick() event with the controller difference instead
 					if (bRootHasInterface)
 					{
-						IVRGripInterface::Execute_TickGrip(root, this, *Grip, MotionControllerLocDelta, DeltaTime);
+						IVRGripInterface::Execute_TickGrip(root, this, *Grip, DeltaTime);
 					}
 					
 					if (bActorHasInterface)
 					{
-						IVRGripInterface::Execute_TickGrip(actor, this, *Grip, MotionControllerLocDelta, DeltaTime);
+						IVRGripInterface::Execute_TickGrip(actor, this, *Grip, DeltaTime);
 					}
 
 					continue;
@@ -2758,12 +2768,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					// All non custom grips tick after translation, this is still pre physics so interactive grips location will be wrong, but others will be correct
 					if (bRootHasInterface)
 					{
-						IVRGripInterface::Execute_TickGrip(root, this, *Grip, MotionControllerLocDelta, DeltaTime);
+						IVRGripInterface::Execute_TickGrip(root, this, *Grip, DeltaTime);
 					}
 
 					if (bActorHasInterface)
 					{
-						IVRGripInterface::Execute_TickGrip(actor, this, *Grip, MotionControllerLocDelta, DeltaTime);
+						IVRGripInterface::Execute_TickGrip(actor, this, *Grip, DeltaTime);
 					}
 				}
 			}

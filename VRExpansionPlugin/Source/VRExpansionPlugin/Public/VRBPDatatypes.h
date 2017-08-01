@@ -456,6 +456,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
 		bool bDoNotSetCOMToGripLocation;
 
+	// Do not set move ignore from the character to the held actor on grip - this is useful for stationary objects with subojects like drawers.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+		bool bDoNotMoveIgnoreEntireHeldActor;
+
 	// Turn off gravity during the grip, resolves the slight downward offset of the object with normal constraint strengths.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
 		bool bTurnOffGravityDuringGrip;
@@ -475,6 +479,7 @@ public:
 		bUseAdvancedPhysicsSettings = false;
 		bUseCustomAngularValues = false;
 		bDoNotSetCOMToGripLocation = false;
+		bDoNotMoveIgnoreEntireHeldActor = false;
 		bTurnOffGravityDuringGrip = false;
 		AngularStiffness = 0.0f;
 		AngularDamping = 0.0f;
@@ -485,6 +490,7 @@ public:
 	{
 		return (bUseAdvancedPhysicsSettings == Other.bUseAdvancedPhysicsSettings &&
 			bDoNotSetCOMToGripLocation == Other.bDoNotSetCOMToGripLocation &&
+			bDoNotMoveIgnoreEntireHeldActor == Other.bDoNotMoveIgnoreEntireHeldActor &&
 			bTurnOffGravityDuringGrip == Other.bTurnOffGravityDuringGrip &&
 			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
 			FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) &&
@@ -496,6 +502,7 @@ public:
 	{
 		return (bUseAdvancedPhysicsSettings != Other.bUseAdvancedPhysicsSettings ||
 			bDoNotSetCOMToGripLocation != Other.bDoNotSetCOMToGripLocation ||
+			bDoNotMoveIgnoreEntireHeldActor != Other.bDoNotMoveIgnoreEntireHeldActor ||
 			bTurnOffGravityDuringGrip != Other.bTurnOffGravityDuringGrip ||
 			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
 			!FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) ||
@@ -511,6 +518,7 @@ public:
 		if (bUseAdvancedPhysicsSettings)
 		{
 			Ar << bDoNotSetCOMToGripLocation;
+			Ar << bDoNotMoveIgnoreEntireHeldActor;
 			Ar << PhysicsConstraintType;
 			Ar << bTurnOffGravityDuringGrip;
 
