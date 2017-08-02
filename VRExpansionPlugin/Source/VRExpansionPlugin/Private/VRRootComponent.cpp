@@ -490,7 +490,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 {
 	BodyInstance.SetBodyTransform(OffsetComponentToWorld, Teleport);
-	//BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
+	BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
 }
 
 // Override this so that the physics representation is in the correct location
@@ -602,7 +602,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 	// Set up.
 	float DeltaSizeSq = Delta.SizeSquared();
-	const FQuat InitialRotationQuat = ComponentToWorld.GetRotation();
+	const FQuat InitialRotationQuat = GetComponentTransform().GetRotation();//ComponentToWorld.GetRotation();
 
 	// ComponentSweepMulti does nothing if moving < KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
 	const float MinMovementDistSq = (bSweep ? FMath::Square(4.f*KINDA_SMALL_NUMBER) : 0.f);
@@ -666,6 +666,8 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			UWorld* const MyWorld = GetWorld();
 
 			const bool bForceGatherOverlaps = !ShouldCheckOverlapFlagToQueueOverlaps(*this);
+			
+			// #TODO in 4.17 this uses: SCENE_QUERY_STAT(MoveComponent) instead....may want to update to this eventually.
 			FComponentQueryParams Params(/*PrimitiveComponentStatics::MoveComponentName*/"MoveComponent", Actor);
 			FCollisionResponseParams ResponseParam;
 			InitSweepCollisionParams(Params, ResponseParam);
@@ -944,7 +946,10 @@ void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOver
 					UWorld* const MyWorld = MyActor->GetWorld();
 					TArray<FOverlapResult> Overlaps;
 					// note this will optionally include overlaps with components in the same actor (depending on bIgnoreChildren). 
+
+					// #TODO: In 4.17 it moved to Scene_Query_Stat, update to this at some point   -->  SCENE_QUERY_STAT(UpdateOverlaps), bIgnoreChildren ? MyActor : nullptr);
 					FComponentQueryParams Params(PrimitiveComponentStatics::UpdateOverlapsName, bIgnoreChildren ? MyActor : nullptr);
+					
 					Params.bIgnoreBlocks = true;	//We don't care about blockers since we only route overlap events to real overlaps
 					FCollisionResponseParams ResponseParam;
 					InitSweepCollisionParams(Params, ResponseParam);
@@ -1075,7 +1080,10 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 			{
 				//SCOPE_CYCLE_COUNTER(STAT_MoveComponent_FastOverlap);
 
-				// Check components we hit during the sweep, keep only those still overlapping
+				// Check components we hit during the sweep, keep only those still overlapping		
+
+				// #TODO Update at some point: In 4.17 it uses this initializer instead ->  (NAME_None, FCollisionQueryParams::GetUnknownStatId());
+				// Also need to include: #include "WorldCollision.h"
 				const FCollisionQueryParams UnusedQueryParams;
 				for (int32 Index = SweptOverlapsIndex; Index < SweptOverlaps.Num(); ++Index)
 				{
