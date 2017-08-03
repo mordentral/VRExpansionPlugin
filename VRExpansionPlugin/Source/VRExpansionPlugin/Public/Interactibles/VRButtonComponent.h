@@ -89,7 +89,7 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 
 		LastToggleTime = GetWorld()->GetTimeSeconds();
 
-		if(bAllowButtonChangedEvent)
+		if(bCallButtonChangedEvent)
 			OnButtonStateChanged.Broadcast(bButtonState);
 	}
 
