@@ -56,6 +56,43 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 		InitialRelativeTransform = this->GetRelativeTransform();
 	}
 
+	// Sets the button state outside of interaction
+	UFUNCTION(BlueprintCallable, Category = "VRButtonComponent")
+	void SetButtonState(bool bNewButtonState, bool bCallButtonChangedEvent = true)
+	{
+		// No change
+		if (bButtonState == bNewButtonState)
+			return;
+
+		bButtonState = bNewButtonState;
+
+		switch (ButtonType)
+		{
+		case EVRButtonType::Btn_Press:
+		{
+		}break;
+		case EVRButtonType::Btn_Toggle_Return:
+		{}break;
+		case EVRButtonType::Btn_Toggle_Stay:
+		{
+			float ClampMinDepth = 0.0f;
+
+			// If active and a toggled stay, then clamp min to the toggled stay location
+			if (bButtonState)
+				ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_KINDA_SMALL_NUMBER
+
+			float NewDepth = FMath::Clamp(ClampMinDepth, -DepressDistance, ClampMinDepth);
+			this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(SetAxisValue(NewDepth)), false);
+		}break;
+		default:break;
+		}
+
+		LastToggleTime = GetWorld()->GetTimeSeconds();
+
+		if(bAllowButtonChangedEvent)
+			OnButtonStateChanged.Broadcast(bButtonState);
+	}
+
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
 		FVRButtonStateChangedSignature OnButtonStateChanged;
