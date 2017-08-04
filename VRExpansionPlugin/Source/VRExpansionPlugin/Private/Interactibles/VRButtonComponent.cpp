@@ -37,6 +37,7 @@ void UVRButtonComponent::BeginPlay()
 	Super::BeginPlay();
 
 	ResetInitialButtonLocation();
+	SetButtonToRestingPosition();
 }
 
 void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
