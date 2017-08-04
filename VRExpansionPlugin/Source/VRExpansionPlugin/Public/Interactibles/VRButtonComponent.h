@@ -56,16 +56,26 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 		InitialRelativeTransform = this->GetRelativeTransform();
 	}
 
-	// Sets the button state outside of interaction
+	// Sets the button state outside of interaction, bSnapIntoPosition is for Toggle_Stay mode, it will lerp into the new position if this is false
 	UFUNCTION(BlueprintCallable, Category = "VRButtonComponent")
-	void SetButtonState(bool bNewButtonState, bool bCallButtonChangedEvent = true)
+	void SetButtonState(bool bNewButtonState, bool bCallButtonChangedEvent = true, bool bSnapIntoPosition = false)
 	{
 		// No change
 		if (bButtonState == bNewButtonState)
 			return;
 
 		bButtonState = bNewButtonState;
+		SetButtonToRestingPosition(!bSnapIntoPosition);
+		LastToggleTime = GetWorld()->GetTimeSeconds();
 
+		if(bCallButtonChangedEvent)
+			OnButtonStateChanged.Broadcast(bButtonState);
+	}
+
+	// Resets the button to its resting location (mostly for Toggle_Stay)
+	UFUNCTION(BlueprintCallable, Category = "VRButtonComponent")
+	void SetButtonToRestingPosition(bool bLerpToPosition = false)
+	{
 		switch (ButtonType)
 		{
 		case EVRButtonType::Btn_Press:
@@ -75,22 +85,23 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 		{}break;
 		case EVRButtonType::Btn_Toggle_Stay:
 		{
-			float ClampMinDepth = 0.0f;
+			if (!bLerpToPosition)
+			{
+				float ClampMinDepth = 0.0f;
 
-			// If active and a toggled stay, then clamp min to the toggled stay location
-			if (bButtonState)
-				ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_KINDA_SMALL_NUMBER
+				// If active and a toggled stay, then clamp min to the toggled stay location
+				if (bButtonState)
+					ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_KINDA_SMALL_NUMBER
 
-			float NewDepth = FMath::Clamp(ClampMinDepth, -DepressDistance, ClampMinDepth);
-			this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(SetAxisValue(NewDepth)), false);
+				float NewDepth = FMath::Clamp(ClampMinDepth, -DepressDistance, ClampMinDepth);
+				this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(SetAxisValue(NewDepth)), false);
+			}
+			else
+				this->SetComponentTickEnabled(true); // This will trigger the lerp to resting position
+
 		}break;
 		default:break;
 		}
-
-		LastToggleTime = GetWorld()->GetTimeSeconds();
-
-		if(bCallButtonChangedEvent)
-			OnButtonStateChanged.Broadcast(bButtonState);
 	}
 
 	// Call to use an object
