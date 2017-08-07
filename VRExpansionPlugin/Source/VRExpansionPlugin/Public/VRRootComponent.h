@@ -187,7 +187,7 @@ FORCEINLINE void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHa
 	if (bPhysicsStateCreated)
 	{
 		// Update physics engine collision shapes
-		BodyInstance.UpdateBodyScale(ComponentToWorld.GetScale3D(), true);
+		BodyInstance.UpdateBodyScale(GetComponentTransform().GetScale3D(), true);
 
 		if (bUpdateOverlaps && IsCollisionEnabled() && GetOwner())
 		{

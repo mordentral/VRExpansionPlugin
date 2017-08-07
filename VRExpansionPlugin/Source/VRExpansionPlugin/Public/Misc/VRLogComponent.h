@@ -7,6 +7,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/Console.h"
 #include "TextRange.h"
+#include "OutputDeviceHelper.h"
 #include "VRLogComponent.generated.h"
 
 /**

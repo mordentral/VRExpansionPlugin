@@ -66,21 +66,5 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
-	bool IsServer() const
-	{
-		if (GEngine != nullptr && GWorld != nullptr)
-		{
-			switch (GEngine->GetNetMode(GWorld))
-			{
-			case NM_Client:
-			{return false; } break;
-			case NM_DedicatedServer:
-			case NM_ListenServer:
-			default:
-			{return true; } break;
-			}
-		}
-
-		return false;
-	}
+	//bool IsServer();
 };

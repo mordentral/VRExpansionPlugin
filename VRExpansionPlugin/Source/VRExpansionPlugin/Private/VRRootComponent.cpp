@@ -2,7 +2,7 @@
 
 #include "VRRootComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
-
+#include "WorldCollision.h"
 #include "PhysicsPublic.h"
 
 #if WITH_PHYSX
@@ -667,8 +667,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 			const bool bForceGatherOverlaps = !ShouldCheckOverlapFlagToQueueOverlaps(*this);
 			
-			// #TODO in 4.17 this uses: SCENE_QUERY_STAT(MoveComponent) instead....may want to update to this eventually.
-			FComponentQueryParams Params(/*PrimitiveComponentStatics::MoveComponentName*/"MoveComponent", Actor);
+			FComponentQueryParams Params(/*PrimitiveComponentStatics::MoveComponentName*//*"MoveComponent"*/SCENE_QUERY_STAT(MoveComponent), Actor);
 			FCollisionResponseParams ResponseParam;
 			InitSweepCollisionParams(Params, ResponseParam);
 			Params.bIgnoreTouches |= !(bGenerateOverlapEvents || bForceGatherOverlaps);
@@ -926,7 +925,8 @@ void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOver
 			// If pending kill, we should not generate any new overlaps
 			if (!IsPendingKill())
 			{
-				static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.AllowCachedOverlaps"));
+				// 4.17 converted to auto cvar
+				static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
 				// Might be able to avoid testing for new overlaps at the end location.
 				if (OverlapsAtEndLocation != NULL && CVarAllowCachedOverlaps && PrevTransform.Equals(GetComponentTransform()))
 				{
@@ -947,8 +947,7 @@ void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOver
 					TArray<FOverlapResult> Overlaps;
 					// note this will optionally include overlaps with components in the same actor (depending on bIgnoreChildren). 
 
-					// #TODO: In 4.17 it moved to Scene_Query_Stat, update to this at some point   -->  SCENE_QUERY_STAT(UpdateOverlaps), bIgnoreChildren ? MyActor : nullptr);
-					FComponentQueryParams Params(PrimitiveComponentStatics::UpdateOverlapsName, bIgnoreChildren ? MyActor : nullptr);
+					FComponentQueryParams Params(SCENE_QUERY_STAT(UpdateOverlaps), bIgnoreChildren ? MyActor : nullptr); //(PrimitiveComponentStatics::UpdateOverlapsName, bIgnoreChildren ? MyActor : nullptr);
 					
 					Params.bIgnoreBlocks = true;	//We don't care about blockers since we only route overlap events to real overlaps
 					FCollisionResponseParams ResponseParam;
@@ -1082,9 +1081,7 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 
 				// Check components we hit during the sweep, keep only those still overlapping		
 
-				// #TODO Update at some point: In 4.17 it uses this initializer instead ->  (NAME_None, FCollisionQueryParams::GetUnknownStatId());
-				// Also need to include: #include "WorldCollision.h"
-				const FCollisionQueryParams UnusedQueryParams;
+				const FCollisionQueryParams UnusedQueryParams(NAME_None, FCollisionQueryParams::GetUnknownStatId());;
 				for (int32 Index = SweptOverlapsIndex; Index < SweptOverlaps.Num(); ++Index)
 				{
 					const FOverlapInfo& OtherOverlap = SweptOverlaps[Index];

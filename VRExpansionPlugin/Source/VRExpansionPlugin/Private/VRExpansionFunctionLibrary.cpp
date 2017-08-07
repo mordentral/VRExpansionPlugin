@@ -271,7 +271,7 @@ void UVRExpansionFunctionLibrary::NonAuthorityMinimumAreaRectangle(class UObject
 #if ENABLE_DRAW_DEBUG
 	if (bDebugDraw)
 	{
-		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject) : nullptr;
+		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
 		if (World != nullptr)
 		{
 			DrawDebugSphere(World, OutRectCenter, 10.f, 12, FColor::Yellow, true);

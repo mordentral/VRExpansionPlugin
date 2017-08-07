@@ -6,18 +6,18 @@
 
 
 //=============================================================================
-UGripSteamVRTrackedDevice::UGripSteamVRTrackedDevice(const FObjectInitializer& ObjectInitializer)
+UDEPRECATED_GripSteamVRTrackedDevice::UDEPRECATED_GripSteamVRTrackedDevice(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	TrackedDeviceIndex = EBPVRDeviceIndex::TrackedDevice1;
 }
 
 //=============================================================================
-UGripSteamVRTrackedDevice::~UGripSteamVRTrackedDevice()
+UDEPRECATED_GripSteamVRTrackedDevice::~UDEPRECATED_GripSteamVRTrackedDevice()
 {
 }
 
-bool UGripSteamVRTrackedDevice::GripPollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale)
+bool UDEPRECATED_GripSteamVRTrackedDevice::GripPollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;

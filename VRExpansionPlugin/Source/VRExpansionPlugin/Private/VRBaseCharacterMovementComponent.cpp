@@ -6,7 +6,7 @@
 =============================================================================*/
 
 #include "VRBaseCharacterMovementComponent.h"
-#include "VRBPDataTypes.h"
+#include "VRBPDatatypes.h"
 
 
 UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObjectInitializer& ObjectInitializer)
@@ -226,7 +226,7 @@ void UVRBaseCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
 
 void UVRBaseCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 {
-	switch (CustomMovementMode)
+	switch (static_cast<EVRCustomMovementMode>(CustomMovementMode))
 	{
 	case EVRCustomMovementMode::VRMOVE_Climbing:
 		PhysCustom_Climbing(deltaTime, Iterations);
