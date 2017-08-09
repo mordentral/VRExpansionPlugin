@@ -25,30 +25,42 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "VRDialComponent")
-		FVRDialStateChangedSignature OnDialStateChanged;
+		FVRDialStateChangedSignature OnDialHitSnapAngle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRDialComponent")
+	UPROPERTY(BlueprintReadOnly, Category = "VRDialComponent")
 	float CurrentDialAngle;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
 	bool bDialUsesAngleSnap;
 
+	// Angle that the dial snaps to on release and when within the threshold distance
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent", meta = (ClampMin = "0.0", ClampMax = "180.0", UIMin = "0.0", UIMax = "180.0"))
 	float SnapAngleIncrement;
+
+	// Threshold distance that when within the dial will stay snapped to its snap increment
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent", meta = (ClampMin = "0.0", ClampMax = "180.0", UIMin = "0.0", UIMax = "180.0"))
+	float SnapAngleThreshold;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
 	EVRInteractibleAxis DialRotationAxis;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
+	EVRInteractibleAxis InteractorRotationAxis;
+
 	FTransform InitialRelativeTransform;
 	float CurRotBackEnd;
 	FRotator LastRotation;
+	float LastSnapAngle;
 
-	// Should be called after the moved is moved post begin play
+	FVector InitialInteractorLocation;
+
+	// Should be called after the dial is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
 	void ResetInitialDialLocation()
 	{
 		// Get our initial relative transform to our parent (or not if un-parented).
 		InitialRelativeTransform = this->GetRelativeTransform();
+		CurRotBackEnd = 0.0f;
 	}
 
 	// ------------------------------------------------
@@ -215,9 +227,9 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 
 	protected:
 
-		inline float GetAxisValue(FRotator CheckRotation)
+		inline float GetAxisValue(FRotator CheckRotation, EVRInteractibleAxis RotationAxis)
 		{
-			switch (DialRotationAxis)
+			switch (RotationAxis)
 			{
 			case EVRInteractibleAxis::Axis_X:
 				return CheckRotation.Roll; break;
@@ -229,11 +241,11 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 			}
 		}
 
-		inline FRotator SetAxisValue(float SetValue)
+		inline FRotator SetAxisValue(float SetValue, EVRInteractibleAxis RotationAxis)
 		{
 			FRotator vec = FRotator::ZeroRotator;
 
-			switch (DialRotationAxis)
+			switch (RotationAxis)
 			{
 			case EVRInteractibleAxis::Axis_X:
 				vec.Roll = SetValue; break;
@@ -247,10 +259,10 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 			return vec;
 		}
 
-		inline FRotator SetAxisValue(float SetValue, FRotator Var)
+		inline FRotator SetAxisValue(float SetValue, FRotator Var, EVRInteractibleAxis RotationAxis)
 		{
 			FRotator vec = Var;
-			switch (DialRotationAxis)
+			switch (RotationAxis)
 			{
 			case EVRInteractibleAxis::Axis_X:
 				vec.Roll = SetValue; break;

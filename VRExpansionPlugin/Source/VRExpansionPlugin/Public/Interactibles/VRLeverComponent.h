@@ -57,7 +57,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	UPROPERTY(BlueprintAssignable, Category = "VRLeverComponent")
 		FVRLeverStateChangedSignature OnLeverStateChanged;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRLeverComponent")
+	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")
 		float CurrentLeverAngle;
 
 	// ------------------------------------------------
