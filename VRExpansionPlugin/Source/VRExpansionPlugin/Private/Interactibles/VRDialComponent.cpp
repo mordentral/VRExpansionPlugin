@@ -16,9 +16,12 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	InteractorRotationAxis = EVRInteractibleAxis::Axis_X;
 
 	bDialUsesAngleSnap = false;
-	SnapAngleThreshold = 10.0f;
+	SnapAngleThreshold = 0.0f;
 	SnapAngleIncrement = 45.0f;
 	LastSnapAngle = 0.0f;
+
+	ClockwiseMaximumDialAngle = 180.0f;
+	CClockwiseMaximumDialAngle = 180.0f;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	BreakDistance = 100.0f;
@@ -72,11 +75,40 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 		}
 	}
 
-	FRotator DeltaRot = (GrippingController->RelativeRotation - LastRotation).GetNormalized();
-	
-	CurRotBackEnd += GetAxisValue(DeltaRot, InteractorRotationAxis);
+	float MaxCheckValue = 360.0f - CClockwiseMaximumDialAngle;
+	float DeltaRot = GetAxisValue((GrippingController->RelativeRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
+	float tempCheck = FRotator::ClampAxis(CurRotBackEnd + DeltaRot);
 
-	if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd,SnapAngleIncrement)) <= SnapAngleThreshold)
+	// Clamp it to the boundaries
+	if (FMath::IsNearlyZero(CClockwiseMaximumDialAngle))
+	{
+		CurRotBackEnd = FMath::Clamp(CurRotBackEnd + DeltaRot, 0.0f, ClockwiseMaximumDialAngle);
+	}
+	else if (FMath::IsNearlyZero(ClockwiseMaximumDialAngle))
+	{
+		if (CurRotBackEnd < MaxCheckValue)
+			CurRotBackEnd = FMath::Clamp(360.0f + DeltaRot, MaxCheckValue, 360.0f);
+		else
+			CurRotBackEnd = FMath::Clamp(CurRotBackEnd + DeltaRot, MaxCheckValue, 360.0f);
+	}
+	else if (tempCheck > ClockwiseMaximumDialAngle && tempCheck < MaxCheckValue)
+	{
+		if (CurRotBackEnd < MaxCheckValue)
+		{
+			CurRotBackEnd = ClockwiseMaximumDialAngle;
+		}
+		else
+		{
+			CurRotBackEnd = MaxCheckValue;
+		}
+	}
+	else
+		CurRotBackEnd = tempCheck;
+
+	// #TODO: Port the line below to the lever to handle ensuring that -180.0f doesn't occur on physics due to constraint precision?
+	//CurRotBackEnd = Math.abs(CurRotBackEnd - ClockwiseMaximumDialAngle) < Math.abs(CurRotBackEnd - CClockwiseMaximumDialAngle) ? ClockwiseMaximumDialAngle : CClockwiseMaximumDialAngle;
+
+	if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd,SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement,SnapAngleThreshold))
 	{
 		this->SetRelativeRotation((FTransform(SetAxisValue(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator, DialRotationAxis)) * InitialRelativeTransform).Rotator());
 		CurrentDialAngle = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
@@ -109,7 +141,8 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 	if (bDialUsesAngleSnap)
 	{
 		this->SetRelativeRotation((FTransform(SetAxisValue(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator, DialRotationAxis)) * InitialRelativeTransform).Rotator());		
-		CurrentDialAngle = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
+		CurRotBackEnd = FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement);
+		CurrentDialAngle = FRotator::ClampAxis(FMath::RoundToFloat(CurRotBackEnd));
 	}
 
 	this->SetComponentTickEnabled(false);
