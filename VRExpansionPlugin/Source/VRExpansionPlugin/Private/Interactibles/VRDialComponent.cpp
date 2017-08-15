@@ -76,6 +76,7 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 	}
 
 	float MaxCheckValue = 360.0f - CClockwiseMaximumDialAngle;
+
 	float DeltaRot = GetAxisValue((GrippingController->RelativeRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
 	float tempCheck = FRotator::ClampAxis(CurRotBackEnd + DeltaRot);
 
@@ -132,6 +133,8 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
 	InitialInteractorLocation = GrippingController->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform()).GetTranslation();
+	
+	// Need to rotate this by original hand to dial facing eventually
 	LastRotation = GrippingController->RelativeRotation;
 	this->SetComponentTickEnabled(true);
 }
