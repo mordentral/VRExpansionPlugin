@@ -1258,7 +1258,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 
 
 // No longer an RPC, now is called from RepNotify so that joining clients also correctly set up grips
-bool UGripMotionControllerComponent::NotifyGrip(const FBPActorGripInformation &NewGrip, bool bIsReInit)
+bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip, bool bIsReInit)
 {
 	UPrimitiveComponent *root = NULL;
 	AActor *pActor = NULL;
@@ -1569,7 +1569,7 @@ bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGrip
 
 bool UGripMotionControllerComponent::HasGripAuthority(const FBPActorGripInformation &Grip)
 {
-	if (((Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive || 
+	if (((Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive && 
 		Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && IsServer()) ||
 	   ((Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || 
 		Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && bHasAuthority))
@@ -1888,7 +1888,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 	return false;
 }
 
-bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformation &Grip, bool bIsPostTeleport)
+bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &Grip, bool bIsPostTeleport)
 {
 	bool bHasMovementAuthority = HasGripMovementAuthority(Grip);
 
@@ -2005,6 +2005,9 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(const FBPActorGripInformat
 	}
 	else if (Handle && Handle->KinActorData && bIsPostTeleport)
 	{
+		// Don't try to autodrop on next tick, let the physx constraint update its local frame first
+		if (HasGripAuthority(Grip))
+			Grip.bSkipNextConstraintLengthCheck = true;
 
 		PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
 
@@ -2423,49 +2426,59 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						)
 					)
 				{
-					float BreakDistance = 0.0f;
-					if (bRootHasInterface)
-					{
-						BreakDistance = IVRGripInterface::Execute_GripBreakDistance(root);
-					}
-					else if (bActorHasInterface)
-					{
-						// Actor grip interface is checked after component
-						BreakDistance = IVRGripInterface::Execute_GripBreakDistance(actor);
-					}
 
-					if (BreakDistance > 0.0f)
+					// After initial teleportation the constraint local pose can be not updated yet, so lets delay a frame to let it update
+					// Otherwise may cause unintended auto drops
+					if (Grip->bSkipNextConstraintLengthCheck)
 					{
-						FVector CheckDistance;
-						if (!GetPhysicsJointLength(*Grip, root, CheckDistance))
+						Grip->bSkipNextConstraintLengthCheck = false;
+					}
+					else
+					{
+						float BreakDistance = 0.0f;
+						if (bRootHasInterface)
 						{
-							CheckDistance = (WorldTransform.GetLocation() - root->GetComponentLocation());
+							BreakDistance = IVRGripInterface::Execute_GripBreakDistance(root);
+						}
+						else if (bActorHasInterface)
+						{
+							// Actor grip interface is checked after component
+							BreakDistance = IVRGripInterface::Execute_GripBreakDistance(actor);
 						}
 
-						if (CheckDistance.Size() >= BreakDistance)
+						if (BreakDistance > 0.0f)
 						{
-							switch (Grip->GripTargetType)
+							FVector CheckDistance;
+							if (!GetPhysicsJointLength(*Grip, root, CheckDistance))
 							{
-							case EGripTargetType::ComponentGrip:
-							//case EGripTargetType::InteractibleComponentGrip:
-							{
-								if (bRootHasInterface)
-									DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(root));
-								else
-									DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(actor));
-							}break;
-							case EGripTargetType::ActorGrip:
-							//case EGripTargetType::InteractibleActorGrip:
-							{
-								if (bRootHasInterface)
-									DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(root));
-								else
-									DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(actor));
-							}break;
+								CheckDistance = (WorldTransform.GetLocation() - root->GetComponentLocation());
 							}
 
-							// Don't bother moving it, dropped now
-							continue;
+							if (CheckDistance.Size() >= BreakDistance)
+							{
+								switch (Grip->GripTargetType)
+								{
+								case EGripTargetType::ComponentGrip:
+									//case EGripTargetType::InteractibleComponentGrip:
+								{
+									if (bRootHasInterface)
+										DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(root));
+									else
+										DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(actor));
+								}break;
+								case EGripTargetType::ActorGrip:
+									//case EGripTargetType::InteractibleActorGrip:
+								{
+									if (bRootHasInterface)
+										DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(root));
+									else
+										DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(actor));
+								}break;
+								}
+
+								// Don't bother moving it, dropped now
+								continue;
+							}
 						}
 					}
 				}

@@ -752,6 +752,9 @@ public:
 	bool bIsLocked;
 	FQuat LastLockedRotation;
 
+	// Need to skip one frame of length check post teleport with constrained objects, the constraint may have not been updated yet.
+	bool bSkipNextConstraintLengthCheck;
+
 	// Cached values - since not using a full serialize now the old array state may not contain what i need to diff
 	// I set these in On_Rep now and check against them when new replications happen to control some actions.
 	struct FGripValueCache
@@ -827,6 +830,7 @@ public:
 
 	FBPActorGripInformation()
 	{
+		bSkipNextConstraintLengthCheck = false;
 		GripTargetType = EGripTargetType::ActorGrip;
 		Damping = 200.0f;
 		Stiffness = 1500.0f;
