@@ -388,7 +388,7 @@ public:
 
 	// No Longer replicated, called via on rep now instead.
 	//UFUNCTION(Reliable, NetMulticast)
-	bool NotifyGrip(const FBPActorGripInformation &NewGrip, bool bIsReInit = false);
+	bool NotifyGrip(FBPActorGripInformation &NewGrip, bool bIsReInit = false);
 
 	UFUNCTION(Reliable, NetMulticast)
 	void NotifyDrop(const FBPActorGripInformation &NewDrop, bool bSimulate);
@@ -661,7 +661,7 @@ public:
 	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool TeleportMoveGrip(const FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
+	bool TeleportMoveGrip(FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
 
 	// Adds a secondary attachment point to the grip
 	// bUseLegacySecondaryLogic enables new singularity removal code, leave true to keep original behavior
