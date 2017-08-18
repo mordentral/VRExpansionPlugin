@@ -7,6 +7,7 @@
 #include "VRBPDatatypes.h"
 #include "OpenVRExpansionFunctionLibrary.h"
 #include "GripMotionControllerComponent.h"
+#include "IHeadMountedDisplay.h"
 
 #include "SteamVRKeyboardComponent.generated.h"
 

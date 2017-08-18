@@ -35,6 +35,7 @@
 //#include "HeadMountedDisplay.h" 
 //#include "HeadMountedDisplayFunctionLibrary.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
+#include "IHeadMountedDisplay.h"
 
 #include "OpenVRExpansionFunctionLibrary.generated.h"
 
