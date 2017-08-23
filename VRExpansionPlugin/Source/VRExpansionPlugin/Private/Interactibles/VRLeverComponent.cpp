@@ -28,6 +28,8 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	LeverTogglePercentage = 0.8f;
 	lerpCounter = 0.0f;
 
+	LastDeltaAngle = 0.0f;
+
 	LeverReturnTypeWhenReleased = EVRInteractibleLeverReturnType::ReturnToZero;
 	LeverReturnSpeed = 50.0f;
 	bSendLeverEventsDuringLerp = false;
@@ -203,7 +205,18 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	else
 		DeltaAngle = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Z, CurInteractorLocation.X)) - InitialGripRot;
 
-	this->SetRelativeRotation((FTransform(SetAxisValue(FMath::ClampAngle(RotAtGrab + DeltaAngle, -LeverLimitNegative, LeverLimitPositive), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+
+	float CheckAngle = FRotator::NormalizeAxis(RotAtGrab + DeltaAngle);
+
+	// Ignore rotations that would flip the angle of the lever to the other side, with a 90 degree allowance
+	if (!FMath::IsNearlyZero(LastDeltaAngle) && FMath::Sign(CheckAngle) != FMath::Sign(LastDeltaAngle) && FMath::Abs(LastDeltaAngle) > 90.0f)
+	{
+	}
+	else
+	{
+		this->SetRelativeRotation((FTransform(SetAxisValue(FMath::ClampAngle(RotAtGrab + DeltaAngle, -LeverLimitNegative, LeverLimitPositive), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+		LastDeltaAngle = CheckAngle;
+	}
 }
 
 void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 

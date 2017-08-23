@@ -118,7 +118,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		float LeverReturnSpeed;
 
 	float lerpCounter;
-
+	float LastDeltaAngle;
 	bool bIsLerping;
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;

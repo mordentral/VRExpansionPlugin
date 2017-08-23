@@ -118,9 +118,9 @@ public:
 
 	//FVector VRCapsuleLocation;
 	FVector LFDiff;
-	FVector CustomVRInputVector;
+	//FVector CustomVRInputVector;
 	//FRotator VRCapsuleRotation;
-	FVector RequestedVelocity;
+	//FVector RequestedVelocity;
 
 	void Clear();
 	virtual void SetInitialPosition(ACharacter* C);
@@ -130,16 +130,16 @@ public:
 	{
 		//VRCapsuleLocation = FVector::ZeroVector;
 		LFDiff = FVector::ZeroVector;
-		CustomVRInputVector = FVector::ZeroVector;
+		//CustomVRInputVector = FVector::ZeroVector;
 		//VRCapsuleRotation = FRotator::ZeroRotator;
-		RequestedVelocity = FVector::ZeroVector;
+		//RequestedVelocity = FVector::ZeroVector;
 	}
 
 	bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
 	{
 		FSavedMove_VRSimpleCharacter * nMove = (FSavedMove_VRSimpleCharacter *)NewMove.Get();
 
-		if (!nMove || (!LFDiff.IsNearlyZero() && !nMove->LFDiff.IsNearlyZero()) || (!RequestedVelocity.IsNearlyZero() && !nMove->RequestedVelocity.IsNearlyZero()) || (!CustomVRInputVector.IsNearlyZero() && !nMove->CustomVRInputVector.IsNearlyZero()))
+		if (!nMove || (!LFDiff.IsNearlyZero() && !nMove->LFDiff.IsNearlyZero()))
 			return false;
 
 		return FSavedMove_VRBaseCharacter::CanCombineWith(NewMove, Character, MaxDelta);
