@@ -17,6 +17,10 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	YawTolerance = 0.0f;
 	bOffsetByHMD = false;
 	
+	bLerpTransition = true;
+	LerpSpeed = 100.0f;
+	LastLerpVal = 0.0f;
+	LerpTarget = 0.0f;
 }
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -38,18 +42,33 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		if (USceneComponent * Parent = GetAttachParent())
 			ParentTrans = Parent->GetComponentToWorld();
 		
+		// This is never true with the default value of 0.0f
 		if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
 		{
-			SetRelativeRotation(FRotator(0, LastRot.Yaw, 0).Quaternion());
-			//SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion() * ParentTrans.GetRotation(), false);
+			if (bLerpTransition)
+			{
+				LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
+				SetRelativeRotation(FRotator(0, LastLerpVal, 0).Quaternion());
+			}
+			else
+			{
+				SetRelativeRotation(FRotator(0, LastRot.Yaw, 0).Quaternion());
+			}
 		}
 		else
 		{
+			// If we are using a snap threshold
+			if (!FMath::IsNearlyZero(YawTolerance))
+			{
+				LerpTarget = InverseRot.Yaw;
+				LastLerpVal = LastRot.Yaw;
+			}
+			else // If we aren't then just directly set it to the correct rotation
+			{
+				SetRelativeRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion());
+			}
 
 			LastRot = InverseRot;
-
-			SetRelativeRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion());
-			//SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion() * ParentTrans.GetRotation(), false);
 		}
 
 		if (bOffsetByHMD)
@@ -66,21 +85,36 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		{
 			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(CameraOwner->RelativeRotation);
 
+			// This is never true with the default value of 0.0f
 			if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
 			{
-				SetRelativeRotation(FRotator(0, LastRot.Yaw, 0));
-				//SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion(), false);
+				if (bLerpTransition)
+				{
+					LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
+					SetRelativeRotation(FRotator(0, LastLerpVal, 0).Quaternion());
+				}
+				else
+				{
+					SetRelativeRotation(FRotator(0, LastRot.Yaw, 0).Quaternion());
+				}
 			}
 			else
 			{
-				LastRot = InverseRot;
+				// If we are using a snap threshold
+				if (!FMath::IsNearlyZero(YawTolerance))
+				{
+					LerpTarget = InverseRot.Yaw;
+					LastLerpVal = LastRot.Yaw;
+				}
+				else // If we aren't then just directly set it to the correct rotation
+				{
+					SetRelativeRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion());
+				}
 
-				SetRelativeRotation(FRotator(0, InverseRot.Yaw, 0));
-				//SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
+				LastRot = InverseRot;
 			}
 
 			SetRelativeLocation(CameraOwner->RelativeLocation);
-			//SetWorldLocation(CameraOwner->GetComponentLocation());
 		}
 	}
 

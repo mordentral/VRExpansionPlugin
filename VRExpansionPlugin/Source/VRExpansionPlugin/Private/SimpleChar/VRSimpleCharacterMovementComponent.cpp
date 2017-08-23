@@ -1425,6 +1425,7 @@ void FSavedMove_VRSimpleCharacter::SetInitialPosition(ACharacter* C)
 		if (VRC->VRMovementReference)
 		{
 			LFDiff = VRC->VRMovementReference->AdditionalVRInputVector;
+
 			//CustomVRInputVector = VRC->VRMovementReference->CustomVRInputVector;
 
 		/*	if (VRC->VRMovementReference->HasRequestedVelocity())
