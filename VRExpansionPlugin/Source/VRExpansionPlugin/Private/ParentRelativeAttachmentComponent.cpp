@@ -40,12 +40,17 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		
 		if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
 		{
-			SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion() * ParentTrans.GetRotation(), false);
-			return;
+			SetRelativeRotation(FRotator(0, LastRot.Yaw, 0).Quaternion());
+			//SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion() * ParentTrans.GetRotation(), false);
 		}
+		else
+		{
 
-		LastRot = InverseRot;
-		SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion() * ParentTrans.GetRotation(), false);
+			LastRot = InverseRot;
+
+			SetRelativeRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion());
+			//SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion() * ParentTrans.GetRotation(), false);
+		}
 
 		if (bOffsetByHMD)
 		{
@@ -59,17 +64,23 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 	{
 		if (UCameraComponent * CameraOwner = this->GetOwner()->FindComponentByClass<UCameraComponent>())
 		{
-			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(CameraOwner->GetComponentRotation());
+			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(CameraOwner->RelativeRotation);
 
 			if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
 			{
-				SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion(), false);
-				return;
+				SetRelativeRotation(FRotator(0, LastRot.Yaw, 0));
+				//SetWorldRotation(FRotator(0, LastRot.Yaw, 0).Quaternion(), false);
+			}
+			else
+			{
+				LastRot = InverseRot;
+
+				SetRelativeRotation(FRotator(0, InverseRot.Yaw, 0));
+				//SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
 			}
 
-			LastRot = InverseRot;
-			SetWorldRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion(), false);
-			SetWorldLocation(CameraOwner->GetComponentLocation());
+			SetRelativeLocation(CameraOwner->RelativeLocation);
+			//SetWorldLocation(CameraOwner->GetComponentLocation());
 		}
 	}
 
