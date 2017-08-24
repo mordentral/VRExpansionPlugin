@@ -92,7 +92,6 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	{
 		bShouldCreateProxy = false;
 	}
-	bShouldCreateProxy = true;
 
 #if !UE_SERVER
 
