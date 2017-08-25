@@ -225,7 +225,7 @@ public:
 		LFDiff = FVector::ZeroVector;
 		VRCapsuleRotation = FRotator::ZeroRotator;
 		RequestedVelocity = FVector::ZeroVector;
-		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
+		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;// _None;
 	}
 
 	virtual uint8 GetCompressedFlags() const override
@@ -260,7 +260,7 @@ public:
 	virtual bool IsImportantMove(const FSavedMovePtr& LastAckedMove) const override
 	{
 		// Auto important if toggled climbing
-		if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_None)
+		if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//_None)
 			return true;
 
 		// Else check parent class

@@ -47,7 +47,8 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		{
 			if (bLerpTransition)
 			{
-				LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
+				LastLerpVal = FMath::FixedTurn(LastLerpVal, LerpTarget, LerpSpeed * DeltaTime);
+				//LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
 				SetRelativeRotation(FRotator(0, LastLerpVal, 0).Quaternion());
 			}
 			else
@@ -90,7 +91,8 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 			{
 				if (bLerpTransition)
 				{
-					LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
+					LastLerpVal = FMath::FixedTurn(LastLerpVal, LerpTarget, LerpSpeed * DeltaTime);
+					//LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
 					SetRelativeRotation(FRotator(0, LastLerpVal, 0).Quaternion());
 				}
 				else

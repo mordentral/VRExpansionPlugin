@@ -29,6 +29,8 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	VRWallSlideScaler = 1.0f;
 	VRLowGravWallFrictionScaler = 1.0f;
 	VRLowGravIgnoresDefaultFluidFriction = true;
+
+	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 	
 }
 
@@ -408,7 +410,7 @@ void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMo
 
 void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
-	if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_None)
+	if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//None)
 	{
 		if (VRReplicatedMovementMode <= EVRConjoinedMovementModes::C_MOVE_MAX)
 		{
@@ -423,7 +425,7 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 
 		// Clearing it here instead now, as this way the code can inject it during PerformMovement
 		// Specifically used by the Climbing Step up, so that server rollbacks are supported
-		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
+		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
 	}
 	
 	Super::PerformMovement(DeltaSeconds);
@@ -455,14 +457,14 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		}
 		else
 		{
-			VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
+			VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
 			CustomVRInputVector = FVector::ZeroVector;
 			RequestedVelocity = FVector::ZeroVector;
 		}
 	}
 	else
 	{
-		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
+		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
 		CustomVRInputVector = FVector::ZeroVector;
 	}
 
@@ -471,7 +473,7 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 
 void FSavedMove_VRBaseCharacter::Clear()
 {
-	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_None;
+	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;// None;
 	CustomVRInputVector = FVector::ZeroVector;
 
 	VRCapsuleLocation = FVector::ZeroVector;
