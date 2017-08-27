@@ -1,24 +1,30 @@
 {
-	"FileVersion": 3,
-	"Version": 4.17,
-	"VersionName": "4.17",
-	"FriendlyName": "VRExpansionPlugin",
-	"Description": "Adds several new VR features & components to UE4",
-	"Category": "VRExpansion",
-	"CreatedBy": "Joshua (MordenTral) Statzer",
-	"CreatedByURL": "",
-	"DocsURL": "",
-	"MarketplaceURL": "",
-	"SupportURL": "",
-	"EnabledByDefault": true,
-	"CanContainContent": false,
-	"IsBetaVersion": false,
-	"Installed": true,
-	"Modules": [
-		{
-			"Name": "VRExpansionPlugin",
-			"Type": "RunTime",
-			"LoadingPhase": "Default"
-		}
-	]
+  "FileVersion": 3,
+  "Version": 4.17,
+  "VersionName": "4.17",
+  "FriendlyName": "VRExpansionPlugin",
+  "Description": "Adds several new VR features & components to UE4",
+  "Category": "VRExpansion",
+  "CreatedBy": "Joshua (MordenTral) Statzer",
+  "CreatedByURL": "",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "EnabledByDefault": true,
+  "CanContainContent": false,
+  "IsBetaVersion": false,
+  "Installed": true,
+  "Modules": [
+    {
+      "Name": "VRExpansionPlugin",
+      "Type": "RunTime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "PhysXVehicles",
+      "Enabled": true
+    }
+  ]
 }

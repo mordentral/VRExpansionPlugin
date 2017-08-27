@@ -84,7 +84,8 @@ public class VRExpansionPlugin : ModuleRules
                 "NetworkReplayStreaming",
                 "AIModule",
                 "UMG",
-                "GameplayTags"
+                "GameplayTags",
+                "PhysXVehicles"
 
                 //"Renderer",
                // "UtilityShaders"
