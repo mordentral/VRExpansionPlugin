@@ -25,7 +25,7 @@ class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent, public 
 public:
 	friend class FDrawCylinderSceneProxy;
 
-	FORCEINLINE void GenerateOffsetToWorld(bool bUpdateBounds = true);
+	FORCEINLINE void GenerateOffsetToWorld(bool bUpdateBounds = true, bool bGetPureYaw = true);
 
 	// If valid will use this as the tracked parent instead of the HMD / Parent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRTrackedParentInterface")
@@ -138,9 +138,14 @@ public:
 
 // Have to declare inlines here for blueprint
 
-void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds)
+void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGetPureYaw)
 {
-	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+	FRotator CamRotOffset;
+	
+	if (bGetPureYaw)
+		CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+	else
+		CamRotOffset = curCameraRot;
 
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
 

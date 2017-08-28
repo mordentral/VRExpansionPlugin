@@ -445,7 +445,7 @@ void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 		if (VRC->VRRootReference)
 		{
 			VRCapsuleLocation = VRC->VRRootReference->curCameraLoc;
-			VRCapsuleRotation = VRC->VRRootReference->curCameraRot;
+			VRCapsuleRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRC->VRRootReference->curCameraRot);
 			LFDiff = VRC->VRRootReference->DifferenceFromLastFrame;
 		}
 		else
@@ -476,7 +476,7 @@ void FSavedMove_VRCharacter::PrepMoveFor(ACharacter* Character)
 			CharMove->VRRootCapsule->SetCapsuleHalfHeight(this->LFDiff.Z, false);
 		}
 
-		CharMove->VRRootCapsule->GenerateOffsetToWorld(false);
+		CharMove->VRRootCapsule->GenerateOffsetToWorld(false, false);
 	}
 
 	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
@@ -487,7 +487,17 @@ bool UVRCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVect
 	return true;
 }
 
+bool UVRCharacterMovementComponent::ServerMoveVRLight_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 LFDiff, uint8 CapsuleYaw, uint8 MoveFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+{
+	return true;
+}
+
 bool UVRCharacterMovementComponent::ServerMoveVRDual_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVector_NetQuantize100 rOldRequestedVelocity, FVector_NetQuantize100 OldLFDiff, FVector_NetQuantize100 OldCustVRInputVector, uint8 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 rRequestedVelocity, FVector_NetQuantize100 LFDiff, FVector_NetQuantize100 CustVRInputVector, uint8 CapsuleYaw, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+{
+	return true;
+}
+
+bool UVRCharacterMovementComponent::ServerMoveVRDualLight_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVector_NetQuantize100 OldLFDiff, uint8 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVector_NetQuantize100 LFDiff, uint8 CapsuleYaw, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
 {
 	return true;
 }
@@ -526,6 +536,31 @@ void UVRCharacterMovementComponent::ServerMoveVRDual_Implementation(
 	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, rRequestedVelocity, LFDiff, CustVRInputVector, CapsuleYaw, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
 }
 
+void UVRCharacterMovementComponent::ServerMoveVRDualLight_Implementation(
+	float TimeStamp0,
+	FVector_NetQuantize10 InAccel0,
+	uint8 PendingFlags,
+	uint32 View0,
+	FVector_NetQuantize100 OldCapsuleLoc,
+	FVector_NetQuantize100 OldLFDiff,
+	uint8 OldCapsuleYaw,
+	float TimeStamp,
+	FVector_NetQuantize10 InAccel,
+	FVector_NetQuantize100 ClientLoc,
+	FVector_NetQuantize100 CapsuleLoc,
+	FVector_NetQuantize100 LFDiff,
+	uint8 CapsuleYaw,
+	uint8 NewFlags,
+	uint8 ClientRoll,
+	uint32 View,
+	UPrimitiveComponent* ClientMovementBase,
+	FName ClientBaseBone,
+	uint8 ClientMovementMode)
+{
+	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, FVector::ZeroVector, OldLFDiff, FVector::ZeroVector, OldCapsuleYaw, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, FVector::ZeroVector, LFDiff, FVector::ZeroVector, CapsuleYaw, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+}
+
 void UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementation(
 	float TimeStamp0,
 	FVector_NetQuantize10 InAccel0,
@@ -557,6 +592,23 @@ void UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementat
 	CharacterOwner->bServerMoveIgnoreRootMotion = false;
 
 	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, rRequestedVelocity, LFDiff, CustVRInputVector, CapsuleYaw, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+}
+
+void UVRCharacterMovementComponent::ServerMoveVRLight_Implementation(
+	float TimeStamp,
+	FVector_NetQuantize10 InAccel,
+	FVector_NetQuantize100 ClientLoc,
+	FVector_NetQuantize100 CapsuleLoc,
+	FVector_NetQuantize100 LFDiff,
+	uint8 CapsuleYaw,
+	uint8 MoveFlags,
+	uint8 ClientRoll,
+	uint32 View,
+	UPrimitiveComponent* ClientMovementBase,
+	FName ClientBaseBoneName,
+	uint8 ClientMovementMode)
+{
+	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, FVector::ZeroVector, LFDiff, FVector::ZeroVector, CapsuleYaw, MoveFlags, ClientRoll, View, ClientMovementBase, ClientBaseBoneName, ClientMovementMode);
 }
 
 void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
@@ -655,7 +707,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 			if (VRReplicateCapsuleHeight && !FMath::IsNearlyEqual(LFDiff.Z,VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 				VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
 
-			VRRootCapsule->GenerateOffsetToWorld(false);
+			VRRootCapsule->GenerateOffsetToWorld(false, false);
 
 			// #TODO: Should I actually implement the mesh translation from "Crouch"? Generally people are going to be
 			//	IKing any mesh from the HMD instead.
@@ -757,7 +809,40 @@ void UVRCharacterMovementComponent::CallServerMove
 		else
 		{
 			// send two moves simultaneously
-			ServerMoveVRDual
+
+			if (
+				oldMove->RequestedVelocity.IsNearlyZero() &&
+				oldMove->CustomVRInputVector.IsNearlyZero() &&
+				NewMove->RequestedVelocity.IsNearlyZero() &&
+				NewMove->CustomVRInputVector.IsNearlyZero()
+				)
+			{
+				ServerMoveVRDualLight
+				(
+					ClientData->PendingMove->TimeStamp,
+					ClientData->PendingMove->Acceleration,
+					ClientData->PendingMove->GetCompressedFlags(),
+					OldClientYawPitchINT,
+					oldMove->VRCapsuleLocation,
+					oldMove->LFDiff,
+					OldCapsuleYawBYTE,
+					NewMove->TimeStamp,
+					NewMove->Acceleration,
+					SendLocation,
+					NewMove->VRCapsuleLocation,
+					NewMove->LFDiff,
+					CapsuleYawBYTE,
+					NewMove->GetCompressedFlags(),
+					ClientRollBYTE,
+					ClientYawPitchINT,
+					ClientMovementBase,
+					ClientBaseBone,
+					NewMove->MovementMode
+				);
+			}
+			else
+			{
+				ServerMoveVRDual
 				(
 					ClientData->PendingMove->TimeStamp,
 					ClientData->PendingMove->Acceleration,
@@ -782,12 +867,36 @@ void UVRCharacterMovementComponent::CallServerMove
 					ClientMovementBase,
 					ClientBaseBone,
 					NewMove->MovementMode
-					);
+				);
+			}
 		}
 	}
 	else
 	{
-		ServerMoveVR
+		if (
+			NewMove->RequestedVelocity.IsNearlyZero() &&
+			NewMove->CustomVRInputVector.IsNearlyZero()
+			)
+		{
+			ServerMoveVRLight
+			(
+				NewMove->TimeStamp,
+				NewMove->Acceleration,
+				SendLocation,
+				NewMove->VRCapsuleLocation,
+				NewMove->LFDiff,
+				CapsuleYawBYTE,
+				NewMove->GetCompressedFlags(),
+				ClientRollBYTE,
+				ClientYawPitchINT,
+				ClientMovementBase,
+				ClientBaseBone,
+				NewMove->MovementMode
+			);
+		}
+		else
+		{
+			ServerMoveVR
 			(
 				NewMove->TimeStamp,
 				NewMove->Acceleration,
@@ -803,7 +912,8 @@ void UVRCharacterMovementComponent::CallServerMove
 				ClientMovementBase,
 				ClientBaseBone,
 				NewMove->MovementMode
-				);
+			);
+		}
 	}
 
 
