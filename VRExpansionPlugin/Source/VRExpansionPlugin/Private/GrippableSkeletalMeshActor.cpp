@@ -30,9 +30,6 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 	this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
-	
-	if (USkeletalMeshComponent * skel = this->GetSkeletalMeshComponent())
-		skel->SetIsReplicated(true);
 
 	bRepGripSettingsAndGameplayTags = true;
 

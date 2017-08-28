@@ -40,8 +40,13 @@ class VREXPANSIONPLUGIN_API UGrippableCapsuleComponent : public UCapsuleComponen
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
 	// Requires bReplicates to be true for the component
-	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 		bool bRepGripSettingsAndGameplayTags;
+
+	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
+	// Server sided movement ignores this setting
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
+		bool bReplicateMovement;
 
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		FBPInterfaceProperties VRGripInterfaceSettings;

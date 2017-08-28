@@ -26,7 +26,8 @@ UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitia
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
 
-	this->bReplicates = true;
+	bReplicateMovement = false;
+	//this->bReplicates = true;
 
 	bRepGripSettingsAndGameplayTags = true;
 }
@@ -36,6 +37,7 @@ void UGrippableStaticMeshComponent::GetLifetimeReplicatedProps(TArray< class FLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UGrippableStaticMeshComponent, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME(UGrippableStaticMeshComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UGrippableStaticMeshComponent, VRGripInterfaceSettings, COND_Custom);
 	DOREPLIFETIME_CONDITION(UGrippableStaticMeshComponent, GameplayTags, COND_Custom);
 }
@@ -47,6 +49,12 @@ void UGrippableStaticMeshComponent::PreReplication(IRepChangedPropertyTracker & 
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableStaticMeshComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableStaticMeshComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
+
+	EGripMovementReplicationSettings MovementReplicationType = IVRGripInterface::Execute_GripMovementReplicationType(this);
+
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
 }
 
 

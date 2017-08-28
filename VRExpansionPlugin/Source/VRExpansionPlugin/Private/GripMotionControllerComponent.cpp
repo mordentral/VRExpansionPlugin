@@ -174,11 +174,7 @@ FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::CreatePhysics
 //=============================================================================
 void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
-
-	// I am skipping the Scene and Primitive component replication here
-	// Generally components aren't set to replicate anyway and I need it to NOT pass the Relative position through the network
-	// There isn't much in the scene component to replicate anyway and primitive doesn't have ANY replicated variables
-	// Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Skipping the owner with this as the owner will use the controllers location directly
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, ReplicatedControllerTransform, COND_SkipOwner);
@@ -187,6 +183,16 @@ void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FL
 
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, LocallyGrippedActors, COND_SkipOwner);
 //	DOREPLIFETIME(UGripMotionControllerComponent, bReplicateControllerTransform);
+}
+
+void UGripMotionControllerComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't ever replicate these, they are getting replaced by my custom send anyway
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, false);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, false);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, false);
 }
 
 void UGripMotionControllerComponent::Server_SendControllerTransform_Implementation(FBPVRComponentPosRep NewTransform)

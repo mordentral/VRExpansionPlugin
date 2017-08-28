@@ -23,7 +23,8 @@ UGrippableSphereComponent::UGrippableSphereComponent(const FObjectInitializer& O
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
 	VRGripInterfaceSettings.bIsInteractible = false;
 
-	this->bReplicates = true;
+	bReplicateMovement = false;
+	//this->bReplicates = true;
 
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
@@ -33,8 +34,9 @@ UGrippableSphereComponent::UGrippableSphereComponent(const FObjectInitializer& O
 void UGrippableSphereComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
+	
 	DOREPLIFETIME(UGrippableSphereComponent, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME(UGrippableSphereComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UGrippableSphereComponent, VRGripInterfaceSettings, COND_Custom);
 	DOREPLIFETIME_CONDITION(UGrippableSphereComponent, GameplayTags, COND_Custom);
 }
@@ -46,6 +48,25 @@ void UGrippableSphereComponent::PreReplication(IRepChangedPropertyTracker & Chan
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSphereComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSphereComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
+
+	EGripMovementReplicationSettings MovementReplicationType = IVRGripInterface::Execute_GripMovementReplicationType(this);
+	
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
+/*
+DOREPLIFETIME(USceneComponent, bAbsoluteLocation);
+DOREPLIFETIME(USceneComponent, bAbsoluteRotation);
+DOREPLIFETIME(USceneComponent, bAbsoluteScale);
+DOREPLIFETIME(USceneComponent, bVisible);
+DOREPLIFETIME(USceneComponent, AttachParent);
+DOREPLIFETIME(USceneComponent, AttachChildren);
+DOREPLIFETIME(USceneComponent, AttachSocketName);
+DOREPLIFETIME(USceneComponent, RelativeLocation);
+DOREPLIFETIME(USceneComponent, RelativeRotation);
+DOREPLIFETIME(USceneComponent, RelativeScale3D);
+
+*/
 }
 
 

@@ -32,9 +32,6 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
-
-	if (UStaticMeshComponent * stam = this->GetStaticMeshComponent())
-		stam->SetIsReplicated(true);
 	
 	bRepGripSettingsAndGameplayTags = true;
 

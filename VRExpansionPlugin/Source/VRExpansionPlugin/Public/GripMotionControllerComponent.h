@@ -44,6 +44,7 @@ private:
 	// Custom version of the component sweep function to remove that aggravating warning epic is throwing about skeletal mesh components.
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void OnUnregister() override;
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
 protected:
 	//~ Begin UActorComponent Interface.
