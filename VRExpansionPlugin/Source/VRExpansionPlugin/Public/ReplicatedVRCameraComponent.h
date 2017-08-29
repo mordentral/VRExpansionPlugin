@@ -11,7 +11,8 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	GENERATED_UCLASS_BODY()
 		//	~UGripMotionControllerComponent();
 
-	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
 	/** Whether or not this component has authority within the frame*/
 	bool bHasAuthority;

@@ -17,4 +17,13 @@ public:
 	AVRPlayerController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	void InitNavigationControl(UPathFollowingComponent*& PathFollowingComp) override;
+
+	// Disable the ServerUpdateCamera function defaulted on in PlayerCameraManager
+	// We are manually replicating the camera position and rotation ourselves anyway
+	// Generally that function will just be additional replication overhead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRPlayerController")
+		bool bDisableServerUpdateCamera;
+
+	/** spawn cameras for servers and owning players */
+	virtual void SpawnPlayerCameraManager() override;
 };

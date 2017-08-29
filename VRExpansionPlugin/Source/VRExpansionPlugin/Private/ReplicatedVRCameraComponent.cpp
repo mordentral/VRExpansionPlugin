@@ -37,12 +37,22 @@ void UReplicatedVRCameraComponent::GetLifetimeReplicatedProps(TArray< class FLif
 	// I am skipping the Scene component replication here
 	// Generally components aren't set to replicate anyway and I need it to NOT pass the Relative position through the network
 	// There isn't much in the scene component to replicate anyway
-	// Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Skipping the owner with this as the owner will use the location directly
 	DOREPLIFETIME_CONDITION(UReplicatedVRCameraComponent, ReplicatedTransform, COND_SkipOwner);
 	DOREPLIFETIME(UReplicatedVRCameraComponent, NetUpdateRate);
 	//DOREPLIFETIME(UReplicatedVRCameraComponent, bReplicateTransform);
+}
+
+void UReplicatedVRCameraComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Don't ever replicate these, they are getting replaced by my custom send anyway
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, false);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, false);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, false);
 }
 
 void UReplicatedVRCameraComponent::Server_SendTransform_Implementation(FBPVRComponentPosRep NewTransform)
@@ -113,7 +123,7 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 		if (bReplicates)
 		{
 			// Don't rep if no changes
-			if (this->RelativeLocation != ReplicatedTransform.Position || this->RelativeRotation != ReplicatedTransform.Rotation)
+			if (!this->RelativeLocation.Equals(ReplicatedTransform.Position) ||  !this->RelativeRotation.Equals(ReplicatedTransform.Rotation))
 			{
 				ReplicatedTransform.Position = this->RelativeLocation;
 				ReplicatedTransform.Rotation = this->RelativeRotation;

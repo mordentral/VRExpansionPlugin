@@ -1783,6 +1783,8 @@ void UVRCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, fl
 			{
 				// hit a barrier, try to step up
 				const FVector GravDir(0.f, 0.f, -1.f);
+
+				// I add in the HMD difference from last frame to the step up check to enforce it stepping up
 				if (!StepUp(GravDir, (Delta * (1.f - PercentTimeApplied)) + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), Hit, OutStepDownResult))
 				{
 					UE_LOG(LogCharacterMovement, Verbose, TEXT("- StepUp (ImpactNormal %s, Normal %s"), *Hit.ImpactNormal.ToString(), *Hit.Normal.ToString());
