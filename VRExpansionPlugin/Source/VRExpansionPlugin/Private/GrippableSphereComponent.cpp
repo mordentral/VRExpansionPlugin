@@ -49,24 +49,9 @@ void UGrippableSphereComponent::PreReplication(IRepChangedPropertyTracker & Chan
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSphereComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSphereComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
 
-	EGripMovementReplicationSettings MovementReplicationType = IVRGripInterface::Execute_GripMovementReplicationType(this);
-	
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement || MovementReplicationType == EGripMovementReplicationSettings::ForceServerSideMovement);
-/*
-DOREPLIFETIME(USceneComponent, bAbsoluteLocation);
-DOREPLIFETIME(USceneComponent, bAbsoluteRotation);
-DOREPLIFETIME(USceneComponent, bAbsoluteScale);
-DOREPLIFETIME(USceneComponent, bVisible);
-DOREPLIFETIME(USceneComponent, AttachParent);
-DOREPLIFETIME(USceneComponent, AttachChildren);
-DOREPLIFETIME(USceneComponent, AttachSocketName);
-DOREPLIFETIME(USceneComponent, RelativeLocation);
-DOREPLIFETIME(USceneComponent, RelativeRotation);
-DOREPLIFETIME(USceneComponent, RelativeScale3D);
-
-*/
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
 
