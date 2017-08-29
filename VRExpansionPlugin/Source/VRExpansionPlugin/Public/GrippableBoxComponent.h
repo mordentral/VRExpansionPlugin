@@ -46,7 +46,6 @@ class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, publi
 	bool bRepGripSettingsAndGameplayTags;
 
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
-	// Server sided movement ignores this setting
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 	bool bReplicateMovement;
 

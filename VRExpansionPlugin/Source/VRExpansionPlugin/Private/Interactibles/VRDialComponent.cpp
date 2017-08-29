@@ -11,6 +11,7 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
+	bReplicateMovement = false;
 
 	DialRotationAxis = EVRInteractibleAxis::Axis_Z;
 	InteractorRotationAxis = EVRInteractibleAxis::Axis_X;
@@ -38,6 +39,7 @@ void UVRDialComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePropert
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UVRDialComponent, bRepGameplayTags);
+	DOREPLIFETIME(UVRDialComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UVRDialComponent, GameplayTags, COND_Custom);
 }
 
@@ -47,6 +49,10 @@ void UVRDialComponent::PreReplication(IRepChangedPropertyTracker & ChangedProper
 
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRDialComponent, GameplayTags, bRepGameplayTags);
+
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
 void UVRDialComponent::BeginPlay()

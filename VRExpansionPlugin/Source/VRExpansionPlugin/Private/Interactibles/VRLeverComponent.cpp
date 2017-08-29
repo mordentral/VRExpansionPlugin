@@ -11,6 +11,7 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
+	bReplicateMovement = false;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	BreakDistance = 100.0f;
@@ -56,6 +57,7 @@ void UVRLeverComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UVRLeverComponent, bRepGameplayTags);
+	DOREPLIFETIME(UVRLeverComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UVRLeverComponent, GameplayTags, COND_Custom);
 }
 
@@ -65,6 +67,10 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, GameplayTags, bRepGameplayTags);
+
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
 void UVRLeverComponent::BeginPlay()
