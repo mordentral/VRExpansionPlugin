@@ -180,6 +180,21 @@ bool UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame()
 	return true;
 }
 
+bool UVRExpansionFunctionLibrary::IsInVREditorPreview()
+{
+#if WITH_EDITOR
+	if (GIsEditor)
+	{
+
+		UEditorEngine* EdEngine = Cast<UEditorEngine>(GEngine);
+		return EdEngine->bUseVRPreviewForPlayWorld;
+	}
+#endif
+
+	// Is not an editor build, default to false here
+	return false;
+}
+
 void UVRExpansionFunctionLibrary::NonAuthorityMinimumAreaRectangle(class UObject* WorldContextObject, const TArray<FVector>& InVerts, const FVector& SampleSurfaceNormal, FVector& OutRectCenter, FRotator& OutRectRotation, float& OutSideLengthX, float& OutSideLengthY, bool bDebugDraw)
 {
 	float MinArea = -1.f;

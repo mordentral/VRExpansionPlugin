@@ -113,6 +113,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "IsInVREditorPreviewOrGame"))
 	static bool IsInVREditorPreviewOrGame();
 
+	// Gets whether the game is running in VRPreview
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "IsInVREditorPreview"))
+	static bool IsInVREditorPreview();
+
 	/**
 	* Finds the minimum area rectangle that encloses all of the points in InVerts
 	* Engine default version is server only for some reason
