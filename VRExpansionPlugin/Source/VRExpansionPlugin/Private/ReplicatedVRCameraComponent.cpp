@@ -23,6 +23,9 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	bOffsetByHMD = false;
 
 	bSetPositionDuringTick = false;
+	bSmoothReplicatedMotion = false;
+	bLerpingPosition = false;
+	bReppedOnce = false;
 
 	//bUseVRNeckOffset = true;
 	//VRNeckOffset = FTransform(FRotator::ZeroRotator, FVector(15.0f,0,0), FVector(1.0f));
@@ -140,6 +143,35 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 						Server_SendTransform(ReplicatedTransform);
 					}
 				}
+			}
+		}
+	}
+	else
+	{
+		if (bLerpingPosition)
+		{
+			NetUpdateCount += DeltaTime;
+			float LerpVal = FMath::Clamp(NetUpdateCount / (1.0f / NetUpdateRate), 0.0f, 1.0f);
+
+			if (LerpVal >= 1.0f)
+			{
+				SetRelativeLocationAndRotation(ReplicatedTransform.Position, ReplicatedTransform.Rotation);
+
+				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
+				// Actual prediction might be something to consider in the future, but rough to do in VR
+				// considering the speed and accuracy of movements
+				// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
+				// and might be perf taxing enough to not make it worth it.
+				bLerpingPosition = false;
+				NetUpdateCount = 0.0f;
+			}
+			else
+			{
+				// Removed variables to speed this up a bit
+				SetRelativeLocationAndRotation(
+					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedTransform.Position, LerpVal),
+					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedTransform.Rotation, LerpVal)
+				);
 			}
 		}
 	}

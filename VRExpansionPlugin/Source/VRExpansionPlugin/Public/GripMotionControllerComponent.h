@@ -220,8 +220,8 @@ public:
 	FVector LastUpdatesRelativePosition;
 	FRotator LastUpdatesRelativeRotation;
 
-	float LerpTimeFromLastUpdate;
 	bool bLerpingPosition;
+	bool bReppedOnce;
 
 	UFUNCTION()
 	virtual void OnRep_ReplicatedControllerTransform()
@@ -230,10 +230,18 @@ public:
 
 		if (bSmoothReplicatedMotion)
 		{
-			bLerpingPosition = true;
-			ControllerNetUpdateCount = 0.0f;
-			LastUpdatesRelativePosition = this->RelativeLocation;
-			LastUpdatesRelativeRotation = this->RelativeRotation;
+			if (bReppedOnce)
+			{
+				bLerpingPosition = true;
+				ControllerNetUpdateCount = 0.0f;
+				LastUpdatesRelativePosition = this->RelativeLocation;
+				LastUpdatesRelativeRotation = this->RelativeRotation;
+			}
+			else
+			{
+				SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+				bReppedOnce = true;
+			}
 		}
 		else
 			SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);

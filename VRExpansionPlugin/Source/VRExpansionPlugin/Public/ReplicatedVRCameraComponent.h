@@ -21,34 +21,57 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	bool bIsServer;
 
 	// For non view target positional updates
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
-		bool bSetPositionDuringTick;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
+	bool bSetPositionDuringTick;
 
-//public:
-// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
 	bool bOffsetByHMD;
 
-//protected:
-
 	/** Sets lock to hmd automatically based on if the camera is currently locally controlled or not */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
 		uint32 bAutoSetLockToHmd : 1;
 
 	UFUNCTION(BlueprintCallable, Category = Camera)
 		virtual void GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView) override;
 
-	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedTransform, Category = "VRExpansionLibrary|Networking")
+	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedTransform, Category = "ReplicatedCamera|Networking")
 	FBPVRComponentPosRep ReplicatedTransform;
 
+	FVector LastUpdatesRelativePosition;
+	FRotator LastUpdatesRelativeRotation;
+
+	bool bLerpingPosition;
+	bool bReppedOnce;
+
+	// Whether to smooth (lerp) between ticks for the replicated motion, DOES NOTHING if update rate is larger than FPS!
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "ReplicatedCamera|Networking")
+		bool bSmoothReplicatedMotion;
+	
 	UFUNCTION()
 	virtual void OnRep_ReplicatedTransform()
 	{
-		SetRelativeLocationAndRotation(ReplicatedTransform.Position, ReplicatedTransform.Rotation);
+		if (bSmoothReplicatedMotion)
+		{
+			if (bReppedOnce)
+			{
+				bLerpingPosition = true;
+				NetUpdateCount = 0.0f;
+				LastUpdatesRelativePosition = this->RelativeLocation;
+				LastUpdatesRelativeRotation = this->RelativeRotation;
+			}
+			else
+			{
+				SetRelativeLocationAndRotation(ReplicatedTransform.Position, ReplicatedTransform.Rotation);
+				bReppedOnce = true;
+			}
+		}
+		else
+			SetRelativeLocationAndRotation(ReplicatedTransform.Position, ReplicatedTransform.Rotation);
 	}
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRExpansionLibrary")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "ReplicatedCamera|Networking")
 	float NetUpdateRate;
 
 	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case.
