@@ -248,9 +248,21 @@ public:
 	{
 		FSavedMove_VRBaseCharacter * nMove = (FSavedMove_VRBaseCharacter *)NewMove.Get();
 
-		if (!nMove || (VRReplicatedMovementMode != nMove->VRReplicatedMovementMode) || (CustomVRInputVector != nMove->CustomVRInputVector)
-			|| (!LFDiff.IsNearlyZero() && !nMove->LFDiff.IsNearlyZero()) || (!RequestedVelocity.IsNearlyZero() && !nMove->RequestedVelocity.IsNearlyZero())
-			)
+
+		if (!nMove || (VRReplicatedMovementMode != nMove->VRReplicatedMovementMode))
+			return false;
+
+		if (!CustomVRInputVector.IsZero() || !nMove->CustomVRInputVector.IsZero())
+			return false;
+
+		if (!RequestedVelocity.IsZero() || !nMove->RequestedVelocity.IsZero())
+			return false;
+
+		// Hate this but we really can't combine if I am sending a new capsule height
+		if (!FMath::IsNearlyEqual(LFDiff.Z, nMove->LFDiff.Z))
+			return false;
+	
+		if (!LFDiff.IsZero() && !nMove->LFDiff.IsZero() && !FVector::Coincident(LFDiff.GetSafeNormal2D(), nMove->LFDiff.GetSafeNormal2D(), AccelDotThresholdCombine))
 			return false;
 
 		return FSavedMove_Character::CanCombineWith(NewMove, Character, MaxDelta);
@@ -262,6 +274,17 @@ public:
 		// Auto important if toggled climbing
 		if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//_None)
 			return true;
+
+		if (!CustomVRInputVector.IsZero())
+			return true;
+
+		if (!RequestedVelocity.IsZero())
+			return true;
+
+		// #TODO: What to do here?
+		// This is debatable, however it will ALWAYS be non zero realistically and only really effects step ups for the most part
+		//if (!LFDiff.IsNearlyZero())
+			//return true;
 
 		// Else check parent class
 		return FSavedMove_Character::IsImportantMove(LastAckedMove);
