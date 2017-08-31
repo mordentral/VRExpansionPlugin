@@ -757,7 +757,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 		if (VRRootCapsule)
 		{
 			VRRootCapsule->curCameraLoc = CapsuleLoc;
-			VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromByte(CapsuleYaw), 0.0f);
+			VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(CapsuleYaw), 0.0f);
 			VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 		
 			if (VRReplicateCapsuleHeight && !FMath::IsNearlyEqual(LFDiff.Z,VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
@@ -1063,7 +1063,7 @@ void UVRCharacterMovementComponent::ServerMoveVR2_Implementation(
 		if (VRRootCapsule)
 		{
 			VRRootCapsule->curCameraLoc = CapsuleLoc;
-			VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromByte(CapsuleYaw), 0.0f);
+			VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(CapsuleYaw), 0.0f);
 			VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 
 			if (VRReplicateCapsuleHeight && !FMath::IsNearlyEqual(LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
