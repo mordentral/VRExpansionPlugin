@@ -1946,24 +1946,25 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &G
 
 
 	// Only use with actual teleporting
+
+	EGripInterfaceTeleportBehavior TeleportBehavior = EGripInterfaceTeleportBehavior::TeleportAllComponents;
+	bool bSimulateOnDrop = false;
+
+	// Check for interaction interface
+	if (bRootHasInterface)
+	{
+		TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(PrimComp);
+		bSimulateOnDrop = IVRGripInterface::Execute_SimulateOnDrop(PrimComp);
+	}
+	else if (bActorHasInterface)
+	{
+		// Actor grip interface is checked after component
+		TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(actor);
+		bSimulateOnDrop = IVRGripInterface::Execute_SimulateOnDrop(actor);
+	}
+
 	if (bIsPostTeleport)
 	{
-		EGripInterfaceTeleportBehavior TeleportBehavior = EGripInterfaceTeleportBehavior::TeleportAllComponents;
-		bool bSimulateOnDrop = false;
-
-		// Check for interaction interface
-		if (bRootHasInterface)
-		{
-			TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(PrimComp);
-			bSimulateOnDrop = IVRGripInterface::Execute_SimulateOnDrop(PrimComp);
-		}
-		else if (bActorHasInterface)
-		{
-			// Actor grip interface is checked after component
-			TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(actor);
-			bSimulateOnDrop = IVRGripInterface::Execute_SimulateOnDrop(actor);
-		}
-
 		if (TeleportBehavior == EGripInterfaceTeleportBehavior::OnlyTeleportRootComponent)
 		{
 			if (AActor * owner = PrimComp->GetOwner())
@@ -1988,6 +1989,18 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &G
 		else if (TeleportBehavior == EGripInterfaceTeleportBehavior::DontTeleport)
 		{
 			return false; // Didn't teleport
+		}
+	}
+	else
+	{
+		switch (TeleportBehavior)
+		{
+		case EGripInterfaceTeleportBehavior::DontTeleport:
+		case EGripInterfaceTeleportBehavior::DropOnTeleport:
+		{
+			return false;
+		}break;
+		default:break;
 		}
 	}
 
