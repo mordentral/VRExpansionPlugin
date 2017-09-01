@@ -4,6 +4,9 @@
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 #include "WorldCollision.h"
 #include "PhysicsPublic.h"
+#include "DrawDebugHelpers.h"
+#include "IHeadMountedDisplay.h"
+#include "VRCharacter.h"
 
 #if WITH_PHYSX
 #include "PhysXSupport.h"

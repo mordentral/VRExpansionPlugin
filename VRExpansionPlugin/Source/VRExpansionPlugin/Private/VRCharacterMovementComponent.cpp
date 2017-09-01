@@ -13,6 +13,8 @@
 #include "Components/PrimitiveComponent.h"
 #include "Animation/AnimMontage.h"
 #include "PhysicsEngine/DestructibleActor.h"
+#include "VRCharacter.h"
+#include "VRExpansionFunctionLibrary.h"
 
 // @todo this is here only due to circular dependency to AIModule. To be removed
 #include "Navigation/PathFollowingComponent.h"

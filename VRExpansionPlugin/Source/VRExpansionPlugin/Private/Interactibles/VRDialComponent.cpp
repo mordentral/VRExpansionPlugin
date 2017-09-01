@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRDialComponent.h"
+#include "Net/UnrealNetwork.h"
 
   //=============================================================================
 UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)

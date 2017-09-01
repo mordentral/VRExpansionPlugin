@@ -5,6 +5,7 @@
 #include "AI/Navigation/NavigationAvoidanceTypes.h"
 #include "AI/RVOAvoidanceInterface.h"
 #include "AITypes.h"
+#include "VRRootComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "AI/Navigation/NavigationTypes.h"
 #include "AI/Navigation/NavigationSystem.h"

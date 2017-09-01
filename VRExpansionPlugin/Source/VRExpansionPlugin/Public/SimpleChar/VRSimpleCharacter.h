@@ -21,7 +21,11 @@ class VREXPANSIONPLUGIN_API AVRSimpleCharacter : public AVRBaseCharacter
 public:
 	AVRSimpleCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	FORCEINLINE void GenerateOffsetToWorld();
+	FORCEINLINE void AVRSimpleCharacter::GenerateOffsetToWorld()
+	{
+		FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation());
+		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), this->GetActorLocation(), this->GetActorScale3D());
+	}
 
 	// Overriding teleport so that it auto calls my controllers re-positioning
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;

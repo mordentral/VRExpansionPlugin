@@ -7,6 +7,8 @@
 
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDatatypes.h"
+#include "VRBaseCharacter.h"
+#include "GameFramework/PhysicsVolume.h"
 
 
 UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObjectInitializer& ObjectInitializer)
@@ -191,38 +193,6 @@ void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Move
 		CustomVRInputVector += RoundDirectMovement(Movement);
 	else
 		CustomVRInputVector += Movement; // If not a client, don't bother to round this down.
-}
-
-
-void UVRBaseCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
-{
-	if (AdditionalVRInputVector.IsNearlyZero())
-	{
-		LastPreAdditiveVRVelocity = FVector::ZeroVector;
-		return;
-	}
-
-	LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
-	Velocity += LastPreAdditiveVRVelocity;
-
-	// Switch to Falling if we have vertical velocity from root motion so we can lift off the ground
-	if( !LastPreAdditiveVRVelocity.IsNearlyZero() && LastPreAdditiveVRVelocity.Z != 0.f && IsMovingOnGround() )
-	{
-		float LiftoffBound;
-		// Default bounds - the amount of force gravity is applying this tick
-		LiftoffBound = FMath::Max(GetGravityZ() * deltaTime, SMALL_NUMBER);
-
-		if(LastPreAdditiveVRVelocity.Z > LiftoffBound )
-		{
-			SetMovementMode(MOVE_Falling);
-		}
-	}
-}
-
-void UVRBaseCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
-{
-	Velocity -= LastPreAdditiveVRVelocity;
-	LastPreAdditiveVRVelocity = FVector::ZeroVector;
 }
 
 

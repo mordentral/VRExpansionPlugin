@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
+#include "CoreMinimal.h"
+#include "VRBaseCharacterMovementComponent.h"
 #include "AI/Navigation/NavigationAvoidanceTypes.h"
 #include "AI/RVOAvoidanceInterface.h"
 #include "AITypes.h"
@@ -14,7 +16,6 @@
 #include "Interfaces/NetworkPredictionInterface.h"
 #include "WorldCollision.h"
 #include "Runtime/Launch/Resources/Version.h"
-#include "VRBaseCharacterMovementComponent.h"
 #include "VRSimpleCharacterMovementComponent.generated.h"
 
 class FDebugDisplayInfo;

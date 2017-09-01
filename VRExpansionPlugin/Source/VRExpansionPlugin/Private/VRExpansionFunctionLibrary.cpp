@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "VRExpansionFunctionLibrary.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/Engine.h"
+#include "IHeadMountedDisplay.h"
 
 #if WITH_EDITOR
 #include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"

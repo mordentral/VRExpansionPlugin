@@ -6,6 +6,8 @@
 #include "UObject/ObjectMacros.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/InputDelegateBinding.h"
+#include "Components/InputComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "VRWheeledVehicle.generated.h"
 
 

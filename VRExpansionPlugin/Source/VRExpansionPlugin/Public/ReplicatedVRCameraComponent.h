@@ -2,6 +2,8 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#include "VRBPDataTypes.h"
+#include "Net/UnrealNetwork.h"
 #include "ReplicatedVRCameraComponent.generated.h"
 
 

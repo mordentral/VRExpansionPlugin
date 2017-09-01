@@ -64,12 +64,6 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 	}
 }
 
-void AVRSimpleCharacter::GenerateOffsetToWorld()
-{
-	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation());
-	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), this->GetActorLocation(), this->GetActorScale3D());
-}
-
 FVector AVRSimpleCharacter::GetTeleportLocation(FVector OriginalLocation)
 {
 	//FVector modifier = VRRootReference->GetVRLocation() - this->GetActorLocation();

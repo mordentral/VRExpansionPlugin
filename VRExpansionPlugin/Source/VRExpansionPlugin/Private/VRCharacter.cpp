@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRCharacter.h"
+#include "VRPathFollowingComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)

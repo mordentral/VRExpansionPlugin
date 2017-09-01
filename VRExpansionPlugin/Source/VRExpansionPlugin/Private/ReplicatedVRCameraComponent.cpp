@@ -2,6 +2,8 @@
 
 #include "ReplicatedVRCameraComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Engine/Engine.h"
+#include "IHeadMountedDisplay.h"
 
 
 UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitializer& ObjectInitializer)

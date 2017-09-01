@@ -75,9 +75,40 @@ public:
 	// Injecting custom movement in here, bypasses floor detection
 	//virtual void PerformMovement(float DeltaSeconds) override;
 
-	inline void ApplyVRMotionToVelocity(float deltaTime);
-	inline void RestorePreAdditiveVRMotionVelocity();
+	//inline void ApplyVRMotionToVelocity(float deltaTime);
+	//inline  void RestorePreAdditiveVRMotionVelocity();
 	FVector LastPreAdditiveVRVelocity;
+
+	inline void UVRBaseCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
+	{
+		if (AdditionalVRInputVector.IsNearlyZero())
+		{
+			LastPreAdditiveVRVelocity = FVector::ZeroVector;
+			return;
+		}
+
+		LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
+		Velocity += LastPreAdditiveVRVelocity;
+
+		// Switch to Falling if we have vertical velocity from root motion so we can lift off the ground
+		if (!LastPreAdditiveVRVelocity.IsNearlyZero() && LastPreAdditiveVRVelocity.Z != 0.f && IsMovingOnGround())
+		{
+			float LiftoffBound;
+			// Default bounds - the amount of force gravity is applying this tick
+			LiftoffBound = FMath::Max(GetGravityZ() * deltaTime, SMALL_NUMBER);
+
+			if (LastPreAdditiveVRVelocity.Z > LiftoffBound)
+			{
+				SetMovementMode(MOVE_Falling);
+			}
+		}
+	}
+
+	inline void UVRBaseCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
+	{
+		Velocity -= LastPreAdditiveVRVelocity;
+		LastPreAdditiveVRVelocity = FVector::ZeroVector;
+	}
 
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 	virtual void PhysCustom_Climbing(float deltaTime, int32 Iterations);

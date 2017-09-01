@@ -2,6 +2,7 @@
 
 #include "VRBaseCharacter.h"
 #include "VRPathFollowingComponent.h"
+#include "GripMotionControllerComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 FName AVRBaseCharacter::LeftMotionControllerComponentName(TEXT("Left Grip Motion Controller"));

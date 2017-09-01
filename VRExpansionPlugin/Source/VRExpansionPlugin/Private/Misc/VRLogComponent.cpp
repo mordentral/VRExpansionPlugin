@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRLogComponent.h"
+#include "Engine/Engine.h"
 
 /* Top of File */
 #define LOCTEXT_NAMESPACE "VRLogComponent" 
