@@ -186,7 +186,6 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 	bool SetupConstraint()
 	{
-
 #if WITH_PHYSX
 
 		if (HandleData)

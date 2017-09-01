@@ -1352,19 +1352,17 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	case EGripMovementReplicationSettings::ClientSide_Authoritive:
 	case EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep:
 	{
-		if (IsServer())
+		if (IsServer() && pActor && (NewGrip.GripTargetType == EGripTargetType::ActorGrip || root == pActor->GetRootComponent()))
 		{
-			if (pActor)
-				pActor->SetReplicateMovement(false);
+			pActor->SetReplicateMovement(false);
 		}
 	}break;
 
 	case EGripMovementReplicationSettings::ForceServerSideMovement:
 	{
-		if (IsServer())
+		if (IsServer() && pActor && (NewGrip.GripTargetType == EGripTargetType::ActorGrip || root == pActor->GetRootComponent()))
 		{
-			if (pActor)
-				pActor->SetReplicateMovement(true);
+			pActor->SetReplicateMovement(true);
 		}
 	}break;
 
@@ -1391,6 +1389,11 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 	// Skip collision intersects with these types, they dont need it
 	case EGripCollisionType::CustomGrip:
+	{		
+		if (root)
+			root->SetSimulatePhysics(false);
+
+	} break;
 	case EGripCollisionType::PhysicsOnly:
 	case EGripCollisionType::SweepWithPhysics:
 	case EGripCollisionType::InteractiveHybridCollisionWithSweep:
@@ -1399,13 +1402,13 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	{
 		if (root)
 			root->SetSimulatePhysics(false);
+
+		// Move it to the correct location automatically
+		if (bHasMovementAuthority)
+			TeleportMoveGrip(NewGrip);
 	} break;
 
 	}
-
-	// Move it to the correct location automatically
-	if (bHasMovementAuthority)
-		TeleportMoveGrip(NewGrip);
 
 	return true;
 }
@@ -1494,23 +1497,22 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				OwningPawn->MoveIgnoreActorRemove(pActor);
 			}*/
 
-			if (root)
-			{
-				root->IgnoreActorWhenMoving(this->GetOwner(), false);
+			root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
-				root->SetSimulatePhysics(bSimulate);
-				if (bSimulate)
-					root->WakeAllRigidBodies();
+			root->SetSimulatePhysics(bSimulate);
+			if (bSimulate)
+				root->WakeAllRigidBodies();
 
-				if ((NewDrop.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewDrop.AdvancedPhysicsSettings.bTurnOffGravityDuringGrip) ||
-					(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
-					root->SetEnableGravity(NewDrop.bOriginalGravity);
-			}
+			if ((NewDrop.AdvancedPhysicsSettings.bUseAdvancedPhysicsSettings && NewDrop.AdvancedPhysicsSettings.bTurnOffGravityDuringGrip) ||
+				(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
+				root->SetEnableGravity(NewDrop.bOriginalGravity);
 
 			if (pActor)
 			{
-				if (IsServer())
+				if (IsServer() && root == pActor->GetRootComponent())
+				{
 					pActor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
+				}
 
 				if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 				{

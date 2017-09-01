@@ -232,6 +232,56 @@ public:
 };
 
 
+USTRUCT()
+struct VREXPANSIONPLUGIN_API FVRConditionalMoveRep
+{
+	GENERATED_USTRUCT_BODY()
+public:
+
+	UPROPERTY(Transient)
+		FVector CustomVRInputVector;
+	UPROPERTY(Transient)
+		FVector RequestedVelocity;
+
+	FVRConditionalMoveRep()
+	{
+		CustomVRInputVector = FVector::ZeroVector;
+		RequestedVelocity = FVector::ZeroVector;
+	}
+
+	/** Network serialization */
+	// Doing a custom NetSerialize here because this is sent via RPCs and should change on every update
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+
+		// Defines the level of Quantization
+		bool bHasVRinput = !CustomVRInputVector.IsZero();
+		Ar.SerializeBits(&bHasVRinput, 1);
+
+		bool bHasRequestedVelocity = !RequestedVelocity.IsZero();
+		Ar.SerializeBits(&bHasRequestedVelocity, 1);
+
+		if(bHasVRinput)
+			bOutSuccess &= SerializePackedVector<100, 30>(CustomVRInputVector, Ar);
+
+		if(bHasRequestedVelocity)
+			bOutSuccess &= SerializePackedVector<100, 30>(RequestedVelocity, Ar);
+
+		return bOutSuccess;
+	}
+
+};
+
+template<>
+struct TStructOpsTypeTraits< FVRConditionalMoveRep > : public TStructOpsTypeTraitsBase2<FVRConditionalMoveRep>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
 class VREXPANSIONPLUGIN_API FSavedMove_VRBaseCharacter : public FSavedMove_Character
 {
 
@@ -239,23 +289,19 @@ public:
 
 	EVRConjoinedMovementModes VRReplicatedMovementMode;
 
-	FVector CustomVRInputVector;
 	FVector VRCapsuleLocation;
 	FVector LFDiff;
 	FRotator VRCapsuleRotation;
-	FVector RequestedVelocity;
+	FVRConditionalMoveRep ConditionalValues;
 
 	void Clear();
 	virtual void SetInitialPosition(ACharacter* C);
 
 	FSavedMove_VRBaseCharacter() : FSavedMove_Character()
 	{
-		CustomVRInputVector = FVector::ZeroVector;
-
 		VRCapsuleLocation = FVector::ZeroVector;
 		LFDiff = FVector::ZeroVector;
 		VRCapsuleRotation = FRotator::ZeroRotator;
-		RequestedVelocity = FVector::ZeroVector;
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;// _None;
 	}
 
@@ -283,10 +329,10 @@ public:
 		if (!nMove || (VRReplicatedMovementMode != nMove->VRReplicatedMovementMode))
 			return false;
 
-		if (!CustomVRInputVector.IsZero() || !nMove->CustomVRInputVector.IsZero())
+		if (!ConditionalValues.CustomVRInputVector.IsZero() || !nMove->ConditionalValues.CustomVRInputVector.IsZero())
 			return false;
 
-		if (!RequestedVelocity.IsZero() || !nMove->RequestedVelocity.IsZero())
+		if (!ConditionalValues.RequestedVelocity.IsZero() || !nMove->ConditionalValues.RequestedVelocity.IsZero())
 			return false;
 
 		// Hate this but we really can't combine if I am sending a new capsule height
@@ -306,10 +352,10 @@ public:
 		if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//_None)
 			return true;
 
-		if (!CustomVRInputVector.IsZero())
+		if (!ConditionalValues.CustomVRInputVector.IsZero())
 			return true;
 
-		if (!RequestedVelocity.IsZero())
+		if (!ConditionalValues.RequestedVelocity.IsZero())
 			return true;
 
 		// #TODO: What to do here?

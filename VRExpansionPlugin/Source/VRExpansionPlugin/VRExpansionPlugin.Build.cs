@@ -13,7 +13,7 @@ public class VRExpansionPlugin : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
-		
+
         Definitions.Add("WITH_VR_EXPANSION=1");
 
         // To detect VR Preview, not built out in packaged builds

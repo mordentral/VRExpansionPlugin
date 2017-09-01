@@ -413,12 +413,12 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
 		{
 			VRReplicatedMovementMode = moveComp->VRReplicatedMovementMode;
-			CustomVRInputVector = moveComp->CustomVRInputVector;
+			ConditionalValues.CustomVRInputVector = moveComp->CustomVRInputVector;
 
 			if (moveComp->HasRequestedVelocity())
-				RequestedVelocity = moveComp->RequestedVelocity;
+				ConditionalValues.RequestedVelocity = moveComp->RequestedVelocity;
 			else
-				RequestedVelocity = FVector::ZeroVector;
+				ConditionalValues.RequestedVelocity = FVector::ZeroVector;
 
 			// Throw out the Z value of the headset, its not used anyway for movement
 			// Instead, re-purpose it to be the capsule half height
@@ -428,14 +428,14 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		else
 		{
 			VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
-			CustomVRInputVector = FVector::ZeroVector;
-			RequestedVelocity = FVector::ZeroVector;
+			ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
+			ConditionalValues.RequestedVelocity = FVector::ZeroVector;
 		}
 	}
 	else
 	{
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
-		CustomVRInputVector = FVector::ZeroVector;
+		ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
 	}
 
 	FSavedMove_Character::SetInitialPosition(C);
@@ -444,12 +444,13 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 void FSavedMove_VRBaseCharacter::Clear()
 {
 	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;// None;
-	CustomVRInputVector = FVector::ZeroVector;
 
 	VRCapsuleLocation = FVector::ZeroVector;
 	VRCapsuleRotation = FRotator::ZeroRotator;
 	LFDiff = FVector::ZeroVector;
-	RequestedVelocity = FVector::ZeroVector;
+
+	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
+	ConditionalValues.RequestedVelocity = FVector::ZeroVector;
 
 	FSavedMove_Character::Clear();
 }
@@ -460,13 +461,13 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 
 	if (BaseCharMove)
 	{
-		BaseCharMove->CustomVRInputVector = this->CustomVRInputVector;
+		BaseCharMove->CustomVRInputVector = ConditionalValues.CustomVRInputVector;//this->CustomVRInputVector;
 		BaseCharMove->VRReplicatedMovementMode = this->VRReplicatedMovementMode;
 	}
 	
-	if (!RequestedVelocity.IsNearlyZero())
+	if (!ConditionalValues.RequestedVelocity.IsZero())
 	{
-		BaseCharMove->RequestedVelocity = RequestedVelocity;
+		BaseCharMove->RequestedVelocity = ConditionalValues.RequestedVelocity;
 		BaseCharMove->SetHasRequestedVelocity(true);
 	}
 	else
