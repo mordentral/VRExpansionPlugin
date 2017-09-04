@@ -21,7 +21,7 @@ class VREXPANSIONPLUGIN_API AVRSimpleCharacter : public AVRBaseCharacter
 public:
 	AVRSimpleCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	FORCEINLINE void AVRSimpleCharacter::GenerateOffsetToWorld()
+	FORCEINLINE void GenerateOffsetToWorld()
 	{
 		FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetComponentRotation());
 		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), this->GetActorLocation(), this->GetActorScale3D());

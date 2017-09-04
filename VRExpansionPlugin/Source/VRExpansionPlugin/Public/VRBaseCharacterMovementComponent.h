@@ -79,7 +79,7 @@ public:
 	//inline  void RestorePreAdditiveVRMotionVelocity();
 	FVector LastPreAdditiveVRVelocity;
 
-	inline void UVRBaseCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
+	inline void ApplyVRMotionToVelocity(float deltaTime)
 	{
 		if (AdditionalVRInputVector.IsNearlyZero())
 		{
@@ -104,7 +104,7 @@ public:
 		}
 	}
 
-	inline void UVRBaseCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
+	inline void RestorePreAdditiveVRMotionVelocity()
 	{
 		Velocity -= LastPreAdditiveVRVelocity;
 		LastPreAdditiveVRVelocity = FVector::ZeroVector;
