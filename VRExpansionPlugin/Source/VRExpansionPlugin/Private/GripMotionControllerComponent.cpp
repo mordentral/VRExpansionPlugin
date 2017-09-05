@@ -2132,20 +2132,19 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 		if (bReplicates && (bTracked || bReplicateWithoutTracking))
 		{
 			// Don't rep if no changes
-			if (this->RelativeLocation != ReplicatedControllerTransform.Position || this->RelativeRotation != ReplicatedControllerTransform.Rotation)
+			if (!this->RelativeLocation.Equals(ReplicatedControllerTransform.Position) || !this->RelativeRotation.Equals(ReplicatedControllerTransform.Rotation))
 			{
-				// Tracked doesn't matter, already set the relative location above in that case
-				ReplicatedControllerTransform.Position = this->RelativeLocation;
-				ReplicatedControllerTransform.Rotation = this->RelativeRotation;
-
-				if (GetNetMode() == NM_Client)//bReplicateControllerTransform)
+				ControllerNetUpdateCount += DeltaTime;
+				if (ControllerNetUpdateCount >= (1.0f / ControllerNetUpdateRate))
 				{
-					ControllerNetUpdateCount += DeltaTime;
-					if (ControllerNetUpdateCount >= (1.0f / ControllerNetUpdateRate))
-					{
-						ControllerNetUpdateCount = 0.0f;
+					ControllerNetUpdateCount = 0.0f;
+
+					// Tracked doesn't matter, already set the relative location above in that case
+					ReplicatedControllerTransform.Position = this->RelativeLocation;
+					ReplicatedControllerTransform.Rotation = this->RelativeRotation;
+
+					if (GetNetMode() == NM_Client)
 						Server_SendControllerTransform(ReplicatedControllerTransform);
-					}
 				}
 			}
 		}

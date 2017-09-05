@@ -3192,7 +3192,7 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 		if ((FMath::Abs(Hit.ImpactNormal.Z) < 0.2f) && (UpDown < 0.5f) && (UpDown > -0.2f) && CanStepUp(Hit))
 		{
 			float stepZ = UpdatedComponent->GetComponentLocation().Z;
-			bSteppedUp = StepUp(GravDir, Adjusted * (1.f - Hit.Time), Hit, nullptr);
+			bSteppedUp = StepUp(GravDir, Adjusted * (1.f - Hit.Time) + VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(), Hit, nullptr);
 			if (bSteppedUp)
 			{
 				OldLocation.Z = UpdatedComponent->GetComponentLocation().Z + (OldLocation.Z - stepZ);
