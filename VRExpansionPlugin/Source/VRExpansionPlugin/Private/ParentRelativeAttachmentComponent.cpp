@@ -36,11 +36,6 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
 
 		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
-
-		FTransform ParentTrans = FTransform::Identity;
-
-		if (USceneComponent * Parent = GetAttachParent())
-			ParentTrans = Parent->GetComponentToWorld();
 		
 		// This is never true with the default value of 0.0f
 		if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
