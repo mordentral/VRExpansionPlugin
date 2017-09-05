@@ -9,7 +9,7 @@ FName AVRBaseCharacter::LeftMotionControllerComponentName(TEXT("Left Grip Motion
 FName AVRBaseCharacter::RightMotionControllerComponentName(TEXT("Right Grip Motion Controller"));
 FName AVRBaseCharacter::ReplicatedCameraComponentName(TEXT("VR Replicated Camera"));
 FName AVRBaseCharacter::ParentRelativeAttachmentComponentName(TEXT("Parent Relative Attachment"));
-
+FName AVRBaseCharacter::SmoothingSceneParentComponentName(TEXT("NetSmoother"));
 
 AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
  : Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRBaseCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -26,11 +26,17 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		cap->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 	}
 
+	NetSmoother = CreateDefaultSubobject<USceneComponent>(AVRBaseCharacter::SmoothingSceneParentComponentName);
+	if (NetSmoother)
+	{
+		NetSmoother->SetupAttachment(RootComponent);
+	}
+
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(AVRBaseCharacter::ReplicatedCameraComponentName);
 	if (VRReplicatedCamera)
 	{
 		VRReplicatedCamera->bOffsetByHMD = false;
-		VRReplicatedCamera->SetupAttachment(RootComponent);
+		VRReplicatedCamera->SetupAttachment(NetSmoother);
 	}
 
 	VRMovementReference = NULL;
@@ -51,14 +57,14 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (ParentRelativeAttachment && VRReplicatedCamera)
 	{
 		// Moved this to be root relative as the camera late updates were killing how it worked
-		ParentRelativeAttachment->SetupAttachment(RootComponent);
+		ParentRelativeAttachment->SetupAttachment(NetSmoother);
 		ParentRelativeAttachment->bOffsetByHMD = false;
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::LeftMotionControllerComponentName);
 	if (LeftMotionController)
 	{
-		LeftMotionController->SetupAttachment(RootComponent);
+		LeftMotionController->SetupAttachment(NetSmoother);
 		LeftMotionController->Hand = EControllerHand::Left;
 		LeftMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
@@ -73,7 +79,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::RightMotionControllerComponentName);
 	if (RightMotionController)
 	{
-		RightMotionController->SetupAttachment(RootComponent);
+		RightMotionController->SetupAttachment(NetSmoother);
 		RightMotionController->Hand = EControllerHand::Right;
 		RightMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement

@@ -69,6 +69,61 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 		CurRotBackEnd = 0.0f;
 	}
 
+	// Can be called to recalculate the dial angle after you move it if you want different values
+	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
+	void AddDialAngle(float DialAngleDelta, bool bCallEvents = false)
+	{
+		float MaxCheckValue = 360.0f - CClockwiseMaximumDialAngle;
+
+		float DeltaRot = DialAngleDelta;
+		float tempCheck = FRotator::ClampAxis(CurRotBackEnd + DeltaRot);
+
+		// Clamp it to the boundaries
+		if (FMath::IsNearlyZero(CClockwiseMaximumDialAngle))
+		{
+			CurRotBackEnd = FMath::Clamp(CurRotBackEnd + DeltaRot, 0.0f, ClockwiseMaximumDialAngle);
+		}
+		else if (FMath::IsNearlyZero(ClockwiseMaximumDialAngle))
+		{
+			if (CurRotBackEnd < MaxCheckValue)
+				CurRotBackEnd = FMath::Clamp(360.0f + DeltaRot, MaxCheckValue, 360.0f);
+			else
+				CurRotBackEnd = FMath::Clamp(CurRotBackEnd + DeltaRot, MaxCheckValue, 360.0f);
+		}
+		else if (tempCheck > ClockwiseMaximumDialAngle && tempCheck < MaxCheckValue)
+		{
+			if (CurRotBackEnd < MaxCheckValue)
+			{
+				CurRotBackEnd = ClockwiseMaximumDialAngle;
+			}
+			else
+			{
+				CurRotBackEnd = MaxCheckValue;
+			}
+		}
+		else
+			CurRotBackEnd = tempCheck;
+
+		if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+		{
+			this->SetRelativeRotation((FTransform(SetAxisValue(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator, DialRotationAxis)) * InitialRelativeTransform).Rotator());
+			CurrentDialAngle = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
+
+			if (bCallEvents && !FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
+			{
+				OnDialHitSnapAngle.Broadcast(CurrentDialAngle);
+			}
+
+			LastSnapAngle = CurrentDialAngle;
+		}
+		else
+		{
+			this->SetRelativeRotation((FTransform(SetAxisValue(CurRotBackEnd, FRotator::ZeroRotator, DialRotationAxis)) * InitialRelativeTransform).Rotator());
+			CurrentDialAngle = FMath::RoundToFloat(CurRotBackEnd);
+		}
+
+	}
+
 	// ------------------------------------------------
 	// Gameplay tag interface
 	// ------------------------------------------------

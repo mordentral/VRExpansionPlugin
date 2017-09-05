@@ -114,6 +114,17 @@ public:
 	virtual void PhysCustom_Climbing(float deltaTime, int32 Iterations);
 	virtual void PhysCustom_LowGrav(float deltaTime, int32 Iterations);
 
+	/**
+	* Smooth mesh location for network interpolation, based on values set up by SmoothCorrection.
+	* Internally this simply calls SmoothClientPosition_Interpolate() then SmoothClientPosition_UpdateVisuals().
+	* This function is not called when bNetworkSmoothingComplete is true.
+	* @param DeltaSeconds Time since last update.
+	*/
+	virtual void SmoothClientPosition(float DeltaSeconds) override;
+
+	/** Update mesh location based on interpolated values. */
+	void SmoothClientPosition_UpdateVRVisuals();
+
 	// Added in 4.16
 	///* Allow custom handling when character hits a wall while swimming. */
 	//virtual void HandleSwimmingWallHit(const FHitResult& Hit, float DeltaTime);

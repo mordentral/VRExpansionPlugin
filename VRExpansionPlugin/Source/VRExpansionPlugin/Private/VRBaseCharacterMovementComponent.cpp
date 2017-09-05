@@ -477,3 +477,87 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 
 	FSavedMove_Character::PrepMoveFor(Character);
 }
+
+void UVRBaseCharacterMovementComponent::SmoothClientPosition(float DeltaSeconds)
+{
+	if (!HasValidData() || NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
+	{
+		return;
+	}
+
+	// We shouldn't be running this on a server that is not a listen server.
+	checkSlow(GetNetMode() != NM_DedicatedServer);
+	checkSlow(GetNetMode() != NM_Standalone);
+
+	// Only client proxies or remote clients on a listen server should run this code.
+	const bool bIsSimulatedProxy = (CharacterOwner->Role == ROLE_SimulatedProxy);
+	const bool bIsRemoteAutoProxy = (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy);
+	if (!ensure(bIsSimulatedProxy || bIsRemoteAutoProxy))
+	{
+		return;
+	}
+
+	SmoothClientPosition_Interpolate(DeltaSeconds);
+	//SmoothClientPosition_UpdateVisuals(); No mesh, don't bother to run this
+	SmoothClientPosition_UpdateVRVisuals();
+}
+
+void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
+{
+	//SCOPE_CYCLE_COUNTER(STAT_CharacterMovementSmoothClientPosition_Visual);
+	FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
+
+	AVRBaseCharacter * Basechar = Cast<AVRBaseCharacter>(CharacterOwner);
+
+	if (!Basechar || !ClientData)
+		return;
+
+	if (ClientData)
+	{
+		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
+		{
+			// Adjust capsule rotation and mesh location. Optimized to trigger only one transform chain update.
+			// If we know the rotation is changing that will update children, so it's sufficient to set RelativeLocation directly on the mesh.
+			const FVector NewRelLocation = ClientData->MeshRotationOffset.UnrotateVector(ClientData->MeshTranslationOffset) + CharacterOwner->GetBaseTranslationOffset();
+
+			if (!UpdatedComponent->GetComponentQuat().Equals(ClientData->MeshRotationOffset, SCENECOMPONENT_QUAT_TOLERANCE))
+			{
+				const FVector OldLocation = Basechar->NetSmoother->RelativeLocation;
+				const FRotator OldRotation = UpdatedComponent->RelativeRotation;
+				Basechar->NetSmoother->RelativeLocation = NewRelLocation;
+				//Mesh->RelativeLocation = NewRelLocation;
+				UpdatedComponent->SetWorldRotation(ClientData->MeshRotationOffset);
+
+				// If we did not move from SetWorldRotation, we need to at least call SetRelativeLocation since we were relying on the UpdatedComponent to update the transform of the mesh
+				if (UpdatedComponent->RelativeRotation == OldRotation)
+				{
+					Basechar->NetSmoother->RelativeLocation = OldLocation;
+					Basechar->NetSmoother->SetRelativeLocation(NewRelLocation);
+				}
+			}
+			else
+			{
+				Basechar->NetSmoother->SetRelativeLocation(NewRelLocation);
+			}
+		}
+		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
+		{
+			// Adjust mesh location and rotation
+			const FVector NewRelTranslation = UpdatedComponent->GetComponentToWorld().InverseTransformVectorNoScale(ClientData->MeshTranslationOffset) + CharacterOwner->GetBaseTranslationOffset();
+			const FQuat NewRelRotation = ClientData->MeshRotationOffset * CharacterOwner->GetBaseRotationOffset();
+
+			Basechar->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
+		}
+		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
+		{
+			if (!UpdatedComponent->GetComponentQuat().Equals(ClientData->MeshRotationOffset, SCENECOMPONENT_QUAT_TOLERANCE) || !UpdatedComponent->GetComponentLocation().Equals(ClientData->MeshTranslationOffset, KINDA_SMALL_NUMBER))
+			{
+				UpdatedComponent->SetWorldLocationAndRotation(ClientData->MeshTranslationOffset, ClientData->MeshRotationOffset);
+			}
+		}
+		else
+		{
+			// Unhandled mode
+		}
+	}
+}

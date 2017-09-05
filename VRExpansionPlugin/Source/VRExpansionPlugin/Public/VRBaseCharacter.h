@@ -90,6 +90,12 @@ public:
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		UGripMotionControllerComponent * RightMotionController;
 
+	// This component is used with the normal character SkeletalMesh network smoothing system for simulated proxies
+	// It will lerp the characters components back to zero on simulated proxies after a move is complete.
+	// The simplest method of doing this was applying the exact same offset as the mesh gets to a base component that
+	// tracked objects are attached to.
+	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+		USceneComponent * NetSmoother;
 
 	/** Name of the LeftMotionController component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
 	static FName LeftMotionControllerComponentName;
@@ -102,7 +108,9 @@ public:
 
 	/** Name of the ParentRelativeAttachment component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
 	static FName ParentRelativeAttachmentComponentName;
-
+	
+	/** Name of the ParentRelativeAttachment component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
+	static FName SmoothingSceneParentComponentName;
 
 	/*
 	A helper function that offsets a given vector by the roots collision location

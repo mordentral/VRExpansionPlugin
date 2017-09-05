@@ -17,7 +17,7 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 
 	if (VRSceneComponent)
 	{
-		VRSceneComponent->SetupAttachment(RootComponent);
+		VRSceneComponent->SetupAttachment(NetSmoother);
 		VRSceneComponent->SetRelativeLocation(FVector(0, 0, -96));
 	}
 
