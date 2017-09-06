@@ -30,6 +30,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (NetSmoother)
 	{
 		NetSmoother->SetupAttachment(RootComponent);
+		NetSmoother->bEditableWhenInherited = false;
 	}
 
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(AVRBaseCharacter::ReplicatedCameraComponentName);
