@@ -160,11 +160,14 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float BreakDistance;
 
-	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		bool bIsHeld; // Set on grip notify, not net serializing
 
-	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+
+	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+		bool bDenyGripping;
 
 	// Grip interface setup
 

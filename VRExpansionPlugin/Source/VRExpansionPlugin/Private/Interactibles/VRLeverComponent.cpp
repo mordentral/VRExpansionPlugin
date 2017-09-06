@@ -41,6 +41,7 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	InitialGripRot = 0.0f;
 	bIsLerping = false;
 	bUngripAtTargetRotation = false;
+	bDenyGripping = false;
 
 
 	// Set to only overlap with things so that its not ruined by touching over actors
@@ -293,7 +294,7 @@ void UVRLeverComponent::OnEndSecondaryUsed_Implementation() {}
 
 bool UVRLeverComponent::DenyGripping_Implementation()
 {
-	return false;//VRGripInterfaceSettings.bDenyGripping;
+	return bDenyGripping;
 }
 
 EGripInterfaceTeleportBehavior UVRLeverComponent::TeleportBehavior_Implementation()

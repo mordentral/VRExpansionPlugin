@@ -24,6 +24,7 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 
 	ClockwiseMaximumDialAngle = 180.0f;
 	CClockwiseMaximumDialAngle = 180.0f;
+	bDenyGripping = false;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	BreakDistance = 100.0f;
@@ -120,7 +121,7 @@ void UVRDialComponent::OnEndSecondaryUsed_Implementation() {}
 
 bool UVRDialComponent::DenyGripping_Implementation()
 {
-	return false;//VRGripInterfaceSettings.bDenyGripping;
+	return bDenyGripping;
 }
 
 EGripInterfaceTeleportBehavior UVRDialComponent::TeleportBehavior_Implementation()
