@@ -85,20 +85,19 @@ struct VREXPANSIONPLUGIN_API FBPVRWaistTracking_Info
 public:
 
 	// Initial "Resting" location of the tracker parent, assumed to be the calibration zero
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
 		FRotator RestingRotation;
 
-
 	// Distance to offset to get center of waist from tracked parent location
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
 		float WaistRadius;
 
 	// Controls forward vector
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
 	EBPVRWaistTrackingMode TrackingMode;
 
 	// Tracked parent reference
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
 		UPrimitiveComponent * TrackedDevice;
 
 	bool IsValid()
@@ -621,29 +620,29 @@ struct VREXPANSIONPLUGIN_API FBPInteractionSettings
 	GENERATED_BODY()
 public:
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
 		uint32 bLimitsInLocalSpace:1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
 		uint32 bLimitX:1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
 		uint32 bLimitY:1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
 		uint32 bLimitZ:1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
 		uint32 bLimitPitch:1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
 		uint32 bLimitYaw:1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
 		uint32 bLimitRoll:1;
 
 	// Doesn't work totally correctly without using the ConvertToControllerRelativeTransform node in the motion controller
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
 		uint32 bIgnoreHandRotation:1;
 
 	// #TODO: Net quantize the initial and min/max values.
@@ -651,18 +650,18 @@ public:
 	// and reinitializes ALL values, which obviously is bad as it would force people
 	// to re-enter their offsets all over again......
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
 		FVector/*_NetQuantize100*/ InitialLinearTranslation;
 
 	// To use property, set value as -Distance
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
 		FVector/*_NetQuantize100*/ MinLinearTranslation;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LinearSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
 		FVector/*_NetQuantize100*/ MaxLinearTranslation;
 
 	// FRotators already by default NetSerialize as shorts
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
 		FRotator InitialAngularTranslation;
 
 	// To use property, set value as -Rotation
@@ -703,29 +702,29 @@ struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 	GENERATED_BODY()
 public:
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripTargetType GripTargetType;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		UObject * GrippedObject;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripCollisionType GripCollisionType;
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "Settings")
 		EGripLateUpdateSettings GripLateUpdateSetting;
-	UPROPERTY(BlueprintReadOnly, NotReplicated)
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "Settings")
 		bool bColliding;
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "Settings")
 		FTransform_NetQuantize RelativeTransform;
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "Settings")
 		bool bIsSlotGrip;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
 
 	// I would have loved to have both of these not be replicated (and in normal grips they wouldn't have to be)
 	// However for serialization purposes and Client_Authority grips they need to be....
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		bool bOriginalReplicatesMovement;
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		bool bOriginalGravity;
 
 	UPROPERTY()
@@ -741,11 +740,11 @@ public:
 		//bool bPauseGrip;
 
 	// For multi grip situations
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		FBPSecondaryGripInfo SecondaryGripInfo;
 
 	// Optional Additive Transform for programmatic animation
-	UPROPERTY(BlueprintReadWrite, NotReplicated)
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "Settings")
 	FTransform AdditionTransform;
 
 	// Locked transitions for swept movement so they don't just rotate in place on contact
@@ -1015,7 +1014,7 @@ struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		UObject * HandledObject;
 
 	/** Physics scene index of the body we are grabbing. */

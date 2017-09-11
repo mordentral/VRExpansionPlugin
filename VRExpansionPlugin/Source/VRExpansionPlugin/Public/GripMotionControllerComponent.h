@@ -65,11 +65,11 @@ public:
 	// Locally Gripped Array functions
 
 	// Notify a client that their local grip was bad
-	UFUNCTION(BlueprintCallable, Reliable, Client, WithValidation)
+	UFUNCTION(BlueprintCallable, Reliable, Client, WithValidation, Category = "VRGrip")
 	void Client_NotifyInvalidLocalGrip(UObject * LocallyGrippedObject);
 
 	// Notify the server that we locally gripped something
-	UFUNCTION(BlueprintCallable, Reliable, Server, WithValidation)
+	UFUNCTION(BlueprintCallable, Reliable, Server, WithValidation, Category = "VRGrip")
 	void Server_NotifyLocalGripAddedOrChanged(const FBPActorGripInformation & newGrip);
 
 	// Notify the server that we changed some secondary attachment information
