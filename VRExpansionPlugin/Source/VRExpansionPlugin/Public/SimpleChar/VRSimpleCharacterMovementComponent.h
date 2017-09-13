@@ -61,6 +61,10 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 		UCameraComponent * VRCameraComponent;
+		
+	// Skips checking for the HMD location on tick, for 2D pawns when a headset is connected
+	UPROPERTY(BlueprintReadWrite, Category = VRMovement)
+		bool bSkipHMDChecks;
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
