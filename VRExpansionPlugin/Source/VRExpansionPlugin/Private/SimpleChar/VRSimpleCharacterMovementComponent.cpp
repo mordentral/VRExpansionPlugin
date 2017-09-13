@@ -55,6 +55,7 @@ UVRSimpleCharacterMovementComponent::UVRSimpleCharacterMovementComponent(const F
 	this->bUpdateOnlyIfRendered = false;
 	this->AirControl = 0.0f;
 
+	bSkipHMDChecks = false;
 	bIsFirstTick = true;
 	//LastAdditionalVRInputVector = FVector::ZeroVector;
 	AdditionalVRInputVector = FVector::ZeroVector;	
@@ -977,63 +978,67 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 
 void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-
-	if (IsLocallyControlled())
+	if (!bSkipHMDChecks)
 	{
-		FQuat curRot;
-		bool bWasHeadset = false;
+		if (IsLocallyControlled())
+		{
+			FQuat curRot;
+			bool bWasHeadset = false;
 
-		if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
-		{
-			bWasHeadset = true;
-			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
-			curCameraRot = curRot.Rotator();
-		}
-		else if (VRCameraComponent)
-		{
-			curCameraLoc = VRCameraComponent->RelativeLocation;
-			curCameraRot = VRCameraComponent->RelativeRotation;
-			VRCameraComponent->SetRelativeLocation(FVector(0, 0, VRCameraComponent->RelativeLocation.Z));
-		}
-
-		if (!bIsFirstTick)
-		{
-			// Can adjust the relative tolerances to remove jitter and some update processing
-			if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.001f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.001f))
+			if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 			{
-				FVector DifferenceFromLastFrame = (curCameraLoc - lastCameraLoc);
-				//DifferenceFromLastFrame.Z = 0.0f;
+				bWasHeadset = true;
+				GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
+				curCameraRot = curRot.Rotator();
+			}
+			else if (VRCameraComponent)
+			{
+				curCameraLoc = VRCameraComponent->RelativeLocation;
+				curCameraRot = VRCameraComponent->RelativeRotation;
+				VRCameraComponent->SetRelativeLocation(FVector(0, 0, VRCameraComponent->RelativeLocation.Z));
+			}
 
-				if (VRRootCapsule)
+			if (!bIsFirstTick)
+			{
+				// Can adjust the relative tolerances to remove jitter and some update processing
+				if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.001f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.001f))
 				{
-					DifferenceFromLastFrame *= VRRootCapsule->GetComponentScale(); // Scale up with character
-					AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame); // Apply over a second
-					AdditionalVRInputVector.Z = 0.0f; // Don't use the Z value anyway, and lets me repurpose it for the CapsuleHalfHeight
+					FVector DifferenceFromLastFrame = (curCameraLoc - lastCameraLoc);
+					//DifferenceFromLastFrame.Z = 0.0f;
+
+					if (VRRootCapsule)
+					{
+						DifferenceFromLastFrame *= VRRootCapsule->GetComponentScale(); // Scale up with character
+						AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame); // Apply over a second
+						AdditionalVRInputVector.Z = 0.0f; // Don't use the Z value anyway, and lets me repurpose it for the CapsuleHalfHeight
+					}
+				}
+				else
+				{
+					AdditionalVRInputVector = FVector::ZeroVector;
 				}
 			}
 			else
-			{
-				AdditionalVRInputVector = FVector::ZeroVector;
-			}
+				bIsFirstTick = false;
+
+			if (bWasHeadset)
+				lastCameraLoc = curCameraLoc;
+			else
+				lastCameraLoc = FVector::ZeroVector; // Technically this would be incorrect for Z, but we don't use Z anyway
 		}
-		else
-			bIsFirstTick = false;
 
-		if (bWasHeadset)
-			lastCameraLoc = curCameraLoc;
-		else
-			lastCameraLoc = FVector::ZeroVector; // Technically this would be incorrect for Z, but we don't use Z anyway
+		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+		if (AVRSimpleCharacter * owningChar = Cast<AVRSimpleCharacter>(GetOwner()))
+		{
+			if (VRRootCapsule)
+				owningChar->VRSceneComponent->SetRelativeLocation(FVector(0, 0, -VRRootCapsule->GetUnscaledCapsuleHalfHeight()));
+
+			owningChar->GenerateOffsetToWorld();
+		}
 	}
-
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	if (AVRSimpleCharacter * owningChar = Cast<AVRSimpleCharacter>(GetOwner()))
-	{
-		if (VRRootCapsule)
-			owningChar->VRSceneComponent->SetRelativeLocation(FVector(0, 0, -VRRootCapsule->GetUnscaledCapsuleHalfHeight()));
-
-		owningChar->GenerateOffsetToWorld();
-	}
+	else
+		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
 void UVRSimpleCharacterMovementComponent::SetUpdatedComponent(USceneComponent* NewUpdatedComponent)
