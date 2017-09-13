@@ -985,7 +985,7 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 			FQuat curRot;
 			bool bWasHeadset = false;
 
-			if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+			if (GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 			{
 				bWasHeadset = true;
 				GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);

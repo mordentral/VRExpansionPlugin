@@ -212,6 +212,7 @@ bool UGripMotionControllerComponent::Server_SendControllerTransform_Validate(FBP
 	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
 }
 
+/*
 void UGripMotionControllerComponent::FGripViewExtension::ProcessGripArrayLateUpdatePrimitives(TArray<FBPActorGripInformation> & GripArray)
 {
 	for (FBPActorGripInformation actor : GripArray)
@@ -282,7 +283,7 @@ void UGripMotionControllerComponent::FGripViewExtension::ProcessGripArrayLateUpd
 		}break;
 		}
 	}
-}
+}*/
 
 void UGripMotionControllerComponent::FGripViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
 {
@@ -290,7 +291,11 @@ void UGripMotionControllerComponent::FGripViewExtension::BeginRenderViewFamily(F
 	{
 		return;
 	}
-	FScopeLock ScopeLock(&CritSect);
+
+	// Set up the late update state for the controller component
+	LateUpdate.Setup(MotionControllerComponent->CalcNewComponentToWorld(FTransform()), MotionControllerComponent);
+
+	/*FScopeLock ScopeLock(&CritSect);
 
 	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
 	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnGameThread())
@@ -301,10 +306,10 @@ void UGripMotionControllerComponent::FGripViewExtension::BeginRenderViewFamily(F
 	LateUpdatePrimitives.Reset();
 	GatherLateUpdatePrimitives(MotionControllerComponent, LateUpdatePrimitives);
 
-	/*
-	Add additional late updates registered to this controller that aren't children and aren't gripped
-	This array is editable in blueprint and can be used for things like arms or the like.
-	*/
+	
+	//Add additional late updates registered to this controller that aren't children and aren't gripped
+	//This array is editable in blueprint and can be used for things like arms or the like.
+	
 	for (UPrimitiveComponent* primComp : MotionControllerComponent->AdditionalLateUpdateComponents)
 	{
 		if (primComp)
@@ -315,6 +320,7 @@ void UGripMotionControllerComponent::FGripViewExtension::BeginRenderViewFamily(F
 	// Was going to use a lambda here but the overhead cost is higher than just using another function, even more so than using an inline one
 	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->LocallyGrippedActors);
 	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->GrippedActors);
+	*/
 }
 
 void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
@@ -2109,6 +2115,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 		{
 			if (!GripViewExtension.IsValid() && GEngine)
 			{
+				// #TODO: 4.18 - Uses an auto register base for extensions now, need to revise this
 				TSharedPtr< FGripViewExtension, ESPMode::ThreadSafe > NewViewExtension(new FGripViewExtension(this));
 				GripViewExtension = NewViewExtension;
 				GEngine->ViewExtensions.Add(GripViewExtension);
@@ -3502,7 +3509,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				{
 					if (IsInGameThread())
 					{
-						if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+						if (GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 						{
 							FQuat curRot;
 							FVector curLoc;
@@ -3530,7 +3537,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				{
 					if (IsInGameThread())
 					{
-						if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+						if (GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 						{
 							FQuat curRot;
 							FVector curLoc;
@@ -3556,11 +3563,60 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 //=============================================================================
 void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
 {
-	if (!MotionControllerComponent)
+
+	// #TODO: Remove in 4.18
+	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
+	if (!CVarEnableMotionControllerLateUpdate->GetValueOnRenderThread())
 	{
 		return;
-	}
+	}// End remove
 
+
+	FTransform OldTransform;
+	FTransform NewTransform;
+
+	{
+		FScopeLock ScopeLock(&CritSect);
+
+		// #TODO: 4.18 just check for component here, we use IsActiveThisFrame instead in 4.18
+		if (!MotionControllerComponent || MotionControllerComponent->bDisableLowLatencyUpdate)
+			return;
+
+		// Find a view that is associated with this player.
+		float WorldToMetersScale = -1.0f;
+		for (const FSceneView* SceneView : InViewFamily.Views)
+		{
+			if (SceneView && SceneView->PlayerIndex == MotionControllerComponent->PlayerIndex)
+			{
+				WorldToMetersScale = SceneView->WorldToMetersScale;
+				break;
+			}
+		}
+
+		// If there are no views associated with this player use view 0.
+		if (WorldToMetersScale < 0.0f)
+		{
+			check(InViewFamily.Views.Num() > 0);
+			WorldToMetersScale = InViewFamily.Views[0]->WorldToMetersScale;
+		}
+
+		// Poll state for the most recent controller transform
+		FVector Position;
+		FRotator Orientation;
+
+		if (!MotionControllerComponent->GripPollControllerState(Position, Orientation, WorldToMetersScale))
+		{
+			return;
+		}
+
+		OldTransform = MotionControllerComponent->GripRenderThreadRelativeTransform;
+		NewTransform = FTransform(Orientation, Position, MotionControllerComponent->GripRenderThreadComponentScale);
+	} // Release lock on motion controller component
+
+	  // Tell the late update manager to apply the offset to the scene components
+	LateUpdate.Apply_RenderThread(InViewFamily.Scene, OldTransform, NewTransform);
+
+	/*
 	FScopeLock ScopeLock(&CritSect);
 
 	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
@@ -3599,7 +3655,7 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 	{
 		// Calculate the late update transform that will rebase all children proxies within the frame of reference
 
-		FTransform OldLocalToWorldTransform =  MotionControllerComponent->CalcNewComponentToWorld(MotionControllerComponent->GripRenderThreadRelativeTransform/*MotionControllerComponent->GetRelativeTransform()*/);
+		FTransform OldLocalToWorldTransform =  MotionControllerComponent->CalcNewComponentToWorld(MotionControllerComponent->GripRenderThreadRelativeTransform);
 		FTransform NewLocalToWorldTransform =  MotionControllerComponent->CalcNewComponentToWorld(FTransform(Orientation, Position, MotionControllerComponent->GripRenderThreadComponentScale));
 		FMatrix LateUpdateTransform = (OldLocalToWorldTransform.Inverse() * NewLocalToWorldTransform).ToMatrixWithScale();
 
@@ -3621,9 +3677,12 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 
 		LateUpdatePrimitives.Reset();
 	}
+	*/
 }
 
-void UGripMotionControllerComponent::FGripViewExtension::GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives)
+//#TODO 4.18: Add IsActiveThisFrame() function here
+
+/*void UGripMotionControllerComponent::FGripViewExtension::GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives)
 {
 	if (!Component || Component->IsPendingKill())
 		return;
@@ -3654,7 +3713,7 @@ void UGripMotionControllerComponent::FGripViewExtension::GatherLateUpdatePrimiti
 
 		GatherLateUpdatePrimitives(ChildComponent, Primitives);
 	}
-}
+}*/
 
 void UGripMotionControllerComponent::GetGrippedObjects(TArray<UObject*> &GrippedObjectsArray)
 {
@@ -3809,4 +3868,160 @@ void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Imp
 		}
 	}
 
+}
+
+
+/*
+*
+*	Custom late update manager implementation
+*
+*/
+
+FExpandedLateUpdateManager::FExpandedLateUpdateManager()
+	: LateUpdateGameWriteIndex(0)
+	, LateUpdateRenderReadIndex(0)
+{
+}
+
+void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component)
+{
+	check(IsInGameThread());
+	LateUpdateParentToWorld[LateUpdateGameWriteIndex] = ParentToWorld;
+	LateUpdatePrimitives[LateUpdateGameWriteIndex].Reset();
+	GatherLateUpdatePrimitives(Component);
+
+	ProcessGripArrayLateUpdatePrimitives(Component, Component->LocallyGrippedActors);
+	ProcessGripArrayLateUpdatePrimitives(Component, Component->GrippedActors);
+
+	LateUpdateGameWriteIndex = (LateUpdateGameWriteIndex + 1) % 2;
+}
+
+
+void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform)
+{
+	check(IsInRenderingThread());
+	if (!LateUpdatePrimitives[LateUpdateRenderReadIndex].Num())
+	{
+		return;
+	}
+
+	const FTransform OldTransform = OldRelativeTransform * LateUpdateParentToWorld[LateUpdateRenderReadIndex];
+	const FTransform NewTransform = NewRelativeTransform * LateUpdateParentToWorld[LateUpdateRenderReadIndex];
+	const FMatrix LateUpdateTransform = (OldTransform.Inverse() * NewTransform).ToMatrixWithScale();
+
+	// Apply delta to the affected scene proxies
+	for (auto PrimitiveInfo : LateUpdatePrimitives[LateUpdateRenderReadIndex])
+	{
+		FPrimitiveSceneInfo* RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(*PrimitiveInfo.IndexAddress);
+		FPrimitiveSceneInfo* CachedSceneInfo = PrimitiveInfo.SceneInfo;
+		// If the retrieved scene info is different than our cached scene info then the primitive was removed from the scene
+		if (CachedSceneInfo == RetrievedSceneInfo && CachedSceneInfo->Proxy)
+		{
+			CachedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
+		}
+	}
+	LateUpdatePrimitives[LateUpdateRenderReadIndex].Reset();
+	LateUpdateRenderReadIndex = (LateUpdateRenderReadIndex + 1) % 2;
+}
+
+void FExpandedLateUpdateManager::CacheSceneInfo(USceneComponent* Component)
+{
+	// If a scene proxy is present, cache it
+	UPrimitiveComponent* PrimitiveComponent = dynamic_cast<UPrimitiveComponent*>(Component);
+	if (PrimitiveComponent && PrimitiveComponent->SceneProxy)
+	{
+		FPrimitiveSceneInfo* PrimitiveSceneInfo = PrimitiveComponent->SceneProxy->GetPrimitiveSceneInfo();
+		if (PrimitiveSceneInfo)
+		{
+			LateUpdatePrimitiveInfo PrimitiveInfo;
+			PrimitiveInfo.IndexAddress = PrimitiveSceneInfo->GetIndexAddress();
+			PrimitiveInfo.SceneInfo = PrimitiveSceneInfo;
+			LateUpdatePrimitives[LateUpdateGameWriteIndex].Add(PrimitiveInfo);
+		}
+	}
+}
+
+void FExpandedLateUpdateManager::GatherLateUpdatePrimitives(USceneComponent* ParentComponent)
+{
+	CacheSceneInfo(ParentComponent);
+
+	TArray<USceneComponent*> Components;
+	ParentComponent->GetChildrenComponents(true, Components);
+	for (USceneComponent* Component : Components)
+	{
+		check(Component != nullptr);
+		CacheSceneInfo(Component);
+	}
+}
+
+void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotionControllerComponent * MotionControllerComponent, TArray<FBPActorGripInformation> & GripArray)
+{
+	for (FBPActorGripInformation actor : GripArray)
+	{
+		// Skip actors that are colliding if turning off late updates during collision.
+		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
+
+		// Don't allow late updates with server sided movement, there is no point
+		if (actor.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !MotionControllerComponent->IsServer())
+			continue;
+
+		switch (actor.GripLateUpdateSetting)
+		{
+		case EGripLateUpdateSettings::LateUpdatesAlwaysOff:
+		{
+			continue;
+		}break;
+		case EGripLateUpdateSettings::NotWhenColliding:
+		{
+			if (actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly)
+				continue;
+		}break;
+		case EGripLateUpdateSettings::NotWhenDoubleGripping:
+		{
+			if (actor.SecondaryGripInfo.bHasSecondaryAttachment)
+				continue;
+		}break;
+		case EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping:
+		{
+			if (
+				(actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly) ||
+				(actor.SecondaryGripInfo.bHasSecondaryAttachment)
+				)
+			{
+				continue;
+			}
+		}break;
+		case EGripLateUpdateSettings::LateUpdatesAlwaysOn:
+		default:
+		{}break;
+		}
+
+		// Get late update primitives
+		switch (actor.GripTargetType)
+		{
+		case EGripTargetType::ActorGrip:
+			//case EGripTargetType::InteractibleActorGrip:
+		{
+			AActor * pActor = actor.GetGrippedActor();
+			if (pActor)
+			{
+				if (USceneComponent * rootComponent = pActor->GetRootComponent())
+				{
+					GatherLateUpdatePrimitives(rootComponent);
+				}
+			}
+
+		}break;
+
+		case EGripTargetType::ComponentGrip:
+			//case EGripTargetType::InteractibleComponentGrip:
+		{
+			UPrimitiveComponent * cPrimComp = actor.GetGrippedComponent();
+			if (cPrimComp)
+			{
+				GatherLateUpdatePrimitives(cPrimComp);
+			}
+		}break;
+		}
+	}
 }

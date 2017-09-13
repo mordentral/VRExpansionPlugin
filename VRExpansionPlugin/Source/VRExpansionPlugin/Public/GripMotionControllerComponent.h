@@ -20,7 +20,51 @@ DECLARE_LOG_CATEGORY_EXTERN(LogVRMotionController, Log, All);
 //For UE4 Profiler ~ Stat Group
 DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
 
+/**
+* Utility class for applying an offset to a hierarchy of components in the renderer thread.
+*/
+class VREXPANSIONPLUGIN_API FExpandedLateUpdateManager
+{
+public:
+	FExpandedLateUpdateManager();
 
+	/** Setup state for applying the render thread late update */
+	void Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component);
+
+	/** Apply the late update delta to the cached components */
+	void Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform);
+
+public:
+
+	/*
+	*  Late update primitive info for accessing valid scene proxy info. From the time the info is gathered
+	*  to the time it is later accessed the render proxy can be deleted. To ensure we only access a proxy that is
+	*  still valid we cache the primitive's scene info AND a pointer to its own cached index. If the primitive
+	*  is deleted or removed from the scene then attempting to access it via its index will result in a different
+	*  scene info than the cached scene info.
+	*/
+	struct LateUpdatePrimitiveInfo
+	{
+		const int32*			IndexAddress;
+		FPrimitiveSceneInfo*	SceneInfo;
+	};
+
+	/** A utility method that calls CacheSceneInfo on ParentComponent and all of its descendants */
+	void GatherLateUpdatePrimitives(USceneComponent* ParentComponent);
+	void ProcessGripArrayLateUpdatePrimitives(UGripMotionControllerComponent* MotionController, TArray<FBPActorGripInformation> & GripArray);
+
+	/** Generates a LateUpdatePrimitiveInfo for the given component if it has a SceneProxy and appends it to the current LateUpdatePrimitives array */
+	void CacheSceneInfo(USceneComponent* Component);
+
+	/** Parent world transform used to reconstruct new world transforms for late update scene proxies */
+	FTransform LateUpdateParentToWorld[2];
+	/** Primitives that need late update before rendering */
+	TArray<LateUpdatePrimitiveInfo> LateUpdatePrimitives[2];
+
+	int32 LateUpdateGameWriteIndex;
+	int32 LateUpdateRenderReadIndex;
+
+};
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionController)
 class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UMotionControllerComponent//PrimitiveComponent
@@ -727,6 +771,8 @@ private:
 	/** View extension object that can persist on the render thread without the motion controller component */
 	class FGripViewExtension : public ISceneViewExtension, public TSharedFromThis<FGripViewExtension, ESPMode::ThreadSafe>
 	{
+
+		// #TODO: 4.18 - Uses an auto register base now, revise declaration and implementation
 	public:
 		FGripViewExtension(UGripMotionControllerComponent* InMotionControllerComponent) { MotionControllerComponent = InMotionControllerComponent; }
 		virtual ~FGripViewExtension() {}
@@ -746,6 +792,8 @@ private:
 		/** Motion controller component associated with this view extension */
 		UGripMotionControllerComponent* MotionControllerComponent;
 
+		FExpandedLateUpdateManager LateUpdate;
+
 		/*
 		*	Late update primitive info for accessing valid scene proxy info. From the time the info is gathered
 		*  to the time it is later accessed the render proxy can be deleted. To ensure we only access a proxy that is
@@ -753,19 +801,19 @@ private:
 		*  is deleted or removed from the scene then attempting to access it via it's index will result in a different
 		*  scene info than the cached scene info.
 		*/
-		struct LateUpdatePrimitiveInfo
+		/*struct LateUpdatePrimitiveInfo
 		{
 			const int32*			IndexAddress;
 			FPrimitiveSceneInfo*	SceneInfo;
-		};
+		};*/
 
 
 		/** Walks the component hierarchy gathering scene proxies */
-		void GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives);
-		FORCEINLINE void ProcessGripArrayLateUpdatePrimitives(TArray<FBPActorGripInformation> & GripArray);
+		//void GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives);
+		//FORCEINLINE void ProcessGripArrayLateUpdatePrimitives(TArray<FBPActorGripInformation> & GripArray);
 
 		/** Primitives that need late update before rendering */
-		TArray<LateUpdatePrimitiveInfo> LateUpdatePrimitives;
+		//TArray<LateUpdatePrimitiveInfo> LateUpdatePrimitives;
 	};
 	TSharedPtr< FGripViewExtension, ESPMode::ThreadSafe > GripViewExtension;
 

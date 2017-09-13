@@ -104,11 +104,13 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 	
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	// #TODO: 4.18 - use new late update code if required
+
 	// Don't do any of the below if we aren't the host
 	if (bHasAuthority)
 	{
 		// For non view target positional updates (third party and the like)
-		if (bSetPositionDuringTick && bLockToHmd && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+		if (bSetPositionDuringTick && bLockToHmd && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 		{
 			//ResetRelativeTransform();
 			FQuat Orientation;
@@ -187,7 +189,7 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 			bLockToHmd = false;
 	}
 
-	if (bLockToHmd && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+	if (bLockToHmd && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 	{
 		ResetRelativeTransform();
 		const FTransform ParentWorld = GetComponentToWorld();

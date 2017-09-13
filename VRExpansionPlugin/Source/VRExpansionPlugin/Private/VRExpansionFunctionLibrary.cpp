@@ -129,7 +129,7 @@ FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)
 
 EBPHMDWornState UVRExpansionFunctionLibrary::GetIsHMDWorn()
 {
-	if (GEngine && GEngine->HMDDevice.IsValid())
+	if (GEngine && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/)
 	{
 		return ((EBPHMDWornState)GEngine->HMDDevice->GetHMDWornState());
 	}
@@ -139,7 +139,7 @@ EBPHMDWornState UVRExpansionFunctionLibrary::GetIsHMDWorn()
 
 bool UVRExpansionFunctionLibrary::GetIsHMDConnected()
 {
-	if (GEngine && GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHMDConnected())
+	if (GEngine && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHMDConnected())
 		return true;
 
 	return false;
@@ -147,7 +147,7 @@ bool UVRExpansionFunctionLibrary::GetIsHMDConnected()
 
 EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 {
-	if (GEngine && GEngine->HMDDevice.IsValid())
+	if (GEngine && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/)
 	{
 		switch (GEngine->HMDDevice->GetHMDDeviceType())
 		{

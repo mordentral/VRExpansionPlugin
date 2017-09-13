@@ -52,7 +52,7 @@ bool UDEPRECATED_GripSteamVRTrackedDevice::GripPollControllerState(FVector& Posi
 		{
 			if (IsInGameThread())
 			{
-				if (GEngine->HMDDevice.IsValid() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+				if (GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 				{
 					FQuat curRot;
 					FVector curLoc;
