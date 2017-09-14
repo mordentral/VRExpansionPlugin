@@ -89,6 +89,7 @@ private:
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void OnUnregister() override;
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+	virtual void Deactivate() override;
 
 protected:
 	//~ Begin UActorComponent Interface.

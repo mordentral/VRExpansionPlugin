@@ -615,28 +615,6 @@ bool UOpenVRExpansionFunctionLibrary::IsOpenVRDeviceConnected(EBPVRDeviceIndex O
 	}
 
 	return true;
-	/*if (!VRGetGenericInterfaceFn)
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("OpenVR Library not initialized!!"));
-		return false;
-	}
-
-	vr::HmdError HmdErr;
-	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
-	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
-
-	if (!VRSystem)
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VRSystem InterfaceErrorCode %i"), (int32)HmdErr);
-	}
-
-	if (!VRSystem)
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Interfaces!!"));
-		return false;
-	}
-
-	return VRSystem->IsTrackedDeviceConnected((uint32)OpenVRDeviceIndex);*/
 
 #endif
 }
@@ -649,28 +627,6 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 	Result = EAsyncBlueprintResultSwitch::OnFailure;
 	return NULL;
 #else
-
-	/*if (!VRGetGenericInterfaceFn)
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("OpenVR Library not initialized!!"));
-		Result = EAsyncBlueprintResultSwitch::OnFailure;
-		return NULL;
-	}*/
-
-	/*if (!(GEngine->HMDDevice.IsValid() && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get HMD Device!!"));
-		bSucceeded = false;
-		return nullptr;
-	}*/
-
-/*	FSteamVRHMD* SteamVRHMD = (FSteamVRHMD*)(GEngine->HMDDevice.Get());
-	if (!SteamVRHMD || !SteamVRHMD->IsStereoEnabled())
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get HMD Device!!"));
-		bSucceeded = false;
-		return nullptr;
-	}*/
 
 	vr::HmdError HmdErr;
 	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
@@ -897,3 +853,256 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 #endif
 }
 
+
+bool UOpenVRExpansionFunctionLibrary::SetSkyboxOverride_LatLongStereoPair(UTexture2D * LatLongSkyboxL, UTexture2D * LatLongSkyboxR)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+
+	if (!LatLongSkyboxL || !LatLongSkyboxR)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Bad texture passed in to SetSkyBoxOverride"));
+		return false;
+	}
+
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	vr::Texture_t TextureArray[2];
+
+	TextureArray[0] = CreateOpenVRTexture_t(LatLongSkyboxL);
+	TextureArray[1] = CreateOpenVRTexture_t(LatLongSkyboxR);
+
+	vr::EVRCompositorError CompositorError;
+	CompositorError = VRCompositor->SetSkyboxOverride(TextureArray, 2);
+
+	if (CompositorError != vr::VRCompositorError_None)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor Error %i"), (int32)CompositorError);
+		return false;
+	}
+
+	return true;
+
+#endif
+}
+
+bool UOpenVRExpansionFunctionLibrary::SetSkyboxOverride_LatLong(UTexture2D * LatLongSkybox)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+	if (!LatLongSkybox)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Bad texture passed in to SetSkyBoxOverride"));
+		return false;
+	}
+
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	vr::Texture_t Texture;
+
+	Texture = CreateOpenVRTexture_t(LatLongSkybox);
+
+	vr::EVRCompositorError CompositorError;
+	CompositorError = VRCompositor->SetSkyboxOverride(&Texture, 1);
+
+	if (CompositorError != vr::VRCompositorError_None)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor Error %i"), (int32)CompositorError);
+		return false;
+	}
+
+	return true;
+#endif
+}
+
+
+bool UOpenVRExpansionFunctionLibrary::SetSkyboxOverride(UTexture * tFront, UTexture2D * tBack, UTexture * tLeft, UTexture * tRight, UTexture * tTop, UTexture * tBottom)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+	if (!tFront || !tBack || !tLeft || !tRight || !tTop || !tBottom)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Bad texture passed in to SetSkyBoxOverride"));
+		return false;
+	}
+
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	vr::Texture_t TextureArray[6];
+
+	TextureArray[0] = CreateOpenVRTexture_t(tFront);
+	TextureArray[1] = CreateOpenVRTexture_t(tBack);
+	TextureArray[2] = CreateOpenVRTexture_t(tLeft);
+	TextureArray[3] = CreateOpenVRTexture_t(tRight);
+	TextureArray[4] = CreateOpenVRTexture_t(tTop);
+	TextureArray[5] = CreateOpenVRTexture_t(tBottom);
+
+	vr::EVRCompositorError CompositorError;
+	CompositorError = VRCompositor->SetSkyboxOverride(TextureArray, 6);
+
+	if (CompositorError != vr::VRCompositorError_None)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor Error %i"), (int32)CompositorError);
+		return false;
+	}
+
+	return true;
+#endif
+}
+
+bool UOpenVRExpansionFunctionLibrary::ClearSkyboxOverride()
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	VRCompositor->ClearSkyboxOverride();
+
+	return true;
+
+#endif
+}
+
+bool UOpenVRExpansionFunctionLibrary::FadeHMDToColor(float fSeconds, FColor Color, bool bBackground)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	VRCompositor->FadeToColor(fSeconds, Color.R, Color.G, Color.B, Color.A, bBackground);
+
+	return true;
+
+#endif
+}
+
+bool UOpenVRExpansionFunctionLibrary::GetCurrentHMDFadeColor(FColor & ColorOut, bool bBackground)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	vr::HmdColor_t HMDColor = VRCompositor->GetCurrentFadeColor(bBackground);
+
+	ColorOut = FColor(HMDColor.r, HMDColor.g, HMDColor.b, HMDColor.a);
+	return true;
+
+#endif
+}
+
+bool UOpenVRExpansionFunctionLibrary::FadeVRGrid(float fSeconds, bool bFadeIn)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	VRCompositor->FadeGrid(fSeconds, bFadeIn);
+	return true;
+
+#endif
+}
+
+bool UOpenVRExpansionFunctionLibrary::GetCurrentVRGripAlpha(float & VRGridAlpha)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	VRGridAlpha = VRCompositor->GetCurrentGridAlpha();
+	return true;
+
+#endif
+}
+
+bool UOpenVRExpansionFunctionLibrary::SetSuspendRendering(bool bSuspendRendering)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));
+	return false;
+#else
+	vr::HmdError HmdErr;
+	vr::IVRCompositor * VRCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &HmdErr);
+
+	if (!VRCompositor)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VR Compositor InterfaceErrorCode %i"), (int32)HmdErr);
+		return false;
+	}
+
+	VRCompositor->SuspendRendering(bSuspendRendering);
+	return true;
+
+#endif
+}

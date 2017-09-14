@@ -2088,6 +2088,30 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
 	}
 }
 
+
+void UGripMotionControllerComponent::Deactivate()
+{
+	Super::Deactivate();
+
+	if (bIsActive == false && GripViewExtension.IsValid())
+	{
+		{
+			// This component could be getting accessed from the render thread so it needs to wait
+			// before clearing MotionControllerComponent 
+			FScopeLock ScopeLock(&CritSect);
+			GripViewExtension->MotionControllerComponent = NULL;
+		}
+
+		if (GEngine)
+		{
+			GEngine->ViewExtensions.Remove(GripViewExtension);
+		}
+
+		GripViewExtension.Reset();
+	}
+}
+
+
 void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	// Skip motion controller tick, we override a lot of things that it does and we don't want it to perform the same functions

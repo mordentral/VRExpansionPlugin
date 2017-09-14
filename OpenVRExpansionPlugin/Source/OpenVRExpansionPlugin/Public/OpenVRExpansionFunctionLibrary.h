@@ -341,30 +341,15 @@ Prop_StatusDisplayTransform_Matrix34 = 1013
 Prop_DisplayMCImageData_Binary				= 2041,
 */
 
-// Had to turn this in to a UObject, I felt the easiest way to use it was as an actor component to the player controller
-// It can be returned to just a blueprint library if epic ever upgrade steam to 1.33 or above
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
-class OPENVREXPANSIONPLUGIN_API UOpenVRExpansionFunctionLibrary : public /*UActorComponent*/UBlueprintFunctionLibrary
+class OPENVREXPANSIONPLUGIN_API UOpenVRExpansionFunctionLibrary : public UBlueprintFunctionLibrary
 {
 	//GENERATED_BODY()
 	GENERATED_UCLASS_BODY()
 	~UOpenVRExpansionFunctionLibrary();
 public:
 
-	//void* OpenVRDLLHandle;
-
-	// Currently OpenVR only supports a single HMD camera as it only supports a single HMD (default index 0)
-	// So support auto releasing it with this, in case the user messes up and doesn't do so.
-
-	//@todo steamvr: Remove GetProcAddress() workaround once we have updated to Steamworks 1.33 or higher
-//	pVRInit VRInitFn;
-	//pVRShutdown VRShutdownFn;
-	//pVRIsHmdPresent VRIsHmdPresentFn;
-	//pVRGetStringForHmdError VRGetStringForHmdErrorFn;
-
 #if STEAMVR_SUPPORTED_PLATFORM
-	//static pVRIsHmdPresent VRIsHmdPresentFn;
-	//static pVRGetGenericInterface VRGetGenericInterfaceFn;
 	static FBPOpenVRCameraHandle OpenCamera;
 
 	static FORCEINLINE FMatrix ToFMatrix(const vr::HmdMatrix34_t& tm)
@@ -410,11 +395,8 @@ public:
 
 		return out;
 	}
-	//vr::IVRChaperone* VRChaperone;
-#endif
 
-	//UPROPERTY(BlueprintReadOnly)
-	//bool VRGetGenericInterfaceFn;
+#endif
 
 	// Closes the handles for the library
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
@@ -473,4 +455,69 @@ public:
 	// Releases the vr camera from access
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "IsValid"))
 	static bool IsValid(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle);
+
+	// VR compositor
+
+	// Override the standard skybox texture in steamVR - LatLong format - need to call ClearSkyboxOverride when finished
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool SetSkyboxOverride_LatLong(UTexture2D * LatLongSkybox);
+
+	// Override the standard skybox texture in steamVR - LatLong stereo pair - need to call ClearSkyboxOverride when finished
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool SetSkyboxOverride_LatLongStereoPair(UTexture2D * LatLongSkyboxL, UTexture2D * LatLongSkyboxR);
+
+	// Override the standard skybox texture in steamVR - 6 cardinal textures - need to call ClearSkyboxOverride when finished
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool SetSkyboxOverride(UTexture * tFront, UTexture2D * tBack, UTexture * tLeft, UTexture * tRight, UTexture * tTop, UTexture * tBottom);
+
+	// Remove skybox override in steamVR
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool ClearSkyboxOverride();
+
+	/** Fades the view on the HMD to the specified color. The fade will take fSeconds, and the color values are between
+	* 0.0 and 1.0. This color is faded on top of the scene based on the alpha parameter. Removing the fade color instantly
+	* would be FadeToColor( 0.0, 0.0, 0.0, 0.0, 0.0 ).  Values are in un-premultiplied alpha space. */
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool FadeHMDToColor(float fSeconds, FColor Color, bool bBackground = false);
+
+
+	/** Get current fade color value. */
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool GetCurrentHMDFadeColor(FColor & ColorOut, bool bBackground = false);
+
+	/** Fading the Grid in or out in fSeconds */
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool FadeVRGrid(float fSeconds, bool bFadeIn);
+
+	/** Get current alpha value of grid. */
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool GetCurrentVRGripAlpha(float & VRGridAlpha);
+
+	// Sets whether the compositor is allows to render or not (reverts to base compositor / grid when active)
+	// Useful to place players out of the app during frame drops/hitches/loading and into the vr skybox.
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
+		static bool SetSuspendRendering(bool bSuspendRendering);
+
+	static vr::Texture_t CreateOpenVRTexture_t(UTexture * Texture)
+	{
+		vr::Texture_t VRTexture;
+
+		if (Texture)
+			VRTexture.handle = Texture->Resource->TextureRHI->GetNativeResource();
+		else
+			VRTexture.handle = NULL;
+
+#if PLATFORM_LINUX
+#if STEAMVR_USE_VULKAN_RHI
+		VRTexture.eType = vr::TextureType_Vulkan;
+#else
+		VRTexture.eType = vr::TextureType_OpenGL;
+#endif
+#else
+		VRTexture.eType = vr::TextureType_DirectX;
+#endif
+		VRTexture.eColorSpace = vr::ColorSpace_Auto;
+
+		return VRTexture;
+	}
 };	
