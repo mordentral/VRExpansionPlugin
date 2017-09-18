@@ -3909,10 +3909,23 @@ FExpandedLateUpdateManager::FExpandedLateUpdateManager()
 
 void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component)
 {
+	if (!Component)
+		return;
+
 	check(IsInGameThread());
 	LateUpdateParentToWorld[LateUpdateGameWriteIndex] = ParentToWorld;
 	LateUpdatePrimitives[LateUpdateGameWriteIndex].Reset();
 	GatherLateUpdatePrimitives(Component);
+
+	//Add additional late updates registered to this controller that aren't children and aren't gripped
+	//This array is editable in blueprint and can be used for things like arms or the like.
+
+	for (UPrimitiveComponent* primComp : Component->AdditionalLateUpdateComponents)
+	{
+		if (primComp)
+			GatherLateUpdatePrimitives(primComp);
+	}
+
 
 	ProcessGripArrayLateUpdatePrimitives(Component, Component->LocallyGrippedActors);
 	ProcessGripArrayLateUpdatePrimitives(Component, Component->GrippedActors);
