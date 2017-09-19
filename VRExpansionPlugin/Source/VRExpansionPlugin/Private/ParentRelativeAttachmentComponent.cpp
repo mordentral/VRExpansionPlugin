@@ -79,7 +79,7 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 			if(GetOwner()->GetClass() == AVRCharacter::StaticClass())
 			{
 				
-				float FeetLocation = Cast<AVRCharacter>(GetOwner())->GetMovementComponent()->GetActorFeetLocationBased().CachedBaseLocation.Z;
+				float FeetLocation = Cast<AVRCharacter>(GetOwner())->GetMovementComponent()->GetActorFeetLocationBased().CachedBaseLocation.Z);
 			
 				SetRelativeLocation(curCameraLoc.X, curCameraLoc.Y, FeetLocation);
 			}
@@ -133,7 +133,7 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 			{
 				if(GetOwner()->GetClass() == AVRCharacter::StaticClass())
 				{
-					float FeetLocation = Cast<AVRCharacter>(GetOwner())->GetMovementComponent()->GetActorFeetLocationBased().CachedBaseLocation.Z;
+					float FeetLocation = Cast<AVRCharacter>(GetOwner())->GetMovementComponent()->GetActorFeetLocationBased().CachedBaseLocation.Z);
 			
 					SetRelativeLocation(CameraOwner->RelativeLocation.X, CameraOwner->RelativeLocation.Y, FeetLocation);
 				}
