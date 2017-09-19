@@ -3,6 +3,7 @@
 #include "ParentRelativeAttachmentComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 #include "VRSimpleCharacter.h"
+#include "VRCharacter.h"
 
 
 UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FObjectInitializer& ObjectInitializer)
@@ -72,8 +73,25 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 			curCameraLoc.X = 0;
 			curCameraLoc.Y = 0;
 		}
-
-		SetRelativeLocation(curCameraLoc);
+		
+		if(bUseFeetLocation)
+		{
+			if(GetOwner()->GetClass() == AVRCharacter::StaticClass())
+			{
+				
+				float FeetLocation = Cast<AVRCharacter>(GetOwner())->GetMovementComponent()->GetActorFeetLocationBased().CachedBaseLocation.Z;
+			
+				SetRelativeLocation(curCameraLoc.X, curCameraLoc.Y, FeetLocation);
+			}
+			else
+			{
+				SetRelativeLocation(curCameraLoc);
+			}
+		}
+		else
+		{
+			SetRelativeLocation(curCameraLoc);
+		}
 	}
 	else if (this->GetOwner())
 	{
@@ -111,7 +129,24 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 				LastRot = InverseRot;
 			}
 
-			SetRelativeLocation(CameraOwner->RelativeLocation);
+			if(bUseFeetLocation)
+			{
+				if(GetOwner()->GetClass() == AVRCharacter::StaticClass())
+				{
+					float FeetLocation = Cast<AVRCharacter>(GetOwner())->GetMovementComponent()->GetActorFeetLocationBased().CachedBaseLocation.Z;
+			
+					SetRelativeLocation(CameraOwner->RelativeLocation.X, CameraOwner->RelativeLocation.Y, FeetLocation);
+				}
+				else
+				{
+					SetRelativeLocation(CameraOwner->RelativeLocation);
+				}
+			}
+			else
+			{
+				SetRelativeLocation(CameraOwner->RelativeLocation);
+			}
+			
 		}
 	}
 
