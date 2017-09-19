@@ -2,8 +2,8 @@
 
 #include "ParentRelativeAttachmentComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
-#include "VRSimpleCharacter.h"
-#include "VRCharacter.h"
+//#include "VRSimpleCharacter.h"
+//#include "VRCharacter.h"
 
 
 UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FObjectInitializer& ObjectInitializer)
@@ -75,22 +75,12 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		}
 		
 		if(bUseFeetLocation)
-		{
-			if(GetOwner()->GetClass() == AVRCharacter::StaticClass())
-			{
-				
-				float FeetLocation = Cast<AVRCharacter>(GetOwner())->GetMovementComponent()->GetActorFeetLocationBased().CachedBaseLocation.Z);
-			
-				SetRelativeLocation(curCameraLoc.X, curCameraLoc.Y, FeetLocation);
-			}
-			else
-			{
-				SetRelativeLocation(curCameraLoc);
-			}
+		{		
+			SetRelativeLocation(FVector(curCameraLoc.X, curCameraLoc.Y, 0.0f)); // Set the Z to the bottom of the capsule
 		}
 		else
 		{
-			SetRelativeLocation(curCameraLoc);
+			SetRelativeLocation(curCameraLoc); // Use the HMD height instead
 		}
 	}
 	else if (this->GetOwner())
@@ -130,23 +120,13 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 			}
 
 			if(bUseFeetLocation)
-			{
-				if(GetOwner()->GetClass() == AVRCharacter::StaticClass())
-				{
-					float FeetLocation = Cast<AVRCharacter>(GetOwner())->GetMovementComponent()->GetActorFeetLocationBased().CachedBaseLocation.Z);
-			
-					SetRelativeLocation(CameraOwner->RelativeLocation.X, CameraOwner->RelativeLocation.Y, FeetLocation);
-				}
-				else
-				{
-					SetRelativeLocation(CameraOwner->RelativeLocation);
-				}
+			{			
+				SetRelativeLocation(FVector(CameraOwner->RelativeLocation.X, CameraOwner->RelativeLocation.Y, 0.0f)); // Set the Z to the bottom of the capsule
 			}
 			else
 			{
-				SetRelativeLocation(CameraOwner->RelativeLocation);
+				SetRelativeLocation(CameraOwner->RelativeLocation); // Use the HMD height instead
 			}
-			
 		}
 	}
 

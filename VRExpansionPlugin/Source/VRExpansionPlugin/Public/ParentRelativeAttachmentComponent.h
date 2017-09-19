@@ -26,7 +26,7 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 	float LastLerpVal;
 	float LerpTarget;
 
-	// If true uses feet location as a Z location for this component. Usefull for attaching a skeletal mesh to it.
+	// If true uses feet/bottom of the capsule as the base Z position for this component instead of the HMD/Camera Z position
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	bool bUseFeetLocation;
 	

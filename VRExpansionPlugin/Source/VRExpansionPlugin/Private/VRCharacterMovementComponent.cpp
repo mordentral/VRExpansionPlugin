@@ -1943,8 +1943,7 @@ void UVRCharacterMovementComponent::ApplyRepulsionForce(float DeltaSeconds)
 					continue;
 				}
 
-				// Early out if this is not a destructible and the body is not simulated
-				if (!OverlapBody->IsInstanceSimulatingPhysics() && !Cast<UDestructibleComponent>(OverlapComp))
+				if (!OverlapBody->IsInstanceSimulatingPhysics())
 				{
 					continue;
 				}
