@@ -2,6 +2,7 @@
 // and a VR player. It is not needed outside of that use.
 
 #pragma once
+#include "Engine/GameViewportClient.h"
 #include "Engine/Engine.h"
 #include "CoreMinimal.h"
 
@@ -27,54 +28,54 @@ public:
 		EVRGameInputMethod GameInputMethod;
 
 
-	virtual bool InputKey(FViewport* Viewport, int32 ControllerId, FKey Key, EInputEvent EventType, float AmountDepressed = 1.f, bool bGamepad = false) override
+	virtual bool InputKey(FViewport* tViewport, int32 ControllerId, FKey Key, EInputEvent EventType, float AmountDepressed = 1.f, bool bGamepad = false) override
 	{
 
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
 
 		// Early out if a gamepad event or ignoring input or is default setup / no GEngine
 		if(NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || bGamepad)
-			return Super::InputKey(Viewport, ControllerId, Key, EventType, AmountDepressed, bGamepad);
+			return Super::InputKey(tViewport, ControllerId, Key, EventType, AmountDepressed, bGamepad);
 
 		if(GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
 		{
 			// keyboard / mouse always go to player 0, so + 1 will be player 2
 			++ControllerId;
-			return Super::InputKey(Viewport, ControllerId, Key, EventType, AmountDepressed, bGamepad);
+			return Super::InputKey(tViewport, ControllerId, Key, EventType, AmountDepressed, bGamepad);
 		}
 		else // Shared keyboard and mouse
 		{
 			bool bRetVal = false;
 			for (int32 i = 0; i < NumLocalPlayers; i++)
 			{
-				bRetVal = Super::InputKey(Viewport, i, Key, EventType, AmountDepressed, bGamepad) || bRetVal;
+				bRetVal = Super::InputKey(tViewport, i, Key, EventType, AmountDepressed, bGamepad) || bRetVal;
 			}
 
 			return bRetVal;
 		}
 	}
 
-	virtual bool InputAxis(FViewport* Viewport, int32 ControllerId, FKey Key, float Delta, float DeltaTime, int32 NumSamples = 1, bool bGamepad = false) override
+	virtual bool InputAxis(FViewport* tViewport, int32 ControllerId, FKey Key, float Delta, float DeltaTime, int32 NumSamples = 1, bool bGamepad = false) override
 	{		
 		
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
 
 		// Early out if a gamepad or not a mouse event (vr controller) or ignoring input or is default setup / no GEngine
 		if (!Key.IsMouseButton() || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || bGamepad)
-			return Super::InputAxis(Viewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
+			return Super::InputAxis(tViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
 
 		if (GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
 		{
 			// keyboard / mouse always go to player 0, so + 1 will be player 2
 			++ControllerId;
-			return Super::InputAxis(Viewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
+			return Super::InputAxis(tViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
 		}
 		else // Shared keyboard and mouse
 		{
 			bool bRetVal = false;
 			for (int32 i = 0; i < NumLocalPlayers; i++)
 			{
-				bRetVal = Super::InputAxis(Viewport, i, Key, Delta, DeltaTime, NumSamples, bGamepad) || bRetVal;
+				bRetVal = Super::InputAxis(tViewport, i, Key, Delta, DeltaTime, NumSamples, bGamepad) || bRetVal;
 			}
 
 			return bRetVal;
