@@ -3986,7 +3986,10 @@ void FExpandedLateUpdateManager::GatherLateUpdatePrimitives(USceneComponent* Par
 	ParentComponent->GetChildrenComponents(true, Components);
 	for (USceneComponent* Component : Components)
 	{
-		check(Component != nullptr);
+		
+		if (Component == nullptr)
+			continue;
+		//check(Component != nullptr);
 		CacheSceneInfo(Component);
 	}
 }
