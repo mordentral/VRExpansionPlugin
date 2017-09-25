@@ -6,7 +6,7 @@ public class OpenVRExpansionPlugin : ModuleRules
 {
     private string PluginsPath
     {
-        get { return Path.GetFullPath(BuildConfiguration.RelativeEnginePath) + "Plugins/Runtime/"; }
+        get { return Path.GetFullPath(Target.RelativeEnginePath) + "Plugins/Runtime/"; }
     }
 
     public OpenVRExpansionPlugin(ReadOnlyTargetRules Target) : base(Target)

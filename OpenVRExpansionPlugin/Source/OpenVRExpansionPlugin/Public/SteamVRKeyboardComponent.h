@@ -7,6 +7,7 @@
 #include "VRBPDatatypes.h"
 #include "OpenVRExpansionFunctionLibrary.h"
 #include "GripMotionControllerComponent.h"
+#include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
 
 #include "SteamVRKeyboardComponent.generated.h"
@@ -62,7 +63,7 @@ public:
 			return;
 		}
 
-		if (!(GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
+		if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 		{
 			Result = EBPVRResultSwitch::OnFailed;
 			return;
@@ -141,7 +142,7 @@ public:
 			return;
 		}
 
-		if (!(GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
+		if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 		{
 			Result = EBPVRResultSwitch::OnFailed;
 			return;
@@ -183,7 +184,7 @@ public:
 			return;
 		}
 
-		if (!(GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
+		if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 		{
 			Result = EBPVRResultSwitch::OnFailed;
 			return;
@@ -239,7 +240,7 @@ public:
 			return;
 		}
 
-		if (!(GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && (GEngine->HMDDevice->GetHMDDeviceType() == EHMDDeviceType::DT_SteamVR)))
+		if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 		{
 			Result = EBPVRResultSwitch::OnFailed;
 			return;

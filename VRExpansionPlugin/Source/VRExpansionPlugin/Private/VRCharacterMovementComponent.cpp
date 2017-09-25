@@ -12,7 +12,7 @@
 #include "GameFramework/GameState.h"
 #include "Components/PrimitiveComponent.h"
 #include "Animation/AnimMontage.h"
-#include "PhysicsEngine/DestructibleActor.h"
+//#include "PhysicsEngine/DestructibleActor.h"
 #include "VRCharacter.h"
 #include "VRExpansionFunctionLibrary.h"
 
@@ -21,7 +21,7 @@
 #include "AI/Navigation/AvoidanceManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/BrushComponent.h"
-#include "Components/DestructibleComponent.h"
+//#include "Components/DestructibleComponent.h"
 
 #include "Engine/DemoNetDriver.h"
 #include "Engine/NetworkObjectList.h"

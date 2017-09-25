@@ -5,19 +5,15 @@
 #include "IMotionController.h"
 #include "VRBPDatatypes.h"
 
-// #Note: Can now access VRSystem from the SteamHMD directly, however still cannot use the static pVRGenericInterface point due to 
-// linking errors since can't attain .cpp reference. So useless to convert to blueprint library as the render models wouldn't work.
-
 //Re-defined here as I can't load ISteamVRPlugin on non windows platforms
 // Make sure to update if it changes
 
-/*4.16 linux now support under steamvr supported platforms*/
-// 4.16 UNCOMMENT
+// #TODO: 4.18 check this
 #define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_LINUX || (PLATFORM_WINDOWS && WINVER > 0x0502))
 
-// 4.16 COMMENT
-//#define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_WINDOWS && WINVER > 0x0502)
-// #TODO: Check for #isdef and value instead?
+// #TODO: Check this over time for when they make it global
+// @TODO: hardcoded to match FSteamVRHMD::GetSystemName(), which we should turn into 
+static FName SteamVRSystemName(TEXT("SteamVR"));
 
 
 #if STEAMVR_SUPPORTED_PLATFORM
@@ -187,159 +183,224 @@ enum class EBPSteamVRTrackedDeviceType : uint8
 	Invalid
 };
 
-// #TODO: Update these
-UENUM(BlueprintType)
-enum class EVRDeviceProperty_String : uint8
+
+static vr::ETrackedDeviceProperty VREnumToString(const FString& enumName, uint8 value)
 {
-	// No prefix = 1000 series
-	Prop_TrackingSystemName_String				= 0, ////
-	Prop_ModelNumber_String						= 1,
-	Prop_SerialNumber_String					= 2,
-	Prop_RenderModelName_String					= 3,
-	Prop_ManufacturerName_String				= 5,
-	Prop_TrackingFirmwareVersion_String			= 6,
-	Prop_HardwareRevision_String				= 7,
-	Prop_AllWirelessDongleDescriptions_String	= 8,
-	Prop_ConnectedWirelessDongle_String			= 9,
-	Prop_Firmware_ManualUpdateURL_String		= 16,
-	Prop_Firmware_ProgrammingTarget_String		= 28,
-	Prop_DriverVersion_String					= 31,
+	const UEnum* EnumPtr = FindObject<UEnum>(ANY_PACKAGE, *enumName, true);
 
-	// 1 prefix = 2000 series
-	HMDProp_DisplayMCImageLeft_String			= 112,
-	HMDProp_DisplayMCImageRight_String			= 113,
-	HMDProp_DisplayGCImage_String				= 121,
-	HMDProp_CameraFirmwareDescription_String	= 128,
+	if (!EnumPtr)
+		return vr::ETrackedDeviceProperty::Prop_Invalid;
 
-	// 2 prefix = 3000 series
-	ControllerProp_AttachedDeviceId_String		= 200
-};
+	FString EnumName = EnumPtr->GetNameStringByIndex(value).Right(4);
 
-UENUM(BlueprintType)
-enum class EVRDeviceProperty_Bool : uint8
-{	
-	// No prefix = 1000 series
-	Prop_WillDriftInYaw_Bool					= 4,	
-	Prop_DeviceIsWireless_Bool					= 10,
-	Prop_DeviceIsCharging_Bool					= 11,
-	Prop_Firmware_UpdateAvailable_Bool			= 14,
-	Prop_Firmware_ManualUpdate_Bool				= 15,
-	Prop_BlockServerShutdown_Bool				= 23,
-	Prop_CanUnifyCoordinateSystemWithHmd_Bool	= 24,
-	Prop_ContainsProximitySensor_Bool			= 25,
-	Prop_DeviceProvidesBatteryStatus_Bool		= 26,
-	Prop_DeviceCanPowerOff_Bool					= 27,
-	Prop_HasCamera_Bool							= 30,
-	Prop_Firmware_ForceUpdateRequired_Bool		= 32,
-	Prop_ViveSystemButtonFixRequired_Bool		= 33,
+	if (EnumName.IsEmpty() || EnumName.Len() < 4)
+		return vr::ETrackedDeviceProperty::Prop_Invalid;
 
-	// 1 prefix = 2000 series
-	HMDProp_ReportsTimeSinceVSync_Bool			= 100,
-	HMDProp_IsOnDesktop_Bool					= 107,
-	HMDProp_DisplaySuppressed_Bool				= 136,
-	HMDProp_DisplayAllowNightMode_Bool			= 137,
-	HMDProp_UsesDriverDirectMode_Bool			= 142
-};
-
-UENUM(BlueprintType)
-enum class EVRDeviceProperty_Float : uint8
-{
-	// No Prefix = 1000 series
-	Prop_DeviceBatteryPercentage_Float						= 12, // 0 is empty, 1 is full
-
-	// 1 Prefix = 2000 series
-	HMDProp_SecondsFromVsyncToPhotons_Float					= 101,
-	HMDProp_DisplayFrequency_Float							= 102,
-	HMDProp_UserIpdMeters_Float								= 103,
-	HMDProp_DisplayMCOffset_Float							= 109,
-	HMDProp_DisplayMCScale_Float							= 110,
-	HMDProp_DisplayGCBlackClamp_Float						= 114,
-	HMDProp_DisplayGCOffset_Float							= 118,
-	HMDProp_DisplayGCScale_Float							= 119,
-	HMDProp_DisplayGCPrescale_Float							= 120,
-	HMDProp_LensCenterLeftU_Float							= 122,
-	HMDProp_LensCenterLeftV_Float							= 123,
-	HMDProp_LensCenterRightU_Float							= 124,
-	HMDProp_LensCenterRightV_Float							= 125,
-	HMDProp_UserHeadToEyeDepthMeters_Float					= 126,
-	HMDProp_ScreenshotHorizontalFieldOfViewDegrees_Float	= 134,
-	HMDProp_ScreenshotVerticalFieldOfViewDegrees_Float		= 135
-};
-
-UENUM(BlueprintType)
-enum class EVRDeviceProperty_Int32 : uint8
-{
-	// No prefix = 1000 series
-	Prop_DeviceClass_Int32					= 29,
-
-	// 1 Prefix = 2000 series
-	HMDProp_DisplayMCType_Int32				= 108,
-	HMDProp_EdidVendorID_Int32				= 111,
-	HMDProp_EdidProductID_Int32				= 115,
-	HMDProp_DisplayGCType_Int32				= 117,
-	HMDProp_CameraCompatibilityMode_Int32	= 133,
-	HMDProp_DisplayMCImageWidth_Int32		= 138,
-	HMDProp_DisplayMCImageHeight_Int32		= 139,
-	HMDProp_DisplayMCImageNumChannels_Int32 = 140,
-
-	// 2 Prefix = 3000 series
-	ControllerProp_Axis0Type_Int32			= 202, // Return value is of type EVRControllerAxisType
-	ControllerPropProp_Axis1Type_Int32		= 203, // Return value is of type EVRControllerAxisType
-	ControllerPropProp_Axis2Type_Int32		= 204, // Return value is of type EVRControllerAxisType
-	ControllerPropProp_Axis3Type_Int32		= 205, // Return value is of type EVRControllerAxisType
-	ControllerPropProp_Axis4Type_Int32		= 206, // Return value is of type EVRControllerAxisType
-	ControllerProp_ControllerRoleHint_Int32 = 207 // Return value is of type ETrackedControllerRole
-};
-
-UENUM(BlueprintType)
-enum class EVRDeviceProperty_UInt64 : uint8
-{
-	// No prefix = 1000 series
-	Prop_HardwareRevision_Uint64			= 17,
-	Prop_FirmwareVersion_Uint64				= 18,
-	Prop_FPGAVersion_Uint64					= 19,
-	Prop_VRCVersion_Uint64					= 20,
-	Prop_RadioVersion_Uint64				= 21,
-	Prop_DongleVersion_Uint64				= 22,
-	Prop_ParentDriver_Uint64				= 34,
-
-	// 1 Prefix = 2000 series
-	HMDProp_CurrentUniverseId_Uint64		= 104,
-	HMDProp_PreviousUniverseId_Uint64		= 105,
-	HMDProp_DisplayFirmwareVersion_Uint64	= 106,
-	HMDProp_CameraFirmwareVersion_Uint64	= 127,
-	HMDProp_DisplayFPGAVersion_Uint64		= 129,
-	HMDProp_DisplayBootloaderVersion_Uint64 = 130,
-	HMDProp_DisplayHardwareVersion_Uint64	= 131,
-	HMDProp_AudioFirmwareVersion_Uint64		= 132,
-
-	// 2 Prefix = 3000 series
-	ControllerProp_SupportedButtons_Uint64	= 201
-
-};
-
-UENUM(BlueprintType)
-enum class EVRDeviceProperty_Matrix34 : uint8
-{
-	// No prefix = 1000 series
-	Prop_StatusDisplayTransform_Matrix34	= 13,
-
-	// 1 Prefix = 2000 series
-	HMDProp_CameraToHeadTransform_Matrix34	= 116
-};
+	return static_cast<vr::ETrackedDeviceProperty>(FCString::Atoi(*EnumName));
+}
 
 
-/*
-// Not implementing currently
-Prop_StatusDisplayTransform_Matrix34 = 1013
-*/
 
 /*
 // Not implementing currently
 
 // Properties that are unique to TrackedDeviceClass_HMD
 Prop_DisplayMCImageData_Binary				= 2041,
+
+Prop_IconPathName_String = 5000, // DEPRECATED. Value not referenced. Now expected to be part of icon path properties.
+
+// Properties that are used by helpers, but are opaque to applications
+Prop_DisplayHiddenArea_Binary_Start				= 5100,
+Prop_DisplayHiddenArea_Binary_End				= 5150,
+
+// Vendors are free to expose private debug data in this reserved region
+Prop_VendorSpecific_Reserved_Start = 10000,
+Prop_VendorSpecific_Reserved_End = 10999,
 */
+
+
+
+// #TODO: Update these
+UENUM(BlueprintType)
+enum class EVRDeviceProperty_String : uint8
+{
+
+	// No prefix = 1000 series
+	Prop_TrackingSystemName_String_1000				UMETA(DisplayName = "Prop_TrackingSystemName_String"),
+	Prop_ModelNumber_String_1001					UMETA(DisplayName = "Prop_ModelNumber_String"),
+	Prop_SerialNumber_String_1002					UMETA(DisplayName = "Prop_SerialNumber_String"),
+	Prop_RenderModelName_String_1003				UMETA(DisplayName = "Prop_RenderModelName_String"),
+	Prop_ManufacturerName_String_1005				UMETA(DisplayName = "Prop_ManufacturerName_String"),
+	Prop_TrackingFirmwareVersion_String_1006		UMETA(DisplayName = "Prop_TrackingFirmwareVersion_String"),
+	Prop_HardwareRevision_String_1007				UMETA(DisplayName = "Prop_HardwareRevision_String"),
+	Prop_AllWirelessDongleDescriptions_String_1008	UMETA(DisplayName = "Prop_AllWirelessDongleDescriptions_String"),
+	Prop_ConnectedWirelessDongle_String_1009		UMETA(DisplayName = "Prop_ConnectedWirelessDongle_String"),
+	Prop_Firmware_ManualUpdateURL_String_1016		UMETA(DisplayName = "Prop_Firmware_ManualUpdateURL_String"),
+	Prop_Firmware_ProgrammingTarget_String_1028		UMETA(DisplayName = "Prop_Firmware_ProgrammingTarget_String"),
+	Prop_DriverVersion_String_1031					UMETA(DisplayName = "Prop_DriverVersion_String"),
+	Prop_ResourceRoot_String_1035					UMETA(DisplayName = "Prop_ResourceRoot_String"),
+
+	// 1 prefix = 2000 series
+	HMDProp_DisplayMCImageLeft_String_2012			UMETA(DisplayName = "HMDProp_DisplayMCImageLeft_String"),
+	HMDProp_DisplayMCImageRight_String_2013			UMETA(DisplayName = "HMDProp_DisplayMCImageRight_String"),
+	HMDProp_DisplayGCImage_String_2021				UMETA(DisplayName = "HMDProp_DisplayGCImage_String"),
+	HMDProp_CameraFirmwareDescription_String_2028	UMETA(DisplayName = "HMDProp_CameraFirmwareDescription_String"),
+	HMDProp_DriverProvidedChaperonePath_String_2048 UMETA(DisplayName = "HMDProp_DriverProvidedChaperonePath_String"),
+
+	// 2 prefix = 3000 series
+	ControllerProp_AttachedDeviceId_String_3000		UMETA(DisplayName = "ControllerProp_AttachedDeviceId_String"),
+
+	// 3 prefix = 4000 series
+	TrackRefProp_ModeLabel_String_4006				UMETA(DisplayName = "TrackRefProp_ModeLabel_String"),
+
+	// 4 prefix = 5000 series
+	UIProp_NamedIconPathDeviceOff_String_5001				UMETA(DisplayName = "UIProp_NamedIconPathDeviceOff_String"),
+	UIProp_NamedIconPathDeviceSearching_String_5002			UMETA(DisplayName = "UIProp_NamedIconPathDeviceSearching_String"),
+	UIProp_NamedIconPathDeviceSearchingAlert_String_5003	UMETA(DisplayName = "UIProp_NamedIconPathDeviceSearchingAlert_String_"),
+	UIProp_NamedIconPathDeviceReady_String_5004				UMETA(DisplayName = "UIProp_NamedIconPathDeviceReady_String"),
+	UIProp_NamedIconPathDeviceReadyAlert_String_5005		UMETA(DisplayName = "UIProp_NamedIconPathDeviceReadyAlert_String"),
+	UIProp_NamedIconPathDeviceNotReady_String_5006			UMETA(DisplayName = "UIProp_NamedIconPathDeviceNotReady_String"),
+	UIProp_NamedIconPathDeviceStandby_String_5007			UMETA(DisplayName = "UIProp_NamedIconPathDeviceStandby_String"),
+	UIProp_NamedIconPathDeviceAlertLow_String_5008			UMETA(DisplayName = "UIProp_NamedIconPathDeviceAlertLow_String"),
+
+	// 5 prefix = 6000 series
+	DriverProp_UserConfigPath_String_6000			UMETA(DisplayName = "DriverProp_UserConfigPath_String"),
+	DriverProp_InstallPath_String_6001				UMETA(DisplayName = "DriverProp_InstallPath_String")
+
+};
+
+UENUM(BlueprintType)
+enum class EVRDeviceProperty_Bool : uint8
+{	
+	// No prefix = 1000 series
+	Prop_WillDriftInYaw_Bool_1004					UMETA(DisplayName = "Prop_WillDriftInYaw_Bool"),
+	Prop_DeviceIsWireless_Bool_1010					UMETA(DisplayName = "Prop_DeviceIsWireless_Bool"),
+	Prop_DeviceIsCharging_Bool_1011					UMETA(DisplayName = "Prop_DeviceIsCharging_Bool"),
+	Prop_Firmware_UpdateAvailable_Bool_1014			UMETA(DisplayName = "Prop_Firmware_UpdateAvailable_Bool"),
+	Prop_Firmware_ManualUpdate_Bool_1015			UMETA(DisplayName = "Prop_Firmware_ManualUpdate_Bool"),
+	Prop_BlockServerShutdown_Bool_1023				UMETA(DisplayName = "Prop_BlockServerShutdown_Bool"),
+	Prop_CanUnifyCoordinateSystemWithHmd_Bool_1024	UMETA(DisplayName = "Prop_CanUnifyCoordinateSystemWithHmd_Bool"),
+	Prop_ContainsProximitySensor_Bool_1025			UMETA(DisplayName = "Prop_ContainsProximitySensor_Bool"),
+	Prop_DeviceProvidesBatteryStatus_Bool_1026		UMETA(DisplayName = "Prop_DeviceProvidesBatteryStatus_Bool"),
+	Prop_DeviceCanPowerOff_Bool_1027				UMETA(DisplayName = "Prop_DeviceCanPowerOff_Bool"),
+	Prop_HasCamera_Bool_1030						UMETA(DisplayName = "Prop_HasCamera_Bool"),
+	Prop_Firmware_ForceUpdateRequired_Bool_1032		UMETA(DisplayName = "Prop_Firmware_ForceUpdateRequired_Bool"),
+	Prop_ViveSystemButtonFixRequired_Bool_1033		UMETA(DisplayName = "Prop_ViveSystemButtonFixRequired_Bool"),
+
+	// 1 prefix = 2000 series
+	HMDProp_ReportsTimeSinceVSync_Bool_2000				UMETA(DisplayName = "HMDProp_ReportsTimeSinceVSync_Bool"),
+	HMDProp_IsOnDesktop_Bool_2007						UMETA(DisplayName = "HMDProp_IsOnDesktop_Bool"),
+	HMDProp_DisplaySuppressed_Bool_2036					UMETA(DisplayName = "HMDProp_DisplaySuppressed_Bool"),
+	HMDProp_DisplayAllowNightMode_Bool_2037				UMETA(DisplayName = "HMDProp_DisplayAllowNightMode_Bool"),
+	HMDProp_DriverDirectModeSendsVsyncEvents_Bool_2043	UMETA(DisplayName = "HMDProp_DriverDirectModeSendsVsyncEvents_Bool"),
+	HMDProp_DisplayDebugMode_Bool_2044					UMETA(DisplayName = "HMDProp_DisplayDebugMode_Bool"),
+
+
+	// 5 prefix = 6000 series
+	DriverProp_HasDisplayComponent_Bool_6002			UMETA(DisplayName = "DriverProp_HasDisplayComponent_Bool"),
+	DriverProp_HasControllerComponent_Bool_6003			UMETA(DisplayName = "DriverProp_HasControllerComponent_Bool"),
+	DriverProp_HasCameraComponent_Bool_6004				UMETA(DisplayName = "DriverProp_HasCameraComponent_Bool"),
+	DriverProp_HasDriverDirectModeComponent_Bool_6005	UMETA(DisplayName = "DriverProp_HasDriverDirectModeComponent_Bool"),
+	DriverProp_HasVirtualDisplayComponent_Bool_6006		UMETA(DisplayName = "DriverProp_HasVirtualDisplayComponent_Bool")
+
+};
+
+UENUM(BlueprintType)
+enum class EVRDeviceProperty_Float : uint8
+{
+	// No Prefix = 1000 series
+	Prop_DeviceBatteryPercentage_Float_1012						UMETA(DisplayName = "Prop_DeviceBatteryPercentage_Float"),
+
+	// 1 Prefix = 2000 series
+	HMDProp_SecondsFromVsyncToPhotons_Float_2001				UMETA(DisplayName = "HMDProp_SecondsFromVsyncToPhotons_Float"),
+	HMDProp_DisplayFrequency_Float_2002							UMETA(DisplayName = "HMDProp_DisplayFrequency_Float"),
+	HMDProp_UserIpdMeters_Float_2003							UMETA(DisplayName = "HMDProp_UserIpdMeters_Float"),
+	HMDProp_DisplayMCOffset_Float_2009							UMETA(DisplayName = "HMDProp_DisplayMCOffset_Float"),
+	HMDProp_DisplayMCScale_Float_2010							UMETA(DisplayName = "HMDProp_DisplayMCScale_Float"),
+	HMDProp_DisplayGCBlackClamp_Float_2014						UMETA(DisplayName = "HMDProp_DisplayGCBlackClamp_Float"),
+	HMDProp_DisplayGCOffset_Float_2018							UMETA(DisplayName = "HMDProp_DisplayGCOffset_Float"),
+	HMDProp_DisplayGCScale_Float_2019							UMETA(DisplayName = "HMDProp_DisplayGCScale_Float"),
+	HMDProp_DisplayGCPrescale_Float_2020						UMETA(DisplayName = "HMDProp_DisplayGCPrescale_Float"),
+	HMDProp_LensCenterLeftU_Float_2022							UMETA(DisplayName = "HMDProp_LensCenterLeftU_Float"),
+	HMDProp_LensCenterLeftV_Float_2023							UMETA(DisplayName = "HMDProp_LensCenterLeftV_Float"),
+	HMDProp_LensCenterRightU_Float_2024							UMETA(DisplayName = "HMDProp_LensCenterRightU_Float"),
+	HMDProp_LensCenterRightV_Float_2025							UMETA(DisplayName = "HMDProp_LensCenterRightV_Float"),
+	HMDProp_UserHeadToEyeDepthMeters_Float_2026					UMETA(DisplayName = "HMDProp_UserHeadToEyeDepthMeters_Float"),
+	HMDProp_ScreenshotHorizontalFieldOfViewDegrees_Float_2034	UMETA(DisplayName = "HMDProp_ScreenshotHorizontalFieldOfViewDegrees_Float"),
+	HMDProp_ScreenshotVerticalFieldOfViewDegrees_Float_2035		UMETA(DisplayName = "HMDProp_ScreenshotVerticalFieldOfViewDegrees_Float"),
+	HMDProp_SecondsFromPhotonsToVblank_Float_2042				UMETA(DisplayName = "HMDProp_SecondsFromPhotonsToVblank_Float"),
+
+	// 3 Prefix = 4000 series
+	TrackRefProp_FieldOfViewLeftDegrees_Float_4000		UMETA(DisplayName = "TrackRefProp_FieldOfViewLeftDegrees_Float"),
+	TrackRefProp_FieldOfViewRightDegrees_Float_4001		UMETA(DisplayName = "TrackRefProp_FieldOfViewRightDegrees_Float"),
+	TrackRefProp_FieldOfViewTopDegrees_Float_4002		UMETA(DisplayName = "TrackRefProp_FieldOfViewTopDegrees_Float"),
+	TrackRefProp_FieldOfViewBottomDegrees_Float_4003	UMETA(DisplayName = "TrackRefProp_FieldOfViewBottomDegrees_Float"),
+	TrackRefProp_TrackingRangeMinimumMeters_Float_4004	UMETA(DisplayName = "TrackRefProp_TrackingRangeMinimumMeters_Float"),
+	TrackRefProp_TrackingRangeMaximumMeters_Float_4005	UMETA(DisplayName = "TrackRefProp_TrackingRangeMaximumMeters_Float")
+};
+
+UENUM(BlueprintType)
+enum class EVRDeviceProperty_Int32 : uint8
+{
+	// No prefix = 1000 series
+	Prop_DeviceClass_Int32_1029						UMETA(DisplayName = "Prop_DeviceClass_Int32"),
+
+	// 1 Prefix = 2000 series
+	HMDProp_DisplayMCType_Int32_2008				UMETA(DisplayName = "HMDProp_DisplayMCType_Int32"),
+	HMDProp_EdidVendorID_Int32_2011					UMETA(DisplayName = "HMDProp_EdidVendorID_Int32"),
+	HMDProp_EdidProductID_Int32_2015				UMETA(DisplayName = "HMDProp_EdidProductID_Int32"),
+	HMDProp_DisplayGCType_Int32_2017				UMETA(DisplayName = "HMDProp_DisplayGCType_Int32"),
+	HMDProp_CameraCompatibilityMode_Int32_2033		UMETA(DisplayName = "HMDProp_CameraCompatibilityMode_Int32"),
+	HMDProp_DisplayMCImageWidth_Int32_2038			UMETA(DisplayName = "HMDProp_DisplayMCImageWidth_Int32"),
+	HMDProp_DisplayMCImageHeight_Int32_2039			UMETA(DisplayName = "HMDProp_DisplayMCImageHeight_Int32"),
+	HMDProp_DisplayMCImageNumChannels_Int32_2040	UMETA(DisplayName = "HMDProp_DisplayMCImageNumChannels_Int32"),
+
+	// 2 Prefix = 3000 series
+	ControllerProp_Axis0Type_Int32_3002				UMETA(DisplayName = "ControllerProp_Axis0Type_Int32"),
+	ControllerPropProp_Axis1Type_Int32_3003			UMETA(DisplayName = "ControllerPropProp_Axis1Type_Int32"),
+	ControllerPropProp_Axis2Type_Int32_3004			UMETA(DisplayName = "ControllerPropProp_Axis2Type_Int32"),
+	ControllerPropProp_Axis3Type_Int32_3005			UMETA(DisplayName = "ControllerPropProp_Axis3Type_Int32"),
+	ControllerPropProp_Axis4Type_Int32_3006			UMETA(DisplayName = "ControllerPropProp_Axis4Type_Int32"),
+	ControllerProp_ControllerRoleHint_Int32_3007	UMETA(DisplayName = "ControllerProp_ControllerRoleHint_Int32")
+};
+
+UENUM(BlueprintType)
+enum class EVRDeviceProperty_UInt64 : uint8
+{
+	// No prefix = 1000 series
+	Prop_HardwareRevision_Uint64_1017				UMETA(DisplayName = "Prop_HardwareRevision_Uint64"),
+	Prop_FirmwareVersion_Uint64_1018				UMETA(DisplayName = "Prop_FirmwareVersion_Uint64"),
+	Prop_FPGAVersion_Uint64_1019					UMETA(DisplayName = "Prop_FPGAVersion_Uint64"),
+	Prop_VRCVersion_Uint64_1020						UMETA(DisplayName = "Prop_VRCVersion_Uint64"),
+	Prop_RadioVersion_Uint64_1021					UMETA(DisplayName = "Prop_RadioVersion_Uint64"),
+	Prop_DongleVersion_Uint64_1022					UMETA(DisplayName = "Prop_DongleVersion_Uint64"),
+	Prop_ParentDriver_Uint64_1034					UMETA(DisplayName = "Prop_ParentDriver_Uint64"),
+
+	// 1 Prefix = 2000 series
+	HMDProp_CurrentUniverseId_Uint64_2004			UMETA(DisplayName = "HMDProp_CurrentUniverseId_Uint64"),
+	HMDProp_PreviousUniverseId_Uint64_2005			UMETA(DisplayName = "HMDProp_PreviousUniverseId_Uint64"),
+	HMDProp_DisplayFirmwareVersion_Uint64_2006		UMETA(DisplayName = "HMDProp_DisplayFirmwareVersion_Uint64"),
+	HMDProp_CameraFirmwareVersion_Uint64_2027		UMETA(DisplayName = "HMDProp_CameraFirmwareVersion_Uint64"),
+	HMDProp_DisplayFPGAVersion_Uint64_2029			UMETA(DisplayName = "HMDProp_DisplayFPGAVersion_Uint64"),
+	HMDProp_DisplayBootloaderVersion_Uint64_2030	UMETA(DisplayName = "HMDProp_DisplayBootloaderVersion_Uint64"),
+	HMDProp_DisplayHardwareVersion_Uint64_2031		UMETA(DisplayName = "HMDProp_DisplayHardwareVersion_Uint64"),
+	HMDProp_AudioFirmwareVersion_Uint64_2032		UMETA(DisplayName = "HMDProp_AudioFirmwareVersion_Uint64"),
+	HMDProp_GraphicsAdapterLuid_Uint64_2045			UMETA(DisplayName = "HMDProp_GraphicsAdapterLuid_Uint64"),
+
+	// 2 Prefix = 3000 series
+	ControllerProp_SupportedButtons_Uint64_3001		UMETA(DisplayName = "ControllerProp_SupportedButtons_Uint64")
+};
+
+UENUM(BlueprintType)
+enum class EVRDeviceProperty_Matrix34 : uint8
+{
+	// No prefix = 1000 series
+	Prop_StatusDisplayTransform_Matrix34_1013		UMETA(DisplayName = "Prop_StatusDisplayTransform_Matrix34"),
+
+	// 1 Prefix = 2000 series
+	HMDProp_CameraToHeadTransform_Matrix34_2016		UMETA(DisplayName = "HMDProp_CameraToHeadTransform_Matrix34")
+};
+
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
 class OPENVREXPANSIONPLUGIN_API UOpenVRExpansionFunctionLibrary : public UBlueprintFunctionLibrary

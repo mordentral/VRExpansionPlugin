@@ -30,11 +30,11 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 	{
 		SetRelativeTransform(IVRTrackedParentInterface::Default_GetWaistOrientationAndPosition(OptionalWaistTrackingParent));
 	}
-	else if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+	else if (IsLocallyControlled() && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
 	{
 		FQuat curRot;
 		FVector curCameraLoc;
-		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
+		GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc);
 
 		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
 		

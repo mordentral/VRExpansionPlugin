@@ -68,7 +68,7 @@ void UVRStereoWidgetComponent::BeginDestroy()
 	Super::BeginDestroy();
 
 	IStereoLayers* StereoLayers;
-	if (LayerId && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && (StereoLayers = GEngine->HMDDevice->GetStereoLayers()) != nullptr)
+	if (LayerId && GEngine->StereoRenderingDevice.IsValid() && (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) != nullptr)
 	{
 		StereoLayers->DestroyLayer(LayerId);
 		LayerId = 0;
@@ -83,8 +83,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-
-	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ || (GEngine->HMDDevice->GetStereoLayers() == nullptr))
+	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->StereoRenderingDevice.IsValid() || (GEngine->StereoRenderingDevice->GetStereoLayers() == nullptr))
 	{
 		bShouldCreateProxy = true;
 	}
@@ -102,7 +101,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 
 	IStereoLayers* StereoLayers;
-	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ || (StereoLayers = GEngine->HMDDevice->GetStereoLayers()) == nullptr || !RenderTarget)
+	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->StereoRenderingDevice.IsValid() || (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) == nullptr || !RenderTarget)
 	{
 		return;
 	}

@@ -3,6 +3,8 @@
 #include "ReplicatedVRCameraComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/Engine.h"
+#include "IXRTrackingSystem.h"
+#include "IXRCamera.h"
 #include "IHeadMountedDisplay.h"
 
 
@@ -109,13 +111,14 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 	// Don't do any of the below if we aren't the host
 	if (bHasAuthority)
 	{
+
 		// For non view target positional updates (third party and the like)
-		if (bSetPositionDuringTick && bLockToHmd && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+		if (bSetPositionDuringTick && bLockToHmd && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
 		{
 			//ResetRelativeTransform();
 			FQuat Orientation;
 			FVector Position;
-			if (GEngine->HMDDevice->UpdatePlayerCamera(Orientation, Position))
+			if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, Orientation, Position))
 			{
 				if (bOffsetByHMD)
 				{
@@ -189,23 +192,32 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 			bLockToHmd = false;
 	}
 
-	if (bLockToHmd && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+	if (bLockToHmd && GEngine->XRSystem.IsValid() && GetWorld()->WorldType != EWorldType::Editor)
 	{
-		ResetRelativeTransform();
-		const FTransform ParentWorld = GetComponentToWorld();
-		GEngine->HMDDevice->SetupLateUpdate(ParentWorld, this);
+		IXRTrackingSystem* XRSystem = GEngine->XRSystem.Get();
 
-		FQuat Orientation;
-		FVector Position;
-		if (GEngine->HMDDevice->UpdatePlayerCamera(Orientation, Position))
+		auto XRCamera = XRSystem->GetXRCamera();
+		if (XRSystem->IsHeadTrackingAllowed() && XRCamera.IsValid())
 		{
-			if (bOffsetByHMD)
-			{
-				Position.X = 0;
-				Position.Y = 0;
-			}
+			const FTransform ParentWorld = GetComponentToWorld();
+			XRCamera->SetupLateUpdate(ParentWorld, this);
 
-			SetRelativeTransform(FTransform(Orientation, Position));
+			FQuat Orientation;
+			FVector Position;
+			if (XRCamera->UpdatePlayerCamera(Orientation, Position))
+			{
+				if (bOffsetByHMD)
+				{
+					Position.X = 0;
+					Position.Y = 0;
+				}
+
+				SetRelativeTransform(FTransform(Orientation, Position));
+			}
+			else
+			{
+				ResetRelativeTransform();
+			}
 		}
 	}
 
@@ -223,26 +235,14 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 		}
 	}
 
-	if (bUseAdditiveOffset)//bUseVRNeckOffset)
+	if (bUseAdditiveOffset)
 	{
-		FTransform OffsetCamToBaseCam = AdditiveOffset;//VRNeckOffset;
+		FTransform OffsetCamToBaseCam = AdditiveOffset;
 		FTransform BaseCamToWorld = GetComponentToWorld();
 		FTransform OffsetCamToWorld = OffsetCamToBaseCam * BaseCamToWorld;
 
 		DesiredView.Location = OffsetCamToWorld.GetLocation();
 		DesiredView.Rotation = OffsetCamToWorld.Rotator();
-
-#if WITH_EDITORONLY_DATA
-		if (ProxyMeshComponent)
-		{
-			ResetProxyMeshTransform();
-
-			FTransform LocalTransform = ProxyMeshComponent->GetRelativeTransform();
-			FTransform WorldTransform = LocalTransform * OffsetCamToWorld;
-
-			ProxyMeshComponent->SetWorldTransform(WorldTransform);
-		}
-#endif
 	}
 	else
 	{
@@ -265,8 +265,4 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 	{
 		DesiredView.PostProcessSettings = PostProcessSettings;
 	}
-
-#if WITH_EDITOR
-	ResetProxyMeshTransform();
-#endif //WITH_EDITOR
 }

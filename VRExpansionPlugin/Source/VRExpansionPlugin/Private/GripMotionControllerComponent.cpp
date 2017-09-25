@@ -2,7 +2,7 @@
 
 #include "GripMotionControllerComponent.h"
 #include "IHeadMountedDisplay.h"
-#include "Components/DestructibleComponent.h"
+//#include "DestructibleComponent.h" 4.18 moved apex destruct to a plugin
 #include "Misc/ScopeLock.h"
 #include "Net/UnrealNetwork.h"
 #include "PrimitiveSceneInfo.h"
@@ -81,11 +81,6 @@ UGripMotionControllerComponent::~UGripMotionControllerComponent()
 			// before clearing MotionControllerComponent and allowing the destructor to continue
 			FScopeLock ScopeLock(&CritSect);
 			GripViewExtension->MotionControllerComponent = NULL;
-		}
-
-		if (GEngine)
-		{
-			GEngine->ViewExtensions.Remove(GripViewExtension);
 		}
 	}
 	GripViewExtension.Reset();
@@ -338,7 +333,7 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 		return;
 	}
 
-	AngularVelocity = primComp->GetPhysicsAngularVelocity();
+	AngularVelocity = primComp->GetPhysicsAngularVelocityInDegrees();
 	LinearVelocity = primComp->GetPhysicsLinearVelocity();
 }
 
@@ -1243,7 +1238,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement && (OptionalLinearVelocity != FVector::ZeroVector || OptionalAngularVelocity != FVector::ZeroVector))
 		{
 			PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
-			PrimComp->SetPhysicsAngularVelocity(OptionalAngularVelocity);
+			PrimComp->SetPhysicsAngularVelocityInDegrees(OptionalAngularVelocity);
 		}
 	}
 
@@ -2102,11 +2097,6 @@ void UGripMotionControllerComponent::Deactivate()
 			GripViewExtension->MotionControllerComponent = NULL;
 		}
 
-		if (GEngine)
-		{
-			GEngine->ViewExtensions.Remove(GripViewExtension);
-		}
-
 		GripViewExtension.Reset();
 	}
 }
@@ -2139,10 +2129,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 		{
 			if (!GripViewExtension.IsValid() && GEngine)
 			{
-				// #TODO: 4.18 - Uses an auto register base for extensions now, need to revise this
-				TSharedPtr< FGripViewExtension, ESPMode::ThreadSafe > NewViewExtension(new FGripViewExtension(this));
-				GripViewExtension = NewViewExtension;
-				GEngine->ViewExtensions.Add(GripViewExtension);
+				GripViewExtension = FSceneViewExtensions::NewExtension<FGripViewExtension>(this);
 			}
 
 			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
@@ -2413,8 +2400,11 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				if (!root || !actor)
 					continue;
 
+
+				// 4.17 moved apex to a plugin, no longer going to support auto dropping apex objects likely
+
 				// #TODO: Should this even be here? Or should I enforce destructible components being sub components and users doing proper cleanup?
-#if WITH_APEX
+/*#if WITH_APEX
 				// Checking for a gripped destructible object, and if held and is fractured, auto drop it and continue
 				if (UDestructibleComponent * dest = Cast<UDestructibleComponent>(root))
 				{
@@ -2425,7 +2415,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						continue;
 					}
 				}
-#endif // #if WITH_APEX
+#endif // #if WITH_APEX*/
 
 				// Check if either implements the interface
 				bool bRootHasInterface = false;
@@ -3533,11 +3523,11 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				{
 					if (IsInGameThread())
 					{
-						if (GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
 						{
 							FQuat curRot;
 							FVector curLoc;
-							GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curLoc);
+							GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc);
 							curLoc.Z = 0;
 
 							LastLocationForLateUpdate = curLoc;
@@ -3561,11 +3551,11 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				{
 					if (IsInGameThread())
 					{
-						if (GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
 						{
 							FQuat curRot;
 							FVector curLoc;
-							GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curLoc);
+							GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc);
 							curLoc.Z = 0;
 
 							LastLocationForLateUpdate = curLoc;
@@ -3587,23 +3577,13 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 //=============================================================================
 void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
 {
-
-	// #TODO: Remove in 4.18
-	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
-	if (!CVarEnableMotionControllerLateUpdate->GetValueOnRenderThread())
-	{
-		return;
-	}// End remove
-
-
 	FTransform OldTransform;
 	FTransform NewTransform;
 
 	{
 		FScopeLock ScopeLock(&CritSect);
 
-		// #TODO: 4.18 just check for component here, we use IsActiveThisFrame instead in 4.18
-		if (!MotionControllerComponent || MotionControllerComponent->bDisableLowLatencyUpdate)
+		if (!MotionControllerComponent)
 			return;
 
 		// Find a view that is associated with this player.
@@ -3639,105 +3619,15 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 
 	  // Tell the late update manager to apply the offset to the scene components
 	LateUpdate.Apply_RenderThread(InViewFamily.Scene, OldTransform, NewTransform);
-
-	/*
-	FScopeLock ScopeLock(&CritSect);
-
-	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
-	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnRenderThread())
-	{
-		return;
-	}
-	
-	// Find a view that is associated with this player.
-	float WorldToMetersScale = -1.0f;
-	for (const FSceneView* SceneView : InViewFamily.Views)
-	{
-		if (SceneView && SceneView->PlayerIndex == MotionControllerComponent->PlayerIndex)
-		{
-			WorldToMetersScale = SceneView->WorldToMetersScale;
-			break;
-		}
-	}
-	// If there are no views associated with this player use view 0.
-	if (WorldToMetersScale < 0.0f)
-	{
-		check(InViewFamily.Views.Num() > 0);
-		WorldToMetersScale = InViewFamily.Views[0]->WorldToMetersScale;
-	}
-
-	// Poll state for the most recent controller transform
-	FVector Position;
-	FRotator Orientation;
-
-	if (!MotionControllerComponent->GripPollControllerState(Position, Orientation, WorldToMetersScale))
-	{
-		return;
-	}
-
-	if (LateUpdatePrimitives.Num())
-	{
-		// Calculate the late update transform that will rebase all children proxies within the frame of reference
-
-		FTransform OldLocalToWorldTransform =  MotionControllerComponent->CalcNewComponentToWorld(MotionControllerComponent->GripRenderThreadRelativeTransform);
-		FTransform NewLocalToWorldTransform =  MotionControllerComponent->CalcNewComponentToWorld(FTransform(Orientation, Position, MotionControllerComponent->GripRenderThreadComponentScale));
-		FMatrix LateUpdateTransform = (OldLocalToWorldTransform.Inverse() * NewLocalToWorldTransform).ToMatrixWithScale();
-
-		FPrimitiveSceneInfo* RetrievedSceneInfo;
-		FPrimitiveSceneInfo* CachedSceneInfo;
-		
-		// Apply delta to the affected scene proxies
-		for (auto PrimitiveInfo : LateUpdatePrimitives)
-		{
-			RetrievedSceneInfo = InViewFamily.Scene->GetPrimitiveSceneInfo(*PrimitiveInfo.IndexAddress);
-			CachedSceneInfo = PrimitiveInfo.SceneInfo;
-
-			// If the retrieved scene info is different than our cached scene info then the primitive was removed from the scene
-			if (CachedSceneInfo == RetrievedSceneInfo && CachedSceneInfo->Proxy)
-			{
-				CachedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
-			}
-		}
-
-		LateUpdatePrimitives.Reset();
-	}
-	*/
 }
 
-//#TODO 4.18: Add IsActiveThisFrame() function here
-
-/*void UGripMotionControllerComponent::FGripViewExtension::GatherLateUpdatePrimitives(USceneComponent* Component, TArray<LateUpdatePrimitiveInfo>& Primitives)
+bool UGripMotionControllerComponent::FGripViewExtension::IsActiveThisFrame(class FViewport* InViewport) const
 {
-	if (!Component || Component->IsPendingKill())
-		return;
+	check(IsInGameThread());
 
-	// If a scene proxy is present, cache it
-	UPrimitiveComponent* PrimitiveComponent = dynamic_cast<UPrimitiveComponent*>(Component);
-	if (PrimitiveComponent && PrimitiveComponent->SceneProxy)
-	{
-		FPrimitiveSceneInfo* PrimitiveSceneInfo = PrimitiveComponent->SceneProxy->GetPrimitiveSceneInfo();
-		if (PrimitiveSceneInfo)
-		{
-			LateUpdatePrimitiveInfo PrimitiveInfo;
-			PrimitiveInfo.IndexAddress = PrimitiveSceneInfo->GetIndexAddress();
-			PrimitiveInfo.SceneInfo = PrimitiveSceneInfo;
-			Primitives.Add(PrimitiveInfo);
-		}
-	}
-
-	// Gather children proxies
-	const int32 ChildCount = Component->GetNumChildrenComponents();
-	for (int32 ChildIndex = 0; ChildIndex < ChildCount; ++ChildIndex)
-	{
-		USceneComponent* ChildComponent = Component->GetChildComponent(ChildIndex);
-		if (!ChildComponent)
-		{
-			continue;
-		}
-
-		GatherLateUpdatePrimitives(ChildComponent, Primitives);
-	}
-}*/
+	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
+	return MotionControllerComponent && !MotionControllerComponent->bDisableLowLatencyUpdate && CVarEnableMotionControllerLateUpdate->GetValueOnGameThread();
+}
 
 void UGripMotionControllerComponent::GetGrippedObjects(TArray<UObject*> &GrippedObjectsArray)
 {
