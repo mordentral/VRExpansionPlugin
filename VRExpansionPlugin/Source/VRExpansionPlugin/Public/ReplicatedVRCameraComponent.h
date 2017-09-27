@@ -6,7 +6,9 @@
 #include "Net/UnrealNetwork.h"
 #include "ReplicatedVRCameraComponent.generated.h"
 
-
+/**
+* An overridden camera component that replicates its location in multiplayer
+*/
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
 class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraComponent
 {

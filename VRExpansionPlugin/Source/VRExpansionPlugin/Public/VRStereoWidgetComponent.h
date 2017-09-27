@@ -10,10 +10,12 @@
 
 #include "VRStereoWidgetComponent.generated.h"
 
-/**
-*
-*/
 
+/**
+* A widget component that displays the widget in a stereo layer instead of in worldspace.
+* Currently this class uses a custom postion instead of the engines WorldLocked for stereo layers
+* This is because world locked stereo layers don't account for player movement currently.
+*/
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRStereoWidgetComponent : public UWidgetComponent
 {

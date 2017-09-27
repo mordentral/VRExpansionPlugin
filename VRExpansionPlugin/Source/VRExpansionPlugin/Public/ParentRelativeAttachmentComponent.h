@@ -7,7 +7,12 @@
 #include "VRTrackedParentInterface.h"
 #include "ParentRelativeAttachmentComponent.generated.h"
 
-
+/**
+* A component that will track the HMD/Cameras location and YAW rotation to allow for chest/waist attachements.
+* This is intended to be parented to the root component of a pawn, it will then either find and track the camera
+* or use the HMD's position if one is connected. This allows it to work in multiplayer since the camera will
+* have its position replicated.
+*/
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
 class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneComponent, public IVRTrackedParentInterface
 {

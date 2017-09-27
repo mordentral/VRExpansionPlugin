@@ -11,6 +11,11 @@
 #include "VRWheeledVehicle.generated.h"
 
 
+/**
+* This override of the base wheeled vehicle allows for dual pawn usage in engine.
+* It adds two new functions: SetBindToInput to bind input locally to the pawn and ForceSecondaryPossession which fakes possession so the 
+* player can control the vehicle as if they were locally possessed into it in a multiplayer enviroment (no lag).
+*/
 UCLASS(config = Game, BlueprintType)
 class VREXPANSIONPLUGIN_API AVRWheeledVehicle : public AWheeledVehicle
 {
