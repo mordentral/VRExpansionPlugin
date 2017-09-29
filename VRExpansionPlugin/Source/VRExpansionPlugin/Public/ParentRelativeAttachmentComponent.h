@@ -19,7 +19,7 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 	GENERATED_UCLASS_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary", meta = (ClampMin = "0", UIMin = "0"))
-	float YawTolerance;
+		float YawTolerance;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary", meta = (ClampMin = "0", UIMin = "0"))
 		float LerpSpeed;
@@ -27,9 +27,10 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 		bool bLerpTransition;
 
-	FRotator LastRot;
+	float LastRot;
 	float LastLerpVal;
 	float LerpTarget;
+	bool bWasSetOnce;
 
 	// If true uses feet/bottom of the capsule as the base Z position for this component instead of the HMD/Camera Z position
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
@@ -56,6 +57,52 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 		const AActor* MyOwner = GetOwner();
 		const APawn* MyPawn = Cast<APawn>(MyOwner);
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
+	}
+
+	FQuat GetCalculatedRotation(FRotator InverseRot, float DeltaTime)
+	{
+		FRotator FinalRot = FRotator::ZeroRotator;
+
+		if ((FPlatformMath::Abs(FRotator::ClampAxis(InverseRot.Yaw) - LastRot)) < YawTolerance)	// This is never true with the default value of 0.0f
+		{
+			if (!bWasSetOnce)
+			{
+				LastRot = FRotator::ClampAxis(InverseRot.Yaw);
+				LastLerpVal = LastRot;
+				LerpTarget = LastRot;
+				bWasSetOnce = true;
+			}
+			
+			if (bLerpTransition && !FMath::IsNearlyEqual(LastLerpVal, LerpTarget))
+			{
+				LastLerpVal = FMath::FixedTurn(LastLerpVal, LerpTarget, LerpSpeed * DeltaTime);
+				//LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
+				FinalRot = FRotator(0, LastLerpVal, 0);
+			}
+			else
+			{
+				FinalRot = FRotator(0, LastRot, 0);
+			}
+		}
+		else
+		{
+			// If we are using a snap threshold
+			if (!FMath::IsNearlyZero(YawTolerance))
+			{
+				LerpTarget = FRotator::ClampAxis(InverseRot.Yaw);
+				LastLerpVal = FMath::FixedTurn(LastRot, LerpTarget, LerpSpeed * DeltaTime);
+				//LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
+				FinalRot = FRotator(0, LastLerpVal, 0);
+			}
+			else // If we aren't then just directly set it to the correct rotation
+			{
+				FinalRot = FRotator(0, FRotator::ClampAxis(InverseRot.Yaw), 0);
+			}
+
+			LastRot = FRotator::ClampAxis(InverseRot.Yaw);
+		}
+
+		return FinalRot.Quaternion();
 	}
 };
 

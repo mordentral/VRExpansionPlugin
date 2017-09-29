@@ -22,13 +22,27 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	LerpSpeed = 100.0f;
 	LastLerpVal = 0.0f;
 	LerpTarget = 0.0f;
+	bWasSetOnce = false;
 }
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	if (OptionalWaistTrackingParent.IsValid())
 	{
-		SetRelativeTransform(IVRTrackedParentInterface::Default_GetWaistOrientationAndPosition(OptionalWaistTrackingParent));
+		//#TODO: bOffsetByHMD not supported with this currently, fix it, need to check for both camera and HMD
+		FTransform TrackedParentWaist = IVRTrackedParentInterface::Default_GetWaistOrientationAndPosition(OptionalWaistTrackingParent);
+
+		if (bUseFeetLocation)
+		{
+			TrackedParentWaist.SetTranslation(TrackedParentWaist.GetTranslation() * FVector(1.0f, 1.0f, 0.0f));
+
+			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(TrackedParentWaist.Rotator());
+
+			TrackedParentWaist.SetRotation(GetCalculatedRotation(InverseRot, DeltaTime));
+		}
+
+		SetRelativeTransform(TrackedParentWaist);
+
 	}
 	else if (IsLocallyControlled() && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
 	{
@@ -36,37 +50,9 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		FVector curCameraLoc;
 		GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
 
-		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
-		
-		// This is never true with the default value of 0.0f
-		if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
-		{
-			if (bLerpTransition)
-			{
-				LastLerpVal = FMath::FixedTurn(LastLerpVal, LerpTarget, LerpSpeed * DeltaTime);
-				//LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
-				SetRelativeRotation(FRotator(0, LastLerpVal, 0).Quaternion());
-			}
-			else
-			{
-				SetRelativeRotation(FRotator(0, LastRot.Yaw, 0).Quaternion());
-			}
-		}
-		else
-		{
-			// If we are using a snap threshold
-			if (!FMath::IsNearlyZero(YawTolerance))
-			{
-				LerpTarget = InverseRot.Yaw;
-				LastLerpVal = LastRot.Yaw;
-			}
-			else // If we aren't then just directly set it to the correct rotation
-			{
-				SetRelativeRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion());
-			}
+		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());		
 
-			LastRot = InverseRot;
-		}
+		SetRelativeRotation(GetCalculatedRotation(InverseRot, DeltaTime));
 
 		if (bOffsetByHMD)
 		{
@@ -89,35 +75,7 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		{
 			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(CameraOwner->RelativeRotation);
 
-			// This is never true with the default value of 0.0f
-			if ((FPlatformMath::Abs(InverseRot.Yaw - LastRot.Yaw)) < YawTolerance)
-			{
-				if (bLerpTransition)
-				{
-					LastLerpVal = FMath::FixedTurn(LastLerpVal, LerpTarget, LerpSpeed * DeltaTime);
-					//LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
-					SetRelativeRotation(FRotator(0, LastLerpVal, 0).Quaternion());
-				}
-				else
-				{
-					SetRelativeRotation(FRotator(0, LastRot.Yaw, 0).Quaternion());
-				}
-			}
-			else
-			{
-				// If we are using a snap threshold
-				if (!FMath::IsNearlyZero(YawTolerance))
-				{
-					LerpTarget = InverseRot.Yaw;
-					LastLerpVal = LastRot.Yaw;
-				}
-				else // If we aren't then just directly set it to the correct rotation
-				{
-					SetRelativeRotation(FRotator(0, InverseRot.Yaw, 0).Quaternion());
-				}
-
-				LastRot = InverseRot;
-			}
+			SetRelativeRotation(GetCalculatedRotation(InverseRot, DeltaTime));
 
 			if(bUseFeetLocation)
 			{			
