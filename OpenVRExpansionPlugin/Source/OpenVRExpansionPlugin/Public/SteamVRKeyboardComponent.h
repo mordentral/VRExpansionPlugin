@@ -16,6 +16,10 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRKeyboardStringCallbackSignature, FString, Text);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRKeyboardNullCallbackSignature);
 
+/**
+* Allows displaying / hiding and sending input to and from the SteamVR keyboard. Has events for keyboard inputs
+* Generally outdated with the data table based keyboards I added, but still useful.
+*/
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
 class OPENVREXPANSIONPLUGIN_API USteamVRKeyboardComponent : public USceneComponent
 {

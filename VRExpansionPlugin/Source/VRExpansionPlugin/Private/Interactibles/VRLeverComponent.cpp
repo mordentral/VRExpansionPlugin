@@ -16,6 +16,8 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	BreakDistance = 100.0f;
+	Stiffness = 1500.0f;
+	Damping = 200.0f;
 
 	HandleData = nullptr;
 	SceneIndex = 0;
@@ -200,6 +202,8 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 
 	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
 
+	// #TODO: This drop code is incorrect, it is based off of the zero point and not the location at grip - revise it at some point
+	// Also set it to after rotation
 	if (GrippingController->HasGripAuthority(GripInformation) && (CurInteractorLocation - InitialInteractorLocation).Size() >= BreakDistance)
 	{
 		GrippingController->DropObjectByInterface(this);
@@ -341,12 +345,12 @@ EGripLateUpdateSettings UVRLeverComponent::GripLateUpdateSetting_Implementation(
 
 float UVRLeverComponent::GripStiffness_Implementation()
 {
-	return 1500.0f;
+	return Stiffness;
 }
 
 float UVRLeverComponent::GripDamping_Implementation()
 {
-	return 200.0f;
+	return Damping;
 }
 
 FBPAdvGripPhysicsSettings UVRLeverComponent::AdvancedPhysicsSettings_Implementation()

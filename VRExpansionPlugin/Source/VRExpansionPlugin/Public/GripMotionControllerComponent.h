@@ -68,6 +68,10 @@ public:
 
 };
 
+
+/**
+* An override of the MotionControllerComponent that implements position replication and Gripping with grip replication and controllable late updates per object.
+*/
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionController)
 class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UMotionControllerComponent//PrimitiveComponent
 {

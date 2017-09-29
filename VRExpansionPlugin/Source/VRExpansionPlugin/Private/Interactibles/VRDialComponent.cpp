@@ -21,6 +21,7 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	SnapAngleThreshold = 0.0f;
 	SnapAngleIncrement = 45.0f;
 	LastSnapAngle = 0.0f;
+	RotationScaler = 1.0f;
 
 	ClockwiseMaximumDialAngle = 180.0f;
 	CClockwiseMaximumDialAngle = 180.0f;
@@ -83,7 +84,7 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 		}
 	}
 
-	float DeltaRot = GetAxisValue((GrippingController->RelativeRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
+	float DeltaRot = RotationScaler * GetAxisValue((GrippingController->RelativeRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
 	AddDialAngle(DeltaRot, true);
 
 	LastRotation = GrippingController->RelativeRotation;

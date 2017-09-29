@@ -189,6 +189,10 @@ private:
 	TArray< TSharedPtr<FVRLogMessage> > Messages;
 };
 
+/**
+* This class taps into the output log and console and renders them to textures so they can be viewed in levels.
+* Generally used for debugging and testing in VR, also allows sending input to the console.
+*/
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRLogComponent : public UActorComponent
 {

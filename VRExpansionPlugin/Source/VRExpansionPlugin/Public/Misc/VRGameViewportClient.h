@@ -16,6 +16,11 @@ enum class EVRGameInputMethod : uint8
 	GameInput_KeyboardAndMouseToPlayer2,
 };
 
+
+/**
+* Subclass this in a blueprint to overwrite how default input is passed around in engine between local characters.
+* Generally used for passing keyboard / mouse input to a secondary local player for local mixed gameplay in VR
+*/
 UCLASS(Blueprintable)
 class VREXPANSIONPLUGIN_API UVRGameViewportClient : public UGameViewportClient
 {
