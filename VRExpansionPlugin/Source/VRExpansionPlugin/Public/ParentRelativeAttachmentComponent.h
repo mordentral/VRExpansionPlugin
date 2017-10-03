@@ -3,6 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/Engine.h"
+#include "VRExpansionFunctionLibrary.h"
+#include "IXRTrackingSystem.h"
 #include "Components/ShapeComponent.h"
 #include "VRTrackedParentInterface.h"
 #include "ParentRelativeAttachmentComponent.generated.h"

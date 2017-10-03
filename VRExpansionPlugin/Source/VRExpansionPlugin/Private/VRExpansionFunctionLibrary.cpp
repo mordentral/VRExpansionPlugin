@@ -2,6 +2,7 @@
 #include "VRExpansionFunctionLibrary.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
+#include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
 
 #if WITH_EDITOR
