@@ -24,6 +24,7 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 
 	MinSlideDistance = FVector::ZeroVector;
 	MaxSlideDistance = FVector::ZeroVector;
+	CurrentSliderProgress = 0.0f;
 
 	InitialInteractorLocation = FVector::ZeroVector;
 	InitialGripLoc = FVector::ZeroVector;
@@ -101,11 +102,11 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 
 	FVector CalculatedLocation = InitialGripLoc + (CurInteractorLocation - InitialInteractorLocation);
 
-	if (USplineComponent * uSplineComponentToFollow = Cast<USplineComponent>(SplineComponentToFollow))
+	if (SplineComponentToFollow != nullptr)
 	{	
 		if (bFollowSplineRotationAndScale)
 		{
-			FTransform trans = uSplineComponentToFollow->FindTransformClosestToWorldLocation(CurrentRelativeTransform.TransformPosition(CalculatedLocation), ESplineCoordinateSpace::World);
+			FTransform trans = SplineComponentToFollow->FindTransformClosestToWorldLocation(CurrentRelativeTransform.TransformPosition(CalculatedLocation), ESplineCoordinateSpace::World);
 
 			trans = trans * ParentTransform.Inverse();
 			trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
@@ -114,14 +115,19 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		}
 		else
 		{
-			this->SetRelativeLocation(ParentTransform.InverseTransformPosition(uSplineComponentToFollow->FindLocationClosestToWorldLocation(CurrentRelativeTransform.TransformPosition(CalculatedLocation), ESplineCoordinateSpace::World)));
+			this->SetRelativeLocation(ParentTransform.InverseTransformPosition(SplineComponentToFollow->FindLocationClosestToWorldLocation(CurrentRelativeTransform.TransformPosition(CalculatedLocation), ESplineCoordinateSpace::World)));
 		}
+
+		CurrentSliderProgress = GetCurrentSliderProgress(CurrentRelativeTransform.TransformPosition(CalculatedLocation));
 	}
 	else
 	{
-		this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampSlideVector(CalculatedLocation)));
-	}
+		FVector ClampedLocation = ClampSlideVector(CalculatedLocation);
+		this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
 
+		CurrentSliderProgress = GetCurrentSliderProgress(ClampedLocation * InitialRelativeTransform.GetScale3D());
+	}
+	
 	if ((InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation) - CurInteractorLocation).Size() >= BreakDistance)
 	{
 		GrippingController->DropObjectByInterface(this);
