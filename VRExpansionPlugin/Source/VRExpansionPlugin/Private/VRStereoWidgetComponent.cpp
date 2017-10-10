@@ -86,11 +86,19 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ || (GEngine->HMDDevice->GetStereoLayers() == nullptr))
 	{
-		bShouldCreateProxy = true;
+		if (!bShouldCreateProxy)
+		{
+			bShouldCreateProxy = true;
+			MarkRenderStateDirty(); // Recreate
+		}
 	}
 	else
 	{
-		bShouldCreateProxy = false;
+		if (bShouldCreateProxy)
+		{
+			bShouldCreateProxy = false;
+			MarkRenderStateDirty(); // Recreate
+		}
 	}
 
 #if !UE_SERVER
@@ -157,6 +165,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		{
 			// No PC, destroy the layer and enable drawing it normally.
 			bShouldCreateProxy = true;
+
 			if (LayerId)
 			{
 				StereoLayers->DestroyLayer(LayerId);
@@ -336,11 +345,11 @@ void UVRStereoWidgetComponent::UpdateRenderTarget(FIntPoint DesiredRenderTargetS
 }
 
 /** Represents a billboard sprite to the scene manager. */
-class FWidget3DSceneProxy : public FPrimitiveSceneProxy
+class FStereoWidget3DSceneProxy : public FPrimitiveSceneProxy
 {
 public:
 	/** Initialization constructor. */
-	FWidget3DSceneProxy(UVRStereoWidgetComponent* InComponent, ISlate3DRenderer& InRenderer)
+	FStereoWidget3DSceneProxy(UVRStereoWidgetComponent* InComponent, ISlate3DRenderer& InRenderer)
 		: FPrimitiveSceneProxy(InComponent)
 		, Pivot(InComponent->GetPivot())
 		, Renderer(InRenderer)
@@ -359,6 +368,9 @@ public:
 	// FPrimitiveSceneProxy interface.
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override
 	{
+		if(!bCreateSceneProxy)
+			return;
+
 #if WITH_EDITOR
 		const bool bWireframe = AllowDebugViewmodes() && ViewFamily.EngineShowFlags.Wireframe;
 
@@ -386,7 +398,7 @@ public:
 
 		const FMatrix& ViewportLocalToWorld = GetLocalToWorld();
 
-		if (RenderTarget && bCreateSceneProxy)//false)//RenderTarget)
+		if (RenderTarget)//false)//RenderTarget)
 		{
 			FTextureResource* TextureResource = RenderTarget->Resource;
 			if (TextureResource)
@@ -632,7 +644,7 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 		RequestRedraw();
 		LastWidgetRenderTime = 0;
 
-		return new FWidget3DSceneProxy(this, *WidgetRenderer->GetSlateRenderer());
+		return new FStereoWidget3DSceneProxy(this, *WidgetRenderer->GetSlateRenderer());
 	}
 
 	return nullptr;
