@@ -26,28 +26,79 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	FVector MinSlideDistance;
 
+	// Gets filled in with the current slider location progress
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRSliderComponent")
+	float CurrentSliderProgress;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	bool bSlideDistanceIsInParentSpace;
 
 	// Set this to assign a spline component to the slider
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
-	UActorComponent * SplineComponentToFollow; 
+	USplineComponent * SplineComponentToFollow; 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	bool bFollowSplineRotationAndScale;
 
 	FTransform InitialRelativeTransform;
+	FVector InitialInteractorLocation;
+	FVector InitialGripLoc;
 
 	// Should be called after the slider is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
 	void ResetInitialSliderLocation()
 	{
+		if (SplineComponentToFollow != nullptr)
+		{
+			// Snap to start of spline
+			FTransform WorldTransform = SplineComponentToFollow->GetTransformAtSplinePoint(0, ESplineCoordinateSpace::World);
+
+			if (bFollowSplineRotationAndScale)
+			{
+				this->SetWorldLocationAndRotation(WorldTransform.GetLocation(), WorldTransform.GetRotation());
+			}
+			else
+			{
+				this->SetWorldLocation(WorldTransform.GetLocation());
+			}
+
+			GetCurrentSliderProgress(WorldTransform.GetLocation());
+		}
+
 		// Get our initial relative transform to our parent (or not if un-parented).
 		InitialRelativeTransform = this->GetRelativeTransform();
+
+		if(SplineComponentToFollow == nullptr)
+			CurrentSliderProgress = GetCurrentSliderProgress(FVector(0, 0, 0));
 	}
 
-	FVector InitialInteractorLocation;
-	FVector InitialGripLoc;
+	// Sets the spline component to follow, if empty, just reinitializes the transform and removes the follow component
+	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
+	void SetSplineComponentToFollow(USplineComponent * SplineToFollow)
+	{
+		SplineComponentToFollow = SplineToFollow;
+		ResetInitialSliderLocation();
+	}
+
+	float GetCurrentSliderProgress(FVector CurLocation)
+	{
+		if (SplineComponentToFollow != nullptr)
+		{
+			// In this case it is a world location
+			float ClosestKey = SplineComponentToFollow->FindInputKeyClosestToWorldLocation(CurLocation);
+			int32 primaryKey = FMath::TruncToInt(ClosestKey);
+
+			float distance1 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey);
+			float distance2 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey + 1);
+
+			float FinalDistance = ((distance2 - distance1) * (ClosestKey - (float)primaryKey)) + distance1;
+
+			return FMath::Clamp(FinalDistance / SplineComponentToFollow->GetSplineLength(), 0.0f, 1.0f);
+		}
+
+		// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
+		return FMath::Clamp(FVector::Dist(-MinSlideDistance, CurLocation) / FVector::Dist(-MinSlideDistance, MaxSlideDistance), 0.0f, 1.0f);
+	}
 
 	FVector ClampSlideVector(FVector ValueToClamp)
 	{
@@ -57,17 +108,17 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 			FVector fScaleFactor = FVector(1.0f) / InitialRelativeTransform.GetScale3D();
 
 			return FVector(
-				FMath::Clamp(ValueToClamp.X, MinSlideDistance.X * fScaleFactor.X, MaxSlideDistance.X * fScaleFactor.X),
-				FMath::Clamp(ValueToClamp.Y, MinSlideDistance.Y * fScaleFactor.Y, MaxSlideDistance.Y * fScaleFactor.Y),
-				FMath::Clamp(ValueToClamp.Z, MinSlideDistance.Z * fScaleFactor.Z, MaxSlideDistance.Z * fScaleFactor.Z)
+				FMath::Clamp(ValueToClamp.X, -MinSlideDistance.X * fScaleFactor.X, MaxSlideDistance.X * fScaleFactor.X),
+				FMath::Clamp(ValueToClamp.Y, -MinSlideDistance.Y * fScaleFactor.Y, MaxSlideDistance.Y * fScaleFactor.Y),
+				FMath::Clamp(ValueToClamp.Z, -MinSlideDistance.Z * fScaleFactor.Z, MaxSlideDistance.Z * fScaleFactor.Z)
 			);
 		}
 		else
 		{
 			return FVector(
-				FMath::Clamp(ValueToClamp.X, MinSlideDistance.X, MaxSlideDistance.X),
-				FMath::Clamp(ValueToClamp.Y, MinSlideDistance.Y, MaxSlideDistance.Y),
-				FMath::Clamp(ValueToClamp.Z, MinSlideDistance.Z, MaxSlideDistance.Z)
+				FMath::Clamp(ValueToClamp.X, -MinSlideDistance.X, MaxSlideDistance.X),
+				FMath::Clamp(ValueToClamp.Y, -MinSlideDistance.Y, MaxSlideDistance.Y),
+				FMath::Clamp(ValueToClamp.Z, -MinSlideDistance.Z, MaxSlideDistance.Z)
 			);
 		}
 	}

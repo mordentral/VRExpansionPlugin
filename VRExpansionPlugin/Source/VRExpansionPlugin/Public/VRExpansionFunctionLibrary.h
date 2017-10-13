@@ -4,6 +4,9 @@
 #include "CoreMinimal.h"
 #include "IMotionController.h"
 
+#include "Components/SplineComponent.h"
+#include "Components/SplineMeshComponent.h"
+
 //#include "HeadMountedDisplay.h" 
 #include "HeadMountedDisplayFunctionLibrary.h"
 //#include "HeadMountedDisplayFunctionLibrary.h"
@@ -170,4 +173,78 @@ public:
 	// Adds a USceneComponent Subclass, that is based on the passed in Class, and added to the Outer(Actor) object
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Add Scene Component By Class"), Category = "VRExpansionLibrary")
 		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, const FTransform & ComponentRelativeTransform);
+	
+
+	/** Resets a Euro Low Pass Filter so that the first time it is used again it is clean */
+	UFUNCTION(BlueprintCallable, Category = "EuroLowPassFilter")
+	static void ResetEuroSmoothingFilter(UPARAM(ref) FBPEuroLowPassFilter& TargetEuroFilter)
+	{
+		TargetEuroFilter.ResetSmoothingFilter();
+	}
+
+	/** Runs the smoothing function of a Euro Low Pass Filter */
+	UFUNCTION(BlueprintCallable, Category = "EuroLowPassFilter")
+	static void RunEuroSmoothingFilter(UPARAM(ref) FBPEuroLowPassFilter& TargetEuroFilter, FVector InRawValue, const float DeltaTime, FVector & SmoothedValue)
+	{
+		SmoothedValue = TargetEuroFilter.RunFilterSmoothing(InRawValue, DeltaTime);
+	}
+
+	// Applies the same laser smoothing that the vr editor uses to an array of points
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Smooth Update Laser Spline"), Category = "VRExpansionLibrary")
+	static void SmoothUpdateLaserSpline(USplineComponent * LaserSplineComponent, TArray<USplineMeshComponent *> LaserSplineMeshComponents, FVector InStartLocation, FVector InEndLocation, FVector InForward, float LaserRadius)
+	{
+		if (LaserSplineComponent == nullptr)
+			return;
+
+		LaserSplineComponent->ClearSplinePoints();
+
+		const FVector SmoothLaserDirection = InEndLocation - InStartLocation;
+		float Distance = SmoothLaserDirection.Size();
+		const FVector StraightLaserEndLocation = InStartLocation + (InForward * Distance);
+		const int32 NumLaserSplinePoints = LaserSplineMeshComponents.Num();
+
+		LaserSplineComponent->AddSplinePoint(InStartLocation, ESplineCoordinateSpace::World, false);
+		for (int32 Index = 1; Index < NumLaserSplinePoints; Index++)
+		{
+			float Alpha = (float)Index / (float)NumLaserSplinePoints;
+			Alpha = FMath::Sin(Alpha * PI * 0.5f);
+			const FVector PointOnStraightLaser = FMath::Lerp(InStartLocation, StraightLaserEndLocation, Alpha);
+			const FVector PointOnSmoothLaser = FMath::Lerp(InStartLocation, InEndLocation, Alpha);
+			const FVector PointBetweenLasers = FMath::Lerp(PointOnStraightLaser, PointOnSmoothLaser, Alpha);
+			LaserSplineComponent->AddSplinePoint(PointBetweenLasers, ESplineCoordinateSpace::World, false);
+		}
+		LaserSplineComponent->AddSplinePoint(InEndLocation, ESplineCoordinateSpace::World, false);
+		
+		// Update all the segments of the spline
+		LaserSplineComponent->UpdateSpline();
+
+		const float LaserPointerRadius = LaserRadius;
+		Distance *= 0.0001f;
+		for (int32 Index = 0; Index < NumLaserSplinePoints; Index++)
+		{
+			USplineMeshComponent* SplineMeshComponent = LaserSplineMeshComponents[Index];
+			check(SplineMeshComponent != nullptr);
+
+			FVector StartLoc, StartTangent, EndLoc, EndTangent;
+			LaserSplineComponent->GetLocationAndTangentAtSplinePoint(Index, StartLoc, StartTangent, ESplineCoordinateSpace::Local);
+			LaserSplineComponent->GetLocationAndTangentAtSplinePoint(Index + 1, EndLoc, EndTangent, ESplineCoordinateSpace::Local);
+
+			const float AlphaIndex = (float)Index / (float)NumLaserSplinePoints;
+			const float AlphaDistance = Distance * AlphaIndex;
+			float Radius = LaserPointerRadius * ((AlphaIndex * AlphaDistance) + 1);
+			FVector2D LaserScale(Radius, Radius);
+			SplineMeshComponent->SetStartScale(LaserScale, false);
+
+			const float NextAlphaIndex = (float)(Index + 1) / (float)NumLaserSplinePoints;
+			const float NextAlphaDistance = Distance * NextAlphaIndex;
+			Radius = LaserPointerRadius * ((NextAlphaIndex * NextAlphaDistance) + 1);
+			LaserScale = FVector2D(Radius, Radius);
+			SplineMeshComponent->SetEndScale(LaserScale, false);
+
+			SplineMeshComponent->SetStartAndEnd(StartLoc, StartTangent, EndLoc, EndTangent, true);
+		}
+
+	}
 };	
+
+
