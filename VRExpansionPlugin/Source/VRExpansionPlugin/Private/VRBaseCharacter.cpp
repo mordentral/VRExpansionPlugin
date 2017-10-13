@@ -68,10 +68,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		LeftMotionController->Hand = EControllerHand::Left;
 		LeftMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
-		if (VRReplicatedCamera)
-		{
-			LeftMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
-		}
+		LeftMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
 
 
 	}
@@ -83,10 +80,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		RightMotionController->Hand = EControllerHand::Right;
 		RightMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
-		if (VRReplicatedCamera)
-		{
-			RightMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
-		}
+		RightMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
 	}
 
 	OffsetComponentToWorld = FTransform(FQuat(0.0f, 0.0f, 0.0f, 1.0f), FVector::ZeroVector, FVector(1.0f));

@@ -29,6 +29,7 @@ enum class EVRCustomMovementMode : uint8
 {
 	VRMOVE_Climbing UMETA(DisplayName = "Climbing"),
 	VRMOVE_LowGrav  UMETA(DisplayName = "LowGrav")
+//	VRMove_Spider UMETA(DisplayName = "Spider")
 };
 
 // We use 4 bits for this so a maximum of 16 elements
@@ -45,6 +46,7 @@ enum class EVRConjoinedMovementModes : uint8
 	C_MOVE_MAX = 0x07		UMETA(Hidden),
 	C_VRMOVE_Climbing = 0x08 UMETA(DisplayName = "Climbing"),
 	C_VRMOVE_LowGrav = 0x09 UMETA(DisplayName = "LowGrav"),
+	//C_VRMOVE_Spider = 0x0A UMETA(DisplayName = "Spider"),
 	C_VRMOVE_Custom1 = 0x0A UMETA(DisplayName = "Custom1"),
 	C_VRMOVE_Custom2 = 0x0B UMETA(DisplayName = "Custom2"),
 	C_VRMOVE_Custom3 = 0x0C UMETA(DisplayName = "Custom3"),
@@ -110,15 +112,132 @@ public:
 		TrackedDevice = nullptr;
 	}
 
-	FBPVRWaistTracking_Info()
-	{
-		WaistRadius = 0.0f;
-		TrackedDevice = nullptr;
-		TrackingMode = EBPVRWaistTrackingMode::VRWaist_Tracked_Rear;
-	}
+	FBPVRWaistTracking_Info():
+		RestingRotation(FRotator::ZeroRotator),
+		WaistRadius(0.0f),
+		TrackingMode(EBPVRWaistTrackingMode::VRWaist_Tracked_Rear),
+		TrackedDevice(nullptr)
+	{}
 
 };
 
+
+class FBasicLowPassFilter
+{
+public:
+
+	/** Default constructor */
+	FBasicLowPassFilter() :
+		Previous(FVector::ZeroVector),
+		bFirstTime(true)
+	{}
+
+	/** Calculate */
+	FVector Filter(const FVector& InValue, const FVector& InAlpha)
+	{
+		FVector Result = InValue;
+		if (!bFirstTime)
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				Result[i] = InAlpha[i] * InValue[i] + (1 - InAlpha[i]) * Previous[i];
+			}
+		}
+
+		bFirstTime = false;
+		Previous = Result;
+		return Result;
+	}
+
+	/** The previous filtered value */
+	FVector Previous;
+
+	/** If this is the first time doing a filter */
+	bool bFirstTime;
+};
+
+
+// A re-implementation of the Euro Low Pass Filter that epic uses for the VR Editor, but for blueprints
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPEuroLowPassFilter
+{
+	GENERATED_BODY()
+public:
+
+	/** Default constructor */
+	FBPEuroLowPassFilter() :
+		MinCutoff(1.0f),
+		CutoffSlope(0.007f),
+		DeltaCutoff(1.0f)
+	{}
+
+	FBPEuroLowPassFilter(const float InMinCutoff, const float InCutoffSlope, const float InDeltaCutoff) :
+		MinCutoff(InMinCutoff),
+		CutoffSlope(InCutoffSlope),
+		DeltaCutoff(InDeltaCutoff)
+	{}
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float MinCutoff;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float CutoffSlope;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float DeltaCutoff;
+
+	void ResetSmoothingFilter()
+	{
+		RawFilter.bFirstTime = true;
+		DeltaFilter.bFirstTime = true;
+	}
+
+	/** Smooth vector */
+	FVector RunFilterSmoothing(const FVector &InRawValue, const float &InDeltaTime)
+	{
+		// Calculate the delta, if this is the first time then there is no delta
+		const FVector Delta = RawFilter.bFirstTime == true ? FVector::ZeroVector : (InRawValue - RawFilter.Previous) * InDeltaTime;
+
+		// Filter the delta to get the estimated
+		const FVector Estimated = DeltaFilter.Filter(Delta, FVector(CalculateAlpha(DeltaCutoff, InDeltaTime)));
+
+		// Use the estimated to calculate the cutoff
+		const FVector Cutoff = CalculateCutoff(Estimated);
+
+		// Filter passed value 
+		return RawFilter.Filter(InRawValue, CalculateAlpha(Cutoff, InDeltaTime));
+	}
+
+private:
+
+	const FVector CalculateCutoff(const FVector& InValue)
+	{
+		FVector Result;
+		for (int i = 0; i < 3; i++)
+		{
+			Result[i] = MinCutoff + CutoffSlope * FMath::Abs(InValue[i]);
+		}
+		return Result;
+	}
+
+	const FVector CalculateAlpha(const FVector& InCutoff, const double InDeltaTime) const
+	{
+		FVector Result;
+		for (int i = 0; i < 3; i++)
+		{
+			Result[i] = CalculateAlpha(InCutoff[i], InDeltaTime);
+		}
+		return Result;
+	}
+
+	const float CalculateAlpha(const float InCutoff, const double InDeltaTime) const
+	{
+		const float tau = 1.0 / (2 * PI * InCutoff);
+		return 1.0 / (1.0 + tau / InDeltaTime);
+	}
+
+	FBasicLowPassFilter RawFilter;
+	FBasicLowPassFilter DeltaFilter;
+
+};
 
 //USTRUCT(BlueprintType, Category = "VRExpansionLibrary|Transform")
 
@@ -249,9 +368,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = Replication, AdvancedDisplay)
 		EVRVectorQuantization QuantizationLevel;
 
-	FBPVRComponentPosRep()
+	FBPVRComponentPosRep():
+		QuantizationLevel(EVRVectorQuantization::RoundTwoDecimals)
 	{
-		QuantizationLevel = EVRVectorQuantization::RoundTwoDecimals;
+		//QuantizationLevel = EVRVectorQuantization::RoundTwoDecimals;
 	}
 
 	/** Network serialization */
@@ -469,16 +589,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
 		float AngularDamping;
 
-	FBPAdvGripPhysicsSettings()
-	{
-		bUseAdvancedPhysicsSettings = false;
-		bUseCustomAngularValues = false;
-		bDoNotSetCOMToGripLocation = false;
-		bTurnOffGravityDuringGrip = false;
-		AngularStiffness = 0.0f;
-		AngularDamping = 0.0f;
-		PhysicsConstraintType = EPhysicsGripConstraintType::AccelerationConstraint;
-	}
+	FBPAdvGripPhysicsSettings():
+		bUseAdvancedPhysicsSettings(false),
+		PhysicsConstraintType(EPhysicsGripConstraintType::AccelerationConstraint),
+		bDoNotSetCOMToGripLocation(false),
+		bTurnOffGravityDuringGrip(false),
+		bUseCustomAngularValues(false),
+		AngularStiffness(0.0f),
+		AngularDamping(0.0f)
+	{}
 
 	FORCEINLINE bool operator==(const FBPAdvGripPhysicsSettings &Other) const
 	{
@@ -570,19 +689,17 @@ public:
 	// Store values for frame by frame changes of secondary grips
 	FVector LastRelativeLocation;
 
-	FBPSecondaryGripInfo()
-	{
-		LerpToRate = 0.0f;
-		SecondarySmoothingScaler = 1.0f;
-		SecondaryRelativeLocation = FVector::ZeroVector;
-
-		curLerp = 0.0f;
-		GripLerpState = EGripLerpState::NotLerping;
-
-		SecondaryAttachment = nullptr;
-		bHasSecondaryAttachment = false;
-		bIsSlotGrip = false;
-	}
+	FBPSecondaryGripInfo():
+		bHasSecondaryAttachment(false),
+		SecondaryAttachment(nullptr),
+		SecondarySmoothingScaler(1.0f),
+		SecondaryRelativeLocation(FVector::ZeroVector),
+		bIsSlotGrip(false),
+		LerpToRate(0.0f),
+		GripLerpState(EGripLerpState::NotLerping),
+		curLerp(0.0f),
+		LastRelativeLocation(FVector::ZeroVector)
+	{}
 
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
@@ -671,28 +788,22 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
 		FRotator MaxAngularTranslation;
 
-	FBPInteractionSettings()
-	{
-		bLimitsInLocalSpace = true;
-
-		bLimitX = false;
-		bLimitY = false;
-		bLimitZ = false;
-
-		bLimitPitch = false;
-		bLimitYaw = false;
-		bLimitRoll = false;
-
-		bIgnoreHandRotation = false;
-
-		InitialLinearTranslation = FVector::ZeroVector;
-		MinLinearTranslation = FVector::ZeroVector;
-		MaxLinearTranslation = FVector::ZeroVector;
-
-		InitialAngularTranslation = FRotator::ZeroRotator;
-		MinAngularTranslation = FRotator::ZeroRotator;
-		MaxAngularTranslation = FRotator::ZeroRotator;
-	}
+	FBPInteractionSettings():
+		bLimitsInLocalSpace(true),
+		bLimitX(false),
+		bLimitY(false),
+		bLimitZ(false),
+		bLimitPitch(false),
+		bLimitYaw(false),
+		bLimitRoll(false),
+		bIgnoreHandRotation(false),
+		InitialLinearTranslation(FVector::ZeroVector),
+		MinLinearTranslation(FVector::ZeroVector),
+		MaxLinearTranslation(FVector::ZeroVector),
+		InitialAngularTranslation(FRotator::ZeroRotator),
+		MinAngularTranslation(FRotator::ZeroRotator),
+		MaxAngularTranslation(FRotator::ZeroRotator)
+	{}
 };
 
 
@@ -767,18 +878,15 @@ public:
 		float CachedDamping;
 		FBPAdvGripPhysicsSettings CachedAdvancedPhysicsSettings;
 
-		FGripValueCache()
-		{
-			// Since i'm not full serializing now I need to check against cached values
-			// The OnRep last value only holds delta now so finding object off of it will not work
-			bWasInitiallyRepped = false;
-			bCachedHasSecondaryAttachment = false;
-			CachedSecondaryRelativeLocation = FVector::ZeroVector;
-			CachedGripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
-			CachedGripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
-			CachedStiffness = 1500.0f;
-			CachedDamping = 200.0f;
-		}
+		FGripValueCache():
+			bWasInitiallyRepped(false),
+			bCachedHasSecondaryAttachment(false),
+			CachedSecondaryRelativeLocation(FVector::ZeroVector),
+			CachedGripCollisionType(EGripCollisionType::InteractiveCollisionWithSweep),
+			CachedGripMovementReplicationSetting(EGripMovementReplicationSettings::ForceClientSideMovement),
+			CachedStiffness(1500.0f),
+			CachedDamping(200.0f)
+		{}
 
 	}ValueCache;
 
@@ -827,22 +935,24 @@ public:
 		return false;
 	}
 
-	FBPActorGripInformation()
+	FBPActorGripInformation():
+		GripTargetType(EGripTargetType::ActorGrip),
+		GrippedObject(nullptr),
+		GripCollisionType(EGripCollisionType::InteractiveCollisionWithPhysics),
+		GripLateUpdateSetting(EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping),
+		bColliding(false),
+		RelativeTransform(FTransform::Identity),
+		bIsSlotGrip(false),
+		GripMovementReplicationSetting(EGripMovementReplicationSettings::ForceClientSideMovement),
+		bOriginalReplicatesMovement(false),
+		bOriginalGravity(false),
+		Damping(200.0f),
+		Stiffness(1500.0f),
+		AdditionTransform(FTransform::Identity),
+		bIsLocked(false),
+		LastLockedRotation(FRotator::ZeroRotator),
+		bSkipNextConstraintLengthCheck(false)
 	{
-		bSkipNextConstraintLengthCheck = false;
-		GripTargetType = EGripTargetType::ActorGrip;
-		Damping = 200.0f;
-		Stiffness = 1500.0f;
-		GrippedObject = nullptr;
-		bColliding = false;
-		GripCollisionType = EGripCollisionType::InteractiveCollisionWithSweep;
-		GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping;
-		GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
-		bIsLocked = false;
-
-		RelativeTransform = FTransform::Identity;
-		AdditionTransform = FTransform::Identity;
-		bIsSlotGrip = false;
 	}	
 
 	/** Network serialization */
@@ -984,27 +1094,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (editcondition = "bIsInteractible"))
 		FBPInteractionSettings InteractionSettings;
 
-	FBPInterfaceProperties()
+	FBPInterfaceProperties():
+		bDenyGripping(false),
+		OnTeleportBehavior(EGripInterfaceTeleportBehavior::DropOnTeleport),
+		bSimulateOnDrop(true),
+		SlotDefaultGripType(EGripCollisionType::ManipulationGrip),
+		FreeDefaultGripType(EGripCollisionType::ManipulationGrip),
+		SecondaryGripType(ESecondaryGripType::SG_None),
+		MovementReplicationType(EGripMovementReplicationSettings::ForceClientSideMovement),
+		LateUpdateSetting(EGripLateUpdateSettings::LateUpdatesAlwaysOff),
+		ConstraintStiffness(1500.0f),
+		ConstraintDamping(200.0f),
+		ConstraintBreakDistance(0.0f),
+		SecondarySlotRange(20.0f),
+		PrimarySlotRange(20.0f),
+		bIsInteractible(false),
+		bIsHeld(false),
+		HoldingController(nullptr)
 	{
-		bDenyGripping = false;
-		OnTeleportBehavior = EGripInterfaceTeleportBehavior::DropOnTeleport;
-		bSimulateOnDrop = true;
-		SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
-		FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-		//bCanHaveDoubleGrip = false;
-		SecondaryGripType = ESecondaryGripType::SG_None;
-		//GripTarget = EGripTargetType::ComponentGrip;
-		MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
-		LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
-		ConstraintStiffness = 1500.0f;
-		ConstraintDamping = 200.0f;
-		ConstraintBreakDistance = 0.0f;
-		SecondarySlotRange = 20.0f;
-		PrimarySlotRange = 20.0f;
-		bIsInteractible = false;
-
-		bIsHeld = false;
-		HoldingController = nullptr;
 	}
 };
 
