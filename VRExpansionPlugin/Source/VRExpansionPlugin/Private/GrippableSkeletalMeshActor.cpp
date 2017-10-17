@@ -142,9 +142,9 @@ float AGrippableSkeletalMeshActor::GripDamping_Implementation()
 	return VRGripInterfaceSettings.ConstraintDamping;
 }
 
-FBPAdvGripPhysicsSettings AGrippableSkeletalMeshActor::AdvancedPhysicsSettings_Implementation()
+FBPAdvGripSettings AGrippableSkeletalMeshActor::AdvancedGripSettings_Implementation()
 {
-	return VRGripInterfaceSettings.AdvancedPhysicsSettings;
+	return VRGripInterfaceSettings.AdvancedGripSettings;
 }
 
 float AGrippableSkeletalMeshActor::GripBreakDistance_Implementation()

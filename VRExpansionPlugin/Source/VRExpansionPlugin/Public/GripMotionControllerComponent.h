@@ -113,6 +113,21 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_LocallyGrippedActors)
 	TArray<FBPActorGripInformation> LocallyGrippedActors;
 
+	// I am exposing these here for tweaking
+	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with this hand
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "OneEuroFilterSettings")
+		float OneEuroMinCutoff;
+
+	// I am exposing these here for tweaking
+	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with this hand
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "OneEuroFilterSettings")
+		float OneEuroCutoffSlope;
+
+	// I am exposing these here for tweaking
+	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with this hand
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "OneEuroFilterSettings")
+		float OneEuroDeltaCutoff;
+
 	// Locally Gripped Array functions
 
 	// Notify a client that their local grip was bad
@@ -198,6 +213,13 @@ public:
 			// Manage lerp states
 			if (Grip.ValueCache.bCachedHasSecondaryAttachment != Grip.SecondaryGripInfo.bHasSecondaryAttachment || Grip.ValueCache.CachedSecondaryRelativeLocation != Grip.SecondaryGripInfo.SecondaryRelativeLocation)
 			{
+				// Reset the secondary grip distance
+				Grip.SecondaryGripInfo.SecondaryGripDistance = 0.0f;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = OneEuroCutoffSlope;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = OneEuroDeltaCutoff;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = OneEuroMinCutoff;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
+
 				if (FMath::IsNearlyZero(Grip.SecondaryGripInfo.LerpToRate)) // Zero, could use IsNearlyZero instead
 					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
 				else
@@ -240,7 +262,7 @@ public:
 			else // If re-creating the grip anyway we don't need to do the below
 			{
 				// If the stiffness and damping got changed server side
-				if ( !FMath::IsNearlyEqual(Grip.ValueCache.CachedStiffness, Grip.Stiffness) || !FMath::IsNearlyEqual(Grip.ValueCache.CachedDamping, Grip.Damping) || Grip.ValueCache.CachedAdvancedPhysicsSettings != Grip.AdvancedPhysicsSettings)
+				if ( !FMath::IsNearlyEqual(Grip.ValueCache.CachedStiffness, Grip.Stiffness) || !FMath::IsNearlyEqual(Grip.ValueCache.CachedDamping, Grip.Damping) || Grip.ValueCache.CachedPhysicsSettings != Grip.AdvancedGripSettings.PhysicsSettings)
 				{
 					SetGripConstraintStiffnessAndDamping(&Grip);
 				}
@@ -254,7 +276,7 @@ public:
 		Grip.ValueCache.CachedGripMovementReplicationSetting = Grip.GripMovementReplicationSetting;
 		Grip.ValueCache.CachedStiffness = Grip.Stiffness;
 		Grip.ValueCache.CachedDamping = Grip.Damping;
-		Grip.ValueCache.CachedAdvancedPhysicsSettings = Grip.AdvancedPhysicsSettings;
+		Grip.ValueCache.CachedPhysicsSettings = Grip.AdvancedGripSettings.PhysicsSettings;
 
 		return true;
 	}
@@ -726,7 +748,7 @@ public:
 	// Adds a secondary attachment point to the grip
 	// bUseLegacySecondaryLogic enables new singularity removal code, leave true to keep original behavior
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, float SecondarySmoothingScaler = 1.0f, bool bIsSlotGrip = false);
+	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f,/* float SecondarySmoothingScaler = 1.0f,*/ bool bIsSlotGrip = false);
 
 	// Removes a secondary attachment point from a grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")

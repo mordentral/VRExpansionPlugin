@@ -135,9 +135,9 @@ float UGrippableCapsuleComponent::GripDamping_Implementation()
 	return VRGripInterfaceSettings.ConstraintDamping;
 }
 
-FBPAdvGripPhysicsSettings UGrippableCapsuleComponent::AdvancedPhysicsSettings_Implementation()
+FBPAdvGripSettings UGrippableCapsuleComponent::AdvancedGripSettings_Implementation()
 {
-	return VRGripInterfaceSettings.AdvancedPhysicsSettings;
+	return VRGripInterfaceSettings.AdvancedGripSettings;
 }
 
 float UGrippableCapsuleComponent::GripBreakDistance_Implementation()

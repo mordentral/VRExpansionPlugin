@@ -171,9 +171,9 @@ float UVRDialComponent::GripDamping_Implementation()
 	return 200.0f;
 }
 
-FBPAdvGripPhysicsSettings UVRDialComponent::AdvancedPhysicsSettings_Implementation()
+FBPAdvGripSettings UVRDialComponent::AdvancedGripSettings_Implementation()
 {
-	return FBPAdvGripPhysicsSettings();
+	return FBPAdvGripSettings();
 }
 
 float UVRDialComponent::GripBreakDistance_Implementation()

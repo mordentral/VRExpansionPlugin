@@ -302,9 +302,9 @@ float UVRLeverComponent::GripDamping_Implementation()
 	return Damping;
 }
 
-FBPAdvGripPhysicsSettings UVRLeverComponent::AdvancedPhysicsSettings_Implementation()
+FBPAdvGripSettings UVRLeverComponent::AdvancedGripSettings_Implementation()
 {
-	return FBPAdvGripPhysicsSettings();
+	return FBPAdvGripSettings();
 }
 
 float UVRLeverComponent::GripBreakDistance_Implementation()
