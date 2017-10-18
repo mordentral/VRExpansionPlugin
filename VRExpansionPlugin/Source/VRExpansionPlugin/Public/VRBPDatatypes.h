@@ -385,8 +385,8 @@ public:
 		bOutSuccess = true;
 
 		// Defines the level of Quantization
-		uint8 Flags = (uint8)QuantizationLevel;
-		Ar.SerializeBits(&Flags, 1);
+		//uint8 Flags = (uint8)QuantizationLevel;
+		Ar.SerializeBits(&QuantizationLevel, 1); // Only two values 0:1
 
 		// No longer using their built in rotation rep, as controllers will rarely if ever be at 0 rot on an axis and 
 		// so the 1 bit overhead per axis is just that, overhead
@@ -414,7 +414,7 @@ public:
 		}
 		else // If loading
 		{
-			QuantizationLevel = (EVRVectorQuantization)Flags;
+			//QuantizationLevel = (EVRVectorQuantization)Flags;
 
 			switch (QuantizationLevel)
 			{
@@ -562,8 +562,8 @@ enum class EGripInterfaceTeleportBehavior : uint8
 UENUM(Blueprintable)
 enum class EPhysicsGripConstraintType : uint8
 {
-	AccelerationConstraint,
-	ForceConstraint
+	AccelerationConstraint = 0,
+	ForceConstraint = 1
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
@@ -631,15 +631,21 @@ public:
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
-		Ar << bUsePhysicsSettings;
+		//Ar << bUsePhysicsSettings;
+		Ar.SerializeBits(&bUsePhysicsSettings, 1);
 
 		if (bUsePhysicsSettings)
 		{
-			Ar << bDoNotSetCOMToGripLocation;
-			Ar << PhysicsConstraintType;
-			Ar << bTurnOffGravityDuringGrip;
+			//Ar << bDoNotSetCOMToGripLocation;
+			Ar.SerializeBits(&bDoNotSetCOMToGripLocation, 1);
+			
+			//Ar << PhysicsConstraintType;
+			Ar.SerializeBits(&PhysicsConstraintType, 1); // This only has two elements
 
-			Ar << bUseCustomAngularValues;
+			//Ar << bTurnOffGravityDuringGrip;
+			Ar.SerializeBits(&bTurnOffGravityDuringGrip, 1);
+			//Ar << bUseCustomAngularValues;
+			Ar.SerializeBits(&bUseCustomAngularValues, 1);
 
 			if (bUseCustomAngularValues)
 			{
@@ -718,7 +724,8 @@ public:
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
-		Ar << bUseSecondaryGripSettings;
+		//Ar << bUseSecondaryGripSettings;
+		Ar.SerializeBits(&bUseSecondaryGripSettings, 1);
 
 		if (bUseSecondaryGripSettings)
 		{
@@ -732,7 +739,8 @@ public:
 			else
 				bOutSuccess &= ReadFixedCompressedFloat<1, 9>(SecondaryGripScaler, Ar);
 			
-			Ar << bUseSecondaryGripDistanceInfluence;
+			//Ar << bUseSecondaryGripDistanceInfluence;
+			Ar.SerializeBits(&bUseSecondaryGripDistanceInfluence, 1);
 			
 			if (bUseSecondaryGripDistanceInfluence)
 			{
@@ -753,11 +761,15 @@ public:
 				}
 			}
 
-			Ar << bLimitGripScaling;
+			//Ar << bLimitGripScaling;
+			Ar.SerializeBits(&bLimitGripScaling, 1);
+
 			if (bLimitGripScaling)
 			{
-				Ar << MinimumGripScaling;
-				Ar << MaximumGripScaling;
+				//Ar << MinimumGripScaling;
+				MinimumGripScaling.NetSerialize(Ar, Map, bOutSuccess);
+				//Ar << MaximumGripScaling;
+				MaximumGripScaling.NetSerialize(Ar, Map, bOutSuccess);
 			}
 		}
 
@@ -790,7 +802,6 @@ public:
 	FBPAdvGripSettings()
 	{}
 };
-
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPSecondaryGripInfo
@@ -844,13 +855,17 @@ public:
 	{
 		bOutSuccess = true;
 
-		Ar << bHasSecondaryAttachment;
-		
+		//Ar << bHasSecondaryAttachment;
+		Ar.SerializeBits(&bHasSecondaryAttachment, 1);
+
 		if (bHasSecondaryAttachment)
 		{
 			Ar << SecondaryAttachment;
-			Ar << SecondaryRelativeLocation;
-			Ar << bIsSlotGrip;
+			//Ar << SecondaryRelativeLocation;
+			SecondaryRelativeLocation.NetSerialize(Ar, Map, bOutSuccess);
+
+			//Ar << bIsSlotGrip;
+			Ar.SerializeBits(&bIsSlotGrip, 1);
 		}
 
 		//Ar << LerpToRate;
