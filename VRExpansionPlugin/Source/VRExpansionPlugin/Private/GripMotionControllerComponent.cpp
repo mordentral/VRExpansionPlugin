@@ -1464,6 +1464,8 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
 				root->SetSimulatePhysics(bSimulate);
+				root->UpdateComponentToWorld(); // This fixes the late update offset
+
 				if (bSimulate)
 					root->WakeAllRigidBodies();
 
@@ -1506,6 +1508,8 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
 			root->SetSimulatePhysics(bSimulate);
+			root->UpdateComponentToWorld(); // This fixes the late update offset
+
 			if (bSimulate)
 				root->WakeAllRigidBodies();
 
