@@ -122,7 +122,7 @@ class VREXPANSIONPLUGIN_API FSavedMove_VRSimpleCharacter : public FSavedMove_VRB
 public:
 
 	//FVector VRCapsuleLocation;
-	FVector LFDiff;
+	//FVector LFDiff;
 	//FVector CustomVRInputVector;
 	//FRotator VRCapsuleRotation;
 	//FVector RequestedVelocity;
