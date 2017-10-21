@@ -97,9 +97,10 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		float LeverReturnSpeed;
 
-	float lerpCounter;
+	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")
+		bool bIsLerping;
+
 	float LastDeltaAngle;
-	bool bIsLerping;
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;
 	FVector InitialInteractorDropLocation;

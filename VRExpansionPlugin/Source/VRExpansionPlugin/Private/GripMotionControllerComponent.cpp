@@ -11,6 +11,7 @@
 #include "DrawDebugHelpers.h"
 
 #include "PhysicsPublic.h"
+#include "PhysicsEngine/BodySetup.h"
 
 #if WITH_PHYSX
 #include "PhysXSupport.h"
@@ -3019,12 +3020,12 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 #if WITH_PHYSX
 	// Get the PxRigidDynamic that we want to grab.
 	FBodyInstance* rBodyInstance = root->GetBodyInstance();
-	if (!rBodyInstance)
+	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance())
 	{
 		return false;
 	}
 
-	//rBodyInstance->SetBodyTransform(root->GetComponentTransform(), ETeleportType::TeleportPhysics);
+	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
 
 	ExecuteOnPxRigidDynamicReadWrite(rBodyInstance, [&](PxRigidDynamic* Actor)
 	{
