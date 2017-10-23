@@ -11,6 +11,7 @@
 #include "LateUpdateManager.h"
 #include "IXRTrackingSystem.h"
 #include "VRGripInterface.h"
+#include "VRGlobalSettings.h"
 
 #include "GripMotionControllerComponent.generated.h"
 
@@ -113,21 +114,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_LocallyGrippedActors)
 	TArray<FBPActorGripInformation> LocallyGrippedActors;
 
-	// I am exposing these here for tweaking
-	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with this hand
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "OneEuroFilterSettings")
-		float OneEuroMinCutoff;
-
-	// I am exposing these here for tweaking
-	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with this hand
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "OneEuroFilterSettings")
-		float OneEuroCutoffSlope;
-
-	// I am exposing these here for tweaking
-	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with this hand
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "OneEuroFilterSettings")
-		float OneEuroDeltaCutoff;
-
 	// Locally Gripped Array functions
 
 	// Notify a client that their local grip was bad
@@ -215,11 +201,13 @@ public:
 			{
 				// Reset the secondary grip distance
 				Grip.SecondaryGripInfo.SecondaryGripDistance = 0.0f;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = OneEuroCutoffSlope;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = OneEuroDeltaCutoff;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = OneEuroMinCutoff;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
 
+				const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = VRSettings.OneEuroCutoffSlope;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = VRSettings.OneEuroMinCutoff;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
+				
 				if (FMath::IsNearlyZero(Grip.SecondaryGripInfo.LerpToRate)) // Zero, could use IsNearlyZero instead
 					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
 				else
@@ -393,7 +381,7 @@ public:
 	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 		bool DropObject(
-			UObject * ObjectToDrop, 
+			UObject * ObjectToDrop,
 			bool bSimulate,
 			FVector OptionalAngularVelocity = FVector::ZeroVector,
 			FVector OptionalLinearVelocity = FVector::ZeroVector);

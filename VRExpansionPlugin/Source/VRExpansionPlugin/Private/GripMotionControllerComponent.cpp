@@ -69,11 +69,6 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bSmoothReplicatedMotion = false;
 	bReppedOnce = false;
 	bOffsetByHMD = false;
-
-	// Defaulting to epics editor values for now
-	OneEuroDeltaCutoff = 1.0f;
-	OneEuroMinCutoff = 0.9;
-	OneEuroCutoffSlope = 0.007f;
 }
 
 //=============================================================================
@@ -1702,9 +1697,12 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 		GripToUse->SecondaryGripInfo.SecondaryAttachment = SecondaryPointComponent;
 		GripToUse->SecondaryGripInfo.bHasSecondaryAttachment = true;
 		GripToUse->SecondaryGripInfo.SecondaryGripDistance = 0.0f;
-		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = OneEuroCutoffSlope;
-		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = OneEuroDeltaCutoff;
-		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = OneEuroMinCutoff;
+
+		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = VRSettings.OneEuroCutoffSlope;
+		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
+		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = VRSettings.OneEuroMinCutoff;
+		
 		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
 	//	GripToUse->SecondaryGripInfo.SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
 		GripToUse->SecondaryGripInfo.bIsSlotGrip = bIsSlotGrip;
@@ -2310,6 +2308,13 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 
 			if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
 			{
+				if (Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler < 1.0f)
+				{
+					FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.RunFilterSmoothing(frontLoc, DeltaTime);
+
+					frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler);
+				}
+				
 				frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
 			}
 			else if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
