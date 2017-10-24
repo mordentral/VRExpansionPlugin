@@ -214,7 +214,7 @@ EGripLateUpdateSettings UVRSliderComponent::GripLateUpdateSetting_Implementation
 	return EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 }
 
-float UVRSliderComponent::GripStiffness_Implementation()
+/*float UVRSliderComponent::GripStiffness_Implementation()
 {
 	return 0.0f;
 }
@@ -222,6 +222,11 @@ float UVRSliderComponent::GripStiffness_Implementation()
 float UVRSliderComponent::GripDamping_Implementation()
 {
 	return 0.0f;
+}*/
+void UVRSliderComponent::GetGripStiffnessAndDamping_Implementation(float &GripStiffnessOut, float &GripDampingOut)
+{
+	GripStiffnessOut = 0.0f;
+	GripDampingOut = 0.0f;
 }
 
 FBPAdvGripSettings UVRSliderComponent::AdvancedGripSettings_Implementation()

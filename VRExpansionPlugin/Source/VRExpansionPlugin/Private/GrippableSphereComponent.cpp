@@ -89,37 +89,15 @@ bool UGrippableSphereComponent::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-/*EGripCollisionType UGrippableSphereComponent::SlotGripType_Implementation()
-{
-	return VRGripInterfaceSettings.SlotDefaultGripType;
-}
-
-EGripCollisionType UGrippableSphereComponent::FreeGripType_Implementation()
-{
-	return VRGripInterfaceSettings.FreeDefaultGripType;
-}*/
-
 EGripCollisionType UGrippableSphereComponent::GetPrimaryGripType_Implementation(bool bIsSlot)
 {
 	return bIsSlot ? VRGripInterfaceSettings.SlotDefaultGripType : VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
-
-/*bool UGrippableSphereComponent::CanHaveDoubleGrip_Implementation()
-{
-	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
-}*/
-
 ESecondaryGripType UGrippableSphereComponent::SecondaryGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SecondaryGripType;
 }
-
-
-/*EGripTargetType UGrippableSphereComponent::GripTargetType_Implementation()
-{
-	return VRGripInterfaceSettings.GripTarget;
-}*/
 
 EGripMovementReplicationSettings UGrippableSphereComponent::GripMovementReplicationType_Implementation()
 {
@@ -131,14 +109,10 @@ EGripLateUpdateSettings UGrippableSphereComponent::GripLateUpdateSetting_Impleme
 	return VRGripInterfaceSettings.LateUpdateSetting;
 }
 
-float UGrippableSphereComponent::GripStiffness_Implementation()
+void UGrippableSphereComponent::GetGripStiffnessAndDamping_Implementation(float &GripStiffnessOut, float &GripDampingOut)
 {
-	return VRGripInterfaceSettings.ConstraintStiffness;
-}
-
-float UGrippableSphereComponent::GripDamping_Implementation()
-{
-	return VRGripInterfaceSettings.ConstraintDamping;
+	GripStiffnessOut = VRGripInterfaceSettings.ConstraintStiffness;
+	GripDampingOut = VRGripInterfaceSettings.ConstraintDamping;
 }
 
 FBPAdvGripSettings UGrippableSphereComponent::AdvancedGripSettings_Implementation()
@@ -150,22 +124,6 @@ float UGrippableSphereComponent::GripBreakDistance_Implementation()
 {
 	return VRGripInterfaceSettings.ConstraintBreakDistance;
 }
-
-/*void UGrippableSphereComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
-{
-	if (OverridePrefix.IsNone())
-		OverridePrefix = "VRGripS";
-
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.SecondarySlotRange, bHadSlotInRange, SlotWorldTransform);
-}
-
-void UGrippableSphereComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
-{
-	if (OverridePrefix.IsNone())
-		OverridePrefix = "VRGripP";
-
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
-}*/
 
 void UGrippableSphereComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {

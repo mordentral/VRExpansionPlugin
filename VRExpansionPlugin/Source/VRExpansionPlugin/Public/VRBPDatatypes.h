@@ -348,7 +348,6 @@ struct TStructOpsTypeTraits< FTransform_NetQuantize > : public TStructOpsTypeTra
 	};
 };
 
-
 UENUM()
 enum class EVRVectorQuantization : uint8
 {
@@ -990,9 +989,9 @@ public:
 
 	// I would have loved to have both of these not be replicated (and in normal grips they wouldn't have to be)
 	// However for serialization purposes and Client_Authority grips they need to be....
-	UPROPERTY(BlueprintReadOnly, Category = "Settings")
+	UPROPERTY()
 		bool bOriginalReplicatesMovement;
-	UPROPERTY(BlueprintReadOnly, Category = "Settings")
+	UPROPERTY()
 		bool bOriginalGravity;
 
 	UPROPERTY()
@@ -1000,7 +999,7 @@ public:
 	UPROPERTY()
 		float Stiffness;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		FBPAdvGripSettings AdvancedGripSettings;
 
 

@@ -97,36 +97,15 @@ bool AGrippableSkeletalMeshActor::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-/*EGripCollisionType AGrippableSkeletalMeshActor::SlotGripType_Implementation()
-{
-	return VRGripInterfaceSettings.SlotDefaultGripType;
-}
-
-EGripCollisionType AGrippableSkeletalMeshActor::FreeGripType_Implementation()
-{
-	return VRGripInterfaceSettings.FreeDefaultGripType;
-}*/
-
 EGripCollisionType AGrippableSkeletalMeshActor::GetPrimaryGripType_Implementation(bool bIsSlot)
 {
 	return bIsSlot ? VRGripInterfaceSettings.SlotDefaultGripType : VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
-/*bool AGrippableSkeletalMeshActor::CanHaveDoubleGrip_Implementation()
-{
-	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
-}*/
-
 ESecondaryGripType AGrippableSkeletalMeshActor::SecondaryGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SecondaryGripType;
 }
-
-
-/*EGripTargetType AGrippableSkeletalMeshActor::GripTargetType_Implementation()
-{
-	return VRGripInterfaceSettings.GripTarget;
-}*/
 
 EGripMovementReplicationSettings AGrippableSkeletalMeshActor::GripMovementReplicationType_Implementation()
 {
@@ -138,14 +117,10 @@ EGripLateUpdateSettings AGrippableSkeletalMeshActor::GripLateUpdateSetting_Imple
 	return VRGripInterfaceSettings.LateUpdateSetting;
 }
 
-float AGrippableSkeletalMeshActor::GripStiffness_Implementation()
+void AGrippableSkeletalMeshActor::GetGripStiffnessAndDamping_Implementation(float &GripStiffnessOut, float &GripDampingOut)
 {
-	return VRGripInterfaceSettings.ConstraintStiffness;
-}
-
-float AGrippableSkeletalMeshActor::GripDamping_Implementation()
-{
-	return VRGripInterfaceSettings.ConstraintDamping;
+	GripStiffnessOut = VRGripInterfaceSettings.ConstraintStiffness;
+	GripDampingOut = VRGripInterfaceSettings.ConstraintDamping;
 }
 
 FBPAdvGripSettings AGrippableSkeletalMeshActor::AdvancedGripSettings_Implementation()
@@ -157,22 +132,6 @@ float AGrippableSkeletalMeshActor::GripBreakDistance_Implementation()
 {
 	return VRGripInterfaceSettings.ConstraintBreakDistance;
 }
-
-/*void AGrippableSkeletalMeshActor::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
-{
-	if (OverridePrefix.IsNone())
-		OverridePrefix = "VRGripS";
-
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.SecondarySlotRange, bHadSlotInRange, SlotWorldTransform);
-}
-
-void AGrippableSkeletalMeshActor::ClosestPrimarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
-{
-	if (OverridePrefix.IsNone())
-		OverridePrefix = "VRGripP";
-
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
-}*/
 
 void AGrippableSkeletalMeshActor::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {

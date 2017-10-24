@@ -209,13 +209,17 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripLateUpdateSettings GripLateUpdateSetting();
 
-	// What grip stiffness to use if using a physics constraint
+	/*// What grip stiffness to use if using a physics constraint
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripStiffness();
 
 	// What grip damping to use if using a physics constraint
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripDamping();
+		*/
+		// What grip stiffness and damping to use if using a physics constraint
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void GetGripStiffnessAndDamping(float &GripStiffnessOut, float &GripDampingOut);
 
 	// Get the advanced physics settings for this grip
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

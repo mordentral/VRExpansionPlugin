@@ -677,12 +677,16 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 		{
 			EGripCollisionType CollisionType = IVRGripInterface::Execute_GetPrimaryGripType(PrimComp, bIsSlotGrip);
 
+			float Stiffness;
+			float Damping;
+			IVRGripInterface::Execute_GetGripStiffnessAndDamping(PrimComp, Stiffness, Damping);
+
 			return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, NAME_None,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(PrimComp),
 				IVRGripInterface::Execute_GripMovementReplicationType(PrimComp),
-				IVRGripInterface::Execute_GripStiffness(PrimComp),
-				IVRGripInterface::Execute_GripDamping(PrimComp),
+				Stiffness,
+				Damping,
 				bIsSlotGrip
 				);
 		}
@@ -690,12 +694,16 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 		{
 			EGripCollisionType CollisionType = IVRGripInterface::Execute_GetPrimaryGripType(Owner, bIsSlotGrip);
 
+			float Stiffness;
+			float Damping;
+			IVRGripInterface::Execute_GetGripStiffnessAndDamping(Owner, Stiffness, Damping);
+
 			return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, NAME_None,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(Owner),
 				IVRGripInterface::Execute_GripMovementReplicationType(Owner),
-				IVRGripInterface::Execute_GripStiffness(Owner),
-				IVRGripInterface::Execute_GripDamping(Owner),
+				Stiffness,
+				Damping,
 				bIsSlotGrip
 				);
 		}
@@ -716,12 +724,16 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 		{
 			EGripCollisionType CollisionType = IVRGripInterface::Execute_GetPrimaryGripType(root, bIsSlotGrip);
 
+			float Stiffness;
+			float Damping;
+			IVRGripInterface::Execute_GetGripStiffnessAndDamping(root, Stiffness, Damping);
+
 			return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, NAME_None,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(root),
 				IVRGripInterface::Execute_GripMovementReplicationType(root),
-				IVRGripInterface::Execute_GripStiffness(root),
-				IVRGripInterface::Execute_GripDamping(root),
+				Stiffness,
+				Damping,
 				bIsSlotGrip
 				);
 		}
@@ -729,12 +741,16 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 		{
 			EGripCollisionType CollisionType = IVRGripInterface::Execute_GetPrimaryGripType(Actor, bIsSlotGrip);
 
+			float Stiffness;
+			float Damping;
+			IVRGripInterface::Execute_GetGripStiffnessAndDamping(Actor, Stiffness, Damping);
+
 			return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, NAME_None,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(Actor),
 				IVRGripInterface::Execute_GripMovementReplicationType(Actor),
-				IVRGripInterface::Execute_GripStiffness(Actor),
-				IVRGripInterface::Execute_GripDamping(Actor),
+				Stiffness,
+				Damping,
 				bIsSlotGrip
 				);
 		}

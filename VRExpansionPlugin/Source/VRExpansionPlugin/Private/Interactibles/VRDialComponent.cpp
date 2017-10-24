@@ -167,7 +167,7 @@ EGripLateUpdateSettings UVRDialComponent::GripLateUpdateSetting_Implementation()
 	return EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 }
 
-float UVRDialComponent::GripStiffness_Implementation()
+/*float UVRDialComponent::GripStiffness_Implementation()
 {
 	return 1500.0f;
 }
@@ -175,6 +175,12 @@ float UVRDialComponent::GripStiffness_Implementation()
 float UVRDialComponent::GripDamping_Implementation()
 {
 	return 200.0f;
+}*/
+
+void UVRDialComponent::GetGripStiffnessAndDamping_Implementation(float &GripStiffnessOut, float &GripDampingOut)
+{
+	GripStiffnessOut = 0.0f;
+	GripDampingOut = 0.0f;
 }
 
 FBPAdvGripSettings UVRDialComponent::AdvancedGripSettings_Implementation()
