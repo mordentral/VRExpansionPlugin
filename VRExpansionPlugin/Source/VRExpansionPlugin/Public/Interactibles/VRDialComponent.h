@@ -187,13 +187,18 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool SimulateOnDrop();
 
-	// Grip type to use when gripping a slot
+	/*// Grip type to use when gripping a slot
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripCollisionType SlotGripType();
 
 	// Grip type to use when not gripping a slot
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripCollisionType FreeGripType();
+		*/
+
+		// Grip type to use
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		EGripCollisionType GetPrimaryGripType(bool bIsSlot);
 
 	// Secondary grip type
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -223,13 +228,20 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripBreakDistance();
 
-	// Get closest secondary slot in range
+	/*// Get closest secondary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void ClosestSecondarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
 	// Get closest primary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void ClosestPrimarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
+		*/
+
+	// Get grip slot in range
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
+
+
 
 	// Check if the object is an interactable
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -295,6 +307,10 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 	// Call to stop using an object
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void OnEndSecondaryUsed();
+
+	// Call to send an action event to the object
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnInput(FKey Key, EInputEvent KeyEvent);
 
 	protected:
 

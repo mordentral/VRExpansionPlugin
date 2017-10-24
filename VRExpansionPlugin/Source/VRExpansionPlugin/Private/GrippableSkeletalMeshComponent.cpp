@@ -73,6 +73,7 @@ void UGrippableSkeletalMeshComponent::OnUsed_Implementation() {}
 void UGrippableSkeletalMeshComponent::OnEndUsed_Implementation() {}
 void UGrippableSkeletalMeshComponent::OnSecondaryUsed_Implementation() {}
 void UGrippableSkeletalMeshComponent::OnEndSecondaryUsed_Implementation() {}
+void UGrippableSkeletalMeshComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 
 bool UGrippableSkeletalMeshComponent::DenyGripping_Implementation()
 {
@@ -89,7 +90,7 @@ bool UGrippableSkeletalMeshComponent::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-EGripCollisionType UGrippableSkeletalMeshComponent::SlotGripType_Implementation()
+/*EGripCollisionType UGrippableSkeletalMeshComponent::SlotGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SlotDefaultGripType;
 }
@@ -97,6 +98,11 @@ EGripCollisionType UGrippableSkeletalMeshComponent::SlotGripType_Implementation(
 EGripCollisionType UGrippableSkeletalMeshComponent::FreeGripType_Implementation()
 {
 	return VRGripInterfaceSettings.FreeDefaultGripType;
+}*/
+
+EGripCollisionType UGrippableSkeletalMeshComponent::GetPrimaryGripType_Implementation(bool bIsSlot)
+{
+	return bIsSlot ? VRGripInterfaceSettings.SlotDefaultGripType : VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
 /*bool UGrippableSkeletalMeshComponent::CanHaveDoubleGrip_Implementation()
@@ -144,7 +150,7 @@ float UGrippableSkeletalMeshComponent::GripBreakDistance_Implementation()
 	return VRGripInterfaceSettings.ConstraintBreakDistance;
 }
 
-void UGrippableSkeletalMeshComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+/*void UGrippableSkeletalMeshComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	if (OverridePrefix.IsNone())
 		OverridePrefix = "VRGripS";
@@ -158,6 +164,14 @@ void UGrippableSkeletalMeshComponent::ClosestPrimarySlotInRange_Implementation(F
 		OverridePrefix = "VRGripP";
 
 	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
+}*/
+
+void UGrippableSkeletalMeshComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+{
+	if (OverridePrefix.IsNone())
+		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
+
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
 bool UGrippableSkeletalMeshComponent::IsInteractible_Implementation()

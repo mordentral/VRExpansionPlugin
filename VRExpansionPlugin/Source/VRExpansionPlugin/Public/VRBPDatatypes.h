@@ -733,7 +733,7 @@ public:
 
 			//Ar << SecondaryGripScaler;
 
-			// This is 0.0-1.0, using normalized compression to get it smaller, 12 bits = 1 bit + 1 bit sign+value and 7 bits precision for 128 / full 2 digit precision
+			// This is 0.0-1.0, using normalized compression to get it smaller, 9 bits = 1 bit + 1 bit sign+value and 7 bits precision for 128 / full 2 digit precision
 			if (Ar.IsSaving())
 				bOutSuccess &= WriteFixedCompressedFloat<1, 9>(SecondaryGripScaler, Ar);
 			else
@@ -756,7 +756,7 @@ public:
 				}
 				else
 				{
-					bOutSuccess &= WriteFixedCompressedFloat<256, 16>(GripInfluenceDeadZone, Ar);
+					bOutSuccess &= ReadFixedCompressedFloat<256, 16>(GripInfluenceDeadZone, Ar);
 					bOutSuccess &= ReadFixedCompressedFloat<256, 16>(GripInfluenceDistanceToZero, Ar);
 				}
 			}
@@ -868,14 +868,13 @@ public:
 			Ar.SerializeBits(&bIsSlotGrip, 1);
 		}
 
-		//Ar << LerpToRate;
-
 		// This is 0.0 - 16.0, using compression to get it smaller, 4 bits = max 16 + 1 bit for sign and 7 bits precision for 128 / full 2 digit precision
 		if (Ar.IsSaving())
 			bOutSuccess &= WriteFixedCompressedFloat<16, 12>(LerpToRate, Ar);
 		else
 			bOutSuccess &= ReadFixedCompressedFloat<16, 12>(LerpToRate, Ar);
 
+		//Ar << LerpToRate;
 		return true;
 	}
 };

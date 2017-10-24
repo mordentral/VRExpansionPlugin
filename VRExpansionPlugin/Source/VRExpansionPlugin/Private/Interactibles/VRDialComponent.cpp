@@ -119,6 +119,7 @@ void UVRDialComponent::OnUsed_Implementation() {}
 void UVRDialComponent::OnEndUsed_Implementation() {}
 void UVRDialComponent::OnSecondaryUsed_Implementation() {}
 void UVRDialComponent::OnEndSecondaryUsed_Implementation() {}
+void UVRDialComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 
 bool UVRDialComponent::DenyGripping_Implementation()
 {
@@ -135,12 +136,17 @@ bool UVRDialComponent::SimulateOnDrop_Implementation()
 	return false;
 }
 
-EGripCollisionType UVRDialComponent::SlotGripType_Implementation()
+/*EGripCollisionType UVRDialComponent::SlotGripType_Implementation()
 {
 	return EGripCollisionType::CustomGrip;
 }
 
 EGripCollisionType UVRDialComponent::FreeGripType_Implementation()
+{
+	return EGripCollisionType::CustomGrip;
+}*/
+
+EGripCollisionType UVRDialComponent::GetPrimaryGripType_Implementation(bool bIsSlot)
 {
 	return EGripCollisionType::CustomGrip;
 }
@@ -181,12 +187,17 @@ float UVRDialComponent::GripBreakDistance_Implementation()
 	return BreakDistance;
 }
 
-void UVRDialComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+/*void UVRDialComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	bHadSlotInRange = false;
 }
 
 void UVRDialComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+{
+	bHadSlotInRange = false;
+}*/
+
+void UVRDialComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	bHadSlotInRange = false;
 }

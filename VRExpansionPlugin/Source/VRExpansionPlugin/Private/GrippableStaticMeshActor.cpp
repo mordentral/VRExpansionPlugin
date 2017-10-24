@@ -76,6 +76,7 @@ void AGrippableStaticMeshActor::OnUsed_Implementation() {}
 void AGrippableStaticMeshActor::OnEndUsed_Implementation() {}
 void AGrippableStaticMeshActor::OnSecondaryUsed_Implementation() {}
 void AGrippableStaticMeshActor::OnEndSecondaryUsed_Implementation() {}
+void AGrippableStaticMeshActor::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 
 bool AGrippableStaticMeshActor::DenyGripping_Implementation()
 {
@@ -93,7 +94,7 @@ bool AGrippableStaticMeshActor::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-EGripCollisionType AGrippableStaticMeshActor::SlotGripType_Implementation()
+/*EGripCollisionType AGrippableStaticMeshActor::SlotGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SlotDefaultGripType;
 }
@@ -101,6 +102,12 @@ EGripCollisionType AGrippableStaticMeshActor::SlotGripType_Implementation()
 EGripCollisionType AGrippableStaticMeshActor::FreeGripType_Implementation()
 {
 	return VRGripInterfaceSettings.FreeDefaultGripType;
+}*/
+
+
+EGripCollisionType AGrippableStaticMeshActor::GetPrimaryGripType_Implementation(bool bIsSlot)
+{
+	return bIsSlot ? VRGripInterfaceSettings.SlotDefaultGripType : VRGripInterfaceSettings.FreeDefaultGripType;
 }
 
 /*bool AGrippableStaticMeshActor::CanHaveDoubleGrip_Implementation()
@@ -149,7 +156,7 @@ float AGrippableStaticMeshActor::GripBreakDistance_Implementation()
 	return VRGripInterfaceSettings.ConstraintBreakDistance;
 }
 
-void AGrippableStaticMeshActor::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+/*void AGrippableStaticMeshActor::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	if (OverridePrefix.IsNone())
 		OverridePrefix = "VRGripS";
@@ -163,6 +170,14 @@ void AGrippableStaticMeshActor::ClosestPrimarySlotInRange_Implementation(FVector
 		OverridePrefix = "VRGripP";
 
 	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
+}*/
+
+void AGrippableStaticMeshActor::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+{
+	if (OverridePrefix.IsNone())
+		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
+
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
 bool AGrippableStaticMeshActor::IsInteractible_Implementation()
