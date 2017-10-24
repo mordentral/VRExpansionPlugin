@@ -6,7 +6,7 @@ public class VRExpansionPlugin : ModuleRules
 {
     private string PluginsPath
     {
-        get { return Path.GetFullPath(BuildConfiguration.RelativeEnginePath) + "Plugins/Runtime/"; }
+        get { return Path.GetFullPath(Target.RelativeEnginePath) + "Plugins/Runtime/"; }
     }
 
     public VRExpansionPlugin(ReadOnlyTargetRules Target) : base(Target)
@@ -17,7 +17,7 @@ public class VRExpansionPlugin : ModuleRules
         Definitions.Add("WITH_VR_EXPANSION=1");
 
         // To detect VR Preview, not built out in packaged builds
-        if (UEBuildConfiguration.bBuildEditor == true)
+        if (Target.bBuildEditor == true)
         {
             PrivateDependencyModuleNames.AddRange(
                 new string[] {
@@ -26,6 +26,11 @@ public class VRExpansionPlugin : ModuleRules
             );
         }
 
+        PrivateIncludePathModuleNames.AddRange(
+            new string[] {
+                        "Settings"
+            }
+        );
 
         PublicIncludePaths.AddRange(
 			new string[] {

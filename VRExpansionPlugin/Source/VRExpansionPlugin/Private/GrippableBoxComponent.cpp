@@ -71,6 +71,7 @@ void UGrippableBoxComponent::OnUsed_Implementation() {}
 void UGrippableBoxComponent::OnEndUsed_Implementation() {}
 void UGrippableBoxComponent::OnSecondaryUsed_Implementation() {}
 void UGrippableBoxComponent::OnEndSecondaryUsed_Implementation() {}
+void UGrippableBoxComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 
 bool UGrippableBoxComponent::DenyGripping_Implementation()
 {
@@ -87,31 +88,15 @@ bool UGrippableBoxComponent::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-EGripCollisionType UGrippableBoxComponent::SlotGripType_Implementation()
+EGripCollisionType UGrippableBoxComponent::GetPrimaryGripType_Implementation(bool bIsSlot)
 {
-	return VRGripInterfaceSettings.SlotDefaultGripType;
+	return bIsSlot ? VRGripInterfaceSettings.SlotDefaultGripType : VRGripInterfaceSettings.FreeDefaultGripType;
 }
-
-EGripCollisionType UGrippableBoxComponent::FreeGripType_Implementation()
-{
-	return VRGripInterfaceSettings.FreeDefaultGripType;
-}
-
-/*bool UGrippableBoxComponent::CanHaveDoubleGrip_Implementation()
-{
-	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
-}*/
 
 ESecondaryGripType UGrippableBoxComponent::SecondaryGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SecondaryGripType;
 }
-
-
-/*EGripTargetType UGrippableBoxComponent::GripTargetType_Implementation()
-{
-	return VRGripInterfaceSettings.GripTarget;
-}*/
 
 EGripMovementReplicationSettings UGrippableBoxComponent::GripMovementReplicationType_Implementation()
 {
@@ -123,19 +108,15 @@ EGripLateUpdateSettings UGrippableBoxComponent::GripLateUpdateSetting_Implementa
 	return VRGripInterfaceSettings.LateUpdateSetting;
 }
 
-float UGrippableBoxComponent::GripStiffness_Implementation()
+void UGrippableBoxComponent::GetGripStiffnessAndDamping_Implementation(float &GripStiffnessOut, float &GripDampingOut)
 {
-	return VRGripInterfaceSettings.ConstraintStiffness;
+	GripStiffnessOut = VRGripInterfaceSettings.ConstraintStiffness;
+	GripDampingOut = VRGripInterfaceSettings.ConstraintDamping;
 }
 
-float UGrippableBoxComponent::GripDamping_Implementation()
+FBPAdvGripSettings UGrippableBoxComponent::AdvancedGripSettings_Implementation()
 {
-	return VRGripInterfaceSettings.ConstraintDamping;
-}
-
-FBPAdvGripPhysicsSettings UGrippableBoxComponent::AdvancedPhysicsSettings_Implementation()
-{
-	return VRGripInterfaceSettings.AdvancedPhysicsSettings;
+	return VRGripInterfaceSettings.AdvancedGripSettings;
 }
 
 float UGrippableBoxComponent::GripBreakDistance_Implementation()
@@ -143,20 +124,12 @@ float UGrippableBoxComponent::GripBreakDistance_Implementation()
 	return VRGripInterfaceSettings.ConstraintBreakDistance;
 }
 
-void UGrippableBoxComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+void UGrippableBoxComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	if (OverridePrefix.IsNone())
-		OverridePrefix = "VRGripS";
+		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
 
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.SecondarySlotRange, bHadSlotInRange, SlotWorldTransform);
-}
-
-void UGrippableBoxComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
-{
-	if (OverridePrefix.IsNone())
-		OverridePrefix = "VRGripP";
-
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
 bool UGrippableBoxComponent::IsInteractible_Implementation()

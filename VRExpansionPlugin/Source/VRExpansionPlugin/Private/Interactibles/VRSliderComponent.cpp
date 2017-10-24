@@ -166,6 +166,7 @@ void UVRSliderComponent::OnUsed_Implementation() {}
 void UVRSliderComponent::OnEndUsed_Implementation() {}
 void UVRSliderComponent::OnSecondaryUsed_Implementation() {}
 void UVRSliderComponent::OnEndSecondaryUsed_Implementation() {}
+void UVRSliderComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 
 bool UVRSliderComponent::DenyGripping_Implementation()
 {
@@ -182,12 +183,17 @@ bool UVRSliderComponent::SimulateOnDrop_Implementation()
 	return false;
 }
 
-EGripCollisionType UVRSliderComponent::SlotGripType_Implementation()
+/*EGripCollisionType UVRSliderComponent::SlotGripType_Implementation()
 {
 	return EGripCollisionType::CustomGrip;
 }
 
 EGripCollisionType UVRSliderComponent::FreeGripType_Implementation()
+{
+	return EGripCollisionType::CustomGrip;
+}*/
+
+EGripCollisionType UVRSliderComponent::GetPrimaryGripType_Implementation(bool bIsSlot)
 {
 	return EGripCollisionType::CustomGrip;
 }
@@ -208,7 +214,7 @@ EGripLateUpdateSettings UVRSliderComponent::GripLateUpdateSetting_Implementation
 	return EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 }
 
-float UVRSliderComponent::GripStiffness_Implementation()
+/*float UVRSliderComponent::GripStiffness_Implementation()
 {
 	return 0.0f;
 }
@@ -216,11 +222,16 @@ float UVRSliderComponent::GripStiffness_Implementation()
 float UVRSliderComponent::GripDamping_Implementation()
 {
 	return 0.0f;
+}*/
+void UVRSliderComponent::GetGripStiffnessAndDamping_Implementation(float &GripStiffnessOut, float &GripDampingOut)
+{
+	GripStiffnessOut = 0.0f;
+	GripDampingOut = 0.0f;
 }
 
-FBPAdvGripPhysicsSettings UVRSliderComponent::AdvancedPhysicsSettings_Implementation()
+FBPAdvGripSettings UVRSliderComponent::AdvancedGripSettings_Implementation()
 {
-	return FBPAdvGripPhysicsSettings();
+	return FBPAdvGripSettings();
 }
 
 float UVRSliderComponent::GripBreakDistance_Implementation()
@@ -228,12 +239,17 @@ float UVRSliderComponent::GripBreakDistance_Implementation()
 	return BreakDistance;
 }
 
-void UVRSliderComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+/*void UVRSliderComponent::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	bHadSlotInRange = false;
 }
 
 void UVRSliderComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+{
+	bHadSlotInRange = false;
+}*/
+
+void UVRSliderComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	bHadSlotInRange = false;
 }

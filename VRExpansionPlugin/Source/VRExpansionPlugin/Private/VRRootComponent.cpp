@@ -396,10 +396,10 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			curCameraLoc = NewTrans.GetTranslation();
 			curCameraRot = NewTrans.Rotator();
 		}
-		else if (GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed())
+		else if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
 		{
 			FQuat curRot;
-			GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
+			GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc);
 			curCameraRot = curRot.Rotator();
 		}
 		else if (TargetPrimitiveComponent)

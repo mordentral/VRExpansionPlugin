@@ -16,14 +16,14 @@
 #include "Engine/Engine.h"
 #include "Components/PrimitiveComponent.h"
 #include "Animation/AnimMontage.h"
-#include "PhysicsEngine/DestructibleActor.h"
+//#include "PhysicsEngine/DestructibleActor.h"
 
 // @todo this is here only due to circular dependency to AIModule. To be removed
 #include "Navigation/PathFollowingComponent.h"
 #include "AI/Navigation/AvoidanceManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/BrushComponent.h"
-#include "Components/DestructibleComponent.h"
+//#include "Components/DestructibleComponent.h"
 
 #include "Engine/DemoNetDriver.h"
 #include "Engine/NetworkObjectList.h"
@@ -985,10 +985,10 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 			FQuat curRot;
 			bool bWasHeadset = false;
 
-			if (GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+			if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
 			{
 				bWasHeadset = true;
-				GEngine->HMDDevice->GetCurrentOrientationAndPosition(curRot, curCameraLoc);
+				GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc);
 				curCameraRot = curRot.Rotator();
 			}
 			else if (VRCameraComponent)

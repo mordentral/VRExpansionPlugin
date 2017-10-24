@@ -83,9 +83,6 @@ bool UVRLogComponent::DrawConsoleToRenderTarget2D(EBPVRConsoleDrawType DrawType,
 	if (!Canvas)
 		return false;
 
-	Canvas->Init(Texture->GetSurfaceWidth(), Texture->GetSurfaceHeight(), nullptr);
-	Canvas->Update();
-
 	// Create the FCanvas which does the actual rendering.
 	//const ERHIFeatureLevel::Type FeatureLevel = World != nullptr ? World->FeatureLevel : GMaxRHIFeatureLevel;
 
@@ -97,7 +94,8 @@ bool UVRLogComponent::DrawConsoleToRenderTarget2D(EBPVRConsoleDrawType DrawType,
 		// Draw immediately so that interleaved SetVectorParameter (etc) function calls work as expected
 		FCanvas::CDM_ImmediateDrawing);
 
-	Canvas->Canvas = RenderCanvas;
+	Canvas->Init(Texture->GetSurfaceWidth(), Texture->GetSurfaceHeight(), nullptr, RenderCanvas);
+	Canvas->Update();
 
 	switch (DrawType)
 	{

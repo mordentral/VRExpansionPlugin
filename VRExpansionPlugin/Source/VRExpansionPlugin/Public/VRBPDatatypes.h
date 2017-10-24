@@ -157,6 +157,10 @@ public:
 };
 
 
+/************************************************************************/
+/* 1 Euro filter smoothing algorithm									*/
+/* http://cristal.univ-lille.fr/~casiez/1euro/							*/
+/************************************************************************/
 // A re-implementation of the Euro Low Pass Filter that epic uses for the VR Editor, but for blueprints
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPEuroLowPassFilter
@@ -166,7 +170,7 @@ public:
 
 	/** Default constructor */
 	FBPEuroLowPassFilter() :
-		MinCutoff(1.0f),
+		MinCutoff(0.9f),
 		CutoffSlope(0.007f),
 		DeltaCutoff(1.0f)
 	{}
@@ -344,7 +348,6 @@ struct TStructOpsTypeTraits< FTransform_NetQuantize > : public TStructOpsTypeTra
 	};
 };
 
-
 UENUM()
 enum class EVRVectorQuantization : uint8
 {
@@ -381,8 +384,8 @@ public:
 		bOutSuccess = true;
 
 		// Defines the level of Quantization
-		uint8 Flags = (uint8)QuantizationLevel;
-		Ar.SerializeBits(&Flags, 1);
+		//uint8 Flags = (uint8)QuantizationLevel;
+		Ar.SerializeBits(&QuantizationLevel, 1); // Only two values 0:1
 
 		// No longer using their built in rotation rep, as controllers will rarely if ever be at 0 rot on an axis and 
 		// so the 1 bit overhead per axis is just that, overhead
@@ -410,7 +413,7 @@ public:
 		}
 		else // If loading
 		{
-			QuantizationLevel = (EVRVectorQuantization)Flags;
+			//QuantizationLevel = (EVRVectorQuantization)Flags;
 
 			switch (QuantizationLevel)
 			{
@@ -476,6 +479,9 @@ enum class EBPHMDDeviceType : uint8
 	DT_SteamVR,
 	DT_GearVR,
 	DT_GoogleVR,
+	DT_OSVR,
+	DT_AppleARKit,
+	DT_GoogleARCore,
 	DT_Unknown
 };
 
@@ -555,8 +561,8 @@ enum class EGripInterfaceTeleportBehavior : uint8
 UENUM(Blueprintable)
 enum class EPhysicsGripConstraintType : uint8
 {
-	AccelerationConstraint,
-	ForceConstraint
+	AccelerationConstraint = 0,
+	ForceConstraint = 1
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
@@ -565,32 +571,32 @@ struct VREXPANSIONPLUGIN_API FBPAdvGripPhysicsSettings
 	GENERATED_BODY()
 public:
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings")
-		bool bUseAdvancedPhysicsSettings;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings")
+		bool bUsePhysicsSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		EPhysicsGripConstraintType PhysicsConstraintType;
 
 	// Do not set the Center Of Mass to the grip location, use this if the default is buggy or you want a custom COM
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		bool bDoNotSetCOMToGripLocation;
 
 	// Turn off gravity during the grip, resolves the slight downward offset of the object with normal constraint strengths.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		bool bTurnOffGravityDuringGrip;
 
 	// Use the custom angular values on this grip
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseAdvancedPhysicsSettings"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		bool bUseCustomAngularValues;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
 		float AngularStiffness;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedPhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
 		float AngularDamping;
 
 	FBPAdvGripPhysicsSettings():
-		bUseAdvancedPhysicsSettings(false),
+		bUsePhysicsSettings(false),
 		PhysicsConstraintType(EPhysicsGripConstraintType::AccelerationConstraint),
 		bDoNotSetCOMToGripLocation(false),
 		bTurnOffGravityDuringGrip(false),
@@ -601,7 +607,7 @@ public:
 
 	FORCEINLINE bool operator==(const FBPAdvGripPhysicsSettings &Other) const
 	{
-		return (bUseAdvancedPhysicsSettings == Other.bUseAdvancedPhysicsSettings &&
+		return (bUsePhysicsSettings == Other.bUsePhysicsSettings &&
 			bDoNotSetCOMToGripLocation == Other.bDoNotSetCOMToGripLocation &&
 			bTurnOffGravityDuringGrip == Other.bTurnOffGravityDuringGrip &&
 			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
@@ -612,7 +618,7 @@ public:
 
 	FORCEINLINE bool operator!=(const FBPAdvGripPhysicsSettings &Other) const
 	{
-		return (bUseAdvancedPhysicsSettings != Other.bUseAdvancedPhysicsSettings ||
+		return (bUsePhysicsSettings != Other.bUsePhysicsSettings ||
 			bDoNotSetCOMToGripLocation != Other.bDoNotSetCOMToGripLocation ||
 			bTurnOffGravityDuringGrip != Other.bTurnOffGravityDuringGrip ||
 			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
@@ -624,15 +630,21 @@ public:
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
-		Ar << bUseAdvancedPhysicsSettings;
+		//Ar << bUsePhysicsSettings;
+		Ar.SerializeBits(&bUsePhysicsSettings, 1);
 
-		if (bUseAdvancedPhysicsSettings)
+		if (bUsePhysicsSettings)
 		{
-			Ar << bDoNotSetCOMToGripLocation;
-			Ar << PhysicsConstraintType;
-			Ar << bTurnOffGravityDuringGrip;
+			//Ar << bDoNotSetCOMToGripLocation;
+			Ar.SerializeBits(&bDoNotSetCOMToGripLocation, 1);
+			
+			//Ar << PhysicsConstraintType;
+			Ar.SerializeBits(&PhysicsConstraintType, 1); // This only has two elements
 
-			Ar << bUseCustomAngularValues;
+			//Ar << bTurnOffGravityDuringGrip;
+			Ar.SerializeBits(&bTurnOffGravityDuringGrip, 1);
+			//Ar << bUseCustomAngularValues;
+			Ar.SerializeBits(&bUseCustomAngularValues, 1);
 
 			if (bUseCustomAngularValues)
 			{
@@ -642,7 +654,7 @@ public:
 		}
 
 		bOutSuccess = true;
-		return true;
+		return bOutSuccess;
 	}
 };
 
@@ -653,6 +665,141 @@ struct TStructOpsTypeTraits< FBPAdvGripPhysicsSettings > : public TStructOpsType
 	{
 		WithNetSerializer = true
 	};
+};
+
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPAdvSecondaryGripSettings
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings")
+		bool bUseSecondaryGripSettings;
+
+	// Scaler used for handling the smoothing amount, 0.0f is full smoothing, 1.0f is smoothing off
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripSettings", ClampMin = "0.00", UIMin = "0.00", ClampMax = "1.00", UIMax = "1.00"))
+		float SecondaryGripScaler;
+
+	// Whether to scale the secondary hand influence off of distance from grip point
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripSettings"))
+		bool bUseSecondaryGripDistanceInfluence;
+
+	// Distance from grip point in local space where there is 100% influence
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripDistanceInfluence", ClampMin = "0.00", UIMin = "0.00", ClampMax = "256.00", UIMax = "256.00"))
+		float GripInfluenceDeadZone;
+
+	// Distance from grip point in local space before all influence is lost on the secondary grip (1.0f - 0.0f influence over this range)
+	// this comes into effect outside of the deadzone
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripDistanceInfluence", ClampMin = "1.00", UIMin = "1.00", ClampMax = "256.00", UIMax = "256.00"))
+		float GripInfluenceDistanceToZero;
+
+	// Whether clamp the grip scaling in scaling grips
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripSettings"))
+		bool bLimitGripScaling;
+
+	// Minimum size to allow scaling in double grip to reach
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bLimitGripScaling"))
+		FVector_NetQuantize100 MinimumGripScaling;
+
+	// Maximum size to allow scaling in double grip to reach
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bLimitGripScaling"))
+		FVector_NetQuantize100 MaximumGripScaling;
+
+	// Used to smooth filter the secondary influence
+	FBPEuroLowPassFilter SmoothingOneEuro;
+
+	FBPAdvSecondaryGripSettings() :
+		bUseSecondaryGripSettings(false),
+		SecondaryGripScaler(1.0f),
+		bUseSecondaryGripDistanceInfluence(false),
+		GripInfluenceDeadZone(50.0f),
+		GripInfluenceDistanceToZero(100.0f),
+		bLimitGripScaling(false),
+		MinimumGripScaling(FVector(0.1f)),
+		MaximumGripScaling(FVector(10.0f))
+	{}
+
+	/** Network serialization */
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		//Ar << bUseSecondaryGripSettings;
+		Ar.SerializeBits(&bUseSecondaryGripSettings, 1);
+
+		if (bUseSecondaryGripSettings)
+		{
+			bOutSuccess = true;
+
+			//Ar << SecondaryGripScaler;
+
+			// This is 0.0-1.0, using normalized compression to get it smaller, 9 bits = 1 bit + 1 bit sign+value and 7 bits precision for 128 / full 2 digit precision
+			if (Ar.IsSaving())
+				bOutSuccess &= WriteFixedCompressedFloat<1, 9>(SecondaryGripScaler, Ar);
+			else
+				bOutSuccess &= ReadFixedCompressedFloat<1, 9>(SecondaryGripScaler, Ar);
+			
+			//Ar << bUseSecondaryGripDistanceInfluence;
+			Ar.SerializeBits(&bUseSecondaryGripDistanceInfluence, 1);
+			
+			if (bUseSecondaryGripDistanceInfluence)
+			{
+				//Ar << GripInfluenceDeadZone;
+				//Ar << GripInfluenceDistanceToZero;
+
+				// Forcing a maximum value here so that we can compress it by making assumptions
+				// 256 max value = 8 bits + 1 bit for sign + 7 bits for precision (up to 128 on precision, so full range 2 digit precision).
+				if (Ar.IsSaving())
+				{
+					bOutSuccess &= WriteFixedCompressedFloat<256, 16>(GripInfluenceDeadZone, Ar);
+					bOutSuccess &= WriteFixedCompressedFloat<256, 16>(GripInfluenceDistanceToZero, Ar);
+				}
+				else
+				{
+					bOutSuccess &= ReadFixedCompressedFloat<256, 16>(GripInfluenceDeadZone, Ar);
+					bOutSuccess &= ReadFixedCompressedFloat<256, 16>(GripInfluenceDistanceToZero, Ar);
+				}
+			}
+
+			//Ar << bLimitGripScaling;
+			Ar.SerializeBits(&bLimitGripScaling, 1);
+
+			if (bLimitGripScaling)
+			{
+				//Ar << MinimumGripScaling;
+				MinimumGripScaling.NetSerialize(Ar, Map, bOutSuccess);
+				//Ar << MaximumGripScaling;
+				MaximumGripScaling.NetSerialize(Ar, Map, bOutSuccess);
+			}
+		}
+
+		return bOutSuccess;
+	}
+};
+
+template<>
+struct TStructOpsTypeTraits< FBPAdvSecondaryGripSettings > : public TStructOpsTypeTraitsBase2<FBPAdvSecondaryGripSettings>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPAdvGripSettings
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
+		FBPAdvGripPhysicsSettings PhysicsSettings;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
+		FBPAdvSecondaryGripSettings SecondaryGripSettings;
+
+
+	FBPAdvGripSettings()
+	{}
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
@@ -668,9 +815,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SecondaryGripInfo")
 		USceneComponent * SecondaryAttachment;
 
-	UPROPERTY(BlueprintReadWrite, Category = "SecondaryGripInfo")
-		float SecondarySmoothingScaler;
-
 	UPROPERTY()
 		FVector_NetQuantize100 SecondaryRelativeLocation;
 
@@ -682,6 +826,10 @@ public:
 	UPROPERTY()
 		float LerpToRate;
 
+	// Filled in from the tick code so users can activate and deactivate grips based on this
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "SecondaryGripInfo")
+		float SecondaryGripDistance;
+
 	// These are not replicated, they don't need to be
 	EGripLerpState GripLerpState;
 	float curLerp;
@@ -692,10 +840,10 @@ public:
 	FBPSecondaryGripInfo():
 		bHasSecondaryAttachment(false),
 		SecondaryAttachment(nullptr),
-		SecondarySmoothingScaler(1.0f),
 		SecondaryRelativeLocation(FVector::ZeroVector),
 		bIsSlotGrip(false),
 		LerpToRate(0.0f),
+		SecondaryGripDistance(0.0f),
 		GripLerpState(EGripLerpState::NotLerping),
 		curLerp(0.0f),
 		LastRelativeLocation(FVector::ZeroVector)
@@ -704,20 +852,28 @@ public:
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
-		Ar << bHasSecondaryAttachment;
-		
+		bOutSuccess = true;
+
+		//Ar << bHasSecondaryAttachment;
+		Ar.SerializeBits(&bHasSecondaryAttachment, 1);
+
 		if (bHasSecondaryAttachment)
 		{
 			Ar << SecondaryAttachment;
-			Ar << SecondaryRelativeLocation;
-			Ar << SecondarySmoothingScaler;
+			//Ar << SecondaryRelativeLocation;
+			SecondaryRelativeLocation.NetSerialize(Ar, Map, bOutSuccess);
 
-			Ar << bIsSlotGrip;
+			//Ar << bIsSlotGrip;
+			Ar.SerializeBits(&bIsSlotGrip, 1);
 		}
 
-		Ar << LerpToRate;
+		// This is 0.0 - 16.0, using compression to get it smaller, 4 bits = max 16 + 1 bit for sign and 7 bits precision for 128 / full 2 digit precision
+		if (Ar.IsSaving())
+			bOutSuccess &= WriteFixedCompressedFloat<16, 12>(LerpToRate, Ar);
+		else
+			bOutSuccess &= ReadFixedCompressedFloat<16, 12>(LerpToRate, Ar);
 
-		bOutSuccess = true;
+		//Ar << LerpToRate;
 		return true;
 	}
 };
@@ -833,9 +989,9 @@ public:
 
 	// I would have loved to have both of these not be replicated (and in normal grips they wouldn't have to be)
 	// However for serialization purposes and Client_Authority grips they need to be....
-	UPROPERTY(BlueprintReadOnly, Category = "Settings")
+	UPROPERTY()
 		bool bOriginalReplicatesMovement;
-	UPROPERTY(BlueprintReadOnly, Category = "Settings")
+	UPROPERTY()
 		bool bOriginalGravity;
 
 	UPROPERTY()
@@ -843,8 +999,9 @@ public:
 	UPROPERTY()
 		float Stiffness;
 
-	UPROPERTY()
-		FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
+		FBPAdvGripSettings AdvancedGripSettings;
+
 
 	// When true the grips movement logic will not be performed until it is false again
 	//UPROPERTY(BlueprintReadWrite)
@@ -857,6 +1014,10 @@ public:
 	// Optional Additive Transform for programmatic animation
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "Settings")
 	FTransform AdditionTransform;
+
+	// Distance from the target point for the grip
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "Settings")
+		float GripDistance;
 
 	// Locked transitions for swept movement so they don't just rotate in place on contact
 	bool bIsLocked;
@@ -876,7 +1037,7 @@ public:
 		EGripMovementReplicationSettings CachedGripMovementReplicationSetting;
 		float CachedStiffness;
 		float CachedDamping;
-		FBPAdvGripPhysicsSettings CachedAdvancedPhysicsSettings;
+		FBPAdvGripPhysicsSettings CachedPhysicsSettings;
 
 		FGripValueCache():
 			bWasInitiallyRepped(false),
@@ -949,6 +1110,7 @@ public:
 		Damping(200.0f),
 		Stiffness(1500.0f),
 		AdditionTransform(FTransform::Identity),
+		GripDistance(0.0f),
 		bIsLocked(false),
 		LastLockedRotation(FRotator::ZeroRotator),
 		bSkipNextConstraintLengthCheck(false)
@@ -1070,8 +1232,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintDamping;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		FBPAdvGripPhysicsSettings AdvancedPhysicsSettings;
+	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		FBPAdvGripPhysicsSettings PhysicsSettings;*/
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintBreakDistance;
@@ -1081,6 +1243,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float PrimarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface|AdvancedGripSettings")
+		FBPAdvGripSettings AdvancedGripSettings;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bIsInteractible;

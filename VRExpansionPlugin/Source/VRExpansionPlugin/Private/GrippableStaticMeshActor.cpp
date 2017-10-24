@@ -76,6 +76,7 @@ void AGrippableStaticMeshActor::OnUsed_Implementation() {}
 void AGrippableStaticMeshActor::OnEndUsed_Implementation() {}
 void AGrippableStaticMeshActor::OnSecondaryUsed_Implementation() {}
 void AGrippableStaticMeshActor::OnEndSecondaryUsed_Implementation() {}
+void AGrippableStaticMeshActor::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 
 bool AGrippableStaticMeshActor::DenyGripping_Implementation()
 {
@@ -93,31 +94,15 @@ bool AGrippableStaticMeshActor::SimulateOnDrop_Implementation()
 	return VRGripInterfaceSettings.bSimulateOnDrop;
 }
 
-EGripCollisionType AGrippableStaticMeshActor::SlotGripType_Implementation()
+EGripCollisionType AGrippableStaticMeshActor::GetPrimaryGripType_Implementation(bool bIsSlot)
 {
-	return VRGripInterfaceSettings.SlotDefaultGripType;
+	return bIsSlot ? VRGripInterfaceSettings.SlotDefaultGripType : VRGripInterfaceSettings.FreeDefaultGripType;
 }
-
-EGripCollisionType AGrippableStaticMeshActor::FreeGripType_Implementation()
-{
-	return VRGripInterfaceSettings.FreeDefaultGripType;
-}
-
-/*bool AGrippableStaticMeshActor::CanHaveDoubleGrip_Implementation()
-{
-	return VRGripInterfaceSettings.bCanHaveDoubleGrip;
-}*/
 
 ESecondaryGripType AGrippableStaticMeshActor::SecondaryGripType_Implementation()
 {
 	return VRGripInterfaceSettings.SecondaryGripType;
 }
-
-
-/*EGripTargetType AGrippableStaticMeshActor::GripTargetType_Implementation()
-{
-	return VRGripInterfaceSettings.GripTarget;
-}*/
 
 EGripMovementReplicationSettings AGrippableStaticMeshActor::GripMovementReplicationType_Implementation()
 {
@@ -129,19 +114,15 @@ EGripLateUpdateSettings AGrippableStaticMeshActor::GripLateUpdateSetting_Impleme
 	return VRGripInterfaceSettings.LateUpdateSetting;
 }
 
-float AGrippableStaticMeshActor::GripStiffness_Implementation()
+void AGrippableStaticMeshActor::GetGripStiffnessAndDamping_Implementation(float &GripStiffnessOut, float &GripDampingOut)
 {
-	return VRGripInterfaceSettings.ConstraintStiffness;
+	GripStiffnessOut = VRGripInterfaceSettings.ConstraintStiffness;
+	GripDampingOut = VRGripInterfaceSettings.ConstraintDamping;
 }
 
-float AGrippableStaticMeshActor::GripDamping_Implementation()
+FBPAdvGripSettings AGrippableStaticMeshActor::AdvancedGripSettings_Implementation()
 {
-	return VRGripInterfaceSettings.ConstraintDamping;
-}
-
-FBPAdvGripPhysicsSettings AGrippableStaticMeshActor::AdvancedPhysicsSettings_Implementation()
-{
-	return VRGripInterfaceSettings.AdvancedPhysicsSettings;
+	return VRGripInterfaceSettings.AdvancedGripSettings;
 }
 
 float AGrippableStaticMeshActor::GripBreakDistance_Implementation()
@@ -149,20 +130,12 @@ float AGrippableStaticMeshActor::GripBreakDistance_Implementation()
 	return VRGripInterfaceSettings.ConstraintBreakDistance;
 }
 
-void AGrippableStaticMeshActor::ClosestSecondarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+void AGrippableStaticMeshActor::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
 	if (OverridePrefix.IsNone())
-		OverridePrefix = "VRGripS";
+		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
 
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.SecondarySlotRange, bHadSlotInRange, SlotWorldTransform);
-}
-
-void AGrippableStaticMeshActor::ClosestPrimarySlotInRange_Implementation(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
-{
-	if (OverridePrefix.IsNone())
-		OverridePrefix = "VRGripP";
-
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
 bool AGrippableStaticMeshActor::IsInteractible_Implementation()

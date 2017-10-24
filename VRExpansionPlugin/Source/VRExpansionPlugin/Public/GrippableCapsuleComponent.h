@@ -62,25 +62,13 @@ class VREXPANSIONPLUGIN_API UGrippableCapsuleComponent : public UCapsuleComponen
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool SimulateOnDrop();
 
-	// Grip type to use when gripping a slot
+		// Grip type to use
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		EGripCollisionType SlotGripType();
-
-	// Grip type to use when not gripping a slot
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		EGripCollisionType FreeGripType();
-
-	// Can have secondary grip
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-	//	bool CanHaveDoubleGrip();
+		EGripCollisionType GetPrimaryGripType(bool bIsSlot);
 
 	// Secondary grip type
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		ESecondaryGripType SecondaryGripType();
-
-	// Define which grip target to use for gripping
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-	//	EGripTargetType GripTargetType();
 
 	// Define which movement repliation setting to use
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -90,29 +78,22 @@ class VREXPANSIONPLUGIN_API UGrippableCapsuleComponent : public UCapsuleComponen
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripLateUpdateSettings GripLateUpdateSetting();
 
-	// What grip stiffness to use if using a physics constraint
+		// What grip stiffness and damping to use if using a physics constraint
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		float GripStiffness();
-
-	// What grip damping to use if using a physics constraint
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		float GripDamping();
+		void GetGripStiffnessAndDamping(float &GripStiffnessOut, float &GripDampingOut);
 
 	// Get the advanced physics settings for this grip
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		FBPAdvGripPhysicsSettings AdvancedPhysicsSettings();
+		FBPAdvGripSettings AdvancedGripSettings();
 
 	// What distance to break a grip at (only relevent with physics enabled grips
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripBreakDistance();
 
-	// Get closest secondary slot in range
+		// Get closest primary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestSecondarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
+		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
-	// Get closest primary slot in range
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestPrimarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
 	// Check if the object is an interactable
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -177,4 +158,8 @@ class VREXPANSIONPLUGIN_API UGrippableCapsuleComponent : public UCapsuleComponen
 	// Call to stop using an object
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void OnEndSecondaryUsed();
+
+	// Call to send an action event to the object
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void OnInput(FKey Key, EInputEvent KeyEvent);
 };
