@@ -46,6 +46,10 @@ class VREXPANSIONPLUGIN_API UVRStereoWidgetComponent : public UWidgetComponent
 	//	void MarkTextureForUpdate();
 
 
+	// If true, use Epics world locked stereo implementation instead of my own temp solution
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+		bool bUseEpicsWorldLockedStereo;
+
 	/**
 	* Change the layer's render priority, higher priorities render on top of lower priorities
 	* @param	InPriority: Priority value

@@ -52,6 +52,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 {
 	bShouldCreateProxy = true;
 	bLastWidgetDrew = false;
+	bUseEpicsWorldLockedStereo = false;
 	// Replace quad size with DrawSize instead
 	//StereoLayerQuadSize = DrawSize;
 
@@ -127,53 +128,59 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 	else // World locked here now
 	{
-		// Its incorrect......even in 4.17
-	//	Transform = GetComponentTransform();
-		//Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
-		
-		// Fix this when stereo world locked works again
-		// Thanks to mitch for the temp work around idea
 
-		// Get first local player controller
-		APlayerController* PC = nullptr;
-		for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		if (bUseEpicsWorldLockedStereo)
 		{
-			if (Iterator->Get()->IsLocalPlayerController())
-			{
-				PC = Iterator->Get();
-				break;
-			}
-		}
-		
-		if (PC)
-		{
-			APawn * mpawn = PC->GetPawnOrSpectator();
-			//bTextureNeedsUpdate = true;
-			if (mpawn)
-			{		
-				// Set transform to this relative transform
-				
-				Transform = GetComponentTransform().GetRelativeTransform(mpawn->GetTransform());
-				Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
-				// I might need to inverse X axis here to get it facing the correct way, we'll see
-
-				//Transform = mpawn->GetActorTransform().GetRelativeTransform(GetComponentTransform());
-			}
+			// Its incorrect......even in 4.17
+			Transform = GetComponentTransform();
+			Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
 		}
 		else
 		{
-			// No PC, destroy the layer and enable drawing it normally.
-			bShouldCreateProxy = true;
+			// Fix this when stereo world locked works again
+			// Thanks to mitch for the temp work around idea
 
-			if (LayerId)
+			// Get first local player controller
+			APlayerController* PC = nullptr;
+			for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 			{
-				StereoLayers->DestroyLayer(LayerId);
-				LayerId = 0;
+				if (Iterator->Get()->IsLocalPlayerController())
+				{
+					PC = Iterator->Get();
+					break;
+				}
 			}
-			return;
+
+			if (PC)
+			{
+				APawn * mpawn = PC->GetPawnOrSpectator();
+				//bTextureNeedsUpdate = true;
+				if (mpawn)
+				{
+					// Set transform to this relative transform
+
+					Transform = GetComponentTransform().GetRelativeTransform(mpawn->GetTransform());
+					Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
+					// I might need to inverse X axis here to get it facing the correct way, we'll see
+
+					//Transform = mpawn->GetActorTransform().GetRelativeTransform(GetComponentTransform());
+				}
+			}
+			else
+			{
+				// No PC, destroy the layer and enable drawing it normally.
+				bShouldCreateProxy = true;
+
+				if (LayerId)
+				{
+					StereoLayers->DestroyLayer(LayerId);
+					LayerId = 0;
+				}
+				return;
+			}
+			//
+			//Transform = GetRelativeTransform();
 		}
-		//
-		//Transform = GetRelativeTransform();
 	}
 
 	// If the transform changed dirty the layer and push the new transform
@@ -248,8 +255,11 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			{
 			case EWidgetSpace::World:
 			{
-				//LayerDsec.PositionType = IStereoLayers::WorldLocked;
-				LayerDsec.PositionType = IStereoLayers::TrackerLocked;
+				if(bUseEpicsWorldLockedStereo)
+					LayerDsec.PositionType = IStereoLayers::WorldLocked;
+				else
+					LayerDsec.PositionType = IStereoLayers::TrackerLocked;
+
 				LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH;
 			}break;
 

@@ -30,7 +30,6 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	LeverLimitPositive = 90.0f;
 	bLeverState = false;
 	LeverTogglePercentage = 0.8f;
-	lerpCounter = 0.0f;
 
 	LastDeltaAngle = 0.0f;
 

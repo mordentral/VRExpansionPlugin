@@ -1638,7 +1638,7 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 		}
 
 		// Add in VR Input velocity
-		AdditionalVRInputVector = FVector(LFDiff.Z, LFDiff.Y, 0.0f);
+		AdditionalVRInputVector = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 
 		if (VRReplicateCapsuleHeight && LFDiff.Z != VRRootCapsule->GetUnscaledCapsuleHalfHeight())
 			VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
