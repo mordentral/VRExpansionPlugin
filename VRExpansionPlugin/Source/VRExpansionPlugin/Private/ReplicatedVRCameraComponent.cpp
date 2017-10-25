@@ -191,7 +191,8 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 
 	if (bLockToHmd && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed())
 	{
-		ResetRelativeTransform();
+		//ResetRelativeTransform();
+		SetRelativeScale3D(FVector(1.0f));
 		const FTransform ParentWorld = GetComponentToWorld();
 		GEngine->HMDDevice->SetupLateUpdate(ParentWorld, this);
 
