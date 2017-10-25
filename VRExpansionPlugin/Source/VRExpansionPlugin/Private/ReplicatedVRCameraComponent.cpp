@@ -189,7 +189,7 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 			bLockToHmd = false;
 	}
 
-	if (bLockToHmd && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+	if (bLockToHmd && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && GEngine->HMDDevice->IsHeadTrackingAllowed())
 	{
 		ResetRelativeTransform();
 		const FTransform ParentWorld = GetComponentToWorld();
@@ -199,13 +199,20 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 		FVector Position;
 		if (GEngine->HMDDevice->UpdatePlayerCamera(Orientation, Position))
 		{
-			if (bOffsetByHMD)
+			if(GEngine->HMDDevice->HasValidTrackingPosition())
 			{
-				Position.X = 0;
-				Position.Y = 0;
-			}
+				if (bOffsetByHMD)
+				{
+					Position.X = 0;
+					Position.Y = 0;
+				}
 
-			SetRelativeTransform(FTransform(Orientation, Position));
+				SetRelativeTransform(FTransform(Orientation, Position));
+			}
+			else
+			{
+				SetRelativeRotation(Orientation);
+			}
 		}
 	}
 
