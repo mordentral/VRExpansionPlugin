@@ -27,6 +27,13 @@ public:
 		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), this->GetActorLocation(), this->GetActorScale3D());
 	}
 
+	// Regenerates the base offsetcomponenttoworld that VR uses
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
+	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw) override
+	{
+		GenerateOffsetToWorld();
+	}
+
 	// Overriding teleport so that it auto calls my controllers re-positioning
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
 

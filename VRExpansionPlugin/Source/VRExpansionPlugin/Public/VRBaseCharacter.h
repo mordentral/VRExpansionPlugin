@@ -65,6 +65,11 @@ public:
 		return OffsetComponentToWorld.GetRotation().Rotator();
 	}
 
+	// Regenerates the base offsetcomponenttoworld that VR uses
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
+	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw)
+	{}
+
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
 	virtual void SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true)
 	{

@@ -33,7 +33,13 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	VRLowGravIgnoresDefaultFluidFriction = true;
 
 	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
-	
+
+	bWantsToSnapTurnLeft = false;
+	bWantsToSnapTurnRight = false;
+	VRSnapTurnDeltaAngle = 45.0f;
+
+	NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
+	NetworkSimulatedSmoothRotationTime = 0.0f; // Don't smooth rotation, its not good
 }
 
 bool UVRBaseCharacterMovementComponent::FloorSweepTest(
@@ -195,6 +201,75 @@ void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Move
 		CustomVRInputVector += Movement; // If not a client, don't bother to round this down.
 }
 
+void UVRBaseCharacterMovementComponent::PerformSnapTurn(bool bTurnLeft)
+{
+	if (bTurnLeft)
+		bWantsToSnapTurnLeft = true;
+	else
+		bWantsToSnapTurnRight = true;
+}
+
+bool UVRBaseCharacterMovementComponent::CheckForSnapTurn()
+{
+
+	if (!bWantsToSnapTurnLeft && !bWantsToSnapTurnRight)
+		return false;
+
+	// If both are set...unset them, they cancel out
+	if (bWantsToSnapTurnLeft && bWantsToSnapTurnRight)
+	{
+		bWantsToSnapTurnLeft = false;
+		bWantsToSnapTurnRight = false;
+		return false;
+	}
+
+	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	{
+		if (!IsLocallyControlled())
+		{
+			OwningCharacter->AddActorWorldOffset(CustomVRInputVector);
+			CustomVRInputVector = FVector::ZeroVector;
+		}
+		else
+		{
+			AController* OwningController = OwningCharacter->GetController();
+
+			if (!OwningController)
+			{
+				bWantsToSnapTurnLeft = false;
+				bWantsToSnapTurnRight = false;
+				return false;
+			}
+
+			FVector NewLocation;
+			FRotator NewRotation;
+			FVector OrigLocation = OwningCharacter->GetActorLocation();
+			FVector PivotPoint = OwningCharacter->GetActorTransform().InverseTransformPosition(OwningCharacter->GetVRLocation());
+
+			NewRotation = OwningCharacter->bUseControllerRotationYaw ? OwningController->GetControlRotation() : OwningCharacter->GetActorRotation();
+			NewRotation.Pitch = 0.0f;
+			NewRotation.Roll = 0.0f;
+
+			NewLocation = OrigLocation + NewRotation.RotateVector(PivotPoint);
+			NewRotation = (NewRotation.Quaternion() * FRotator(0.0f, bWantsToSnapTurnLeft ? -VRSnapTurnDeltaAngle : VRSnapTurnDeltaAngle, 0.0f).Quaternion()).Rotator();
+			NewLocation -= NewRotation.RotateVector(PivotPoint);
+
+			// Zero this out
+			CustomVRInputVector = FVector::ZeroVector;
+			AddCustomReplicatedMovement(NewLocation - OrigLocation);
+
+			if(OwningCharacter->bUseControllerRotationYaw)
+				OwningController->SetControlRotation(NewRotation);
+			
+			OwningCharacter->SetActorLocationAndRotation(OrigLocation + CustomVRInputVector, NewRotation);
+
+			bWantsToSnapTurnLeft = false;
+			bWantsToSnapTurnRight = false;
+		}
+	}
+
+	return true;
+}
 
 void UVRBaseCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 {
@@ -378,6 +453,18 @@ void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMo
 	VRReplicatedMovementMode = NewMovementMode;
 }
 
+
+void UVRBaseCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
+{
+	Super::ReplicateMoveToServer(DeltaTime, NewAcceleration);
+
+	if (bHadSnapTurnThisFrame)
+	{
+		// Make sure these are cleaned out for the next frame
+		CustomVRInputVector = FVector::ZeroVector;
+	}
+}
+
 void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
 	if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//None)
@@ -397,12 +484,21 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 		// Specifically used by the Climbing Step up, so that server rollbacks are supported
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
 	}
-	
+
+	// Handle snap turns here
+	bHadSnapTurnThisFrame = CheckForSnapTurn();
+
 	Super::PerformMovement(DeltaSeconds);
 
 	// Make sure these are cleaned out for the next frame
 	AdditionalVRInputVector = FVector::ZeroVector;
-	CustomVRInputVector = FVector::ZeroVector;
+
+	if (CharacterOwner->Role == ROLE_Authority || (!bHadSnapTurnThisFrame))
+	{
+		CustomVRInputVector = FVector::ZeroVector;
+		bWantsToSnapTurnLeft = false;
+		bWantsToSnapTurnRight = false;
+	}
 }
 
 void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
@@ -412,14 +508,17 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 	{
 		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
 		{
+			bWantsToSnapTurnLeft = moveComp->bWantsToSnapTurnLeft;
+			bWantsToSnapTurnRight = moveComp->bWantsToSnapTurnRight;
 			VRReplicatedMovementMode = moveComp->VRReplicatedMovementMode;
+
 			ConditionalValues.CustomVRInputVector = moveComp->CustomVRInputVector;
 
 			if (moveComp->HasRequestedVelocity())
 				ConditionalValues.RequestedVelocity = moveComp->RequestedVelocity;
 			else
 				ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-
+				
 			// Throw out the Z value of the headset, its not used anyway for movement
 			// Instead, re-purpose it to be the capsule half height
 			if (moveComp->VRReplicateCapsuleHeight && C)
@@ -427,6 +526,8 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		}
 		else
 		{
+			bWantsToSnapTurnLeft = false;
+			bWantsToSnapTurnRight = false;
 			VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
 			ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
 			ConditionalValues.RequestedVelocity = FVector::ZeroVector;
@@ -434,11 +535,39 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 	}
 	else
 	{
+		bWantsToSnapTurnLeft = false;
+		bWantsToSnapTurnRight = false;
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
 		ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
 	}
 
 	FSavedMove_Character::SetInitialPosition(C);
+}
+
+
+void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostUpdateMode)
+{
+	FSavedMove_Character::PostUpdate(C, PostUpdateMode);
+
+	if (bWantsToSnapTurnLeft || bWantsToSnapTurnRight)
+	{
+		// See if we can get the VR capsule location
+		if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
+		{
+			if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
+			{
+				ConditionalValues.CustomVRInputVector = moveComp->CustomVRInputVector;
+			}
+			else
+			{
+				ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
+			}
+		}
+		else
+		{
+			ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
+		}
+	}
 }
 
 void FSavedMove_VRBaseCharacter::Clear()
@@ -451,6 +580,8 @@ void FSavedMove_VRBaseCharacter::Clear()
 
 	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
 	ConditionalValues.RequestedVelocity = FVector::ZeroVector;
+	bWantsToSnapTurnLeft = false;
+	bWantsToSnapTurnRight = false;
 
 	FSavedMove_Character::Clear();
 }
@@ -461,6 +592,8 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 
 	if (BaseCharMove)
 	{
+		BaseCharMove->bWantsToSnapTurnLeft = bWantsToSnapTurnLeft;
+		BaseCharMove->bWantsToSnapTurnRight = bWantsToSnapTurnRight;
 		BaseCharMove->CustomVRInputVector = ConditionalValues.CustomVRInputVector;//this->CustomVRInputVector;
 		BaseCharMove->VRReplicatedMovementMode = this->VRReplicatedMovementMode;
 	}
