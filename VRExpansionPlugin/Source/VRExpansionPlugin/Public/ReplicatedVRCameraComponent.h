@@ -6,6 +6,8 @@
 #include "Net/UnrealNetwork.h"
 #include "ReplicatedVRCameraComponent.generated.h"
 
+class AVRBaseCharacter;
+
 /**
 * An overridden camera component that replicates its location in multiplayer
 */
@@ -84,6 +86,10 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	// I'm sending it unreliable because it is being resent pretty often
 	UFUNCTION(Unreliable, Server, WithValidation)
 	void Server_SendTransform(FBPVRComponentPosRep NewTransform);
+
+	// Pointer to an override to call from the owning character - this saves 7 bits a rep avoiding component IDs on the RPC
+	typedef void (AVRBaseCharacter::*VRBaseCharTransformRPC_Pointer)(FBPVRComponentPosRep NewTransform);
+	VRBaseCharTransformRPC_Pointer OverrideSendTransform;
 
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
 	inline bool IsLocallyControlled() const

@@ -44,29 +44,30 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		SetRelativeTransform(TrackedParentWaist);
 
 	}
-	else if (IsLocallyControlled() && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
+	else if (IsLocallyControlled() && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 	{
 		FQuat curRot;
 		FVector curCameraLoc;
-		GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc);
-
-		FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());		
-
-		SetRelativeRotation(GetCalculatedRotation(InverseRot, DeltaTime));
-
-		if (bOffsetByHMD)
+		if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc))
 		{
-			curCameraLoc.X = 0;
-			curCameraLoc.Y = 0;
-		}
-		
-		if(bUseFeetLocation)
-		{		
-			SetRelativeLocation(FVector(curCameraLoc.X, curCameraLoc.Y, 0.0f)); // Set the Z to the bottom of the capsule
-		}
-		else
-		{
-			SetRelativeLocation(curCameraLoc); // Use the HMD height instead
+			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
+
+			SetRelativeRotation(GetCalculatedRotation(InverseRot, DeltaTime));
+
+			if (bOffsetByHMD)
+			{
+				curCameraLoc.X = 0;
+				curCameraLoc.Y = 0;
+			}
+
+			if (bUseFeetLocation)
+			{
+				SetRelativeLocation(FVector(curCameraLoc.X, curCameraLoc.Y, 0.0f)); // Set the Z to the bottom of the capsule
+			}
+			else
+			{
+				SetRelativeLocation(curCameraLoc); // Use the HMD height instead
+			}
 		}
 	}
 	else if (this->GetOwner())

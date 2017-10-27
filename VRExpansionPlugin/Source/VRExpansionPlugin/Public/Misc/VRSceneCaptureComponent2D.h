@@ -43,7 +43,7 @@ public:
 			FQuat Orientation = FQuat::Identity;
 			FVector Position = FVector::ZeroVector;
 
-			if (GEngine->HMDDevice.IsValid() && GEngine->IsStereoscopic3D() && GEngine->HMDDevice->IsHeadTrackingAllowed() && GEngine->HMDDevice->HasValidTrackingPosition())
+			if (GEngine->HMDDevice.IsValid() && GEngine->IsStereoscopic3D() && GEngine->HMDDevice->IsHeadTrackingAllowed())
 			{
 				GEngine->HMDDevice->GetCurrentOrientationAndPosition(Orientation, Position);
 

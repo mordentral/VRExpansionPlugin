@@ -5,6 +5,7 @@
 #include "Engine/Engine.h"
 #include "IXRTrackingSystem.h"
 #include "IXRCamera.h"
+#include "VRBaseCharacter.h"
 #include "IHeadMountedDisplay.h"
 
 
@@ -30,6 +31,8 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	bSmoothReplicatedMotion = false;
 	bLerpingPosition = false;
 	bReppedOnce = false;
+
+	OverrideSendTransform = nullptr;
 
 	//bUseVRNeckOffset = true;
 	//VRNeckOffset = FTransform(FRotator::ZeroRotator, FVector(15.0f,0,0), FVector(1.0f));
@@ -113,7 +116,7 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 	{
 
 		// For non view target positional updates (third party and the like)
-		if (bSetPositionDuringTick && bLockToHmd && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
+		if (bSetPositionDuringTick && bLockToHmd && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 		{
 			//ResetRelativeTransform();
 			FQuat Orientation;
@@ -144,9 +147,21 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 					ReplicatedTransform.Position = this->RelativeLocation;
 					ReplicatedTransform.Rotation = this->RelativeRotation;
 
-					// Don't bother with any of this if not replicating transform
-					if (GetNetMode() == NM_Client)	//if (bHasAuthority && bReplicateTransform)
-						Server_SendTransform(ReplicatedTransform);
+
+					if (GetNetMode() == NM_Client)
+					{
+						AVRBaseCharacter * OwningChar = Cast<AVRBaseCharacter>(GetOwner());
+						if (OverrideSendTransform != nullptr && OwningChar != nullptr)
+						{
+							(OwningChar->* (OverrideSendTransform))(ReplicatedTransform);
+						}
+						else
+						{
+							// Don't bother with any of this if not replicating transform
+							//if (bHasAuthority && bReplicateTransform)
+							Server_SendTransform(ReplicatedTransform);
+						}
+					}
 				}
 			}
 		}
@@ -201,7 +216,7 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 		{
 			const FTransform ParentWorld = GetComponentToWorld();
 			XRCamera->SetupLateUpdate(ParentWorld, this);
-
+			
 			FQuat Orientation;
 			FVector Position;
 			if (XRCamera->UpdatePlayerCamera(Orientation, Position))
@@ -216,7 +231,10 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 			}
 			else
 			{
-				ResetRelativeTransform();
+				SetRelativeScale3D(FVector(1.0f));
+				//ResetRelativeTransform(); stop doing this, it is problematic
+				// Let the camera freeze in the last position instead
+				// Setting scale by itself makes sure we don't get camera scaling but keeps the last location and rotation alive
 			}
 		}
 	}

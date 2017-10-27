@@ -396,11 +396,16 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			curCameraLoc = NewTrans.GetTranslation();
 			curCameraRot = NewTrans.Rotator();
 		}
-		else if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
+		else if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 		{
 			FQuat curRot;
-			GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc);
-			curCameraRot = curRot.Rotator();
+			if (!GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc))
+			{
+				curCameraLoc = lastCameraLoc;
+				curCameraRot = lastCameraRot;
+			}
+			else
+				curCameraRot = curRot.Rotator();
 		}
 		else if (TargetPrimitiveComponent)
 		{

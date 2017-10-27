@@ -17,6 +17,16 @@ class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ACharacter
 public:
 	AVRBaseCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	// I'm sending it unreliable because it is being resent pretty often
+	UFUNCTION(Unreliable, Server, WithValidation)
+		void Server_SendTransformCamera(FBPVRComponentPosRep NewTransform);
+
+	UFUNCTION(Unreliable, Server, WithValidation)
+		void Server_SendTransformLeftController(FBPVRComponentPosRep NewTransform);
+
+	UFUNCTION(Unreliable, Server, WithValidation)
+		void Server_SendTransformRightController(FBPVRComponentPosRep NewTransform);
+
 	// Called when the client is in climbing mode and is stepped up onto a platform
 	// Generally you should drop the climbing at this point and go into falling movement.
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRMovement")

@@ -37,6 +37,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		VRReplicatedCamera->bOffsetByHMD = false;
 		VRReplicatedCamera->SetupAttachment(NetSmoother);
+		VRReplicatedCamera->OverrideSendTransform = &AVRBaseCharacter::Server_SendTransformCamera;
 	}
 
 	VRMovementReference = NULL;
@@ -45,13 +46,6 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		VRMovementReference = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent());
 		//AddTickPrerequisiteComponent(this->GetCharacterMovement());
 	}
-
-	/*VRHeadCollider = CreateDefaultSubobject<UCapsuleComponent>(TEXT("VR Head Collider"));
-	if (VRHeadCollider && VRReplicatedCamera)
-	{
-		VRHeadCollider->SetCapsuleSize(20.0f, 25.0f);
-		VRHeadCollider->SetupAttachment(VRReplicatedCamera);
-	}*/
 
 	ParentRelativeAttachment = CreateDefaultSubobject<UParentRelativeAttachmentComponent>(AVRBaseCharacter::ParentRelativeAttachmentComponentName);
 	if (ParentRelativeAttachment && VRReplicatedCamera)
@@ -69,8 +63,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		LeftMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
 		LeftMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
-
-
+		LeftMotionController->OverrideSendTransform = &AVRBaseCharacter::Server_SendTransformLeftController;
 	}
 
 	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::RightMotionControllerComponentName);
@@ -81,6 +74,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		RightMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
 		RightMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
+		RightMotionController->OverrideSendTransform = &AVRBaseCharacter::Server_SendTransformRightController;
 	}
 
 	OffsetComponentToWorld = FTransform(FQuat(0.0f, 0.0f, 0.0f, 1.0f), FVector::ZeroVector, FVector(1.0f));
@@ -91,6 +85,41 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	MinNetUpdateFrequency = 100.0f;
 }
 
+void AVRBaseCharacter::Server_SendTransformCamera_Implementation(FBPVRComponentPosRep NewTransform)
+{
+	if(VRReplicatedCamera)
+		VRReplicatedCamera->Server_SendTransform_Implementation(NewTransform);
+}
+
+bool AVRBaseCharacter::Server_SendTransformCamera_Validate(FBPVRComponentPosRep NewTransform)
+{
+	return true;
+	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
+}
+
+void AVRBaseCharacter::Server_SendTransformLeftController_Implementation(FBPVRComponentPosRep NewTransform)
+{
+	if (LeftMotionController)
+		LeftMotionController->Server_SendControllerTransform_Implementation(NewTransform);
+}
+
+bool AVRBaseCharacter::Server_SendTransformLeftController_Validate(FBPVRComponentPosRep NewTransform)
+{
+	return true;
+	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
+}
+
+void AVRBaseCharacter::Server_SendTransformRightController_Implementation(FBPVRComponentPosRep NewTransform)
+{
+	if(RightMotionController)
+		RightMotionController->Server_SendControllerTransform_Implementation(NewTransform);
+}
+
+bool AVRBaseCharacter::Server_SendTransformRightController_Validate(FBPVRComponentPosRep NewTransform)
+{
+	return true;
+	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
+}
 FVector AVRBaseCharacter::GetTeleportLocation(FVector OriginalLocation)
 {	
 	return OriginalLocation;

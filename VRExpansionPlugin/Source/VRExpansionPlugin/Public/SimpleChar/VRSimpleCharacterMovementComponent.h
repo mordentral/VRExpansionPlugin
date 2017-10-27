@@ -140,7 +140,7 @@ public:
 		//RequestedVelocity = FVector::ZeroVector;
 	}
 
-	bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
+	/*bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
 	{
 		FSavedMove_VRSimpleCharacter * nMove = (FSavedMove_VRSimpleCharacter *)NewMove.Get();
 
@@ -148,7 +148,7 @@ public:
 			return false;
 
 		return FSavedMove_VRBaseCharacter::CanCombineWith(NewMove, Character, MaxDelta);
-	}
+	}*/
 
 };
 

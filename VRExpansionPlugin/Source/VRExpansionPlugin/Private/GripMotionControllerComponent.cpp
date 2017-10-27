@@ -10,6 +10,8 @@
 #include "GameFramework/WorldSettings.h"
 #include "DrawDebugHelpers.h"
 
+#include "VRBaseCharacter.h"
+
 #include "PhysicsPublic.h"
 #include "PhysicsEngine/BodySetup.h"
 
@@ -2175,7 +2177,15 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 					ReplicatedControllerTransform.Rotation = this->RelativeRotation;
 
 					if (GetNetMode() == NM_Client)
-						Server_SendControllerTransform(ReplicatedControllerTransform);
+					{		
+						AVRBaseCharacter * OwningChar = Cast<AVRBaseCharacter>(GetOwner());
+						if (OverrideSendTransform != nullptr && OwningChar != nullptr)
+						{
+							(OwningChar->* (OverrideSendTransform))(ReplicatedControllerTransform);
+						}
+						else
+							Server_SendControllerTransform(ReplicatedControllerTransform);
+					}
 				}
 			}
 		}

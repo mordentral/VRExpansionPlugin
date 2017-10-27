@@ -985,11 +985,20 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 			FQuat curRot;
 			bool bWasHeadset = false;
 
-			if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
+			if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 			{
 				bWasHeadset = true;
-				GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc);
-				curCameraRot = curRot.Rotator();
+
+				if (GEngine->XRSystem->HasValidTrackingPosition())
+				{
+					GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc);
+					curCameraRot = curRot.Rotator();
+				}
+				else
+				{
+					curCameraLoc = lastCameraLoc;
+					curCameraRot = lastCameraRot;
+				}
 			}
 			else if (VRCameraComponent)
 			{
