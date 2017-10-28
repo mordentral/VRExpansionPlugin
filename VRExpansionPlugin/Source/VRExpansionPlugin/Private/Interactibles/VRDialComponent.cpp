@@ -77,7 +77,7 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 	if (GrippingController->HasGripAuthority(GripInformation))
 	{
 		FVector CurInteractorLocation = GrippingController->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform()).GetTranslation();
-		if ((CurInteractorLocation - InitialInteractorLocation).Size() >= BreakDistance)
+		if (FVector::DistSquared(InitialInteractorLocation, CurInteractorLocation) >= FMath::Square(BreakDistance))
 		{
 			GrippingController->DropObjectByInterface(this);
 			return;

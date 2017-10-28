@@ -176,7 +176,7 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 
 	// #TODO: This drop code is incorrect, it is based off of the initial point and not the location at grip - revise it at some point
 	// Also set it to after rotation
-	if (GrippingController->HasGripAuthority(GripInformation) && (this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation()) - InitialInteractorDropLocation).Size() >= BreakDistance)
+	if (GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;

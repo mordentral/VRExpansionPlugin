@@ -128,7 +128,7 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		CurrentSliderProgress = GetCurrentSliderProgress(ClampedLocation * InitialRelativeTransform.GetScale3D());
 	}
 	
-	if ((InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation) - CurInteractorLocation).Size() >= BreakDistance)
+	if (FVector::DistSquared(CurInteractorLocation, InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation)) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;
