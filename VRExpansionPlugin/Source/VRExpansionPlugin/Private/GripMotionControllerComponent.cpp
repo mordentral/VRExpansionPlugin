@@ -2375,7 +2375,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			}
 		}
 
-		Grip.SecondaryGripInfo.SecondaryGripDistance = FMath::Abs(FVector::Dist(frontLocOrig, frontLoc));
+		Grip.SecondaryGripInfo.SecondaryGripDistance = FVector::Dist(frontLocOrig, frontLoc);
 
 		if (Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings && Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripDistanceInfluence)
 		{
