@@ -193,7 +193,7 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 	{
 		//ResetRelativeTransform();
 		SetRelativeScale3D(FVector(1.0f));
-		const FTransform ParentWorld = GetComponentToWorld();
+		const FTransform ParentWorld = CalcNewComponentToWorld(FTransform());//GetComponentToWorld();
 		GEngine->HMDDevice->SetupLateUpdate(ParentWorld, this);
 
 		FQuat Orientation;
