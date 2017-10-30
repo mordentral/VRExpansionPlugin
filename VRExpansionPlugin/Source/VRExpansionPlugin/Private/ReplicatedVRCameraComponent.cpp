@@ -214,7 +214,7 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 		auto XRCamera = XRSystem->GetXRCamera();
 		if (XRSystem->IsHeadTrackingAllowed() && XRCamera.IsValid())
 		{
-			const FTransform ParentWorld = GetComponentToWorld();
+			const FTransform ParentWorld = CalcNewComponentToWorld(FTransform());
 			XRCamera->SetupLateUpdate(ParentWorld, this);
 			
 			FQuat Orientation;
@@ -236,6 +236,8 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 				// Let the camera freeze in the last position instead
 				// Setting scale by itself makes sure we don't get camera scaling but keeps the last location and rotation alive
 			}
+
+			XRCamera->OverrideFOV(this->FieldOfView);
 		}
 	}
 
