@@ -138,6 +138,11 @@ public:
 		virtual void NotifyOfTeleport();
 
 
+	// Event triggered when a move action is performed, this is ran just prior to PerformMovement in the character tick
+	UFUNCTION(BlueprintNativeEvent, Category = "VRMovement")
+		void OnCustomMoveActionPerformed(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator);
+	virtual void OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator);
+
 	// Event when a navigation pathing operation has completed, auto calls stop movement for VR characters
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRBaseCharacter")
 		void ReceiveNavigationMoveCompleted(EPathFollowingResult::Type PathingResult);

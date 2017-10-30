@@ -27,6 +27,9 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 	UPROPERTY(BlueprintAssignable, Category = "VRDialComponent")
 		FVRDialStateChangedSignature OnDialHitSnapAngle;
 
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Dial Hit Snap Angle"))
+		void ReceiveDialHitSnapAngle(float DialMilestoneAngle);
+
 	UPROPERTY(BlueprintReadOnly, Category = "VRDialComponent")
 	float CurrentDialAngle;
 
@@ -115,6 +118,7 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 
 			if (bCallEvents && !FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
 			{
+				ReceiveDialHitSnapAngle(CurrentDialAngle);
 				OnDialHitSnapAngle.Broadcast(CurrentDialAngle);
 			}
 

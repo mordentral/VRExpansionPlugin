@@ -1869,6 +1869,11 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 
 void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+	if (!HasValidData())
+	{
+		return;
+	}
+
 	if (CharacterOwner && CharacterOwner->IsLocallyControlled() && VRRootCapsule && VRRootCapsule->bHadRelativeMovement)
 	{
 		// Fake movement is sketchy, going to find a different solution eventually?

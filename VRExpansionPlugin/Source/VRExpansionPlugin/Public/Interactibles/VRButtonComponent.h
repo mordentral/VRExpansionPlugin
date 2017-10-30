@@ -68,8 +68,11 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 		SetButtonToRestingPosition(!bSnapIntoPosition);
 		LastToggleTime = GetWorld()->GetTimeSeconds();
 
-		if(bCallButtonChangedEvent)
+		if (bCallButtonChangedEvent)
+		{
+			ReceiveButtonStateChanged(bButtonState);
 			OnButtonStateChanged.Broadcast(bButtonState);
+		}
 	}
 
 	// Resets the button to its resting location (mostly for Toggle_Stay)
@@ -107,6 +110,9 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
 		FVRButtonStateChangedSignature OnButtonStateChanged;
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button State Changed"))
+		void ReceiveButtonStateChanged(bool bButtonState);
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
 		TWeakObjectPtr<UPrimitiveComponent> InteractingComponent;

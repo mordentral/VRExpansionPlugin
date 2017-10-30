@@ -127,8 +127,11 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 	{
 		bLeverState = bNewLeverState;
 
-		if(bSendLeverEventsDuringLerp || !bIsLerping)
+		if (bSendLeverEventsDuringLerp || !bIsLerping)
+		{
+			ReceiveLeverStateChanged(bLeverState, CurrentLeverAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, CurrentLeverAngle);
 			OnLeverStateChanged.Broadcast(bLeverState, CurrentLeverAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, CurrentLeverAngle);
+		}
 
 		if (!bIsLerping && bUngripAtTargetRotation && bLeverState && HoldingController)
 		{

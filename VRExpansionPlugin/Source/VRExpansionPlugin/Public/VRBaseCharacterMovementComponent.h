@@ -192,10 +192,9 @@ public:
 
 		// Reserved_1, and Reserved_2, Flag_Custom_0 and Flag_Custom_1 are used up
 		// By the VRReplicatedMovementMode packing
-		// custom_2 is taken up by bPerformedSnapTurn
 
 
-		// only custom_3 is left currently, until new move system
+		// only custom_2 and custom_3 are left currently
 		return Result;
 	}
 
@@ -301,12 +300,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
 		void AddCustomReplicatedMovement(FVector Movement);
 
+	// Perform a snap turn in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw);
 
+	// Perform a teleport in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation);
 	
+	// Perform a teleport in line with the move action system
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, FVector MoveActionVector, FRotator MoveActionRotator);
+
 	EVRMoveAction MoveAction;
 	FVector MoveActionLoc;
 	FRotator MoveActionRot;
@@ -318,12 +323,6 @@ public:
 
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;
-
-	// Injecting custom movement in here, bypasses floor detection
-	//virtual void PerformMovement(float DeltaSeconds) override;
-
-	//inline void ApplyVRMotionToVelocity(float deltaTime);
-	//inline  void RestorePreAdditiveVRMotionVelocity();
 	FVector LastPreAdditiveVRVelocity;
 
 	inline void ApplyVRMotionToVelocity(float deltaTime)

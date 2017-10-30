@@ -210,6 +210,12 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector Telep
 	MoveActionRot = TeleportRotation;
 }
 
+void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, FVector MoveActionVector, FRotator MoveActionRotator)
+{
+	MoveAction = MoveActionToPerform;
+	MoveActionLoc = MoveActionVector;
+	MoveActionRot = MoveActionRotator;
+}
 
 bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 {
@@ -223,8 +229,17 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 	{
 		return DoMATeleport(); 
 	}break;
+	case EVRMoveAction::VRMOVEACTION_Reserved1:
+	case EVRMoveAction::VRMOVEACTION_Reserved2:
 	case EVRMoveAction::VRMOVEACTION_None:
 	{}break;
+	default: // All other move actions (CUSTOM)
+	{
+		if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+		{
+			OwningCharacter->OnCustomMoveActionPerformed(MoveAction, MoveActionLoc, MoveActionRot);			
+		}
+	}break;
 	}
 
 	return false;
@@ -531,11 +546,6 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	AdditionalVRInputVector = FVector::ZeroVector;
 	CustomVRInputVector = FVector::ZeroVector;
 	MoveAction = EVRMoveAction::VRMOVEACTION_None;
-
-	/*if (CharacterOwner->Role == ROLE_Authority || (!bHadMoveActionThisFrame))
-	{
-		
-	}*/
 }
 
 void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
@@ -673,8 +683,13 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition(float DeltaSeconds)
 		return;
 	}
 
+	// #TODO: To fix smoothing perfectly I would need to override SimulatedTick which isn't virtual so I also would need to
+	// override TickComponent all the way back to base character movement comp. Then I would need to use VR loc instead of actor loc
+	// for the smoothed location, and rotation likely wouldn't work period. Then there is the scoped prevent mesh move command which
+	// would need to be moved to the new smoothing component...... I am on the fence about whether supporting epics smoothing is worth it
+	// or if I should drop it and maybe run my own?
 
-	if (bHadMoveActionThisFrame)
+	/*if (bHadMoveActionThisFrame)
 	{
 		FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
 		if (ClientData)
@@ -699,7 +714,11 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition(float DeltaSeconds)
 		SmoothClientPosition_Interpolate(DeltaSeconds);
 		//SmoothClientPosition_UpdateVisuals(); No mesh, don't bother to run this
 		SmoothClientPosition_UpdateVRVisuals();
-	}
+	}*/
+
+	SmoothClientPosition_Interpolate(DeltaSeconds);
+	//SmoothClientPosition_UpdateVisuals(); No mesh, don't bother to run this
+	SmoothClientPosition_UpdateVRVisuals();
 }
 
 void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()

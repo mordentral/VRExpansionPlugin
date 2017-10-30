@@ -80,6 +80,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 					LastToggleTime = WorldTime;
 					bToggledThisTouch = true;
 					bButtonState = !bButtonState;
+					ReceiveButtonStateChanged(bButtonState);
 					OnButtonStateChanged.Broadcast(bButtonState);
 				}
 			}
@@ -107,6 +108,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 		{
 			LastToggleTime = WorldTime;
 			bButtonState = bCheckState;
+			ReceiveButtonStateChanged(bButtonState);
 			OnButtonStateChanged.Broadcast(bButtonState);
 		}
 	}
