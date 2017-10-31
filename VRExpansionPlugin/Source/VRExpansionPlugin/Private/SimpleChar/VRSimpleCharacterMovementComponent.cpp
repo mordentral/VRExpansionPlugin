@@ -1008,12 +1008,11 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 
 			if (!bIsFirstTick)
 			{
-				// Can adjust the relative tolerances to remove jitter and some update processing
-				if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.001f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.001f))
-				{
-					FVector DifferenceFromLastFrame = (curCameraLoc - lastCameraLoc);
-					//DifferenceFromLastFrame.Z = 0.0f;
+				FVector DifferenceFromLastFrame = (curCameraLoc - lastCameraLoc);
 
+				// Can adjust the relative tolerances to remove jitter and some update processing
+				if (!DifferenceFromLastFrame.IsNearlyZero(0.001f) /*|| !(curCameraRot - lastCameraRot).IsNearlyZero(0.001f)*/)
+				{
 					if (VRRootCapsule)
 					{
 						DifferenceFromLastFrame *= VRRootCapsule->GetComponentScale(); // Scale up with character
@@ -1030,7 +1029,10 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 				bIsFirstTick = false;
 
 			if (bWasHeadset)
+			{
 				lastCameraLoc = curCameraLoc;
+				lastCameraRot = curCameraRot;
+			}
 			else
 				lastCameraLoc = FVector::ZeroVector; // Technically this would be incorrect for Z, but we don't use Z anyway
 		}

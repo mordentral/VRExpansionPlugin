@@ -419,7 +419,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		}
 
 		// Can adjust the relative tolerances to remove jitter and some update processing
-		if (!(curCameraLoc - lastCameraLoc).IsNearlyZero(0.01f) || !(curCameraRot - lastCameraRot).IsNearlyZero(0.01f))
+		if (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f))
 		{
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
@@ -435,33 +435,36 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			Params.bFindInitialOverlaps = true;
 			bool bBlockingHit = false;
 
+			ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner());
+			UVRBaseCharacterMovementComponent * CharMove = nullptr;
+			
+			if(OwningCharacter != nullptr)
+				CharMove = Cast<UVRBaseCharacterMovementComponent>(OwningCharacter->GetCharacterMovement());
+
 			if (bUseWalkingCollisionOverride)
 			{
-				ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner());
-
 				bool bAllowWalkingCollision = false;
-				if (OwningCharacter)
+				if (CharMove != nullptr)
 				{
-					if (UCharacterMovementComponent * CharMove = Cast<UCharacterMovementComponent>(OwningCharacter->GetCharacterMovement()))
-					{
-						if (CharMove->MovementMode == EMovementMode::MOVE_Walking || CharMove->MovementMode == EMovementMode::MOVE_NavWalking)
-							bAllowWalkingCollision = true;
-					}
+					if (CharMove->MovementMode == EMovementMode::MOVE_Walking || CharMove->MovementMode == EMovementMode::MOVE_NavWalking)
+						bAllowWalkingCollision = true;
 				}
 
 				if (bAllowWalkingCollision)
-					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
+					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
 				else
-					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
+					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
 				// If we had a valid blocking hit
 			}
 			else
-				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat(0.0f, 0.0f, 0.0f, 1.0f), GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
+				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
 
-			// #TODO: should i consider the ignore physics objects setting for the sim check here?
-			if (bBlockingHit && OutHit.Component.IsValid() && !OutHit.Component->IsSimulatingPhysics())
+			if (bBlockingHit && OutHit.Component.IsValid())
 			{
-				bHadRelativeMovement = true;
+				if (CharMove != nullptr && CharMove->bIgnoreSimulatingComponentsInFloorCheck && OutHit.Component->IsSimulatingPhysics())
+					bHadRelativeMovement = false;
+				else
+					bHadRelativeMovement = true;
 			}
 			else
 				bHadRelativeMovement = false;

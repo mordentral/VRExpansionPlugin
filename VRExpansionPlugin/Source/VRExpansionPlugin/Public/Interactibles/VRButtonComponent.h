@@ -112,7 +112,7 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 		FVRButtonStateChangedSignature OnButtonStateChanged;
 
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button State Changed"))
-		void ReceiveButtonStateChanged(bool bButtonState);
+		void ReceiveButtonStateChanged(bool bCurButtonState);
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
 		TWeakObjectPtr<UPrimitiveComponent> InteractingComponent;
