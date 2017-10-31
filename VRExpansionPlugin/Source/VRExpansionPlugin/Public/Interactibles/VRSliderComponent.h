@@ -19,6 +19,7 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	~UVRSliderComponent();
 
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	FVector MaxSlideDistance;
 

@@ -989,9 +989,8 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 			{
 				bWasHeadset = true;
 
-				if (GEngine->XRSystem->HasValidTrackingPosition())
+				if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc))
 				{
-					GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc);
 					curCameraRot = curRot.Rotator();
 				}
 				else

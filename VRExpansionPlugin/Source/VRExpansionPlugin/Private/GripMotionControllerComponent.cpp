@@ -3571,17 +3571,20 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				{
 					if (IsInGameThread())
 					{
-						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
+						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 						{
 							FQuat curRot;
 							FVector curLoc;
-							GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc);
-							curLoc.Z = 0;
-
-							LastLocationForLateUpdate = curLoc;
+							if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
+							{
+								curLoc.Z = 0;
+								LastLocationForLateUpdate = curLoc;
+							}
+							else
+							{
+								 // Keep last location instead
+							}
 						}
-						else
-							LastLocationForLateUpdate = FVector::ZeroVector;
 					}
 
 					Position -= LastLocationForLateUpdate;
@@ -3599,17 +3602,21 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				{
 					if (IsInGameThread())
 					{
-						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed() && GEngine->XRSystem->HasValidTrackingPosition())
+						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 						{
 							FQuat curRot;
 							FVector curLoc;
-							GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc);
-							curLoc.Z = 0;
+							if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
+							{
+								curLoc.Z = 0;
 
-							LastLocationForLateUpdate = curLoc;
+								LastLocationForLateUpdate = curLoc;
+							}
+							else
+							{
+								// Keep last location instead
+							}
 						}
-						else
-							LastLocationForLateUpdate = FVector::ZeroVector;
 					}
 
 					Position -= LastLocationForLateUpdate;
