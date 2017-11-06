@@ -64,6 +64,28 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 	}
 }
 
+void AVRSimpleCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// I am re-forcing these to true here
+	// The editor loses these values sometimes when copying over from the std character
+	// And I like copying since it saves me hours of work.
+
+	if(LeftMotionController)
+		LeftMotionController->bOffsetByHMD = true;
+
+	if(RightMotionController)
+		RightMotionController->bOffsetByHMD = true;
+
+	if(ParentRelativeAttachment)
+		ParentRelativeAttachment->bOffsetByHMD = true;
+
+	if(VRReplicatedCamera)
+		VRReplicatedCamera->bOffsetByHMD = true;
+
+}
+
 FVector AVRSimpleCharacter::GetTeleportLocation(FVector OriginalLocation)
 {
 	//FVector modifier = VRRootReference->GetVRLocation() - this->GetActorLocation();

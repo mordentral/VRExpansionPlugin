@@ -34,6 +34,9 @@ public:
 		GenerateOffsetToWorld();
 	}
 
+	// Resetting if people turned off required settings here
+	virtual void BeginPlay() override;
+
 	// Overriding teleport so that it auto calls my controllers re-positioning
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
 
