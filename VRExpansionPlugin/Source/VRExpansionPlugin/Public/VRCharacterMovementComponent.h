@@ -50,19 +50,31 @@ public:
 
 	FVRCharacterScopedMovementUpdate(USceneComponent* Component, EScopedUpdate::Type ScopeBehavior = EScopedUpdate::DeferredUpdates, bool bRequireOverlapsEventFlagToQueueOverlaps = true)
 		: FScopedMovementUpdate(Component, ScopeBehavior, bRequireOverlapsEventFlagToQueueOverlaps)
-	{}
+	{
+		UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
+		if (RootComponent)
+		{
+			InitialVRTransform = RootComponent->OffsetComponentToWorld;
+		}
+	}
+
+	FTransform InitialVRTransform;
 
 	/** Revert movement to the initial location of the Component at the start of the scoped update. Also clears pending overlaps and sets bHasMoved to false. */
 	void RevertMove()
 	{
-		FScopedMovementUpdate::RevertMove();
-
 		UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
 		if (RootComponent)
 		{
+			// If the base class is going to miss bad overlaps
+			if (!IsTransformDirty() && !InitialVRTransform.Equals(RootComponent->OffsetComponentToWorld))
+			{
+				RootComponent->UpdateOverlaps();
+			}
+
+			FScopedMovementUpdate::RevertMove();
 			RootComponent->GenerateOffsetToWorld();
 		}
-
 	}
 };
 
@@ -126,6 +138,11 @@ public:
 	
 	virtual void PhysNavWalking(float deltaTime, int32 Iterations) override;
 	virtual void ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations) override;
+
+	void PostPhysicsTickComponent(float DeltaTime, FCharacterMovementComponentPostPhysicsTickFunction& ThisTickFunction) override;
+	void SimulateMovement(float DeltaSeconds) override;
+	void MoveSmooth(const FVector& InVelocity, const float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
+	//void PerformMovement(float DeltaSeconds) override;
 
 	FORCEINLINE FVector GetActorFeetLocation() const { return VRRootCapsule ? (VRRootCapsule->OffsetComponentToWorld.GetLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : UpdatedComponent ? (UpdatedComponent->GetComponentLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : FNavigationSystem::InvalidLocation; }
 	virtual FBasedPosition GetActorFeetLocationBased() const override
@@ -321,7 +338,6 @@ public:
 
 	// Multiple changes to support relative motion and ledge sweeps
 	virtual void PhysWalking(float deltaTime, int32 Iterations) override;
-	
 
 	// Supporting the direct move injection
 	virtual void PhysFlying(float deltaTime, int32 Iterations) override;

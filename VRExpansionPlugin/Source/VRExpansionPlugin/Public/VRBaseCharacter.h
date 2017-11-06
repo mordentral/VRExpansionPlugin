@@ -143,6 +143,18 @@ public:
 		void OnCustomMoveActionPerformed(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator);
 	virtual void OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator);
 
+	// Event triggered when beginning to be pushed back from a wall
+	// bHadLocomotionInput means that the character was moving itself
+	// HmdInput is how much the HMD moved in that tick so you can compare sizes to decide what to do
+	UFUNCTION(BlueprintNativeEvent, Category = "VRMovement")
+		void OnBeginWallPushback(FHitResult HitResultOfImpact, bool bHadLocomotionInput, FVector HmdInput);
+	virtual void OnBeginWallPushback_Implementation(FHitResult HitResultOfImpact, bool bHadLocomotionInput, FVector HmdInput);
+
+	// Event triggered when beginning to be pushed back from a wall
+	UFUNCTION(BlueprintNativeEvent, Category = "VRMovement")
+		void OnEndWallPushback();
+	virtual void OnEndWallPushback_Implementation();
+
 	// Event when a navigation pathing operation has completed, auto calls stop movement for VR characters
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRBaseCharacter")
 		void ReceiveNavigationMoveCompleted(EPathFollowingResult::Type PathingResult);

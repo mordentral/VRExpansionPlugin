@@ -507,7 +507,7 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 		bJustTeleported = false;
 
 		RestorePreAdditiveRootMotionVelocity();
-		RestorePreAdditiveVRMotionVelocity();
+		//RestorePreAdditiveVRMotionVelocity();
 
 		FVector OldVelocity = Velocity;
 		FVector VelocityNoAirControl = Velocity;
@@ -549,7 +549,7 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 		const FVector AirControlAccel = (Velocity - VelocityNoAirControl) / timeTick;
 
 		ApplyRootMotionToVelocity(timeTick);
-		ApplyVRMotionToVelocity(deltaTime);
+		//ApplyVRMotionToVelocity(timeTick);
 
 		if (bNotifyApex && CharacterOwner->Controller && (Velocity.Z <= 0.f))
 		{
@@ -561,7 +561,7 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 
 		// Move
 		FHitResult Hit(1.f);
-		FVector Adjusted = 0.5f*(OldVelocity + Velocity) * timeTick;
+		FVector Adjusted = (0.5f*(OldVelocity + Velocity) * timeTick) + (AdditionalVRInputVector /** timeTick*/);
 		SafeMoveUpdatedComponent(Adjusted, PawnRotation, true, Hit);
 
 		if (!HasValidData())
@@ -799,7 +799,7 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 		}
 
 		ApplyRootMotionToVelocity(timeTick);
-		ApplyVRMotionToVelocity(deltaTime);
+		ApplyVRMotionToVelocity(timeTick);
 
 		checkCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 

@@ -45,7 +45,6 @@ class VREXPANSIONPLUGIN_API UVRStereoWidgetComponent : public UWidgetComponent
 	//UFUNCTION(BlueprintCallable, Category = "Components|Stereo Layer")
 	//	void MarkTextureForUpdate();
 
-
 	// If true, use Epics world locked stereo implementation instead of my own temp solution
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		bool bUseEpicsWorldLockedStereo;
