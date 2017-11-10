@@ -425,7 +425,6 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
 
 			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
-			//GenerateOffsetToWorld(false);
 
 			FHitResult OutHit;
 			FCollisionQueryParams Params("RelativeMovementSweep", false, GetOwner());
@@ -452,27 +451,30 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 				if (bAllowWalkingCollision)
 					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
-				else
-					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
+				//else
+				//	bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
 				// If we had a valid blocking hit
-			}
-			else
-				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
 
-			if (bBlockingHit && OutHit.Component.IsValid())
-			{
-				if (CharMove != nullptr && CharMove->bIgnoreSimulatingComponentsInFloorCheck && OutHit.Component->IsSimulatingPhysics())
-					bHadRelativeMovement = false;
+				if (bBlockingHit && OutHit.Component.IsValid())
+				{
+					if (CharMove != nullptr && CharMove->bIgnoreSimulatingComponentsInFloorCheck && OutHit.Component->IsSimulatingPhysics())
+						bHadRelativeMovement = false;
+					else
+						bHadRelativeMovement = true;
+				}
 				else
-					bHadRelativeMovement = true;
+					bHadRelativeMovement = false;
 			}
 			else
-				bHadRelativeMovement = false;
+				bHadRelativeMovement = true;
+				//bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
 
-			lastCameraLoc = curCameraLoc;
-			lastCameraRot = curCameraRot;
+		//	lastCameraLoc = curCameraLoc;
+		//	lastCameraRot = curCameraRot;
 
 			DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);// .GetSafeNormal2D();
+			DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
+			DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
 			DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
 		}
 		else
@@ -693,34 +695,6 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 				}
 			}
 
-			/*if(bSweepHeadWithMovement && VRCameraCollider)
-			{
-				FVector TraceStartC = VRCameraCollider->GetComponentLocation();
-				FVector TraceEndC = TraceStartC + Delta;
-
-				VRCameraCollider->InitSweepCollisionParams(Params, ResponseParam);
-
-				bool bHadBlockingHitHead = MyWorld->ComponentSweepMulti(HitsHead, VRCameraCollider, TraceStartC, TraceEndC, VRCameraCollider->GetComponentQuat(), Params);
-
-				if (!bHadBlockingHit)
-					bHadBlockingHit = bHadBlockingHitHead;
-
-				if (HitsHead.Num() > 0)
-				{
-					const float DeltaSize = FMath::Sqrt(DeltaSizeSq);
-					///FVector impactnormal = -Delta;
-					//impactnormal.Normalize();
-					for (int32 HitIdx = 0; HitIdx < HitsHead.Num(); HitIdx++)
-					{
-						PullBackHit(HitsHead[HitIdx], TraceStartC, TraceEndC, DeltaSize);
-						//HitsHead[HitIdx].ImpactNormal.Z = 0;// = impactnormal;
-						//HitsHead[HitIdx].Normal.Z = 0;// = impactnormal;
-					}
-
-					Hits.Append(HitsHead);
-				}
-			}*/
-
 			// If we had a valid blocking hit, store it.
 			// If we are looking for overlaps, store those as well.
 			uint32 FirstNonInitialOverlapIdx = INDEX_NONE;
@@ -898,8 +872,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOverlaps, bool bDoNotifies, const TArray<FOverlapInfo>* OverlapsAtEndLocation)
 {
-//	SCOPE_CYCLE_COUNTER(STAT_UpdateOverlaps);
-
+	//SCOPE_CYCLE_COUNTER(STAT_UpdateOverlaps);
 	if (IsDeferringMovementUpdates())
 	{
 		// Someone tried to call UpdateOverlaps() explicitly during a deferred update, this means they really have a good reason to force it.
@@ -929,6 +902,19 @@ void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOver
 				}
 			}
 
+			// TODO: Filter this better so it runs even less often?
+			// Its not that bad currently running off of NewPendingOverlaps
+			// It forces checking for end location overlaps again if none are registered, just in case
+			// the capsule isn't setting things correctly.
+			const TArray<FOverlapInfo>* OverlapsAtEndLocationPtr;
+			TArray<FOverlapInfo> OverlapsAtEnd;
+			if ((!OverlapsAtEndLocation || OverlapsAtEndLocation->Num() < 1) && NewPendingOverlaps && NewPendingOverlaps->Num() > 0)
+			{
+				OverlapsAtEndLocationPtr = ConvertSweptOverlapsToCurrentOverlaps(OverlapsAtEnd, *NewPendingOverlaps, 0, OffsetComponentToWorld.GetLocation(), GetComponentQuat());
+			}
+			else
+				OverlapsAtEndLocationPtr = OverlapsAtEndLocation;
+
 			// now generate full list of new touches, so we can compare to existing list and
 			// determine what changed
 			TInlineOverlapInfoArray NewOverlappingComponents;
@@ -939,10 +925,10 @@ void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOver
 				// 4.17 converted to auto cvar
 				static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
 				// Might be able to avoid testing for new overlaps at the end location.
-				if (OverlapsAtEndLocation != NULL && CVarAllowCachedOverlaps && PrevTransform.Equals(GetComponentTransform()))
+				if (OverlapsAtEndLocationPtr != NULL && CVarAllowCachedOverlaps && PrevTransform.Equals(GetComponentTransform()))
 				{
 					UE_LOG(LogTemp, VeryVerbose, TEXT("%s->%s Skipping overlap test!"), *GetNameSafe(GetOwner()), *GetName());
-					NewOverlappingComponents = *OverlapsAtEndLocation;
+					NewOverlappingComponents = *OverlapsAtEndLocationPtr;
 
 					// BeginComponentOverlap may have disabled what we thought were valid overlaps at the end (collision response or overlap flags could change).
 					// Or we have overlaps from a scoped update that didn't require overlap events, but we need to remove those now.
@@ -1075,12 +1061,11 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 {
 	checkSlow(SweptOverlapsIndex >= 0);
 
-	static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
-
 	const TArray<FOverlapInfo>* Result = nullptr;
 	const bool bForceGatherOverlaps = !ShouldCheckOverlapFlagToQueueOverlaps(*this);
 
-	if ((bGenerateOverlapEvents || bForceGatherOverlaps) && CVarAllowCachedOverlaps->GetInt())
+	static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
+	if ((bGenerateOverlapEvents || bForceGatherOverlaps) && /*bAllowCachedOverlapsCVar*/CVarAllowCachedOverlaps->GetInt())
 	{
 		const AActor* Actor = GetOwner();
 		if (Actor && Actor->GetRootComponent() == this)
@@ -1090,9 +1075,8 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 			{
 				//SCOPE_CYCLE_COUNTER(STAT_MoveComponent_FastOverlap);
 
-				// Check components we hit during the sweep, keep only those still overlapping		
-
-				const FCollisionQueryParams UnusedQueryParams(NAME_None, FCollisionQueryParams::GetUnknownStatId());;
+				// Check components we hit during the sweep, keep only those still overlapping
+				const FCollisionQueryParams UnusedQueryParams(NAME_None, FCollisionQueryParams::GetUnknownStatId());
 				for (int32 Index = SweptOverlapsIndex; Index < SweptOverlaps.Num(); ++Index)
 				{
 					const FOverlapInfo& OtherOverlap = SweptOverlaps[Index];
@@ -1102,6 +1086,11 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 						if (OtherPrimitive->bMultiBodyOverlap)
 						{
 							// Not handled yet. We could do it by checking every body explicitly and track each body index in the overlap test, but this seems like a rare need.
+							return nullptr;
+						}
+						else if (Cast<USkeletalMeshComponent>(OtherPrimitive) || Cast<USkeletalMeshComponent>(this))
+						{
+							// SkeletalMeshComponent does not support this operation, and would return false in the test when an actual query could return true.
 							return nullptr;
 						}
 						else if (OtherPrimitive->ComponentOverlapComponent(this, EndLocation, EndRotationQuat, UnusedQueryParams))
@@ -1136,11 +1125,12 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 
 const TArray<FOverlapInfo>* UVRRootComponent::ConvertRotationOverlapsToCurrentOverlaps(TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& CurrentOverlaps)
 {
-	static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
-
 	const TArray<FOverlapInfo>* Result = nullptr;
 	const bool bForceGatherOverlaps = !ShouldCheckOverlapFlagToQueueOverlaps(*this);
-	if ((bGenerateOverlapEvents || bForceGatherOverlaps) && CVarAllowCachedOverlaps->GetInt())
+
+	static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
+
+	if ((bGenerateOverlapEvents || bForceGatherOverlaps) && /*bAllowCachedOverlapsCVar*/ CVarAllowCachedOverlaps->GetInt())
 	{
 		const AActor* Actor = GetOwner();
 		if (Actor && Actor->GetRootComponent() == this)
@@ -1156,5 +1146,6 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertRotationOverlapsToCurrentOv
 
 	return Result;
 }
+
 
 #undef LOCTEXT_NAMESPACE

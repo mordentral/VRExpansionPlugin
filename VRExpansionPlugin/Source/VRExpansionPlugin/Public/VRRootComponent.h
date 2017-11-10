@@ -55,7 +55,6 @@ public:
 		void SetCapsuleHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true);
 
 protected:
-
 	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;
 	virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
 
@@ -122,7 +121,7 @@ public:
 	FRotator lastCameraRot;
 
 	// While misnamed, is true if we collided with a wall/obstacle due to the HMDs movement in this frame (not movement components)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRExpansionLibrary")
+	UPROPERTY(BlueprintReadOnly, Category = "VRExpansionLibrary")
 	bool bHadRelativeMovement;
 
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
@@ -137,6 +136,9 @@ public:
 	// End UObject interface
 
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
+
+	private:
+		friend class FVRCharacterScopedMovementUpdate;
 };
 
 

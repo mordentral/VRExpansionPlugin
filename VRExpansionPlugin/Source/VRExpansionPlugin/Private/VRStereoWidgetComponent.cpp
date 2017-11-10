@@ -27,6 +27,18 @@
 #include "Slate/SWorldWidgetScreenLayer.h"
 #include "SViewport.h"
 
+// CVars
+namespace StereoWidgetCvars
+{
+	static int32 ForceNoStereoWithVRWidgets = 0;
+	FAutoConsoleVariableRef CVarForceNoStereoWithVRWidgets(
+		TEXT("vr.ForceNoStereoWithVRWidgets"),
+		ForceNoStereoWithVRWidgets,
+		TEXT("When on, will not allow stereo widget components to use stereo layers, will instead fall back to default widget rendering.\n")
+		TEXT("0: Disable, 1: Enable"),
+		ECVF_Default);
+}
+
   //=============================================================================
 UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -84,12 +96,43 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (StereoWidgetCvars::ForceNoStereoWithVRWidgets)
+	{
+		if (!bShouldCreateProxy)
+		{
+			bShouldCreateProxy = true;
+			MarkRenderStateDirty(); // Recreate
+			if (LayerId)
+			{
+				if (GEngine->StereoRenderingDevice.IsValid())
+				{
+					IStereoLayers* StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers();
+					if (StereoLayers)
+						StereoLayers->DestroyLayer(LayerId);
+				}
+				LayerId = 0;
+			}
+		}
+
+		return;
+	}
+
 	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->StereoRenderingDevice.IsValid() || (GEngine->StereoRenderingDevice->GetStereoLayers() == nullptr))
 	{
 		if (!bShouldCreateProxy)
 		{
 			bShouldCreateProxy = true;
 			MarkRenderStateDirty(); // Recreate
+			if (LayerId)
+			{
+				if (GEngine->StereoRenderingDevice.IsValid())
+				{
+					IStereoLayers* StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers();
+					if (StereoLayers)
+						StereoLayers->DestroyLayer(LayerId);
+				}
+				LayerId = 0;
+			}
 		}
 	}
 	else

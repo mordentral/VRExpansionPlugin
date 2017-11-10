@@ -121,7 +121,6 @@ public:
 
 };
 
-
 class FBasicLowPassFilter
 {
 public:

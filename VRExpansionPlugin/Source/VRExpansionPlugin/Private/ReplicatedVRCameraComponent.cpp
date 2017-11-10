@@ -50,7 +50,7 @@ void UReplicatedVRCameraComponent::GetLifetimeReplicatedProps(TArray< class FLif
 	//Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Skipping the owner with this as the owner will use the location directly
-	DOREPLIFETIME_CONDITION(UReplicatedVRCameraComponent, ReplicatedTransform, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(UReplicatedVRCameraComponent, ReplicatedCameraTransform, COND_SkipOwner);
 	DOREPLIFETIME(UReplicatedVRCameraComponent, NetUpdateRate);
 	//DOREPLIFETIME(UReplicatedVRCameraComponent, bReplicateTransform);
 }
@@ -66,19 +66,19 @@ void UReplicatedVRCameraComponent::GetLifetimeReplicatedProps(TArray< class FLif
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, false);
 }*/
 
-void UReplicatedVRCameraComponent::Server_SendTransform_Implementation(FBPVRComponentPosRep NewTransform)
+void UReplicatedVRCameraComponent::Server_SendCameraTransform_Implementation(FBPVRComponentPosRep NewTransform)
 {
 	// Store new transform and trigger OnRep_Function
-	ReplicatedTransform = NewTransform;
+	ReplicatedCameraTransform = NewTransform;
 
 	// Don't call on rep on the server if the server controls this controller
 	if (!bHasAuthority)
 	{
-		OnRep_ReplicatedTransform();
+		OnRep_ReplicatedCameraTransform();
 	}
 }
 
-bool UReplicatedVRCameraComponent::Server_SendTransform_Validate(FBPVRComponentPosRep NewTransform)
+bool UReplicatedVRCameraComponent::Server_SendCameraTransform_Validate(FBPVRComponentPosRep NewTransform)
 {
 	return true;
 	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
@@ -137,15 +137,15 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 		if (bReplicates)
 		{
 			// Don't rep if no changes
-			if (!this->RelativeLocation.Equals(ReplicatedTransform.Position) ||  !this->RelativeRotation.Equals(ReplicatedTransform.Rotation))
+			if (!this->RelativeLocation.Equals(ReplicatedCameraTransform.Position) ||  !this->RelativeRotation.Equals(ReplicatedCameraTransform.Rotation))
 			{
 				NetUpdateCount += DeltaTime;
 
 				if (NetUpdateCount >= (1.0f / NetUpdateRate))
 				{
 					NetUpdateCount = 0.0f;
-					ReplicatedTransform.Position = this->RelativeLocation;
-					ReplicatedTransform.Rotation = this->RelativeRotation;
+					ReplicatedCameraTransform.Position = this->RelativeLocation;
+					ReplicatedCameraTransform.Rotation = this->RelativeRotation;
 
 
 					if (GetNetMode() == NM_Client)
@@ -153,13 +153,13 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 						AVRBaseCharacter * OwningChar = Cast<AVRBaseCharacter>(GetOwner());
 						if (OverrideSendTransform != nullptr && OwningChar != nullptr)
 						{
-							(OwningChar->* (OverrideSendTransform))(ReplicatedTransform);
+							(OwningChar->* (OverrideSendTransform))(ReplicatedCameraTransform);
 						}
 						else
 						{
 							// Don't bother with any of this if not replicating transform
 							//if (bHasAuthority && bReplicateTransform)
-							Server_SendTransform(ReplicatedTransform);
+							Server_SendCameraTransform(ReplicatedCameraTransform);
 						}
 					}
 				}
@@ -175,7 +175,7 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 
 			if (LerpVal >= 1.0f)
 			{
-				SetRelativeLocationAndRotation(ReplicatedTransform.Position, ReplicatedTransform.Rotation);
+				SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
 
 				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
 				// Actual prediction might be something to consider in the future, but rough to do in VR
@@ -189,8 +189,8 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 			{
 				// Removed variables to speed this up a bit
 				SetRelativeLocationAndRotation(
-					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedTransform.Position, LerpVal),
-					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedTransform.Rotation, LerpVal)
+					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedCameraTransform.Position, LerpVal),
+					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedCameraTransform.Rotation, LerpVal)
 				);
 			}
 		}

@@ -12,6 +12,8 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 	this->ReplicatedMovement.LocationQuantizationLevel = EVectorQuantization::RoundTwoDecimals;
 
 	VRMovementReference = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent());
+	if (VRMovementReference)
+		VRMovementReference->bApplyAdditionalVRInputVectorAsNegative = false;
 
 	VRSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("VR Scene Component"));
 
