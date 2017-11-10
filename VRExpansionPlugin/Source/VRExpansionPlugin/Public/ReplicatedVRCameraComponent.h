@@ -41,8 +41,8 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 	UFUNCTION(BlueprintCallable, Category = Camera)
 		virtual void GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView) override;
 
-	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedTransform, Category = "ReplicatedCamera|Networking")
-	FBPVRComponentPosRep ReplicatedTransform;
+	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedCameraTransform, Category = "ReplicatedCamera|Networking")
+	FBPVRComponentPosRep ReplicatedCameraTransform;
 
 	FVector LastUpdatesRelativePosition;
 	FRotator LastUpdatesRelativeRotation;
@@ -55,7 +55,7 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 		bool bSmoothReplicatedMotion;
 	
 	UFUNCTION()
-	virtual void OnRep_ReplicatedTransform()
+	virtual void OnRep_ReplicatedCameraTransform()
 	{
 		if (bSmoothReplicatedMotion)
 		{
@@ -68,12 +68,12 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 			}
 			else
 			{
-				SetRelativeLocationAndRotation(ReplicatedTransform.Position, ReplicatedTransform.Rotation);
+				SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
 				bReppedOnce = true;
 			}
 		}
 		else
-			SetRelativeLocationAndRotation(ReplicatedTransform.Position, ReplicatedTransform.Rotation);
+			SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
 	}
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).
@@ -85,7 +85,7 @@ class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraCompone
 
 	// I'm sending it unreliable because it is being resent pretty often
 	UFUNCTION(Unreliable, Server, WithValidation)
-	void Server_SendTransform(FBPVRComponentPosRep NewTransform);
+	void Server_SendCameraTransform(FBPVRComponentPosRep NewTransform);
 
 	// Pointer to an override to call from the owning character - this saves 7 bits a rep avoiding component IDs on the RPC
 	typedef void (AVRBaseCharacter::*VRBaseCharTransformRPC_Pointer)(FBPVRComponentPosRep NewTransform);

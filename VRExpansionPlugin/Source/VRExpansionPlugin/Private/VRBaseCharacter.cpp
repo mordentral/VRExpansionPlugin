@@ -103,7 +103,7 @@ void AVRBaseCharacter::OnEndWallPushback_Implementation()
 void AVRBaseCharacter::Server_SendTransformCamera_Implementation(FBPVRComponentPosRep NewTransform)
 {
 	if(VRReplicatedCamera)
-		VRReplicatedCamera->Server_SendTransform_Implementation(NewTransform);
+		VRReplicatedCamera->Server_SendCameraTransform_Implementation(NewTransform);
 }
 
 bool AVRBaseCharacter::Server_SendTransformCamera_Validate(FBPVRComponentPosRep NewTransform)
