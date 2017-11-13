@@ -128,7 +128,8 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		CurrentSliderProgress = GetCurrentSliderProgress(ClampedLocation * InitialRelativeTransform.GetScale3D());
 	}
 	
-	if (FVector::DistSquared(CurInteractorLocation, InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation)) >= FMath::Square(BreakDistance))
+	// Converted to a relative value now so it should be correct
+	if (FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;
@@ -149,8 +150,12 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 		CurrentRelativeTransform = InitialRelativeTransform;
 	}
 
-	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
+	// This lets me use the correct original location over the network without changes
+	FTransform RelativeToGripTransform = (GripInformation.RelativeTransform.Inverse() * this->GetComponentTransform());
+
+	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 	InitialGripLoc = InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation);
+	InitialDropLocation = GripInformation.RelativeTransform.Inverse().GetTranslation();
 }
 
 void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) 

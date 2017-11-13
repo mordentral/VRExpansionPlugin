@@ -84,18 +84,23 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 		}
 	}
 
-	float DeltaRot = RotationScaler * GetAxisValue((GrippingController->RelativeRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
+	FRotator curRotation = GrippingController->GetComponentRotation();
+
+	float DeltaRot = RotationScaler * GetAxisValue((curRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
 	AddDialAngle(DeltaRot, true);
 
-	LastRotation = GrippingController->RelativeRotation;
+	LastRotation = curRotation;
 }
 
 void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
-	InitialInteractorLocation = GrippingController->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform()).GetTranslation();
+	// This lets me use the correct original location over the network without changes
+	FTransform RelativeToGripTransform = (GripInformation.RelativeTransform.Inverse() * this->GetComponentTransform());
+
+	InitialInteractorLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 	
 	// Need to rotate this by original hand to dial facing eventually
-	LastRotation = GrippingController->RelativeRotation;
+	LastRotation = RelativeToGripTransform.GetRotation().Rotator(); // Forcing into world space now so that initial can be correct over the network
 	this->SetComponentTickEnabled(true);
 }
 

@@ -29,8 +29,8 @@ enum class EVRMoveAction : uint8
 	VRMOVEACTION_None = 0x00,
 	VRMOVEACTION_SnapTurn = 0x01,
 	VRMOVEACTION_Teleport = 0x02,
-	VRMOVEACTION_Reserved1 = 0x03,
-	VRMOVEACTION_Reserved2 = 0x04,
+	VRMOVEACTION_StopAllMovement = 0x03,
+	VRMOVEACTION_Reserved1 = 0x04,
 	VRMOVEACTION_CUSTOM1 = 0x05,
 	VRMOVEACTION_CUSTOM2 = 0x06,
 	VRMOVEACTION_CUSTOM3 = 0x07,
@@ -41,6 +41,90 @@ enum class EVRMoveAction : uint8
 	VRMOVEACTION_CUSTOM8 = 0x0C,
 	VRMOVEACTION_CUSTOM9 = 0x0D,
 	VRMOVEACTION_CUSTOM10 = 0x0E,
+};
+
+UENUM(Blueprintable)
+enum class EVRMoveActionDataReq : uint8
+{
+	VRMOVEACTIONDATA_None = 0x00,
+	VRMOVEACTIONDATA_LOC = 0x01,
+	VRMOVEACTIONDATA_ROT = 0x02,
+	VRMOVEACTIONDATA_LOC_AND_ROT = 0x03
+};
+
+
+
+USTRUCT()
+struct VREXPANSIONPLUGIN_API FVRMoveActionContainer
+{
+	GENERATED_USTRUCT_BODY()
+public:
+	UPROPERTY()
+	EVRMoveAction MoveAction;
+	UPROPERTY()
+	EVRMoveActionDataReq MoveActionDataReq;
+	UPROPERTY()
+	FVector MoveActionLoc;
+	UPROPERTY()
+	FRotator MoveActionRot;
+
+	FVRMoveActionContainer()
+	{
+		Clear();
+	}
+
+	void Clear()
+	{
+		MoveAction = EVRMoveAction::VRMOVEACTION_None;
+		MoveActionDataReq = EVRMoveActionDataReq::VRMOVEACTIONDATA_None;
+		MoveActionLoc = FVector::ZeroVector;
+		MoveActionRot = FRotator::ZeroRotator;
+	}
+
+	/** Network serialization */
+	// Doing a custom NetSerialize here because this is sent via RPCs and should change on every update
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+		
+		Ar.SerializeBits(&MoveAction, 4); // 16 elements, only allowing 1 per frame, they aren't flags
+
+		switch (MoveAction)
+		{
+		case EVRMoveAction::VRMOVEACTION_None: break;
+		case EVRMoveAction::VRMOVEACTION_SnapTurn:
+		case EVRMoveAction::VRMOVEACTION_Teleport: // Not replicating rot as Control rot does that already
+		{
+			bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_StopAllMovement:
+		{}break;
+		case EVRMoveAction::VRMOVEACTION_Reserved1:
+		{}break;
+		default: // Everything else
+		{
+			// Defines how much to replicate - only 4 possible values, 0 - 3 so only send 2 bits
+			Ar.SerializeBits(&MoveActionDataReq, 2);
+
+			if (((uint8)MoveActionDataReq & (uint8)EVRMoveActionDataReq::VRMOVEACTIONDATA_LOC) != 0)
+				bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);
+
+			if (((uint8)MoveActionDataReq & (uint8)EVRMoveActionDataReq::VRMOVEACTIONDATA_ROT) != 0)
+				MoveActionRot.SerializeCompressedShort(Ar);
+
+		}break;
+		}
+
+		return bOutSuccess;
+	}
+};
+template<>
+struct TStructOpsTypeTraits< FVRMoveActionContainer > : public TStructOpsTypeTraitsBase2<FVRMoveActionContainer>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
 };
 
 //DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FAIMoveCompletedSignature, FAIRequestID, RequestID, EPathFollowingResult::Type, Result);
@@ -59,15 +143,12 @@ public:
 	UPROPERTY(Transient)
 		FRotator MoveActionRot;
 	UPROPERTY(Transient)
-		EVRMoveAction MoveAction;
+		FVRMoveActionContainer MoveAction;
 
 	FVRConditionalMoveRep()
 	{
 		CustomVRInputVector = FVector::ZeroVector;
 		RequestedVelocity = FVector::ZeroVector;
-		MoveActionLoc = FVector::ZeroVector;
-		MoveActionRot = FRotator::ZeroRotator;
-		MoveAction = EVRMoveAction::VRMOVEACTION_None;
 	}
 
 	/** Network serialization */
@@ -78,7 +159,7 @@ public:
 
 		bool bHasVRinput = !CustomVRInputVector.IsZero();
 		bool bHasRequestedVelocity = !RequestedVelocity.IsZero();
-		bool bHasMoveAction = MoveAction != EVRMoveAction::VRMOVEACTION_None;
+		bool bHasMoveAction = MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None;
 
 		// Defines the level of Quantization
 
@@ -98,28 +179,7 @@ public:
 				bOutSuccess &= SerializePackedVector<100, 30>(RequestedVelocity, Ar);
 
 			if (bHasMoveAction)
-			{
-				Ar.SerializeBits(&MoveAction, 4); // 16 elements, only allowing 1 per frame, they aren't flags
-
-				switch (MoveAction)
-				{
-				case EVRMoveAction::VRMOVEACTION_None: break;
-				case EVRMoveAction::VRMOVEACTION_SnapTurn:
-				case EVRMoveAction::VRMOVEACTION_Teleport: // Not replicating rot as Control rot does that already
-				{
-					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);
-				}break;
-				case EVRMoveAction::VRMOVEACTION_Reserved1:
-				case EVRMoveAction::VRMOVEACTION_Reserved2:
-				{}break;
-				default: // Everything else
-				{
-					// Customs could use both rot and loc, so rep both
-					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);
-					MoveActionRot.SerializeCompressedShort(Ar);
-				}break;
-				}
-			}
+				MoveAction.NetSerialize(Ar, Map, bOutSuccess);
 		}
 
 		return bOutSuccess;
@@ -206,7 +266,7 @@ public:
 		if (!nMove || (VRReplicatedMovementMode != nMove->VRReplicatedMovementMode))
 			return false;
 
-		if (ConditionalValues.MoveAction != EVRMoveAction::VRMOVEACTION_None || nMove->ConditionalValues.MoveAction != EVRMoveAction::VRMOVEACTION_None)
+		if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None || nMove->ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
 			return false;
 
 		if (!ConditionalValues.CustomVRInputVector.IsZero() || !nMove->ConditionalValues.CustomVRInputVector.IsZero())
@@ -238,7 +298,7 @@ public:
 		if (!ConditionalValues.RequestedVelocity.IsZero())
 			return true;
 
-		if (ConditionalValues.MoveAction != EVRMoveAction::VRMOVEACTION_None)
+		if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
 			return true;
 
 		// #TODO: What to do here?
@@ -307,19 +367,22 @@ public:
 	// Perform a teleport in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation);
+
+	// Perform StopAllMovementImmediately in line with the move action system
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void PerformMoveAction_StopAllMovement();
 	
 	// Perform a teleport in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, FVector MoveActionVector, FRotator MoveActionRotator);
+		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator);
 
-	EVRMoveAction MoveAction;
-	FVector MoveActionLoc;
-	FRotator MoveActionRot;
+	FVRMoveActionContainer MoveAction;
 
 	bool bHadMoveActionThisFrame;
 	bool CheckForMoveAction();
 	bool DoMASnapTurn();
 	bool DoMATeleport();
+	bool DoMAStopAllMovement();
 
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;

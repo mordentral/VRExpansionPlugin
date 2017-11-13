@@ -43,6 +43,7 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;
 	FVector InitialGripLoc;
+	FVector InitialDropLocation;
 
 	// Should be called after the slider is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")

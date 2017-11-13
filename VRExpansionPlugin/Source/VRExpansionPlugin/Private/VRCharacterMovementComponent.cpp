@@ -688,8 +688,6 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 
 		CustomVRInputVector = ConditionalReps.CustomVRInputVector;
 		MoveAction = ConditionalReps.MoveAction;
-		MoveActionLoc = ConditionalReps.MoveActionLoc;
-		MoveActionRot = ConditionalReps.MoveActionRot;
 
 		// Set capsule location prior to testing movement
 		// I am overriding the replicated value here when movement is made on purpose
