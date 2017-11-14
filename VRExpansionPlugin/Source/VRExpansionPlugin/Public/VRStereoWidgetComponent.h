@@ -25,7 +25,7 @@ class VREXPANSIONPLUGIN_API UVRStereoWidgetComponent : public UWidgetComponent
 	~UVRStereoWidgetComponent();
 
 	void BeginDestroy() override;
-
+	void OnUnregister() override;
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	virtual FActorComponentInstanceData* GetComponentInstanceData() const override;

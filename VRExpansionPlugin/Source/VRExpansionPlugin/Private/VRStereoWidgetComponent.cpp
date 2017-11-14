@@ -66,14 +66,27 @@ UVRStereoWidgetComponent::~UVRStereoWidgetComponent()
 
 void UVRStereoWidgetComponent::BeginDestroy()
 {
-	Super::BeginDestroy();
-
 	IStereoLayers* StereoLayers;
 	if (LayerId && GEngine->HMDDevice.IsValid() /* #TODO: 4.18 - replace with OXR version*/ && (StereoLayers = GEngine->HMDDevice->GetStereoLayers()) != nullptr)
 	{
 		StereoLayers->DestroyLayer(LayerId);
 		LayerId = 0;
 	}
+
+	Super::BeginDestroy();
+}
+
+
+void UVRStereoWidgetComponent::OnUnregister()
+{
+	IStereoLayers* StereoLayers;
+	if (LayerId && GEngine->StereoRenderingDevice.IsValid() && (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) != nullptr)
+	{
+		StereoLayers->DestroyLayer(LayerId);
+		LayerId = 0;
+	}
+
+	Super::OnUnregister();
 }
 
 void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
