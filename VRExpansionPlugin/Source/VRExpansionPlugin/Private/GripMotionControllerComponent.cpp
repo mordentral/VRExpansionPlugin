@@ -877,6 +877,7 @@ bool UGripMotionControllerComponent::GripActor(
 
 	FBPAdvGripSettings AdvancedGripSettings;
 	UObject * ObjectToCheck = NULL; // Used if having to calculate the transform
+	bool bIgnoreHandRotation = false;
 
 	if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
@@ -885,6 +886,12 @@ bool UGripMotionControllerComponent::GripActor(
 
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(root);
 		ObjectToCheck = root;
+
+		if (IVRGripInterface::Execute_IsInteractible(root))
+		{
+			FBPInteractionSettings IntSettings = IVRGripInterface::Execute_GetInteractionSettings(root);
+			bIgnoreHandRotation = IntSettings.bIgnoreHandRotation;
+		}
 	}
 	else if (ActorToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
@@ -893,6 +900,12 @@ bool UGripMotionControllerComponent::GripActor(
 
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(ActorToGrip);
 		ObjectToCheck = ActorToGrip;
+
+		if (IVRGripInterface::Execute_IsInteractible(ActorToGrip))
+		{
+			FBPInteractionSettings IntSettings = IVRGripInterface::Execute_GetInteractionSettings(ActorToGrip);
+			bIgnoreHandRotation = IntSettings.bIgnoreHandRotation;
+		}
 	}
 
 	// So that events caused by sweep and the like will trigger correctly
@@ -952,10 +965,29 @@ bool UGripMotionControllerComponent::GripActor(
 		ObjectToCheck = NULL; // Null it back out, socketed grips don't use this
 	}
 	else if (bWorldOffsetIsRelative)
-		newActorGrip.RelativeTransform = WorldOffset;
+	{
+		FTransform FinalOffset = WorldOffset;
+		if (bIgnoreHandRotation)
+		{
+			// Reconstitute the controller transform relative to the object, then remove the rotation and set it back to relative to controller
+			// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
+			FTransform compTrans = root->GetComponentTransform();
+
+			FinalOffset = FinalOffset.Inverse() * compTrans; // Reconstitute transform
+			FinalOffset.SetRotation(FQuat::Identity); // Remove rotation
+
+			FinalOffset = compTrans.GetRelativeTransform(FinalOffset); // Set back to relative
+		}
+		newActorGrip.RelativeTransform = FinalOffset;
+	}
 	else
 	{
-		newActorGrip.RelativeTransform = ConvertToControllerRelativeTransform(WorldOffset, ObjectToCheck);
+		FTransform controllerTrans = this->GetComponentTransform();
+		if (bIgnoreHandRotation)
+		{
+			controllerTrans.SetRotation(FQuat::Identity);
+		}
+		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(controllerTrans);
 	}
 
 	if (!bIsLocalGrip)
@@ -1062,6 +1094,7 @@ bool UGripMotionControllerComponent::GripComponent(
 
 	FBPAdvGripSettings AdvancedGripSettings;
 	UObject * ObjectToCheck = NULL;
+	bool bIgnoreHandRotation = false;
 
 	if (ComponentToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
@@ -1070,6 +1103,12 @@ bool UGripMotionControllerComponent::GripComponent(
 
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(ComponentToGrip);
 		ObjectToCheck = ComponentToGrip;
+
+		if (IVRGripInterface::Execute_IsInteractible(ComponentToGrip))
+		{
+			FBPInteractionSettings IntSettings = IVRGripInterface::Execute_GetInteractionSettings(ComponentToGrip);
+			bIgnoreHandRotation = IntSettings.bIgnoreHandRotation;
+		}
 	}
 
 	//ComponentToGrip->IgnoreActorWhenMoving(this->GetOwner(), true);
@@ -1137,9 +1176,30 @@ bool UGripMotionControllerComponent::GripComponent(
 		ObjectToCheck = NULL; // Null it out, socketed grips don't use this
 	}
 	else if (bWorldOffsetIsRelative)
-		newActorGrip.RelativeTransform = WorldOffset;
+	{
+		FTransform FinalOffset = WorldOffset;
+		if (bIgnoreHandRotation)
+		{
+			// Reconstitute the controller transform relative to the object, then remove the rotation and set it back to relative to controller
+			// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
+			FTransform compTrans = ComponentToGrip->GetComponentTransform();
+
+			FinalOffset = FinalOffset.Inverse() * compTrans; // Reconstitute transform
+			FinalOffset.SetRotation(FQuat::Identity); // Remove rotation
+
+			FinalOffset = compTrans.GetRelativeTransform(FinalOffset); // Set back to relative
+		}
+		newActorGrip.RelativeTransform = FinalOffset;
+	}
 	else
-		newActorGrip.RelativeTransform = ConvertToControllerRelativeTransform(WorldOffset, ObjectToCheck);
+	{
+		FTransform controllerTrans = this->GetComponentTransform();
+		if (bIgnoreHandRotation)
+		{
+			controllerTrans.SetRotation(FQuat::Identity);
+		}
+		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(controllerTrans);
+	}
 
 	if (!bIsLocalGrip)
 		GrippedActors.Add(newActorGrip);

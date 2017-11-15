@@ -478,6 +478,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		float VRClimbingMaxReleaseVelocitySize;
 
+	/* Custom distance that is required before accepting a walking stepup
+	*  This is to help promote stepping up, engine default is 0.15f, generally you want it lower than that
+	*  Do NOT set to larger than capsule radius!
+	*  #TODO: Port to SimpleCharacter as well
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
+		float VREdgeRejectDistance;
+
 	// If true will replicate the capsule height on to clients, allows for dynamic capsule height changes in multiplayer
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
 		bool VRReplicateCapsuleHeight;

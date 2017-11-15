@@ -33,6 +33,8 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	VRLowGravWallFrictionScaler = 1.0f;
 	VRLowGravIgnoresDefaultFluidFriction = true;
 
+	VREdgeRejectDistance = 0.01f; // Rounded minimum of root movement
+
 	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 
 	NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;

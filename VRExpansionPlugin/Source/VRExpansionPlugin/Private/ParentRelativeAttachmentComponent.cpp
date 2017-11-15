@@ -23,6 +23,8 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	LastLerpVal = 0.0f;
 	LerpTarget = 0.0f;
 	bWasSetOnce = false;
+
+	bIgnoreRotationFromParent = false;
 }
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -36,9 +38,12 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		{
 			TrackedParentWaist.SetTranslation(TrackedParentWaist.GetTranslation() * FVector(1.0f, 1.0f, 0.0f));
 
-			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(TrackedParentWaist.Rotator());
+			if (!bIgnoreRotationFromParent)
+			{
+				FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(TrackedParentWaist.Rotator());
 
-			TrackedParentWaist.SetRotation(GetCalculatedRotation(InverseRot, DeltaTime));
+				TrackedParentWaist.SetRotation(GetCalculatedRotation(InverseRot, DeltaTime));
+			}
 		}
 
 		SetRelativeTransform(TrackedParentWaist);
@@ -50,9 +55,12 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 		FVector curCameraLoc;
 		if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc))
 		{
-			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
+			if (!bIgnoreRotationFromParent)
+			{
+				FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
 
-			SetRelativeRotation(GetCalculatedRotation(InverseRot, DeltaTime));
+				SetRelativeRotation(GetCalculatedRotation(InverseRot, DeltaTime));
+			}
 
 			if (bOffsetByHMD)
 			{
@@ -74,9 +82,12 @@ void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELe
 	{
 		if (UCameraComponent * CameraOwner = this->GetOwner()->FindComponentByClass<UCameraComponent>())
 		{
-			FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(CameraOwner->RelativeRotation);
+			if (!bIgnoreRotationFromParent)
+			{
+				FRotator InverseRot = UVRExpansionFunctionLibrary::GetHMDPureYaw(CameraOwner->RelativeRotation);
 
-			SetRelativeRotation(GetCalculatedRotation(InverseRot, DeltaTime));
+				SetRelativeRotation(GetCalculatedRotation(InverseRot, DeltaTime));
+			}
 
 			if(bUseFeetLocation)
 			{			

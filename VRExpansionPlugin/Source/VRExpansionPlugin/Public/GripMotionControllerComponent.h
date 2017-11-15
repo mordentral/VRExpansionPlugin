@@ -572,9 +572,9 @@ public:
 
 	// Converts a worldspace transform into being relative to this motion controller, optionally can check interface settings for a given object as well to modify the given transform
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
-	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform, UObject * OptionalObjectToCheck = NULL)
+	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform/*, UObject * OptionalObjectToCheck = NULL*/)
 	{
-		if (OptionalObjectToCheck)
+		/*if (OptionalObjectToCheck)
 		{
 			if (OptionalObjectToCheck->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
@@ -587,7 +587,7 @@ public:
 					return InTransform.GetRelativeTransform(ModifiedTransform);
 				}
 			}
-		}
+		}*/
 
 		return InTransform.GetRelativeTransform(this->GetComponentTransform());
 	}
