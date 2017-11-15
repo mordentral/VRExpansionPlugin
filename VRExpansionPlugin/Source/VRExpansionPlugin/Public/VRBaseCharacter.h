@@ -65,6 +65,12 @@ public:
 		return OffsetComponentToWorld.GetRotation().Rotator();
 	}
 
+
+	virtual FVector GetTargetLocation(AActor* RequestedBy) const override
+	{
+		return GetVRLocation();
+	}
+
 	// Regenerates the base offsetcomponenttoworld that VR uses
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
 	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw)

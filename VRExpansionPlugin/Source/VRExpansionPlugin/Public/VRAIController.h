@@ -27,3 +27,12 @@ public:
 	virtual bool LineOfSightTo(const AActor* Other, FVector ViewPoint = FVector(ForceInit), bool bAlternateChecks = false) const override;
 	//~ End AController Interface
 };
+
+
+UCLASS()
+class AVRDetourCrowdAIController : public AVRAIController
+{
+	GENERATED_BODY()
+public:
+	AVRDetourCrowdAIController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+};

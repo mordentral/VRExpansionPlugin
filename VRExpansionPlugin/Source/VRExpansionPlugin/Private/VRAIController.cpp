@@ -2,6 +2,7 @@
 
 #include "VRAIController.h"
 #include "NetworkingDistanceConstants.h" // Needed for the LinOfSightTo function override to work
+#include "Navigation/CrowdFollowingComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 
@@ -127,4 +128,10 @@ bool AVRAIController::LineOfSightTo(const AActor* Other, FVector ViewPoint, bool
 		}
 	}
 	return false;
+}
+
+AVRDetourCrowdAIController::AVRDetourCrowdAIController(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT("PathFollowingComponent")))
+{
+
 }
