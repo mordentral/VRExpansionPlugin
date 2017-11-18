@@ -2360,13 +2360,16 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			{
 				if (UGripMotionControllerComponent * OtherController = Cast<UGripMotionControllerComponent>(Grip.SecondaryGripInfo.SecondaryAttachment))
 				{
-					FVector Position;
-					FRotator Orientation;
-					float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
-					if (OtherController->GripPollControllerState(Position, Orientation, WorldToMeters))
+					if (!OtherController->bUseWithoutTracking)
 					{
-						/*curLocation*/ frontLoc = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
-						bPulledControllerLoc = true;
+						FVector Position;
+						FRotator Orientation;
+						float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+						if (OtherController->GripPollControllerState(Position, Orientation, WorldToMeters))
+						{
+							/*curLocation*/ frontLoc = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
+							bPulledControllerLoc = true;
+						}
 					}
 				}
 			}
