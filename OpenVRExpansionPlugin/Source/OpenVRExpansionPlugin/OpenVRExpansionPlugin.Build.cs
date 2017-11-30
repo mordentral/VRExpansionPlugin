@@ -40,7 +40,7 @@ public class OpenVRExpansionPlugin : ModuleRules
                 "RenderCore",
                 "ShaderCore",
                 "ProceduralMeshComponent",
-                "VRExpansionPlugin"
+               // "VRExpansionPlugin"
                // "EngineSettings"
             });
 			

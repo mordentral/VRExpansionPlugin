@@ -2,7 +2,7 @@
 
 #include "SteamVRKeyboardComponent.h"
 #include "OpenVRExpansionFunctionLibrary.h"
-#include "GripMotionControllerComponent.h"
+//#include "GripMotionControllerComponent.h"
 
 
 //=============================================================================
@@ -24,7 +24,7 @@ void USteamVRKeyboardComponent::OnUnregister()
 #if STEAMVR_SUPPORTED_PLATFORM
 	if (KeyboardHandle.IsValid())
 	{
-		EBPVRResultSwitch Result;
+		EBPOVRResultSwitch Result;
 		CloseVRKeyboard(Result);
 	}
 #endif

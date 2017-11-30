@@ -7,7 +7,116 @@
 #include "VRBaseCharacterMovementComponent.h"
 #include "ReplicatedVRCameraComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
+#include "GripMotionControllerComponent.h"
 #include "VRBaseCharacter.generated.h"
+
+/** Delegate for notification when the lever state changes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRSeatThresholdChangedSignature, bool, bIsWithinThreshold, float, ToThresholdScaler);
+
+USTRUCT(Blueprintable)
+struct VREXPANSIONPLUGIN_API FVRSeatedCharacterInfo
+{
+	GENERATED_USTRUCT_BODY()
+public:
+	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
+		bool bSitting;
+	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
+		bool bZeroToHead;
+	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
+		FVector_NetQuantize100 StoredLocation;
+	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
+		float StoredYaw;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NotReplicated, Category = "CharacterSeatInfo", meta = (ClampMin = "1.000", UIMin = "1.000", ClampMax = "256.000", UIMax = "256.000"))
+		float AllowedRadius;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NotReplicated, Category = "CharacterSeatInfo", meta = (ClampMin = "1.000", UIMin = "1.000", ClampMax = "256.000", UIMax = "256.000"))
+		float AllowedRadiusThreshold;
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "CharacterSeatInfo")
+		float CurrentThresholdScaler;
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "CharacterSeatInfo")
+		bool bIsOverThreshold;
+
+	bool bWasSeated;
+	bool bOriginalControlRotation;
+	bool bWasOverLimit;
+
+	FVRSeatedCharacterInfo()
+	{
+		Clear();
+	}
+
+	void Clear()
+	{
+		bWasOverLimit = false;
+		bZeroToHead = true;
+		StoredLocation = FVector::ZeroVector;
+		StoredYaw = 0;
+		bWasSeated = false;
+		bOriginalControlRotation = false;
+		AllowedRadius = 40.0f;
+		AllowedRadiusThreshold = 20.0f;
+		CurrentThresholdScaler = 0.0f;
+	}
+
+	void ClearTempVals()
+	{
+		bWasOverLimit = false;
+		bWasSeated = false;
+		bOriginalControlRotation = false;
+		CurrentThresholdScaler = 0.0f;
+	}
+
+
+	/** Network serialization */
+	// Doing a custom NetSerialize here because this is sent via RPCs and should change on every update
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+
+		Ar.SerializeBits(&bSitting, 1);
+		Ar.SerializeBits(&bZeroToHead, 1);
+
+		if (bSitting)
+		{
+			// Forcing a maximum value here so that we can compress it by making assumptions
+			// 256 max value = 8 bits + 1 bit for sign + 7 bits for precision (up to 128 on precision, so full range 2 digit precision).
+			if (Ar.IsSaving())
+			{
+				bOutSuccess &= WriteFixedCompressedFloat<256, 16>(AllowedRadius, Ar);
+				bOutSuccess &= WriteFixedCompressedFloat<256, 16>(AllowedRadiusThreshold, Ar);
+			}
+			else
+			{
+				bOutSuccess &= ReadFixedCompressedFloat<256, 16>(AllowedRadius, Ar);
+				bOutSuccess &= ReadFixedCompressedFloat<256, 16>(AllowedRadiusThreshold, Ar);
+			}
+		}
+
+		StoredLocation.NetSerialize(Ar, Map, bOutSuccess);
+
+		uint16 val;
+		if (Ar.IsSaving())
+		{
+			val = FRotator::CompressAxisToShort(StoredYaw);
+			Ar << val;
+		}
+		else
+		{
+			Ar << val;
+			StoredYaw = FRotator::DecompressAxisFromShort(val);
+		}
+		
+		return bOutSuccess;
+	}
+};
+template<>
+struct TStructOpsTypeTraits< FVRSeatedCharacterInfo > : public TStructOpsTypeTraitsBase2<FVRSeatedCharacterInfo>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
 
 UCLASS()
 class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ACharacter
@@ -69,6 +178,288 @@ public:
 	virtual FVector GetTargetLocation(AActor* RequestedBy) const override
 	{
 		return GetVRLocation();
+	}
+
+	UPROPERTY(BlueprintReadOnly, Replicated, EditAnywhere, Category = "BaseVRCharacter", ReplicatedUsing = OnRep_SeatedCharInfo)
+	FVRSeatedCharacterInfo SeatInformation;
+
+	// Called when the seated mode is changed
+	UFUNCTION(BlueprintImplementableEvent, Category = "BaseVRCharacter")
+		void OnSeatedModeChanged(bool bNewSeatedMode, bool bWasAlreadySeated);
+
+	// Called when the the player either transitions to/from the threshold boundry or the scaler value of being outside the boundry changes
+	// Can be used for warnings or screen darkening, ect
+	UFUNCTION(BlueprintImplementableEvent, Category = "BaseVRCharacter")
+		void OnSeatThreshholdChanged(bool bIsWithinThreshold, float ToThresholdScaler);
+
+	// Call to use an object
+	UPROPERTY(BlueprintAssignable, Category = "BaseVRCharacter")
+		FVRSeatThresholdChangedSignature OnSeatThreshholdChanged_Bind;
+
+	void ZeroToSeatInformation()
+	{
+		SetSeatRelativeLocationAndRotationVR(SeatInformation.StoredLocation, -SeatInformation.StoredLocation, FRotator(0.0f, -SeatInformation.StoredYaw, 0.0f), true);
+		LeftMotionController->PostTeleportMoveGrippedActors();
+		RightMotionController->PostTeleportMoveGrippedActors();
+	}
+	
+	// Called from the movement component
+	void TickSeatInformation(float DeltaTime)
+	{
+		float LastThresholdScaler = SeatInformation.CurrentThresholdScaler;
+		bool bLastOverThreshold = SeatInformation.bIsOverThreshold;
+
+		FVector NewLoc = VRReplicatedCamera->RelativeLocation;
+		
+		if (!SeatInformation.bZeroToHead)
+			NewLoc.Z = 0.0f;
+
+		float AbsDistance = FMath::Abs(FVector::Dist(SeatInformation.StoredLocation, NewLoc));
+
+		// If over the allowed distance
+		if (AbsDistance > SeatInformation.AllowedRadius)
+		{
+			// Force them back into range
+			FVector diff = NewLoc - SeatInformation.StoredLocation;
+			diff.Normalize();
+			diff = (-diff * (AbsDistance - SeatInformation.AllowedRadius));	
+
+			FRotator Rot = FRotator(0.0f, -SeatInformation.StoredYaw, 0.0f);
+			SetSeatRelativeLocationAndRotationVR(SeatInformation.StoredLocation, (-SeatInformation.StoredLocation) + Rot.RotateVector(diff), Rot, true);
+			SeatInformation.bWasOverLimit = true;
+		}
+		else if (SeatInformation.bWasOverLimit) // Make sure we are in the zero point otherwise
+		{
+			SetSeatRelativeLocationAndRotationVR(SeatInformation.StoredLocation, -SeatInformation.StoredLocation, FRotator(0.0f, -SeatInformation.StoredYaw, 0.0f), true);
+			SeatInformation.bWasOverLimit = false;
+		}
+
+		if (AbsDistance > SeatInformation.AllowedRadius - SeatInformation.AllowedRadiusThreshold)
+			SeatInformation.bIsOverThreshold = true;
+		else
+			SeatInformation.bIsOverThreshold = false;
+
+		SeatInformation.CurrentThresholdScaler = FMath::Clamp((AbsDistance - (SeatInformation.AllowedRadius - SeatInformation.AllowedRadiusThreshold)) / SeatInformation.AllowedRadiusThreshold, 0.0f, 1.0f);		
+
+		if (bLastOverThreshold != SeatInformation.bIsOverThreshold || !FMath::IsNearlyEqual(LastThresholdScaler, SeatInformation.CurrentThresholdScaler))
+		{
+			OnSeatThreshholdChanged(!SeatInformation.bIsOverThreshold, SeatInformation.CurrentThresholdScaler);
+			OnSeatThreshholdChanged_Bind.Broadcast(!SeatInformation.bIsOverThreshold, SeatInformation.CurrentThresholdScaler);
+		}
+	}
+
+	UFUNCTION()
+		virtual void OnRep_SeatedCharInfo()
+	{
+		// Handle setting up the player here
+
+		if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(GetRootComponent()))
+		{
+			if (SeatInformation.bSitting /*&& !SeatInformation.bWasSeated*/) // Removing WasSeated check because we may be switching seats
+			{
+				if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
+					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+
+				root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+				// Set it before it is set below
+				if(!SeatInformation.bWasSeated)
+					SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
+
+				SeatInformation.bWasSeated = true;
+				bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
+
+				ZeroToSeatInformation();
+				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+			}
+			else if(!SeatInformation.bSitting && SeatInformation.bWasSeated)
+			{
+				root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+				if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
+					charMovement->SetMovementMode(MOVE_Walking);
+
+				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
+
+				// Re-purposing them for the new location and rotations
+				SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true);
+				LeftMotionController->PostTeleportMoveGrippedActors();
+				RightMotionController->PostTeleportMoveGrippedActors();
+
+				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+				SeatInformation.ClearTempVals();
+			}
+			else // Is just a reposition
+			{
+				ZeroToSeatInformation();
+			}
+		}
+	}
+
+	// Re-zeros the seated settings
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "BaseVRCharacter", meta = (DisplayName = "ReZeroSeating"))
+		void Server_ReZeroSeating(FVector_NetQuantize100 NewRelativeHeadLoc, float NewRelativeHeadYaw, bool bZeroToHead = true);
+
+
+	// Sets seated mode on the character and then fires off an event to handle any special setup
+	// Target loc is for teleport location if standing up, or relative camera location when sitting down.
+	// Target rot is for PURE YAW of standing up, or sitting down (use Get HMDPureYaw).
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "BaseVRCharacter", meta = (DisplayName = "SetSeatedMode"))
+		void Server_SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true);
+
+	// Sets seated mode on the character and then fires off an event to handle any special setup
+	// Should only be called on the server / net authority
+	bool SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true)
+	{
+		if (!this->HasAuthority())
+			return false;
+
+		AController* OwningController = GetController();
+
+		if (bSetSeatedMode)
+		{
+			//SeatedCharacter.SeatedCharacter = CharacterToSeat;
+			SeatInformation.bSitting = true;
+			SeatInformation.StoredYaw = TargetYaw;
+			SeatInformation.StoredLocation = TargetLoc;
+			SeatInformation.AllowedRadius = AllowedRadius;
+			SeatInformation.AllowedRadiusThreshold = AllowedRadiusThreshold;
+		
+			// Null out Z so we keep feet location if not zeroing to head
+			if (!bZeroToHead)
+				SeatInformation.StoredLocation.Z = 0.0f;
+			
+			//SetReplicateMovement(false);/ / No longer doing this, allowing it to replicate down to simulated clients now instead
+
+			if (SeatParent)
+				AttachToComponent(SeatParent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		}
+		else
+		{
+			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+			SeatInformation.StoredYaw = TargetYaw;
+			SeatInformation.StoredLocation = TargetLoc;
+			//SetReplicateMovement(true); // No longer doing this, allowing it to replicate down to simulated clients now instead
+			SeatInformation.bSitting = false;
+		}
+
+		OnRep_SeatedCharInfo(); // Call this on server side because it won't call itself
+		NotifyOfTeleport(); // Teleport the controllers
+
+		return true;
+	}
+
+	void SetSeatRelativeLocationAndRotationVR(FVector Pivot, FVector NewLoc, FRotator NewRot, bool bUseYawOnly)
+	{
+		if (bUseYawOnly)
+		{
+			NewRot.Pitch = 0.0f;
+			NewRot.Roll = 0.0f;
+		}
+
+		NewLoc = NewLoc + Pivot;
+		NewLoc -= NewRot.RotateVector(Pivot);
+
+		SetActorRelativeTransform(FTransform(NewRot, NewLoc, GetCapsuleComponent()->RelativeScale3D));
+	}
+
+	// Adds a rotation delta taking into account the HMD as a pivot point (also moves the actor), returns final location difference
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
+	FVector AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYawOnly = true)
+	{
+			AController* OwningController = GetController();
+
+			FVector NewLocation;
+			FRotator NewRotation;
+			FVector OrigLocation = GetActorLocation();
+			FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+			PivotPoint.Z = 0.0f;
+
+			NewRotation = bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
+			
+			if (bUseYawOnly)
+			{
+				NewRotation.Pitch = 0.0f;
+				NewRotation.Roll = 0.0f;
+			}
+
+			NewLocation = OrigLocation + NewRotation.RotateVector(PivotPoint);
+			NewRotation = (NewRotation.Quaternion() * DeltaRot.Quaternion()).Rotator();
+			NewLocation -= NewRotation.RotateVector(PivotPoint);
+
+			if (bUseControllerRotationYaw && OwningController && IsLocallyControlled())
+				OwningController->SetControlRotation(NewRotation);
+
+			// Also setting actor rot because the control rot transfers to it anyway eventually
+			SetActorLocationAndRotation(NewLocation, NewRotation);
+			return NewLocation - OrigLocation;
+	}
+
+	// Sets the actors rotation taking into account the HMD as a pivot point (also moves the actor), returns the location difference
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
+	FVector SetActorRotationVR(FRotator NewRot, bool bUseYawOnly = true)
+	{
+		AController* OwningController = GetController();
+
+		FVector NewLocation;
+		FRotator NewRotation;
+		FVector OrigLocation = GetActorLocation();
+		FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+		PivotPoint.Z = 0.0f;
+		
+		FRotator OrigRotation = bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
+		
+		if (bUseYawOnly)
+		{
+			NewRot.Pitch = 0.0f;
+			NewRot.Roll = 0.0f;
+		}
+
+		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->RelativeRotation);
+		NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
+
+		NewLocation = OrigLocation + OrigRotation.RotateVector(PivotPoint);
+		//NewRotation = NewRot;
+		NewLocation -= NewRotation.RotateVector(PivotPoint);
+
+		if (bUseControllerRotationYaw && OwningController && IsLocallyControlled())
+			OwningController->SetControlRotation(NewRotation);
+
+		// Also setting actor rot because the control rot transfers to it anyway eventually
+		SetActorLocationAndRotation(NewLocation, NewRotation);
+		return NewLocation - OrigLocation;
+	}	
+	
+	// Sets the actors rotation and location taking into account the HMD as a pivot point (also moves the actor), returns the location difference from the rotation
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
+	FVector SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly = true)
+	{
+		AController* OwningController = GetController();
+
+		FVector NewLocation;
+		FRotator NewRotation;
+		FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+		PivotPoint.Z = 0.0f;
+
+		if (bUseYawOnly)
+		{
+			NewRot.Pitch = 0.0f;
+			NewRot.Roll = 0.0f;
+		}
+
+		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->RelativeRotation);//bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
+		NewRotation = (NewRotation.Quaternion().Inverse() * NewRot.Quaternion()).Rotator();
+
+		NewLocation = NewLoc;// +PivotPoint;// NewRotation.RotateVector(PivotPoint);
+		//NewRotation = NewRot;
+		NewLocation -= NewRotation.RotateVector(PivotPoint);
+
+		if (bUseControllerRotationYaw && OwningController && IsLocallyControlled())
+			OwningController->SetControlRotation(NewRotation);
+
+		// Also setting actor rot because the control rot transfers to it anyway eventually
+		SetActorLocationAndRotation(NewLocation, NewRotation);
+		return NewLocation - NewLoc;
 	}
 
 	// Regenerates the base offsetcomponenttoworld that VR uses

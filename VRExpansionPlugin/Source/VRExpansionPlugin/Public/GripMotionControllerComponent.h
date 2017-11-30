@@ -99,6 +99,7 @@ private:
 	virtual void OnUnregister() override;
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 	virtual void Deactivate() override;
+	virtual void BeginDestroy() override;
 
 protected:
 	//~ Begin UActorComponent Interface.
@@ -119,11 +120,11 @@ public:
 	// Locally Gripped Array functions
 
 	// Notify a client that their local grip was bad
-	UFUNCTION(BlueprintCallable, Reliable, Client, WithValidation, Category = "VRGrip")
+	UFUNCTION(Reliable, Client, WithValidation, Category = "VRGrip")
 	void Client_NotifyInvalidLocalGrip(UObject * LocallyGrippedObject);
 
 	// Notify the server that we locally gripped something
-	UFUNCTION(BlueprintCallable, Reliable, Server, WithValidation, Category = "VRGrip")
+	UFUNCTION(Reliable, Server, WithValidation, Category = "VRGrip")
 	void Server_NotifyLocalGripAddedOrChanged(const FBPActorGripInformation & newGrip);
 
 	// Notify the server that we changed some secondary attachment information

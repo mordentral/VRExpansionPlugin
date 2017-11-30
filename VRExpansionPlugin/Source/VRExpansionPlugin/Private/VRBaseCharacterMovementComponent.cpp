@@ -44,6 +44,43 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bIsInPushBack = false;
 }
 
+void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+{
+
+	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+	{
+		const FVector InputVector = ConsumeInputVector();
+		if (!HasValidData() || ShouldSkipUpdate(DeltaTime))
+		{
+			return;
+		}
+
+		// Skip the perform movement logic, run the re-seat logic instead - running base movement component tick instead
+		Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+		// See if we fell out of the world.
+		//const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
+		//if (CharacterOwner->Role == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
+		//{
+		//	return;
+		//}
+
+		// If we are the owning client or the server then run the re-basing
+		if (CharacterOwner->Role > ROLE_SimulatedProxy)
+		{
+			// Run offset logic here, the server will update simulated proxies with the movement replication
+			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+			{
+				BaseChar->TickSeatInformation(DeltaTime);
+			}
+
+		}
+
+	}
+	else
+		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
 void UVRBaseCharacterMovementComponent::StartPushBackNotification(FHitResult HitResult)
 {
 	bIsInPushBack = true;
@@ -311,34 +348,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn()
 		}
 		else
 		{
-			AController* OwningController = OwningCharacter->GetController();
-
-			if (!OwningController)
-			{
-				MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_None;
-				return false;
-			}
-
-			FVector NewLocation;
-			FRotator NewRotation;
-			FVector OrigLocation = OwningCharacter->GetActorLocation();
-			FVector PivotPoint = OwningCharacter->GetActorTransform().InverseTransformPosition(OwningCharacter->GetVRLocation());
-
-			NewRotation = OwningCharacter->bUseControllerRotationYaw ? OwningController->GetControlRotation() : OwningCharacter->GetActorRotation();
-			NewRotation.Pitch = 0.0f;
-			NewRotation.Roll = 0.0f;
-
-			NewLocation = OrigLocation + NewRotation.RotateVector(PivotPoint);
-			NewRotation = (NewRotation.Quaternion() * MoveAction.MoveActionRot.Quaternion()).Rotator();
-			NewLocation -= NewRotation.RotateVector(PivotPoint);
-
-			// Zero this out
-			MoveAction.MoveActionLoc = NewLocation - OrigLocation;
-
-			if (OwningCharacter->bUseControllerRotationYaw)
-				OwningController->SetControlRotation(NewRotation);
-
-			OwningCharacter->SetActorLocationAndRotation(OrigLocation + MoveAction.MoveActionLoc, NewRotation);
+			MoveAction.MoveActionLoc = OwningCharacter->AddActorWorldRotationVR(MoveAction.MoveActionRot, true);
 			return true;
 		}
 	}
@@ -397,6 +407,8 @@ void UVRBaseCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterat
 		break;
 	case EVRCustomMovementMode::VRMOVE_LowGrav:
 		PhysCustom_LowGrav(deltaTime, Iterations);
+		break;
+	case EVRCustomMovementMode::VRMOVE_Seated:
 		break;
 	default:
 		Super::PhysCustom(deltaTime, Iterations);

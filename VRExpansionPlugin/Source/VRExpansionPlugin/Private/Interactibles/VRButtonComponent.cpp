@@ -22,6 +22,7 @@ UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializ
 
 	bIsEnabled = true;
 
+	this->SetCollisionResponseToAllChannels(ECR_Overlap);
 	OnComponentBeginOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapBegin);
 	OnComponentEndOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapEnd);
 }

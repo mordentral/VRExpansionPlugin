@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "EngineMinimal.h"
-#include "VRBPDatatypes.h"
+//#include "VRBPDatatypes.h"
 #include "OpenVRExpansionFunctionLibrary.h"
-#include "GripMotionControllerComponent.h"
+//#include "GripMotionControllerComponent.h"
+#include "Engine/Engine.h"
+
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
 
@@ -49,27 +51,27 @@ public:
 	
 	// Opens the vrkeyboard, can fail if already open or in use
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", ExpandEnumAsExecs = "Result"))
-		void OpenVRKeyboard(bool bIsForPassword, bool bIsMultiline, bool bUseMinimalMode, bool bIsRightHand, int32 MaxCharacters, FString Description, FString StartingString, EBPVRResultSwitch & Result)
+		void OpenVRKeyboard(bool bIsForPassword, bool bIsMultiline, bool bUseMinimalMode, bool bIsRightHand, int32 MaxCharacters, FString Description, FString StartingString, EBPOVRResultSwitch & Result)
 	{
 #if !STEAMVR_SUPPORTED_PLATFORM
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 #else
 		if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ KeyboardHandle.IsValid())
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
 		if (KeyboardHandle.IsValid())
 		{
-			Result = EBPVRResultSwitch::OnSucceeded;
+			Result = EBPOVRResultSwitch::OnSucceeded;
 			return;
 		}
 
 		if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -79,7 +81,7 @@ public:
 
 		if (!VROverlay)
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -89,7 +91,7 @@ public:
 		if (OverlayError != vr::EVROverlayError::VROverlayError_None || !KeyboardHandle.IsValid())
 		{
 			KeyboardHandle.VRKeyboardHandle = vr::k_ulOverlayHandleInvalid;
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -106,7 +108,7 @@ public:
 		{
 			VROverlay->DestroyOverlay(KeyboardHandle.VRKeyboardHandle);
 			KeyboardHandle.VRKeyboardHandle = vr::k_ulOverlayHandleInvalid;
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -127,28 +129,28 @@ public:
 		//OVR_VERIFY(VROverlay->SetOverlaySortOrder(Layer.OverlayHandle, Layer.LayerDesc.Priority));
 
 		this->SetComponentTickEnabled(true);
-		Result = EBPVRResultSwitch::OnSucceeded;
+		Result = EBPOVRResultSwitch::OnSucceeded;
 #endif
 	}
 
 
 	// Closes the vrkeyboard, can fail if not already open
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", ExpandEnumAsExecs = "Result"))
-		void CloseVRKeyboard(EBPVRResultSwitch & Result)
+		void CloseVRKeyboard(EBPOVRResultSwitch & Result)
 	{
 #if !STEAMVR_SUPPORTED_PLATFORM
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 #else
 		if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ !KeyboardHandle.IsValid())
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
 		if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -158,7 +160,7 @@ public:
 
 		if (!VROverlay)
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -169,28 +171,28 @@ public:
 		OverlayError = VROverlay->DestroyOverlay(KeyboardHandle.VRKeyboardHandle);
 		KeyboardHandle.VRKeyboardHandle = vr::k_ulOverlayHandleInvalid;
 		this->SetComponentTickEnabled(false);
-		Result = EBPVRResultSwitch::OnSucceeded;
+		Result = EBPOVRResultSwitch::OnSucceeded;
 #endif
 	}
 
 
 	// Re-Opens the vr keyboard that is currently active, can be used for switching interacting hands and the like.
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", ExpandEnumAsExecs = "Result"))
-	void ReOpenVRKeyboardForUser(bool bIsForPassword, bool bIsMultiline, bool bUseMinimalMode, bool bIsRightHand, int32 MaxCharacters, FString Description, FString StartingString, EBPVRResultSwitch & Result)
+	void ReOpenVRKeyboardForUser(bool bIsForPassword, bool bIsMultiline, bool bUseMinimalMode, bool bIsRightHand, int32 MaxCharacters, FString Description, FString StartingString, EBPOVRResultSwitch & Result)
 	{
 #if !STEAMVR_SUPPORTED_PLATFORM
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 #else
 		if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ !KeyboardHandle.IsValid())
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
 		if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -200,7 +202,7 @@ public:
 
 		if (!VROverlay)
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -221,32 +223,32 @@ public:
 		{
 			VROverlay->DestroyOverlay(KeyboardHandle.VRKeyboardHandle);
 			KeyboardHandle.VRKeyboardHandle = vr::k_ulOverlayHandleInvalid;
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
-		Result = EBPVRResultSwitch::OnSucceeded;
+		Result = EBPOVRResultSwitch::OnSucceeded;
 #endif
 	}
 
 
 	// Closes the vrkeyboard, can fail if not already open
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", ExpandEnumAsExecs = "Result"))
-		void GetVRKeyboardText(FString & Text, EBPVRResultSwitch & Result)
+		void GetVRKeyboardText(FString & Text, EBPOVRResultSwitch & Result)
 	{
 #if !STEAMVR_SUPPORTED_PLATFORM
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 #else
 		if (/*!UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn ||*/ !KeyboardHandle.IsValid())
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
 		if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -256,7 +258,7 @@ public:
 
 		if (!VROverlay)
 		{
-			Result = EBPVRResultSwitch::OnFailed;
+			Result = EBPOVRResultSwitch::OnFailed;
 			return;
 		}
 
@@ -264,7 +266,7 @@ public:
 		uint32 TextLen = VROverlay->GetKeyboardText((char*)&OutString, 512);
 
 		Text = FString(ANSI_TO_TCHAR(OutString));
-		Result = EBPVRResultSwitch::OnSucceeded;
+		Result = EBPOVRResultSwitch::OnSucceeded;
 #endif
 	}
 

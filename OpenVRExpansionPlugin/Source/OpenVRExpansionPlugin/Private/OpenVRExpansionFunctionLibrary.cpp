@@ -21,12 +21,6 @@ FBPOpenVRCameraHandle UOpenVRExpansionFunctionLibrary::OpenCamera = FBPOpenVRCam
 UOpenVRExpansionFunctionLibrary::UOpenVRExpansionFunctionLibrary(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	//PrimaryComponentTick.bCanEverTick = true;
-	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
-	//PrimaryComponentTick.bStartWithTickEnabled = false;
-	//PrimaryComponentTick.bCanEverTick = true;
-	//bAutoActivate = true;
-	//SetComponentTickEnabled(true);
 }
 
 //=============================================================================
@@ -80,22 +74,17 @@ bool UOpenVRExpansionFunctionLibrary::HasVRCamera(EOpenVRCameraFrameType FrameTy
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::AcquireVRCamera(FBPOpenVRCameraHandle & CameraHandle, EBPVRResultSwitch & Result)
+void UOpenVRExpansionFunctionLibrary::AcquireVRCamera(FBPOpenVRCameraHandle & CameraHandle, EBPOVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
-	/*if (!VRGetGenericInterfaceFn)
-	{
-		Result = EBPVRResultSwitch::OnFailed;
-		return;
-	}*/
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -103,7 +92,7 @@ void UOpenVRExpansionFunctionLibrary::AcquireVRCamera(FBPOpenVRCameraHandle & Ca
 	if (OpenCamera.IsValid())
 	{
 		CameraHandle = OpenCamera;
-		Result = EBPVRResultSwitch::OnSucceeded;
+		Result = EBPOVRResultSwitch::OnSucceeded;
 		return;
 	}
 
@@ -113,7 +102,7 @@ void UOpenVRExpansionFunctionLibrary::AcquireVRCamera(FBPOpenVRCameraHandle & Ca
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -124,39 +113,33 @@ void UOpenVRExpansionFunctionLibrary::AcquireVRCamera(FBPOpenVRCameraHandle & Ca
 
 	if (CameraHandle.pCameraHandle == INVALID_TRACKED_CAMERA_HANDLE)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	OpenCamera = CameraHandle;
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::ReleaseVRCamera(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EBPVRResultSwitch & Result)
+void UOpenVRExpansionFunctionLibrary::ReleaseVRCamera(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EBPOVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
-
-	/*if (!VRGetGenericInterfaceFn)
-	{
-		Result = EBPVRResultSwitch::OnFailed;
-		return;
-	}*/
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	if (!CameraHandle.IsValid())
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -166,7 +149,7 @@ void UOpenVRExpansionFunctionLibrary::ReleaseVRCamera(UPARAM(ref) FBPOpenVRCamer
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -174,7 +157,7 @@ void UOpenVRExpansionFunctionLibrary::ReleaseVRCamera(UPARAM(ref) FBPOpenVRCamer
 	CameraHandle.pCameraHandle = INVALID_TRACKED_CAMERA_HANDLE;
 
 	OpenCamera = CameraHandle;
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 
 #endif
@@ -186,28 +169,23 @@ bool UOpenVRExpansionFunctionLibrary::IsValid(UPARAM(ref) FBPOpenVRCameraHandle 
 }
 
 
-UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPVRResultSwitch & Result)
+UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPOVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM 
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return nullptr;
 #else
-	/*if (!VRGetGenericInterfaceFn)
-	{
-		Result = EBPVRResultSwitch::OnFailed;
-		return false;
-	}*/
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return nullptr;
 	}
 
 	if (!CameraHandle.IsValid() || !FApp::CanEverRender())
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return nullptr;
 	}
 
@@ -217,7 +195,7 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) 
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return nullptr;
 	}
 
@@ -237,32 +215,32 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) 
 		NewRenderTarget2D->NeverStream = true;
 		NewRenderTarget2D->UpdateResource();
 
-		Result = EBPVRResultSwitch::OnSucceeded;
+		Result = EBPOVRResultSwitch::OnSucceeded;
 		return NewRenderTarget2D;
 	}
 
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return nullptr;
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPVRResultSwitch & Result, UTexture2D * TargetRenderTarget)
+void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPOVRResultSwitch & Result, UTexture2D * TargetRenderTarget)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM 
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
 
 	// Don't run anything if no HMD and if the HMD is not a steam type
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	if (!TargetRenderTarget || !CameraHandle.IsValid())
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -272,7 +250,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 
 	if (!VRCamera || HmdErr != vr::HmdError::VRInitError_None)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -283,7 +261,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 
 	if (CamError != vr::EVRTrackedCameraError::VRTrackedCameraError_None || Width <= 0 || Height <= 0)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -320,7 +298,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 	if (CamError != vr::EVRTrackedCameraError::VRTrackedCameraError_None || CamError == vr::EVRTrackedCameraError::VRTrackedCameraError_NoFrameAvailable)
 	{
 		delete[] pData;
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -343,22 +321,22 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 		});
 
 	// Letting the enqueued command free the memory
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue, EBPVRResultSwitch & Result)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String PropertyToRetrieve, int32 DeviceID, FString & StringValue, EBPOVRResultSwitch & Result)
 {
 
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
 
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -367,7 +345,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDevicePropert
 
 	if (!VRSystem)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -376,7 +354,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDevicePropert
 	vr::ETrackedDeviceProperty EnumPropertyValue = VREnumToString(TEXT("EVRDeviceProperty_String"), static_cast<uint8>(PropertyToRetrieve));
 	if (EnumPropertyValue == vr::ETrackedDeviceProperty::Prop_Invalid)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -386,27 +364,27 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDevicePropert
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	StringValue = FString(ANSI_TO_TCHAR(charvalue));
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue, EBPVRResultSwitch & Result)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_Bool PropertyToRetrieve, int32 DeviceID, bool & BoolValue, EBPOVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
 
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -415,7 +393,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_
 
 	if (!VRSystem)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -424,7 +402,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_
 	vr::ETrackedDeviceProperty EnumPropertyValue = VREnumToString(TEXT("EVRDeviceProperty_Bool"), static_cast<uint8>(PropertyToRetrieve));
 	if (EnumPropertyValue == vr::ETrackedDeviceProperty::Prop_Invalid)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -432,27 +410,27 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyBool(EVRDeviceProperty_
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	BoolValue = ret;
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue, EBPVRResultSwitch & Result)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty_Float PropertyToRetrieve, int32 DeviceID, float & FloatValue, EBPOVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
 
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -461,7 +439,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty
 
 	if (!VRSystem)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -470,7 +448,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty
 	vr::ETrackedDeviceProperty EnumPropertyValue = VREnumToString(TEXT("EVRDeviceProperty_Float"), static_cast<uint8>(PropertyToRetrieve));
 	if (EnumPropertyValue == vr::ETrackedDeviceProperty::Prop_Invalid)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -478,27 +456,27 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyFloat(EVRDeviceProperty
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	FloatValue = ret;
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyInt32(EVRDeviceProperty_Int32 PropertyToRetrieve, int32 DeviceID, int32 & IntValue, EBPVRResultSwitch & Result)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyInt32(EVRDeviceProperty_Int32 PropertyToRetrieve, int32 DeviceID, int32 & IntValue, EBPOVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
 
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -507,7 +485,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyInt32(EVRDeviceProperty
 
 	if (!VRSystem)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -516,7 +494,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyInt32(EVRDeviceProperty
 	vr::ETrackedDeviceProperty EnumPropertyValue = VREnumToString(TEXT("EVRDeviceProperty_Int32"), static_cast<uint8>(PropertyToRetrieve));
 	if (EnumPropertyValue == vr::ETrackedDeviceProperty::Prop_Invalid)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -524,27 +502,27 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyInt32(EVRDeviceProperty
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	IntValue = ret;
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyUInt64(EVRDeviceProperty_UInt64 PropertyToRetrieve, int32 DeviceID, FString & UInt64Value, EBPVRResultSwitch & Result)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyUInt64(EVRDeviceProperty_UInt64 PropertyToRetrieve, int32 DeviceID, FString & UInt64Value, EBPOVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
 
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -553,7 +531,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyUInt64(EVRDevicePropert
 
 	if (!VRSystem)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -562,7 +540,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyUInt64(EVRDevicePropert
 	vr::ETrackedDeviceProperty EnumPropertyValue = VREnumToString(TEXT("EVRDeviceProperty_UInt64"), static_cast<uint8>(PropertyToRetrieve));
 	if (EnumPropertyValue == vr::ETrackedDeviceProperty::Prop_Invalid)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -570,27 +548,27 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyUInt64(EVRDevicePropert
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	UInt64Value = FString::Printf(TEXT("%llu"), ret);
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 
 #endif
 }
 
-void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyMatrix34AsTransform(EVRDeviceProperty_Matrix34 PropertyToRetrieve, int32 DeviceID, FTransform & TransformValue, EBPVRResultSwitch & Result)
+void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyMatrix34AsTransform(EVRDeviceProperty_Matrix34 PropertyToRetrieve, int32 DeviceID, FTransform & TransformValue, EBPOVRResultSwitch & Result)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
-	Result = EBPVRResultSwitch::OnFailed;
+	Result = EBPOVRResultSwitch::OnFailed;
 	return;
 #else
 
 	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -599,7 +577,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyMatrix34AsTransform(EVR
 
 	if (!VRSystem)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -608,7 +586,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyMatrix34AsTransform(EVR
 	vr::ETrackedDeviceProperty EnumPropertyValue = VREnumToString(TEXT("EVRDeviceProperty_Matrix34"), static_cast<uint8>(PropertyToRetrieve));
 	if (EnumPropertyValue == vr::ETrackedDeviceProperty::Prop_Invalid)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
@@ -616,12 +594,12 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyMatrix34AsTransform(EVR
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
 	{
-		Result = EBPVRResultSwitch::OnFailed;
+		Result = EBPOVRResultSwitch::OnFailed;
 		return;
 	}
 
 	TransformValue = FTransform(ToFMatrix(ret));
-	Result = EBPVRResultSwitch::OnSucceeded;
+	Result = EBPOVRResultSwitch::OnSucceeded;
 	return;
 
 #endif
