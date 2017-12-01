@@ -42,6 +42,14 @@ You need to have visual studio installed and follow the UE4 setup guide for it: 
 
 ### How do I use it? ###
 
+**KantanDocGen Automatic Documentation ([KantanDocGen](http://kantandev.com/free/kantan-doc-gen))** 
+
+**[VRExpansionPlugin](https://mordentral.bitbucket.io/VRExpansionPlugin/VR)**
+
+**[OpenVRExpansionPlugin](https://mordentral.bitbucket.io/OpenVRExpansionPlugin/VR)**
+
+**[ExampleTemplate](https://mordentral.bitbucket.io/ExampleTemplate/VR)**  
+
 [Tips & Tricks](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Plugin%20Tips%20&%20Information)
 
 [VR Character Actor Information Page](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/VR%20Character%20Actor)
