@@ -21,6 +21,9 @@ This Plugin is intended to add additional functionality to Open/SteamVR/(All VR 
 
 [Pre-built binary useage](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Getting%20pre-built%20binary%20packages)
 
+**Guides for migrating between different engine versions of the plugin:**
+
+* [**Migration Guides**](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Migration%20Guides%20(between%20engine%20versions))
 
 **Option 1:**
 
