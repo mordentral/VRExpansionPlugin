@@ -184,10 +184,10 @@ void AVRBaseCharacter::NotifyOfTeleport_Implementation()
 	//	VRRootReference->GenerateOffsetToWorld();
 
 	if (LeftMotionController)
-		LeftMotionController->PostTeleportMoveGrippedActors();
+		LeftMotionController->PostTeleportMoveGrippedObjects();
 
 	if (RightMotionController)
-		RightMotionController->PostTeleportMoveGrippedActors();
+		RightMotionController->PostTeleportMoveGrippedObjects();
 }
 
 void AVRBaseCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, float AcceptanceRadius, bool bStopOnOverlap, bool bUsePathfinding, bool bProjectDestinationToNavigation, bool bCanStrafe, TSubclassOf<UNavigationQueryFilter> FilterClass, bool bAllowPartialPaths)

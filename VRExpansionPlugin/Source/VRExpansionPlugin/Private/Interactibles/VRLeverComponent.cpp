@@ -45,7 +45,6 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	bUngripAtTargetRotation = false;
 	bDenyGripping = false;
 
-
 	// Set to only overlap with things so that its not ruined by touching over actors
 	this->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
 }
@@ -96,12 +95,16 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 
 		switch (LeverRotationAxis)
 		{
-		case EVRInteractibleLeverAxis::Axis_X: LerpAxis(CurrentLeverAngle, DeltaTime); break;
-		case EVRInteractibleLeverAxis::Axis_Y: LerpAxis(CurrentLeverAngle, DeltaTime); break;
+		case EVRInteractibleLeverAxis::Axis_X:
+		case EVRInteractibleLeverAxis::Axis_Y:
+		case EVRInteractibleLeverAxis::Axis_Z:
+		{
+			LerpAxis(CurrentLeverAngle, DeltaTime);
+		}break;
 		case EVRInteractibleLeverAxis::Axis_XY:
+		case EVRInteractibleLeverAxis::Axis_XZ:
 		{
 			// Only supporting LerpToZero with this mode currently
-
 			FRotator curRot = CurRelativeTransform.GetRelativeTransform(InitialRelativeTransform).Rotator();
 			FRotator LerpedRot = FMath::RInterpConstantTo(curRot, FRotator::ZeroRotator, DeltaTime, LeverReturnSpeed);
 
@@ -151,12 +154,12 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	// Handle manual tracking here
 
 	FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
-
-
 	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
 
-	if (LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY)
-	{	
+	switch (LeverRotationAxis)
+	{
+	case EVRInteractibleLeverAxis::Axis_XY:
+	{
 		FRotator Rot;
 
 		FVector nAxis;
@@ -169,12 +172,42 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 
 		this->SetRelativeRotation((FTransform(Rot) * InitialRelativeTransform).Rotator());
 	}
-	else
+	break;
+	case EVRInteractibleLeverAxis::Axis_XZ:
+	{
+		//Yaw Axis
+		FVector nAxis;
+		float nAngle = 0.0f;
+		FQuat BetweenTemp;
+
+		BetweenTemp = FQuat::FindBetweenVectors(qRotAtGrab.UnrotateVector(FVector(InitialInteractorLocation.X, InitialInteractorLocation.Y, 0.0f)), FVector(CurInteractorLocation.X, CurInteractorLocation.Y, 0));
+		//BetweenTemp.ToAxisAndAngle(nAxis, nAngle);
+
+		float yaw = BetweenTemp.Rotator().Yaw;// FQuat(nAxis, nAngle).Rotator().Yaw;
+
+		//Pitch axis. CurInteractionLocation has to be rotated by yaw to not interfere with yaw axis. Also allows separated axis limitation if necessary.	
+		FVector CurInteractionLocationLimitedPitch = FRotator(0, yaw, 0).UnrotateVector(CurInteractorLocation);
+
+		BetweenTemp = FQuat::FindBetweenVectors(qRotAtGrab.UnrotateVector(FVector(0.0f, InitialInteractorLocation.Y, InitialInteractorLocation.Z)), FVector(0, CurInteractionLocationLimitedPitch.Y, CurInteractionLocationLimitedPitch.Z));
+		//BetweenTemp.ToAxisAndAngle(nAxis, nAngle);
+		//nAngle = FMath::Clamp(nAnglePitch, 0.0f, FMath::DegreesToRadians(LeverLimitPositive));
+
+		float pitch = BetweenTemp.Rotator().Roll;
+
+		//Final Rotation
+		FRotator ShortestDistanceRot = FRotator(0, yaw, pitch);
+		this->SetRelativeRotation((FTransform(ShortestDistanceRot) * InitialRelativeTransform).Rotator());	
+	}break;
+	case EVRInteractibleLeverAxis::Axis_X:
+	case EVRInteractibleLeverAxis::Axis_Y:
+	case EVRInteractibleLeverAxis::Axis_Z:
 	{
 		float DeltaAngle = CalcAngle(LeverRotationAxis, CurInteractorLocation);
 
 		this->SetRelativeRotation((FTransform(SetAxisValue(DeltaAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 		LastDeltaAngle = DeltaAngle;
+	}break;
+	default:break;
 	}
 
 	// #TODO: This drop code is incorrect, it is based off of the initial point and not the location at grip - revise it at some point
@@ -204,23 +237,34 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 		InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 		InitialInteractorDropLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 
-		FVector RotVector;
-		if (LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY)
+
+		switch (LeverRotationAxis)
+		{
+		case EVRInteractibleLeverAxis::Axis_XY:
+		case EVRInteractibleLeverAxis::Axis_XZ:
 		{
 			qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
-		}
-		else
+		}break;
+		case EVRInteractibleLeverAxis::Axis_X:
 		{
-			if (LeverRotationAxis == EVRInteractibleLeverAxis::Axis_X)
-				InitialGripRot = FMath::RadiansToDegrees(FMath::Atan2(InitialInteractorLocation.Y, InitialInteractorLocation.Z));
-			else
-				InitialGripRot = FMath::RadiansToDegrees(FMath::Atan2(InitialInteractorLocation.Z, InitialInteractorLocation.X));
-
-			RotAtGrab = GetAxisValue(this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).Rotator());
+			InitialGripRot = FMath::RadiansToDegrees(FMath::Atan2(InitialInteractorLocation.Y, InitialInteractorLocation.Z));
+		}break;
+		case EVRInteractibleLeverAxis::Axis_Y:
+		{
+			InitialGripRot = FMath::RadiansToDegrees(FMath::Atan2(InitialInteractorLocation.Z, InitialInteractorLocation.X));
+		}break;
+		case EVRInteractibleLeverAxis::Axis_Z:
+		{
+			InitialGripRot = FMath::RadiansToDegrees(FMath::Atan2(InitialInteractorLocation.Y, InitialInteractorLocation.X));
+		}break;
+		default:break;
 		}
+
+		RotAtGrab = GetAxisValue(this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).Rotator());
 	}
 
 	bIsLerping = false;
+	bIsInFirstTick = true;
 	this->SetComponentTickEnabled(true);
 }
 

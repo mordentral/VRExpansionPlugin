@@ -126,6 +126,8 @@ class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ACharacter
 public:
 	AVRBaseCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	//These functions are now housed in the base character and used when possible, it saves about 7 bits of packet header overhead per send.
+
 	// I'm sending it unreliable because it is being resent pretty often
 	UFUNCTION(Unreliable, Server, WithValidation)
 		void Server_SendTransformCamera(FBPVRComponentPosRep NewTransform);
@@ -141,33 +143,39 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRMovement")
 		void OnClimbingSteppedUp();
 
+	// This is the offset location of the player, use this for when checking against player transform instead of the actors transform
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
 
+	// Gets the forward vector of the HMD offset capsule
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
 	FVector GetVRForwardVector() const
 	{
 		return OffsetComponentToWorld.GetRotation().GetForwardVector();
 	}
 
+	// Gets the right vector of the HMD offset capsule
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
 		FVector GetVRRightVector() const
 	{
 		return OffsetComponentToWorld.GetRotation().GetRightVector();
 	}
 
+	// Gets the upvector of the HMD offset capsule
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
 		FVector GetVRUpVector() const
 	{
 		return OffsetComponentToWorld.GetRotation().GetUpVector();
 	}
 
+	// Gets the location of the HMD offset capsule (this retains the Capsule HalfHeigh offset)
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
 		FVector GetVRLocation() const
 	{
 		return OffsetComponentToWorld.GetLocation();
 	}
 
+	// Gets the rotation of the HMD offset capsule
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
 		FRotator GetVRRotation() const
 	{
@@ -199,8 +207,8 @@ public:
 	void ZeroToSeatInformation()
 	{
 		SetSeatRelativeLocationAndRotationVR(SeatInformation.StoredLocation, -SeatInformation.StoredLocation, FRotator(0.0f, -SeatInformation.StoredYaw, 0.0f), true);
-		LeftMotionController->PostTeleportMoveGrippedActors();
-		RightMotionController->PostTeleportMoveGrippedActors();
+		LeftMotionController->PostTeleportMoveGrippedObjects();
+		RightMotionController->PostTeleportMoveGrippedObjects();
 	}
 	
 	// Called from the movement component
@@ -283,8 +291,8 @@ public:
 
 				// Re-purposing them for the new location and rotations
 				SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true);
-				LeftMotionController->PostTeleportMoveGrippedActors();
-				RightMotionController->PostTeleportMoveGrippedActors();
+				LeftMotionController->PostTeleportMoveGrippedObjects();
+				RightMotionController->PostTeleportMoveGrippedObjects();
 
 				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
 				SeatInformation.ClearTempVals();
@@ -304,6 +312,7 @@ public:
 	// Sets seated mode on the character and then fires off an event to handle any special setup
 	// Target loc is for teleport location if standing up, or relative camera location when sitting down.
 	// Target rot is for PURE YAW of standing up, or sitting down (use Get HMDPureYaw).
+	// ZeroToHead places central point on head, if false it will use foot location and ignore Z values instead.
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "BaseVRCharacter", meta = (DisplayName = "SetSeatedMode"))
 		void Server_SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true);
 
@@ -467,6 +476,7 @@ public:
 	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw)
 	{}
 
+	// This sets the capsules height, but also regenerates the offset transform instantly
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
 	virtual void SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true)
 	{
@@ -477,6 +487,7 @@ public:
 		}
 	}
 
+	// This sets the capsules half height, but also regenerates the offset transform instantly
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
 	virtual void SetCharacterHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true)
 	{

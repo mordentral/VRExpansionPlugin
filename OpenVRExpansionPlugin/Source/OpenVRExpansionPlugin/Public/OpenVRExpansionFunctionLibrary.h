@@ -470,7 +470,7 @@ public:
 
 #endif
 
-	// Closes the handles for the library
+	// Checks if a specific OpenVR device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
 	static bool IsOpenVRDeviceConnected(EBPVRDeviceIndex OpenVRDeviceIndex);
 
@@ -512,11 +512,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "GetVRCameraFrame", ExpandEnumAsExecs = "Result"))
 	static void GetVRCameraFrame(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPOVRResultSwitch & Result, UTexture2D * TargetRenderTarget = nullptr);
 
-	// Create Camera Render Target
+	// Create Camera Render Target, automatically pulls the correct texture size and format
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "CreateCameraTexture2D", ExpandEnumAsExecs = "Result"))
 	static UTexture2D * CreateCameraTexture2D(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EOpenVRCameraFrameType FrameType, EBPOVRResultSwitch & Result);
 
-	// Acquire the vr camera for access (wakes it up)
+	// Acquire the vr camera for access (wakes it up) and returns a handle to use for functions regarding it (MUST RELEASE CAMERA WHEN DONE)
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "AcquireVRCamera", ExpandEnumAsExecs = "Result"))
 	static void AcquireVRCamera(FBPOpenVRCameraHandle & CameraHandle, EBPOVRResultSwitch & Result);
 
@@ -524,7 +524,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "ReleaseVRCamera", ExpandEnumAsExecs = "Result"))
 	static void ReleaseVRCamera(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle, EBPOVRResultSwitch & Result);
 
-	// Releases the vr camera from access
+	// Checks if a camera handle is valid
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|VRCamera", meta = (bIgnoreSelf = "true", DisplayName = "IsValid"))
 	static bool IsValid(UPARAM(ref) FBPOpenVRCameraHandle & CameraHandle);
 

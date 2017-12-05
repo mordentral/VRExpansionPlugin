@@ -52,10 +52,10 @@ void AVRCharacter::NotifyOfTeleport_Implementation()
 		VRRootReference->GenerateOffsetToWorld();
 
 	if (LeftMotionController)
-		LeftMotionController->PostTeleportMoveGrippedActors();
+		LeftMotionController->PostTeleportMoveGrippedObjects();
 
 	if (RightMotionController)
-		RightMotionController->PostTeleportMoveGrippedActors();
+		RightMotionController->PostTeleportMoveGrippedObjects();
 }
 
 FVector AVRCharacter::GetNavAgentLocation() const

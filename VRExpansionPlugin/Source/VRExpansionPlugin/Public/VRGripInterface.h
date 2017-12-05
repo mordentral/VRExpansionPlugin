@@ -51,14 +51,6 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripMovementReplicationSettings GripMovementReplicationType();
 
-	/*// What grip stiffness to use if using a physics constraint
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		float GripStiffness();
-
-	// What grip damping to use if using a physics constraint
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		float GripDamping();
-		*/
 	// What grip stiffness and damping to use if using a physics constraint
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 	void GetGripStiffnessAndDamping(float &GripStiffnessOut, float &GripDampingOut);

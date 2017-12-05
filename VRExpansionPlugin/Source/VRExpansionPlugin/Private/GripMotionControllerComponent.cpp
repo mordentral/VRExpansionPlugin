@@ -83,22 +83,22 @@ UGripMotionControllerComponent::~UGripMotionControllerComponent()
 
 void UGripMotionControllerComponent::OnUnregister()
 {
-	for (int i = 0; i < GrippedActors.Num(); i++)
+	for (int i = 0; i < GrippedObjects.Num(); i++)
 	{
-		DestroyPhysicsHandle(GrippedActors[i]);
+		DestroyPhysicsHandle(GrippedObjects[i]);
 
-		DropObjectByInterface(GrippedActors[i].GrippedObject);
-		//DropObject(GrippedActors[i].GrippedObject, false);	
+		DropObjectByInterface(GrippedObjects[i].GrippedObject);
+		//DropObject(GrippedObjects[i].GrippedObject, false);	
 	}
-	GrippedActors.Empty();
+	GrippedObjects.Empty();
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); i++)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); i++)
 	{
-		DestroyPhysicsHandle(LocallyGrippedActors[i]);
-		DropObjectByInterface(LocallyGrippedActors[i].GrippedObject);
-		//DropObject(LocallyGrippedActors[i].GrippedObject, false);
+		DestroyPhysicsHandle(LocallyGrippedObjects[i]);
+		DropObjectByInterface(LocallyGrippedObjects[i].GrippedObject);
+		//DropObject(LocallyGrippedObjects[i].GrippedObject, false);
 	}
-	LocallyGrippedActors.Empty();
+	LocallyGrippedObjects.Empty();
 
 	for (int i = 0; i < PhysicsGrips.Num(); i++)
 	{
@@ -185,10 +185,10 @@ void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FL
 
 	// Skipping the owner with this as the owner will use the controllers location directly
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, ReplicatedControllerTransform, COND_SkipOwner);
-	DOREPLIFETIME(UGripMotionControllerComponent, GrippedActors);
+	DOREPLIFETIME(UGripMotionControllerComponent, GrippedObjects);
 	DOREPLIFETIME(UGripMotionControllerComponent, ControllerNetUpdateRate);
 
-	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, LocallyGrippedActors, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, LocallyGrippedObjects, COND_SkipOwner);
 //	DOREPLIFETIME(UGripMotionControllerComponent, bReplicateControllerTransform);
 }
 
@@ -324,8 +324,8 @@ void UGripMotionControllerComponent::FGripViewExtension::BeginRenderViewFamily(F
 
 
 	// Was going to use a lambda here but the overhead cost is higher than just using another function, even more so than using an inline one
-	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->LocallyGrippedActors);
-	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->GrippedActors);
+	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->LocallyGrippedObjects);
+	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->GrippedObjects);
 	*/
 }
 
@@ -356,21 +356,21 @@ void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Gri
 		return;
 	}
 
-	for (int i = 0; i < GrippedActors.Num(); ++i)
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if (GrippedActors[i] == ActorToLookForGrip)
+		if (GrippedObjects[i] == ActorToLookForGrip)
 		{
-			Grip = GrippedActors[i];
+			Grip = GrippedObjects[i];
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
 	}
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (LocallyGrippedActors[i] == ActorToLookForGrip)
+		if (LocallyGrippedObjects[i] == ActorToLookForGrip)
 		{
-			Grip = LocallyGrippedActors[i];
+			Grip = LocallyGrippedObjects[i];
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -387,21 +387,21 @@ void UGripMotionControllerComponent::GetGripByComponent(FBPActorGripInformation 
 		return;
 	}
 
-	for (int i = 0; i < GrippedActors.Num(); ++i)
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if (GrippedActors[i] == ComponentToLookForGrip)
+		if (GrippedObjects[i] == ComponentToLookForGrip)
 		{
-			Grip = GrippedActors[i];
+			Grip = GrippedObjects[i];
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
 	}
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (LocallyGrippedActors[i] == ComponentToLookForGrip)
+		if (LocallyGrippedObjects[i] == ComponentToLookForGrip)
 		{
-			Grip = LocallyGrippedActors[i];
+			Grip = LocallyGrippedObjects[i];
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -418,21 +418,21 @@ void UGripMotionControllerComponent::GetGripByObject(FBPActorGripInformation &Gr
 		return;
 	}
 
-	for (int i = 0; i < GrippedActors.Num(); ++i)
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if (GrippedActors[i] == ObjectToLookForGrip)
+		if (GrippedObjects[i] == ObjectToLookForGrip)
 		{
-			Grip = GrippedActors[i];
+			Grip = GrippedObjects[i];
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
 	}
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (LocallyGrippedActors[i] == ObjectToLookForGrip)
+		if (LocallyGrippedObjects[i] == ObjectToLookForGrip)
 		{
-			Grip = LocallyGrippedActors[i];
+			Grip = LocallyGrippedObjects[i];
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -443,23 +443,23 @@ void UGripMotionControllerComponent::GetGripByObject(FBPActorGripInformation &Gr
 
 void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripCollisionType NewGripCollisionType)
 {
-	int fIndex = GrippedActors.Find(Grip);
+	int fIndex = GrippedObjects.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
 	{
-		GrippedActors[fIndex].GripCollisionType = NewGripCollisionType;
-		ReCreateGrip(GrippedActors[fIndex]);
+		GrippedObjects[fIndex].GripCollisionType = NewGripCollisionType;
+		ReCreateGrip(GrippedObjects[fIndex]);
 		Result = EBPVRResultSwitch::OnSucceeded;
 		return;
 	}
 	else
 	{
-		fIndex = LocallyGrippedActors.Find(Grip);
+		fIndex = LocallyGrippedObjects.Find(Grip);
 
 		if (fIndex != INDEX_NONE)
 		{
-			LocallyGrippedActors[fIndex].GripCollisionType = NewGripCollisionType;
-			ReCreateGrip(LocallyGrippedActors[fIndex]);
+			LocallyGrippedObjects[fIndex].GripCollisionType = NewGripCollisionType;
+			ReCreateGrip(LocallyGrippedObjects[fIndex]);
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -470,21 +470,21 @@ void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInfo
 
 void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripLateUpdateSettings NewGripLateUpdateSetting)
 {
-	int fIndex = GrippedActors.Find(Grip);
+	int fIndex = GrippedObjects.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
 	{
-		GrippedActors[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
+		GrippedObjects[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
 		Result = EBPVRResultSwitch::OnSucceeded;
 		return;
 	}
 	else
 	{
-		fIndex = LocallyGrippedActors.Find(Grip);
+		fIndex = LocallyGrippedObjects.Find(Grip);
 
 		if (fIndex != INDEX_NONE)
 		{
-			LocallyGrippedActors[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
+			LocallyGrippedObjects[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -499,21 +499,21 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 	const FTransform & NewRelativeTransform
 	)
 {
-	int fIndex = GrippedActors.Find(Grip);
+	int fIndex = GrippedObjects.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
 	{
-		GrippedActors[fIndex].RelativeTransform = NewRelativeTransform;
+		GrippedObjects[fIndex].RelativeTransform = NewRelativeTransform;
 		Result = EBPVRResultSwitch::OnSucceeded;
 		return;
 	}
 	else
 	{
-		fIndex = LocallyGrippedActors.Find(Grip);
+		fIndex = LocallyGrippedObjects.Find(Grip);
 
 		if (fIndex != INDEX_NONE)
 		{
-			LocallyGrippedActors[fIndex].RelativeTransform = NewRelativeTransform;
+			LocallyGrippedObjects[fIndex].RelativeTransform = NewRelativeTransform;
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -528,22 +528,22 @@ void UGripMotionControllerComponent::SetGripAdditionTransform(
 	const FTransform & NewAdditionTransform, bool bMakeGripRelative
 	)
 {
-	int fIndex = GrippedActors.Find(Grip);
+	int fIndex = GrippedObjects.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
 	{
-		GrippedActors[fIndex].AdditionTransform = CreateGripRelativeAdditionTransform(Grip, NewAdditionTransform, bMakeGripRelative);
+		GrippedObjects[fIndex].AdditionTransform = CreateGripRelativeAdditionTransform(Grip, NewAdditionTransform, bMakeGripRelative);
 
 		Result = EBPVRResultSwitch::OnSucceeded;
 		return;
 	}
 	else
 	{
-		fIndex = LocallyGrippedActors.Find(Grip);
+		fIndex = LocallyGrippedObjects.Find(Grip);
 
 		if (fIndex != INDEX_NONE)
 		{
-			LocallyGrippedActors[fIndex].AdditionTransform = CreateGripRelativeAdditionTransform(Grip, NewAdditionTransform, bMakeGripRelative);
+			LocallyGrippedObjects[fIndex].AdditionTransform = CreateGripRelativeAdditionTransform(Grip, NewAdditionTransform, bMakeGripRelative);
 
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
@@ -559,17 +559,17 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 	)
 {
 	Result = EBPVRResultSwitch::OnFailed;
-	int fIndex = GrippedActors.Find(Grip);
+	int fIndex = GrippedObjects.Find(Grip);
 
 	if (fIndex != INDEX_NONE)
 	{
-		GrippedActors[fIndex].Stiffness = NewStiffness;
-		GrippedActors[fIndex].Damping = NewDamping;
+		GrippedObjects[fIndex].Stiffness = NewStiffness;
+		GrippedObjects[fIndex].Damping = NewDamping;
 
 		if (bAlsoSetAngularValues)
 		{
-			GrippedActors[fIndex].AdvancedGripSettings.PhysicsSettings.AngularStiffness = OptionalAngularStiffness;
-			GrippedActors[fIndex].AdvancedGripSettings.PhysicsSettings.AngularDamping = OptionalAngularDamping;
+			GrippedObjects[fIndex].AdvancedGripSettings.PhysicsSettings.AngularStiffness = OptionalAngularStiffness;
+			GrippedObjects[fIndex].AdvancedGripSettings.PhysicsSettings.AngularDamping = OptionalAngularDamping;
 		}
 
 		Result = EBPVRResultSwitch::OnSucceeded;
@@ -577,17 +577,17 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 	}
 	else
 	{
-		fIndex = LocallyGrippedActors.Find(Grip);
+		fIndex = LocallyGrippedObjects.Find(Grip);
 
 		if (fIndex != INDEX_NONE)
 		{
-			LocallyGrippedActors[fIndex].Stiffness = NewStiffness;
-			LocallyGrippedActors[fIndex].Damping = NewDamping;
+			LocallyGrippedObjects[fIndex].Stiffness = NewStiffness;
+			LocallyGrippedObjects[fIndex].Damping = NewDamping;
 
 			if (bAlsoSetAngularValues)
 			{
-				LocallyGrippedActors[fIndex].AdvancedGripSettings.PhysicsSettings.AngularStiffness = OptionalAngularStiffness;
-				LocallyGrippedActors[fIndex].AdvancedGripSettings.PhysicsSettings.AngularDamping = OptionalAngularDamping;
+				LocallyGrippedObjects[fIndex].AdvancedGripSettings.PhysicsSettings.AngularStiffness = OptionalAngularStiffness;
+				LocallyGrippedObjects[fIndex].AdvancedGripSettings.PhysicsSettings.AngularDamping = OptionalAngularDamping;
 			}
 
 			Result = EBPVRResultSwitch::OnSucceeded;
@@ -850,18 +850,18 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 
 	// Checking both arrays
-	for (int i = 0; i < GrippedActors.Num(); ++i)
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if (GrippedActors[i].GrippedObject == ActorToGrip)
+		if (GrippedObjects[i].GrippedObject == ActorToGrip)
 		{
 			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already gripped actor"));
 			return false;
 		}
 	}
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject == ActorToGrip)
+		if (LocallyGrippedObjects[i].GrippedObject == ActorToGrip)
 		{
 			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already locally gripped actor"));
 			return false;
@@ -999,10 +999,10 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 
 	if (!bIsLocalGrip)
-		GrippedActors.Add(newActorGrip);
+		GrippedObjects.Add(newActorGrip);
 	else
 	{
-		LocallyGrippedActors.Add(newActorGrip);
+		LocallyGrippedObjects.Add(newActorGrip);
 		if(GetNetMode() == ENetMode::NM_Client && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			Server_NotifyLocalGripAddedOrChanged(newActorGrip);
 	}
@@ -1020,11 +1020,11 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 		return false;
 	}
 
-	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (LocallyGrippedActors[i] == ActorToDrop)
+		if (LocallyGrippedObjects[i] == ActorToDrop)
 		{
-			return DropGrip(LocallyGrippedActors[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(LocallyGrippedObjects[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 	}
 
@@ -1034,12 +1034,12 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 		return false;
 	}
 
-	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (GrippedActors[i] == ActorToDrop)
+		if (GrippedObjects[i] == ActorToDrop)
 		{
 
-			return DropGrip(GrippedActors[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(GrippedObjects[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 	}
 
@@ -1075,18 +1075,18 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 
 	//Checking both arrays for grip overlap
-	for (int i = 0; i < GrippedActors.Num(); ++i)
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if (GrippedActors[i].GrippedObject == ComponentToGrip)
+		if (GrippedObjects[i].GrippedObject == ComponentToGrip)
 		{
 			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already gripped component"));
 			return false;
 		}
 	}
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject == ComponentToGrip)
+		if (LocallyGrippedObjects[i].GrippedObject == ComponentToGrip)
 		{
 			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already locally gripped component"));
 			return false;
@@ -1210,10 +1210,10 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 
 	if (!bIsLocalGrip)
-		GrippedActors.Add(newActorGrip);
+		GrippedObjects.Add(newActorGrip);
 	else
 	{
-		LocallyGrippedActors.Add(newActorGrip);
+		LocallyGrippedObjects.Add(newActorGrip);
 
 		if (GetNetMode() == ENetMode::NM_Client && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			Server_NotifyLocalGripAddedOrChanged(newActorGrip);
@@ -1232,11 +1232,11 @@ bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * Compone
 		return false;
 	}
 
-	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (LocallyGrippedActors[i] == ComponentToDrop)
+		if (LocallyGrippedObjects[i] == ComponentToDrop)
 		{
-			return DropGrip(LocallyGrippedActors[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(LocallyGrippedObjects[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 	}
 
@@ -1246,11 +1246,11 @@ bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * Compone
 		return false;
 	}
 
-	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (GrippedActors[i] == ComponentToDrop)
+		if (GrippedObjects[i] == ComponentToDrop)
 		{
-			return DropGrip(GrippedActors[i], bSimulate,OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(GrippedObjects[i], bSimulate,OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 	}
 	return false;
@@ -1261,7 +1261,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 
 	int FoundIndex = 0;
 	bool bWasLocalGrip = false;
-	if (!LocallyGrippedActors.Find(Grip, FoundIndex)) // This auto checks if Actor and Component are valid in the == operator
+	if (!LocallyGrippedObjects.Find(Grip, FoundIndex)) // This auto checks if Actor and Component are valid in the == operator
 	{
 		if (!IsServer())
 		{
@@ -1269,7 +1269,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 			return false;
 		}
 
-		if (!GrippedActors.Find(Grip, FoundIndex)) // This auto checks if Actor and Component are valid in the == operator
+		if (!GrippedObjects.Find(Grip, FoundIndex)) // This auto checks if Actor and Component are valid in the == operator
 		{
 			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop"));
 			return false;
@@ -1286,13 +1286,13 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	AActor * pActor = nullptr;
 	if (bWasLocalGrip)
 	{
-		PrimComp = LocallyGrippedActors[FoundIndex].GetGrippedComponent();
-		pActor = LocallyGrippedActors[FoundIndex].GetGrippedActor();
+		PrimComp = LocallyGrippedObjects[FoundIndex].GetGrippedComponent();
+		pActor = LocallyGrippedObjects[FoundIndex].GetGrippedActor();
 	}
 	else
 	{
-		PrimComp = GrippedActors[FoundIndex].GetGrippedComponent();
-		pActor = GrippedActors[FoundIndex].GetGrippedActor();
+		PrimComp = GrippedObjects[FoundIndex].GetGrippedComponent();
+		pActor = GrippedObjects[FoundIndex].GetGrippedActor();
 	}
 
 	if (!PrimComp && pActor)
@@ -1317,20 +1317,20 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	{
 		if (GetNetMode() == ENetMode::NM_Client)
 		{
-			Server_NotifyLocalGripRemoved(LocallyGrippedActors[FoundIndex]);
+			Server_NotifyLocalGripRemoved(LocallyGrippedObjects[FoundIndex]);
 				
 			// Have to call this ourselves
-			Drop_Implementation(LocallyGrippedActors[FoundIndex], bSimulate);
+			Drop_Implementation(LocallyGrippedObjects[FoundIndex], bSimulate);
 		}
 		else // Server notifyDrop it
 		{
-			NotifyDrop(LocallyGrippedActors[FoundIndex], bSimulate);
+			NotifyDrop(LocallyGrippedObjects[FoundIndex], bSimulate);
 		}
 	}
 	else
-		NotifyDrop(GrippedActors[FoundIndex], bSimulate);
+		NotifyDrop(GrippedObjects[FoundIndex], bSimulate);
 
-	//GrippedActors.RemoveAt(FoundIndex);		
+	//GrippedObjects.RemoveAt(FoundIndex);		
 	return true;
 }
 
@@ -1624,16 +1624,16 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 	// Remove the drop from the array, can't wait around for replication as the tick function will start in on it.
 	int fIndex = 0;
-	if (LocallyGrippedActors.Find(NewDrop, fIndex))
+	if (LocallyGrippedObjects.Find(NewDrop, fIndex))
 	{
-		LocallyGrippedActors.RemoveAt(fIndex);
+		LocallyGrippedObjects.RemoveAt(fIndex);
 	}
 	else
 	{
 		fIndex = 0;
-		if (GrippedActors.Find(NewDrop, fIndex))
+		if (GrippedObjects.Find(NewDrop, fIndex))
 		{
-			GrippedActors.RemoveAt(fIndex);
+			GrippedObjects.RemoveAt(fIndex);
 		}
 	}
 }
@@ -1689,7 +1689,7 @@ bool UGripMotionControllerComponent::BP_HasGripMovementAuthority(const FBPActorG
 
 bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform & OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime,/* float SecondarySmoothingScaler,*/ bool bIsSlotGrip)
 {
-	if (!GrippedObjectToAddAttachment || !SecondaryPointComponent || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
+	if (!GrippedObjectToAddAttachment || !SecondaryPointComponent || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
 		return false;
 
 
@@ -1715,11 +1715,11 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 
 	FBPActorGripInformation * GripToUse = nullptr;
 
-	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject == GrippedObjectToAddAttachment)
+		if (LocallyGrippedObjects[i].GrippedObject == GrippedObjectToAddAttachment)
 		{
-			GripToUse = &LocallyGrippedActors[i];
+			GripToUse = &LocallyGrippedObjects[i];
 			break;
 		}
 	}
@@ -1734,11 +1734,11 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 			return false;
 		}
 
-		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+		for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 		{
-			if (GrippedActors[i].GrippedObject == GrippedObjectToAddAttachment)
+			if (GrippedObjects[i].GrippedObject == GrippedObjectToAddAttachment)
 			{
-				GripToUse = &GrippedActors[i];
+				GripToUse = &GrippedObjects[i];
 				break;
 			}
 		}
@@ -1821,17 +1821,17 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 
 bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * GrippedObjectToRemoveAttachment, float LerpToTime)
 {
-	if (!GrippedObjectToRemoveAttachment || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
+	if (!GrippedObjectToRemoveAttachment || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
 		return false;
 
 	FBPActorGripInformation * GripToUse = nullptr;
 
 	// Duplicating the logic for each array for now
-	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject == GrippedObjectToRemoveAttachment)
+		if (LocallyGrippedObjects[i].GrippedObject == GrippedObjectToRemoveAttachment)
 		{
-			GripToUse = &LocallyGrippedActors[i];
+			GripToUse = &LocallyGrippedObjects[i];
 			break;
 		}
 	}
@@ -1845,11 +1845,11 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 			return false;
 		}
 
-		for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+		for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 		{
-			if (GrippedActors[i].GrippedObject == GrippedObjectToRemoveAttachment)
+			if (GrippedObjects[i].GrippedObject == GrippedObjectToRemoveAttachment)
 			{
-				GripToUse = &GrippedActors[i];
+				GripToUse = &GrippedObjects[i];
 				break;
 			}
 		}
@@ -1944,24 +1944,24 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 
 bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedActorToMove)
 {
-	if (!GrippedActorToMove || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
+	if (!GrippedActorToMove || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
 		return false;
 
 	FTransform WorldTransform;
 	FTransform InverseTransform = this->GetComponentTransform().Inverse();
-	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject == GrippedActorToMove)
+		if (LocallyGrippedObjects[i].GrippedObject == GrippedActorToMove)
 		{
-			return TeleportMoveGrip(LocallyGrippedActors[i]);
+			return TeleportMoveGrip(LocallyGrippedObjects[i]);
 		}
 	}
 
-	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (GrippedActors[i].GrippedObject == GrippedActorToMove)
+		if (GrippedObjects[i].GrippedObject == GrippedActorToMove)
 		{
-			return TeleportMoveGrip(GrippedActors[i]);
+			return TeleportMoveGrip(GrippedObjects[i]);
 		}
 	}
 
@@ -1970,24 +1970,24 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 
 bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove)
 {
-	if (!ComponentToMove || (!GrippedActors.Num() && !LocallyGrippedActors.Num()))
+	if (!ComponentToMove || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
 		return false;
 
 	FTransform WorldTransform;
 	FTransform InverseTransform = this->GetComponentTransform().Inverse();
-	for (int i = LocallyGrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject == ComponentToMove)
+		if (LocallyGrippedObjects[i].GrippedObject == ComponentToMove)
 		{
-			return TeleportMoveGrip(LocallyGrippedActors[i]);
+			return TeleportMoveGrip(LocallyGrippedObjects[i]);
 		}
 	}
 
-	for (int i = GrippedActors.Num() - 1; i >= 0; --i)
+	for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 	{
-		if (GrippedActors[i].GrippedObject == ComponentToMove)
+		if (GrippedObjects[i].GrippedObject == ComponentToMove)
 		{
-			return TeleportMoveGrip(GrippedActors[i]);
+			return TeleportMoveGrip(GrippedObjects[i]);
 		}
 	}
 
@@ -2164,19 +2164,19 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &G
 	return true;
 }
 
-void UGripMotionControllerComponent::PostTeleportMoveGrippedActors()
+void UGripMotionControllerComponent::PostTeleportMoveGrippedObjects()
 {
-	if (!GrippedActors.Num() && !LocallyGrippedActors.Num())
+	if (!GrippedObjects.Num() && !LocallyGrippedObjects.Num())
 		return;
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); i++)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); i++)
 	{
-		TeleportMoveGrip(LocallyGrippedActors[i], true);
+		TeleportMoveGrip(LocallyGrippedObjects[i], true);
 	}
 
-	for (int i = 0; i < GrippedActors.Num(); i++)
+	for (int i = 0; i < GrippedObjects.Num(); i++)
 	{
-		TeleportMoveGrip(GrippedActors[i], true);
+		TeleportMoveGrip(GrippedObjects[i], true);
 	}
 }
 
@@ -2504,7 +2504,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	SCOPE_CYCLE_COUNTER(STAT_TickGrip);
 
 	// Debug test that we aren't floating physics handles
-	check(PhysicsGrips.Num() <= (GrippedActors.Num() + LocallyGrippedActors.Num()));
+	check(PhysicsGrips.Num() <= (GrippedObjects.Num() + LocallyGrippedObjects.Num()));
 
 	FTransform ParentTransform = this->GetComponentTransform();
 
@@ -2512,8 +2512,8 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	LastControllerLocation = this->GetComponentLocation();
 
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
-	HandleGripArray(GrippedActors, ParentTransform, DeltaTime, true);
-	HandleGripArray(LocallyGrippedActors, ParentTransform, DeltaTime);
+	HandleGripArray(GrippedObjects, ParentTransform, DeltaTime, true);
+	HandleGripArray(LocallyGrippedObjects, ParentTransform, DeltaTime);
 
 }
 
@@ -3817,50 +3817,56 @@ bool UGripMotionControllerComponent::FGripViewExtension::IsActiveThisFrame(class
 	return MotionControllerComponent && !MotionControllerComponent->bDisableLowLatencyUpdate && CVarEnableMotionControllerLateUpdate->GetValueOnGameThread();
 }
 
+void UGripMotionControllerComponent::GetAllGrips(TArray<FBPActorGripInformation> &GripArray)
+{
+	GripArray.Append(GrippedObjects);
+	GripArray.Append(LocallyGrippedObjects);
+}
+
 void UGripMotionControllerComponent::GetGrippedObjects(TArray<UObject*> &GrippedObjectsArray)
 {
-	for (int i = 0; i < GrippedActors.Num(); ++i)
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if (GrippedActors[i].GrippedObject)
-			GrippedObjectsArray.Add(GrippedActors[i].GrippedObject);
+		if (GrippedObjects[i].GrippedObject)
+			GrippedObjectsArray.Add(GrippedObjects[i].GrippedObject);
 	}
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (LocallyGrippedActors[i].GrippedObject)
-			GrippedObjectsArray.Add(LocallyGrippedActors[i].GrippedObject);
+		if (LocallyGrippedObjects[i].GrippedObject)
+			GrippedObjectsArray.Add(LocallyGrippedObjects[i].GrippedObject);
 	}
 
 }
 
-void UGripMotionControllerComponent::GetGrippedActors(TArray<AActor*> &GrippedActorsArray)
+void UGripMotionControllerComponent::GetGrippedActors(TArray<AActor*> &GrippedObjectsArray)
 {
-	for (int i = 0; i < GrippedActors.Num(); ++i)
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if(GrippedActors[i].GetGrippedActor())
-			GrippedActorsArray.Add(GrippedActors[i].GetGrippedActor());
+		if(GrippedObjects[i].GetGrippedActor())
+			GrippedObjectsArray.Add(GrippedObjects[i].GetGrippedActor());
 	}
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (LocallyGrippedActors[i].GetGrippedActor())
-			GrippedActorsArray.Add(LocallyGrippedActors[i].GetGrippedActor());
+		if (LocallyGrippedObjects[i].GetGrippedActor())
+			GrippedObjectsArray.Add(LocallyGrippedObjects[i].GetGrippedActor());
 	}
 
 }
 
 void UGripMotionControllerComponent::GetGrippedComponents(TArray<UPrimitiveComponent*> &GrippedComponentsArray)
 {
-	for (int i = 0; i < GrippedActors.Num(); ++i)
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if (GrippedActors[i].GetGrippedComponent())
-			GrippedComponentsArray.Add(GrippedActors[i].GetGrippedComponent());
+		if (GrippedObjects[i].GetGrippedComponent())
+			GrippedComponentsArray.Add(GrippedObjects[i].GetGrippedComponent());
 	}
 
-	for (int i = 0; i < LocallyGrippedActors.Num(); ++i)
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (LocallyGrippedActors[i].GetGrippedComponent())
-			GrippedComponentsArray.Add(LocallyGrippedActors[i].GetGrippedComponent());
+		if (LocallyGrippedObjects[i].GetGrippedComponent())
+			GrippedComponentsArray.Add(LocallyGrippedObjects[i].GetGrippedComponent());
 	}
 }
 
@@ -3897,12 +3903,12 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 		return;
 	}
 
-	if (!LocallyGrippedActors.Contains(newGrip))
+	if (!LocallyGrippedObjects.Contains(newGrip))
 	{
-		LocallyGrippedActors.Add(newGrip);
+		LocallyGrippedObjects.Add(newGrip);
 
 		// Initialize the differences, clients will do this themselves on the rep back, this sets up the cache
-		HandleGripReplication(LocallyGrippedActors[LocallyGrippedActors.Num() - 1]);
+		HandleGripReplication(LocallyGrippedObjects[LocallyGrippedObjects.Num() - 1]);
 	}
 	else
 	{
@@ -3917,7 +3923,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 	}
 
 	// Server has to call this themselves
-	OnRep_LocallyGrippedActors();
+	OnRep_LocallyGrippedObjects();
 }
 
 
@@ -3958,7 +3964,7 @@ void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Imp
 	if (!GrippedObject)
 		return;
 
-	for (FBPActorGripInformation & Grip : LocallyGrippedActors)
+	for (FBPActorGripInformation & Grip : LocallyGrippedObjects)
 	{
 		if (Grip == GrippedObject)
 		{
@@ -4005,8 +4011,8 @@ void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMot
 	}
 
 
-	ProcessGripArrayLateUpdatePrimitives(Component, Component->LocallyGrippedActors);
-	ProcessGripArrayLateUpdatePrimitives(Component, Component->GrippedActors);
+	ProcessGripArrayLateUpdatePrimitives(Component, Component->LocallyGrippedObjects);
+	ProcessGripArrayLateUpdatePrimitives(Component, Component->GrippedObjects);
 
 	LateUpdateGameWriteIndex = (LateUpdateGameWriteIndex + 1) % 2;
 }

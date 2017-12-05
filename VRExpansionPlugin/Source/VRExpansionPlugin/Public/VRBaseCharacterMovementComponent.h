@@ -360,6 +360,8 @@ public:
 	/** Custom version of SlideAlongSurface that handles different movement modes separately; namely during walking physics we might not want to slide up slopes. */
 	virtual float SlideAlongSurface(const FVector& Delta, float Time, const FVector& Normal, FHitResult& Hit, bool bHandleImpact) override;
 
+	// Add in the custom replicated movement that climbing mode uses, this is a cutom vector that is applied to character movements
+	// on the next tick as a movement input..
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
 		void AddCustomReplicatedMovement(FVector Movement);
 
@@ -375,7 +377,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_StopAllMovement();
 	
-	// Perform a teleport in line with the move action system
+	// Perform a custom moveaction that you define, will call the OnCustomMoveActionPerformed event in the character when processed so you can run your own logic
+	// Be sure to set the minimum data replication requirements for your move action in order to save on replication.
+	// Move actions are currently limited to 1 per frame.
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator);
 
