@@ -595,17 +595,10 @@ void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMo
 }
 
 
-void UVRBaseCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
+/*void UVRBaseCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
 {
 	Super::ReplicateMoveToServer(DeltaTime, NewAcceleration);
-
-	if (bHadMoveActionThisFrame)
-	{
-		// TODO: Remove this? don't need it anymore?
-		// Make sure these are cleaned out for the next frame
-	//	MoveAction = EVRMoveAction::VRMOVEACTION_None;
-	}
-}
+}*/
 
 /*void UVRBaseCharacterMovementComponent::SendClientAdjustment()
 {
@@ -735,7 +728,7 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	}
 
 	// Handle move actions here
-	bHadMoveActionThisFrame = CheckForMoveAction();
+	CheckForMoveAction();
 
 	// Clear out this flag prior to movement so we can see if it gets changed
 	bIsInPushBack = false;

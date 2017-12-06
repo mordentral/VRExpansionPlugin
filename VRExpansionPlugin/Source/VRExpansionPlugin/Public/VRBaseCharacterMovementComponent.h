@@ -326,7 +326,7 @@ public:
 	UVRBaseCharacterMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	virtual void PerformMovement(float DeltaSeconds) override;
-	virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
+	//virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
 
 	// Overriding this to run the seated logic
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
@@ -385,7 +385,6 @@ public:
 
 	FVRMoveActionContainer MoveAction;
 
-	bool bHadMoveActionThisFrame;
 	bool CheckForMoveAction();
 	bool DoMASnapTurn();
 	bool DoMATeleport();
