@@ -146,7 +146,7 @@ public:
 	bool bAlwaysSendTickGrip;
 
 	// Clean up a grip that is "bad", object is being destroyed or was a bad destructible mesh
-	void CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjects, int GripIndex, bool bReplicatedArray);
+	void CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjectsArray, int GripIndex, bool bReplicatedArray);
 
 	// Recreates a grip in situations where the collision type or movement replication type may have been changed
 	inline void ReCreateGrip(FBPActorGripInformation & GripInfo)
@@ -569,7 +569,7 @@ public:
 	void TickGrip(float DeltaTime);
 
 	// Splitting logic into separate function
-	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray = false);
+	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray = false);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
 	inline void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips);

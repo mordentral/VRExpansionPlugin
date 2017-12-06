@@ -2517,7 +2517,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 }
 
-void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjects, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)
+void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)
 {
 	if (GrippedObjects.Num())
 	{
@@ -2990,7 +2990,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 }
 
 
-void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjects, int GripIndex, bool bReplicatedArray)
+void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjectsArray, int GripIndex, bool bReplicatedArray)
 {
 	// Object has been destroyed without notification to plugin
 
