@@ -2519,16 +2519,16 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)
 {
-	if (GrippedObjects.Num())
+	if (GrippedObjectsArray.Num())
 	{
 		FTransform WorldTransform;
 
-		for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
+		for (int i = GrippedObjectsArray.Num() - 1; i >= 0; --i)
 		{
-			if (!HasGripMovementAuthority(GrippedObjects[i]))
+			if (!HasGripMovementAuthority(GrippedObjectsArray[i]))
 				continue;
 
-			FBPActorGripInformation * Grip = &GrippedObjects[i];
+			FBPActorGripInformation * Grip = &GrippedObjectsArray[i];
 
 
 			if (!Grip) // Shouldn't be possible, but why not play it safe
@@ -2983,7 +2983,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 			else
 			{
 				// Object has been destroyed without notification to plugin
-				CleanUpBadGrip(GrippedObjects, i, bReplicatedArray);
+				CleanUpBadGrip(GrippedObjectsArray, i, bReplicatedArray);
 			}
 		}
 	}
@@ -2997,7 +2997,7 @@ void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformati
 	// Clean up tailing physics handles with null objects
 	for (int g = PhysicsGrips.Num() - 1; g >= 0; --g)
 	{
-		if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjects[GripIndex].GrippedObject || PhysicsGrips[g].HandledObject->IsPendingKill())
+		if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjectsArray[GripIndex].GrippedObject || PhysicsGrips[g].HandledObject->IsPendingKill())
 		{
 			// Need to delete it from the physics thread
 			DestroyPhysicsHandle(PhysicsGrips[g].SceneIndex, &PhysicsGrips[g].HandleData, &PhysicsGrips[g].KinActorData);
@@ -3007,16 +3007,16 @@ void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformati
 
 	// Doesn't work, uses the object as the search parameter which can now be null
 	//	DestroyPhysicsHandle(*Grip);
-	if (HasGripAuthority(GrippedObjects[GripIndex]))
+	if (HasGripAuthority(GrippedObjectsArray[GripIndex]))
 	{
-		DropGrip(GrippedObjects[GripIndex], false);
+		DropGrip(GrippedObjectsArray[GripIndex], false);
 		UE_LOG(LogVRMotionController, Warning, TEXT("Gripped object was null or destroying, auto dropping it"));
 	}
 
 	//if (!bReplicatedArray || IsServer())
 	//{
 		
-		//GrippedObjects.RemoveAt(GripIndex); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
+		//GrippedObjectsArray.RemoveAt(GripIndex); // If it got garbage collected then just remove the pointer, won't happen with new uproperty use, but keeping it here anyway
 	//}
 }
 

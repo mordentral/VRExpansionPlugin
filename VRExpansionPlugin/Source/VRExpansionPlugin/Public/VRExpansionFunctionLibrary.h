@@ -13,6 +13,7 @@
 #include "IHeadMountedDisplay.h"
 
 #include "VRBPDatatypes.h"
+#include "GameplayTagContainer.h"
 
 #include "VRExpansionFunctionLibrary.generated.h"
 
@@ -244,6 +245,58 @@ public:
 			SplineMeshComponent->SetStartAndEnd(StartLoc, StartTangent, EndLoc, EndTangent, true);
 		}
 
+	}
+
+	/**
+	* Determine if any tag in the BaseContainer matches against any tag in OtherContainer with a required direct parent for both
+	*
+	* @param TagParent		Required direct parent tag
+	* @param BaseContainer	Container containing values to check
+	* @param OtherContainer	Container to check against.
+	*
+	* @return True if any tag was found that matches any tags explicitly present in OtherContainer with the same DirectParent
+	*/
+	UFUNCTION(BlueprintPure, Category = "GameplayTags")
+	static bool MatchesAnyTagsWithDirectParentTag(FGameplayTag DirectParentTag,const FGameplayTagContainer& BaseContainer, const FGameplayTagContainer& OtherContainer)
+	{
+		TArray<FGameplayTag> BaseContainerTags;
+		BaseContainer.GetGameplayTagArray(BaseContainerTags);
+
+		for (const FGameplayTag& OtherTag : BaseContainerTags)
+		{
+			if (OtherTag.RequestDirectParent().MatchesTagExact(DirectParentTag))
+			{
+				if (OtherContainer.HasTagExact(OtherTag))
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	* Determine if any tag in the BaseContainer has the exact same direct parent tag and returns the first one
+	* @param TagParent		Required direct parent tag
+	* @param BaseContainer	Container containing values to check
+
+	* @return True if any tag was found and also returns the tag
+	*/
+	UFUNCTION(BlueprintPure, Category = "GameplayTags")
+	static bool GetFirstGameplayTagWithExactParent(FGameplayTag DirectParentTag, const FGameplayTagContainer& BaseContainer, FGameplayTag& FoundTag)
+	{
+		TArray<FGameplayTag> BaseContainerTags;
+		BaseContainer.GetGameplayTagArray(BaseContainerTags);
+
+		for (const FGameplayTag& OtherTag : BaseContainerTags)
+		{
+			if (OtherTag.RequestDirectParent().MatchesTagExact(DirectParentTag))
+			{
+				FoundTag = OtherTag;
+				return true;
+			}
+		}
+
+		return false;
 	}
 };	
 
