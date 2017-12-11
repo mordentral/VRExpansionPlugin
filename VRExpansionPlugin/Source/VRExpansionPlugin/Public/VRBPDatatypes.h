@@ -809,6 +809,12 @@ struct VREXPANSIONPLUGIN_API FBPAdvGripSettings
 	GENERATED_BODY()
 public:
 
+	// Priority of this item when being gripped, (Higher is more priority)
+	// This lets you prioritize whether an object should be gripped over another one when both
+	// collide with traces or overlaps.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
+		uint8 GripPriority;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
 		FBPAdvGripPhysicsSettings PhysicsSettings;
 
@@ -816,7 +822,8 @@ public:
 		FBPAdvSecondaryGripSettings SecondaryGripSettings;
 
 
-	FBPAdvGripSettings()
+	FBPAdvGripSettings() :
+		GripPriority(0)
 	{}
 };
 
