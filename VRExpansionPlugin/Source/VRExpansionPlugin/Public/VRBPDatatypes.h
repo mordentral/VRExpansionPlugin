@@ -823,7 +823,7 @@ public:
 
 
 	FBPAdvGripSettings() :
-		GripPriority(0)
+		GripPriority(1)
 	{}
 };
 
