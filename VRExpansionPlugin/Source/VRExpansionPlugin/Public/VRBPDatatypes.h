@@ -811,7 +811,7 @@ public:
 
 	// Priority of this item when being gripped, (Higher is more priority)
 	// This lets you prioritize whether an object should be gripped over another one when both
-	// collide with traces or overlaps.
+	// collide with traces or overlaps. #Note: Currently not implemented in the plugin, here for your use.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
 		uint8 GripPriority;
 

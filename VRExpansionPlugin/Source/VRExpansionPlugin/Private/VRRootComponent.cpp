@@ -451,9 +451,6 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 				if (bAllowWalkingCollision)
 					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
-				//else
-				//	bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
-				// If we had a valid blocking hit
 
 				if (bBlockingHit && OutHit.Component.IsValid())
 				{
@@ -467,18 +464,22 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			}
 			else
 				bHadRelativeMovement = true;
-				//bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, GetCollisionObjectType(), GetCollisionShape(), Params, ResponseParam);
 
-		//	lastCameraLoc = curCameraLoc;
-		//	lastCameraRot = curCameraRot;
-
-			DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);// .GetSafeNormal2D();
-			DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
-			DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
-			DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
+			if (bHadRelativeMovement)
+			{
+				DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);// .GetSafeNormal2D();
+				DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
+				DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
+				DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
+			}
+			else // Zero it out so we don't process off of the change (multiplayer sends this)
+				DifferenceFromLastFrame = FVector::ZeroVector;
 		}
 		else
+		{
 			bHadRelativeMovement = false;
+			DifferenceFromLastFrame = FVector::ZeroVector;
+		}
 	}
 	else
 	{

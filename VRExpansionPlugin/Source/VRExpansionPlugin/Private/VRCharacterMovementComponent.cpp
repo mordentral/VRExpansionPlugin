@@ -1896,18 +1896,15 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 
 	if (CharacterOwner && CharacterOwner->IsLocallyControlled())
 	{
-		if (VRRootCapsule && VRRootCapsule->bHadRelativeMovement)
+		// Root capsule is now throwing out the difference itself, I use the difference for multiplayer sends
+		if (VRRootCapsule)
 		{
-			// Fake movement is sketchy, going to find a different solution eventually?
-			// Currently just adds a slight vector in the movement direction when we detect an obstacle, this forces us to impact the wall and not penetrate
-			//RequestDirectMove(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D(),false);
-			VRRootCapsule->DifferenceFromLastFrame = VRRootCapsule->DifferenceFromLastFrame;
 			AdditionalVRInputVector = VRRootCapsule->DifferenceFromLastFrame;
-			//AdditionalVRInputVector = RoundDirectMovement(VRRootCapsule->DifferenceFromLastFrame);
-			//AddInputVector(VRRootCapsule->DifferenceFromLastFrame.GetSafeNormal2D() * WallRepulsionMultiplier);
 		}
 		else
+		{
 			AdditionalVRInputVector = FVector::ZeroVector;
+		}
 	}
 
 
