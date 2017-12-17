@@ -28,7 +28,6 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	NetSmoother = CreateDefaultSubobject<USceneComponent>(AVRBaseCharacter::SmoothingSceneParentComponentName);
 	if (NetSmoother)
 	{
-		NetSmoother->SetRelativeLocation(FVector(0.f, 0.f, -1.9f));
 		NetSmoother->SetupAttachment(RootComponent);
 	}
 
