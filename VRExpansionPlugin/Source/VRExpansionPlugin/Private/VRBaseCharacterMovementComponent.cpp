@@ -442,50 +442,53 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 
 	FVector OldLocation = UpdatedComponent->GetComponentLocation();
 	const FVector Adjusted = /*(Velocity * deltaTime) + */CustomVRInputVector;
+	FVector Delta = Adjusted + AdditionalVRInputVector;
+	bool bZeroDelta = Delta.IsNearlyZero();
 
-	FHitResult Hit(1.f);
-	SafeMoveUpdatedComponent(Adjusted + AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), true, Hit);
+	FStepDownResult StepDownResult;
+
+	// Instead of remaking the step up function, temp assign a custom step height and then fall back to the old one afterward
+	// This isn't the "proper" way to do it, but it saves on re-making stepup() for both vr characters seperatly (due to different hmd injection)
+	float OldMaxStepHeight = MaxStepHeight;
+	MaxStepHeight = VRClimbingStepHeight;
 	bool bSteppedUp = false;
 
-	if (Hit.Time < 1.f)
+	if (!bZeroDelta)
 	{
-		const FVector GravDir = FVector(0.f, 0.f, -1.f);
-		const FVector VelDir = (CustomVRInputVector).GetSafeNormal();//Velocity.GetSafeNormal();
-		const float UpDown = GravDir | VelDir;
+		FHitResult Hit(1.f);
+		SafeMoveUpdatedComponent(Delta, UpdatedComponent->GetComponentQuat(), true, Hit);
 
-		//bool bSteppedUp = false;
-		if ((FMath::Abs(Hit.ImpactNormal.Z) < 0.2f) && (UpDown < 0.5f) && (UpDown > -0.2f) && CanStepUp(Hit))
+		if (Hit.Time < 1.f)
 		{
-			float stepZ = UpdatedComponent->GetComponentLocation().Z;
+			const FVector GravDir = FVector(0.f, 0.f, -1.f);
+			const FVector VelDir = (CustomVRInputVector).GetSafeNormal();//Velocity.GetSafeNormal();
+			const float UpDown = GravDir | VelDir;
 
-			// Instead of remaking the step up function, temp assign a custom step height and then fall back to the old one afterward
-			// This isn't the "proper" way to do it, but it saves on re-making stepup() for both vr characters seperatly (due to different hmd injection)
-			float OldMaxStepHeight = MaxStepHeight;
-			MaxStepHeight = VRClimbingStepHeight;
-
-			// Making it easier to step up here with the multiplier, helps avoid falling back off
-			bSteppedUp = VRClimbStepUp(GravDir, ((Adjusted * VRClimbingStepUpMultiplier) + AdditionalVRInputVector) * (1.f - Hit.Time), Hit);
-
-			MaxStepHeight = OldMaxStepHeight;
-
-			if (bSteppedUp)
+			//bool bSteppedUp = false;
+			if ((FMath::Abs(Hit.ImpactNormal.Z) < 0.2f) && (UpDown < 0.5f) && (UpDown > -0.2f) && CanStepUp(Hit))
 			{
-				OldLocation.Z = UpdatedComponent->GetComponentLocation().Z + (OldLocation.Z - stepZ);
+				float stepZ = UpdatedComponent->GetComponentLocation().Z;
+
+				// Making it easier to step up here with the multiplier, helps avoid falling back off
+				bSteppedUp = VRClimbStepUp(GravDir, ((Adjusted * VRClimbingStepUpMultiplier) + AdditionalVRInputVector) * (1.f - Hit.Time), Hit, &StepDownResult);
+
+				if (bSteppedUp)
+				{
+					OldLocation.Z = UpdatedComponent->GetComponentLocation().Z + (OldLocation.Z - stepZ);
+				}
+			}
+
+			if (!bSteppedUp)
+			{
+				//adjust and try again
+				HandleImpact(Hit, deltaTime, Adjusted);
+				SlideAlongSurface(Adjusted, (1.f - Hit.Time), Hit.Normal, Hit, true);
 			}
 		}
-
-		if (!bSteppedUp)
-		{
-			//adjust and try again
-			HandleImpact(Hit, deltaTime, Adjusted);
-			SlideAlongSurface(Adjusted, (1.f - Hit.Time), Hit.Normal, Hit, true);
-		}
 	}
 
-	if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
-	{
-		Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime).GetClampedToMaxSize(VRClimbingMaxReleaseVelocitySize);
-	}
+	// Revert to old max step height
+	MaxStepHeight = OldMaxStepHeight;
 
 	if (bSteppedUp)
 	{
@@ -497,10 +500,49 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 				SetReplicatedMovementMode(DefaultPostClimbMovement);
 				// Before doing this the server could rollback the client from a bad step up and leave it hanging in climb mode
 				// This way the rollback replay correctly sets the movement mode from the step up request
+
+				Velocity = FVector::ZeroVector;
 			}
 
 			// Notify the end user that they probably want to stop gripping now
 			ownerCharacter->OnClimbingSteppedUp();
+		}
+	}
+
+	// Update floor.
+	// StepUp might have already done it for us.
+	if (StepDownResult.bComputedFloor)
+	{
+		CurrentFloor = StepDownResult.FloorResult;
+	}
+	else
+	{
+		FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, bZeroDelta, NULL);
+	}
+
+	if (CurrentFloor.IsWalkableFloor())
+	{
+		if(CurrentFloor.GetDistanceToFloor() < (MIN_FLOOR_DIST + MAX_FLOOR_DIST) / 2)
+			AdjustFloorHeight();
+
+		SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+	}
+	else if (CurrentFloor.HitResult.bStartPenetrating)
+	{
+		// The floor check failed because it started in penetration
+		// We do not want to try to move downward because the downward sweep failed, rather we'd like to try to pop out of the floor.
+		FHitResult Hit(CurrentFloor.HitResult);
+		Hit.TraceEnd = Hit.TraceStart + FVector(0.f, 0.f, MAX_FLOOR_DIST);
+		const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
+		ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
+		bForceNextFloorCheck = true;
+	}
+
+	if(!bSteppedUp || !SetDefaultPostClimbMovementOnStepUp)
+	{
+		if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+		{
+			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime).GetClampedToMaxSize(VRClimbingMaxReleaseVelocitySize);
 		}
 	}
 }

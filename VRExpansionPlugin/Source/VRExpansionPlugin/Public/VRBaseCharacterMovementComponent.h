@@ -341,6 +341,11 @@ public:
 		bHasRequestedVelocity = bNewHasRequestedVelocity;
 	}
 
+	bool IsClimbing() const
+	{
+		return ((MovementMode == MOVE_Custom) && (CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing)) && UpdatedComponent;
+	}
+
 	bool IsLocallyControlled() const
 	{
 		// I like epics implementation better than my own
