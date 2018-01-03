@@ -1008,7 +1008,8 @@ public:
 		FTransform_NetQuantize RelativeTransform;
 	UPROPERTY(BlueprintReadWrite, Category = "Settings")
 		bool bIsSlotGrip;
-
+	UPROPERTY(BlueprintReadWrite, Category = "Settings")
+		FName GrippedBoneName;
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
 
@@ -1063,6 +1064,7 @@ public:
 		float CachedStiffness;
 		float CachedDamping;
 		FBPAdvGripPhysicsSettings CachedPhysicsSettings;
+		FName CachedBoneName;
 
 		FGripValueCache():
 			bWasInitiallyRepped(false),
@@ -1071,7 +1073,8 @@ public:
 			CachedGripCollisionType(EGripCollisionType::InteractiveCollisionWithSweep),
 			CachedGripMovementReplicationSetting(EGripMovementReplicationSettings::ForceClientSideMovement),
 			CachedStiffness(1500.0f),
-			CachedDamping(200.0f)
+			CachedDamping(200.0f),
+			CachedBoneName(NAME_None)
 		{}
 
 	}ValueCache;
@@ -1121,7 +1124,7 @@ public:
 		return false;
 	}
 
-	FBPActorGripInformation():
+	FBPActorGripInformation() :
 		GripTargetType(EGripTargetType::ActorGrip),
 		GrippedObject(nullptr),
 		GripCollisionType(EGripCollisionType::InteractiveCollisionWithPhysics),
@@ -1129,6 +1132,7 @@ public:
 		bColliding(false),
 		RelativeTransform(FTransform::Identity),
 		bIsSlotGrip(false),
+		GrippedBoneName(NAME_None),
 		GripMovementReplicationSetting(EGripMovementReplicationSettings::ForceClientSideMovement),
 		bOriginalReplicatesMovement(false),
 		bOriginalGravity(false),
@@ -1142,78 +1146,7 @@ public:
 	{
 	}	
 
-	/** Network serialization */
-	/*bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
-	{
-		Ar << GripTargetType;
-		Ar << GrippedObject;
-		Ar << GripCollisionType;
-		Ar << GripLateUpdateSetting;
-
-		Ar << RelativeTransform;
-
-		Ar << GripMovementReplicationSetting;
-
-		// If on colliding server, otherwise doesn't matter to client
-		//	Ar << bColliding;
-
-		// This doesn't matter to clients
-		//Ar << bOriginalReplicatesMovement;
-
-		bool bHadAttachment = bHasSecondaryAttachment;
-
-		Ar << bHasSecondaryAttachment;
-		Ar << LerpToRate;
-
-		// If this grip has a secondary attachment
-		if (bHasSecondaryAttachment)
-		{
-			Ar << SecondaryAttachment;
-			Ar << SecondaryRelativeLocation;
-			Ar << SecondarySmoothingScaler;
-		}
-
-		// Manage lerp states
-		if (Ar.IsLoading())
-		{
-			if (bHadAttachment != bHasSecondaryAttachment)
-			{
-				if (LerpToRate < 0.01f)
-					GripLerpState = EGripLerpState::NotLerping;
-				else
-				{
-					// New lerp
-					if (bHasSecondaryAttachment)
-					{
-						curLerp = LerpToRate;
-						GripLerpState = EGripLerpState::StartLerp;
-					}
-					else // Post Lerp
-					{
-						curLerp = LerpToRate;
-						GripLerpState = EGripLerpState::EndLerp;
-					}
-				}
-			}
-		}
-
-		// Now always replicating these two, in case people want to pass in custom values using it
-		Ar << Damping;
-		Ar << Stiffness;
-
-		bOutSuccess = true;
-		return true;
-	}*/
 };
-
-/*template<>
-struct TStructOpsTypeTraits< FBPActorGripInformation > : public TStructOpsTypeTraitsBase2<FBPActorGripInformation>
-{
-	enum
-	{
-		WithNetSerializer = true
-	};
-};*/
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPInterfaceProperties

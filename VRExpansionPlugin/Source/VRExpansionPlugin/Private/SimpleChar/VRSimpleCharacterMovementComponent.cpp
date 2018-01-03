@@ -50,8 +50,8 @@ UVRSimpleCharacterMovementComponent::UVRSimpleCharacterMovementComponent(const F
 	//VRCameraCollider = NULL;
 
 	this->bRequestedMoveUseAcceleration = false;
-	this->MaxAcceleration = 200048.0f;
-	this->BrakingDecelerationWalking = 200048.0f;
+	//this->MaxAcceleration = 200048.0f;
+	//this->BrakingDecelerationWalking = 200048.0f;
 	this->bUpdateOnlyIfRendered = false;
 	this->AirControl = 0.0f;
 
@@ -1094,8 +1094,8 @@ void UVRSimpleCharacterMovementComponent::CallServerMove
 	check(NewMove != NULL);
 
 	// Compress rotation down to 5 bytes
-	const uint32 ClientYawPitchINT = PackYawAndPitchTo32(NewMove->SavedControlRotation.Yaw, NewMove->SavedControlRotation.Pitch);
-	const uint8 ClientRollBYTE = FRotator::CompressAxisToByte(NewMove->SavedControlRotation.Roll);
+//	const uint32 ClientYawPitchINT = PackYawAndPitchTo32(NewMove->SavedControlRotation.Yaw, NewMove->SavedControlRotation.Pitch);
+	//const uint8 ClientRollBYTE = FRotator::CompressAxisToByte(NewMove->SavedControlRotation.Roll);
 	//const uint8 CapsuleYawBYTE = FRotator::CompressAxisToByte(NewMove->VRCapsuleRotation.Yaw);
 
 	// Determine if we send absolute or relative location
@@ -1109,12 +1109,35 @@ void UVRSimpleCharacterMovementComponent::CallServerMove
 		ServerMoveOld(OldMove->TimeStamp, OldMove->Acceleration, OldMove->GetCompressedFlags());
 	}
 
+	// Pass these in here, don't pass in to old move, it will receive the new move values in dual operations
+	// Will automatically not replicate them if movement base is nullptr (1 bit cost to check this)
+	FVRConditionalMoveRep2 NewMoveConds;
+	NewMoveConds.ClientMovementBase = ClientMovementBase;
+	NewMoveConds.ClientBaseBoneName = ClientBaseBone;
+
+	if (CharacterOwner && (CharacterOwner->bUseControllerRotationRoll || CharacterOwner->bUseControllerRotationPitch))
+	{
+		NewMoveConds.ClientPitch = FRotator::CompressAxisToShort(NewMove->SavedControlRotation.Pitch);
+		NewMoveConds.ClientRoll = FRotator::CompressAxisToByte(NewMove->SavedControlRotation.Roll);
+	}
+
+	NewMoveConds.ClientYaw = FRotator::CompressAxisToShort(NewMove->SavedControlRotation.Yaw);
+
 	FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
 	if (ClientData->PendingMove.IsValid())
 	{
-		const uint32 OldClientYawPitchINT = PackYawAndPitchTo32(ClientData->PendingMove->SavedControlRotation.Yaw, ClientData->PendingMove->SavedControlRotation.Pitch);
+		//const uint32 OldClientYawPitchINT = PackYawAndPitchTo32(ClientData->PendingMove->SavedControlRotation.Yaw, ClientData->PendingMove->SavedControlRotation.Pitch);
 		FSavedMove_VRSimpleCharacter* oldMove = (FSavedMove_VRSimpleCharacter*)ClientData->PendingMove.Get();
 		//const uint8 OldCapsuleYawBYTE = FRotator::CompressAxisToByte(oldMove->VRCapsuleRotation.Yaw);
+
+		uint32 cPitch = 0;
+		if (CharacterOwner && (CharacterOwner->bUseControllerRotationPitch))
+			cPitch = FRotator::CompressAxisToShort(ClientData->PendingMove->SavedControlRotation.Pitch);
+
+		uint32 cYaw = FRotator::CompressAxisToShort(ClientData->PendingMove->SavedControlRotation.Yaw);
+
+		// Switch the order of pitch and yaw to place Yaw in smallest value, this will cut down on rep cost since normally pitch is zero'd out in VR
+		uint32 OldClientYawPitchINT = (cPitch << 16) | (cYaw);
 
 		// If we delayed a move without root motion, and our new move has root motion, send these through a special function, so the server knows how to process them.
 		if ((ClientData->PendingMove->RootMotionMontage == NULL) && (NewMove->RootMotionMontage != NULL))
@@ -1126,26 +1149,15 @@ void UVRSimpleCharacterMovementComponent::CallServerMove
 				ClientData->PendingMove->Acceleration,
 				ClientData->PendingMove->GetCompressedFlags(),
 				OldClientYawPitchINT,
-				//oldMove->VRCapsuleLocation,
-				//oldMove->RequestedVelocity,
 				oldMove->ConditionalValues,
 				oldMove->LFDiff,
-				//oldMove->CustomVRInputVector,
-				//OldCapsuleYawBYTE,
 				NewMove->TimeStamp,
 				NewMove->Acceleration,
 				SendLocation,
-				//NewMove->VRCapsuleLocation,
-				//NewMove->RequestedVelocity,
 				NewMove->ConditionalValues,
 				NewMove->LFDiff,
-				//NewMove->CustomVRInputVector,
-				//CapsuleYawBYTE,
 				NewMove->GetCompressedFlags(),
-				ClientRollBYTE,
-				ClientYawPitchINT,
-				ClientMovementBase,
-				ClientBaseBone,
+				NewMoveConds,
 				NewMove->MovementMode
 			);
 		}
@@ -1158,26 +1170,15 @@ void UVRSimpleCharacterMovementComponent::CallServerMove
 				ClientData->PendingMove->Acceleration,
 				ClientData->PendingMove->GetCompressedFlags(),
 				OldClientYawPitchINT,
-				//oldMove->VRCapsuleLocation,
-				//oldMove->RequestedVelocity,
 				oldMove->ConditionalValues,
 				oldMove->LFDiff,
-				//oldMove->CustomVRInputVector,
-				//OldCapsuleYawBYTE,
 				NewMove->TimeStamp,
 				NewMove->Acceleration,
 				SendLocation,
-				//NewMove->VRCapsuleLocation,
-				//NewMove->RequestedVelocity,
 				NewMove->ConditionalValues,
 				NewMove->LFDiff,
-				//NewMove->CustomVRInputVector,
-				//CapsuleYawBYTE,
 				NewMove->GetCompressedFlags(),
-				ClientRollBYTE,
-				ClientYawPitchINT,
-				ClientMovementBase,
-				ClientBaseBone,
+				NewMoveConds,
 				NewMove->MovementMode
 			);
 		}
@@ -1189,17 +1190,10 @@ void UVRSimpleCharacterMovementComponent::CallServerMove
 			NewMove->TimeStamp,
 			NewMove->Acceleration,
 			SendLocation,
-			//NewMove->VRCapsuleLocation,
-			//NewMove->RequestedVelocity,
 			NewMove->ConditionalValues,
 			NewMove->LFDiff,
-			//NewMove->CustomVRInputVector,
-			//CapsuleYawBYTE,
 			NewMove->GetCompressedFlags(),
-			ClientRollBYTE,
-			ClientYawPitchINT,
-			ClientMovementBase,
-			ClientBaseBone,
+			NewMoveConds,
 			NewMove->MovementMode
 		);
 	}
@@ -1211,6 +1205,21 @@ void UVRSimpleCharacterMovementComponent::CallServerMove
 	{
 		PlayerCameraManager->bShouldSendClientSideCameraUpdate = true;
 	}
+}
+
+void UVRSimpleCharacterMovementComponent::ServerMoveVR(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 CompressedMoveFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode)
+{
+	((AVRSimpleCharacter*)CharacterOwner)->ServerMoveVR(TimeStamp, InAccel, ClientLoc, ConditionalReps, LFDiff, CompressedMoveFlags, MoveReps, ClientMovementMode);
+}
+
+void UVRSimpleCharacterMovementComponent::ServerMoveVRDual(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 NewFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode)
+{
+	((AVRSimpleCharacter*)CharacterOwner)->ServerMoveVRDual(TimeStamp0, InAccel0, PendingFlags, View0, OldConditionalReps, OldLFDiff, TimeStamp, InAccel, ClientLoc, ConditionalReps, LFDiff, NewFlags, MoveReps, ClientMovementMode);
+}
+
+void UVRSimpleCharacterMovementComponent::ServerMoveVRDualHybridRootMotion(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 NewFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode)
+{
+	((AVRSimpleCharacter*)CharacterOwner)->ServerMoveVRDualHybridRootMotion(TimeStamp0, InAccel0, PendingFlags, View0, OldConditionalReps, OldLFDiff, TimeStamp, InAccel, ClientLoc, ConditionalReps, LFDiff, NewFlags, MoveReps, ClientMovementMode);
 }
 
 
@@ -1485,17 +1494,17 @@ void FSavedMove_VRSimpleCharacter::PrepMoveFor(ACharacter* Character)
 }
 
 
-bool UVRSimpleCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 MoveFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+bool UVRSimpleCharacterMovementComponent::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 MoveFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode)
 {
 	return true;
 }
 
-bool UVRSimpleCharacterMovementComponent::ServerMoveVRDual_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+bool UVRSimpleCharacterMovementComponent::ServerMoveVRDual_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 NewFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode)
 {
 	return true;
 }
 
-bool UVRSimpleCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 NewFlags, uint8 ClientRoll, uint32 View, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+bool UVRSimpleCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 NewFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode)
 {
 	return true;
 }
@@ -1505,30 +1514,25 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVRDual_Implementation(
 	FVector_NetQuantize10 InAccel0,
 	uint8 PendingFlags,
 	uint32 View0,
-	//FVector_NetQuantize100 OldCapsuleLoc,
-	//FVector_NetQuantize100 rOldRequestedVelocity,
 	FVRConditionalMoveRep OldConditionalReps, 
 	FVector_NetQuantize100 OldLFDiff,
-	//FVector_NetQuantize100 OldCustVRInputVector,
-	//uint8 OldCapsuleYaw,
 	float TimeStamp,
 	FVector_NetQuantize10 InAccel,
 	FVector_NetQuantize100 ClientLoc,
-	//FVector_NetQuantize100 CapsuleLoc,
-	//FVector_NetQuantize100 rRequestedVelocity,
 	FVRConditionalMoveRep ConditionalReps,
 	FVector_NetQuantize100 LFDiff,
-	//FVector_NetQuantize100 CustVRInputVector,
-	//uint8 CapsuleYaw,
 	uint8 NewFlags,
-	uint8 ClientRoll,
-	uint32 View,
-	UPrimitiveComponent* ClientMovementBase,
-	FName ClientBaseBone,
+	FVRConditionalMoveRep2 MoveReps,
 	uint8 ClientMovementMode)
 {
-	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldConditionalReps, OldLFDiff, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
-	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, ConditionalReps, LFDiff, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	// Keep new moves base and bone, but use the View of the old move
+	FVRConditionalMoveRep2 MoveRepsOld;
+	MoveRepsOld.ClientBaseBoneName = MoveReps.ClientBaseBoneName;
+	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
+	MoveRepsOld.UnpackAndSetINTRotations(View0);
+
+	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldConditionalReps, OldLFDiff, PendingFlags, MoveRepsOld, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, ConditionalReps, LFDiff, NewFlags, MoveReps, ClientMovementMode);
 }
 
 void UVRSimpleCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementation(
@@ -1536,51 +1540,39 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Imple
 	FVector_NetQuantize10 InAccel0,
 	uint8 PendingFlags,
 	uint32 View0,
-	//FVector_NetQuantize100 OldCapsuleLoc,
-	//FVector_NetQuantize100 rOldRequestedVelocity,
 	FVRConditionalMoveRep OldConditionalReps,
 	FVector_NetQuantize100 OldLFDiff,
-	//FVector_NetQuantize100 OldCustVRInputVector,
-	//uint8 OldCapsuleYaw,
 	float TimeStamp,
 	FVector_NetQuantize10 InAccel,
 	FVector_NetQuantize100 ClientLoc,
-	//FVector_NetQuantize100 CapsuleLoc,
-	//FVector_NetQuantize100 rRequestedVelocity,
 	FVRConditionalMoveRep ConditionalReps,
 	FVector_NetQuantize100 LFDiff,
-	//FVector_NetQuantize100 CustVRInputVector,
-	//uint8 CapsuleYaw,
 	uint8 NewFlags,
-	uint8 ClientRoll,
-	uint32 View,
-	UPrimitiveComponent* ClientMovementBase,
-	FName ClientBaseBone,
+	FVRConditionalMoveRep2 MoveReps,
 	uint8 ClientMovementMode)
 {
+	// Keep new moves base and bone, but use the View of the old move
+	FVRConditionalMoveRep2 MoveRepsOld;
+	MoveRepsOld.ClientBaseBoneName = MoveReps.ClientBaseBoneName;
+	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
+	MoveRepsOld.UnpackAndSetINTRotations(View0);
+
 	// First move received didn't use root motion, process it as such.
 	CharacterOwner->bServerMoveIgnoreRootMotion = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
-	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldConditionalReps, OldLFDiff, PendingFlags, ClientRoll, View0, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldConditionalReps, OldLFDiff, PendingFlags, MoveRepsOld, ClientMovementMode);
 	CharacterOwner->bServerMoveIgnoreRootMotion = false;
 
-	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, ConditionalReps, LFDiff, NewFlags, ClientRoll, View, ClientMovementBase, ClientBaseBone, ClientMovementMode);
+	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, ConditionalReps, LFDiff, NewFlags, MoveReps, ClientMovementMode);
 }
 
 void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	float TimeStamp,
 	FVector_NetQuantize10 InAccel,
 	FVector_NetQuantize100 ClientLoc,
-	//FVector_NetQuantize100 CapsuleLoc,
-	//FVector_NetQuantize100 rRequestedVelocity,
 	FVRConditionalMoveRep ConditionalReps,
 	FVector_NetQuantize100 LFDiff,
-	//FVector_NetQuantize100 CustVRInputVector,
-	//uint8 CapsuleYaw,
 	uint8 MoveFlags,
-	uint8 ClientRoll,
-	uint32 View,
-	UPrimitiveComponent* ClientMovementBase,
-	FName ClientBaseBoneName,
+	FVRConditionalMoveRep2 MoveReps,
 	uint8 ClientMovementMode)
 {
 	if (!HasValidData() || !IsComponentTickEnabled())
@@ -1608,8 +1600,8 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	}
 
 	// View components
-	const uint16 ViewPitch = (View & 65535);
-	const uint16 ViewYaw = (View >> 16);
+	//const uint16 ViewPitch = (View & 65535);
+	//const uint16 ViewYaw = (View >> 16);
 
 	const FVector Accel = InAccel;
 	// Save move parameters.
@@ -1619,9 +1611,9 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	ServerData->ServerTimeStamp = GetWorld()->GetTimeSeconds();
 	ServerData->ServerTimeStampLastServerMove = ServerData->ServerTimeStamp;
 	FRotator ViewRot;
-	ViewRot.Pitch = FRotator::DecompressAxisFromShort(ViewPitch);
-	ViewRot.Yaw = FRotator::DecompressAxisFromShort(ViewYaw);
-	ViewRot.Roll = FRotator::DecompressAxisFromByte(ClientRoll);
+	ViewRot.Pitch = FRotator::DecompressAxisFromShort(MoveReps.ClientPitch);
+	ViewRot.Yaw = FRotator::DecompressAxisFromShort(MoveReps.ClientYaw);
+	ViewRot.Roll = FRotator::DecompressAxisFromByte(MoveReps.ClientRoll);
 
 	if (PC)
 	{
@@ -1663,5 +1655,5 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ServerMove Time %f Acceleration %s Position %s DeltaTime %f"),
 		TimeStamp, *Accel.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
 
-	ServerMoveHandleClientError(TimeStamp, DeltaTime, Accel, ClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode);
+	ServerMoveHandleClientError(TimeStamp, DeltaTime, Accel, ClientLoc, MoveReps.ClientMovementBase, MoveReps.ClientBaseBoneName, ClientMovementMode);
 }

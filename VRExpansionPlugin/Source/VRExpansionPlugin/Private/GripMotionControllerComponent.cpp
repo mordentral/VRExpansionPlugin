@@ -637,6 +637,7 @@ bool UGripMotionControllerComponent::GripObject(
 	const FTransform &WorldOffset,
 	bool bWorldOffsetIsRelative,
 	FName OptionalSnapToSocketName,
+	FName OptionalBoneToGripName,
 	EGripCollisionType GripCollisionType,
 	EGripLateUpdateSettings GripLateUpdateSetting,
 	EGripMovementReplicationSettings GripMovementReplicationSetting,
@@ -646,11 +647,11 @@ bool UGripMotionControllerComponent::GripObject(
 {
 	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToGrip))
 	{
-		return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName,GripCollisionType,GripLateUpdateSetting,GripMovementReplicationSetting,GripStiffness,GripDamping, bIsSlotGrip);
+		return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName, OptionalBoneToGripName, GripCollisionType,GripLateUpdateSetting,GripMovementReplicationSetting,GripStiffness,GripDamping, bIsSlotGrip);
 	}
 	else if (AActor * Actor = Cast<AActor>(ObjectToGrip))
 	{
-		return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName, GripCollisionType, GripLateUpdateSetting, GripMovementReplicationSetting, GripStiffness, GripDamping, bIsSlotGrip);
+		return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName, OptionalBoneToGripName, GripCollisionType, GripLateUpdateSetting, GripMovementReplicationSetting, GripStiffness, GripDamping, bIsSlotGrip);
 	}
 
 	return false;
@@ -674,7 +675,7 @@ bool UGripMotionControllerComponent::DropObject(
 	return false;
 }
 
-bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative, bool bIsSlotGrip)
+bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative, FName OptionalBoneToGripName, bool bIsSlotGrip)
 {
 	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToGrip))
 	{
@@ -692,6 +693,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 			IVRGripInterface::Execute_GetGripStiffnessAndDamping(PrimComp, Stiffness, Damping);
 
 			return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, NAME_None,
+				OptionalBoneToGripName,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(PrimComp),
 				IVRGripInterface::Execute_GripMovementReplicationType(PrimComp),
@@ -709,6 +711,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 			IVRGripInterface::Execute_GetGripStiffnessAndDamping(Owner, Stiffness, Damping);
 
 			return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, NAME_None,
+				OptionalBoneToGripName,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(Owner),
 				IVRGripInterface::Execute_GripMovementReplicationType(Owner),
@@ -739,6 +742,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 			IVRGripInterface::Execute_GetGripStiffnessAndDamping(root, Stiffness, Damping);
 
 			return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, NAME_None,
+				OptionalBoneToGripName,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(root),
 				IVRGripInterface::Execute_GripMovementReplicationType(root),
@@ -756,6 +760,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 			IVRGripInterface::Execute_GetGripStiffnessAndDamping(Actor, Stiffness, Damping);
 
 			return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, NAME_None,
+				OptionalBoneToGripName,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(Actor),
 				IVRGripInterface::Execute_GripMovementReplicationType(Actor),
@@ -828,6 +833,7 @@ bool UGripMotionControllerComponent::GripActor(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative,
 	FName OptionalSnapToSocketName, 
+	FName OptionalBoneToGripName,
 	EGripCollisionType GripCollisionType, 
 	EGripLateUpdateSettings GripLateUpdateSetting,
 	EGripMovementReplicationSettings GripMovementReplicationSetting,
@@ -929,6 +935,7 @@ bool UGripMotionControllerComponent::GripActor(
 	newActorGrip.AdvancedGripSettings = AdvancedGripSettings;
 	newActorGrip.ValueCache.bWasInitiallyRepped = true; // Set this true on authority side so we can skip a function call on tick
 	newActorGrip.bIsSlotGrip = bIsSlotGrip;
+	newActorGrip.GrippedBoneName = OptionalBoneToGripName;
 
 
 	// Ignore late update setting if it doesn't make sense with the grip
@@ -1051,6 +1058,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	const FTransform &WorldOffset, 
 	bool bWorldOffsetIsRelative, 
 	FName OptionalSnapToSocketName, 
+	FName OptionalBoneToGripName,
 	EGripCollisionType GripCollisionType,
 	EGripLateUpdateSettings GripLateUpdateSetting,
 	EGripMovementReplicationSettings GripMovementReplicationSetting,
@@ -1138,6 +1146,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	newActorGrip.GripTargetType = EGripTargetType::ComponentGrip;
 	newActorGrip.ValueCache.bWasInitiallyRepped = true; // Set this true on authority side so we can skip a function call on tick
 	newActorGrip.bIsSlotGrip = bIsSlotGrip;
+	newActorGrip.GrippedBoneName = OptionalBoneToGripName;
 
 	// Ignore late update setting if it doesn't make sense with the grip
 	switch (newActorGrip.GripCollisionType)
@@ -2153,7 +2162,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &G
 		}
 #endif
 
-		FBodyInstance * body = PrimComp->GetBodyInstance();
+		FBodyInstance * body = PrimComp->GetBodyInstance(Grip.GrippedBoneName);
 		if (body)
 		{
 			body->SetBodyTransform(Handle->RootBoneRotation * WorldTransform, ETeleportType::TeleportPhysics);
@@ -3129,7 +3138,7 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 
 			if (root)
 			{
-				root->SetCenterOfMass(FVector(0, 0, 0));
+				root->SetCenterOfMass(FVector(0, 0, 0), Grip.GrippedBoneName);
 			}
 		}
 	}
@@ -3169,7 +3178,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 #if WITH_PHYSX
 	// Get the PxRigidDynamic that we want to grab.
-	FBodyInstance* rBodyInstance = root->GetBodyInstance();
+	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
 	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance())
 	{
 		return false;
@@ -3182,7 +3191,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		PxScene* Scene = Actor->getScene();
 			
 		PxTransform KinPose;
-		FTransform trans = root->GetComponentTransform();
+		FTransform trans = P2UTransform(Actor->getGlobalPose()); //root->GetComponentTransform();
 		FTransform controllerTransform = this->GetComponentTransform();
 		FTransform WorldTransform = NewGrip.RelativeTransform * controllerTransform;
 		FTransform RootBoneRotation = FTransform::Identity;
@@ -3193,23 +3202,35 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		}
 		else
 		{
-			USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
-			if (skele && skele->GetNumBones() > 0)
+
+			if (NewGrip.GrippedBoneName != NAME_None)
 			{
-				RootBoneRotation = FTransform(skele->GetBoneTransform(0, FTransform::Identity).GetRotation());
-				trans = RootBoneRotation * trans;
-				HandleInfo->RootBoneRotation = RootBoneRotation;
+				// Skip root bone rotation
+			}
+			else
+			{
+				// I actually don't need any of this code anymore or the HandleInfo->RootBoneRotation
+				// However I would have to expect people to pass in the bone transform without it.
+				// For now I am keeping it to keep it backwards compatible as it will adjust for root bone rotation automatically then
+				USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
+				if (skele && skele->GetNumBones() > 0)
+				{
+					RootBoneRotation = FTransform(skele->GetBoneTransform(0, FTransform::Identity).GetRotation());
+					//trans = RootBoneRotation * trans;
+					HandleInfo->RootBoneRotation = RootBoneRotation;
+				}
+				// Add in root bone rotation
+				WorldTransform = RootBoneRotation * WorldTransform;
 			}
 
 			if (!NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || (NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && !NewGrip.AdvancedGripSettings.PhysicsSettings.bDoNotSetCOMToGripLocation))
 			{
-				WorldTransform = RootBoneRotation * WorldTransform;
-
 				FVector curCOMPosition = trans.InverseTransformPosition(rBodyInstance->GetCOMPosition());
 				rBodyInstance->COMNudge = controllerTransform.GetRelativeTransform(WorldTransform).GetLocation() - curCOMPosition;
 				rBodyInstance->UpdateMassProperties();
 			}
 
+			//trans = P2UTransform(Actor->getGlobalPose());
 			trans.SetLocation(rBodyInstance->GetCOMPosition());
 			KinPose = U2PTransform(trans);
 		}
@@ -3537,7 +3558,7 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 		{	
 /*#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 			UPrimitiveComponent * me = Cast<UPrimitiveComponent>(GrippedActor.GetGrippedActor()->GetRootComponent());
-			FVector curCOMPosition = me->GetBodyInstance()->GetCOMPosition();//rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(rBodyInstance->GetCOMPosition());
+			FVector curCOMPosition = me->GetBodyInstance(GrippedActor.GrippedBoneName)->GetCOMPosition();//rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(rBodyInstance->GetCOMPosition());
 			DrawDebugSphere(GetWorld(), curCOMPosition, 4, 32, FColor::Red, false);
 			DrawDebugSphere(GetWorld(), P2UTransform(U2PTransform(HandleInfo->RootBoneRotation * terns) * HandleInfo->COMPosition).GetLocation(), 4, 32, FColor::Cyan, false);
 			//DrawDebugSphere(GetWorld(), terns.GetLocation(), 4, 32, FColor::Cyan, false);

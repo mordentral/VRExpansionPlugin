@@ -248,9 +248,10 @@ public:
 			}
 
 			if (Grip.ValueCache.CachedGripCollisionType != Grip.GripCollisionType ||
-				Grip.ValueCache.CachedGripMovementReplicationSetting != Grip.GripMovementReplicationSetting)
+				Grip.ValueCache.CachedGripMovementReplicationSetting != Grip.GripMovementReplicationSetting ||
+				Grip.ValueCache.CachedBoneName != Grip.GrippedBoneName)
 			{
-				ReCreateGrip(Grip);
+				ReCreateGrip(Grip); // Need to re-create grip
 			}
 			else // If re-creating the grip anyway we don't need to do the below
 			{
@@ -270,6 +271,7 @@ public:
 		Grip.ValueCache.CachedStiffness = Grip.Stiffness;
 		Grip.ValueCache.CachedDamping = Grip.Damping;
 		Grip.ValueCache.CachedPhysicsSettings = Grip.AdvancedGripSettings.PhysicsSettings;
+		Grip.ValueCache.CachedBoneName = Grip.GrippedBoneName;
 
 		return true;
 	}
@@ -374,6 +376,9 @@ public:
 
 	If you declare a valid OptionSnapToSocketName then it will instead snap the actor to the relative offset
 	location that the socket is to its parent actor.
+
+	If you declare a valid OptionalBoneToGripName then it will grip that physics body with physics grips (It will expect a bone worldspace transform then,
+	if you pass in the normal actor/root component world space transform then the grip will not be positioned correctly).
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 		bool GripObject(
@@ -381,11 +386,13 @@ public:
 			const FTransform &WorldOffset,
 			bool bWorldOffsetIsRelative = false,
 			FName OptionalSnapToSocketName = NAME_None,
+			FName OptionalBoneToGripName = NAME_None,
 			EGripCollisionType GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics,
 			EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
 			EGripMovementReplicationSettings GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
 			float GripStiffness = 1500.0f,
 			float GripDamping = 200.0f, bool bIsSlotGrip = false);
+
 
 	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -397,7 +404,7 @@ public:
 
 	// Auto grip any uobject that is/root is a primitive component
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-		bool GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, bool bIsSlotGrip = false);
+		bool GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalBoneToGripName = NAME_None, bool bIsSlotGrip = false);
 
 	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -412,13 +419,17 @@ public:
 
 	   If you declare a valid OptionSnapToSocketName then it will instead snap the actor to the relative offset
 	   location that the socket is to its parent actor.
+
+	   If you declare a valid OptionalBoneToGripName then it will grip that physics body with physics grips (It will expect a bone worldspace transform then, 
+	   if you pass in the normal actor/root component world space transform then the grip will not be positioned correctly).
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool GripActor(
 		AActor* ActorToGrip, 
 		const FTransform &WorldOffset, 
 		bool bWorldOffsetIsRelative = false, 
-		FName OptionalSnapToSocketName = NAME_None, 
+		FName OptionalSnapToSocketName = NAME_None,
+		FName OptionalBoneToGripName = NAME_None,
 		EGripCollisionType GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
 		EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping, 
 		EGripMovementReplicationSettings GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
@@ -440,7 +451,8 @@ public:
 	bool GripComponent(
 		UPrimitiveComponent* ComponentToGrip, 
 		const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, 
-		FName OptionalSnapToSocketName = NAME_None, 
+		FName OptionalBoneToGrip_Name = NAME_None, 
+		FName OptionalBoneToGripName = NAME_None,
 		EGripCollisionType GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
 		EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
 		EGripMovementReplicationSettings GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
@@ -577,7 +589,7 @@ public:
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
 	inline FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
 
-	// Converts a worldspace transform into being relative to this motion controller, optionally can check interface settings for a given object as well to modify the given transform
+	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform)
 	{

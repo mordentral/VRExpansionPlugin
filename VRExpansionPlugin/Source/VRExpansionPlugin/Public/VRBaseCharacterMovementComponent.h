@@ -127,7 +127,7 @@ struct TStructOpsTypeTraits< FVRMoveActionContainer > : public TStructOpsTypeTra
 	};
 };
 
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FAIMoveCompletedSignature, FAIRequestID, RequestID, EPathFollowingResult::Type, Result);
+
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FVRConditionalMoveRep
 {
@@ -161,8 +161,6 @@ public:
 		bool bHasRequestedVelocity = !RequestedVelocity.IsZero();
 		bool bHasMoveAction = MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None;
 
-		// Defines the level of Quantization
-
 		bool bHasAnyProperties = bHasVRinput || bHasRequestedVelocity || bHasMoveAction;
 		Ar.SerializeBits(&bHasAnyProperties, 1);
 
@@ -189,6 +187,103 @@ public:
 
 template<>
 struct TStructOpsTypeTraits< FVRConditionalMoveRep > : public TStructOpsTypeTraitsBase2<FVRConditionalMoveRep>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
+USTRUCT()
+struct VREXPANSIONPLUGIN_API FVRConditionalMoveRep2
+{
+	GENERATED_USTRUCT_BODY()
+public:
+
+	// Moved these here to avoid having to duplicate tons of properties
+	UPROPERTY(Transient)
+		UPrimitiveComponent* ClientMovementBase;
+	UPROPERTY(Transient)
+		FName ClientBaseBoneName;
+
+	UPROPERTY(Transient)
+	uint16 ClientYaw;
+
+	UPROPERTY(Transient)
+	uint16 ClientPitch;
+
+	UPROPERTY(Transient)
+	uint8 ClientRoll;
+
+	FVRConditionalMoveRep2()
+	{
+		ClientMovementBase = nullptr;
+		ClientBaseBoneName = NAME_None;
+		ClientRoll = 0;
+		ClientPitch = 0;
+		ClientYaw = 0;
+	}
+
+	void UnpackAndSetINTRotations(uint32 Rotation32)
+	{
+		// Reversed the order of these so it costs less to replicate
+		ClientYaw = (Rotation32 & 65535);
+		ClientPitch = (Rotation32 >> 16);
+	}
+
+	/** Network serialization */
+	// Doing a custom NetSerialize here because this is sent via RPCs and should change on every update
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+
+		bool bRepRollAndPitch = (ClientRoll != 0 || ClientPitch != 0);
+		Ar.SerializeBits(&bRepRollAndPitch, 1);
+
+		if (bRepRollAndPitch)
+		{
+			// Reversed the order of these
+			uint32 Rotation32 = (((uint32)ClientPitch) << 16) | ((uint32)ClientYaw);
+			Ar.SerializeIntPacked(Rotation32);
+			Ar << ClientRoll;
+
+			if (Ar.IsLoading())
+			{
+				UnpackAndSetINTRotations(Rotation32);
+			}
+		}
+		else
+		{
+			uint32 Yaw32 = ClientYaw;
+			Ar.SerializeIntPacked(Yaw32);
+			ClientYaw = (uint16)Yaw32;
+		}
+
+		bool bHasMovementBase = ClientMovementBase != nullptr;
+		Ar.SerializeBits(&bHasMovementBase, 1);
+
+		if (bHasMovementBase)
+		{
+			Ar << ClientMovementBase;
+
+			bool bValidName = ClientBaseBoneName != NAME_None;
+			Ar.SerializeBits(&bValidName, 1);
+
+			// This saves 9 bits on average, we almost never have a valid bone name and default rep goes to 9 bits for hardcoded
+			// total of 6 bits savings as we use 3 extra for our flags in here.
+			if (bValidName)
+			{
+				Ar << ClientBaseBoneName;
+			}
+		}
+
+		return bOutSuccess;
+	}
+
+};
+
+template<>
+struct TStructOpsTypeTraits< FVRConditionalMoveRep2 > : public TStructOpsTypeTraitsBase2<FVRConditionalMoveRep2>
 {
 	enum
 	{
