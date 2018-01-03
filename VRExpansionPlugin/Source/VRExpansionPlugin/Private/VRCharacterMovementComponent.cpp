@@ -3128,10 +3128,10 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 			{
 				// The floor check failed because it started in penetration
 				// We do not want to try to move downward because the downward sweep failed, rather we'd like to try to pop out of the floor.
-				FHitResult Hit(CurrentFloor.HitResult);
+				FHitResult Hitt(CurrentFloor.HitResult);
 				Hit.TraceEnd = Hit.TraceStart + FVector(0.f, 0.f, MAX_FLOOR_DIST);
 				const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
-				ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
+				ResolvePenetration(RequestedAdjustment, Hitt, UpdatedComponent->GetComponentQuat());
 				bForceNextFloorCheck = true;
 			}
 		}
