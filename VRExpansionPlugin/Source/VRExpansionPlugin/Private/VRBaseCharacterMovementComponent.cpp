@@ -16,11 +16,16 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 {
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
+
+	//#TODO: Might not be ready to make this change globally yet....
+
 	// Set Acceleration and braking deceleration walking to high values to avoid ramp up on speed
 	// Realized that I wasn't doing this here for people to default to no acceleration.
-	this->bRequestedMoveUseAcceleration = false;
+	/*this->bRequestedMoveUseAcceleration = false;
 	this->MaxAcceleration = 200048.0f;
 	this->BrakingDecelerationWalking = 200048.0f;
+	*/
+
 
 	AdditionalVRInputVector = FVector::ZeroVector;	
 	CustomVRInputVector = FVector::ZeroVector;
