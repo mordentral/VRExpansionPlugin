@@ -162,7 +162,7 @@ public:
 
 	// Fills a spline component with a gesture, optionally also generates spline mesh components for it (uses ones already attached if possible)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-		void FillSplineWithGesture(UPARAM(ref)FVRGesture &Gesture, USplineComponent * SplineComponent, bool bCenterPointsOnSpline = true, bool bScaleToBounds = false, FVector OptionalBounds = FVector::ZeroVector, bool bUseCurvedPoints = true, bool bFillInSplineMeshComponents = true, UStaticMesh * Mesh = nullptr, UMaterial * MeshMat = nullptr);
+		void FillSplineWithGesture(UPARAM(ref)FVRGesture &Gesture, USplineComponent * SplineComponent, bool bCenterPointsOnSpline = true, bool bScaleToBounds = false, float OptionalBounds = 0.0f, bool bUseCurvedPoints = true, bool bFillInSplineMeshComponents = true, UStaticMesh * Mesh = nullptr, UMaterial * MeshMat = nullptr);
 
 	// Imports a spline as a gesture, Segment len is the max segment length (will break lines up into lengths of this size)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
@@ -220,12 +220,6 @@ public:
 			}
 
 			float DistPerSegment = (DistAlongSegment / SegmentCount);
-			//float DistPerSegOverflow = OverFlow / SegmentCount;
-			/*if (i == 0)
-			{
-			// Don't run last segment point
-			SegmentCount--;
-			}*/
 
 			for (int j = 0; j < SegmentCount; j++)
 			{
@@ -393,6 +387,7 @@ public:
 
 	FVRGestureSplineDraw RecordingGestureDraw;
 
+	// Should we draw splines curved or straight
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
 		bool bDrawSplinesCurved;
 
@@ -447,7 +442,7 @@ public:
 		RecordingGestureDraw.Clear();
 	}
 
-
+	// Recalculates a gestures size and re-scales it to the given database
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
 	void RecalculateGestureSize(UPARAM(ref) FVRGesture & InputGesture, UGesturesDatabase * GestureDB)
 	{
@@ -457,6 +452,7 @@ public:
 			InputGesture.CalculateSizeOfGesture(false);
 	}
 
+	// Draw a gesture with a debug line batch
 	UFUNCTION(BlueprintCallable, Category = "VRGestures", meta = (WorldContext = "WorldContextObject"))
 		void DrawDebugGesture(UObject* WorldContextObject, FTransform StartTransform, FVRGesture GestureToDraw, FColor const& Color, bool bPersistentLines = false, uint8 DepthPriority = 0, float LifeTime = -1.f, float Thickness = 0.f);
 
@@ -464,9 +460,20 @@ public:
 	FTransform OriginatingTransform;
 	float RecordingDelta;
 
+	/* Function to begin recording a gesture for detection or saving
+	*
+	* bRunDetection: Should we detect gestures or only record them
+	* bFlattenGestue: Should we flatten the gesture into 2 dimensions (more stable detection and recording, less pretty visually)
+	* bDrawGesture: Should we draw the gesture during recording of it
+	* bDrawAsSpline: If true we will use spline meshes, if false we will draw as debug lines
+	* SamplingHTZ: How many times a second we will record a gesture point
+	* SampleBufferSize: How many points we will store in history at a time
+	* ClampingTolerance: If larger than 0.0, we will clamp points to a grid of this size
+	*/
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
 		void BeginRecording(bool bRunDetection, bool bFlattenGesture = true, bool bDrawGesture = true, bool bDrawAsSpline = false, int SamplingHTZ = 30, int SampleBufferSize = 60, float ClampingTolerance = 0.01f);
 
+	// Ends recording and returns the recorded gesture
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
 	FVRGesture EndRecording()
 	{
@@ -479,13 +486,14 @@ public:
 		return GestureLog;
 	}
 
-	// Clear the current recording
+	// Clears the current recording
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
 	void ClearRecording()
 	{
 		GestureLog.Samples.Reset(RecordingBufferSize);
 	}
 
+	// Saves a VRGesture to the database
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
 	void SaveRecording(UPARAM(ref) FVRGesture &Recording, FString RecordingName)
 	{
