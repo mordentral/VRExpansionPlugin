@@ -33,7 +33,7 @@ void UGesturesDatabase::FillSplineWithGesture(FVRGesture &Gesture, USplineCompon
 
 	FVector PointOffset = FVector::ZeroVector;
 	float Scaler = 1.0f;
-	if (bScaleToBounds)
+	if (bScaleToBounds && OptionalBounds > 0.0f)
 	{
 		Scaler = OptionalBounds / Gesture.GestureSize.GetSize().GetMax();
 	}
