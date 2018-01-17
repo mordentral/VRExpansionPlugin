@@ -454,7 +454,7 @@ public:
 
 	// Draw a gesture with a debug line batch
 	UFUNCTION(BlueprintCallable, Category = "VRGestures", meta = (WorldContext = "WorldContextObject"))
-		void DrawDebugGesture(UObject* WorldContextObject, FTransform StartTransform, FVRGesture GestureToDraw, FColor const& Color, bool bPersistentLines = false, uint8 DepthPriority = 0, float LifeTime = -1.f, float Thickness = 0.f);
+		void DrawDebugGesture(UObject* WorldContextObject, UPARAM(ref)FTransform& StartTransform, FVRGesture GestureToDraw, FColor const& Color, bool bPersistentLines = false, uint8 DepthPriority = 0, float LifeTime = -1.f, float Thickness = 0.f);
 
 	FVector StartVector;
 	FTransform OriginatingTransform;
