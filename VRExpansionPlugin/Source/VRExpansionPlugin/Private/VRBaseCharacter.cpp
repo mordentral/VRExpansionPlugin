@@ -58,7 +58,8 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (LeftMotionController)
 	{
 		LeftMotionController->SetupAttachment(NetSmoother);
-		LeftMotionController->Hand = EControllerHand::Left;
+		LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
+		//LeftMotionController->Hand = EControllerHand::Left;
 		LeftMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
 		LeftMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
@@ -69,7 +70,8 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (RightMotionController)
 	{
 		RightMotionController->SetupAttachment(NetSmoother);
-		RightMotionController->Hand = EControllerHand::Right;
+		RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
+		//RightMotionController->Hand = EControllerHand::Right;
 		RightMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
 		RightMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());

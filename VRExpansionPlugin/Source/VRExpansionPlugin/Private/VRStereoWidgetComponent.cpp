@@ -413,6 +413,11 @@ void UVRStereoWidgetComponent::UpdateRenderTarget(FIntPoint DesiredRenderTargetS
 class FStereoWidget3DSceneProxy : public FPrimitiveSceneProxy
 {
 public:
+	SIZE_T GetTypeHash() const override
+	{
+		static size_t UniquePointer;
+		return reinterpret_cast<size_t>(&UniquePointer);
+	}
 	/** Initialization constructor. */
 	FStereoWidget3DSceneProxy(UVRStereoWidgetComponent* InComponent, ISlate3DRenderer& InRenderer)
 		: FPrimitiveSceneProxy(InComponent)
@@ -479,7 +484,7 @@ public:
 
 					for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 					{
-						FDynamicMeshBuilder MeshBuilder;
+						FDynamicMeshBuilder MeshBuilder(Views[ViewIndex]->GetFeatureLevel());
 
 						if (VisibilityMap & (1 << ViewIndex))
 						{
@@ -514,7 +519,7 @@ public:
 
 					for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 					{
-						FDynamicMeshBuilder MeshBuilder;
+						FDynamicMeshBuilder MeshBuilder(Views[ViewIndex]->GetFeatureLevel());
 
 						if (VisibilityMap & (1 << ViewIndex))
 						{

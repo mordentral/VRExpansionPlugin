@@ -234,9 +234,15 @@ static bool ShouldIgnoreOverlapResult(const UWorld* World, const AActor* ThisAct
 }
 
 /** Represents a UVRRootComponent to the scene manager. */
-class FDrawCylinderSceneProxy : public FPrimitiveSceneProxy
+class FDrawCylinderSceneProxy final : public FPrimitiveSceneProxy
 {
 public:
+	SIZE_T GetTypeHash() const override
+	{
+		static size_t UniquePointer;
+		return reinterpret_cast<size_t>(&UniquePointer);
+	}
+
 	FDrawCylinderSceneProxy(const UVRRootComponent* InComponent)
 		: FPrimitiveSceneProxy(InComponent)
 		, bDrawOnlyIfSelected(InComponent->bDrawOnlyIfSelected)

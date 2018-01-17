@@ -149,7 +149,15 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 	// Temp workaround for 4.18 which doesn't have the enum anymore and only deals in names
 	if (GEngine && GEngine->XRSystem.IsValid())
 	{
-		IHeadMountedDisplay* HMDDevice = GEngine->XRSystem->GetHMDDevice();
+		/*
+			if (GEngine && GEngine->XRSystem.IsValid())
+	{
+		Ar.Logf(*GEngine->XRSystem->GetVersionString());
+	}
+		*/
+
+		// #TODO 4.19: Figure out a way to replace this...its broken now
+		/*IHeadMountedDisplay* HMDDevice = GEngine->XRSystem->GetHMDDevice();
 		if (HMDDevice)
 		{
 			EHMDDeviceType::Type HMDDeviceType = HMDDevice->GetHMDDeviceType();
@@ -164,7 +172,7 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 			case EHMDDeviceType::DT_GoogleVR: return EBPHMDDeviceType::DT_GoogleVR; break;
 			}
 
-		}
+		}*/
 
 		// There are no device type entries for these now....
 		// Does the device type go away soon leaving only FNames?
@@ -179,10 +187,11 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 		static FName DeviceName(NAME_None);
 		DeviceName = GEngine->XRSystem->GetSystemName();
 
-		/*if (DeviceName == FName("SimpleHMD"))
+		//#TODO 4.19: had these commented in 4.18
+		if (DeviceName == FName("SimpleHMD"))
 			return EBPHMDDeviceType::DT_ES2GenericStereoMesh;
-		else if (DeviceName == FName(""))
-			return EBPHMDDeviceType::DT_GearVR;
+		//else if (DeviceName == FName("")) // This doesn't have an entry
+		//	return EBPHMDDeviceType::DT_GearVR;
 		else if (DeviceName == FName("PSVR"))
 			return EBPHMDDeviceType::DT_Morpheus;
 		else if (DeviceName == FName("OculusHMD"))
@@ -190,7 +199,9 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 		else if (DeviceName == FName("SteamVR"))
 			return EBPHMDDeviceType::DT_SteamVR;
 		else if (DeviceName == FName("FGoogleVRHMD"))
-			return EBPHMDDeviceType::DT_GoogleVR;*/
+			return EBPHMDDeviceType::DT_GoogleVR;
+		//#ENDTODO 4.19: had these commented in 4.18
+
 		if (DeviceName == OSVRName)
 			return EBPHMDDeviceType::DT_OSVR;
 		else if (DeviceName == AppleARKitName)

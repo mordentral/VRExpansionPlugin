@@ -45,6 +45,7 @@ DECLARE_CYCLE_STAT(TEXT("Char PhysNavWalking"), STAT_CharPhysNavWalking, STATGRO
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectPoint"), STAT_CharNavProjectPoint, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectLocation"), STAT_CharNavProjectLocation, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char AdjustFloorHeight"), STAT_CharAdjustFloorHeight, STATGROUP_Character);
+DECLARE_CYCLE_STAT(TEXT("Char ProcessLanded"), STAT_CharProcessLanded, STATGROUP_Character);
 
 // MAGIC NUMBERS
 const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
@@ -57,6 +58,44 @@ namespace CharacterMovementComponentStatics
 	static const FName ImmersionDepthName = FName(TEXT("MovementComp_Character_ImmersionDepth"));
 }
 
+/**
+* Helper to change mesh bone updates within a scope.
+* Example usage:
+*	{
+*		FScopedPreventMeshBoneUpdate ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+*		// Do something to move mesh, bones will not update
+*	}
+*	// Movement of mesh at this point will use previous setting.
+*/
+/*struct FScopedMeshBoneUpdateOverride
+{
+	FScopedMeshBoneUpdateOverride(USkeletalMeshComponent* Mesh, EKinematicBonesUpdateToPhysics::Type OverrideSetting)
+		: MeshRef(Mesh)
+	{
+		if (MeshRef)
+		{
+			// Save current state.
+			SavedUpdateSetting = MeshRef->KinematicBonesUpdateType;
+			// Override bone update setting.
+			MeshRef->KinematicBonesUpdateType = OverrideSetting;
+		}
+	}
+
+	~FScopedMeshBoneUpdateOverride()
+	{
+		if (MeshRef)
+		{
+			// Restore bone update flag.
+			MeshRef->KinematicBonesUpdateType = SavedUpdateSetting;
+		}
+	}
+
+private:
+	USkeletalMeshComponent * MeshRef;
+	EKinematicBonesUpdateToPhysics::Type SavedUpdateSetting;
+};*/
+
+
 void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 {
 	if (!HasValidData())
@@ -64,7 +103,7 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 		return;
 	}
 
-	if (!CanCrouchInCurrentState())
+	if (!bClientSimulation && !CanCrouchInCurrentState())
 	{
 		return;
 	}
@@ -1354,6 +1393,11 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 
 		if (!OverlapTest(OldStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
 		{
+			// Avoid updating Mesh bones to physics during the teleport back, since PerformMovement() will update it right away anyway below.
+			// Note: this must be before the FScopedMovementUpdate below, since that scope is what actually moves the character and mesh.
+			FScopedMeshBoneUpdateOverride ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+
+			// Accumulate multiple transform updates until scope ends.
 			/*FScopedMovementUpdate*/  FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 			UE_LOG(LogNetPlayerMovement, VeryVerbose, TEXT("CombineMove: add delta %f + %f and revert from %f %f to %f %f"), DeltaTime, ClientData->PendingMove->DeltaTime, UpdatedComponent->GetComponentLocation().X, UpdatedComponent->GetComponentLocation().Y, OldStartLocation.X, OldStartLocation.Y);
 
@@ -1469,6 +1513,12 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
 
 		// Send move to server if this character is replicating movement
+		bool bSendServerMove = true;
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+		static const auto CVarNetForceClientServerMoveLossPercent = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetForceClientServerMoveLossPercent"));
+		bSendServerMove = (CVarNetForceClientServerMoveLossPercent->GetFloat() == 0.f) || (FMath::SRand() >= CVarNetForceClientServerMoveLossPercent->GetFloat());
+#endif
+		if (bSendServerMove)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCallServerMove);
 			CallServerMove(/*(FSavedMove_VRCharacter *)*/NewMove.Get(), /*(FSavedMove_VRCharacter *)*/OldMove.Get());
@@ -2410,6 +2460,7 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 		return;
 	}
 
+	UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("[Role:%d] FindFloor: %s at location %s"), (int32)CharacterOwner->Role, *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
 	check(CharacterOwner->GetCapsuleComponent());
 
 	FVector UseCapsuleLocation = CapsuleLocation;
@@ -3293,6 +3344,8 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 
 void UVRCharacterMovementComponent::ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations)
 {
+	SCOPE_CYCLE_COUNTER(STAT_CharProcessLanded);
+
 	if (CharacterOwner && CharacterOwner->ShouldNotifyLanded(Hit))
 	{
 		CharacterOwner->Landed(Hit);
@@ -3376,12 +3429,15 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 	{
 		FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
+		bool bHandledNetUpdate = false;
 		if (bIsSimulatedProxy)
 		{
 			// Handle network changes
 			if (bNetworkUpdateReceived)
 			{
 				bNetworkUpdateReceived = false;
+				bHandledNetUpdate = true;
+				UE_LOG(LogCharacterMovement, Verbose, TEXT("Proxy %s received net update"), *GetNameSafe(CharacterOwner));
 				if (bNetworkMovementModeChanged)
 				{
 					bNetworkMovementModeChanged = false;
@@ -3414,65 +3470,76 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 		// simulated pawns predict location
 		OldVelocity = Velocity;
 		OldLocation = UpdatedComponent->GetComponentLocation();
-		FStepDownResult StepDownResult;
-		MoveSmooth(Velocity, DeltaSeconds, &StepDownResult);
 
-		// consume path following requested velocity
-		bHasRequestedVelocity = false;
-
-		// find floor and check if falling
-		if (IsMovingOnGround() || MovementMode == MOVE_Falling)
+		static const auto CVarNetEnableSkipProxyPredictionOnNetUpdate = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableSkipProxyPredictionOnNetUpdate"));
+		// May only need to simulate forward on frames where we haven't just received a new position update.
+		if (!bHandledNetUpdate || !bNetworkSkipProxyPredictionOnNetUpdate || !CVarNetEnableSkipProxyPredictionOnNetUpdate->GetInt())
 		{
-			const bool bSimGravityDisabled = (CharacterOwner->bSimGravityDisabled && bIsSimulatedProxy);
-			if (StepDownResult.bComputedFloor)
-			{
-				CurrentFloor = StepDownResult.FloorResult;
-			}
-			else if (Velocity.Z <= 0.f)
-			{
-				FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, Velocity.IsZero(), NULL);
-			}
-			else
-			{
-				CurrentFloor.Clear();
-			}
+			UE_LOG(LogCharacterMovement, Verbose, TEXT("Proxy %s simulating movement"), *GetNameSafe(CharacterOwner));
+			FStepDownResult StepDownResult;
+			MoveSmooth(Velocity, DeltaSeconds, &StepDownResult);
 
-			if (!CurrentFloor.IsWalkableFloor())
+			// find floor and check if falling
+			if (IsMovingOnGround() || MovementMode == MOVE_Falling)
 			{
-				if (!bSimGravityDisabled)
+				const bool bSimGravityDisabled = (CharacterOwner->bSimGravityDisabled && bIsSimulatedProxy);
+				if (StepDownResult.bComputedFloor)
 				{
-					// No floor, must fall.
-					Velocity = NewFallVelocity(Velocity, FVector(0.f, 0.f, GetGravityZ()), DeltaSeconds);
+					CurrentFloor = StepDownResult.FloorResult;
 				}
-				SetMovementMode(MOVE_Falling);
-			}
-			else
-			{
-				// Walkable floor
-				if (IsMovingOnGround())
+				else if (Velocity.Z <= 0.f)
 				{
-					AdjustFloorHeight();
-					SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+					FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, Velocity.IsZero(), NULL);
 				}
-				else if (MovementMode == MOVE_Falling)
+				else
 				{
-					if (CurrentFloor.FloorDist <= MIN_FLOOR_DIST || (bSimGravityDisabled && CurrentFloor.FloorDist <= MAX_FLOOR_DIST))
+					CurrentFloor.Clear();
+				}
+
+				if (!CurrentFloor.IsWalkableFloor())
+				{
+					if (!bSimGravityDisabled)
 					{
-						// Landed
-						SetPostLandedPhysics(CurrentFloor.HitResult);
+						// No floor, must fall.
+						Velocity = NewFallVelocity(Velocity, FVector(0.f, 0.f, GetGravityZ()), DeltaSeconds);
 					}
-					else
+					SetMovementMode(MOVE_Falling);
+				}
+				else
+				{
+					// Walkable floor
+					if (IsMovingOnGround())
 					{
-						if (!bSimGravityDisabled)
+						AdjustFloorHeight();
+						SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+					}
+					else if (MovementMode == MOVE_Falling)
+					{
+						if (CurrentFloor.FloorDist <= MIN_FLOOR_DIST || (bSimGravityDisabled && CurrentFloor.FloorDist <= MAX_FLOOR_DIST))
 						{
-							// Continue falling.
-							Velocity = NewFallVelocity(Velocity, FVector(0.f, 0.f, GetGravityZ()), DeltaSeconds);
+							// Landed
+							SetPostLandedPhysics(CurrentFloor.HitResult);
 						}
-						CurrentFloor.Clear();
+						else
+						{
+							if (!bSimGravityDisabled)
+							{
+								// Continue falling.
+								Velocity = NewFallVelocity(Velocity, FVector(0.f, 0.f, GetGravityZ()), DeltaSeconds);
+							}
+							CurrentFloor.Clear();
+						}
 					}
 				}
 			}
 		}
+		else
+		{
+			UE_LOG(LogCharacterMovement, Verbose, TEXT("Proxy %s SKIPPING simulate movement"), *GetNameSafe(CharacterOwner));
+		}
+
+		// consume path following requested velocity
+		bHasRequestedVelocity = false;
 
 		OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
 	} // End scoped movement update

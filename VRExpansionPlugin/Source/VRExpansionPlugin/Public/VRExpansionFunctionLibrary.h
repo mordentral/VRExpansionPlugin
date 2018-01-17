@@ -14,6 +14,7 @@
 
 #include "VRBPDatatypes.h"
 #include "GameplayTagContainer.h"
+#include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 
 #include "VRExpansionFunctionLibrary.generated.h"
 
@@ -40,6 +41,18 @@ class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UBlueprintFunct
 	GENERATED_BODY()
 	//~UVRExpansionFunctionLibrary();
 public:
+
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
+	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
+	{
+		Hand = EControllerHand::Left;
+		if (FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
+		{
+			return true;
+		}
+
+		return false;
+	}
 
 	// Gets the unwound yaw of the HMD
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDPureYaw"))
