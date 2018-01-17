@@ -320,11 +320,8 @@ void UVRGestureComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
 	{
 		if (!bDrawRecordingGestureAsSpline)
 		{
-			DrawDebugGesture(this, FTransform(StartVector) * OriginatingTransform, GestureLog, FColor::White);
-		}
-		else
-		{
-
+			FTransform DrawTransform = FTransform(StartVector) * OriginatingTransform;
+			DrawDebugGesture(this, DrawTransform, GestureLog, FColor::White);
 		}
 	}
 }
@@ -477,7 +474,7 @@ float UVRGestureComponent::dtw(FVRGesture seq1, FVRGesture seq2, bool bMirrorGes
 	return bestMatch;
 }
 
-void UVRGestureComponent::DrawDebugGesture(UObject* WorldContextObject, FTransform StartTransform, FVRGesture GestureToDraw, FColor const& Color, bool bPersistentLines, uint8 DepthPriority, float LifeTime, float Thickness)
+void UVRGestureComponent::DrawDebugGesture(UObject* WorldContextObject, FTransform &StartTransform, FVRGesture GestureToDraw, FColor const& Color, bool bPersistentLines, uint8 DepthPriority, float LifeTime, float Thickness)
 {
 #if ENABLE_DRAW_DEBUG
 
