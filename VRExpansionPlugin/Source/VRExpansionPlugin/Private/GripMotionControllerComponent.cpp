@@ -2354,6 +2354,8 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips)
 {
+
+
 	// Check for interaction interface and modify transform by it
 	if (bRootHasInterface && IVRGripInterface::Execute_IsInteractible(root))
 	{
@@ -2402,6 +2404,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 	// Handle the interp and multi grip situations, re-checking the grip situation here as it may have changed in the switch above.
 	if ((Grip.SecondaryGripInfo.bHasSecondaryAttachment && Grip.SecondaryGripInfo.SecondaryAttachment) || Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
 	{
+		FTransform SecondaryTransform = Grip.RelativeTransform * ParentTransform;
 
 		// Checking secondary grip type for the scaling setting
 		ESecondaryGripType SecondaryType = ESecondaryGripType::SG_None;
@@ -2425,7 +2428,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			// Ending lerp out of a multi grip
 			if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
 			{
-				frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeLocation)) - BasePoint;
+				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeLocation)) - BasePoint;
 				frontLoc = Grip.SecondaryGripInfo.LastRelativeLocation;
 
 				frontLocOrig = FMath::Lerp(frontLoc, frontLocOrig, FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
@@ -2456,7 +2459,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 				if (!bPulledControllerLoc)
 					/*curLocation*/ frontLoc = Grip.SecondaryGripInfo.SecondaryAttachment->GetComponentLocation() - BasePoint;
 
-				frontLocOrig = (WorldTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeLocation)) - BasePoint;
+				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeLocation)) - BasePoint;
 				//frontLoc = curLocation;// -BasePoint;
 
 				if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
@@ -2494,7 +2497,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 					{
 						// Get the total scale after modification
 						// #TODO: convert back to singular float version? Can get Min() & Max() to convert the float to a range...think about it
-						FVector WorldScale = WorldTransform.GetScale3D();
+						FVector WorldScale = /*WorldTransform*/SecondaryTransform.GetScale3D();
 						FVector CombinedScale = WorldScale * Scaler;
 
 						// Clamp to the minimum and maximum values
@@ -2541,6 +2544,8 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			}
 		}
 	}
+
+	//WorldTransform = Grip.AdditionTransform * WorldTransform;// Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
 }
 
 void UGripMotionControllerComponent::TickGrip(float DeltaTime)
