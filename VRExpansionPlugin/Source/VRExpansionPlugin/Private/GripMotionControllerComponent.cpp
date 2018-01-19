@@ -2508,8 +2508,6 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			}
 		}
 	}
-
-	//WorldTransform = Grip.AdditionTransform * WorldTransform;// Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
 }
 
 void UGripMotionControllerComponent::TickGrip(float DeltaTime)

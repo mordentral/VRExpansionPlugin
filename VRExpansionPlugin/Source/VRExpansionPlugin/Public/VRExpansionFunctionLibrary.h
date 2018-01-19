@@ -298,6 +298,64 @@ public:
 
 		return false;
 	}
+
+	// #TODO: probably need to implement this some day
+	// This doesn't work for the web browser widget but it does for the normal widgets like text boxes
+	// Just have to SetKeyboardFocus or SetUserFocus for the input widget first
+	// Main problem is it takes focus from the player then....
+	/*UFUNCTION(BlueprintCallable, Category = "KeyboardSimulation")
+	static void SimulateCharacterEntry(UPARAM(ref) const FString& InChar)
+	{
+
+		for (int32 CharIndex = 0; CharIndex < InChar.Len(); CharIndex++)
+		{
+			TCHAR CharKey = InChar[CharIndex];
+			const bool bRepeat = false;
+			FCharacterEvent CharacterEvent(CharKey, FModifierKeysState(), 0, bRepeat);
+			FSlateApplication::Get().ProcessKeyCharEvent(CharacterEvent);
+		}
+
+	}*/
+	/*
+	void FVREditorActionCallbacks::SimulateBackspace()
+	{
+		// Slate editable text fields handle backspace as a character entry
+		FString BackspaceString = FString(TEXT("\b"));
+		bool bRepeat = false;
+		SimulateCharacterEntry(BackspaceString);
+	}
+
+	void FVREditorActionCallbacks::SimulateKeyDown(const FKey Key, const bool bRepeat)
+	{
+		const uint32* KeyCodePtr;
+		const uint32* CharCodePtr;
+		FInputKeyManager::Get().GetCodesFromKey(Key, KeyCodePtr, CharCodePtr);
+
+		uint32 KeyCode = KeyCodePtr ? *KeyCodePtr : 0;
+		uint32 CharCode = CharCodePtr ? *CharCodePtr : 0;
+
+		FKeyEvent KeyEvent(Key, FModifierKeysState(), 0, bRepeat, KeyCode, CharCode);
+		bool DownResult = FSlateApplication::Get().ProcessKeyDownEvent(KeyEvent);
+
+		if (CharCodePtr)
+		{
+			FCharacterEvent CharacterEvent(CharCode, FModifierKeysState(), 0, bRepeat);
+			FSlateApplication::Get().ProcessKeyCharEvent(CharacterEvent);
+		}
+	}
+
+	void FVREditorActionCallbacks::SimulateKeyUp(const FKey Key)
+	{
+		const uint32* KeyCodePtr;
+		const uint32* CharCodePtr;
+		FInputKeyManager::Get().GetCodesFromKey(Key, KeyCodePtr, CharCodePtr);
+
+		uint32 KeyCode = KeyCodePtr ? *KeyCodePtr : 0;
+		uint32 CharCode = CharCodePtr ? *CharCodePtr : 0;
+
+		FKeyEvent KeyEvent(Key, FModifierKeysState(), 0, false, KeyCode, CharCode);
+		FSlateApplication::Get().ProcessKeyUpEvent(KeyEvent);
+	}*/
 };	
 
 
