@@ -70,7 +70,7 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 	{
 		FRotator FinalRot = FRotator::ZeroRotator;
 
-		if ((FPlatformMath::Abs(FRotator::ClampAxis(InverseRot.Yaw) - LastRot)) < YawTolerance)	// This is never true with the default value of 0.0f
+		if (FPlatformMath::Abs(FRotator::ClampAxis(InverseRot.Yaw) - LastRot) < YawTolerance)	// This is never true with the default value of 0.0f
 		{
 			if (!bWasSetOnce)
 			{
@@ -83,12 +83,12 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 			if (bLerpTransition && !FMath::IsNearlyEqual(LastLerpVal, LerpTarget))
 			{
 				LastLerpVal = FMath::FixedTurn(LastLerpVal, LerpTarget, LerpSpeed * DeltaTime);
-				//LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
 				FinalRot = FRotator(0, LastLerpVal, 0);
 			}
 			else
 			{
 				FinalRot = FRotator(0, LastRot, 0);
+				LastLerpVal = LastRot;
 			}
 		}
 		else
@@ -97,8 +97,7 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 			if (!FMath::IsNearlyZero(YawTolerance))
 			{
 				LerpTarget = FRotator::ClampAxis(InverseRot.Yaw);
-				LastLerpVal = FMath::FixedTurn(LastRot, LerpTarget, LerpSpeed * DeltaTime);
-				//LastLerpVal = FMath::FInterpConstantTo(LastLerpVal, LerpTarget, DeltaTime, LerpSpeed);
+				LastLerpVal = FMath::FixedTurn(/*LastRot*/LastLerpVal, LerpTarget, LerpSpeed * DeltaTime);
 				FinalRot = FRotator(0, LastLerpVal, 0);
 			}
 			else // If we aren't then just directly set it to the correct rotation
