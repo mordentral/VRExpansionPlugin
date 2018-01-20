@@ -140,7 +140,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		ReturnAxis = FMath::ClampAngle(FRotator::NormalizeAxis(RotAtGrab + ReturnAxis), -LeverLimitNegative, LeverLimitPositive);
 
 		// Ignore rotations that would flip the angle of the lever to the other side, with a 90 degree allowance
-		if (!bIsInFirstTick && (LastDeltaAngle >= LeverLimitPositive || LastDeltaAngle <= -LeverLimitNegative) && FMath::Sign(LastDeltaAngle) != FMath::Sign(ReturnAxis))
+		if (!bIsInFirstTick && ((LeverLimitPositive > 0.0f && LastDeltaAngle >= LeverLimitPositive) || (LeverLimitNegative > 0.0f && LastDeltaAngle <= -LeverLimitNegative)) && FMath::Sign(LastDeltaAngle) != FMath::Sign(ReturnAxis))
 		{
 			ReturnAxis = LastDeltaAngle;
 		}
