@@ -700,6 +700,23 @@ public:
 		curLerp(0.0f),
 		LastRelativeLocation(FVector::ZeroVector)
 	{}
+	
+	// Adding this override to handle the fact that repped versions don't send relative loc and slot grip
+	// We don't want to override relative loc with 0,0,0 when it is in end lerp as otherwise it lerps wrong
+	FORCEINLINE FBPSecondaryGripInfo& operator=(const FBPSecondaryGripInfo& Other)
+	{
+		this->bHasSecondaryAttachment = Other.bHasSecondaryAttachment;
+		this->SecondaryAttachment = Other.SecondaryAttachment;
+		
+		if (bHasSecondaryAttachment)
+		{
+			this->SecondaryRelativeLocation = Other.SecondaryRelativeLocation;
+			this->bIsSlotGrip = Other.bIsSlotGrip;
+		}
+
+		this->LerpToRate = Other.LerpToRate;
+		return *this;
+	}
 
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
