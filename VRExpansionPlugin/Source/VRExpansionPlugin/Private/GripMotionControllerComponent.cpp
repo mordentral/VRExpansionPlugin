@@ -2487,6 +2487,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 			FVector Scaler = FVector(1.0f);
 			if (Grip.SecondaryGripInfo.GripLerpState != EGripLerpState::EndLerp)
 			{
+
 				//float Scaler = 1.0f;
 				if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_ScalingOnly)
 				{
@@ -4012,6 +4013,7 @@ void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Imp
 	{
 		if (Grip == GrippedObject)
 		{
+			// I override the = operator now so that it won't set the lerp components
 			Grip.SecondaryGripInfo = SecondaryGripInfo;
 
 			// Initialize the differences, clients will do this themselves on the rep back
