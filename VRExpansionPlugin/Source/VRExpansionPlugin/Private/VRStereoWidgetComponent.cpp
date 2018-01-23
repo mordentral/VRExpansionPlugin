@@ -410,7 +410,7 @@ void UVRStereoWidgetComponent::UpdateRenderTarget(FIntPoint DesiredRenderTargetS
 }
 
 /** Represents a billboard sprite to the scene manager. */
-class FStereoWidget3DSceneProxy : public FPrimitiveSceneProxy
+class FStereoWidget3DSceneProxy final : public FPrimitiveSceneProxy
 {
 public:
 	SIZE_T GetTypeHash() const override
@@ -698,9 +698,15 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 	if (MaterialInstance)
 	{
 		MaterialInstance = nullptr;
+	
 	}
 	
-	if (Space != EWidgetSpace::Screen && WidgetRenderer.IsValid())
+	if (Space == EWidgetSpace::Screen)
+	{
+		return nullptr;
+	}
+
+	if (WidgetRenderer.IsValid() && CurrentSlateWidget.IsValid())
 	{
 		// Create a new MID for the current base material
 		{

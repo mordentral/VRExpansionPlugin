@@ -49,27 +49,6 @@ namespace {
 
 } // anonymous namespace
 
-// #TODO: May need this locally here for 4.19
-//FName UGripMotionControllerComponent::CustomModelSourceId(TEXT("Custom"));
-/*
-namespace LegacyMotionSources
-{
-	static bool GetSourceNameForHand(EControllerHand InHand, FName& OutSourceName)
-	{
-		UEnum* HandEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EControllerHand"));
-		if (HandEnum)
-		{
-			FString ValueName = HandEnum->GetNameStringByValue((int64)InHand);
-			if (!ValueName.IsEmpty())
-			{
-				OutSourceName = *ValueName;
-				return true;
-			}
-		}
-		return false;
-	}
-}*/
-
   //=============================================================================
 UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

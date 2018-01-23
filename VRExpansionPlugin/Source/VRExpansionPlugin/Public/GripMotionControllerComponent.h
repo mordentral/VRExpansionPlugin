@@ -117,16 +117,13 @@ protected:
 public:
 
 	// Gets the hand enum
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandType"))
-	bool GetHandType(EControllerHand& Hand)
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))
+	void GetHandType(EControllerHand& Hand)
 	{
-		Hand = EControllerHand::Left;
-		if (FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
+		if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
 		{
-			return true;
+			Hand = EControllerHand::Left;
 		}
-
-		return false;
 	}
 
 	// When possible I suggest that you use GetAllGrips/GetGrippedObjects instead of directly referencing this

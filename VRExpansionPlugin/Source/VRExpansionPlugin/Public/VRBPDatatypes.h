@@ -481,8 +481,9 @@ enum class EGripCollisionType : uint8
 UENUM(Blueprintable)
 enum class EBPHMDDeviceType : uint8
 {
-	DT_OculusRift,
-	DT_Morpheus,
+	DT_OculusHMD,//Rift,
+	DT_PSVR,
+	//DT_Morpheus,
 	DT_ES2GenericStereoMesh,
 	DT_SteamVR,
 	DT_GearVR,
