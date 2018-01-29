@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -27,6 +26,7 @@ enum class EVRInteractibleMountAxis : uint8
 	Axis_XZ
 };
 
+// A mounted lever/interactible implementation - Created by SpaceHarry - Merged into the plugin 01/29/2018
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRMountComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
 {
