@@ -136,13 +136,71 @@ public:
 	}
 
 	// Get array of controller profiles
-	UFUNCTION(BlueprintPure, Category = "VRControllerProfiles")
+	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles")
 		static TArray<FBPVRControllerProfile> GetControllerProfiles()
 	{
 		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
 		
 		return VRSettings.ControllerProfiles;
 	}
+
+	// Overwrite a controller profile
+	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
+		static void OverwriteControllerProfile(FBPVRControllerProfile OverwritingProfile, bool bSaveOutToConfig = true)
+	{
+		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+
+		for (int i = 0; i < VRSettings.ControllerProfiles.Num(); ++i)
+		{
+			if (VRSettings.ControllerProfiles[i].ControllerName == OverwritingProfile.ControllerName)
+			{
+				VRSettings.ControllerProfiles[i] = OverwritingProfile;
+			}
+		}
+
+		if(bSaveOutToConfig)
+			SaveControllerProfiles();
+	}
+
+	// Add a controller profile
+	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
+		static void AddControllerProfile(FBPVRControllerProfile NewProfile, bool bSaveOutToConfig = true)
+	{
+		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+
+		VRSettings.ControllerProfiles.Add(NewProfile);
+
+		if (bSaveOutToConfig)
+			SaveControllerProfiles();
+	}
+
+	// Overwrite a controller profile
+	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
+		static void DeleteControllerProfile(FName ControllerProfileName, bool bSaveOutToConfig = true)
+	{
+		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+
+		for (int i = VRSettings.ControllerProfiles.Num() - 1; i >= 0; --i)
+		{
+			if (VRSettings.ControllerProfiles[i].ControllerName == ControllerProfileName)
+			{
+				VRSettings.ControllerProfiles.RemoveAt(i);
+			}
+		}
+
+		if (bSaveOutToConfig)
+			SaveControllerProfiles();
+	}
+
+	// Saved the VRGlobalSettings out to its config file, will include any alterations that you made to the profile
+	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
+		static void SaveControllerProfiles()
+	{
+		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+
+		VRSettings.SaveConfig(CPF_Config, *VRSettings.GetDefaultConfigFilename());
+	}
+
 
 	// Get name of currently loaded profile (if one is loaded)
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles")
@@ -178,8 +236,10 @@ public:
 	// If you have an action/axis override but don't assign buttons to it then it will just delete it.
 	// This can be useful for removing actions and using multiple actions (IE: Grip Touch, Grip Vive actions)
 	// For when just changing the buttons isn't good enough
+	// If bSetDefaults is true, will set this as the currently loaded profile
+	// Otherwise will just load it (useful for Left/Right handed profile additions and the like to have it false)
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles")
-	static bool LoadControllerProfileByName(FName ControllerProfileName)
+	static bool LoadControllerProfileByName(FName ControllerProfileName, bool bSetAsCurrentProfile = true)
 	{
 		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
 
@@ -190,7 +250,7 @@ public:
 
 		if (FoundProfile)
 		{
-			return LoadControllerProfile(*FoundProfile);
+			return LoadControllerProfile(*FoundProfile, bSetAsCurrentProfile);
 		}
 
 		return false;
@@ -201,8 +261,10 @@ public:
 	// If you have an action/axis override but don't assign buttons to it then it will just delete it.
 	// This can be useful for removing actions and using multiple actions (IE: Grip Touch, Grip Vive actions)
 	// For when just changing the buttons isn't good enough
+	// If bSetDefaults is true, will set this as the currently loaded profile
+	// Otherwise will just load it (useful for Left/Right handed profile additions and the like to have it false)
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles")
-		static bool LoadControllerProfile(const FBPVRControllerProfile & ControllerProfile)
+		static bool LoadControllerProfile(const FBPVRControllerProfile & ControllerProfile, bool bSetAsCurrentProfile = true)
 	{
 		if (ControllerProfile.ActionOverrides.Num() == 0 && ControllerProfile.AxisOverrides.Num() == 0)
 			return false;
@@ -272,11 +334,14 @@ public:
 		// Tell all players to use the new keymappings
 		InputSettings->ForceRebuildKeymaps();
 
-		UVRGlobalSettings* VRSettings = const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
-		if (VRSettings)
+		if (bSetAsCurrentProfile)
 		{
-			VRSettings->CurrentControllerProfileInUse = ControllerProfile.ControllerName;
-			VRSettings->CurrentControllerProfileTransform = ControllerProfile.SocketOffsetTransform;
+			UVRGlobalSettings* VRSettings = const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+			if (VRSettings)
+			{
+				VRSettings->CurrentControllerProfileInUse = ControllerProfile.ControllerName;
+				VRSettings->CurrentControllerProfileTransform = ControllerProfile.SocketOffsetTransform;
+			}
 		}
 
 		// Not saving key mapping in purpose, app will revert to default on next load and profiles will load custom changes
