@@ -26,6 +26,11 @@ public class VRExpansionPlugin : ModuleRules
             );
         }
 
+		PrivateIncludePathModuleNames.AddRange(
+            new string[] {
+                        "Settings"
+            }
+        );
 
         PublicIncludePaths.AddRange(
 			new string[] {
