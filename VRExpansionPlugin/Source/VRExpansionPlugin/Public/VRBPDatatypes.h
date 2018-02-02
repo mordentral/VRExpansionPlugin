@@ -736,6 +736,20 @@ public:
 		MaximumGripScaling(FVector(10.0f))
 	{}
 
+	// Skip passing euro filter in
+	FORCEINLINE FBPAdvSecondaryGripSettings& operator=(const FBPAdvSecondaryGripSettings& Other)
+	{
+		this->bUseSecondaryGripSettings = Other.bUseSecondaryGripSettings;
+		this->SecondaryGripScaler = Other.SecondaryGripScaler;
+		this->bUseSecondaryGripDistanceInfluence = Other.bUseSecondaryGripDistanceInfluence;
+		this->GripInfluenceDeadZone = Other.GripInfluenceDeadZone;
+		this->GripInfluenceDistanceToZero = Other.GripInfluenceDistanceToZero;
+		this->bLimitGripScaling = Other.bLimitGripScaling;
+		this->MinimumGripScaling = Other.MinimumGripScaling;
+		this->MaximumGripScaling = Other.MaximumGripScaling;
+		return *this;
+	}
+
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
@@ -1096,6 +1110,28 @@ public:
 		{}
 
 	}ValueCache;
+
+	// Adding this override to keep un-repped variables from repping over from Client Auth grips
+	FORCEINLINE FBPActorGripInformation& operator=(const FBPActorGripInformation& Other)
+	{
+		this->GripTargetType = Other.GripTargetType;
+		this->GrippedObject = Other.GrippedObject;
+		this->GripCollisionType = Other.GripCollisionType;
+		this->GripLateUpdateSetting = Other.GripLateUpdateSetting;
+		this->RelativeTransform = Other.RelativeTransform;
+		this->bIsSlotGrip = Other.bIsSlotGrip;
+		this->GrippedBoneName = Other.GrippedBoneName;
+		this->GripMovementReplicationSetting = Other.GripMovementReplicationSetting;
+		this->bOriginalReplicatesMovement = Other.bOriginalReplicatesMovement;
+		this->bOriginalGravity = Other.bOriginalGravity;
+		this->Damping = Other.Damping;
+		this->Stiffness = Other.Stiffness;
+		this->AdvancedGripSettings = Other.AdvancedGripSettings;
+		this->SecondaryGripInfo = Other.SecondaryGripInfo;
+
+		return *this;
+	}
+
 
 	FORCEINLINE AActor * GetGrippedActor() const
 	{

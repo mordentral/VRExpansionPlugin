@@ -466,7 +466,12 @@ void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInfo
 		if (fIndex != INDEX_NONE)
 		{
 			LocallyGrippedObjects[fIndex].GripCollisionType = NewGripCollisionType;
+
+			if (GetNetMode() == ENetMode::NM_Client && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
+
 			ReCreateGrip(LocallyGrippedObjects[fIndex]);
+
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -492,6 +497,10 @@ void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGrip
 		if (fIndex != INDEX_NONE)
 		{
 			LocallyGrippedObjects[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
+
+			if (GetNetMode() == ENetMode::NM_Client && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
+
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -521,6 +530,10 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 		if (fIndex != INDEX_NONE)
 		{
 			LocallyGrippedObjects[fIndex].RelativeTransform = NewRelativeTransform;
+
+			if (GetNetMode() == ENetMode::NM_Client && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
+
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
 		}
@@ -596,6 +609,9 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 				LocallyGrippedObjects[fIndex].AdvancedGripSettings.PhysicsSettings.AngularStiffness = OptionalAngularStiffness;
 				LocallyGrippedObjects[fIndex].AdvancedGripSettings.PhysicsSettings.AngularDamping = OptionalAngularDamping;
 			}
+
+			if (GetNetMode() == ENetMode::NM_Client && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
 
 			Result = EBPVRResultSwitch::OnSucceeded;
 		//	return;
@@ -3932,18 +3948,15 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 		LocallyGrippedObjects.Add(newGrip);
 
 		// Initialize the differences, clients will do this themselves on the rep back, this sets up the cache
-		HandleGripReplication(LocallyGrippedObjects[LocallyGrippedObjects.Num() - 1]);
+		//HandleGripReplication(LocallyGrippedObjects[LocallyGrippedObjects.Num() - 1]);
 	}
 	else
 	{
-		FBPActorGripInformation FoundGrip;
-		EBPVRResultSwitch Result;
-		GetGripByObject(FoundGrip, newGrip.GrippedObject, Result);
-
-		if (Result == EBPVRResultSwitch::OnFailed)
-			return;
-
-		FoundGrip = newGrip;
+		int32 IndexFound;
+		if (LocallyGrippedObjects.Find(newGrip, IndexFound))
+		{
+			LocallyGrippedObjects[IndexFound] = newGrip;
+		}
 	}
 
 	// Server has to call this themselves
