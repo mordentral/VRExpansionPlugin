@@ -891,7 +891,7 @@ public:
 
 	// Adding this override to handle the fact that repped versions don't send relative loc and slot grip
 	// We don't want to override relative loc with 0,0,0 when it is in end lerp as otherwise it lerps wrong
-	FORCEINLINE FBPSecondaryGripInfo& operator=(const FBPSecondaryGripInfo& Other)
+	FORCEINLINE FBPSecondaryGripInfo& RepCopy(const FBPSecondaryGripInfo& Other)
 	{
 		this->bHasSecondaryAttachment = Other.bHasSecondaryAttachment;
 		this->SecondaryAttachment = Other.SecondaryAttachment;
@@ -1112,7 +1112,7 @@ public:
 	}ValueCache;
 
 	// Adding this override to keep un-repped variables from repping over from Client Auth grips
-	FORCEINLINE FBPActorGripInformation& operator=(const FBPActorGripInformation& Other)
+	FORCEINLINE FBPActorGripInformation& RepCopy(const FBPActorGripInformation& Other)
 	{
 		this->GripTargetType = Other.GripTargetType;
 		this->GrippedObject = Other.GrippedObject;
