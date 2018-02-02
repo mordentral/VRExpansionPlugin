@@ -3956,7 +3956,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 		int32 IndexFound;
 		if (LocallyGrippedObjects.Find(newGrip, IndexFound))
 		{
-			LocallyGrippedObjects[IndexFound] = newGrip;
+			LocallyGrippedObjects[IndexFound].RepCopy(newGrip);
 		}
 	}
 
@@ -4007,7 +4007,7 @@ void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Imp
 		if (Grip == GrippedObject)
 		{
 			// I override the = operator now so that it won't set the lerp components
-			Grip.SecondaryGripInfo = SecondaryGripInfo;
+			Grip.SecondaryGripInfo.RepCopy(SecondaryGripInfo);
 
 			// Initialize the differences, clients will do this themselves on the rep back
 			HandleGripReplication(Grip);
