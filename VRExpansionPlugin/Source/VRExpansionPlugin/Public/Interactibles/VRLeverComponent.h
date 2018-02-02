@@ -334,6 +334,16 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	{
 		// Get our initial relative transform to our parent (or not if un-parented).
 		InitialRelativeTransform = this->GetRelativeTransform();
+		CalculateCurrentAngle(InitialRelativeTransform);
+	}
+
+	// ReCalculates the current angle, sets it on the back end, and returns it
+	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
+	float ReCalculateCurrentAngle()
+	{
+		FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(GetCurrentParentTransform());
+		CalculateCurrentAngle(CurRelativeTransform);
+		return CurrentLeverAngle;
 	}
 
 	virtual void OnUnregister() override;;
