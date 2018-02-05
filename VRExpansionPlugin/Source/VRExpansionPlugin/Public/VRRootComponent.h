@@ -116,6 +116,7 @@ public:
 
 	FVector curCameraLoc;
 	FRotator curCameraRot;
+	FRotator StoredCameraRotOffset;
 
 	FVector lastCameraLoc;
 	FRotator lastCameraRot;
@@ -143,15 +144,15 @@ public:
 
 
 // Have to declare inlines here for blueprint
-
-void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGetPureYaw)
+void inline UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGetPureYaw)
 {
 	FRotator CamRotOffset;
-	
+
 	if (bGetPureYaw)
-		CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+		CamRotOffset = StoredCameraRotOffset;//UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 	else
 		CamRotOffset = curCameraRot;
+
 
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
 

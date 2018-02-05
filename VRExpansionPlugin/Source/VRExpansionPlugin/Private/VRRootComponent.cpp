@@ -398,7 +398,7 @@ void UVRRootComponent::BeginPlay()
 
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
-{		
+{
 	if (IsLocallyControlled())
 	{
 		if (OptionalWaistTrackingParent.IsValid())
@@ -429,11 +429,20 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			curCameraLoc = FVector::ZeroVector;
 		}
 
+		// Store a leveled yaw value here so it is only calculated once
+		StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+
 		// Can adjust the relative tolerances to remove jitter and some update processing
 		if (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f))
 		{
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
+
+			ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner());
+			UVRBaseCharacterMovementComponent * CharMove = nullptr;
+
+			if (OwningCharacter != nullptr)
+				CharMove = Cast<UVRBaseCharacterMovementComponent>(OwningCharacter->GetCharacterMovement());
 
 			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
 
@@ -445,11 +454,6 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			Params.bFindInitialOverlaps = true;
 			bool bBlockingHit = false;
 
-			ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner());
-			UVRBaseCharacterMovementComponent * CharMove = nullptr;
-			
-			if(OwningCharacter != nullptr)
-				CharMove = Cast<UVRBaseCharacterMovementComponent>(OwningCharacter->GetCharacterMovement());
 
 			if (bUseWalkingCollisionOverride)
 			{
@@ -504,6 +508,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			curCameraRot = FRotator(0.0f, 0.0f, 0.0f);// = FRotator::ZeroRotator;
 			curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 		}
+
+		// Store a leveled yaw value here so it is only calculated once
+		StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 
 		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
 	}
