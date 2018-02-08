@@ -746,7 +746,7 @@ public:
 	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool TeleportMoveGrip(FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
+	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
