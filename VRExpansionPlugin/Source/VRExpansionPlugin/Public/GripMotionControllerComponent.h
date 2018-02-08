@@ -697,7 +697,7 @@ public:
 	}
 
 	// Gets if the given Component is a secondary attach point to a gripped actor
-	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool GetIsSecondaryAttachment(const USceneComponent * ComponentToCheck, FBPActorGripInformation & Grip)
 	{
 		if (!ComponentToCheck)
@@ -761,7 +761,7 @@ public:
 	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool TeleportMoveGrip(FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
+	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")

@@ -1495,7 +1495,6 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 		{
 			SetUpPhysicsHandle(NewGrip);
 		}
-
 	} break;
 
 	// Skip collision intersects with these types, they dont need it

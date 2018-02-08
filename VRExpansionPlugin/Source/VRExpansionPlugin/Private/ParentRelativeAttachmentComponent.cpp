@@ -13,6 +13,7 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
+	
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
 	this->RelativeLocation = FVector(0, 0, 0);
 	YawTolerance = 0.0f;
