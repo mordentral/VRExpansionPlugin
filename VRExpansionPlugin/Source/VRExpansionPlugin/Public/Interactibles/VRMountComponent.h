@@ -53,6 +53,9 @@ class VREXPANSIONPLUGIN_API UVRMountComponent : public UStaticMeshComponent, pub
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMountComponent")
 		float FlipReajustYawSpeed;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMountComponent")
+		int GripPriority;
+
 	bool GrippedOnBack;
 
 	bool bIsInsideFrontFlipingZone;

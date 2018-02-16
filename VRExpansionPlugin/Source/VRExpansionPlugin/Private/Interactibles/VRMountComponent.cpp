@@ -30,6 +30,8 @@ UVRMountComponent::UVRMountComponent(const FObjectInitializer& ObjectInitializer
 
 	bDenyGripping = false;
 
+	GripPriority = 1;
+
 	FlipingZone = 0.4;
 	FlipReajustYawSpeed = 7.7;
 
@@ -457,7 +459,7 @@ void UVRMountComponent::GetGripStiffnessAndDamping_Implementation(float &GripSti
 
 FBPAdvGripSettings UVRMountComponent::AdvancedGripSettings_Implementation()
 {
-	return FBPAdvGripSettings();
+	return FBPAdvGripSettings(GripPriority);
 }
 
 float UVRMountComponent::GripBreakDistance_Implementation()

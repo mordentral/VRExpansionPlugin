@@ -23,7 +23,7 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	bDenyGripping = false;
 
 	MinSlideDistance = FVector::ZeroVector;
-	MaxSlideDistance = FVector::ZeroVector;
+	MaxSlideDistance = FVector(10.0f, 0.f, 0.f);
 	CurrentSliderProgress = 0.0f;
 
 	InitialInteractorLocation = FVector::ZeroVector;
@@ -34,6 +34,8 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	SplineComponentToFollow = nullptr;
 
 	bFollowSplineRotationAndScale = false;
+
+	GripPriority = 1;
 
 
 	// Set to only overlap with things so that its not ruined by touching over actors
@@ -236,7 +238,7 @@ void UVRSliderComponent::GetGripStiffnessAndDamping_Implementation(float &GripSt
 
 FBPAdvGripSettings UVRSliderComponent::AdvancedGripSettings_Implementation()
 {
-	return FBPAdvGripSettings();
+	return FBPAdvGripSettings(GripPriority);
 }
 
 float UVRSliderComponent::GripBreakDistance_Implementation()

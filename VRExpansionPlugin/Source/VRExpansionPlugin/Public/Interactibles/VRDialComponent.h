@@ -60,6 +60,9 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
 	EVRInteractibleAxis InteractorRotationAxis;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
+		int GripPriority;
+
 	FTransform InitialRelativeTransform;
 	float CurRotBackEnd;
 	FRotator LastRotation;
