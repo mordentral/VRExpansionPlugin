@@ -34,9 +34,11 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	SplineComponentToFollow = nullptr;
 
 	bFollowSplineRotationAndScale = false;
+	bLerpAlongSpline = true;
 
 	GripPriority = 1;
-
+	LastSliderProgressState = -1.0f;
+	LastInputKey = 0.0f;
 
 	// Set to only overlap with things so that its not ruined by touching over actors
 	this->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
@@ -87,49 +89,79 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 {
 	// Handle manual tracking here
 
-	FTransform CurrentRelativeTransform;
+	/*FTransform CurrentRelativeTransform;
 	FTransform ParentTransform = FTransform::Identity;
 	if (ParentComponent.IsValid())
 	{
 		ParentTransform = ParentComponent->GetComponentTransform();
 		// during grip there is no parent so we do this, might as well do it anyway for lerping as well
-		CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
+		CurrentRelativeTransform = InitialRelativeTransform * ParentTransform
 	}
 	else
 	{
 		CurrentRelativeTransform = InitialRelativeTransform;
-	}
+	}*/
 
+	FTransform ParentTransform = GetCurrentParentTransform();
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
 	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
 
 	FVector CalculatedLocation = InitialGripLoc + (CurInteractorLocation - InitialInteractorLocation);
 
+	FVector origloc = GrippingController->GetComponentLocation();
+	FVector relloc = CurInteractorLocation;
+	FVector finalloc = CurrentRelativeTransform.TransformPosition(relloc);
+
+
 	if (SplineComponentToFollow != nullptr)
 	{	
-		if (bFollowSplineRotationAndScale)
+		FVector WorldCalculatedLocation = CurrentRelativeTransform.TransformPosition(CalculatedLocation);
+		float ClosestKey = 0.0f;
+		if (bEnforceSplineLinearity && (ClosestKey = (SplineComponentToFollow->FindInputKeyClosestToWorldLocation(WorldCalculatedLocation) - LastInputKey)) >= 1.9f)
 		{
-			FTransform trans = SplineComponentToFollow->FindTransformClosestToWorldLocation(CurrentRelativeTransform.TransformPosition(CalculatedLocation), ESplineCoordinateSpace::World);
-
-			trans = trans * ParentTransform.Inverse();
-			trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
-			 
-			this->SetRelativeTransform(trans);
 		}
 		else
 		{
-			this->SetRelativeLocation(ParentTransform.InverseTransformPosition(SplineComponentToFollow->FindLocationClosestToWorldLocation(CurrentRelativeTransform.TransformPosition(CalculatedLocation), ESplineCoordinateSpace::World)));
-		}
+			LastInputKey = FMath::TruncToFloat(ClosestKey);
+			if (bFollowSplineRotationAndScale)
+			{
+				FTransform trans = SplineComponentToFollow->FindTransformClosestToWorldLocation(WorldCalculatedLocation, ESplineCoordinateSpace::World);
+				trans = trans * ParentTransform.Inverse();
+				trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
 
-		CurrentSliderProgress = GetCurrentSliderProgress(CurrentRelativeTransform.TransformPosition(CalculatedLocation));
+				this->SetRelativeTransform(trans);
+			}
+			else
+			{
+				this->SetRelativeLocation(ParentTransform.InverseTransformPosition(SplineComponentToFollow->FindLocationClosestToWorldLocation(WorldCalculatedLocation, ESplineCoordinateSpace::World)));
+			}
+
+			CurrentSliderProgress = GetCurrentSliderProgress(WorldCalculatedLocation);
+		}
 	}
 	else
 	{
 		FVector ClampedLocation = ClampSlideVector(CalculatedLocation);
 		this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
-
 		CurrentSliderProgress = GetCurrentSliderProgress(ClampedLocation * InitialRelativeTransform.GetScale3D());
 	}
 	
+	// Skip first check, this will skip an event throw on rounded
+	if (LastSliderProgressState < 0.0f)
+	{	
+		// Skip first tick, this is our resting position
+		LastSliderProgressState = CurrentSliderProgress;
+	}
+	else if(LastSliderProgressState != CurrentSliderProgress && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f))
+	{
+		// I am working with exacts here because of the clamping, it should actually work with no precision issues
+		// I wanted to ABS(Last-Cur) == 1.0 but it would cause an initial miss on whatever one last was inited to. 
+
+		LastSliderProgressState = FMath::RoundToFloat(CurrentSliderProgress); // Ensure it is rounded to 0 or 1
+		ReceiveSliderHitEnd(LastSliderProgressState);
+		OnSliderHitEnd.Broadcast(LastSliderProgressState);
+	}
+
 	// Converted to a relative value now so it should be correct
 	if (FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
 	{
@@ -140,24 +172,17 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 
 void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
-	ParentComponent = this->GetAttachParent();
 
-	FTransform CurrentRelativeTransform;
-	if (ParentComponent.IsValid())
-	{
-		CurrentRelativeTransform = InitialRelativeTransform * ParentComponent->GetComponentTransform();
-	}
-	else
-	{
-		CurrentRelativeTransform = InitialRelativeTransform;
-	}
+	ParentComponent = this->GetAttachParent();
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
 
 	// This lets me use the correct original location over the network without changes
-	FTransform RelativeToGripTransform = (GripInformation.RelativeTransform.Inverse() * this->GetComponentTransform());
+	FTransform RelativeToGripTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale()) * this->GetComponentTransform();
 
 	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 	InitialGripLoc = InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation);
 	InitialDropLocation = GripInformation.RelativeTransform.Inverse().GetTranslation();
+	LastInputKey = 0.0f;
 }
 
 void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) 

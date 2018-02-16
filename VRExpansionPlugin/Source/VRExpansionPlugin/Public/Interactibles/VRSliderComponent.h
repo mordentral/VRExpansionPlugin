@@ -12,6 +12,9 @@
 
 #include "VRSliderComponent.generated.h"
 
+/** Delegate for notification when the lever state changes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRSliderHitEndSignature, float, SliderProgress);
+
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
 {
@@ -19,6 +22,14 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	~UVRSliderComponent();
 
+	// Call to use an object
+	UPROPERTY(BlueprintAssignable, Category = "VRLeverComponent")
+		FVRSliderHitEndSignature OnSliderHitEnd;
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Lever State Changed"))
+		void ReceiveSliderHitEnd(float SliderProgress);
+
+	float LastSliderProgressState;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	FVector MaxSlideDistance;
@@ -40,8 +51,18 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	USplineComponent * SplineComponentToFollow; 
 
+	// Where the slider should follow the rotation and scale of the spline as well
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	bool bFollowSplineRotationAndScale;
+
+	// Does not allow the slider to skip past nodes on the spline, it requires it to progress from node to node
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bEnforceSplineLinearity;
+	float LastInputKey;
+
+	// Where the slider should follow the rotation and scale of the spline as well
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bLerpAlongSpline;
 
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;
@@ -82,6 +103,19 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	{
 		SplineComponentToFollow = SplineToFollow;
 		ResetInitialSliderLocation();
+	}
+
+	FTransform GetCurrentParentTransform()
+	{
+		if (ParentComponent.IsValid())
+		{
+			// during grip there is no parent so we do this, might as well do it anyway for lerping as well
+			return ParentComponent->GetComponentTransform();
+		}
+		else
+		{
+			return FTransform::Identity;
+		}
 	}
 
 	float GetCurrentSliderProgress(FVector CurLocation)

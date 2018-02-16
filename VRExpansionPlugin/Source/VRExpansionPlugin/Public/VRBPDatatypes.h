@@ -285,8 +285,6 @@ struct FTransform_NetQuantize : public FTransform
 
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
-		bOutSuccess = true;
-
 		FVector rTranslation;
 		FVector rScale3D;
 		//FQuat rRotation;

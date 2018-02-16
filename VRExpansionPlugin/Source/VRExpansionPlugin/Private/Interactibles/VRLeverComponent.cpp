@@ -234,7 +234,7 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 		FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
 			
 		// This lets me use the correct original location over the network without changes
-		FTransform RelativeToGripTransform = (GripInformation.RelativeTransform.Inverse() * this->GetComponentTransform());
+		FTransform RelativeToGripTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale()) * this->GetComponentTransform();
 
 		InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 		InitialInteractorDropLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
