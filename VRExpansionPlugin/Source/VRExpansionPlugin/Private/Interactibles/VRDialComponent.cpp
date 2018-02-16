@@ -97,7 +97,7 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
 	// This lets me use the correct original location over the network without changes
-	FTransform RelativeToGripTransform = (GripInformation.RelativeTransform.Inverse() * this->GetComponentTransform());
+	FTransform RelativeToGripTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale()) * this->GetComponentTransform();
 
 	InitialInteractorLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 	
