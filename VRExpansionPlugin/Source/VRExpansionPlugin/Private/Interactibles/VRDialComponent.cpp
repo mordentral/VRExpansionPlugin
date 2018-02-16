@@ -27,6 +27,8 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	CClockwiseMaximumDialAngle = 180.0f;
 	bDenyGripping = false;
 
+	GripPriority = 1;
+
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	BreakDistance = 100.0f;
 }
@@ -190,7 +192,7 @@ void UVRDialComponent::GetGripStiffnessAndDamping_Implementation(float &GripStif
 
 FBPAdvGripSettings UVRDialComponent::AdvancedGripSettings_Implementation()
 {
-	return FBPAdvGripSettings();
+	return FBPAdvGripSettings(GripPriority);
 }
 
 float UVRDialComponent::GripBreakDistance_Implementation()

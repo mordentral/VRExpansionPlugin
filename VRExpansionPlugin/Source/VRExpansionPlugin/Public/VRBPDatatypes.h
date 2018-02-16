@@ -840,6 +840,10 @@ public:
 	FBPAdvGripSettings() :
 		GripPriority(1)
 	{}
+
+	FBPAdvGripSettings(int GripPrio) :
+		GripPriority(GripPrio)
+	{}
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")

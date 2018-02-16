@@ -45,6 +45,8 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	bUngripAtTargetRotation = false;
 	bDenyGripping = false;
 
+	GripPriority = 1;
+
 	// Set to only overlap with things so that its not ruined by touching over actors
 	this->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
 }
@@ -367,7 +369,7 @@ void UVRLeverComponent::GetGripStiffnessAndDamping_Implementation(float &GripSti
 
 FBPAdvGripSettings UVRLeverComponent::AdvancedGripSettings_Implementation()
 {
-	return FBPAdvGripSettings();
+	return FBPAdvGripSettings(GripPriority);
 }
 
 float UVRLeverComponent::GripBreakDistance_Implementation()
