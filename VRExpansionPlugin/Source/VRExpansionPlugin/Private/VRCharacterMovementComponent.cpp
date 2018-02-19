@@ -3115,14 +3115,29 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		}
 		else
 		{
+			// We are finding the floor and adjusting here now
+			// This matches the final falling Z up to the PhysWalking floor offset to prevent the visible hitch when going
+			// From falling to walking.
 			FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, false, NULL);
 
 			if (CurrentFloor.IsWalkableFloor())
 			{
+				// If the current floor distance is within the physwalking required floor offset
 				if (CurrentFloor.GetDistanceToFloor() < (MIN_FLOOR_DIST + MAX_FLOOR_DIST) / 2)
+				{
+					// Adjust to correct height
 					AdjustFloorHeight();
 
-				SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+					SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+
+					// If this is a valid landing spot, stop falling now so that we land correctly
+					if (IsValidLandingSpot(VRRootCapsule->OffsetComponentToWorld.GetLocation()/*UpdatedComponent->GetComponentLocation()*/, CurrentFloor.HitResult))
+					{
+						remainingTime += subTimeTickRemaining;
+						ProcessLanded(CurrentFloor.HitResult, remainingTime, Iterations);
+						return;
+					}
+				}
 			}
 			else if (CurrentFloor.HitResult.bStartPenetrating)
 			{
