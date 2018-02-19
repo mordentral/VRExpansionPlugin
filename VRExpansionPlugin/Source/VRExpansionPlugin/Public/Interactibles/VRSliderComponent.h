@@ -12,6 +12,14 @@
 
 #include "VRSliderComponent.generated.h"
 
+UENUM(Blueprintable)
+enum class EVRInteractibleSliderLerpType : uint8
+{
+	Lerp_None,
+	Lerp_Interp,
+	Lerp_InterpConstantTo
+};
+
 /** Delegate for notification when the lever state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRSliderHitEndSignature, float, SliderProgress);
 
@@ -59,10 +67,18 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 		bool bEnforceSplineLinearity;
 	float LastInputKey;
+	float LerpedKey;
 
-	// Where the slider should follow the rotation and scale of the spline as well
+	// Type of lerp to use when following a spline
+	// For lerping I would suggest using ConstantTo in general as it will be the smoothest.
+	// Normal Interp will change speed based on distance, that may also have its uses.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
-		bool bLerpAlongSpline;
+		EVRInteractibleSliderLerpType SplineLerpType;
+
+	// Lerp Value for the spline, when in InterpMode it is the speed of interpolation
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0", UIMin = "0"))
+		float SplineLerpValue;
+
 
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;
@@ -105,6 +121,22 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 		ResetInitialSliderLocation();
 	}
 
+	void GetLerpedKey(float &ClosestKey, float DeltaTime)
+	{
+		switch (SplineLerpType)
+		{
+		case EVRInteractibleSliderLerpType::Lerp_Interp:
+		{
+			ClosestKey = FMath::FInterpTo(LastInputKey, ClosestKey, DeltaTime, SplineLerpValue);
+		}break;
+		case EVRInteractibleSliderLerpType::Lerp_InterpConstantTo:
+		{
+			ClosestKey = FMath::FInterpConstantTo(LastInputKey, ClosestKey, DeltaTime, SplineLerpValue);
+		}break;
+
+		default: break;
+		}
+	}
 	FTransform GetCurrentParentTransform()
 	{
 		if (ParentComponent.IsValid())
