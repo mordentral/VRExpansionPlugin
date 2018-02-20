@@ -9,6 +9,7 @@
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
 #include "Components/SplineComponent.h"
+#include "VRInteractibleFunctionLibrary.h"
 
 #include "VRSliderComponent.generated.h"
 
@@ -137,18 +138,6 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 		default: break;
 		}
 	}
-	FTransform GetCurrentParentTransform()
-	{
-		if (ParentComponent.IsValid())
-		{
-			// during grip there is no parent so we do this, might as well do it anyway for lerping as well
-			return ParentComponent->GetComponentTransform();
-		}
-		else
-		{
-			return FTransform::Identity;
-		}
-	}
 
 	float GetCurrentSliderProgress(FVector CurLocation)
 	{
@@ -237,8 +226,6 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
-
-	TWeakObjectPtr<USceneComponent> ParentComponent;
 
 	// Grip interface setup
 

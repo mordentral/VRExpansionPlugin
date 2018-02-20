@@ -7,6 +7,7 @@
 #include "VRGripInterface.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
+#include "VRInteractibleFunctionLibrary.h"
 #include "PhysicsEngine/ConstraintInstance.h"
 
 #include "PhysicsPublic.h"
@@ -80,19 +81,6 @@ class VREXPANSIONPLUGIN_API UVRMountComponent : public UStaticMeshComponent, pub
 
 	float LerpOutAlpha;
 
-	FTransform GetCurrentParentTransform()
-	{
-		if (ParentComponent.IsValid())
-		{
-			// during grip there is no parent so we do this, might as well do it anyway for lerping as well
-			return ParentComponent->GetComponentTransform();
-		}
-		else
-		{
-			return FTransform::Identity;
-		}
-	}
-
 	// ------------------------------------------------
 	// Gameplay tag interface
 	// ------------------------------------------------
@@ -143,8 +131,6 @@ class VREXPANSIONPLUGIN_API UVRMountComponent : public UStaticMeshComponent, pub
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
-
-	TWeakObjectPtr<USceneComponent> ParentComponent;
 
 	// Should be called after the Mount is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRMountComponent")
