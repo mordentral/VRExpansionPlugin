@@ -80,27 +80,6 @@ public:
 		return BaseData.InitialRelativeTransform * ParentTransform;
 	}
 
-
-	// Gets whether we should init a drop based on the drop distance provided - Should be used on GripTick
-	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
-		static bool Interactible_CheckShouldAutoDrop(USceneComponent * InteractibleComponent, UGripMotionControllerComponent * GrippingController, FBPActorGripInformation GripInformation, FBPVRInteractibleBaseData BaseData, float BreakDistance)
-	{
-		if (!GrippingController || !InteractibleComponent)
-			return false;
-
-		// Handle the auto drop
-		if (
-			GrippingController && 
-			GrippingController->HasGripAuthority(GripInformation) && 
-			FVector::DistSquared(BaseData.InitialDropLocation, InteractibleComponent->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance)
-			)
-		{
-			return true;
-		}
-
-		return false;
-	}
-
 	// Inits the initial relative transform of an interactible on begin play
 	UFUNCTION(BlueprintCallable, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
 		static bool Interactible_BeginPlayInit(USceneComponent * InteractibleComp, UPARAM(ref) FBPVRInteractibleBaseData & BaseDataToInit)
@@ -131,6 +110,44 @@ public:
 
 		return true;
 	}
+
+	// Returns (in degrees) the angle around the axis of a location
+	// Expects the CurInteractorLocation to be in relative space already
+	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
+	static float Interactible_GetAngleAroundAxis(EVRInteractibleAxis AxisToCalc, FVector CurInteractorLocation)
+	{
+		float ReturnAxis = 0.0f;
+
+		switch (AxisToCalc)
+		{
+		case EVRInteractibleAxis::Axis_X:
+		{
+			ReturnAxis = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Y, CurInteractorLocation.Z));
+		}break;
+		case EVRInteractibleAxis::Axis_Y:
+		{
+			ReturnAxis = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Z, CurInteractorLocation.X));
+		}break;
+		case EVRInteractibleAxis::Axis_Z:
+		{
+			ReturnAxis = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Y, CurInteractorLocation.X));
+		}break;
+		default:
+		{}break;
+		}
+
+		return ReturnAxis;
+	}
+
+	// Returns (in degrees) the delta rotation from the initial angle at grip to the current interactor angle around the axis
+	// Expects CurInteractorLocation to be in relative space already
+	// You can add this to an initial rotation and clamp the result to rotate over time based on hand position
+	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
+	static float Interactible_GetAngleAroundAxisDelta(EVRInteractibleAxis AxisToCalc, FVector CurInteractorLocation, float InitialAngle)
+	{
+		return FRotator::NormalizeAxis(Interactible_GetAngleAroundAxis(AxisToCalc, CurInteractorLocation) - InitialAngleAtGrip);
+	}
+
 };	
 
 
