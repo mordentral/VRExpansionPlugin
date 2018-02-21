@@ -82,22 +82,20 @@ public:
 
 	// Inits the initial relative transform of an interactible on begin play
 	UFUNCTION(BlueprintCallable, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
-		static bool Interactible_BeginPlayInit(USceneComponent * InteractibleComp, UPARAM(ref) FBPVRInteractibleBaseData & BaseDataToInit)
+		static void Interactible_BeginPlayInit(USceneComponent * InteractibleComp, UPARAM(ref) FBPVRInteractibleBaseData & BaseDataToInit)
 	{
 		if (!InteractibleComp)
-			return false;
+			return;
 
 		BaseDataToInit.InitialRelativeTransform = InteractibleComp->GetRelativeTransform();
-
-		return true;
 	}
 
 	// Inits the calculated values of a VR Interactible Base Data Structure on a grip event
 	UFUNCTION(BlueprintCallable, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
-		static bool Interactible_OnGripInit(USceneComponent * InteractibleComp, FBPActorGripInformation GripInformation, UPARAM(ref) FBPVRInteractibleBaseData & BaseDataToInit)
+		static void Interactible_OnGripInit(USceneComponent * InteractibleComp, FBPActorGripInformation GripInformation, UPARAM(ref) FBPVRInteractibleBaseData & BaseDataToInit)
 	{
 		if (!InteractibleComp)
-			return false;
+			return;
 
 		BaseDataToInit.ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
 		BaseDataToInit.InitialDropLocation = BaseDataToInit.ReversedRelativeTransform.GetTranslation(); // Technically a duplicate, but will be more clear
@@ -107,8 +105,6 @@ public:
 		BaseDataToInit.InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 		
 		BaseDataToInit.InitialGripLoc = BaseDataToInit.InitialRelativeTransform.InverseTransformPosition(InteractibleComp->RelativeLocation);
-
-		return true;
 	}
 
 	// Returns (in degrees) the angle around the axis of a location
@@ -142,7 +138,7 @@ public:
 	// Returns (in degrees) the delta rotation from the initial angle at grip to the current interactor angle around the axis
 	// Expects CurInteractorLocation to be in relative space already
 	// You can add this to an initial rotation and clamp the result to rotate over time based on hand position
-	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))	
 	static float Interactible_GetAngleAroundAxisDelta(EVRInteractibleAxis AxisToCalc, FVector CurInteractorLocation, float InitialAngle)
 	{
 		return FRotator::NormalizeAxis(Interactible_GetAngleAroundAxis(AxisToCalc, CurInteractorLocation) - InitialAngle);
