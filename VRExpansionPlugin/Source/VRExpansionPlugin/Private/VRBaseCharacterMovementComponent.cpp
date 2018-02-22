@@ -121,14 +121,6 @@ void UVRBaseCharacterMovementComponent::EndPushBackNotification()
 	}
 }
 
-// Rewind the players position by the new capsule location
-void UVRBaseCharacterMovementComponent::RewindVRRelativeMovement()
-{
-	//FHitResult AHit;
-	MoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false);
-	//SafeMoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false, AHit);
-}
-
 bool UVRBaseCharacterMovementComponent::FloorSweepTest(
 	FHitResult& OutHit,
 	const FVector& Start,
