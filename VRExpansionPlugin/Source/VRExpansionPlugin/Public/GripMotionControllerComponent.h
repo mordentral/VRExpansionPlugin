@@ -610,23 +610,7 @@ public:
 		if (!ObjectToCheck)
 			return false;
 
-		for (int i = 0; i < GrippedObjects.Num(); ++i)
-		{
-			if (GrippedObjects[i] == ObjectToCheck)
-			{
-				return true;
-			}
-		}
-
-		for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
-		{
-			if (LocallyGrippedObjects[i] == ObjectToCheck)
-			{
-				return true;
-			}
-		}
-
-		return false;
+		return (GrippedObjects.FindByKey(ObjectToCheck) || LocallyGrippedObjects.FindByKey(ObjectToCheck));
 	}
 
 	// Gets if the given actor is held by this controller
@@ -636,23 +620,7 @@ public:
 		if (!ActorToCheck)
 			return false;
 
-		for (int i = 0; i < GrippedObjects.Num(); ++i)
-		{
-			if (GrippedObjects[i] == ActorToCheck)
-			{
-				return true;
-			}
-		}
-
-		for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
-		{
-			if (LocallyGrippedObjects[i] == ActorToCheck)
-			{
-				return true;
-			}
-		}
-
-		return false;
+		return (GrippedObjects.FindByKey(ActorToCheck) || LocallyGrippedObjects.FindByKey(ActorToCheck));
 	}
 
 	// Gets if the given component is held by this controller
@@ -662,21 +630,7 @@ public:
 		if (!ComponentToCheck)
 			return false;
 
-		for (int i = 0; i < GrippedObjects.Num(); ++i)
-		{
-			if (GrippedObjects[i] == ComponentToCheck)
-			{
-				return true;
-			}
-		}
-
-		for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
-		{
-			if (LocallyGrippedObjects[i] == ComponentToCheck)
-			{
-				return true;
-			}
-		}
+		return (GrippedObjects.FindByKey(ComponentToCheck) || LocallyGrippedObjects.FindByKey(ComponentToCheck));
 
 		return false;
 	}
