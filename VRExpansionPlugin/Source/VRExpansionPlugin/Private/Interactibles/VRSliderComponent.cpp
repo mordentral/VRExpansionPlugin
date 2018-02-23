@@ -76,7 +76,12 @@ void UVRSliderComponent::BeginPlay()
 	// Call the base class 
 	Super::BeginPlay();
 
-	ResetInitialSliderLocation();
+	if (USplineComponent * ParentSpline = Cast<USplineComponent>(GetAttachParent()))
+	{
+		SetSplineComponentToFollow(ParentSpline);
+	}
+	else
+		ResetInitialSliderLocation();
 }
 
 void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -116,20 +121,19 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 			if (SplineLerpType != EVRInteractibleSliderLerpType::Lerp_None && LastInputKey >= 0.0f && !FMath::IsNearlyEqual(LerpedKey,LastInputKey))
 			{			
 				GetLerpedKey(LerpedKey, DeltaTime);	
-				trans = SplineComponentToFollow->GetTransformAtSplineInputKey(LerpedKey, ESplineCoordinateSpace::World);
+				trans = SplineComponentToFollow->GetTransformAtSplineInputKey(LerpedKey, ESplineCoordinateSpace::World,true);
 				bChangedLocation = true;
 			}
 			else if (bLerpToNewKey)
 			{
-				trans = SplineComponentToFollow->FindTransformClosestToWorldLocation(WorldCalculatedLocation, ESplineCoordinateSpace::World);
+				trans = SplineComponentToFollow->FindTransformClosestToWorldLocation(WorldCalculatedLocation, ESplineCoordinateSpace::World, true);
 				bChangedLocation = true;
 			}
 
 			if (bChangedLocation)
 			{
-				trans = trans * ParentTransform.Inverse();
 				trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
-
+				trans = trans * ParentTransform.Inverse();				
 				this->SetRelativeTransform(trans);
 			}
 		}
