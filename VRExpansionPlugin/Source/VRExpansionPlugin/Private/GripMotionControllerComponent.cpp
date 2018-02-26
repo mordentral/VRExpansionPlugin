@@ -1256,7 +1256,10 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	else
 	{
 		// Had to move in front of deletion to properly set velocity
-		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement && (OptionalLinearVelocity != FVector::ZeroVector || OptionalAngularVelocity != FVector::ZeroVector))
+		if ((bWasLocalGrip && !IsLocallyControlled()) ||
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement &&
+			(OptionalLinearVelocity != FVector::ZeroVector || OptionalAngularVelocity != FVector::ZeroVector)
+			)
 		{
 			PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
 			PrimComp->SetPhysicsAngularVelocityInDegrees(OptionalAngularVelocity);
@@ -1267,7 +1270,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	{
 		if (GetNetMode() == ENetMode::NM_Client)
 		{
-			Server_NotifyLocalGripRemoved(LocallyGrippedObjects[FoundIndex]);
+			Server_NotifyLocalGripRemoved(LocallyGrippedObjects[FoundIndex], OptionalAngularVelocity, OptionalLinearVelocity);
 				
 			// Have to call this ourselves
 			Drop_Implementation(LocallyGrippedObjects[FoundIndex], bSimulate);
@@ -3857,12 +3860,12 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 }
 
 
-bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(const FBPActorGripInformation & removeGrip)
+bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(const FBPActorGripInformation & removeGrip, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity)
 {
 	return true;
 }
 
-void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(const FBPActorGripInformation & removeGrip)
+void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(const FBPActorGripInformation & removeGrip, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity)
 {
 	FBPActorGripInformation FoundGrip;
 	EBPVRResultSwitch Result;
@@ -3870,10 +3873,6 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 
 	if (Result == EBPVRResultSwitch::OnFailed)
 		return;
-
-	FVector AngularVelocity;
-	FVector LinearVelocity;
-	GetPhysicsVelocities(removeGrip, AngularVelocity, LinearVelocity);
 
 	DropObjectByInterface(FoundGrip.GrippedObject, AngularVelocity, LinearVelocity);
 }
