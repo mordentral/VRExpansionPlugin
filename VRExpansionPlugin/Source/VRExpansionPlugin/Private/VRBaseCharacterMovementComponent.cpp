@@ -8,6 +8,8 @@
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDatatypes.h"
 #include "VRBaseCharacter.h"
+#include "VRRootComponent.h"
+#include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
 
 
@@ -53,6 +55,9 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 
 	bWasInPushBack = false;
 	bIsInPushBack = false;
+
+	// #TODO: Make default true?, and eventually remove option?
+	bRunControlRotationInMovementComponent = false;
 }
 
 void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -70,11 +75,11 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 		Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 		// See if we fell out of the world.
-		//const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
-		//if (CharacterOwner->Role == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
-		//{
-		//	return;
-		//}
+		const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
+		if (CharacterOwner->Role == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
+		{
+			return;
+		}
 
 		// If we are the owning client or the server then run the re-basing
 		if (CharacterOwner->Role > ROLE_SimulatedProxy)
@@ -90,6 +95,17 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 	}
 	else
 		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+
+	// This should be valid for both Simulated and owning clients as well as the server
+	// Better here than in perform movement
+	if (UVRRootComponent * VRRoot = Cast<UVRRootComponent>(CharacterOwner->GetCapsuleComponent()))
+	{
+		// If we didn't move the capsule, have it update itself here so the visual and physics representation is correct
+		// We do this specifically to avoid double calling into the render / physics threads.
+		if (!VRRoot->bCalledUpdateTransform)
+			VRRoot->OnUpdateTransform_Public(EUpdateTransformFlags::None, ETeleportType::None);
+	}
 }
 
 void UVRBaseCharacterMovementComponent::StartPushBackNotification(FHitResult HitResult)
@@ -433,62 +449,73 @@ void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Move
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle)
 {
+	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn;
 	MoveAction.MoveActionRot = FRotator(0.0f, DeltaYawAngle, 0.0f);
+	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation)
 {
+	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_Teleport;
 	MoveAction.MoveActionLoc = TeleportLocation;
 	MoveAction.MoveActionRot.Yaw = TeleportRotation.Yaw;
+	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_StopAllMovement()
 {
+	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_StopAllMovement;
+	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator)
 {
+	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = MoveActionToPerform;
 	MoveAction.MoveActionLoc = MoveActionVector;
 	MoveAction.MoveActionRot = MoveActionRotator;
 	MoveAction.MoveActionDataReq = DataRequirementsForMoveAction;
+	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
 bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 {
-	switch (MoveAction.MoveAction)
+	for (FVRMoveActionContainer MoveAction : MoveActionArray.MoveActions)
 	{
-	case EVRMoveAction::VRMOVEACTION_SnapTurn: 
-	{
-		return DoMASnapTurn();
-	}break;
-	case EVRMoveAction::VRMOVEACTION_Teleport:
-	{
-		return DoMATeleport(); 
-	}break;
-	case EVRMoveAction::VRMOVEACTION_StopAllMovement:
-	{
-		return DoMAStopAllMovement();
-	}break;
-	case EVRMoveAction::VRMOVEACTION_Reserved1:
-	case EVRMoveAction::VRMOVEACTION_None:
-	{}break;
-	default: // All other move actions (CUSTOM)
-	{
-		if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+		switch (MoveAction.MoveAction)
 		{
-			OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot);
+		case EVRMoveAction::VRMOVEACTION_SnapTurn:
+		{
+			/*return */DoMASnapTurn(MoveAction);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_Teleport:
+		{
+			/*return */DoMATeleport(MoveAction);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_StopAllMovement:
+		{
+			/*return */DoMAStopAllMovement(MoveAction);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_Reserved1:
+		case EVRMoveAction::VRMOVEACTION_None:
+		{}break;
+		default: // All other move actions (CUSTOM)
+		{
+			if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+			{
+				OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot);
+			}
+		}break;
 		}
-	}break;
 	}
 
-	return false;
+	return true;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMASnapTurn()
+bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
@@ -507,7 +534,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn()
 	return false;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMATeleport()
+bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
@@ -538,7 +565,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport()
 	return false;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement()
+bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement(FVRMoveActionContainer MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
@@ -902,6 +929,21 @@ void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMo
 */
 void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
+	// Scope these, they nest with Outer references so it should work fine
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
+
+	// This moves it into update scope
+	if (bRunControlRotationInMovementComponent && IsLocallyControlled())
+	{
+		if (AVRPlayerController * PC = Cast<AVRPlayerController>(CharacterOwner->GetController()))
+		{
+			PC->RotationInput = PC->LastRotationInput;
+			PC->UpdateRotation(DeltaSeconds);
+			PC->LastRotationInput = FRotator::ZeroRotator;
+			PC->RotationInput = FRotator::ZeroRotator;
+		}
+	}
+
 	if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//None)
 	{
 		if (VRReplicatedMovementMode <= EVRConjoinedMovementModes::C_MOVE_MAX)
@@ -920,7 +962,7 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
 	}
 
-	// Handle move actions here
+	// Handle move actions here - Should be scoped
 	CheckForMoveAction();
 
 	// Clear out this flag prior to movement so we can see if it gets changed
@@ -933,7 +975,12 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	// Make sure these are cleaned out for the next frame
 	AdditionalVRInputVector = FVector::ZeroVector;
 	CustomVRInputVector = FVector::ZeroVector;
-	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_None;
+
+	// Only clear it here if we are the server, the client clears it later
+	if (CharacterOwner->Role == ROLE_Authority)
+	{
+		MoveActionArray.Clear();
+	}
 }
 
 void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
@@ -945,7 +992,7 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		{
 
 			// Saving this out early because it will be wiped before the PostUpdate gets the values
-			ConditionalValues.MoveAction.MoveAction = moveComp->MoveAction.MoveAction;
+			//ConditionalValues.MoveAction.MoveAction = moveComp->MoveAction.MoveAction;
 
 			VRReplicatedMovementMode = moveComp->VRReplicatedMovementMode;
 
@@ -982,7 +1029,16 @@ void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostU
 {
 	FSavedMove_Character::PostUpdate(C, PostUpdateMode);
 
-	if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
+	// See if we can get the VR capsule location
+	if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
+	{
+		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
+		{
+			ConditionalValues.MoveActionArray = moveComp->MoveActionArray;
+			moveComp->MoveActionArray.Clear();
+		}
+	}
+	/*if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
 	{
 		// See if we can get the VR capsule location
 		if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
@@ -1003,7 +1059,7 @@ void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostU
 		{
 			ConditionalValues.MoveAction.Clear();
 		}
-	}
+	}*/
 }
 
 void FSavedMove_VRBaseCharacter::Clear()
@@ -1016,7 +1072,8 @@ void FSavedMove_VRBaseCharacter::Clear()
 
 	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
 	ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-	ConditionalValues.MoveAction.Clear();
+	ConditionalValues.MoveActionArray.Clear();
+	//ConditionalValues.MoveAction.Clear();
 
 	FSavedMove_Character::Clear();
 }
@@ -1027,7 +1084,8 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 
 	if (BaseCharMove)
 	{
-		BaseCharMove->MoveAction = ConditionalValues.MoveAction; 
+		BaseCharMove->MoveActionArray = ConditionalValues.MoveActionArray;
+		//BaseCharMove->MoveAction = ConditionalValues.MoveAction; 
 		BaseCharMove->CustomVRInputVector = ConditionalValues.CustomVRInputVector;//this->CustomVRInputVector;
 		BaseCharMove->VRReplicatedMovementMode = this->VRReplicatedMovementMode;
 	}
@@ -1159,5 +1217,35 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 		{
 			// Unhandled mode
 		}
+	}
+}
+
+FVRCharacterScopedMovementUpdate::FVRCharacterScopedMovementUpdate(USceneComponent* Component, EScopedUpdate::Type ScopeBehavior, bool bRequireOverlapsEventFlagToQueueOverlaps)
+	: FScopedMovementUpdate(Component, ScopeBehavior, bRequireOverlapsEventFlagToQueueOverlaps)
+{
+	UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
+	if (RootComponent)
+	{
+		InitialVRTransform = RootComponent->OffsetComponentToWorld;
+	}
+}
+
+void FVRCharacterScopedMovementUpdate::RevertMove()
+{
+	bool bTransformIsDirty = IsTransformDirty();
+
+	FScopedMovementUpdate::RevertMove();
+
+	UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
+	if (RootComponent)
+	{
+		// If the base class was going to miss bad overlaps, ie: the offsetcomponent to world is different but the transform isn't
+		if (!bTransformIsDirty && !IsDeferringUpdates() && !InitialVRTransform.Equals(RootComponent->OffsetComponentToWorld))
+		{
+			RootComponent->UpdateOverlaps();
+		}
+
+		// Fix offset
+		RootComponent->GenerateOffsetToWorld();
 	}
 }

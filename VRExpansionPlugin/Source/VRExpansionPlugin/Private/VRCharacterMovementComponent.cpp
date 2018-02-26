@@ -578,6 +578,8 @@ void UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementat
 	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
 	MoveRepsOld.UnpackAndSetINTRotations(View0);
 
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 	// First move received didn't use root motion, process it as such.
 	CharacterOwner->bServerMoveIgnoreRootMotion = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
 	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, OldConditionalReps, OldLFDiff, OldCapsuleYaw, PendingFlags, MoveRepsOld, ClientMovementMode);
@@ -613,6 +615,8 @@ void UVRCharacterMovementComponent::ServerMoveVRDual_Implementation(
 	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
 	MoveRepsOld.UnpackAndSetINTRotations(View0);
 
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, OldConditionalReps, OldLFDiff, OldCapsuleYaw, PendingFlags, MoveRepsOld, ClientMovementMode);
 	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, ConditionalReps, LFDiff, CapsuleYaw, NewFlags, MoveReps, ClientMovementMode);
 }
@@ -642,6 +646,8 @@ void UVRCharacterMovementComponent::ServerMoveVRDualExLight_Implementation(
 	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
 	MoveRepsOld.UnpackAndSetINTRotations(View0);
 
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 	ServerMoveVR_Implementation(TimeStamp0, FVector::ZeroVector, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, OldConditionalReps, OldLFDiff, OldCapsuleYaw, PendingFlags,  MoveRepsOld, ClientMovementMode);
 	ServerMoveVR_Implementation(TimeStamp, FVector::ZeroVector, ClientLoc, CapsuleLoc, ConditionalReps, LFDiff, CapsuleYaw, NewFlags, MoveReps, ClientMovementMode);
 }
@@ -684,6 +690,9 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	{
 		return;
 	}
+
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
 	bool bServerReadyForClient = true;
 	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
@@ -737,7 +746,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 		}
 
 		CustomVRInputVector = ConditionalReps.CustomVRInputVector;
-		MoveAction = ConditionalReps.MoveAction;
+		MoveActionArray = ConditionalReps.MoveActionArray;
 
 		// Set capsule location prior to testing movement
 		// I am overriding the replicated value here when movement is made on purpose

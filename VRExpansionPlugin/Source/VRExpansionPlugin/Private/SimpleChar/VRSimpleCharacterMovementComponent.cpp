@@ -1695,7 +1695,7 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 			VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
 
 		CustomVRInputVector = ConditionalReps.CustomVRInputVector;//CustVRInputVector;
-		MoveAction = ConditionalReps.MoveAction;
+		MoveActionArray = ConditionalReps.MoveActionArray;
 
 		MoveAutonomous(TimeStamp, DeltaTime, MoveFlags, Accel);
 		bHasRequestedVelocity = false;

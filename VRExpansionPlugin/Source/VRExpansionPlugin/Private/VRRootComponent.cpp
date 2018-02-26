@@ -272,6 +272,8 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	bUseWalkingCollisionOverride = false;
 	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
 
+	bCalledUpdateTransform = false;
+
 	CanCharacterStepUpOn = ECB_No;
 	bShouldUpdatePhysicsVolume = true;
 	bCheckAsyncSceneOnMove = false;
@@ -401,6 +403,14 @@ void UVRRootComponent::BeginPlay()
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+	UVRBaseCharacterMovementComponent * CharMove = nullptr;
+
+	// Need these for passing physics updates to character movement
+	if (ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner()))
+	{
+		CharMove = Cast<UVRBaseCharacterMovementComponent>(OwningCharacter->GetCharacterMovement());
+	}
+
 	if (IsLocallyControlled())
 	{
 		if (OptionalWaistTrackingParent.IsValid())
@@ -440,13 +450,18 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
 
-			ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner());
-			UVRBaseCharacterMovementComponent * CharMove = nullptr;
+			bCalledUpdateTransform = false;
 
-			if (OwningCharacter != nullptr)
-				CharMove = Cast<UVRBaseCharacterMovementComponent>(OwningCharacter->GetCharacterMovement());
-
-			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+			// If the character movement doesn't exist or is not active/ticking
+			if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())
+			{
+				OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+			}
+			else // Let the character movement move the capsule instead
+			{
+				// Skip physics update, let the movement component handle it instead
+				OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
+			}
 
 			FHitResult OutHit;
 			FCollisionQueryParams Params("RelativeMovementSweep", false, GetOwner());
@@ -514,7 +529,25 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		// Store a leveled yaw value here so it is only calculated once
 		StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 
-		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+		// Can adjust the relative tolerances to remove jitter and some update processing
+		if (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f))
+		{
+			bCalledUpdateTransform = false;
+
+			// If the character movement doesn't exist or is not active/ticking
+			if (!CharMove || !CharMove->IsActive())
+			{
+				OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+			}
+			else // Let the character movement move the capsule instead
+			{
+				// Skip physics update, let the movement component handle it instead
+				OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
+			}
+
+			lastCameraRot = curCameraRot;
+			lastCameraLoc = curCameraLoc;
+		}
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -531,32 +564,38 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
 {
 	GenerateOffsetToWorld();
-
-	if (this->ShouldRender() && this->SceneProxy)
+	// Using the physics flag for all of this anyway, no reason for a custom flag, it handles it fine
+	if (!(UpdateTransformFlags & EUpdateTransformFlags::SkipPhysicsUpdate))
 	{
-		ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
-			FDrawCylinderTransformUpdate,
-			FDrawVRCylinderSceneProxy*, CylinderSceneProxy, (FDrawVRCylinderSceneProxy*)SceneProxy,
-			FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
-			{
-				CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
-			}
-		);
-	}
+		bCalledUpdateTransform = true;
 
-	// Don't want to call primitives version, and the scenecomponents version does nothing
-	//Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
-
-	// Always send new transform to physics
-	if (bPhysicsStateCreated && !(UpdateTransformFlags & EUpdateTransformFlags::SkipPhysicsUpdate))
-	{
-		//If we update transform of welded bodies directly (i.e. on the actual component) we need to update the shape transforms of the parent.
-		//If the parent is updated, any welded shapes are automatically updated so we don't need to do this physx update.
-		//If the parent is updated and we are NOT welded, the child still needs to update physx
-		const bool bTransformSetDirectly = !(UpdateTransformFlags & EUpdateTransformFlags::PropagateFromParent);
-		if (bTransformSetDirectly || !IsWelded())
+		// Just using the 
+		if (this->ShouldRender() && this->SceneProxy)
 		{
-			SendPhysicsTransform(Teleport);
+			ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
+				FDrawCylinderTransformUpdate,
+				FDrawVRCylinderSceneProxy*, CylinderSceneProxy, (FDrawVRCylinderSceneProxy*)SceneProxy,
+				FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
+				{
+					CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
+				}
+			);
+		}
+
+		// Don't want to call primitives version, and the scenecomponents version does nothing
+		//Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
+
+		// Always send new transform to physics
+		if (bPhysicsStateCreated)
+		{
+			//If we update transform of welded bodies directly (i.e. on the actual component) we need to update the shape transforms of the parent.
+			//If the parent is updated, any welded shapes are automatically updated so we don't need to do this physx update.
+			//If the parent is updated and we are NOT welded, the child still needs to update physx
+			const bool bTransformSetDirectly = !(UpdateTransformFlags & EUpdateTransformFlags::PropagateFromParent);
+			if (bTransformSetDirectly || !IsWelded())
+			{
+				SendPhysicsTransform(Teleport);
+			}
 		}
 	}
 }

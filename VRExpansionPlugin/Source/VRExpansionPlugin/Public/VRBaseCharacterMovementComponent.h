@@ -5,7 +5,6 @@
 #include "VRBPDatatypes.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
-
 /** Shared pointer for easy memory management of FSavedMove_Character, for accumulating and replaying network moves. */
 //typedef TSharedPtr<class FSavedMove_Character> FSavedMovePtr;
 
@@ -127,6 +126,78 @@ struct TStructOpsTypeTraits< FVRMoveActionContainer > : public TStructOpsTypeTra
 	};
 };
 
+USTRUCT()
+struct VREXPANSIONPLUGIN_API FVRMoveActionArray
+{
+	GENERATED_USTRUCT_BODY()
+public:
+	UPROPERTY()
+		TArray<FVRMoveActionContainer> MoveActions;
+
+	void Clear()
+	{
+		MoveActions.Empty();
+	}
+	/** Network serialization */
+	// Doing a custom NetSerialize here because this is sent via RPCs and should change on every update
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+		uint8 MoveActionCount = (uint8)MoveActions.Num();
+		bool bHasAMoveAction = MoveActionCount > 0;
+		Ar.SerializeBits(&bHasAMoveAction, 1);
+
+		if (bHasAMoveAction)
+		{
+			bool bHasMoreThanOneMoveAction = MoveActionCount > 1;
+			Ar.SerializeBits(&bHasMoreThanOneMoveAction, 1);
+
+			if (Ar.IsSaving())
+			{
+				if (bHasMoreThanOneMoveAction)
+				{
+					Ar << MoveActionCount;
+
+					for (int i = 0; i < MoveActionCount; i++)
+					{
+						bOutSuccess &= MoveActions[i].NetSerialize(Ar, Map, bOutSuccess);
+					}
+				}
+				else
+				{
+					bOutSuccess &= MoveActions[0].NetSerialize(Ar, Map, bOutSuccess);
+				}
+			}
+			else
+			{
+				if (bHasMoreThanOneMoveAction)
+				{
+					Ar << MoveActionCount;
+				}
+				else
+					MoveActionCount = 1;
+
+				for (int i = 0; i < MoveActionCount; i++)
+				{
+					FVRMoveActionContainer MoveAction;
+					bOutSuccess &= MoveAction.NetSerialize(Ar, Map, bOutSuccess);
+					MoveActions.Add(MoveAction);
+				}
+			}
+		}
+
+		return bOutSuccess;
+	}
+};
+template<>
+struct TStructOpsTypeTraits< FVRMoveActionArray > : public TStructOpsTypeTraitsBase2<FVRMoveActionArray>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
 
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FVRConditionalMoveRep
@@ -139,11 +210,8 @@ public:
 	UPROPERTY(Transient)
 		FVector RequestedVelocity;
 	UPROPERTY(Transient)
-		FVector MoveActionLoc;
-	UPROPERTY(Transient)
-		FRotator MoveActionRot;
-	UPROPERTY(Transient)
-		FVRMoveActionContainer MoveAction;
+		FVRMoveActionArray MoveActionArray;
+		//FVRMoveActionContainer MoveAction;
 
 	FVRConditionalMoveRep()
 	{
@@ -159,7 +227,7 @@ public:
 
 		bool bHasVRinput = !CustomVRInputVector.IsZero();
 		bool bHasRequestedVelocity = !RequestedVelocity.IsZero();
-		bool bHasMoveAction = MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None;
+		bool bHasMoveAction = MoveActionArray.MoveActions.Num() > 0;//MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None;
 
 		bool bHasAnyProperties = bHasVRinput || bHasRequestedVelocity || bHasMoveAction;
 		Ar.SerializeBits(&bHasAnyProperties, 1);
@@ -168,7 +236,7 @@ public:
 		{
 			Ar.SerializeBits(&bHasVRinput, 1);
 			Ar.SerializeBits(&bHasRequestedVelocity, 1);
-			Ar.SerializeBits(&bHasMoveAction, 1);
+			//Ar.SerializeBits(&bHasMoveAction, 1);
 
 			if (bHasVRinput)
 				bOutSuccess &= SerializePackedVector<100, 30>(CustomVRInputVector, Ar);
@@ -176,8 +244,8 @@ public:
 			if (bHasRequestedVelocity)
 				bOutSuccess &= SerializePackedVector<100, 30>(RequestedVelocity, Ar);
 
-			if (bHasMoveAction)
-				MoveAction.NetSerialize(Ar, Map, bOutSuccess);
+			//if (bHasMoveAction)
+			MoveActionArray.NetSerialize(Ar, Map, bOutSuccess);
 		}
 
 		return bOutSuccess;
@@ -361,7 +429,7 @@ public:
 		if (!nMove || (VRReplicatedMovementMode != nMove->VRReplicatedMovementMode))
 			return false;
 
-		if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None || nMove->ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
+		if (ConditionalValues.MoveActionArray.MoveActions.Num() > 0 || nMove->ConditionalValues.MoveActionArray.MoveActions.Num() > 0)
 			return false;
 
 		if (!ConditionalValues.CustomVRInputVector.IsZero() || !nMove->ConditionalValues.CustomVRInputVector.IsZero())
@@ -393,7 +461,7 @@ public:
 		if (!ConditionalValues.RequestedVelocity.IsZero())
 			return true;
 
-		if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
+		if (ConditionalValues.MoveActionArray.MoveActions.Num() > 0)
 			return true;
 
 		// #TODO: What to do here?
@@ -411,6 +479,18 @@ public:
 	virtual void PostUpdate(ACharacter* C, EPostUpdateMode PostUpdateMode) override;
 };
 
+// Using this fixes the problem where the character capsule isn't reset after a scoped movement update revert (pretty much just in StepUp operations)
+class VREXPANSIONPLUGIN_API FVRCharacterScopedMovementUpdate : public FScopedMovementUpdate
+{
+public:
+
+	FVRCharacterScopedMovementUpdate(USceneComponent* Component, EScopedUpdate::Type ScopeBehavior = EScopedUpdate::DeferredUpdates, bool bRequireOverlapsEventFlagToQueueOverlaps = true);
+
+	FTransform InitialVRTransform;
+
+	/** Revert movement to the initial location of the Component at the start of the scoped update. Also clears pending overlaps and sets bHasMoved to false. */
+	void RevertMove();
+};
 
 UCLASS()
 class VREXPANSIONPLUGIN_API UVRBaseCharacterMovementComponent : public UCharacterMovementComponent
@@ -483,12 +563,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator);
 
-	FVRMoveActionContainer MoveAction;
+	FVRMoveActionArray MoveActionArray;
 
 	bool CheckForMoveAction();
-	bool DoMASnapTurn();
-	bool DoMATeleport();
-	bool DoMAStopAllMovement();
+	bool DoMASnapTurn(FVRMoveActionContainer MoveAction);
+	bool DoMATeleport(FVRMoveActionContainer MoveAction);
+	bool DoMAStopAllMovement(FVRMoveActionContainer MoveAction);
 
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;
@@ -558,6 +638,11 @@ public:
 	// Make sure that you set simulating objects to the physics body channel if you want this to work correctly
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
 		bool bIgnoreSimulatingComponentsInFloorCheck;
+
+	// If true will run the control rotation in the CMC instead of in the player controller
+	// This puts the player rotation into the scoped movement (perf savings) and also ensures it is properly rotated prior to movement
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
+		bool bRunControlRotationInMovementComponent;
 
 	// Moved into compute floor dist
 	// Option to Skip simulating components when looking for floor

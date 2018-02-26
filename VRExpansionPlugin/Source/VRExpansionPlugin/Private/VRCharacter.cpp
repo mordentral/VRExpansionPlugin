@@ -39,7 +39,16 @@ bool AVRCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestR
 
 	if (bTeleportSucceeded)
 	{
-		NotifyOfTeleport();
+		if (GetNetMode() != ENetMode::NM_Client)
+		{
+			NotifyOfTeleport();
+		}
+
+		if (LeftMotionController)
+			LeftMotionController->bIsPostTeleport = true;
+
+		if (RightMotionController)
+			RightMotionController->bIsPostTeleport = true;
 	}
 
 	return bTeleportSucceeded;
@@ -47,15 +56,14 @@ bool AVRCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestR
 
 void AVRCharacter::NotifyOfTeleport_Implementation()
 {
-	// Regenerate the capsule offset location - Should be done anyway in the move_impl function, but playing it safe
-	if (VRRootReference)
-		VRRootReference->GenerateOffsetToWorld();
+	if (!IsLocallyControlled())
+	{
+		if (LeftMotionController)
+			LeftMotionController->bIsPostTeleport = true;
 
-	if (LeftMotionController)
-		LeftMotionController->PostTeleportMoveGrippedObjects();
-
-	if (RightMotionController)
-		RightMotionController->PostTeleportMoveGrippedObjects();
+		if (RightMotionController)
+			RightMotionController->bIsPostTeleport = true;
+	}
 }
 
 FVector AVRCharacter::GetNavAgentLocation() const

@@ -103,7 +103,16 @@ bool AVRSimpleCharacter::TeleportTo(const FVector& DestLocation, const FRotator&
 
 	if (bTeleportSucceeded)
 	{
-		NotifyOfTeleport();
+		if (GetNetMode() != ENetMode::NM_Client)
+		{
+			NotifyOfTeleport();
+		}
+
+		if (LeftMotionController)
+			LeftMotionController->bIsPostTeleport = true;
+
+		if (RightMotionController)
+			RightMotionController->bIsPostTeleport = true;
 	}
 
 	return bTeleportSucceeded;

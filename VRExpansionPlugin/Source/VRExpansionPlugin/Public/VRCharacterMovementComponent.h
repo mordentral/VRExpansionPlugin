@@ -43,42 +43,6 @@ class AVRCharacter;
 
 //DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FAIMoveCompletedSignature, FAIRequestID, RequestID, EPathFollowingResult::Type, Result);
 
-// Using this fixes the problem where the character capsule isn't reset after a scoped movement update revert (pretty much just in StepUp operations)
-class VREXPANSIONPLUGIN_API FVRCharacterScopedMovementUpdate : public FScopedMovementUpdate
-{
-public:
-
-	FVRCharacterScopedMovementUpdate(USceneComponent* Component, EScopedUpdate::Type ScopeBehavior = EScopedUpdate::DeferredUpdates, bool bRequireOverlapsEventFlagToQueueOverlaps = true)
-		: FScopedMovementUpdate(Component, ScopeBehavior, bRequireOverlapsEventFlagToQueueOverlaps)
-	{
-		UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
-		if (RootComponent)
-		{
-			InitialVRTransform = RootComponent->OffsetComponentToWorld;
-		}
-	}
-
-	FTransform InitialVRTransform;
-
-	/** Revert movement to the initial location of the Component at the start of the scoped update. Also clears pending overlaps and sets bHasMoved to false. */
-	void RevertMove()
-	{
-		UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
-		if (RootComponent)
-		{
-			// If the base class is going to miss bad overlaps
-			if (!IsTransformDirty() && !InitialVRTransform.Equals(RootComponent->OffsetComponentToWorld))
-			{
-				RootComponent->UpdateOverlaps();
-			}
-
-			FScopedMovementUpdate::RevertMove();
-			RootComponent->GenerateOffsetToWorld();
-		}
-	}
-};
-
-
 UCLASS()
 class VREXPANSIONPLUGIN_API UVRCharacterMovementComponent : public UVRBaseCharacterMovementComponent
 {

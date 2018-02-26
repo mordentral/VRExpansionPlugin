@@ -706,6 +706,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	void PostTeleportMoveGrippedObjects();
 
+	bool bIsPostTeleport;
+
 	// Move a single gripped item back into position ignoring collision in the way
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool TeleportMoveGrippedActor(AActor * GrippedActorToMove);
@@ -715,7 +717,8 @@ public:
 	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
+	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bIsForPostTeleport = false);
+	bool TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bIsForPostTeleport, FTransform & OptionalTransform);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
