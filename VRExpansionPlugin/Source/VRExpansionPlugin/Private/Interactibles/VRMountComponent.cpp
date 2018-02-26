@@ -19,7 +19,6 @@ UVRMountComponent::UVRMountComponent(const FObjectInitializer& ObjectInitializer
 	Stiffness = 1500.0f;
 	Damping = 200.0f;
 
-	ParentComponent = nullptr;
 	MountRotationAxis = EVRInteractibleMountAxis::Axis_XZ;
 
 
@@ -90,7 +89,7 @@ void UVRMountComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 {
 	// Handle manual tracking here
 
-	FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
 
 	switch (MountRotationAxis)
@@ -209,8 +208,16 @@ void UVRMountComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 				bIsInsideFrontFlipingZone = true;
 
 				//Up and Right Vector when entering the FlipZone. Parent Rotation is accounted for.
-				EntryUpVec = ParentComponent->GetComponentRotation().UnrotateVector(GetUpVector());
-				EntryRightVec = ParentComponent->GetComponentRotation().UnrotateVector(GetRightVector());
+				if (USceneComponent * ParentComp = GetAttachParent())
+				{
+					EntryUpVec = ParentComp->GetComponentRotation().UnrotateVector(GetUpVector());
+					EntryRightVec = ParentComp->GetComponentRotation().UnrotateVector(GetRightVector());
+				}
+				else
+				{
+					EntryUpVec = GetUpVector();
+					EntryRightVec = GetRightVector();
+				}
 
 				//Only relative x and y is important for a Mount which has XY rotation limitation for the flip plane.
 				EntryUpXYNeg = FVector(EntryUpVec.X, EntryUpVec.Y, 0).GetSafeNormal()*-1;
@@ -250,7 +257,11 @@ void UVRMountComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 				{
 					//If Mount Rotation is still inside FrontFlipZone ajust the roll so it looks naturally when moving the Mount against the FlipPlane
 
-					FVector RelativeUpVec = ParentComponent->GetComponentRotation().UnrotateVector(GetUpVector());
+					FVector RelativeUpVec = GetUpVector();
+					
+					if(USceneComponent * ParentComp = GetAttachParent())
+						RelativeUpVec = ParentComp->GetComponentRotation().UnrotateVector(RelativeUpVec);
+
 					FVector CurrentUpVec = FVector(RelativeUpVec.X, RelativeUpVec.Y, 0).GetSafeNormal();
 
 					//If rotating over the top ajust relative UpVector
@@ -342,19 +353,16 @@ void UVRMountComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 }
 
 void UVRMountComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation)
-{
-	ParentComponent = this->GetAttachParent();
-
-	
-	
-	FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
+{	
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 
 	// This lets me use the correct original location over the network without changes
-	FTransform RelativeToGripTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale()) * this->GetComponentTransform();
+	FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
+	FTransform RelativeToGripTransform = ReversedRelativeTransform * this->GetComponentTransform();
 
 	//continue here CurToForwardAxis is based on last gripped location ---> change this
 	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
-	InitialInteractorDropLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
+	InitialInteractorDropLocation = ReversedRelativeTransform.GetTranslation();
 
 	switch (MountRotationAxis)
 	{
@@ -364,9 +372,16 @@ void UVRMountComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 
 		qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
 
-		InitialForwardVector = InitialInteractorLocation.Size() * ParentComponent->GetComponentRotation().UnrotateVector(GetForwardVector());
+		FVector ForwardVectorToUse = GetForwardVector();
 
-		if (FVector::DotProduct(InitialInteractorLocation, ParentComponent->GetComponentRotation().UnrotateVector(GetForwardVector())) <= 0)
+		if (USceneComponent * ParentComp = GetAttachParent())
+		{
+			ForwardVectorToUse = ParentComp->GetComponentRotation().UnrotateVector(ForwardVectorToUse);
+		}
+
+		InitialForwardVector = InitialInteractorLocation.Size() * ForwardVectorToUse;
+
+		if (FVector::DotProduct(InitialInteractorLocation, ForwardVectorToUse) <= 0)
 		{
 			GrippedOnBack = true;
 			InitialGripToForwardVec = (InitialForwardVector + InitialInteractorLocation);

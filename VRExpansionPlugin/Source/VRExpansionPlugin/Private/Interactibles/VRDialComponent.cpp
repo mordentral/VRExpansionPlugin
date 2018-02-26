@@ -76,14 +76,10 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 {
 
 	// Handle the auto drop
-	if (GrippingController->HasGripAuthority(GripInformation))
+	if (GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
 	{
-		FVector CurInteractorLocation = GrippingController->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform()).GetTranslation();
-		if (FVector::DistSquared(InitialInteractorLocation, CurInteractorLocation) >= FMath::Square(BreakDistance))
-		{
-			GrippingController->DropObjectByInterface(this);
-			return;
-		}
+		GrippingController->DropObjectByInterface(this);
+		return;
 	}
 
 	FRotator curRotation = GrippingController->GetComponentRotation();
@@ -96,11 +92,17 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 
 void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
-	// This lets me use the correct original location over the network without changes
-	FTransform RelativeToGripTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale()) * this->GetComponentTransform();
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 
-	InitialInteractorLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
-	
+	// This lets me use the correct original location over the network without changes
+	FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
+	FTransform RelativeToGripTransform = ReversedRelativeTransform * this->GetComponentTransform();
+
+	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
+	InitialDropLocation = ReversedRelativeTransform.GetTranslation();
+
+	//InitialInteractorLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
+
 	// Need to rotate this by original hand to dial facing eventually
 	LastRotation = RelativeToGripTransform.GetRotation().Rotator(); // Forcing into world space now so that initial can be correct over the network
 	this->SetComponentTickEnabled(true);

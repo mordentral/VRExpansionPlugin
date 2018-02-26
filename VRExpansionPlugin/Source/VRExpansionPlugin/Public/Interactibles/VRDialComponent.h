@@ -8,6 +8,7 @@
 #include "VRGripInterface.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
+#include "VRInteractibleFunctionLibrary.h"
 
 
 #include "VRDialComponent.generated.h"
@@ -64,11 +65,11 @@ class VREXPANSIONPLUGIN_API UVRDialComponent : public UStaticMeshComponent, publ
 		int GripPriority;
 
 	FTransform InitialRelativeTransform;
+	FVector InitialInteractorLocation;
+	FVector InitialDropLocation;
 	float CurRotBackEnd;
 	FRotator LastRotation;
 	float LastSnapAngle;
-
-	FVector InitialInteractorLocation;
 
 	// Should be called after the dial is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")

@@ -8,6 +8,7 @@
 #include "VRGripInterface.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
+#include "VRInteractibleFunctionLibrary.h"
 #include "PhysicsEngine/ConstraintInstance.h"
 
 #include "PhysicsPublic.h"

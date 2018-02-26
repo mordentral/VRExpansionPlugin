@@ -212,7 +212,6 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	default:break;
 	}
 
-	// #TODO: This drop code is incorrect, it is based off of the initial point and not the location at grip - revise it at some point
 	// Also set it to after rotation
 	if (GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
 	{
@@ -234,10 +233,11 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 		FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
 			
 		// This lets me use the correct original location over the network without changes
-		FTransform RelativeToGripTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale()) * this->GetComponentTransform();
+		FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
+		FTransform RelativeToGripTransform = ReversedRelativeTransform * this->GetComponentTransform();
 
 		InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
-		InitialInteractorDropLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
+		InitialInteractorDropLocation = ReversedRelativeTransform.GetTranslation();
 
 
 		switch (LeverRotationAxis)

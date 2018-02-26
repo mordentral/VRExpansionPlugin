@@ -9,6 +9,7 @@
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
 #include "Components/SplineComponent.h"
+#include "VRInteractibleFunctionLibrary.h"
 
 #include "VRSliderComponent.generated.h"
 
@@ -85,18 +86,59 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	FVector InitialGripLoc;
 	FVector InitialDropLocation;
 
+	// Forcefully sets the slider progress to the defined value
+	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
+		void SetSliderProgress(float NewSliderProgress)
+	{
+		NewSliderProgress = FMath::Clamp(NewSliderProgress, 0.0f, 1.0f);
+
+		if (SplineComponentToFollow != nullptr)
+		{
+			FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+			float splineProgress = SplineComponentToFollow->GetSplineLength() * NewSliderProgress;
+			
+			if (bFollowSplineRotationAndScale)
+			{
+				FTransform trans = SplineComponentToFollow->GetTransformAtDistanceAlongSpline(splineProgress, ESplineCoordinateSpace::World, true);
+				trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
+				trans = trans * ParentTransform.Inverse();
+				this->SetRelativeTransform(trans);
+			}
+			else
+			{
+				this->SetRelativeLocation(ParentTransform.InverseTransformPosition(SplineComponentToFollow->GetLocationAtDistanceAlongSpline(splineProgress, ESplineCoordinateSpace::World)));
+			}
+		}
+		else // Not a spline follow
+		{
+			FVector CalculatedLocation = FMath::Lerp(-MinSlideDistance, MaxSlideDistance, NewSliderProgress);
+			FVector ClampedLocation = ClampSlideVector(CalculatedLocation);
+
+			if (bSlideDistanceIsInParentSpace)
+				this->SetRelativeLocation(InitialRelativeTransform.TransformPositionNoScale(ClampedLocation));
+			else
+				this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
+		}
+
+		CurrentSliderProgress = NewSliderProgress;
+	}
+
 	// Should be called after the slider is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
 	void ResetInitialSliderLocation()
 	{
+		// Get our initial relative transform to our parent (or not if un-parented).
+		InitialRelativeTransform = this->GetRelativeTransform();
+		FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+
 		if (SplineComponentToFollow != nullptr)
 		{
-			// Snap to start of spline
-			FTransform WorldTransform = SplineComponentToFollow->GetTransformAtSplinePoint(0, ESplineCoordinateSpace::World);
-
+			FTransform WorldTransform = SplineComponentToFollow->FindTransformClosestToWorldLocation(this->GetComponentLocation(), ESplineCoordinateSpace::World, true);
 			if (bFollowSplineRotationAndScale)
 			{
-				this->SetWorldLocationAndRotation(WorldTransform.GetLocation(), WorldTransform.GetRotation());
+				WorldTransform.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
+				WorldTransform = WorldTransform * ParentTransform.Inverse();
+				this->SetRelativeTransform(WorldTransform);
 			}
 			else
 			{
@@ -105,9 +147,6 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 			GetCurrentSliderProgress(WorldTransform.GetLocation());
 		}
-
-		// Get our initial relative transform to our parent (or not if un-parented).
-		InitialRelativeTransform = this->GetRelativeTransform();
 
 		if(SplineComponentToFollow == nullptr)
 			CurrentSliderProgress = GetCurrentSliderProgress(FVector(0, 0, 0));
@@ -135,18 +174,6 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 		}break;
 
 		default: break;
-		}
-	}
-	FTransform GetCurrentParentTransform()
-	{
-		if (ParentComponent.IsValid())
-		{
-			// during grip there is no parent so we do this, might as well do it anyway for lerping as well
-			return ParentComponent->GetComponentTransform();
-		}
-		else
-		{
-			return FTransform::Identity;
 		}
 	}
 
@@ -237,8 +264,6 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
-
-	TWeakObjectPtr<USceneComponent> ParentComponent;
 
 	// Grip interface setup
 

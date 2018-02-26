@@ -496,7 +496,12 @@ public:
 	bool bApplyAdditionalVRInputVectorAsNegative;
 	
 	// Rewind the relative movement that we had with the HMD
-	inline void RewindVRRelativeMovement();
+	inline void RewindVRRelativeMovement()
+	{
+		//FHitResult AHit;
+		MoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false);
+		//SafeMoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false, AHit);
+	}
 
 	// Rewind the relative movement that we had with the HMD, this is exposed to Blueprint so that custom movement modes can use it to rewind prior to movement actions.
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
