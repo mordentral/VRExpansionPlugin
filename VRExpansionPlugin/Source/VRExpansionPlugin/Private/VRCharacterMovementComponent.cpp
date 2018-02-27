@@ -58,44 +58,6 @@ namespace CharacterMovementComponentStatics
 	static const FName ImmersionDepthName = FName(TEXT("MovementComp_Character_ImmersionDepth"));
 }
 
-/**
-* Helper to change mesh bone updates within a scope.
-* Example usage:
-*	{
-*		FScopedPreventMeshBoneUpdate ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
-*		// Do something to move mesh, bones will not update
-*	}
-*	// Movement of mesh at this point will use previous setting.
-*/
-struct FScopedMeshBoneUpdateOverride
-{
-	FScopedMeshBoneUpdateOverride(USkeletalMeshComponent* Mesh, EKinematicBonesUpdateToPhysics::Type OverrideSetting)
-		: MeshRef(Mesh)
-	{
-		if (MeshRef)
-		{
-			// Save current state.
-			SavedUpdateSetting = MeshRef->KinematicBonesUpdateType;
-			// Override bone update setting.
-			MeshRef->KinematicBonesUpdateType = OverrideSetting;
-		}
-	}
-
-	~FScopedMeshBoneUpdateOverride()
-	{
-		if (MeshRef)
-		{
-			// Restore bone update flag.
-			MeshRef->KinematicBonesUpdateType = SavedUpdateSetting;
-		}
-	}
-
-private:
-	USkeletalMeshComponent * MeshRef;
-	EKinematicBonesUpdateToPhysics::Type SavedUpdateSetting;
-};
-
-
 void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 {
 	if (!HasValidData())
@@ -1408,7 +1370,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 			// Note: this must be before the FScopedMovementUpdate below, since that scope is what actually moves the character and mesh.
 			
 			AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);
-			FScopedMeshBoneUpdateOverride ScopedNoMeshBoneUpdate(BaseCharacter != nullptr ? BaseCharacter->GetIKMesh() : CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+			FScopedMeshBoneUpdateOverrideVR ScopedNoMeshBoneUpdate(BaseCharacter != nullptr ? BaseCharacter->GetIKMesh() : CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
 
 			// Accumulate multiple transform updates until scope ends.
 			/*FScopedMovementUpdate*/  FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);

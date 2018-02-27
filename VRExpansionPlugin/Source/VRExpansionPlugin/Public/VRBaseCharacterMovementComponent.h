@@ -359,6 +359,44 @@ struct TStructOpsTypeTraits< FVRConditionalMoveRep2 > : public TStructOpsTypeTra
 	};
 };
 
+/**
+* Helper to change mesh bone updates within a scope.
+* Example usage:
+*	{
+*		FScopedPreventMeshBoneUpdate ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+*		// Do something to move mesh, bones will not update
+*	}
+*	// Movement of mesh at this point will use previous setting.
+*/
+struct FScopedMeshBoneUpdateOverrideVR
+{
+	FScopedMeshBoneUpdateOverrideVR(USkeletalMeshComponent* Mesh, EKinematicBonesUpdateToPhysics::Type OverrideSetting)
+		: MeshRef(Mesh)
+	{
+		if (MeshRef)
+		{
+			// Save current state.
+			SavedUpdateSetting = MeshRef->KinematicBonesUpdateType;
+			// Override bone update setting.
+			MeshRef->KinematicBonesUpdateType = OverrideSetting;
+		}
+	}
+
+	~FScopedMeshBoneUpdateOverrideVR()
+	{
+		if (MeshRef)
+		{
+			// Restore bone update flag.
+			MeshRef->KinematicBonesUpdateType = SavedUpdateSetting;
+		}
+	}
+
+private:
+	USkeletalMeshComponent * MeshRef;
+	EKinematicBonesUpdateToPhysics::Type SavedUpdateSetting;
+};
+
+
 class VREXPANSIONPLUGIN_API FSavedMove_VRBaseCharacter : public FSavedMove_Character
 {
 
