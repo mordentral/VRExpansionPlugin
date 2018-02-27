@@ -9,8 +9,8 @@
 //Re-defined here as I can't load ISteamVRPlugin on non windows platforms
 // Make sure to update if it changes
 
-// #TODO: 4.18 check this
-#define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_LINUX || (PLATFORM_WINDOWS && WINVER > 0x0502))
+// #TODO: 4.19 check this
+#define STEAMVR_SUPPORTED_PLATFORM (PLATFORM_MAC || (PLATFORM_LINUX && PLATFORM_CPU_X86_FAMILY && PLATFORM_64BITS) || (PLATFORM_WINDOWS && WINVER > 0x0502))
 
 // #TODO: Check this over time for when they make it global
 // @TODO: hardcoded to match FSteamVRHMD::GetSystemName(), which we should turn into 
@@ -402,6 +402,17 @@ enum class EVRDeviceProperty_Matrix34 : uint8
 	HMDProp_CameraToHeadTransform_Matrix34_2016		UMETA(DisplayName = "HMDProp_CameraToHeadTransform_Matrix34")
 };
 
+// This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
+UENUM(Blueprintable)
+enum class EBPOpenVRHMDDeviceType : uint8
+{
+	DT_SteamVR,
+	DT_Vive,
+	DT_OculusHMD,
+	DT_WindowsMR,
+	DT_OSVR,
+	DT_Unknown
+};
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
 class OPENVREXPANSIONPLUGIN_API UOpenVRExpansionFunctionLibrary : public UBlueprintFunctionLibrary
@@ -459,6 +470,10 @@ public:
 	}
 
 #endif
+
+	// Gets whether an HMD device is connected, this is an expanded version for SteamVR
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetOpenVRHMDType"))
+		static EBPOpenVRHMDDeviceType GetOpenVRHMDType();
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))

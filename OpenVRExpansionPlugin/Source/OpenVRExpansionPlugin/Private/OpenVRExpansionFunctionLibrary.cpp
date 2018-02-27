@@ -32,6 +32,84 @@ UOpenVRExpansionFunctionLibrary::~UOpenVRExpansionFunctionLibrary()
 #endif
 }
 
+EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
+{
+
+	EBPOpenVRHMDDeviceType DeviceType = EBPOpenVRHMDDeviceType::DT_Unknown;
+
+	if (GEngine && GEngine->XRSystem.IsValid())
+	{
+		// Already declared in some of our includes here
+		//static const FName SteamVRSysName(TEXT("SteamVR"));
+		static const FName OculusSystemName(TEXT("OculusHMD"));
+		static const FName OSVRSystemName(TEXT("OSVR"));
+
+		FName DeviceName(NAME_None);
+		DeviceName = GEngine->XRSystem->GetSystemName();
+
+
+		if (DeviceName == SteamVRSystemName)
+			DeviceType = EBPOpenVRHMDDeviceType::DT_SteamVR;
+		else if (DeviceName == OculusSystemName)
+			DeviceType = EBPOpenVRHMDDeviceType::DT_OculusHMD;
+		else if (DeviceName == OSVRSystemName)
+			DeviceType = EBPOpenVRHMDDeviceType::DT_OSVR;
+	}
+
+#if !STEAMVR_SUPPORTED_PLATFORM
+	return DeviceType;
+#else
+
+	// If not, will early out with the type (OSVR / OculusHMD)
+	if (DeviceType == EBPOpenVRHMDDeviceType::DT_SteamVR)
+	{
+		FString DeviceModelNumber;
+		EBPOVRResultSwitch Result;
+
+		// Using index 0 as it is always HMD
+		UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String::Prop_ModelNumber_String_1001, 0, DeviceModelNumber, Result);
+		if (Result == EBPOVRResultSwitch::OnSucceeded)
+		{
+			UE_LOG(OpenVRExpansionFunctionLibraryLog, Display, TEXT("OpenVRDeviceType - Prop_ModelNumber_String_1001: %s"), *DeviceModelNumber);
+
+			//#TODO: Screw this eventually, need it to be actual string value comparisons for each model
+			// This is the hacky workaround for now
+			/*
+				"Vive MV";
+				"Oculus Rift CV1";
+				"Lenovo Explorer";
+				"HP Windows Mixed Reality Headset";
+				"Samsung Windows Mixed Reality 800ZAA";
+				"Acer AH100";
+			*/
+
+			if (DeviceModelNumber.Find("vive", ESearchCase::IgnoreCase) != INDEX_NONE)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
+			}
+			else if (DeviceModelNumber.Find("oculus", ESearchCase::IgnoreCase) != INDEX_NONE)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_OculusHMD;
+			}
+			else if (
+				DeviceModelNumber.Find("Mixed Reality", ESearchCase::IgnoreCase) != INDEX_NONE ||
+				DeviceModelNumber.Find("Acer", ESearchCase::IgnoreCase) != INDEX_NONE ||
+				DeviceModelNumber.Find("Lenovo", ESearchCase::IgnoreCase) != INDEX_NONE
+				)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_WindowsMR;
+			}	
+			else
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_Unknown;
+			}
+		}
+	}
+
+	return DeviceType;
+#endif
+}
+
 bool UOpenVRExpansionFunctionLibrary::HasVRCamera(EOpenVRCameraFrameType FrameType, int32 &Width, int32 &Height)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM

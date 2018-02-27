@@ -56,8 +56,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bWasInPushBack = false;
 	bIsInPushBack = false;
 
-	// #TODO: Make default true?, and eventually remove option?
-	bRunControlRotationInMovementComponent = false;
+	bRunControlRotationInMovementComponent = true;
 }
 
 void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
