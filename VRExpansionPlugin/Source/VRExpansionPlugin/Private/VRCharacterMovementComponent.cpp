@@ -67,7 +67,7 @@ namespace CharacterMovementComponentStatics
 *	}
 *	// Movement of mesh at this point will use previous setting.
 */
-/*struct FScopedMeshBoneUpdateOverride
+struct FScopedMeshBoneUpdateOverride
 {
 	FScopedMeshBoneUpdateOverride(USkeletalMeshComponent* Mesh, EKinematicBonesUpdateToPhysics::Type OverrideSetting)
 		: MeshRef(Mesh)
@@ -93,7 +93,7 @@ namespace CharacterMovementComponentStatics
 private:
 	USkeletalMeshComponent * MeshRef;
 	EKinematicBonesUpdateToPhysics::Type SavedUpdateSetting;
-};*/
+};
 
 
 void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
@@ -1406,7 +1406,9 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		{
 			// Avoid updating Mesh bones to physics during the teleport back, since PerformMovement() will update it right away anyway below.
 			// Note: this must be before the FScopedMovementUpdate below, since that scope is what actually moves the character and mesh.
-			FScopedMeshBoneUpdateOverride ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+			
+			AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);
+			FScopedMeshBoneUpdateOverride ScopedNoMeshBoneUpdate(BaseCharacter != nullptr ? BaseCharacter->GetIKMesh() : CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
 
 			// Accumulate multiple transform updates until scope ends.
 			/*FScopedMovementUpdate*/  FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);

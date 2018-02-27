@@ -1327,7 +1327,8 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 		{
 			// Avoid updating Mesh bones to physics during the teleport back, since PerformMovement() will update it right away anyway below.
 			// Note: this must be before the FScopedMovementUpdate below, since that scope is what actually moves the character and mesh.
-			FScopedMeshBoneUpdateOverride ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+			AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);
+			FScopedMeshBoneUpdateOverride ScopedNoMeshBoneUpdate(BaseCharacter != nullptr ? BaseCharacter->GetIKMesh() : CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
 
 			// Accumulate multiple transform updates until scope ends.
 
