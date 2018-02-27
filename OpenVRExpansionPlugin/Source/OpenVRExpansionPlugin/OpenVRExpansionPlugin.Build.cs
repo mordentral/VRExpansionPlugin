@@ -14,7 +14,7 @@ public class OpenVRExpansionPlugin : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
 
-        Definitions.Add("WITH_OPEN_VR_EXPANSION=1");
+       PublicDefinitions.Add("WITH_OPEN_VR_EXPANSION=1");
 
 		
         PublicIncludePaths.AddRange(
