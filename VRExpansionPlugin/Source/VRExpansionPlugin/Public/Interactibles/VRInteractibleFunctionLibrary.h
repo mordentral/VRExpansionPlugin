@@ -144,6 +144,19 @@ public:
 		return FRotator::NormalizeAxis(Interactible_GetAngleAroundAxis(AxisToCalc, CurInteractorLocation) - InitialAngle);
 	}
 
+
+	// Returns a value that is snapped to the given settings, taking into account the threshold and increment
+	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
+		static float Interactible_GetThresholdSnappedValue(float ValueToSnap, float SnapIncrement, float SnapThreshold)
+	{
+		if (FMath::Fmod(ValueToSnap, SnapIncrement) <= FMath::Min(SnapIncrement, SnapThreshold))
+		{
+			return FMath::GridSnap(ValueToSnap, SnapIncrement);
+		}
+
+		return ValueToSnap;
+	}
+
 };	
 
 

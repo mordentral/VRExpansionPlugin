@@ -21,8 +21,8 @@ enum class EVRInteractibleSliderLerpType : uint8
 	Lerp_InterpConstantTo
 };
 
-/** Delegate for notification when the lever state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRSliderHitEndSignature, float, SliderProgress);
+/** Delegate for notification when the slider state changes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRSliderHitPointSignature, float, SliderProgressPoint);
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
@@ -31,12 +31,23 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	~UVRSliderComponent();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bSliderUsesSnapPoints;
+
+	// Portion of the slider that the slider snaps to on release and when within the threshold distance
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float SnapIncrement;
+
+	// Threshold distance that when within the slider will stay snapped to its current snap increment
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float SnapThreshold;
+
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "VRLeverComponent")
-		FVRSliderHitEndSignature OnSliderHitEnd;
+		FVRSliderHitPointSignature OnSliderHitPoint;
 
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Lever State Changed"))
-		void ReceiveSliderHitEnd(float SliderProgress);
+		void ReceiveSliderHitPoint(float SliderProgressPoint);
 
 	float LastSliderProgressState;
 
@@ -177,19 +188,22 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 		}
 	}
 
-	float GetCurrentSliderProgress(FVector CurLocation)
+	float GetCurrentSliderProgress(FVector CurLocation, bool bUseKeyInstead = false, float CurKey = 0.f)
 	{
 		if (SplineComponentToFollow != nullptr)
 		{
 			// In this case it is a world location
-			float ClosestKey = SplineComponentToFollow->FindInputKeyClosestToWorldLocation(CurLocation);
+			float ClosestKey = CurKey;
+			
+			if (!bUseKeyInstead)
+				ClosestKey = SplineComponentToFollow->FindInputKeyClosestToWorldLocation(CurLocation);
+
 			int32 primaryKey = FMath::TruncToInt(ClosestKey);
 
 			float distance1 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey);
 			float distance2 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey + 1);
 
 			float FinalDistance = ((distance2 - distance1) * (ClosestKey - (float)primaryKey)) + distance1;
-
 			return FMath::Clamp(FinalDistance / SplineComponentToFollow->GetSplineLength(), 0.0f, 1.0f);
 		}
 
@@ -199,25 +213,28 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	FVector ClampSlideVector(FVector ValueToClamp)
 	{
-		if (bSlideDistanceIsInParentSpace)
-		{
-			// Scale distance by initial slider scale
-			FVector fScaleFactor = FVector(1.0f) / InitialRelativeTransform.GetScale3D();
+		FVector fScaleFactor = FVector(1.0f);
 
-			return FVector(
-				FMath::Clamp(ValueToClamp.X, -MinSlideDistance.X * fScaleFactor.X, MaxSlideDistance.X * fScaleFactor.X),
-				FMath::Clamp(ValueToClamp.Y, -MinSlideDistance.Y * fScaleFactor.Y, MaxSlideDistance.Y * fScaleFactor.Y),
-				FMath::Clamp(ValueToClamp.Z, -MinSlideDistance.Z * fScaleFactor.Z, MaxSlideDistance.Z * fScaleFactor.Z)
-			);
+		if (bSlideDistanceIsInParentSpace)
+			fScaleFactor = fScaleFactor / InitialRelativeTransform.GetScale3D();
+
+		FVector Dist = (-MinSlideDistance + MaxSlideDistance) * fScaleFactor;
+		FVector Progress = ValueToClamp / Dist;
+			
+		if (bSliderUsesSnapPoints)
+		{
+			Progress.X = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.X, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
+			Progress.Y = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.Y, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
+			Progress.Z = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.Z, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
 		}
 		else
 		{
-			return FVector(
-				FMath::Clamp(ValueToClamp.X, -MinSlideDistance.X, MaxSlideDistance.X),
-				FMath::Clamp(ValueToClamp.Y, -MinSlideDistance.Y, MaxSlideDistance.Y),
-				FMath::Clamp(ValueToClamp.Z, -MinSlideDistance.Z, MaxSlideDistance.Z)
-			);
+			Progress.X = FMath::Clamp(Progress.X, 0.f, 1.f);
+			Progress.Y = FMath::Clamp(Progress.Y, 0.f, 1.f);
+			Progress.Z = FMath::Clamp(Progress.Z, 0.f, 1.f);
 		}
+		
+		return Progress * Dist;
 	}
 
 	// ------------------------------------------------
