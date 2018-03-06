@@ -31,17 +31,6 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	~UVRSliderComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
-		bool bSliderUsesSnapPoints;
-
-	// Portion of the slider that the slider snaps to on release and when within the threshold distance
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
-		float SnapIncrement;
-
-	// Threshold distance that when within the slider will stay snapped to its current snap increment
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
-		float SnapThreshold;
-
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "VRLeverComponent")
 		FVRSliderHitPointSignature OnSliderHitPoint;
@@ -90,6 +79,17 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	// Lerp Value for the spline, when in InterpMode it is the speed of interpolation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0", UIMin = "0"))
 		float SplineLerpValue;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bSliderUsesSnapPoints;
+
+	// Portion of the slider that the slider snaps to on release and when within the threshold distance
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float SnapIncrement;
+
+	// Threshold distance that when within the slider will stay snapped to its current snap increment
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float SnapThreshold;
 
 
 	FTransform InitialRelativeTransform;
