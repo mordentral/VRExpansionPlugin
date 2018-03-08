@@ -16,6 +16,20 @@
 */
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
+class VREXPANSIONPLUGIN_API UOptionalRepStaticMeshComponent : public UStaticMeshComponent
+{
+	GENERATED_UCLASS_BODY()
+public:
+
+	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Component Replication")
+		bool bReplicateMovement;
+
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+
+};
+
+UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API AGrippableStaticMeshActor : public AStaticMeshActor, public IVRGripInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_UCLASS_BODY()
