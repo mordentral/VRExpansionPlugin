@@ -65,7 +65,7 @@ public:
 
 	// Get current relative transform (original transform we were at on grip for the current parent transform)
 	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
-	static FTransform Interactible_GetCurrentRelativeTransform(USceneComponent * SceneComponentToCheck, FBPVRInteractibleBaseData BaseData)
+	static FTransform Interactible_GetCurrentRelativeTransform(USceneComponent * SceneComponentToCheck, UPARAM(ref)FBPVRInteractibleBaseData & BaseData)
 	{
 		FTransform ParentTransform = FTransform::Identity;
 		if (SceneComponentToCheck)
@@ -92,7 +92,7 @@ public:
 
 	// Inits the calculated values of a VR Interactible Base Data Structure on a grip event
 	UFUNCTION(BlueprintCallable, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
-		static void Interactible_OnGripInit(USceneComponent * InteractibleComp, FBPActorGripInformation GripInformation, UPARAM(ref) FBPVRInteractibleBaseData & BaseDataToInit)
+		static void Interactible_OnGripInit(USceneComponent * InteractibleComp, UPARAM(ref) FBPActorGripInformation& GripInformation, UPARAM(ref) FBPVRInteractibleBaseData & BaseDataToInit)
 	{
 		if (!InteractibleComp)
 			return;
