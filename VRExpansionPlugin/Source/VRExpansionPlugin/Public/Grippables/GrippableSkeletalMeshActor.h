@@ -12,9 +12,26 @@
 #include "GrippableSkeletalMeshActor.generated.h"
 
 /**
+* A component specifically for being able to turn off movement replication in the component at will
+* Has the upside of also being a blueprintable base since UE4 doesn't allow that with std ones
+*/
+UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
+class VREXPANSIONPLUGIN_API UOptionalRepSkeletalMeshComponent : public USkeletalMeshComponent
+{
+	GENERATED_UCLASS_BODY()
+public:
+
+	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Component Replication")
+		bool bReplicateMovement;
+
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+
+};
+
+/**
 *
 */
-
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshActor, public IVRGripInterface, public IGameplayTagAssetInterface
 {
