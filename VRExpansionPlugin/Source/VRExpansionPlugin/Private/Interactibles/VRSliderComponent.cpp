@@ -39,6 +39,9 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	LastSliderProgressState = -1.0f;
 	LastInputKey = 0.0f;
 
+	bSliderUsesSnapPoints = false;
+	SnapIncrement = 0.1f;
+	SnapThreshold = 0.1f;
 
 	// Set to only overlap with things so that its not ruined by touching over actors
 	this->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
@@ -98,15 +101,37 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
 
 	FVector CalculatedLocation = InitialGripLoc + (CurInteractorLocation - InitialInteractorLocation);
-
+	
+	float SplineProgress = CurrentSliderProgress;
 	if (SplineComponentToFollow != nullptr)
-	{	
+	{
 		FVector WorldCalculatedLocation = CurrentRelativeTransform.TransformPosition(CalculatedLocation);
 		float ClosestKey = SplineComponentToFollow->FindInputKeyClosestToWorldLocation(WorldCalculatedLocation);
+
+		if (bSliderUsesSnapPoints)
+		{
+			float SplineLength = SplineComponentToFollow->GetSplineLength();
+			SplineProgress = GetCurrentSliderProgress(WorldCalculatedLocation, true, ClosestKey);
+
+			SplineProgress = UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(SplineProgress, SnapIncrement, SnapThreshold);
+
+			const int32 NumPoints = SplineComponentToFollow->SplineCurves.Position.Points.Num();
+
+			if (SplineComponentToFollow->SplineCurves.Position.Points.Num() > 1)
+			{
+				ClosestKey = SplineComponentToFollow->SplineCurves.ReparamTable.Eval(SplineProgress * SplineLength, 0.0f);
+			}
+
+			WorldCalculatedLocation = SplineComponentToFollow->GetLocationAtSplineInputKey(ClosestKey, ESplineCoordinateSpace::World);
+		}
+
 		bool bLerpToNewKey = true;
 		bool bChangedLocation = false;
 
-		if (bEnforceSplineLinearity && LastInputKey >= 0.0f && FMath::Abs((FMath::TruncToFloat(ClosestKey) - FMath::TruncToFloat(LastInputKey))) > 1.0f)
+		if (	bEnforceSplineLinearity && LastInputKey >= 0.0f &&
+				FMath::Abs((FMath::TruncToFloat(ClosestKey) - FMath::TruncToFloat(LastInputKey))) > 1.0f &&
+				(!bSliderUsesSnapPoints || (SplineProgress - CurrentSliderProgress > SnapIncrement))
+			)
 		{
 			bLerpToNewKey = false;
 		}
@@ -156,7 +181,7 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 				this->SetRelativeLocation(ParentTransform.InverseTransformPosition(WorldLocation));
 		}
 
-		CurrentSliderProgress = GetCurrentSliderProgress(WorldCalculatedLocation);
+		CurrentSliderProgress = GetCurrentSliderProgress(WorldCalculatedLocation, true, bLerpToNewKey ? LerpedKey : ClosestKey);
 		if (bLerpToNewKey)
 		{
 			LastInputKey = LerpedKey;
@@ -175,14 +200,23 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		// Skip first tick, this is our resting position
 		LastSliderProgressState = CurrentSliderProgress;
 	}
-	else if(LastSliderProgressState != CurrentSliderProgress && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f))
+	else if(LastSliderProgressState != CurrentSliderProgress)
 	{
-		// I am working with exacts here because of the clamping, it should actually work with no precision issues
-		// I wanted to ABS(Last-Cur) == 1.0 but it would cause an initial miss on whatever one last was inited to. 
+		if (!bSliderUsesSnapPoints && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f) ||
+			bSliderUsesSnapPoints && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f)
+			)
+		{
+			// I am working with exacts here because of the clamping, it should actually work with no precision issues
+			// I wanted to ABS(Last-Cur) == 1.0 but it would cause an initial miss on whatever one last was inited to. 
 
-		LastSliderProgressState = FMath::RoundToFloat(CurrentSliderProgress); // Ensure it is rounded to 0 or 1
-		ReceiveSliderHitEnd(LastSliderProgressState);
-		OnSliderHitEnd.Broadcast(LastSliderProgressState);
+			if (!bSliderUsesSnapPoints)
+				LastSliderProgressState = FMath::RoundToFloat(CurrentSliderProgress); // Ensure it is rounded to 0 or 1
+			else
+				LastSliderProgressState = CurrentSliderProgress;
+
+			ReceiveSliderHitPoint(LastSliderProgressState);
+			OnSliderHitPoint.Broadcast(LastSliderProgressState);
+		}
 	}
 
 	// Converted to a relative value now so it should be correct
@@ -211,6 +245,7 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) 
 {
 	//this->SetComponentTickEnabled(false);
+	// #TODO: Handle letting go and how lerping works, specifically with the snap points it may be an issue
 }
 
 void UVRSliderComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}

@@ -68,6 +68,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	// Replace quad size with DrawSize instead
 	//StereoLayerQuadSize = DrawSize;
 
+	PrimaryComponentTick.TickGroup = TG_DuringPhysics;
 	//Texture = nullptr;
 }
 
@@ -188,8 +189,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		if (bUseEpicsWorldLockedStereo)
 		{
 			// Its incorrect......even in 4.17
-			Transform = GetComponentTransform();
-			Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
+			Transform = FTransform(FRotator(0.f,-180.f, 0.f)) * GetComponentTransform();
+			//Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
 		}
 		else
 		{
@@ -216,9 +217,14 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 					// Set transform to this relative transform
 
 					Transform = GetComponentTransform().GetRelativeTransform(mpawn->GetTransform());
-					Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
-					// I might need to inverse X axis here to get it facing the correct way, we'll see
+					Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
+					
+					// OpenVR y+ Up, +x Right, -z Going away
+					// UE4 z+ up, +y right, +x forward
 
+					//Transform.ConcatenateRotation(FRotator(0.0f, -180.0f, 0.0f).Quaternion());
+					// I might need to inverse X axis here to get it facing the correct way, we'll see
+					
 					//Transform = mpawn->GetActorTransform().GetRelativeTransform(GetComponentTransform());
 				}
 			}

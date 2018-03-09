@@ -146,7 +146,7 @@ public:
 
 	// Overwrite a controller profile
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
-		static void OverwriteControllerProfile(FBPVRControllerProfile OverwritingProfile, bool bSaveOutToConfig = true)
+		static void OverwriteControllerProfile(UPARAM(ref)FBPVRControllerProfile &OverwritingProfile, bool bSaveOutToConfig = true)
 	{
 		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
 
@@ -164,7 +164,7 @@ public:
 
 	// Add a controller profile
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
-		static void AddControllerProfile(FBPVRControllerProfile NewProfile, bool bSaveOutToConfig = true)
+		static void AddControllerProfile(UPARAM(ref)FBPVRControllerProfile &NewProfile, bool bSaveOutToConfig = true)
 	{
 		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
 
