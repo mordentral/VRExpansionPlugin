@@ -6,7 +6,7 @@
 UOptionalRepSkeletalMeshComponent::UOptionalRepSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	bReplicateMovement = false;
+	bReplicateMovement = true;
 }
 
 void UOptionalRepSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)

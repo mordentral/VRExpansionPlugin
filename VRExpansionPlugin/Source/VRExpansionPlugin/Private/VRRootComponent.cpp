@@ -265,6 +265,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	lastCameraRot = FRotator::ZeroRotator;
 	curCameraRot = FRotator::ZeroRotator;
 	curCameraLoc = FVector::ZeroVector;
+	StoredCameraRotOffset = FRotator::ZeroRotator;
 	TargetPrimitiveComponent = NULL;
 	owningVRChar = NULL;
 	//VRCameraCollider = NULL;
@@ -604,9 +605,9 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 {
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
 	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
-	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
 
-	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	//FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
+	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 		
 }
 
