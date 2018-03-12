@@ -7,7 +7,7 @@
 UOptionalRepStaticMeshComponent::UOptionalRepStaticMeshComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	bReplicateMovement = false;
+	bReplicateMovement = true;
 }
 
 void UOptionalRepStaticMeshComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
