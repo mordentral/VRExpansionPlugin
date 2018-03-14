@@ -17,6 +17,8 @@
 
 #define LOCTEXT_NAMESPACE "VRRootComponent"
 
+DECLARE_CYCLE_STAT(TEXT("VRRootMovement"), STAT_VRRootMovement, STATGROUP_VRRootComponent);
+
 typedef TArray<FOverlapInfo, TInlineAllocator<3>> TInlineOverlapInfoArray;
 
 FORCEINLINE_DEBUGGABLE static bool CanComponentsGenerateOverlap(const UPrimitiveComponent* MyComponent, /*const*/ UPrimitiveComponent* OtherComp)
@@ -233,79 +235,6 @@ static bool ShouldIgnoreOverlapResult(const UWorld* World, const AActor* ThisAct
 	return false;
 }
 
-/** Represents a UVRRootComponent to the scene manager. */
-class FDrawCylinderSceneProxy : public FPrimitiveSceneProxy
-{
-public:
-	FDrawCylinderSceneProxy(const UVRRootComponent* InComponent)
-		: FPrimitiveSceneProxy(InComponent)
-		, bDrawOnlyIfSelected(InComponent->bDrawOnlyIfSelected)
-		, CapsuleRadius(InComponent->CapsuleRadius)
-		, CapsuleHalfHeight(InComponent->CapsuleHalfHeight)
-		, ShapeColor(InComponent->ShapeColor)
-		, VRCapsuleOffset(InComponent->VRCapsuleOffset)
-		//, OffsetComponentToWorld(InComponent->OffsetComponentToWorld)
-		, LocalToWorld(InComponent->OffsetComponentToWorld.ToMatrixWithScale())
-	{
-		bWillEverBeLit = false;
-	}
-
-	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override
-	{
-		QUICK_SCOPE_CYCLE_COUNTER(STAT_GetDynamicMeshElements_DrawDynamicElements);
-
-		//const FMatrix& LocalToWorld = OffsetComponentToWorld.ToMatrixWithScale();//GetLocalToWorld();
-		const int32 CapsuleSides = FMath::Clamp<int32>(CapsuleRadius / 4.f, 16, 64);
-
-		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
-		{
-
-			if (VisibilityMap & (1 << ViewIndex))
-			{
-				const FSceneView* View = Views[ViewIndex];
-				const FLinearColor DrawCapsuleColor = GetViewSelectionColor(ShapeColor, *View, IsSelected(), IsHovered(), false, IsIndividuallySelected());
-
-				FVector Base = LocalToWorld.GetOrigin();
-
-				FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
-
-				DrawWireCapsule(PDI, Base, LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);
-			}
-		}
-	}
-
-	/** Called on render thread to assign new dynamic data */
-	void UpdateTransform_RenderThread(const FTransform &NewTransform, float NewHalfHeight)
-	{
-		check(IsInRenderingThread());
-		LocalToWorld = NewTransform.ToMatrixWithScale();
-		//OffsetComponentToWorld = NewTransform;
-		CapsuleHalfHeight = NewHalfHeight;
-	}
-
-	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override
-	{
-		const bool bVisible = !bDrawOnlyIfSelected || IsSelected();
-		FPrimitiveViewRelevance Result;
-		Result.bDrawRelevance = IsShown(View) && bVisible;
-		Result.bDynamicRelevance = true;
-		Result.bShadowRelevance = IsShadowCast(View);
-		Result.bEditorPrimitiveRelevance = UseEditorCompositing(View);
-		return Result;
-	}
-	virtual uint32 GetMemoryFootprint(void) const override { return(sizeof(*this) + GetAllocatedSize()); }
-	uint32 GetAllocatedSize(void) const { return(FPrimitiveSceneProxy::GetAllocatedSize()); }
-
-private:
-	const uint32	bDrawOnlyIfSelected : 1;
-	const float		CapsuleRadius;
-	float		CapsuleHalfHeight;
-	FColor	ShapeColor;
-	const FVector VRCapsuleOffset;
-	//FTransform OffsetComponentToWorld;
-	FMatrix LocalToWorld;
-};
-
 
 UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -336,12 +265,15 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	lastCameraRot = FRotator::ZeroRotator;
 	curCameraRot = FRotator::ZeroRotator;
 	curCameraLoc = FVector::ZeroVector;
+	StoredCameraRotOffset = FRotator::ZeroRotator;
 	TargetPrimitiveComponent = NULL;
 	owningVRChar = NULL;
 	//VRCameraCollider = NULL;
 
 	bUseWalkingCollisionOverride = false;
 	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
+
+	bCalledUpdateTransform = false;
 
 	CanCharacterStepUpOn = ECB_No;
 	bShouldUpdatePhysicsVolume = true;
@@ -350,10 +282,91 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	bDynamicObstacle = true;
 }
 
+/** Represents a UVRRootComponent to the scene manager. */
+class FDrawVRCylinderSceneProxy final : public FPrimitiveSceneProxy
+{
+public:
+	SIZE_T GetTypeHash() const override
+	{
+		static size_t UniquePointer;
+		return reinterpret_cast<size_t>(&UniquePointer);
+	}
+
+	FDrawVRCylinderSceneProxy(const UVRRootComponent* InComponent)
+		: FPrimitiveSceneProxy(InComponent)
+		, bDrawOnlyIfSelected(InComponent->bDrawOnlyIfSelected)
+		, CapsuleRadius(InComponent->GetScaledCapsuleRadius())
+		, CapsuleHalfHeight(InComponent->GetScaledCapsuleHalfHeight())
+		, ShapeColor(InComponent->ShapeColor)
+		, VRCapsuleOffset(InComponent->VRCapsuleOffset)
+		//, OffsetComponentToWorld(InComponent->OffsetComponentToWorld)
+		, LocalToWorld(InComponent->OffsetComponentToWorld.ToMatrixWithScale())
+	{
+		bWillEverBeLit = false;
+	}
+
+	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override
+	{
+		QUICK_SCOPE_CYCLE_COUNTER(STAT_GetDynamicMeshElements_DrawDynamicElements);
+
+		//const FMatrix& LocalToWorld = OffsetComponentToWorld.ToMatrixWithScale();//GetLocalToWorld();
+		const int32 CapsuleSides = FMath::Clamp<int32>(CapsuleRadius / 4.f, 16, 64);
+
+		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
+		{
+
+			if (VisibilityMap & (1 << ViewIndex))
+			{
+				const FSceneView* View = Views[ViewIndex];
+				const FLinearColor DrawCapsuleColor = GetViewSelectionColor(ShapeColor, *View, IsSelected(), IsHovered(), false, IsIndividuallySelected());
+
+				FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
+
+				// #TODO: Come back to this at some point and test if it was fixed....but currently line sizes > default do not render with color in the editor
+				DrawWireCapsule(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, UseEditorCompositing(View) ? 1.0f : 1.25f);
+			}
+		}
+	}
+
+	/** Called on render thread to assign new dynamic data */
+	void UpdateTransform_RenderThread(const FTransform &NewTransform, float NewHalfHeight)
+	{
+		check(IsInRenderingThread());
+		LocalToWorld = NewTransform.ToMatrixWithScale();
+		//OffsetComponentToWorld = NewTransform;
+		CapsuleHalfHeight = NewHalfHeight;
+	}
+
+	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override
+	{
+		const bool bProxyVisible = !bDrawOnlyIfSelected || IsSelected();
+
+		// Should we draw this because collision drawing is enabled, and we have collision
+		const bool bShowForCollision = View->Family->EngineShowFlags.Collision && IsCollisionEnabled();
+
+		FPrimitiveViewRelevance Result;
+		Result.bDrawRelevance = (IsShown(View) && bProxyVisible) || bShowForCollision;
+		Result.bDynamicRelevance = true;
+		Result.bShadowRelevance = IsShadowCast(View);
+		Result.bEditorPrimitiveRelevance = UseEditorCompositing(View);
+		return Result;
+	}
+	virtual uint32 GetMemoryFootprint(void) const override { return(sizeof(*this) + GetAllocatedSize()); }
+	uint32 GetAllocatedSize(void) const { return(FPrimitiveSceneProxy::GetAllocatedSize()); }
+
+private:
+	const uint32	bDrawOnlyIfSelected : 1;
+	const float		CapsuleRadius;
+	float		CapsuleHalfHeight;
+	FColor	ShapeColor;
+	const FVector VRCapsuleOffset;
+	//FTransform OffsetComponentToWorld;
+	FMatrix LocalToWorld;
+};
 
 FPrimitiveSceneProxy* UVRRootComponent::CreateSceneProxy()
 {
-	return new FDrawCylinderSceneProxy(this);
+	return new FDrawVRCylinderSceneProxy(this);
 }
 
 void UVRRootComponent::BeginPlay()
@@ -390,7 +403,15 @@ void UVRRootComponent::BeginPlay()
 
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
-{		
+{
+	UVRBaseCharacterMovementComponent * CharMove = nullptr;
+
+	// Need these for passing physics updates to character movement
+	if (ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner()))
+	{
+		CharMove = Cast<UVRBaseCharacterMovementComponent>(OwningCharacter->GetCharacterMovement());
+	}
+
 	if (IsLocallyControlled())
 	{
 		if (OptionalWaistTrackingParent.IsValid())
@@ -421,13 +442,27 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			curCameraLoc = FVector::ZeroVector;
 		}
 
+		// Store a leveled yaw value here so it is only calculated once
+		StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+
 		// Can adjust the relative tolerances to remove jitter and some update processing
 		if (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f))
 		{
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
 
-			OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+			bCalledUpdateTransform = false;
+
+			// If the character movement doesn't exist or is not active/ticking
+			if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())
+			{
+				OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+			}
+			else // Let the character movement move the capsule instead
+			{
+				// Skip physics update, let the movement component handle it instead
+				OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
+			}
 
 			FHitResult OutHit;
 			FCollisionQueryParams Params("RelativeMovementSweep", false, GetOwner());
@@ -437,11 +472,6 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			Params.bFindInitialOverlaps = true;
 			bool bBlockingHit = false;
 
-			ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner());
-			UVRBaseCharacterMovementComponent * CharMove = nullptr;
-			
-			if(OwningCharacter != nullptr)
-				CharMove = Cast<UVRBaseCharacterMovementComponent>(OwningCharacter->GetCharacterMovement());
 
 			if (bUseWalkingCollisionOverride)
 			{
@@ -497,7 +527,28 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			curCameraLoc = FVector(0.0f, 0.0f, 0.0f);//FVector::ZeroVector;
 		}
 
-		OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+		// Store a leveled yaw value here so it is only calculated once
+		StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+
+		// Can adjust the relative tolerances to remove jitter and some update processing
+		if (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f))
+		{
+			bCalledUpdateTransform = false;
+
+			// If the character movement doesn't exist or is not active/ticking
+			if (!CharMove || !CharMove->IsActive())
+			{
+				OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+			}
+			else // Let the character movement move the capsule instead
+			{
+				// Skip physics update, let the movement component handle it instead
+				OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
+			}
+
+			lastCameraRot = curCameraRot;
+			lastCameraLoc = curCameraLoc;
+		}
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -514,32 +565,38 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
 {
 	GenerateOffsetToWorld();
-
-	if (this->ShouldRender() && this->SceneProxy)
+	// Using the physics flag for all of this anyway, no reason for a custom flag, it handles it fine
+	if (!(UpdateTransformFlags & EUpdateTransformFlags::SkipPhysicsUpdate))
 	{
-		ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
-			FDrawCylinderTransformUpdate,
-			FDrawCylinderSceneProxy*, CylinderSceneProxy, (FDrawCylinderSceneProxy*)SceneProxy,
-			FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
-			{
-				CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
-			}
-		);
-	}
+		bCalledUpdateTransform = true;
 
-	// Don't want to call primitives version, and the scenecomponents version does nothing
-	//Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
-
-	// Always send new transform to physics
-	if (bPhysicsStateCreated && !(UpdateTransformFlags & EUpdateTransformFlags::SkipPhysicsUpdate))
-	{
-		//If we update transform of welded bodies directly (i.e. on the actual component) we need to update the shape transforms of the parent.
-		//If the parent is updated, any welded shapes are automatically updated so we don't need to do this physx update.
-		//If the parent is updated and we are NOT welded, the child still needs to update physx
-		const bool bTransformSetDirectly = !(UpdateTransformFlags & EUpdateTransformFlags::PropagateFromParent);
-		if (bTransformSetDirectly || !IsWelded())
+		// Just using the 
+		if (this->ShouldRender() && this->SceneProxy)
 		{
-			SendPhysicsTransform(Teleport);
+			ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
+				FDrawCylinderTransformUpdate,
+				FDrawVRCylinderSceneProxy*, CylinderSceneProxy, (FDrawVRCylinderSceneProxy*)SceneProxy,
+				FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
+				{
+					CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
+				}
+			);
+		}
+
+		// Don't want to call primitives version, and the scenecomponents version does nothing
+		//Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
+
+		// Always send new transform to physics
+		if (bPhysicsStateCreated)
+		{
+			//If we update transform of welded bodies directly (i.e. on the actual component) we need to update the shape transforms of the parent.
+			//If the parent is updated, any welded shapes are automatically updated so we don't need to do this physx update.
+			//If the parent is updated and we are NOT welded, the child still needs to update physx
+			const bool bTransformSetDirectly = !(UpdateTransformFlags & EUpdateTransformFlags::PropagateFromParent);
+			if (bTransformSetDirectly || !IsWelded())
+			{
+				SendPhysicsTransform(Teleport);
+			}
 		}
 	}
 }
@@ -548,9 +605,9 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 {
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
 	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
-	FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
 
-	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	//FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
+	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 		
 }
 
@@ -599,11 +656,14 @@ void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 // This overrides the movement logic to use the offset location instead of the default location for sweeps.
 bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewRotationQuat, bool bSweep, FHitResult* OutHit, EMoveComponentFlags MoveFlags, ETeleportType Teleport)
 {
+	SCOPE_CYCLE_COUNTER(STAT_VRRootMovement);
+
+	// static things can move before they are registered (e.g. immediately after streaming), but not after.
 	if (IsPendingKill() || (this->Mobility == EComponentMobility::Static && IsRegistered()))//|| CheckStaticMobilityAndWarn(PrimitiveComponentStatics::MobilityWarnText))
 	{
 		if (OutHit)
 		{
-			*OutHit = FHitResult();
+			OutHit->Init();
 		}
 		return false;
 	}
@@ -611,14 +671,15 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	ConditionalUpdateComponentToWorld();
 
 	// Init HitResult
-	FHitResult BlockingHit(1.f);
-	/*const*/ FVector TraceStart = OffsetComponentToWorld.GetLocation();// .GetLocation();//GetComponentLocation();
-	/*const*/ FVector TraceEnd = TraceStart + Delta;
-	BlockingHit.TraceStart = TraceStart;
-	BlockingHit.TraceEnd = TraceEnd;
+	//FHitResult BlockingHit(1.f);
+	const FVector TraceStart = OffsetComponentToWorld.GetLocation();// .GetLocation();//GetComponentLocation();
+	const FVector TraceEnd = TraceStart + Delta;
+	//BlockingHit.TraceStart = TraceStart;
+	//BlockingHit.TraceEnd = TraceEnd;
+	float DeltaSizeSq = (TraceEnd - TraceStart).SizeSquared();				// Recalc here to account for precision loss of float addition
 
 	// Set up.
-	float DeltaSizeSq = Delta.SizeSquared();
+//	float DeltaSizeSq = Delta.SizeSquared();
 	const FQuat InitialRotationQuat = GetComponentTransform().GetRotation();//ComponentToWorld.GetRotation();
 
 	// ComponentSweepMulti does nothing if moving < KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
@@ -631,27 +692,31 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			// copy to optional output param
 			if (OutHit)
 			{
-				*OutHit = BlockingHit;
+				OutHit->Init(TraceStart, TraceEnd);
 			}
 			return true;
 		}
 		DeltaSizeSq = 0.f;
 	}
 
-
-
 	const bool bSkipPhysicsMove = ((MoveFlags & MOVECOMP_SkipPhysicsMove) != MOVECOMP_NoFlags);
 
+	// WARNING: HitResult is only partially initialized in some paths. All data is valid only if bFilledHitResult is true.
+	FHitResult BlockingHit(NoInit);
+	BlockingHit.bBlockingHit = false;
+	BlockingHit.Time = 1.f;
+	bool bFilledHitResult = false;
 	bool bMoved = false;
 	bool bIncludesOverlapsAtEnd = false;
 	bool bRotationOnly = false;
 	TArray<FOverlapInfo> PendingOverlaps;
 	AActor* const Actor = GetOwner();
+	FVector OrigLocation = GetComponentLocation();
 
 	if (!bSweep)
 	{
 		// not sweeping, just go directly to the new transform
-		bMoved = InternalSetWorldLocationAndRotation(/*TraceEnd*/GetComponentLocation() + Delta, NewRotationQuat, bSkipPhysicsMove, Teleport);
+		bMoved = InternalSetWorldLocationAndRotation(/*TraceEnd*/OrigLocation + Delta, NewRotationQuat, bSkipPhysicsMove, Teleport);
 		GenerateOffsetToWorld();
 		bRotationOnly = (DeltaSizeSq == 0);
 		bIncludesOverlapsAtEnd = bRotationOnly && (AreSymmetricRotations(InitialRotationQuat, NewRotationQuat, GetComponentScale())) && IsCollisionEnabled();
@@ -659,24 +724,24 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	else
 	{
 		TArray<FHitResult> Hits;
-		FVector NewLocation = GetComponentLocation();//TraceStart;
+		FVector NewLocation = OrigLocation;//TraceStart;
 		// Perform movement collision checking if needed for this actor.
-		const bool bCollisionEnabled = IsCollisionEnabled();
+		const bool bCollisionEnabled = IsQueryCollisionEnabled();
 		if (bCollisionEnabled && (DeltaSizeSq > 0.f))
 		{
-/*#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 			if (!IsRegistered())
 			{
 				if (Actor)
 				{
-					//	UE_LOG(LogPrimitiveComponent, Fatal, TEXT("%s MovedComponent %s not initialized deleteme %d"), *Actor->GetName(), *GetName(), Actor->IsPendingKill());
+					ensureMsgf(IsRegistered(), TEXT("%s MovedComponent %s not initialized deleteme %d"),*Actor->GetName(), *GetName(), Actor->IsPendingKill());
 				}
 				else
-				{
-					//	UE_LOG(LogPrimitiveComponent, Fatal, TEXT("MovedComponent %s not initialized"), *GetFullName());
+				{ //-V523
+					ensureMsgf(IsRegistered(), TEXT("MovedComponent %s not initialized"), *GetFullName());
 				}
 			}
-#endif*/
+#endif
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST) && PERF_MOVECOMPONENT_STATS
 			MoveTimer.bDidLineCheck = true;
 #endif 
@@ -689,6 +754,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			InitSweepCollisionParams(Params, ResponseParam);
 			Params.bIgnoreTouches |= !(bGenerateOverlapEvents || bForceGatherOverlaps);
 			bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
+			//bool const bHadBlockingHit = MyWorld->SweepMultiByChannel(Hits, TraceStart, TraceEnd, InitialRotationQuat, this->GetCollisionObjectType(), this->GetCollisionShape(), Params, ResponseParam);
 
 			if (Hits.Num() > 0)
 			{
@@ -701,7 +767,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 			// If we had a valid blocking hit, store it.
 			// If we are looking for overlaps, store those as well.
-			uint32 FirstNonInitialOverlapIdx = INDEX_NONE;
+			int32 FirstNonInitialOverlapIdx = INDEX_NONE;
 			if (bHadBlockingHit || (bGenerateOverlapEvents || bForceGatherOverlaps))
 			{
 				int32 BlockingHitIndex = INDEX_NONE;
@@ -763,6 +829,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 				if (BlockingHitIndex >= 0)
 				{
 					BlockingHit = Hits[BlockingHitIndex];
+					bFilledHitResult = true;
 				}
 			}
 
@@ -773,20 +840,22 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			}
 			else
 			{
+				check(bFilledHitResult);
 				NewLocation += (BlockingHit.Time * (TraceEnd - TraceStart));
 
 				// Sanity check
-				const FVector ToNewLocation = (NewLocation - GetComponentLocation()/*TraceStart*/);
+				const FVector ToNewLocation = (NewLocation - OrigLocation/*TraceStart*/);
 				if (ToNewLocation.SizeSquared() <= MinMovementDistSq)
 				{
 					// We don't want really small movements to put us on or inside a surface.
-					NewLocation = GetComponentLocation();//TraceStart;
+					NewLocation = OrigLocation;//TraceStart;
 					BlockingHit.Time = 0.f;
 
 					// Remove any pending overlaps after this point, we are not going as far as we swept.
 					if (FirstNonInitialOverlapIdx != INDEX_NONE)
 					{
-						PendingOverlaps.SetNum(FirstNonInitialOverlapIdx);
+						const bool bAllowShrinking = false;
+						PendingOverlaps.SetNum(FirstNonInitialOverlapIdx, bAllowShrinking);
 					}
 				}
 			}
@@ -851,8 +920,10 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	}
 
 	// Handle blocking hit notifications. Avoid if pending kill (which could happen after overlaps).
-	if (BlockingHit.bBlockingHit && !IsPendingKill())
+	const bool bAllowHitDispatch = !BlockingHit.bStartPenetrating || !(MoveFlags & MOVECOMP_DisableBlockingOverlapDispatch);
+	if (BlockingHit.bBlockingHit && bAllowHitDispatch && !IsPendingKill())
 	{
+		check(bFilledHitResult);
 		if (IsDeferringMovementUpdates())
 		{
 			FScopedMovementUpdate* ScopedUpdate = GetCurrentScopedMovement();
@@ -867,7 +938,14 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	// copy to optional output param
 	if (OutHit)
 	{
-		*OutHit = BlockingHit;
+		if (bFilledHitResult)
+		{
+			*OutHit = BlockingHit;
+		}
+		else
+		{
+			OutHit->Init(TraceStart, TraceEnd);
+		}
 	}
 
 	// Return whether we moved at all.
@@ -906,11 +984,12 @@ void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOver
 				}
 			}
 
+			const TArray<FOverlapInfo>* OverlapsAtEndLocationPtr;
+
 			// TODO: Filter this better so it runs even less often?
 			// Its not that bad currently running off of NewPendingOverlaps
 			// It forces checking for end location overlaps again if none are registered, just in case
 			// the capsule isn't setting things correctly.
-			const TArray<FOverlapInfo>* OverlapsAtEndLocationPtr;
 			TArray<FOverlapInfo> OverlapsAtEnd;
 			if ((!OverlapsAtEndLocation || OverlapsAtEndLocation->Num() < 1) && NewPendingOverlaps && NewPendingOverlaps->Num() > 0)
 			{

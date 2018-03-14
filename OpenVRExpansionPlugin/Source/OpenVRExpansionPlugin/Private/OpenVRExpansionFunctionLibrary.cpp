@@ -32,6 +32,84 @@ UOpenVRExpansionFunctionLibrary::~UOpenVRExpansionFunctionLibrary()
 #endif
 }
 
+EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
+{
+
+	EBPOpenVRHMDDeviceType DeviceType = EBPOpenVRHMDDeviceType::DT_Unknown;
+
+	if (GEngine && GEngine->XRSystem.IsValid())
+	{
+		// Already declared in some of our includes here
+		//static const FName SteamVRSysName(TEXT("SteamVR"));
+		static const FName OculusSystemName(TEXT("OculusHMD"));
+		static const FName OSVRSystemName(TEXT("OSVR"));
+
+		FName DeviceName(NAME_None);
+		DeviceName = GEngine->XRSystem->GetSystemName();
+
+
+		if (DeviceName == SteamVRSystemName)
+			DeviceType = EBPOpenVRHMDDeviceType::DT_SteamVR;
+		else if (DeviceName == OculusSystemName)
+			DeviceType = EBPOpenVRHMDDeviceType::DT_OculusHMD;
+		else if (DeviceName == OSVRSystemName)
+			DeviceType = EBPOpenVRHMDDeviceType::DT_OSVR;
+	}
+
+#if !STEAMVR_SUPPORTED_PLATFORM
+	return DeviceType;
+#else
+
+	// If not, will early out with the type (OSVR / OculusHMD)
+	if (DeviceType == EBPOpenVRHMDDeviceType::DT_SteamVR)
+	{
+		FString DeviceModelNumber;
+		EBPOVRResultSwitch Result;
+
+		// Using index 0 as it is always HMD
+		UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String::Prop_ModelNumber_String_1001, 0, DeviceModelNumber, Result);
+		if (Result == EBPOVRResultSwitch::OnSucceeded)
+		{
+			UE_LOG(OpenVRExpansionFunctionLibraryLog, Display, TEXT("OpenVRDeviceType - Prop_ModelNumber_String_1001: %s"), *DeviceModelNumber);
+
+			//#TODO: Screw this eventually, need it to be actual string value comparisons for each model
+			// This is the hacky workaround for now
+			/*
+				"Vive MV";
+				"Oculus Rift CV1";
+				"Lenovo Explorer";
+				"HP Windows Mixed Reality Headset";
+				"Samsung Windows Mixed Reality 800ZAA";
+				"Acer AH100";
+			*/
+
+			if (DeviceModelNumber.Find("vive", ESearchCase::IgnoreCase) != INDEX_NONE)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
+			}
+			else if (DeviceModelNumber.Find("oculus", ESearchCase::IgnoreCase) != INDEX_NONE)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_OculusHMD;
+			}
+			else if (
+				DeviceModelNumber.Find("Mixed Reality", ESearchCase::IgnoreCase) != INDEX_NONE ||
+				DeviceModelNumber.Find("Acer", ESearchCase::IgnoreCase) != INDEX_NONE ||
+				DeviceModelNumber.Find("Lenovo", ESearchCase::IgnoreCase) != INDEX_NONE
+				)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_WindowsMR;
+			}	
+			else
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_Unknown;
+			}
+		}
+	}
+
+	return DeviceType;
+#endif
+}
+
 bool UOpenVRExpansionFunctionLibrary::HasVRCamera(EOpenVRCameraFrameType FrameType, int32 &Width, int32 &Height)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
@@ -605,26 +683,101 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyMatrix34AsTransform(EVR
 #endif
 }
 
-bool UOpenVRExpansionFunctionLibrary::IsOpenVRDeviceConnected(EBPVRDeviceIndex OpenVRDeviceIndex)
+
+EBPOpenVRTrackedDeviceClass UOpenVRExpansionFunctionLibrary::GetOpenVRDeviceType(int32 OpenVRDeviceIndex)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+	return EBPOpenVRTrackedDeviceClass::TrackedDeviceClass_Invalid;
+#else
+
+	if (OpenVRDeviceIndex < 0 || OpenVRDeviceIndex > (vr::k_unMaxTrackedDeviceCount - 1))
+		return EBPOpenVRTrackedDeviceClass::TrackedDeviceClass_Invalid;
+
+	vr::HmdError HmdErr;
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+
+	if (!VRSystem)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VRSystem InterfaceErrorCode %i in GetOpenVRDevices"), (int32)HmdErr);
+		return EBPOpenVRTrackedDeviceClass::TrackedDeviceClass_Invalid;
+	}
+
+	return (EBPOpenVRTrackedDeviceClass)VRSystem->GetTrackedDeviceClass(OpenVRDeviceIndex);
+#endif
+}
+
+void UOpenVRExpansionFunctionLibrary::GetOpenVRDevices(TArray<EBPOpenVRTrackedDeviceClass> &FoundDevices)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+#else
+
+	vr::HmdError HmdErr;
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+
+	if (!VRSystem)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VRSystem InterfaceErrorCode %i in GetOpenVRDevices"), (int32)HmdErr);
+		return;
+	}
+
+	vr::ETrackedDeviceClass DeviceClass = vr::ETrackedDeviceClass::TrackedDeviceClass_Invalid;
+	for (vr::TrackedDeviceIndex_t deviceIndex = vr::k_unTrackedDeviceIndex_Hmd; deviceIndex < vr::k_unMaxTrackedDeviceCount; ++deviceIndex)
+	{
+		DeviceClass = VRSystem->GetTrackedDeviceClass(deviceIndex);
+
+		if (VRSystem->GetTrackedDeviceClass(deviceIndex) != vr::ETrackedDeviceClass::TrackedDeviceClass_Invalid)
+			FoundDevices.Add((EBPOpenVRTrackedDeviceClass)DeviceClass);
+	}
+#endif
+}
+
+void UOpenVRExpansionFunctionLibrary::GetOpenVRDevicesByType(EBPOpenVRTrackedDeviceClass TypeToRetreive, TArray<int32> &FoundIndexs)
+{
+#if !STEAMVR_SUPPORTED_PLATFORM
+#else
+
+	vr::HmdError HmdErr;
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
+
+	if (!VRSystem)
+	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VRSystem InterfaceErrorCode %i in GetOpenVRDevices"), (int32)HmdErr);
+		return;
+	}
+
+	for (vr::TrackedDeviceIndex_t deviceIndex = vr::k_unTrackedDeviceIndex_Hmd; deviceIndex < vr::k_unMaxTrackedDeviceCount; ++deviceIndex)
+	{
+		if (VRSystem->GetTrackedDeviceClass(deviceIndex) == (vr::ETrackedDeviceClass)TypeToRetreive)
+			FoundIndexs.Add(deviceIndex);
+	}
+#endif
+}
+
+bool UOpenVRExpansionFunctionLibrary::IsOpenVRDeviceConnected(int32 OpenVRDeviceIndex)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	return false;
 #else
 
-	TArray<int32> ValidTrackedIDs;
-	USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Other, ValidTrackedIDs);
+	vr::HmdError HmdErr;
+	//vr::IVRSystem * VRSystem = (vr::IVRSystem*)(*VRGetGenericInterfaceFn)(vr::IVRSystem_Version, &HmdErr);
+	vr::IVRSystem * VRSystem = (vr::IVRSystem*)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &HmdErr);
 
-	if (ValidTrackedIDs.Find((int32)OpenVRDeviceIndex) == INDEX_NONE)
+	if (!VRSystem)
 	{
+		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("VRSystem InterfaceErrorCode %i in IsOpenVRDeviceConnected"), (int32)HmdErr);
 		return false;
 	}
 
-	return true;
+	return VRSystem->IsTrackedDeviceConnected(OpenVRDeviceIndex);
 
 #endif
 }
 
-UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPSteamVRTrackedDeviceType DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, EBPVRDeviceIndex OverrideDeviceID)
+UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPOpenVRTrackedDeviceClass DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, int32 OverrideDeviceID)
 {
 
 #if !STEAMVR_SUPPORTED_PLATFORM
@@ -658,47 +811,30 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 		return nullptr;
 	}
 
-	uint32 DeviceID = 0;
-	if (OverrideDeviceID != EBPVRDeviceIndex::None)
+	int32 DeviceID = 0;
+	if (OverrideDeviceID != -1)
 	{
 		DeviceID = (uint32)OverrideDeviceID;
-
-		// Only check if not HMD, it doesn't show up in these lists
-		if (OverrideDeviceID != EBPVRDeviceIndex::HMD)
+		if (OverrideDeviceID > (vr::k_unMaxTrackedDeviceCount - 1) || VRSystem->GetTrackedDeviceClass(DeviceID) == vr::k_unTrackedDeviceIndexInvalid)
 		{
-			TArray<int32> ValidTrackedIDs;
-			TArray<int32> Temp;
-			USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Other, Temp);
-			ValidTrackedIDs.Append(Temp);
-			USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Controller, Temp);
-			ValidTrackedIDs.Append(Temp);
-			USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::Invalid, Temp);
-			ValidTrackedIDs.Append(Temp);
-			USteamVRFunctionLibrary::GetValidTrackedDeviceIds(ESteamVRTrackedDeviceType::TrackingReference, Temp);
-			ValidTrackedIDs.Append(Temp);
-
-
-			if (ValidTrackedIDs.Find(DeviceID) == INDEX_NONE)
-			{
-				UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Override Tracked Device Was Missing!!"));
-				Result = EAsyncBlueprintResultSwitch::OnFailure;
-				return nullptr;
-			}
+			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Override Tracked Device Was Missing!!"));
+			Result = EAsyncBlueprintResultSwitch::OnFailure;
+			return nullptr;
 		}
 	}
 	else
 	{
-		TArray<int32> TrackedIDs;
+		TArray<int32> FoundIDs;
+		UOpenVRExpansionFunctionLibrary::GetOpenVRDevicesByType(DeviceType, FoundIDs);
 
-		USteamVRFunctionLibrary::GetValidTrackedDeviceIds((ESteamVRTrackedDeviceType)DeviceType, TrackedIDs);
-		if (TrackedIDs.Num() == 0)
+		if (FoundIDs.Num() == 0)
 		{
 			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Tracked Devices!!"));
 			Result = EAsyncBlueprintResultSwitch::OnFailure;
 			return nullptr;
 		}
 
-		DeviceID = TrackedIDs[0];
+		DeviceID = FoundIDs[0];
 	}
 
 	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;

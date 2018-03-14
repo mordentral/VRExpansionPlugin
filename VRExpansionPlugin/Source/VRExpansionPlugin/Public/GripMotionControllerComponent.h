@@ -9,10 +9,11 @@
 #include "VRBPDatatypes.h"
 #include "MotionControllerComponent.h"
 #include "LateUpdateManager.h"
+#include "IIdentifiableXRDevice.h" // for FXRDeviceId
 #include "IXRTrackingSystem.h"
 #include "VRGripInterface.h"
 #include "VRGlobalSettings.h"
-
+#include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 #include "GripMotionControllerComponent.generated.h"
 
 class AVRBaseCharacter;
@@ -33,11 +34,15 @@ class VREXPANSIONPLUGIN_API FExpandedLateUpdateManager
 public:
 	FExpandedLateUpdateManager();
 
+	virtual ~FExpandedLateUpdateManager() {}
 	/** Setup state for applying the render thread late update */
 	void Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component);
 
 	/** Apply the late update delta to the cached components */
 	void Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform);
+
+	/** Increments the double buffered read index, etc. - in prep for the next render frame (read: MUST be called for each frame Setup() was called on). */
+	void PostRender_RenderThread();
 
 public:
 
@@ -110,6 +115,16 @@ protected:
 	FVector GripRenderThreadComponentScale;
 
 public:
+
+	// Gets the hand enum
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))
+	void GetHandType(EControllerHand& Hand)
+	{
+		if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
+		{
+			Hand = EControllerHand::Left;
+		}
+	}
 
 	// When possible I suggest that you use GetAllGrips/GetGrippedObjects instead of directly referencing this
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedObjects)
@@ -636,7 +651,7 @@ public:
 	}
 
 	// Gets if the given Component is a secondary attach point to a gripped actor
-	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool GetIsSecondaryAttachment(const USceneComponent * ComponentToCheck, FBPActorGripInformation & Grip)
 	{
 		if (!ComponentToCheck)
@@ -691,6 +706,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	void PostTeleportMoveGrippedObjects();
 
+	bool bIsPostTeleport;
+
 	// Move a single gripped item back into position ignoring collision in the way
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
 	bool TeleportMoveGrippedActor(AActor * GrippedActorToMove);
@@ -700,7 +717,8 @@ public:
 	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
-	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bIsPostTeleport = false);
+	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bIsForPostTeleport = false);
+	bool TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bIsForPostTeleport, FTransform & OptionalTransform);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip")
@@ -759,10 +777,8 @@ private:
 
 		// #TODO: 4.18 - Uses an auto register base now, revise declaration and implementation
 	public:
-		FGripViewExtension(const FAutoRegister& AutoRegister, UGripMotionControllerComponent* InMotionControllerComponent)
-			: FSceneViewExtensionBase(AutoRegister)
-			, MotionControllerComponent(InMotionControllerComponent)
-		{}
+		FGripViewExtension(const FAutoRegister& AutoRegister, UGripMotionControllerComponent* InMotionControllerComponent);
+
 		virtual ~FGripViewExtension() {}
 
 		/** ISceneViewExtension interface */
@@ -771,6 +787,7 @@ private:
 		virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
 		virtual void PreRenderView_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override {}
 		virtual void PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
+		virtual void PostRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
 
 		virtual int32 GetPriority() const override { return -10; }
 		virtual bool IsActiveThisFrame(class FViewport* InViewport) const;

@@ -8,6 +8,8 @@
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDatatypes.h"
 #include "VRBaseCharacter.h"
+#include "VRRootComponent.h"
+#include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
 
 
@@ -53,6 +55,8 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 
 	bWasInPushBack = false;
 	bIsInPushBack = false;
+
+	bRunControlRotationInMovementComponent = true;
 }
 
 void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -70,11 +74,11 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 		Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 		// See if we fell out of the world.
-		//const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
-		//if (CharacterOwner->Role == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
-		//{
-		//	return;
-		//}
+		const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
+		if (CharacterOwner->Role == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
+		{
+			return;
+		}
 
 		// If we are the owning client or the server then run the re-basing
 		if (CharacterOwner->Role > ROLE_SimulatedProxy)
@@ -90,6 +94,17 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 	}
 	else
 		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+
+	// This should be valid for both Simulated and owning clients as well as the server
+	// Better here than in perform movement
+	if (UVRRootComponent * VRRoot = Cast<UVRRootComponent>(CharacterOwner->GetCapsuleComponent()))
+	{
+		// If we didn't move the capsule, have it update itself here so the visual and physics representation is correct
+		// We do this specifically to avoid double calling into the render / physics threads.
+		if (!VRRoot->bCalledUpdateTransform)
+			VRRoot->OnUpdateTransform_Public(EUpdateTransformFlags::None, ETeleportType::None);
+	}
 }
 
 void UVRBaseCharacterMovementComponent::StartPushBackNotification(FHitResult HitResult)
@@ -121,6 +136,7 @@ void UVRBaseCharacterMovementComponent::EndPushBackNotification()
 	}
 }
 
+/*
 bool UVRBaseCharacterMovementComponent::FloorSweepTest(
 	FHitResult& OutHit,
 	const FVector& Start,
@@ -210,6 +226,153 @@ bool UVRBaseCharacterMovementComponent::FloorSweepTest(
 	}
 
 	return bBlockingHit;
+}*/
+
+void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleLocation, float LineDistance, float SweepDistance, FFindFloorResult& OutFloorResult, float SweepRadius, const FHitResult* DownwardSweepResult) const
+{
+	//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("[Role:%d] ComputeFloorDist: %s at location %s"), (int32)CharacterOwner->Role, *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
+	OutFloorResult.Clear();
+
+	float PawnRadius, PawnHalfHeight;
+	CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleSize(PawnRadius, PawnHalfHeight);
+
+	bool bSkipSweep = false;
+	if (DownwardSweepResult != NULL && DownwardSweepResult->IsValidBlockingHit())
+	{
+		// Only if the supplied sweep was vertical and downward.
+		if ((DownwardSweepResult->TraceStart.Z > DownwardSweepResult->TraceEnd.Z) &&
+			(DownwardSweepResult->TraceStart - DownwardSweepResult->TraceEnd).SizeSquared2D() <= KINDA_SMALL_NUMBER)
+		{
+			// Reject hits that are barely on the cusp of the radius of the capsule
+			if (IsWithinEdgeTolerance(DownwardSweepResult->Location, DownwardSweepResult->ImpactPoint, PawnRadius))
+			{
+				// Don't try a redundant sweep, regardless of whether this sweep is usable.
+				bSkipSweep = true;
+
+				const bool bIsWalkable = IsWalkable(*DownwardSweepResult);
+				const float FloorDist = (CapsuleLocation.Z - DownwardSweepResult->Location.Z);
+				OutFloorResult.SetFromSweep(*DownwardSweepResult, FloorDist, bIsWalkable);
+
+				if (bIsWalkable)
+				{
+					// Use the supplied downward sweep as the floor hit result.			
+					return;
+				}
+			}
+		}
+	}
+
+	// We require the sweep distance to be >= the line distance, otherwise the HitResult can't be interpreted as the sweep result.
+	if (SweepDistance < LineDistance)
+	{
+		ensure(SweepDistance >= LineDistance);
+		return;
+	}
+
+	bool bBlockingHit = false;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ComputeFloorDist), false, CharacterOwner);
+	FCollisionResponseParams ResponseParam;
+	InitCollisionParams(QueryParams, ResponseParam);
+	const ECollisionChannel CollisionChannel = UpdatedComponent->GetCollisionObjectType();
+
+	// Skip physics bodies for floor check if we are skipping simulated objects
+	if (bIgnoreSimulatingComponentsInFloorCheck)
+		ResponseParam.CollisionResponse.PhysicsBody = ECollisionResponse::ECR_Ignore;
+
+	// Sweep test
+	if (!bSkipSweep && SweepDistance > 0.f && SweepRadius > 0.f)
+	{
+		// Use a shorter height to avoid sweeps giving weird results if we start on a surface.
+		// This also allows us to adjust out of penetrations.
+		const float ShrinkScale = 0.9f;
+		const float ShrinkScaleOverlap = 0.1f;
+		float ShrinkHeight = (PawnHalfHeight - PawnRadius) * (1.f - ShrinkScale);
+		float TraceDist = SweepDistance + ShrinkHeight;
+		FCollisionShape CapsuleShape = FCollisionShape::MakeCapsule(SweepRadius, PawnHalfHeight - ShrinkHeight);
+
+		FHitResult Hit(1.f);
+		bBlockingHit = FloorSweepTest(Hit, CapsuleLocation, CapsuleLocation + FVector(0.f, 0.f, -TraceDist), CollisionChannel, CapsuleShape, QueryParams, ResponseParam);
+
+		if (bBlockingHit)
+		{
+			// Reject hits adjacent to us, we only care about hits on the bottom portion of our capsule.
+			// Check 2D distance to impact point, reject if within a tolerance from radius.
+			if (Hit.bStartPenetrating || !IsWithinEdgeTolerance(CapsuleLocation, Hit.ImpactPoint, CapsuleShape.Capsule.Radius))
+			{
+				// Use a capsule with a slightly smaller radius and shorter height to avoid the adjacent object.
+				// Capsule must not be nearly zero or the trace will fall back to a line trace from the start point and have the wrong length.
+				CapsuleShape.Capsule.Radius = FMath::Max(0.f, CapsuleShape.Capsule.Radius - SWEEP_EDGE_REJECT_DISTANCE - KINDA_SMALL_NUMBER);
+				if (!CapsuleShape.IsNearlyZero())
+				{
+					ShrinkHeight = (PawnHalfHeight - PawnRadius) * (1.f - ShrinkScaleOverlap);
+					TraceDist = SweepDistance + ShrinkHeight;
+					CapsuleShape.Capsule.HalfHeight = FMath::Max(PawnHalfHeight - ShrinkHeight, CapsuleShape.Capsule.Radius);
+					Hit.Reset(1.f, false);
+
+					bBlockingHit = FloorSweepTest(Hit, CapsuleLocation, CapsuleLocation + FVector(0.f, 0.f, -TraceDist), CollisionChannel, CapsuleShape, QueryParams, ResponseParam);
+				}
+			}
+
+			// Reduce hit distance by ShrinkHeight because we shrank the capsule for the trace.
+			// We allow negative distances here, because this allows us to pull out of penetrations.
+			const float MaxPenetrationAdjust = FMath::Max(MAX_FLOOR_DIST, PawnRadius);
+			const float SweepResult = FMath::Max(-MaxPenetrationAdjust, Hit.Time * TraceDist - ShrinkHeight);
+
+			OutFloorResult.SetFromSweep(Hit, SweepResult, false);
+			if (Hit.IsValidBlockingHit() && IsWalkable(Hit))
+			{
+				if (SweepResult <= SweepDistance)
+				{
+					// Hit within test distance.
+					OutFloorResult.bWalkableFloor = true;
+					return;
+				}
+			}
+		}
+	}
+
+	// Since we require a longer sweep than line trace, we don't want to run the line trace if the sweep missed everything.
+	// We do however want to try a line trace if the sweep was stuck in penetration.
+	if (!OutFloorResult.bBlockingHit && !OutFloorResult.HitResult.bStartPenetrating)
+	{
+		OutFloorResult.FloorDist = SweepDistance;
+		return;
+	}
+
+	// Line trace
+	if (LineDistance > 0.f)
+	{
+		const float ShrinkHeight = PawnHalfHeight;
+		const FVector LineTraceStart = CapsuleLocation;
+		const float TraceDist = LineDistance + ShrinkHeight;
+		const FVector Down = FVector(0.f, 0.f, -TraceDist);
+		QueryParams.TraceTag = SCENE_QUERY_STAT_NAME_ONLY(FloorLineTrace);
+
+		FHitResult Hit(1.f);
+		bBlockingHit = GetWorld()->LineTraceSingleByChannel(Hit, LineTraceStart, LineTraceStart + Down, CollisionChannel, QueryParams, ResponseParam);
+
+		if (bBlockingHit)
+		{
+			if (Hit.Time > 0.f)
+			{
+				// Reduce hit distance by ShrinkHeight because we started the trace higher than the base.
+				// We allow negative distances here, because this allows us to pull out of penetrations.
+				const float MaxPenetrationAdjust = FMath::Max(MAX_FLOOR_DIST, PawnRadius);
+				const float LineResult = FMath::Max(-MaxPenetrationAdjust, Hit.Time * TraceDist - ShrinkHeight);
+
+				OutFloorResult.bBlockingHit = true;
+				if (LineResult <= LineDistance && IsWalkable(Hit))
+				{
+					OutFloorResult.SetFromLineTrace(Hit, OutFloorResult.FloorDist, LineResult, true);
+					return;
+				}
+			}
+		}
+	}
+
+	// No hits were acceptable.
+	OutFloorResult.bWalkableFloor = false;
+	OutFloorResult.FloorDist = SweepDistance;
 }
 
 
@@ -285,62 +448,73 @@ void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Move
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle)
 {
+	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn;
 	MoveAction.MoveActionRot = FRotator(0.0f, DeltaYawAngle, 0.0f);
+	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation)
 {
+	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_Teleport;
 	MoveAction.MoveActionLoc = TeleportLocation;
 	MoveAction.MoveActionRot.Yaw = TeleportRotation.Yaw;
+	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_StopAllMovement()
 {
+	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_StopAllMovement;
+	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator)
 {
+	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = MoveActionToPerform;
 	MoveAction.MoveActionLoc = MoveActionVector;
 	MoveAction.MoveActionRot = MoveActionRotator;
 	MoveAction.MoveActionDataReq = DataRequirementsForMoveAction;
+	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
 bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 {
-	switch (MoveAction.MoveAction)
+	for (FVRMoveActionContainer MoveAction : MoveActionArray.MoveActions)
 	{
-	case EVRMoveAction::VRMOVEACTION_SnapTurn: 
-	{
-		return DoMASnapTurn();
-	}break;
-	case EVRMoveAction::VRMOVEACTION_Teleport:
-	{
-		return DoMATeleport(); 
-	}break;
-	case EVRMoveAction::VRMOVEACTION_StopAllMovement:
-	{
-		return DoMAStopAllMovement();
-	}break;
-	case EVRMoveAction::VRMOVEACTION_Reserved1:
-	case EVRMoveAction::VRMOVEACTION_None:
-	{}break;
-	default: // All other move actions (CUSTOM)
-	{
-		if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+		switch (MoveAction.MoveAction)
 		{
-			OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot);
+		case EVRMoveAction::VRMOVEACTION_SnapTurn:
+		{
+			/*return */DoMASnapTurn(MoveAction);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_Teleport:
+		{
+			/*return */DoMATeleport(MoveAction);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_StopAllMovement:
+		{
+			/*return */DoMAStopAllMovement(MoveAction);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_Reserved1:
+		case EVRMoveAction::VRMOVEACTION_None:
+		{}break;
+		default: // All other move actions (CUSTOM)
+		{
+			if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+			{
+				OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot);
+			}
+		}break;
 		}
-	}break;
 	}
 
-	return false;
+	return true;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMASnapTurn()
+bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
@@ -359,7 +533,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn()
 	return false;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMATeleport()
+bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
@@ -390,7 +564,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport()
 	return false;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement()
+bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement(FVRMoveActionContainer MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
@@ -755,6 +929,21 @@ void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMo
 */
 void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
+	// Scope these, they nest with Outer references so it should work fine
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
+
+	// This moves it into update scope
+	if (bRunControlRotationInMovementComponent && IsLocallyControlled())
+	{
+		if (AVRPlayerController * PC = Cast<AVRPlayerController>(CharacterOwner->GetController()))
+		{
+			PC->RotationInput = PC->LastRotationInput;
+			PC->UpdateRotation(DeltaSeconds);
+			PC->LastRotationInput = FRotator::ZeroRotator;
+			PC->RotationInput = FRotator::ZeroRotator;
+		}
+	}
+
 	if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//None)
 	{
 		if (VRReplicatedMovementMode <= EVRConjoinedMovementModes::C_MOVE_MAX)
@@ -773,7 +962,7 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
 	}
 
-	// Handle move actions here
+	// Handle move actions here - Should be scoped
 	CheckForMoveAction();
 
 	// Clear out this flag prior to movement so we can see if it gets changed
@@ -786,7 +975,12 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	// Make sure these are cleaned out for the next frame
 	AdditionalVRInputVector = FVector::ZeroVector;
 	CustomVRInputVector = FVector::ZeroVector;
-	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_None;
+
+	// Only clear it here if we are the server, the client clears it later
+	if (CharacterOwner->Role == ROLE_Authority)
+	{
+		MoveActionArray.Clear();
+	}
 }
 
 void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
@@ -798,7 +992,7 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		{
 
 			// Saving this out early because it will be wiped before the PostUpdate gets the values
-			ConditionalValues.MoveAction.MoveAction = moveComp->MoveAction.MoveAction;
+			//ConditionalValues.MoveAction.MoveAction = moveComp->MoveAction.MoveAction;
 
 			VRReplicatedMovementMode = moveComp->VRReplicatedMovementMode;
 
@@ -835,7 +1029,16 @@ void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostU
 {
 	FSavedMove_Character::PostUpdate(C, PostUpdateMode);
 
-	if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
+	// See if we can get the VR capsule location
+	if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
+	{
+		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
+		{
+			ConditionalValues.MoveActionArray = moveComp->MoveActionArray;
+			moveComp->MoveActionArray.Clear();
+		}
+	}
+	/*if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
 	{
 		// See if we can get the VR capsule location
 		if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
@@ -856,7 +1059,7 @@ void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostU
 		{
 			ConditionalValues.MoveAction.Clear();
 		}
-	}
+	}*/
 }
 
 void FSavedMove_VRBaseCharacter::Clear()
@@ -869,7 +1072,8 @@ void FSavedMove_VRBaseCharacter::Clear()
 
 	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
 	ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-	ConditionalValues.MoveAction.Clear();
+	ConditionalValues.MoveActionArray.Clear();
+	//ConditionalValues.MoveAction.Clear();
 
 	FSavedMove_Character::Clear();
 }
@@ -880,7 +1084,8 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 
 	if (BaseCharMove)
 	{
-		BaseCharMove->MoveAction = ConditionalValues.MoveAction; 
+		BaseCharMove->MoveActionArray = ConditionalValues.MoveActionArray;
+		//BaseCharMove->MoveAction = ConditionalValues.MoveAction; 
 		BaseCharMove->CustomVRInputVector = ConditionalValues.CustomVRInputVector;//this->CustomVRInputVector;
 		BaseCharMove->VRReplicatedMovementMode = this->VRReplicatedMovementMode;
 	}
@@ -1012,5 +1217,35 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 		{
 			// Unhandled mode
 		}
+	}
+}
+
+FVRCharacterScopedMovementUpdate::FVRCharacterScopedMovementUpdate(USceneComponent* Component, EScopedUpdate::Type ScopeBehavior, bool bRequireOverlapsEventFlagToQueueOverlaps)
+	: FScopedMovementUpdate(Component, ScopeBehavior, bRequireOverlapsEventFlagToQueueOverlaps)
+{
+	UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
+	if (RootComponent)
+	{
+		InitialVRTransform = RootComponent->OffsetComponentToWorld;
+	}
+}
+
+void FVRCharacterScopedMovementUpdate::RevertMove()
+{
+	bool bTransformIsDirty = IsTransformDirty();
+
+	FScopedMovementUpdate::RevertMove();
+
+	UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
+	if (RootComponent)
+	{
+		// If the base class was going to miss bad overlaps, ie: the offsetcomponent to world is different but the transform isn't
+		if (!bTransformIsDirty && !IsDeferringUpdates() && !InitialVRTransform.Equals(RootComponent->OffsetComponentToWorld))
+		{
+			RootComponent->UpdateOverlaps();
+		}
+
+		// Fix offset
+		RootComponent->GenerateOffsetToWorld();
 	}
 }

@@ -29,6 +29,8 @@ class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent, public 
 public:
 	friend class FDrawCylinderSceneProxy;
 
+	bool bCalledUpdateTransform;
+
 	FORCEINLINE void GenerateOffsetToWorld(bool bUpdateBounds = true, bool bGetPureYaw = true);
 
 	// If valid will use this as the tracked parent instead of the HMD / Parent
@@ -54,12 +56,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Components|Capsule")
 		void SetCapsuleHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true);
 
+	inline void OnUpdateTransform_Public(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None)
+	{
+		OnUpdateTransform(UpdateTransformFlags, Teleport);
+	}
+
 protected:
 	virtual bool MoveComponentImpl(const FVector& Delta, const FQuat& NewRotation, bool bSweep, FHitResult* OutHit = NULL, EMoveComponentFlags MoveFlags = MOVECOMP_NoFlags, ETeleportType Teleport = ETeleportType::None) override;
 	virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
 
 	void SendPhysicsTransform(ETeleportType Teleport);
-
 	virtual void UpdateOverlaps(TArray<FOverlapInfo> const* NewPendingOverlaps = nullptr, bool bDoNotifies = true, const TArray<FOverlapInfo>* OverlapsAtEndLocation = nullptr) override;
 
 	const TArray<FOverlapInfo>* ConvertRotationOverlapsToCurrentOverlaps(TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& CurrentOverlaps);
@@ -116,6 +122,7 @@ public:
 
 	FVector curCameraLoc;
 	FRotator curCameraRot;
+	FRotator StoredCameraRotOffset;
 
 	FVector lastCameraLoc;
 	FRotator lastCameraRot;
@@ -143,15 +150,15 @@ public:
 
 
 // Have to declare inlines here for blueprint
-
-void UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGetPureYaw)
+void inline UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGetPureYaw)
 {
 	FRotator CamRotOffset;
-	
+
 	if (bGetPureYaw)
-		CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+		CamRotOffset = StoredCameraRotOffset;//UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 	else
 		CamRotOffset = curCameraRot;
+
 
 	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
 

@@ -26,4 +26,13 @@ public:
 
 	/** spawn cameras for servers and owning players */
 	virtual void SpawnPlayerCameraManager() override;
+
+	FRotator LastRotationInput;
+
+	/**
+	* Processes player input (immediately after PlayerInput gets ticked) and calls UpdateRotation().
+	* PlayerTick is only called if the PlayerController has a PlayerInput object. Therefore, it will only be called for locally controlled PlayerControllers.
+	* I am overriding this so that for VRCharacters it doesn't apply the view rotation and instead lets CMC handle it
+	*/
+	virtual void PlayerTick(float DeltaTime) override;
 };

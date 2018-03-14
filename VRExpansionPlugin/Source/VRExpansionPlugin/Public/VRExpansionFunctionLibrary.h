@@ -14,6 +14,7 @@
 
 #include "VRBPDatatypes.h"
 #include "GameplayTagContainer.h"
+#include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 
 #include "VRExpansionFunctionLibrary.generated.h"
 
@@ -40,6 +41,18 @@ class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UBlueprintFunct
 	GENERATED_BODY()
 	//~UVRExpansionFunctionLibrary();
 public:
+
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
+	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
+	{
+		Hand = EControllerHand::Left;
+		if (FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
+		{
+			return true;
+		}
+
+		return false;
+	}
 
 	// Gets the unwound yaw of the HMD
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDPureYaw"))
@@ -69,7 +82,7 @@ public:
 	}
 
 	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "RotateAroundPivot"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "RotateAroundPivot"))
 	static void RotateAroundPivot(FRotator RotationDelta, FVector OriginalLocation, FRotator OriginalRotation, FVector PivotPoint, FVector & NewLocation, FRotator & NewRotation,bool bUseOriginalYawOnly = true)
 	{		
 		if (bUseOriginalYawOnly)

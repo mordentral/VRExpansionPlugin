@@ -127,7 +127,6 @@ public:
 	AVRBaseCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	//These functions are now housed in the base character and used when possible, it saves about 7 bits of packet header overhead per send.
-
 	// I'm sending it unreliable because it is being resent pretty often
 	UFUNCTION(Unreliable, Server, WithValidation)
 		void Server_SendTransformCamera(FBPVRComponentPosRep NewTransform);
@@ -137,6 +136,14 @@ public:
 
 	UFUNCTION(Unreliable, Server, WithValidation)
 		void Server_SendTransformRightController(FBPVRComponentPosRep NewTransform);
+
+	// Override this in c++ or blueprints to pass in an IK mesh to be used in some optimizations
+	// May be extended in the future
+	UFUNCTION(BlueprintNativeEvent, Category = "BaseVRCharacter")
+	USkeletalMeshComponent * GetIKMesh() const;
+	virtual USkeletalMeshComponent *  GetIKMesh_Implementation() const;
+	// #TODO: Work with the above, can do multiple things with it
+
 
 	// Called when the client is in climbing mode and is stepped up onto a platform
 	// Generally you should drop the climbing at this point and go into falling movement.

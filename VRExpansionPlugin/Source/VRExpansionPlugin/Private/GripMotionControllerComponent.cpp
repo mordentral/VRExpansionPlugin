@@ -8,6 +8,12 @@
 #include "PrimitiveSceneInfo.h"
 #include "Engine/World.h"
 #include "GameFramework/WorldSettings.h"
+#include "IXRSystemAssets.h"
+#include "Components/StaticMeshComponent.h"
+#include "MotionDelayBuffer.h"
+#include "VRObjectVersion.h"
+#include "UObject/UObjectGlobals.h" // for FindObject<>
+#include "XRMotionControllerBase.h"
 #include "DrawDebugHelpers.h"
 
 #include "VRBaseCharacter.h"
@@ -43,7 +49,6 @@ namespace {
 
 } // anonymous namespace
 
-
   //=============================================================================
 UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -54,7 +59,8 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	PrimaryComponentTick.bTickEvenWhenPaused = true;
 
 	PlayerIndex = 0;
-	Hand = EControllerHand::Left;
+	MotionSource = FXRMotionControllerBase::LeftHandSourceId;
+	//Hand = EControllerHand::Left;
 	bDisableLowLatencyUpdate = false;
 	bHasAuthority = false;
 	bUseWithoutTracking = false;
@@ -72,6 +78,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bSmoothReplicatedMotion = false;
 	bReppedOnce = false;
 	bOffsetByHMD = false;
+	bIsPostTeleport = false;
 }
 
 //=============================================================================
@@ -121,8 +128,9 @@ void UGripMotionControllerComponent::BeginDestroy()
 			FScopeLock ScopeLock(&CritSect);
 			GripViewExtension->MotionControllerComponent = NULL;
 		}
+
+		GripViewExtension.Reset();
 	}
-	GripViewExtension.Reset();
 }
 
 void UGripMotionControllerComponent::SendRenderTransform_Concurrent()
@@ -1260,7 +1268,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 		if (((bWasLocalGrip && !IsLocallyControlled()) ||
 			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement) &&
 			(!OptionalLinearVelocity.IsNearlyZero() || !OptionalAngularVelocity.IsNearlyZero())
-			)
+		)
 		{
 			PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
 			PrimComp->SetPhysicsAngularVelocityInDegrees(OptionalAngularVelocity);
@@ -1915,12 +1923,19 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 	return false;
 }
 
-bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &Grip, bool bIsPostTeleport)
+bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &Grip, bool bIsForPostTeleport)
+{
+	FTransform EmptyTransform = FTransform::Identity;
+	return TeleportMoveGrip_Impl(Grip, bIsForPostTeleport, EmptyTransform);
+}
+
+bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bIsForPostTeleport, FTransform & OptionalTransform)
 {
 	bool bHasMovementAuthority = HasGripMovementAuthority(Grip);
 
 	if (!bHasMovementAuthority)
 		return false;
+		
 
 	UPrimitiveComponent * PrimComp = NULL;
 	AActor * actor = NULL;
@@ -1984,7 +1999,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &G
 		bSimulateOnDrop = IVRGripInterface::Execute_SimulateOnDrop(actor);
 	}
 
-	if (bIsPostTeleport)
+	if (bIsForPostTeleport)
 	{
 		if (TeleportBehavior == EGripInterfaceTeleportBehavior::OnlyTeleportRootComponent)
 		{
@@ -2029,9 +2044,14 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &G
 	FTransform ParentTransform = this->GetComponentTransform();
 
 	FBPActorGripInformation copyGrip = Grip;
-
+	
 	bool bRescalePhysicsGrips = false;
-	GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface, bRescalePhysicsGrips);
+
+	//FTransform EmptyTransform = FTransform::Identity;
+	if (OptionalTransform.Equals(FTransform::Identity))
+		WorldTransform = OptionalTransform;
+	else
+		GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface, bRescalePhysicsGrips);
 
 	//WorldTransform = Grip.RelativeTransform * ParentTransform;
 
@@ -2043,7 +2063,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &G
 	{
 		PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
 	}
-	else if (Handle && Handle->KinActorData && bIsPostTeleport)
+	else if (Handle && Handle->KinActorData && bIsForPostTeleport)
 	{
 		// Don't try to autodrop on next tick, let the physx constraint update its local frame first
 		if (HasGripAuthority(Grip))
@@ -2150,15 +2170,23 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 				GripViewExtension = FSceneViewExtensions::NewExtension<FGripViewExtension>(this);
 			}
 
-			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
-
 			// This is the owning player, now you can get the controller's location and rotation from the correct source
-			bTracked = GripPollControllerState(Position, Orientation, WorldToMeters);
 
-			if (bTracked)
+			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+			const bool bNewTrackedState = GripPollControllerState(Position, Orientation, WorldToMeters);
+
+			if (bNewTrackedState)
 			{
 				SetRelativeLocationAndRotation(Position, Orientation);
 			}
+
+			// if controller tracking just kicked in 
+			if (!bTracked && bNewTrackedState && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
+			{
+				RefreshDisplayComponent();
+			}
+
+			bTracked = bNewTrackedState;
 		}
 
 		if (!bTracked && !bUseWithoutTracking)
@@ -2528,6 +2556,13 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				
 				// Get the world transform for this grip after handling secondary grips and interaction differences
 				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface, bRescalePhysicsGrips);
+
+				// If we just teleported, skip this update and just teleport forward
+				if (bIsPostTeleport)
+				{
+					TeleportMoveGrip_Impl(*Grip, true, WorldTransform);
+					continue;
+				}
 
 				// Auto drop based on distance from expected point
 				// Not perfect, should be done post physics or in next frame prior to changing controller location
@@ -2911,6 +2946,9 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				CleanUpBadGrip(GrippedObjectsArray, i, bReplicatedArray);
 			}
 		}
+
+		// Empty out the teleport flag
+		bIsPostTeleport = false;
 	}
 }
 
@@ -3619,7 +3657,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 	// Not calling PollControllerState from the parent because its private.......
 
 
-	if ((PlayerIndex != INDEX_NONE) && bHasAuthority)
+	if (bHasAuthority)
 	{
 		// New iteration and retrieval for 4.12
 		TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
@@ -3631,12 +3669,9 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				continue;
 			}
 			
-			EControllerHand QueryHand = (Hand == EControllerHand::AnyHand) ? EControllerHand::Left : Hand;
-
-			if (MotionController->GetControllerOrientationAndPosition(PlayerIndex, QueryHand, Orientation, Position, WorldToMetersScale))
+			CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
+			if (MotionController->GetControllerOrientationAndPosition(PlayerIndex, MotionSource, Orientation, Position, WorldToMetersScale))
 			{
-				CurrentTrackingStatus = (ETrackingStatus)MotionController->GetControllerTrackingStatus(PlayerIndex, Hand);
-				
 				if (bOffsetByHMD)
 				{
 					if (IsInGameThread())
@@ -3659,39 +3694,11 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 
 					Position -= LastLocationForLateUpdate;
 				}
+
+				InUseMotionController = MotionController;
+				OnMotionControllerUpdated();
+				InUseMotionController = nullptr;
 							
-				return true;
-			}
-
-			// If we've made it here, we need to see if there's a right hand controller that reports back the position
-			if (Hand == EControllerHand::AnyHand && MotionController->GetControllerOrientationAndPosition(PlayerIndex, EControllerHand::Right, Orientation, Position, WorldToMetersScale))
-			{
-				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, EControllerHand::Right);
-				
-				if (bOffsetByHMD)
-				{
-					if (IsInGameThread())
-					{
-						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
-						{
-							FQuat curRot;
-							FVector curLoc;
-							if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
-							{
-								curLoc.Z = 0;
-
-								LastLocationForLateUpdate = curLoc;
-							}
-							else
-							{
-								// Keep last location instead
-							}
-						}
-					}
-
-					Position -= LastLocationForLateUpdate;
-				}
-
 				return true;
 			}
 		}
@@ -3700,6 +3707,12 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 }
 
 //=============================================================================
+UGripMotionControllerComponent::FGripViewExtension::FGripViewExtension(const FAutoRegister& AutoRegister, UGripMotionControllerComponent* InMotionControllerComponent)
+	: FSceneViewExtensionBase(AutoRegister)
+	, MotionControllerComponent(InMotionControllerComponent)
+{}
+
+
 void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
 {
 	FTransform OldTransform;
@@ -3744,6 +3757,15 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 
 	  // Tell the late update manager to apply the offset to the scene components
 	LateUpdate.Apply_RenderThread(InViewFamily.Scene, OldTransform, NewTransform);
+}
+
+void UGripMotionControllerComponent::FGripViewExtension::PostRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
+{
+	if (!MotionControllerComponent)
+	{
+		return;
+	}
+	LateUpdate.PostRender_RenderThread();
 }
 
 bool UGripMotionControllerComponent::FGripViewExtension::IsActiveThisFrame(class FViewport* InViewport) const
@@ -3972,6 +3994,10 @@ void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, cons
 			CachedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
 		}
 	}
+}
+
+void FExpandedLateUpdateManager::PostRender_RenderThread()
+{
 	LateUpdatePrimitives[LateUpdateRenderReadIndex].Reset();
 	LateUpdateRenderReadIndex = (LateUpdateRenderReadIndex + 1) % 2;
 }
@@ -4000,12 +4026,9 @@ void FExpandedLateUpdateManager::GatherLateUpdatePrimitives(USceneComponent* Par
 	TArray<USceneComponent*> Components;
 	ParentComponent->GetChildrenComponents(true, Components);
 	for (USceneComponent* Component : Components)
-	{
-		
-		if (Component == nullptr)
-			continue;
-		//check(Component != nullptr);
-		CacheSceneInfo(Component);
+	{	
+		if (Component != nullptr)
+			CacheSceneInfo(Component);
 	}
 }
 

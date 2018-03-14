@@ -146,10 +146,17 @@ bool UVRExpansionFunctionLibrary::GetIsHMDConnected()
 
 EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 {
-	// Temp workaround for 4.18 which doesn't have the enum anymore and only deals in names
 	if (GEngine && GEngine->XRSystem.IsValid())
 	{
-		IHeadMountedDisplay* HMDDevice = GEngine->XRSystem->GetHMDDevice();
+		/*
+			if (GEngine && GEngine->XRSystem.IsValid())
+	{
+		Ar.Logf(*GEngine->XRSystem->GetVersionString());
+	}
+		*/
+
+		// #TODO 4.19: Figure out a way to replace this...its broken now
+		/*IHeadMountedDisplay* HMDDevice = GEngine->XRSystem->GetHMDDevice();
 		if (HMDDevice)
 		{
 			EHMDDeviceType::Type HMDDeviceType = HMDDevice->GetHMDDeviceType();
@@ -164,39 +171,41 @@ EBPHMDDeviceType UVRExpansionFunctionLibrary::GetHMDType()
 			case EHMDDeviceType::DT_GoogleVR: return EBPHMDDeviceType::DT_GoogleVR; break;
 			}
 
-		}
+		}*/
 
 		// There are no device type entries for these now....
 		// Does the device type go away soon leaving only FNames?
 		// #TODO: 4.19?
 		// GearVR doesn't even return anything gut OculusHMD in FName currently.
 
-		//static FName SteamVRName(TEXT("SteamVR"));
-		static FName OSVRName(TEXT("OSVR"));
-		static FName AppleARKitName(TEXT("AppleARKit"));
-		static FName GoogleARCoreHMDName(TEXT("FGoogleARCoreHMD"));
+		static const FName SteamVRSystemName(TEXT("SteamVR"));
+		static const FName OculusSystemName(TEXT("OculusHMD"));
+		static const FName PSVRSystemName(TEXT("PSVR"));
+		static const FName OSVRSystemName(TEXT("OSVR"));
+		static const FName GoogleARCoreSystemName(TEXT("FGoogleARCoreHMD"));
+		static const FName AppleARKitSystemName(TEXT("AppleARKit"));
+		static const FName GoogleVRHMDSystemName(TEXT("FGoogleVRHMD"));
 
-		static FName DeviceName(NAME_None);
+		FName DeviceName(NAME_None);
 		DeviceName = GEngine->XRSystem->GetSystemName();
 
-		/*if (DeviceName == FName("SimpleHMD"))
+
+		if (DeviceName == FName(TEXT("SimpleHMD")))
 			return EBPHMDDeviceType::DT_ES2GenericStereoMesh;
-		else if (DeviceName == FName(""))
-			return EBPHMDDeviceType::DT_GearVR;
-		else if (DeviceName == FName("PSVR"))
-			return EBPHMDDeviceType::DT_Morpheus;
-		else if (DeviceName == FName("OculusHMD"))
-			return EBPHMDDeviceType::DT_OculusRift;
-		else if (DeviceName == FName("SteamVR"))
+		else if (DeviceName == SteamVRSystemName)
 			return EBPHMDDeviceType::DT_SteamVR;
-		else if (DeviceName == FName("FGoogleVRHMD"))
-			return EBPHMDDeviceType::DT_GoogleVR;*/
-		if (DeviceName == OSVRName)
-			return EBPHMDDeviceType::DT_OSVR;
-		else if (DeviceName == AppleARKitName)
-			return EBPHMDDeviceType::DT_AppleARKit;
-		else if (DeviceName == GoogleARCoreHMDName)
+		else if (DeviceName == OculusSystemName)
+			return EBPHMDDeviceType::DT_OculusHMD;
+		else if (DeviceName == PSVRSystemName)
+			return EBPHMDDeviceType::DT_PSVR;
+		else if (DeviceName == OSVRSystemName)
+			return EBPHMDDeviceType::DT_SteamVR;
+		else if (DeviceName == GoogleARCoreSystemName)
 			return EBPHMDDeviceType::DT_GoogleARCore;
+		else if (DeviceName == AppleARKitSystemName)
+			return EBPHMDDeviceType::DT_AppleARKit;
+		else if (DeviceName == GoogleVRHMDSystemName)
+			return EBPHMDDeviceType::DT_GoogleVR;
 	}
 
 	// Default to unknown

@@ -58,7 +58,8 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (LeftMotionController)
 	{
 		LeftMotionController->SetupAttachment(NetSmoother);
-		LeftMotionController->Hand = EControllerHand::Left;
+		LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
+		//LeftMotionController->Hand = EControllerHand::Left;
 		LeftMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
 		LeftMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
@@ -69,7 +70,8 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (RightMotionController)
 	{
 		RightMotionController->SetupAttachment(NetSmoother);
-		RightMotionController->Hand = EControllerHand::Right;
+		RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
+		//RightMotionController->Hand = EControllerHand::Right;
 		RightMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
 		RightMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
@@ -93,6 +95,11 @@ void AVRBaseCharacter::GetLifetimeReplicatedProps(TArray< class FLifetimePropert
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, SeatInformation, COND_OwnerOnly);
+}
+
+USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const
+{
+	return nullptr;
 }
 
 bool AVRBaseCharacter::Server_SetSeatedMode_Validate(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead)
@@ -183,15 +190,14 @@ FVector AVRBaseCharacter::GetTeleportLocation(FVector OriginalLocation)
 
 void AVRBaseCharacter::NotifyOfTeleport_Implementation()
 {
-	// Regenerate the capsule offset location - Should be done anyway in the move_impl function, but playing it safe
-	//if (VRRootReference)
-	//	VRRootReference->GenerateOffsetToWorld();
+	if (!IsLocallyControlled())
+	{
+		if (LeftMotionController)
+			LeftMotionController->bIsPostTeleport = true;
 
-	if (LeftMotionController)
-		LeftMotionController->PostTeleportMoveGrippedObjects();
-
-	if (RightMotionController)
-		RightMotionController->PostTeleportMoveGrippedObjects();
+		if (RightMotionController)
+			RightMotionController->bIsPostTeleport = true;
+	}
 }
 
 void AVRBaseCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, float AcceptanceRadius, bool bStopOnOverlap, bool bUsePathfinding, bool bProjectDestinationToNavigation, bool bCanStrafe, TSubclassOf<UNavigationQueryFilter> FilterClass, bool bAllowPartialPaths)

@@ -45,6 +45,7 @@ DECLARE_CYCLE_STAT(TEXT("Char PhysNavWalking"), STAT_CharPhysNavWalking, STATGRO
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectPoint"), STAT_CharNavProjectPoint, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char NavProjectLocation"), STAT_CharNavProjectLocation, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char AdjustFloorHeight"), STAT_CharAdjustFloorHeight, STATGROUP_Character);
+DECLARE_CYCLE_STAT(TEXT("Char ProcessLanded"), STAT_CharProcessLanded, STATGROUP_Character);
 
 // MAGIC NUMBERS
 const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
@@ -64,7 +65,7 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 		return;
 	}
 
-	if (!CanCrouchInCurrentState())
+	if (!bClientSimulation && !CanCrouchInCurrentState())
 	{
 		return;
 	}
@@ -539,6 +540,8 @@ void UVRCharacterMovementComponent::ServerMoveVRDualHybridRootMotion_Implementat
 	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
 	MoveRepsOld.UnpackAndSetINTRotations(View0);
 
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 	// First move received didn't use root motion, process it as such.
 	CharacterOwner->bServerMoveIgnoreRootMotion = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
 	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, OldConditionalReps, OldLFDiff, OldCapsuleYaw, PendingFlags, MoveRepsOld, ClientMovementMode);
@@ -574,6 +577,8 @@ void UVRCharacterMovementComponent::ServerMoveVRDual_Implementation(
 	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
 	MoveRepsOld.UnpackAndSetINTRotations(View0);
 
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, OldConditionalReps, OldLFDiff, OldCapsuleYaw, PendingFlags, MoveRepsOld, ClientMovementMode);
 	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, CapsuleLoc, ConditionalReps, LFDiff, CapsuleYaw, NewFlags, MoveReps, ClientMovementMode);
 }
@@ -603,6 +608,8 @@ void UVRCharacterMovementComponent::ServerMoveVRDualExLight_Implementation(
 	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
 	MoveRepsOld.UnpackAndSetINTRotations(View0);
 
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 	ServerMoveVR_Implementation(TimeStamp0, FVector::ZeroVector, FVector(1.f, 2.f, 3.f), OldCapsuleLoc, OldConditionalReps, OldLFDiff, OldCapsuleYaw, PendingFlags,  MoveRepsOld, ClientMovementMode);
 	ServerMoveVR_Implementation(TimeStamp, FVector::ZeroVector, ClientLoc, CapsuleLoc, ConditionalReps, LFDiff, CapsuleYaw, NewFlags, MoveReps, ClientMovementMode);
 }
@@ -645,6 +652,9 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	{
 		return;
 	}
+
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
 	bool bServerReadyForClient = true;
 	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
@@ -698,7 +708,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 		}
 
 		CustomVRInputVector = ConditionalReps.CustomVRInputVector;
-		MoveAction = ConditionalReps.MoveAction;
+		MoveActionArray = ConditionalReps.MoveActionArray;
 
 		// Set capsule location prior to testing movement
 		// I am overriding the replicated value here when movement is made on purpose
@@ -1036,7 +1046,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		// Apply acceleration
 		if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 		{
-			CalcVelocity(timeTick, GroundFriction, false, BrakingDecelerationWalking);
+			CalcVelocity(timeTick, GroundFriction, false, GetMaxBrakingDeceleration());
 			checkCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 		}
 
@@ -1182,6 +1192,8 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			}
 			else if (CurrentFloor.HitResult.bStartPenetrating && remainingTime <= 0.f)
 			{
+				// The floor check failed because it started in penetration
+				// We do not want to try to move downward because the downward sweep failed, rather we'd like to try to pop out of the floor.
 				FHitResult Hit(CurrentFloor.HitResult);
 				Hit.TraceEnd = Hit.TraceStart + FVector(0.f, 0.f, MAX_FLOOR_DIST);
 				const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
@@ -1354,6 +1366,13 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 
 		if (!OverlapTest(OldStartLocation, ClientData->PendingMove->StartRotation.Quaternion(), UpdatedComponent->GetCollisionObjectType(), GetPawnCapsuleCollisionShape(SHRINK_None), CharacterOwner))
 		{
+			// Avoid updating Mesh bones to physics during the teleport back, since PerformMovement() will update it right away anyway below.
+			// Note: this must be before the FScopedMovementUpdate below, since that scope is what actually moves the character and mesh.
+			
+			AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);
+			FScopedMeshBoneUpdateOverrideVR ScopedNoMeshBoneUpdate(BaseCharacter != nullptr ? BaseCharacter->GetIKMesh() : CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
+
+			// Accumulate multiple transform updates until scope ends.
 			/*FScopedMovementUpdate*/  FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 			UE_LOG(LogNetPlayerMovement, VeryVerbose, TEXT("CombineMove: add delta %f + %f and revert from %f %f to %f %f"), DeltaTime, ClientData->PendingMove->DeltaTime, UpdatedComponent->GetComponentLocation().X, UpdatedComponent->GetComponentLocation().Y, OldStartLocation.X, OldStartLocation.Y);
 
@@ -1469,6 +1488,12 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
 
 		// Send move to server if this character is replicating movement
+		bool bSendServerMove = true;
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+		static const auto CVarNetForceClientServerMoveLossPercent = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetForceClientServerMoveLossPercent"));
+		bSendServerMove = (CVarNetForceClientServerMoveLossPercent->GetFloat() == 0.f) || (FMath::SRand() >= CVarNetForceClientServerMoveLossPercent->GetFloat());
+#endif
+		if (bSendServerMove)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCallServerMove);
 			CallServerMove(/*(FSavedMove_VRCharacter *)*/NewMove.Get(), /*(FSavedMove_VRCharacter *)*/OldMove.Get());
@@ -1799,12 +1824,6 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		return false;
 	}
 
-	// Don't step up if the impact is below us
-	if (InitialImpactZ <= OldLocation.Z - PawnHalfHeight)
-	{
-		return false;
-	}
-
 	if (GravDir.IsZero())
 	{
 		return false;
@@ -1822,7 +1841,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 	if (IsMovingOnGround() && CurrentFloor.IsWalkableFloor())
 	{
 		// Since we float a variable amount off the floor, we need to enforce max step height off the actual point of impact with the floor.
-		const float FloorDist = FMath::Max(0.f, CurrentFloor.FloorDist);
+		const float FloorDist = FMath::Max(0.f, CurrentFloor.GetDistanceToFloor());
 		PawnInitialFloorBaseZ -= FloorDist;
 		StepTravelUpHeight = FMath::Max(StepTravelUpHeight - FloorDist, 0.f);
 		StepTravelDownHeight = (MaxStepHeight + MAX_FLOOR_DIST*2.f);
@@ -1837,6 +1856,12 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			// Base floor point is the base of the capsule moved down by how far we are hovering over the surface we are hitting.
 			PawnFloorPointZ -= CurrentFloor.FloorDist;
 		}
+	}
+
+	// Don't step up if the impact is below us, accounting for distance from floor.
+	if (InitialImpactZ <= PawnInitialFloorBaseZ)
+	{
+		return false;
 	}
 
 	// Scope our movement updates, and do not apply them until all intermediate moves are completed.
@@ -1919,7 +1944,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		const float DeltaZ = Hit.ImpactPoint.Z - PawnFloorPointZ;
 		if (DeltaZ > MaxStepHeight)
 		{
-			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f"), DeltaZ, PawnInitialFloorBaseZ);
+			//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f"), DeltaZ, PawnInitialFloorBaseZ);
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -1940,7 +1965,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			// It's fine to step down onto an unwalkable normal below us, we will just slide off. Rejecting those moves would prevent us from being able to walk off the edge.
 			if (Hit.Location.Z > OldLocation.Z)
 			{
-				UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
+				//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
 				ScopedStepUpMovement.RevertMove();
 				return false;
 			}
@@ -1949,7 +1974,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		// Reject moves where the downward sweep hit something very close to the edge of the capsule. This maintains consistency with FindFloor as well.
 		if (!IsWithinEdgeTolerance(Hit.Location, Hit.ImpactPoint, PawnRadius))
 		{
-			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
+			//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -1957,7 +1982,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		// Don't step up onto invalid surfaces if traveling higher.
 		if (DeltaZ > 0.f && !CanStepUp(Hit))
 		{
-			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
+			//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -2410,6 +2435,7 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 		return;
 	}
 
+	//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("[Role:%d] FindFloor: %s at location %s"), (int32)CharacterOwner->Role, *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
 	check(CharacterOwner->GetCapsuleComponent());
 
 	FVector UseCapsuleLocation = CapsuleLocation;
@@ -2442,9 +2468,7 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 			UPrimitiveComponent* MovementBase = CharacterOwner->GetMovementBase();
 			const AActor* BaseActor = MovementBase ? MovementBase->GetOwner() : NULL;
 			
-			ECollisionChannel CollisionChannel;
-			
-			CollisionChannel = UpdatedComponent->GetCollisionObjectType();
+			const ECollisionChannel CollisionChannel = UpdatedComponent->GetCollisionObjectType();
 
 			if (MovementBase != NULL)
 			{
@@ -3185,7 +3209,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 
 	// Ensure velocity is horizontal.
 	MaintainHorizontalGroundVelocity();
-	checkf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN before CalcVelocity (%s: %s)\n%s"), *GetPathNameSafe(this), *GetPathNameSafe(GetOuter()), *Velocity.ToString());
+	checkf(!Velocity.ContainsNaN(), TEXT("gNavWalking: Velocity contains NaN before CalcVelocity (%s: %s)\n%s"), *GetPathNameSafe(this), *GetPathNameSafe(GetOuter()), *Velocity.ToString());
 
 	//bound acceleration
 	Acceleration.Z = 0.f;
@@ -3308,6 +3332,8 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 
 void UVRCharacterMovementComponent::ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations)
 {
+	SCOPE_CYCLE_COUNTER(STAT_CharProcessLanded);
+
 	if (CharacterOwner && CharacterOwner->ShouldNotifyLanded(Hit))
 	{
 		CharacterOwner->Landed(Hit);
@@ -3391,12 +3417,15 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 	{
 		FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
+		bool bHandledNetUpdate = false;
 		if (bIsSimulatedProxy)
 		{
 			// Handle network changes
 			if (bNetworkUpdateReceived)
 			{
 				bNetworkUpdateReceived = false;
+				bHandledNetUpdate = true;
+				UE_LOG(LogCharacterMovement, Verbose, TEXT("Proxy %s received net update"), *GetNameSafe(CharacterOwner));
 				if (bNetworkMovementModeChanged)
 				{
 					bNetworkMovementModeChanged = false;
@@ -3429,65 +3458,76 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 		// simulated pawns predict location
 		OldVelocity = Velocity;
 		OldLocation = UpdatedComponent->GetComponentLocation();
-		FStepDownResult StepDownResult;
-		MoveSmooth(Velocity, DeltaSeconds, &StepDownResult);
 
-		// consume path following requested velocity
-		bHasRequestedVelocity = false;
-
-		// find floor and check if falling
-		if (IsMovingOnGround() || MovementMode == MOVE_Falling)
+		static const auto CVarNetEnableSkipProxyPredictionOnNetUpdate = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableSkipProxyPredictionOnNetUpdate"));
+		// May only need to simulate forward on frames where we haven't just received a new position update.
+		if (!bHandledNetUpdate || !bNetworkSkipProxyPredictionOnNetUpdate || !CVarNetEnableSkipProxyPredictionOnNetUpdate->GetInt())
 		{
-			const bool bSimGravityDisabled = (CharacterOwner->bSimGravityDisabled && bIsSimulatedProxy);
-			if (StepDownResult.bComputedFloor)
-			{
-				CurrentFloor = StepDownResult.FloorResult;
-			}
-			else if (Velocity.Z <= 0.f)
-			{
-				FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, Velocity.IsZero(), NULL);
-			}
-			else
-			{
-				CurrentFloor.Clear();
-			}
+			UE_LOG(LogCharacterMovement, Verbose, TEXT("Proxy %s simulating movement"), *GetNameSafe(CharacterOwner));
+			FStepDownResult StepDownResult;
+			MoveSmooth(Velocity, DeltaSeconds, &StepDownResult);
 
-			if (!CurrentFloor.IsWalkableFloor())
+			// find floor and check if falling
+			if (IsMovingOnGround() || MovementMode == MOVE_Falling)
 			{
-				if (!bSimGravityDisabled)
+				const bool bSimGravityDisabled = (CharacterOwner->bSimGravityDisabled && bIsSimulatedProxy);
+				if (StepDownResult.bComputedFloor)
 				{
-					// No floor, must fall.
-					Velocity = NewFallVelocity(Velocity, FVector(0.f, 0.f, GetGravityZ()), DeltaSeconds);
+					CurrentFloor = StepDownResult.FloorResult;
 				}
-				SetMovementMode(MOVE_Falling);
-			}
-			else
-			{
-				// Walkable floor
-				if (IsMovingOnGround())
+				else if (Velocity.Z <= 0.f)
 				{
-					AdjustFloorHeight();
-					SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+					FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, Velocity.IsZero(), NULL);
 				}
-				else if (MovementMode == MOVE_Falling)
+				else
 				{
-					if (CurrentFloor.FloorDist <= MIN_FLOOR_DIST || (bSimGravityDisabled && CurrentFloor.FloorDist <= MAX_FLOOR_DIST))
+					CurrentFloor.Clear();
+				}
+
+				if (!CurrentFloor.IsWalkableFloor())
+				{
+					if (!bSimGravityDisabled)
 					{
-						// Landed
-						SetPostLandedPhysics(CurrentFloor.HitResult);
+						// No floor, must fall.
+						Velocity = NewFallVelocity(Velocity, FVector(0.f, 0.f, GetGravityZ()), DeltaSeconds);
 					}
-					else
+					SetMovementMode(MOVE_Falling);
+				}
+				else
+				{
+					// Walkable floor
+					if (IsMovingOnGround())
 					{
-						if (!bSimGravityDisabled)
+						AdjustFloorHeight();
+						SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+					}
+					else if (MovementMode == MOVE_Falling)
+					{
+						if (CurrentFloor.FloorDist <= MIN_FLOOR_DIST || (bSimGravityDisabled && CurrentFloor.FloorDist <= MAX_FLOOR_DIST))
 						{
-							// Continue falling.
-							Velocity = NewFallVelocity(Velocity, FVector(0.f, 0.f, GetGravityZ()), DeltaSeconds);
+							// Landed
+							SetPostLandedPhysics(CurrentFloor.HitResult);
 						}
-						CurrentFloor.Clear();
+						else
+						{
+							if (!bSimGravityDisabled)
+							{
+								// Continue falling.
+								Velocity = NewFallVelocity(Velocity, FVector(0.f, 0.f, GetGravityZ()), DeltaSeconds);
+							}
+							CurrentFloor.Clear();
+						}
 					}
 				}
 			}
 		}
+		else
+		{
+			UE_LOG(LogCharacterMovement, Verbose, TEXT("Proxy %s SKIPPING simulate movement"), *GetNameSafe(CharacterOwner));
+		}
+
+		// consume path following requested velocity
+		bHasRequestedVelocity = false;
 
 		OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
 	} // End scoped movement update
