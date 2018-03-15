@@ -62,7 +62,7 @@ class VREXPANSIONPLUGIN_API UVRStereoWidgetComponent : public UWidgetComponent
 
 	/** True if the stereo layer needs to support depth intersections with the scene geometry, if available on the platform */
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
-	//	uint32 bSupportsDepth : 1;
+		uint32 bSupportsDepth : 1;
 
 	/** True if the texture should not use its own alpha channel (1.0 will be substituted) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
