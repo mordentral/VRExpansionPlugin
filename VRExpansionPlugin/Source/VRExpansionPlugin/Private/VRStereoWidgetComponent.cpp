@@ -43,7 +43,7 @@ namespace StereoWidgetCvars
 UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 //	, bLiveTexture(false)
-	//, bSupportsDepth(true)
+	, bSupportsDepth(false)
 	, bNoAlphaChannel(false)
 	//, Texture(nullptr)
 	//, LeftTexture(nullptr)
@@ -167,10 +167,15 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 
 	IStereoLayers* StereoLayers;
-	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->StereoRenderingDevice.IsValid() || (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) == nullptr || !RenderTarget)
+	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->StereoRenderingDevice.IsValid() || !RenderTarget)
 	{
 		return;
 	}
+
+	StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers();
+
+	if (StereoLayers == nullptr)
+		return;
 
 	FTransform Transform;
 	// Never true until epic fixes back end code
@@ -310,7 +315,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE;// (/*bLiveTexture*/true) ? IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE : 0;
 			LayerDsec.Flags |= (bNoAlphaChannel) ? IStereoLayers::LAYER_FLAG_TEX_NO_ALPHA_CHANNEL : 0;
 			LayerDsec.Flags |= (bQuadPreserveTextureRatio) ? IStereoLayers::LAYER_FLAG_QUAD_PRESERVE_TEX_RATIO : 0;
-			//LayerDsec.Flags |= (bSupportsDepth) ? IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH : 0;
+			LayerDsec.Flags |= (bSupportsDepth) ? IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH : 0;
 
 			// Fix this later when WorldLocked is no longer wrong.
 			switch (Space)
@@ -322,7 +327,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				else
 					LayerDsec.PositionType = IStereoLayers::TrackerLocked;
 
-				LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH;
+				//LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH;
 			}break;
 
 			case EWidgetSpace::Screen:
