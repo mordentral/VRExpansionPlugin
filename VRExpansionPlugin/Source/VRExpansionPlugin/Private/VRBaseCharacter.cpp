@@ -58,7 +58,8 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (LeftMotionController)
 	{
 		LeftMotionController->SetupAttachment(NetSmoother);
-		LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
+		//LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
+		LeftMotionController->SetTrackingMotionSource(FXRMotionControllerBase::LeftHandSourceId);
 		//LeftMotionController->Hand = EControllerHand::Left;
 		LeftMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement
@@ -70,7 +71,8 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (RightMotionController)
 	{
 		RightMotionController->SetupAttachment(NetSmoother);
-		RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
+		//RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
+		RightMotionController->SetTrackingMotionSource(FXRMotionControllerBase::RightHandSourceId);
 		//RightMotionController->Hand = EControllerHand::Right;
 		RightMotionController->bOffsetByHMD = false;
 		// Keep the controllers ticking after movement

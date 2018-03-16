@@ -3695,9 +3695,14 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 					Position -= LastLocationForLateUpdate;
 				}
 
-				InUseMotionController = MotionController;
-				OnMotionControllerUpdated();
-				InUseMotionController = nullptr;
+				// Render thread also calls this, shouldn't be flagging this event in the render thread.
+				// Probably need to report this to epic
+				if (IsInGameThread())
+				{
+					InUseMotionController = MotionController;
+					OnMotionControllerUpdated();
+					InUseMotionController = nullptr;
+				}
 							
 				return true;
 			}
