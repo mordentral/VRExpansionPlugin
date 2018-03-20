@@ -1939,7 +1939,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			// It's fine to step down onto an unwalkable normal below us, we will just slide off. Rejecting those moves would prevent us from being able to walk off the edge.
 			if (Hit.Location.Z > OldLocation.Z)
 			{
-				UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
+				UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
 				ScopedStepUpMovement.RevertMove();
 				return false;
 			}
@@ -1948,7 +1948,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		// Reject moves where the downward sweep hit something very close to the edge of the capsule. This maintains consistency with FindFloor as well.
 		if (!IsWithinEdgeTolerance(Hit.Location, Hit.ImpactPoint, PawnRadius))
 		{
-			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
+			UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -1956,7 +1956,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		// Don't step up onto invalid surfaces if traveling higher.
 		if (DeltaZ > 0.f && !CanStepUp(Hit))
 		{
-			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
+			UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
