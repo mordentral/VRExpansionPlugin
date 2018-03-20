@@ -23,6 +23,8 @@ class ACharacter;
 class AVRSimpleCharacter;
 //class UVRSimpleRootComponent;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogSimpleCharacterMovement, Log, All);
+
 /** Shared pointer for easy memory management of FSavedMove_Character, for accumulating and replaying network moves. */
 //typedef TSharedPtr<class FSavedMove_Character> FSavedMovePtr;
 

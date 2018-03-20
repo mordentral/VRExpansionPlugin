@@ -23,6 +23,8 @@ class FDebugDisplayInfo;
 class ACharacter;
 class AVRCharacter;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogVRCharacterMovement, Log, All);
+
 /** Shared pointer for easy memory management of FSavedMove_Character, for accumulating and replaying network moves. */
 //typedef TSharedPtr<class FSavedMove_Character> FSavedMovePtr;
 
