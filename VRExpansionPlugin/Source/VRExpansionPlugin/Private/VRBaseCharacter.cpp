@@ -4,6 +4,8 @@
 #include "VRPathFollowingComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
+DEFINE_LOG_CATEGORY(LogBaseVRCharacter);
+
 FName AVRBaseCharacter::LeftMotionControllerComponentName(TEXT("Left Grip Motion Controller"));
 FName AVRBaseCharacter::RightMotionControllerComponentName(TEXT("Right Grip Motion Controller"));
 FName AVRBaseCharacter::ReplicatedCameraComponentName(TEXT("VR Replicated Camera"));
@@ -207,7 +209,7 @@ void AVRBaseCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation,
 	UNavigationSystem* NavSys = Controller ? UNavigationSystem::GetCurrent(Controller->GetWorld()) : nullptr;
 	if (NavSys == nullptr || Controller == nullptr )
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UVRSimpleCharacter::ExtendedSimpleMoveToLocation called for NavSys:%s Controller:%s (if any of these is None then there's your problem"),
+		UE_LOG(LogBaseVRCharacter, Warning, TEXT("UVRSimpleCharacter::ExtendedSimpleMoveToLocation called for NavSys:%s Controller:%s (if any of these is None then there's your problem"),
 			*GetNameSafe(NavSys), *GetNameSafe(Controller));
 		return;
 	}
@@ -217,13 +219,13 @@ void AVRBaseCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation,
 
 	if (PFollowComp == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ExtendedSimpleMoveToLocation - No PathFollowingComponent Found"));
+		UE_LOG(LogBaseVRCharacter, Warning, TEXT("ExtendedSimpleMoveToLocation - No PathFollowingComponent Found"));
 		return;
 	}
 
 	if (!PFollowComp->IsPathFollowingAllowed())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ExtendedSimpleMoveToLocation - Path Following Movement Is Not Set To Allowed"));
+		UE_LOG(LogBaseVRCharacter, Warning, TEXT("ExtendedSimpleMoveToLocation - Path Following Movement Is Not Set To Allowed"));
 		return;
 	}
 

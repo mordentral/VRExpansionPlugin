@@ -10,6 +10,8 @@
 #include "GripMotionControllerComponent.h"
 #include "VRBaseCharacter.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);
+
 /** Delegate for notification when the lever state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRSeatThresholdChangedSignature, bool, bIsWithinThreshold, float, ToThresholdScaler);
 
