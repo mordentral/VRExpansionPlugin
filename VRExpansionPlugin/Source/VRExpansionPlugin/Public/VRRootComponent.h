@@ -13,6 +13,8 @@
 
 //class AVRBaseCharacter;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogVRRootComponent, Log, All);
+
 DECLARE_STATS_GROUP(TEXT("VRRootComponent"), STATGROUP_VRRootComponent, STATCAT_Advanced);
 DECLARE_CYCLE_STAT(TEXT("VR Root Set Half Height"), STAT_VRRootSetHalfHeight, STATGROUP_VRRootComponent);
 DECLARE_CYCLE_STAT(TEXT("VR Root Set Capsule Size"), STAT_VRRootSetCapsuleSize, STATGROUP_VRRootComponent);

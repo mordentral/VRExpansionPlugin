@@ -14,7 +14,7 @@
 
 #include "Components/PrimitiveComponent.h"
 
-
+DEFINE_LOG_CATEGORY(LogVRRootComponent);
 #define LOCTEXT_NAMESPACE "VRRootComponent"
 
 typedef TArray<FOverlapInfo, TInlineAllocator<3>> TInlineOverlapInfoArray;
@@ -155,7 +155,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestH
 			static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ShowInitialOverlaps"));
 			if (CVarShowInitialOverlaps->GetInt() != 0)
 			{
-				UE_LOG(LogTemp, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
+				UE_LOG(LogVRRootComponent, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
 				DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
 				if (TestHit.PenetrationDepth > KINDA_SMALL_NUMBER)
 				{
@@ -931,7 +931,7 @@ void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOver
 				// Might be able to avoid testing for new overlaps at the end location.
 				if (OverlapsAtEndLocationPtr != NULL && CVarAllowCachedOverlaps && PrevTransform.Equals(GetComponentTransform()))
 				{
-					UE_LOG(LogTemp, VeryVerbose, TEXT("%s->%s Skipping overlap test!"), *GetNameSafe(GetOwner()), *GetName());
+					UE_LOG(LogVRRootComponent, VeryVerbose, TEXT("%s->%s Skipping overlap test!"), *GetNameSafe(GetOwner()), *GetName());
 					NewOverlappingComponents = *OverlapsAtEndLocationPtr;
 
 					// BeginComponentOverlap may have disabled what we thought were valid overlaps at the end (collision response or overlap flags could change).
@@ -943,7 +943,7 @@ void UVRRootComponent::UpdateOverlaps(const TArray<FOverlapInfo>* NewPendingOver
 				}
 				else
 				{
-					UE_LOG(LogTemp, VeryVerbose, TEXT("%s->%s Performing overlaps!"), *GetNameSafe(GetOwner()), *GetName());
+					UE_LOG(LogVRRootComponent, VeryVerbose, TEXT("%s->%s Performing overlaps!"), *GetNameSafe(GetOwner()), *GetName());
 					UWorld* const MyWorld = MyActor->GetWorld();
 					TArray<FOverlapResult> Overlaps;
 					// note this will optionally include overlaps with components in the same actor (depending on bIgnoreChildren). 

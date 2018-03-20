@@ -14,6 +14,8 @@
 #include "VRCharacter.generated.h"
 
 
+DECLARE_LOG_CATEGORY_EXTERN(LogVRCharacter, Log, All);
+
 UCLASS()
 class VREXPANSIONPLUGIN_API AVRCharacter : public AVRBaseCharacter
 {

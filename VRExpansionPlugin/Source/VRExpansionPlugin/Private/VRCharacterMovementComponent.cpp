@@ -2402,7 +2402,7 @@ FVector UVRCharacterMovementComponent::GetImpartedMovementBaseVelocity() const
 void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_CharFindFloor);
-	//UE_LOG(LogTemp, Warning, TEXT("Find Floor"));
+	//UE_LOG(LogCharacterMovement, Warning, TEXT("Find Floor"));
 	// No collision, no floor...
 	if (!HasValidData() || !UpdatedComponent->IsQueryCollisionEnabled())
 	{
@@ -3235,7 +3235,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 	if (DeltaMove.IsNearlyZero() && bSameNavLocation)
 	{
 		DestNavLocation = CachedNavLocation;
-		UE_LOG(LogTemp, VeryVerbose, TEXT("%s using cached navmesh location! (bProjectNavMeshWalking = %d)"), *GetNameSafe(CharacterOwner), bProjectNavMeshWalking);
+		UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("%s using cached navmesh location! (bProjectNavMeshWalking = %d)"), *GetNameSafe(CharacterOwner), bProjectNavMeshWalking);
 	}
 	else
 	{
@@ -3329,7 +3329,7 @@ void UVRCharacterMovementComponent::ProcessLanded(const FHitResult& Hit, float r
 			{
 				SetGroundMovementMode(MOVE_Walking);
 				//GroundMovementMode = MOVE_Walking;
-				UE_LOG(LogTemp, Verbose, TEXT("ProcessLanded(): %s tried to go to NavWalking but couldn't find NavMesh! Using Walking instead."), *GetNameSafe(CharacterOwner));
+				UE_LOG(LogCharacterMovement, Verbose, TEXT("ProcessLanded(): %s tried to go to NavWalking but couldn't find NavMesh! Using Walking instead."), *GetNameSafe(CharacterOwner));
 			}
 		}
 
