@@ -1918,7 +1918,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		const float DeltaZ = Hit.ImpactPoint.Z - PawnFloorPointZ;
 		if (DeltaZ > MaxStepHeight)
 		{
-			UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f"), DeltaZ, PawnInitialFloorBaseZ);
+			//UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f"), DeltaZ, PawnInitialFloorBaseZ);
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
