@@ -1049,6 +1049,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripMovementReplicationSettings GripMovementReplicationSetting;
 
+	// Whether the grip is currently paused
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "Settings")
+		bool bIsPaused;
+
 	// I would have loved to have both of these not be replicated (and in normal grips they wouldn't have to be)
 	// However for serialization purposes and Client_Authority grips they need to be....
 	UPROPERTY()
@@ -1192,6 +1196,7 @@ public:
 		bIsSlotGrip(false),
 		GrippedBoneName(NAME_None),
 		GripMovementReplicationSetting(EGripMovementReplicationSettings::ForceClientSideMovement),
+		bIsPaused(false),
 		bOriginalReplicatesMovement(false),
 		bOriginalGravity(false),
 		Damping(200.0f),

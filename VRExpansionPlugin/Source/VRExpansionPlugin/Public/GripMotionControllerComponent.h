@@ -518,6 +518,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
+	// Sets whether an active grip is paused or not (is not replicated by default as it is likely you will want to pass variables with this setting).
+	// If you want it server authed you should RPC a bool down with any additional information (ie: attach location).
+	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
+		void SetGripPaused(
+			const FBPActorGripInformation &Grip,
+			EBPVRResultSwitch &Result,
+			bool bIsPaused = false
+		);
+
 	// Set the Grip Collision Type of a grip, call server side if not a local grip
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
 		void SetGripCollisionType(
@@ -599,10 +608,10 @@ public:
 	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray = false);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
-	inline void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips);
+	void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips);
 
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
-	inline FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
+	FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
 
 	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
@@ -803,3 +812,68 @@ private:
 	TSharedPtr< FGripViewExtension, ESPMode::ThreadSafe > GripViewExtension;
 
 };
+
+FTransform inline UGripMotionControllerComponent::CreateGripRelativeAdditionTransform(
+	const FBPActorGripInformation &GripToSample,
+	const FTransform & AdditionTransform,
+	bool bGripRelative
+)
+{
+
+	FTransform FinalTransform;
+
+	if (bGripRelative)
+	{
+		FinalTransform = FTransform(AdditionTransform.GetRotation(), GripToSample.RelativeTransform.GetRotation().RotateVector(AdditionTransform.GetLocation()), AdditionTransform.GetScale3D());
+	}
+	else
+	{
+		const FTransform PivotToWorld = FTransform(FQuat::Identity, GripToSample.RelativeTransform.GetLocation());
+		const FTransform WorldToPivot = FTransform(FQuat::Identity, -GripToSample.RelativeTransform.GetLocation());
+
+		// Create a transform from it
+		FTransform RotationOffsetTransform(AdditionTransform.GetRotation(), FVector::ZeroVector);
+		FinalTransform = FTransform(FQuat::Identity, AdditionTransform.GetLocation(), AdditionTransform.GetScale3D()) * WorldToPivot * RotationOffsetTransform * PivotToWorld;
+	}
+
+	return FinalTransform;
+}
+
+bool inline UGripMotionControllerComponent::HasGripAuthority(const FBPActorGripInformation &Grip)
+{
+	if (((Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive &&
+		Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && IsServer()) ||
+		((Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && bHasAuthority))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool inline UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGripInformation &Grip)
+{
+	if (IsServer())
+	{
+		return true;
+	}
+	else
+	{
+		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement ||
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
+			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
+		{
+			return true;
+		}
+		else if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			return false;
+		}
+
+		// Use original movement type is overridden when initializing the grip and shouldn't happen
+		check(Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::KeepOriginalMovement);
+	}
+
+	return false;
+}
