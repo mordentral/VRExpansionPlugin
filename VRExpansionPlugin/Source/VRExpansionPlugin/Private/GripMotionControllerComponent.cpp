@@ -408,15 +408,15 @@ void UGripMotionControllerComponent::GetGripByObject(FBPActorGripInformation &Gr
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::SetGripPaused(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, bool bIsPaused)
+void UGripMotionControllerComponent::SetGripPaused(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, bool bIsPaused, bool bNoConstraintWhenPaused)
 {
 	int fIndex = GrippedObjects.Find(Grip);
 
+	FBPActorGripInformation * GripInformation = nullptr;
+
 	if (fIndex != INDEX_NONE)
 	{
-		GrippedObjects[fIndex].bIsPaused = bIsPaused;
-		Result = EBPVRResultSwitch::OnSucceeded;
-		return;
+		GripInformation = &GrippedObjects[fIndex];
 	}
 	else
 	{
@@ -424,15 +424,86 @@ void UGripMotionControllerComponent::SetGripPaused(const FBPActorGripInformation
 
 		if (fIndex != INDEX_NONE)
 		{
-			LocallyGrippedObjects[fIndex].bIsPaused = bIsPaused;
-
-			Result = EBPVRResultSwitch::OnSucceeded;
-			return;
+			GripInformation = &LocallyGrippedObjects[fIndex];
 		}
+	}
+
+	if (GripInformation != nullptr)
+	{
+		if (bNoConstraintWhenPaused)
+		{
+			if (bIsPaused)
+			{
+				if (FBPActorPhysicsHandleInformation * PhysHandle = GetPhysicsGrip(GrippedObjects[fIndex]))
+				{
+					DestroyPhysicsHandle(*GripInformation);
+				}
+			}
+			else
+			{
+				ReCreateGrip(*GripInformation);
+			}
+		}
+
+		GripInformation->bIsPaused = bIsPaused;
+		Result = EBPVRResultSwitch::OnSucceeded;
+		return;
 	}
 
 	Result = EBPVRResultSwitch::OnFailed;
 }
+
+void UGripMotionControllerComponent::SetPausedTransform(const FBPActorGripInformation &Grip, const FTransform & PausedTransform, bool bTeleport)
+{
+
+	FBPActorGripInformation * GripInformation = nullptr;
+
+	int fIndex = GrippedObjects.Find(Grip);
+
+	if (fIndex != INDEX_NONE)
+	{
+		GripInformation = &GrippedObjects[fIndex];
+	}
+	else
+	{
+		fIndex = LocallyGrippedObjects.Find(Grip);
+
+		if (fIndex != INDEX_NONE)
+		{
+			GripInformation = &LocallyGrippedObjects[fIndex];
+		}
+	}
+	
+	if (GripInformation != nullptr && GripInformation->GrippedObject != nullptr)
+	{
+		if (bTeleport)
+		{
+			FTransform ProxyTrans = PausedTransform;
+			TeleportMoveGrip_Impl(*GripInformation, true, ProxyTrans);
+		}
+		else
+		{
+			if (FBPActorPhysicsHandleInformation * PhysHandle = GetPhysicsGrip(GrippedObjects[fIndex]))
+			{
+				UpdatePhysicsHandleTransform(*GripInformation, PausedTransform);
+			}
+			else
+			{
+				if (GripInformation->GripTargetType == EGripTargetType::ActorGrip)
+				{
+					GripInformation->GetGrippedActor()->SetActorTransform(PausedTransform);
+				}
+				else
+				{
+					GripInformation->GetGrippedComponent()->SetWorldTransform(PausedTransform);
+				}
+			}
+		}
+	}
+}
+
+
+
 
 void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, EGripCollisionType NewGripCollisionType)
 {
@@ -2010,7 +2081,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 	bool bRescalePhysicsGrips = false;
 
 	//FTransform EmptyTransform = FTransform::Identity;
-	if (OptionalTransform.Equals(FTransform::Identity))
+	if (!OptionalTransform.Equals(FTransform::Identity))
 		WorldTransform = OptionalTransform;
 	else
 		GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface, bRescalePhysicsGrips);
@@ -2118,6 +2189,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	// No need to check if in game thread here as tick always is
 	bHasAuthority = IsLocallyControlled();
 
+
 	// Server/remote clients don't set the controller position in VR
 	// Don't call positional checks and don't create the late update scene view
 	if (bHasAuthority)
@@ -2127,11 +2199,11 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 		if (!bUseWithoutTracking)
 		{
+
 			if (!GripViewExtension.IsValid() && GEngine)
 			{
 				GripViewExtension = FSceneViewExtensions::NewExtension<FGripViewExtension>(this);
 			}
-
 			// This is the owning player, now you can get the controller's location and rotation from the correct source
 
 			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;

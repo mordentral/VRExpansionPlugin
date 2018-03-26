@@ -524,7 +524,16 @@ public:
 		void SetGripPaused(
 			const FBPActorGripInformation &Grip,
 			EBPVRResultSwitch &Result,
-			bool bIsPaused = false
+			bool bIsPaused = false,
+			bool bNoConstraintWhenPaused = false
+		);
+
+	// Sets the transform to stay at during pause
+	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+		void SetPausedTransform(
+			const FBPActorGripInformation &Grip,
+			const FTransform & PausedTransform,
+			bool bTeleport = false
 		);
 
 	// Set the Grip Collision Type of a grip, call server side if not a local grip
