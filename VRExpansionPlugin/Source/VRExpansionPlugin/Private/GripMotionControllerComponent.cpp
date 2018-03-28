@@ -434,7 +434,7 @@ void UGripMotionControllerComponent::SetGripPaused(const FBPActorGripInformation
 		{
 			if (bIsPaused)
 			{
-				if (FBPActorPhysicsHandleInformation * PhysHandle = GetPhysicsGrip(GrippedObjects[fIndex]))
+				if (FBPActorPhysicsHandleInformation * PhysHandle = GetPhysicsGrip(*GripInformation))
 				{
 					DestroyPhysicsHandle(*GripInformation);
 				}
