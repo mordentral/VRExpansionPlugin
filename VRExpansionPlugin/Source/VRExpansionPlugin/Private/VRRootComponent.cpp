@@ -113,12 +113,12 @@ static void PullBackHit(FHitResult& Hit, const FVector& Start, const FVector& En
 	Hit.Time = FMath::Clamp(Hit.Time - DesiredTimeBack, 0.f, 1.f);
 }
 
-static bool ShouldIgnoreHitResult(const UWorld* InWorld, FHitResult const& TestHit, FVector const& MovementDirDenormalized, const AActor* MovingActor, EMoveComponentFlags MoveFlags)
+static bool ShouldIgnoreHitResult(const UWorld* InWorld, bool bAllowSimulatingCollision, FHitResult const& TestHit, FVector const& MovementDirDenormalized, const AActor* MovingActor, EMoveComponentFlags MoveFlags)
 {
 	if (TestHit.bBlockingHit)
 	{
 		// VR Pawns need to totally ignore simulating components with movement to prevent sickness
-		if (TestHit.Component.IsValid() && TestHit.Component->IsSimulatingPhysics())
+		if (!bAllowSimulatingCollision && TestHit.Component.IsValid() && TestHit.Component->IsSimulatingPhysics())
 			return true;
 
 		// check "ignore bases" functionality
@@ -270,6 +270,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	owningVRChar = NULL;
 	//VRCameraCollider = NULL;
 
+	bAllowSimulatingCollision = false;
 	bUseWalkingCollisionOverride = false;
 	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
 
@@ -778,7 +779,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 					if (TestHit.bBlockingHit)
 					{
-						if (!ShouldIgnoreHitResult(MyWorld, TestHit, Delta, Actor, MoveFlags))
+						if (!ShouldIgnoreHitResult(MyWorld, bAllowSimulatingCollision, TestHit, Delta, Actor, MoveFlags))
 						{
 							if (TestHit.Time == 0.f)
 							{

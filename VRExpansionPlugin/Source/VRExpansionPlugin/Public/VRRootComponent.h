@@ -108,6 +108,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	bool bCenterCapsuleOnHMD;
 
+	// Allows the root component to be blocked by simulating objects (default off due to sickness inducing stuttering).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		bool bAllowSimulatingCollision;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	bool bUseWalkingCollisionOverride;
 
