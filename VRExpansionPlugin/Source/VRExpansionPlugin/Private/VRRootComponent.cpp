@@ -233,7 +233,6 @@ static bool ShouldIgnoreOverlapResult(const UWorld* World, const AActor* ThisAct
 	return false;
 }
 
-	bAllowSimulatingCollision = false;
 /** Represents a UVRRootComponent to the scene manager. */
 class FDrawCylinderSceneProxy : public FPrimitiveSceneProxy
 {
@@ -341,6 +340,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	owningVRChar = NULL;
 	//VRCameraCollider = NULL;
 
+	bAllowSimulatingCollision = false;
 	bUseWalkingCollisionOverride = false;
 	WalkingCollisionOverride = ECollisionChannel::ECC_Pawn;
 
