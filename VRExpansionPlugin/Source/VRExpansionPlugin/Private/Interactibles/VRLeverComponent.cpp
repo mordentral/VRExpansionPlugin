@@ -134,7 +134,7 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 
 	CalculateCurrentAngle(CurrentRelativeTransform);
 
-	if (!bIsLerping)
+	if (!bIsLerping && LeverReturnTypeWhenReleased == EVRInteractibleLeverReturnType::RetainMomentum)
 	{
 		// Rolling average across num samples
 		MomentumAtDrop -= MomentumAtDrop / FramesToAverage;
