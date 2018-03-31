@@ -32,9 +32,17 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	LeverTogglePercentage = 0.8f;
 
 	LastDeltaAngle = 0.0f;
+	FullCurrentAngle = 0.0f;
 
 	LeverReturnTypeWhenReleased = EVRInteractibleLeverReturnType::ReturnToZero;
 	LeverReturnSpeed = 50.0f;
+
+	MomentumAtDrop = 0.0f;
+	LeverMomentumFriction = 5.0f;
+	MaxLeverMomentum = 180.0f;
+	FramesToAverage = 3;
+	LastLeverAngle = 0.0f;
+
 	bSendLeverEventsDuringLerp = false;
 
 	InitialRelativeTransform = FTransform::Identity;
@@ -101,7 +109,7 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 		case EVRInteractibleLeverAxis::Axis_Y:
 		case EVRInteractibleLeverAxis::Axis_Z:
 		{
-			LerpAxis(CurrentLeverAngle, DeltaTime);
+			LerpAxis(FullCurrentAngle, DeltaTime);
 		}break;
 		case EVRInteractibleLeverAxis::Axis_XY:
 		case EVRInteractibleLeverAxis::Axis_XZ:
@@ -126,7 +134,16 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 
 	CalculateCurrentAngle(CurrentRelativeTransform);
 
-	bool bNewLeverState = (!FMath::IsNearlyZero(LeverLimitNegative) && CurrentLeverAngle <= -(LeverLimitNegative * LeverTogglePercentage)) || (!FMath::IsNearlyZero(LeverLimitPositive) && CurrentLeverAngle >= (LeverLimitPositive * LeverTogglePercentage));
+	if (!bIsLerping)
+	{
+		// Rolling average across num samples
+		MomentumAtDrop -= MomentumAtDrop / FramesToAverage;
+		MomentumAtDrop += ((FullCurrentAngle - LastLeverAngle) / DeltaTime) / FramesToAverage;
+
+		LastLeverAngle = FullCurrentAngle;
+	}
+
+	bool bNewLeverState = (!FMath::IsNearlyZero(LeverLimitNegative) && FullCurrentAngle <= -(LeverLimitNegative * LeverTogglePercentage)) || (!FMath::IsNearlyZero(LeverLimitPositive) && FullCurrentAngle >= (LeverLimitPositive * LeverTogglePercentage));
 	//if (FMath::Abs(CurrentLeverAngle) >= LeverLimit  )
 	if (bNewLeverState != bLeverState)
 	{
@@ -134,8 +151,8 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 
 		if (bSendLeverEventsDuringLerp || !bIsLerping)
 		{
-			ReceiveLeverStateChanged(bLeverState, CurrentLeverAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, CurrentLeverAngle);
-			OnLeverStateChanged.Broadcast(bLeverState, CurrentLeverAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, CurrentLeverAngle);
+			ReceiveLeverStateChanged(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, FullCurrentAngle);
+			OnLeverStateChanged.Broadcast(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, FullCurrentAngle);
 		}
 
 		if (!bIsLerping && bUngripAtTargetRotation && bLeverState && HoldingController)
@@ -265,6 +282,7 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 		RotAtGrab = GetAxisValue(this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).Rotator());
 	}
 
+	LastLeverAngle = CurrentLeverAngle;
 	bIsLerping = false;
 	bIsInFirstTick = true;
 	this->SetComponentTickEnabled(true);
@@ -280,7 +298,7 @@ void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerCompon
 	}
 	
 	if (LeverReturnTypeWhenReleased != EVRInteractibleLeverReturnType::Stay)
-	{
+	{		
 		bIsLerping = true;
 	}
 	else

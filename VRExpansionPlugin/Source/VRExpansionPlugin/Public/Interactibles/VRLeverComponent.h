@@ -41,10 +41,20 @@ enum class EVRInteractibleLeverEventType : uint8
 UENUM(Blueprintable)
 enum class EVRInteractibleLeverReturnType : uint8
 {
+	/** Stays in place on drop */
 	Stay,
+
+	/** Returns to zero on drop (lerps) */
 	ReturnToZero,
+
+	/** Lerps to closest max (only works with X/Y/Z axis levers) */
 	LerpToMax,
-	LerpToMaxIfOverThreshold
+
+	/** Lerps to closest max if over the toggle threshold (only works with X/Y/Z axis levers) */
+	LerpToMaxIfOverThreshold,
+
+	/** Retains momentum on release (only works with X/Y/Z axis levers) */
+	RetainMomentum
 };
 
 /** Delegate for notification when the lever state changes. */
@@ -103,11 +113,26 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		float LeverReturnSpeed;
 
+	// Number of frames to average momentum across for the release momentum (avoids quick waggles)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0", ClampMax = "12", UIMin = "0", UIMax = "12"))
+		int FramesToAverage;
+
+	// Units in degrees per second to slow a momentum lerp down
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "180", UIMin = "0.0", UIMax = "180.0"))
+		float LeverMomentumFriction;
+
+	// Maximum momentum of the lever in degrees per second
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "180", UIMin = "0.0", UIMax = "180.0"))
+		float MaxLeverMomentum;
+
 	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")
 		bool bIsLerping;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		int GripPriority;
+
+	// Full precision current angle
+	float FullCurrentAngle;
 
 	float LastDeltaAngle;
 	FTransform InitialRelativeTransform;
@@ -118,6 +143,10 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	FQuat qRotAtGrab;
 	bool bLeverState;
 	bool bIsInFirstTick;
+
+	// For momentum retention
+	float MomentumAtDrop;
+	float LastLeverAngle;
 
 	float CalcAngle(EVRInteractibleLeverAxis AxisToCalc, FVector CurInteractorLocation)
 	{
@@ -178,32 +207,53 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	void LerpAxis(float CurrentAngle, float DeltaTime)
 	{
 		float TargetAngle = 0.0f;
+		float FinalReturnSpeed = LeverReturnSpeed;
 
 		switch (LeverReturnTypeWhenReleased)
 		{
 		case EVRInteractibleLeverReturnType::LerpToMax:
 		{
-			if (CurrentLeverAngle >= 0)
+			if (CurrentAngle >= 0)
 				TargetAngle = FMath::RoundToFloat(LeverLimitPositive);
 			else
 				TargetAngle = -FMath::RoundToFloat(LeverLimitNegative);
 		}break;
 		case EVRInteractibleLeverReturnType::LerpToMaxIfOverThreshold:
 		{
-			if ((!FMath::IsNearlyZero(LeverLimitPositive) && CurrentLeverAngle >= (LeverLimitPositive * LeverTogglePercentage)))
+			if ((!FMath::IsNearlyZero(LeverLimitPositive) && CurrentAngle >= (LeverLimitPositive * LeverTogglePercentage)))
 				TargetAngle = FMath::RoundToFloat(LeverLimitPositive);
-			else if ((!FMath::IsNearlyZero(LeverLimitNegative) && CurrentLeverAngle <= -(LeverLimitNegative * LeverTogglePercentage)))
+			else if ((!FMath::IsNearlyZero(LeverLimitNegative) && CurrentAngle <= -(LeverLimitNegative * LeverTogglePercentage)))
 				TargetAngle = -FMath::RoundToFloat(LeverLimitNegative);
-			//else - Handled by the default value
-			//TargetAngle = 0.0f;
+		}break;
+		case EVRInteractibleLeverReturnType::RetainMomentum:
+		{
+			if (FMath::IsNearlyZero(MomentumAtDrop * DeltaTime, 0.1f))
+			{
+				MomentumAtDrop = 0.0f;
+				this->SetComponentTickEnabled(false);
+				return;
+			}
+			else
+			{
+				MomentumAtDrop = FMath::FInterpTo(MomentumAtDrop, 0.0f, DeltaTime, LeverMomentumFriction);
+
+				FinalReturnSpeed = FMath::Abs(MomentumAtDrop);
+
+				if (MomentumAtDrop >= 0.0f)
+					TargetAngle = FMath::RoundToFloat(LeverLimitPositive);
+				else
+					TargetAngle = -FMath::RoundToFloat(LeverLimitNegative);
+			}
+
 		}break;
 		case EVRInteractibleLeverReturnType::ReturnToZero:
 		default:
 		{}break;
 		}
 
-		float LerpedVal = FMath::FixedTurn(CurrentAngle, TargetAngle, LeverReturnSpeed * DeltaTime);
-		//float LerpedVal = FMath::FInterpConstantTo(angle, TargetAngle, DeltaTime, LeverReturnSpeed);
+		//float LerpedVal = FMath::FixedTurn(CurrentAngle, TargetAngle, FinalReturnSpeed * DeltaTime);
+		float LerpedVal = FMath::FInterpConstantTo(CurrentAngle, TargetAngle, DeltaTime, FinalReturnSpeed);
+
 		if (FMath::IsNearlyEqual(LerpedVal, TargetAngle))
 		{
 			this->SetComponentTickEnabled(false);
@@ -211,7 +261,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		}
 		else
 		{
-				this->SetRelativeRotation((FTransform(SetAxisValue(LerpedVal, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			this->SetRelativeRotation((FTransform(SetAxisValue(LerpedVal, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 		}
 	}
 
@@ -230,7 +280,8 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 			(CurrentRelativeTransform * InitialRelativeTransform.Inverse()).GetRotation().ToAxisAndAngle(qAxis, qAngle);
 
-			CurrentLeverAngle = FMath::RoundToFloat(FMath::RadiansToDegrees(qAngle));
+			FullCurrentAngle = FMath::RadiansToDegrees(qAngle);
+			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 
 			if (LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY)
 				qAxis.Z = 0.0f; // Doing 2D axis values
@@ -243,21 +294,24 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		{
 			Angle = GetAxisValue((CurrentRelativeTransform * InitialRelativeTransform.Inverse()).Rotator().GetNormalized());
 
-			CurrentLeverAngle = FMath::RoundToFloat(Angle);
+			FullCurrentAngle = Angle;
+			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 			CurrentLeverForwardVector = FVector(FMath::Sign(Angle), 0.0f, 0.0f);
 		}break;
 		case EVRInteractibleLeverAxis::Axis_Y:
 		{
 			Angle = GetAxisValue((CurrentRelativeTransform * InitialRelativeTransform.Inverse()).Rotator().GetNormalized());
-
-			CurrentLeverAngle = FMath::RoundToFloat(Angle);
+			
+			FullCurrentAngle = Angle;
+			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 			CurrentLeverForwardVector = FVector(0.0f, FMath::Sign(Angle), 0.0f);
 		}break;
 		case EVRInteractibleLeverAxis::Axis_Z:
 		{
 			Angle = GetAxisValue((CurrentRelativeTransform * InitialRelativeTransform.Inverse()).Rotator().GetNormalized());
 
-			CurrentLeverAngle = FMath::RoundToFloat(Angle);
+			FullCurrentAngle = Angle;
+			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 			CurrentLeverForwardVector = FVector(0.0f, 0.0f, FMath::Sign(Angle));
 		}break;
 
