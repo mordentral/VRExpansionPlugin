@@ -604,9 +604,9 @@ public:
 	FVRMoveActionArray MoveActionArray;
 
 	bool CheckForMoveAction();
-	bool DoMASnapTurn(FVRMoveActionContainer MoveAction);
-	bool DoMATeleport(FVRMoveActionContainer MoveAction);
-	bool DoMAStopAllMovement(FVRMoveActionContainer MoveAction);
+	bool DoMASnapTurn(FVRMoveActionContainer& MoveAction);
+	bool DoMATeleport(FVRMoveActionContainer& MoveAction);
+	bool DoMAStopAllMovement(FVRMoveActionContainer& MoveAction);
 
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;

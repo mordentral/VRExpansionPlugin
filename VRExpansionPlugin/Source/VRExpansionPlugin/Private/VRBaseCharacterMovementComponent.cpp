@@ -482,7 +482,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction M
 
 bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 {
-	for (FVRMoveActionContainer MoveAction : MoveActionArray.MoveActions)
+	for (FVRMoveActionContainer& MoveAction : MoveActionArray.MoveActions)
 	{
 		switch (MoveAction.MoveAction)
 		{
@@ -514,7 +514,7 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 	return true;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer MoveAction)
+bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
@@ -533,7 +533,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer Move
 	return false;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer MoveAction)
+bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
@@ -564,7 +564,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer Move
 	return false;
 }
 
-bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement(FVRMoveActionContainer MoveAction)
+bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement(FVRMoveActionContainer& MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
