@@ -92,8 +92,38 @@ public:
 		{
 		case EVRMoveAction::VRMOVEACTION_None: break;
 		case EVRMoveAction::VRMOVEACTION_SnapTurn:
+		{
+			uint16 Yaw;
+			
+			if (Ar.IsSaving())
+			{
+				Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
+
+				Ar << Yaw;
+			}
+			else
+			{
+				Ar << Yaw;
+				MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
+			}
+
+			//bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);
+		}break;
 		case EVRMoveAction::VRMOVEACTION_Teleport: // Not replicating rot as Control rot does that already
 		{
+			uint16 Yaw;
+
+			if (Ar.IsSaving())
+			{
+				FRotator::CompressAxisToShort(MoveActionRot.Yaw);
+
+				Ar << Yaw;
+			}
+			else
+			{
+				Ar << Yaw;
+				MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
+			}
 			bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);
 		}break;
 		case EVRMoveAction::VRMOVEACTION_StopAllMovement:
@@ -421,7 +451,6 @@ public:
 
 	FVector VRCapsuleLocation;
 	FVector LFDiff;
-	FVector SnapTurnOffset;
 	FRotator VRCapsuleRotation;
 	FVRConditionalMoveRep ConditionalValues;
 
@@ -493,7 +522,7 @@ public:
 		if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//_None)
 			return true;
 
-		if (!ConditionalValues.CustomVRInputVector.IsZero())
+		if (!ConditionalValues.CustomVRInputVector.IsZero())	
 			return true;
 
 		if (!ConditionalValues.RequestedVelocity.IsZero())
@@ -586,6 +615,10 @@ public:
 	// Perform a snap turn in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw);
+
+	// Perform a snap turn in line with the move action system
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void PerformMoveAction_SetRotation(float NewYaw);
 
 	// Perform a teleport in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")

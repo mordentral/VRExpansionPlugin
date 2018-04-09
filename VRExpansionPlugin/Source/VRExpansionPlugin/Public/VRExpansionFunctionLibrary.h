@@ -184,6 +184,30 @@ public:
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToTransform_NetQuantize (Transform)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary|TransformNetQuantize")
 		static FTransform_NetQuantize Conv_TransformToTransformNetQuantize(const FTransform &InTransform);
 
+	/** Converts a vector into a FVector_NetQuantize */
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToVector_NetQuantize (Vector)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary|FVectorNetQuantize")
+		static FVector_NetQuantize Conv_FVectorToFVectorNetQuantize(const FVector &InVector);
+
+	/** Make a transform net quantize from location, rotation and scale */
+	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|FVectorNetQuantize")
+		static FVector_NetQuantize MakeVector_NetQuantize(FVector InVector);
+
+	/** Converts a vector into a FVector_NetQuantize10 */
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToVector_NetQuantize10 (Vector)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary|FVectorNetQuantize")
+		static FVector_NetQuantize10 Conv_FVectorToFVectorNetQuantize10(const FVector &InVector);
+
+	/** Make a transform net quantize10 from location, rotation and scale */
+	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|FVectorNetQuantize")
+		static FVector_NetQuantize10 MakeVector_NetQuantize10(FVector InVector);
+
+	/** Converts a vector into a FVector_NetQuantize100 */
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToVector_NetQuantize100 (Vector)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary|FVectorNetQuantize")
+		static FVector_NetQuantize100 Conv_FVectorToFVectorNetQuantize100(const FVector &InVector);
+
+	/** Make a transform net quantize100 from location, rotation and scale */
+	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|FVectorNetQuantize")
+		static FVector_NetQuantize100 MakeVector_NetQuantize100(FVector InVector);
+
 	// Adds a USceneComponent Subclass, that is based on the passed in Class, and added to the Outer(Actor) object
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Add Scene Component By Class"), Category = "VRExpansionLibrary")
 		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, const FTransform & ComponentRelativeTransform);

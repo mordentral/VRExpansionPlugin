@@ -373,3 +373,16 @@ void AVRCharacter::ServerMoveVR_Implementation(
 		MoveReps,
 		ClientMovementMode);
 }
+
+
+// ClientAdjustPosition
+void AVRCharacter::ClientAdjustPositionVR_Implementation(float TimeStamp, FVector NewLoc, uint16 NewYaw, FVector NewVel, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
+{
+	((UVRCharacterMovementComponent*)GetCharacterMovement())->ClientAdjustPositionVR_Implementation(TimeStamp, NewLoc, NewYaw, NewVel, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+}
+
+// ClientVeryShortAdjustPosition
+void AVRCharacter::ClientVeryShortAdjustPositionVR_Implementation(float TimeStamp, FVector NewLoc, uint16 NewYaw, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
+{
+	((UVRCharacterMovementComponent*)GetCharacterMovement())->ClientVeryShortAdjustPositionVR_Implementation(TimeStamp, NewLoc, NewYaw, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+}

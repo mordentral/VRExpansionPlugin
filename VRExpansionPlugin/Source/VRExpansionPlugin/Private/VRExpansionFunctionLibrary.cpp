@@ -373,6 +373,36 @@ FTransform_NetQuantize UVRExpansionFunctionLibrary::Conv_TransformToTransformNet
 	return FTransform_NetQuantize(InTransform);
 }
 
+FVector_NetQuantize UVRExpansionFunctionLibrary::Conv_FVectorToFVectorNetQuantize(const FVector &InVector)
+{
+	return FVector_NetQuantize(InVector);
+}
+
+FVector_NetQuantize UVRExpansionFunctionLibrary::MakeVector_NetQuantize(FVector InVector)
+{
+	return FVector_NetQuantize(InVector);
+}
+
+FVector_NetQuantize10 UVRExpansionFunctionLibrary::Conv_FVectorToFVectorNetQuantize10(const FVector &InVector)
+{
+	return FVector_NetQuantize10(InVector);
+}
+
+FVector_NetQuantize10 UVRExpansionFunctionLibrary::MakeVector_NetQuantize10(FVector InVector)
+{
+	return FVector_NetQuantize10(InVector);
+}
+
+FVector_NetQuantize100 UVRExpansionFunctionLibrary::Conv_FVectorToFVectorNetQuantize100(const FVector &InVector)
+{
+	return FVector_NetQuantize100(InVector);
+}
+
+FVector_NetQuantize100 UVRExpansionFunctionLibrary::MakeVector_NetQuantize100(FVector InVector)
+{
+	return FVector_NetQuantize100(InVector);
+}
+
 USceneComponent* UVRExpansionFunctionLibrary::AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, const FTransform & ComponentRelativeTransform)
 {
 	if (Class != nullptr && Outer != nullptr)

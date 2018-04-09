@@ -682,7 +682,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	ViewRot.Yaw = FRotator::DecompressAxisFromShort(MoveReps.ClientYaw);
 	ViewRot.Roll = FRotator::DecompressAxisFromByte(MoveReps.ClientRoll);
 
-	if (PC)
+	if (PC && bUseClientControlRotation)
 	{
 		PC->SetControlRotation(ViewRot);
 	}
@@ -746,7 +746,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	UE_LOG(LogVRCharacterMovement, Verbose, TEXT("ServerMove Time %f Acceleration %s Position %s DeltaTime %f"),
 		TimeStamp, *Accel.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
 
-	ServerMoveHandleClientError(TimeStamp, DeltaTime, Accel, ClientLoc, MoveReps.ClientMovementBase, MoveReps.ClientBaseBoneName, ClientMovementMode);
+	ServerMoveHandleClientErrorVR(TimeStamp, DeltaTime, Accel, ClientLoc, ViewRot.Yaw, MoveReps.ClientMovementBase, MoveReps.ClientBaseBoneName, ClientMovementMode);
 }
 
 
@@ -1521,7 +1521,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	// 0.1f is low slide and still impacts surfaces well
 	// This variable is a bit of a hack, it reduces the movement of the pawn in the direction of relative movement
 	WallRepulsionMultiplier = 0.01f;
-
+	bUseClientControlRotation = false;
 	bAllowMovementMerging = false;
 	bRequestedMoveUseAcceleration = false;
 }
@@ -3983,3 +3983,459 @@ void UVRCharacterMovementComponent::MoveSmooth(const FVector& InVelocity, const 
 	CustomVRInputVector = FVector::ZeroVector;
 	MoveAction = EVRMoveAction::VRMOVEACTION_None;
 }*/
+
+
+void UVRCharacterMovementComponent::SendClientAdjustment()
+{
+	if (!HasValidData())
+	{
+		return;
+	}
+
+	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
+	check(ServerData);
+
+	if (ServerData->PendingAdjustment.TimeStamp <= 0.f)
+	{
+		return;
+	}
+
+	const float CurrentTime = GetWorld()->GetTimeSeconds();
+	if (ServerData->PendingAdjustment.bAckGoodMove)
+	{
+		// just notify client this move was received
+		if (CurrentTime - ServerLastClientGoodMoveAckTime > NetworkMinTimeBetweenClientAckGoodMoves)
+		{
+			ServerLastClientGoodMoveAckTime = CurrentTime;
+			ClientAckGoodMove(ServerData->PendingAdjustment.TimeStamp);
+		}
+	}
+	else
+	{
+		// We won't be back in here until the next client move and potential correction is received, so use the correct time now.
+		// Protect against bad data by taking appropriate min/max of editable values.
+		const float AdjustmentTimeThreshold = bNetworkLargeClientCorrection ?
+			FMath::Min(NetworkMinTimeBetweenClientAdjustmentsLargeCorrection, NetworkMinTimeBetweenClientAdjustments) :
+			FMath::Max(NetworkMinTimeBetweenClientAdjustmentsLargeCorrection, NetworkMinTimeBetweenClientAdjustments);
+
+		// Check if correction is throttled based on time limit between updates.
+		if (CurrentTime - ServerLastClientAdjustmentTime > AdjustmentTimeThreshold)
+		{
+			ServerLastClientAdjustmentTime = CurrentTime;
+
+			const bool bIsPlayingNetworkedRootMotionMontage = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
+			if (HasRootMotionSources())
+			{
+				FRotator Rotation = ServerData->PendingAdjustment.NewRot.GetNormalized();
+				FVector_NetQuantizeNormal CompressedRotation(Rotation.Pitch / 180.f, Rotation.Yaw / 180.f, Rotation.Roll / 180.f);
+				ClientAdjustRootMotionSourcePosition
+				(
+					ServerData->PendingAdjustment.TimeStamp,
+					CurrentRootMotion,
+					bIsPlayingNetworkedRootMotionMontage,
+					bIsPlayingNetworkedRootMotionMontage ? CharacterOwner->GetRootMotionAnimMontageInstance()->GetPosition() : -1.f,
+					ServerData->PendingAdjustment.NewLoc,
+					CompressedRotation,
+					ServerData->PendingAdjustment.NewVel.Z,
+					ServerData->PendingAdjustment.NewBase,
+					ServerData->PendingAdjustment.NewBaseBoneName,
+					ServerData->PendingAdjustment.NewBase != NULL,
+					ServerData->PendingAdjustment.bBaseRelativePosition,
+					PackNetworkMovementMode()
+				);
+			}
+			else if (bIsPlayingNetworkedRootMotionMontage)
+			{
+				FRotator Rotation = ServerData->PendingAdjustment.NewRot.GetNormalized();
+				FVector_NetQuantizeNormal CompressedRotation(Rotation.Pitch / 180.f, Rotation.Yaw / 180.f, Rotation.Roll / 180.f);
+				ClientAdjustRootMotionPosition
+				(
+					ServerData->PendingAdjustment.TimeStamp,
+					CharacterOwner->GetRootMotionAnimMontageInstance()->GetPosition(),
+					ServerData->PendingAdjustment.NewLoc,
+					CompressedRotation,
+					ServerData->PendingAdjustment.NewVel.Z,
+					ServerData->PendingAdjustment.NewBase,
+					ServerData->PendingAdjustment.NewBaseBoneName,
+					ServerData->PendingAdjustment.NewBase != NULL,
+					ServerData->PendingAdjustment.bBaseRelativePosition,
+					PackNetworkMovementMode()
+				);
+			}
+			else if (ServerData->PendingAdjustment.NewVel.IsZero())
+			{
+				ClientVeryShortAdjustPositionVR
+				(
+					ServerData->PendingAdjustment.TimeStamp,
+					ServerData->PendingAdjustment.NewLoc,
+					FRotator::CompressAxisToShort(ServerData->PendingAdjustment.NewRot.Yaw),
+					ServerData->PendingAdjustment.NewBase,
+					ServerData->PendingAdjustment.NewBaseBoneName,
+					ServerData->PendingAdjustment.NewBase != NULL,
+					ServerData->PendingAdjustment.bBaseRelativePosition,
+					PackNetworkMovementMode()
+				);
+			}
+			else
+			{
+				ClientAdjustPositionVR
+				(
+					ServerData->PendingAdjustment.TimeStamp,
+					ServerData->PendingAdjustment.NewLoc,
+					FRotator::CompressAxisToShort(ServerData->PendingAdjustment.NewRot.Yaw),
+					ServerData->PendingAdjustment.NewVel,
+					ServerData->PendingAdjustment.NewBase,
+					ServerData->PendingAdjustment.NewBaseBoneName,
+					ServerData->PendingAdjustment.NewBase != NULL,
+					ServerData->PendingAdjustment.bBaseRelativePosition,
+					PackNetworkMovementMode()
+				);
+			}
+		}
+	}
+
+	ServerData->PendingAdjustment.TimeStamp = 0;
+	ServerData->PendingAdjustment.bAckGoodMove = false;
+	ServerData->bForceClientUpdate = false;
+}
+
+
+void UVRCharacterMovementComponent::ClientVeryShortAdjustPositionVR(float TimeStamp, FVector NewLoc, uint16 NewYaw, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
+{
+	((AVRCharacter*)CharacterOwner)->ClientVeryShortAdjustPositionVR(TimeStamp, NewLoc, NewYaw, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+}
+
+void UVRCharacterMovementComponent::ClientVeryShortAdjustPositionVR_Implementation
+(
+	float TimeStamp,
+	FVector NewLoc,
+	uint16 NewYaw,
+	UPrimitiveComponent* NewBase,
+	FName NewBaseBoneName,
+	bool bHasBase,
+	bool bBaseRelativePosition,
+	uint8 ServerMovementMode
+)
+{
+	if (HasValidData())
+	{
+		ClientAdjustPositionVR(TimeStamp, NewLoc, NewYaw, FVector::ZeroVector, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+	}
+}
+
+
+void UVRCharacterMovementComponent::ClientAdjustPositionVR(float TimeStamp, FVector NewLoc, uint16 NewYaw, FVector NewVel, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
+{
+	((AVRCharacter*)CharacterOwner)->ClientAdjustPositionVR(TimeStamp, NewLoc, NewYaw, NewVel, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+}
+
+void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
+(
+	float TimeStamp,
+	FVector NewLocation,
+	uint16 NewYaw,
+	FVector NewVelocity,
+	UPrimitiveComponent* NewBase,
+	FName NewBaseBoneName,
+	bool bHasBase,
+	bool bBaseRelativePosition,
+	uint8 ServerMovementMode
+)
+{
+	if (!HasValidData() || !IsActive())
+	{
+		return;
+	}
+
+
+	FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
+	check(ClientData);
+
+	// Make sure the base actor exists on this client.
+	const bool bUnresolvedBase = bHasBase && (NewBase == NULL);
+	if (bUnresolvedBase)
+	{
+		if (bBaseRelativePosition)
+		{
+			UE_LOG(LogNetPlayerMovement, Warning, TEXT("ClientAdjustPosition_Implementation could not resolve the new relative movement base actor, ignoring server correction!"));
+			return;
+		}
+		else
+		{
+			UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ClientAdjustPosition_Implementation could not resolve the new absolute movement base actor, but WILL use the position!"));
+		}
+	}
+
+	// Ack move if it has not expired.
+	int32 MoveIndex = ClientData->GetSavedMoveIndex(TimeStamp);
+	if (MoveIndex == INDEX_NONE)
+	{
+		if (ClientData->LastAckedMove.IsValid())
+		{
+			UE_LOG(LogNetPlayerMovement, Log, TEXT("ClientAdjustPosition_Implementation could not find Move for TimeStamp: %f, LastAckedTimeStamp: %f, CurrentTimeStamp: %f"), TimeStamp, ClientData->LastAckedMove->TimeStamp, ClientData->CurrentTimeStamp);
+		}
+		return;
+	}
+
+	if (!bUseClientControlRotation)
+	{
+		float YawValue = FRotator::DecompressAxisFromShort(NewYaw);
+		// Trust the server's control yaw
+		if (ClientData->LastAckedMove.IsValid() && !FMath::IsNearlyEqual(ClientData->LastAckedMove->SavedControlRotation.Yaw, YawValue))
+		{
+			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+			{
+				if (BaseChar->bUseControllerRotationYaw)
+				{
+					AController * myController = BaseChar->GetController();
+					if (myController)
+					{
+						//FRotator newRot = myController->GetControlRotation();
+						myController->SetControlRotation(FRotator(0.f, YawValue, 0.f));//(ClientData->LastAckedMove->SavedControlRotation);
+					}
+				}
+
+				BaseChar->SetActorRotation(FRotator(0.f, YawValue, 0.f));
+			}
+		}
+	}
+
+	ClientData->AckMove(MoveIndex);
+
+	FVector WorldShiftedNewLocation;
+	//  Received Location is relative to dynamic base
+	if (bBaseRelativePosition)
+	{
+		FVector BaseLocation;
+		FQuat BaseRotation;
+		MovementBaseUtility::GetMovementBaseTransform(NewBase, NewBaseBoneName, BaseLocation, BaseRotation); // TODO: error handling if returns false		
+		WorldShiftedNewLocation = NewLocation + BaseLocation;
+	}
+	else
+	{
+		WorldShiftedNewLocation = FRepMovement::RebaseOntoLocalOrigin(NewLocation, this);
+	}
+
+
+	// Trigger event
+	OnClientCorrectionReceived(*ClientData, TimeStamp, NewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+
+	// Trust the server's positioning.
+	UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false);
+	Velocity = NewVelocity;
+
+	// Trust the server's movement mode
+	UPrimitiveComponent* PreviousBase = CharacterOwner->GetMovementBase();
+	ApplyNetworkMovementMode(ServerMovementMode);
+
+	// Set base component
+	UPrimitiveComponent* FinalBase = NewBase;
+	FName FinalBaseBoneName = NewBaseBoneName;
+	if (bUnresolvedBase)
+	{
+		check(NewBase == NULL);
+		check(!bBaseRelativePosition);
+
+		// We had an unresolved base from the server
+		// If walking, we'd like to continue walking if possible, to avoid falling for a frame, so try to find a base where we moved to.
+		if (PreviousBase)
+		{
+			FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, false, NULL); //-V595
+			if (CurrentFloor.IsWalkableFloor())
+			{
+				FinalBase = CurrentFloor.HitResult.Component.Get();
+				FinalBaseBoneName = CurrentFloor.HitResult.BoneName;
+			}
+			else
+			{
+				FinalBase = nullptr;
+				FinalBaseBoneName = NAME_None;
+			}
+		}
+	}
+	SetBase(FinalBase, FinalBaseBoneName);
+
+	// Update floor at new location
+	UpdateFloorFromAdjustment();
+	bJustTeleported = true;
+
+	// Even if base has not changed, we need to recompute the relative offsets (since we've moved).
+	SaveBaseLocation();
+
+	LastUpdateLocation = UpdatedComponent ? UpdatedComponent->GetComponentLocation() : FVector::ZeroVector;
+	LastUpdateRotation = UpdatedComponent ? UpdatedComponent->GetComponentQuat() : FQuat::Identity;
+	LastUpdateVelocity = Velocity;
+
+	UpdateComponentVelocity();
+	ClientData->bUpdatePosition = true;
+}
+
+bool UVRCharacterMovementComponent::ServerCheckClientErrorVR(float ClientTimeStamp, float DeltaTime, const FVector& Accel, const FVector& ClientWorldLocation, float ClientYaw, const FVector& RelativeClientLocation, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+{
+	// Check location difference against global setting
+	if (!bIgnoreClientMovementErrorChecksAndCorrection)
+	{
+		const FVector LocDiff = UpdatedComponent->GetComponentLocation() - ClientWorldLocation;
+
+#if ROOT_MOTION_DEBUG
+		if (RootMotionSourceDebug::CVarDebugRootMotionSources.GetValueOnAnyThread() == 1)
+		{
+			FString AdjustedDebugString = FString::Printf(TEXT("ServerCheckClientError LocDiff(%.1f) ExceedsAllowablePositionError(%d) TimeStamp(%f)"),
+				LocDiff.Size(), GetDefault<AGameNetworkManager>()->ExceedsAllowablePositionError(LocDiff), ClientTimeStamp);
+			RootMotionSourceDebug::PrintOnScreen(*CharacterOwner, AdjustedDebugString);
+		}
+#endif
+		if (GetDefault<AGameNetworkManager>()->ExceedsAllowablePositionError(LocDiff))
+		{
+			bNetworkLargeClientCorrection = (LocDiff.SizeSquared() > FMath::Square(NetworkLargeClientCorrectionDistance));
+			return true;
+		}
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+		static const auto CVarNetForceClientAdjustmentPercent = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetForceClientAdjustmentPercent"));
+		if (CVarNetForceClientAdjustmentPercent->GetFloat() > SMALL_NUMBER)
+		{
+			if (FMath::SRand() < CVarNetForceClientAdjustmentPercent->GetFloat())
+			{
+				UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("** ServerCheckClientError forced by p.NetForceClientAdjustmentPercent"));
+				return true;
+			}
+		}
+#endif
+	}
+	else
+	{
+#if !UE_BUILD_SHIPPING
+		static const auto CVarNetShowCorrections = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetShowCorrections"));
+		if (CVarNetShowCorrections->GetInt() != 0)
+		{
+			UE_LOG(LogVRCharacterMovement, Warning, TEXT("*** Server: %s is set to ignore error checks and corrections."), *GetNameSafe(CharacterOwner));
+		}
+#endif // !UE_BUILD_SHIPPING
+	}
+
+	// Check for disagreement in movement mode
+	const uint8 CurrentPackedMovementMode = PackNetworkMovementMode();
+	if (CurrentPackedMovementMode != ClientMovementMode)
+	{
+		return true;
+	}
+	
+	// If we are rolling back client rotation
+	if (!bUseClientControlRotation && !FMath::IsNearlyEqual(FRotator::ClampAxis(ClientYaw), FRotator::ClampAxis(UpdatedComponent->GetComponentRotation().Yaw), 0.01f))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
+void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTimeStamp, float DeltaTime, const FVector& Accel, const FVector& RelativeClientLoc, float ClientYaw, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
+{
+	if (RelativeClientLoc == FVector(1.f, 2.f, 3.f)) // first part of double servermove
+	{
+		return;
+	}
+
+	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
+	check(ServerData);
+
+	// Don't prevent more recent updates from being sent if received this frame.
+	// We're going to send out an update anyway, might as well be the most recent one.
+	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
+	if ((ServerData->LastUpdateTime != GetWorld()->TimeSeconds) && GetDefault<AGameNetworkManager>()->WithinUpdateDelayBounds(PC, ServerData->LastUpdateTime))
+	{
+		return;
+	}
+
+	// Offset may be relative to base component
+	FVector ClientLoc = RelativeClientLoc;
+	if (MovementBaseUtility::UseRelativeLocation(ClientMovementBase))
+	{
+		FVector BaseLocation;
+		FQuat BaseRotation;
+		MovementBaseUtility::GetMovementBaseTransform(ClientMovementBase, ClientBaseBoneName, BaseLocation, BaseRotation);
+		ClientLoc += BaseLocation;
+	}
+
+	// Compute the client error from the server's position
+	// If client has accumulated a noticeable positional error, correct them.
+	bNetworkLargeClientCorrection = ServerData->bForceClientUpdate;
+
+	if (ServerData->bForceClientUpdate || ServerCheckClientErrorVR(ClientTimeStamp, DeltaTime, Accel, ClientLoc, ClientYaw, RelativeClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode))
+	{
+		UPrimitiveComponent* MovementBase = CharacterOwner->GetMovementBase();
+		ServerData->PendingAdjustment.NewVel = Velocity;
+		ServerData->PendingAdjustment.NewBase = MovementBase;
+		ServerData->PendingAdjustment.NewBaseBoneName = CharacterOwner->GetBasedMovement().BoneName;
+		ServerData->PendingAdjustment.NewLoc = FRepMovement::RebaseOntoZeroOrigin(UpdatedComponent->GetComponentLocation(), this);
+		ServerData->PendingAdjustment.NewRot = UpdatedComponent->GetComponentRotation();
+
+		ServerData->PendingAdjustment.bBaseRelativePosition = MovementBaseUtility::UseRelativeLocation(MovementBase);
+		if (ServerData->PendingAdjustment.bBaseRelativePosition)
+		{
+			// Relative location
+			ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetBasedMovement().Location;
+
+			// TODO: this could be a relative rotation, but all client corrections ignore rotation right now except the root motion one, which would need to be updated.
+			//ServerData->PendingAdjustment.NewRot = CharacterOwner->GetBasedMovement().Rotation;
+		}
+
+#if !UE_BUILD_SHIPPING
+		static const auto CVarNetShowCorrections = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetShowCorrections"));
+		static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
+		if (CVarNetShowCorrections->GetInt() != 0)
+		{
+			const FVector LocDiff = UpdatedComponent->GetComponentLocation() - ClientLoc;
+			const FString BaseString = MovementBase ? MovementBase->GetPathName(MovementBase->GetOutermost()) : TEXT("None");
+			UE_LOG(LogVRCharacterMovement, Warning, TEXT("*** Server: Error for %s at Time=%.3f is %3.3f LocDiff(%s) ClientLoc(%s) ServerLoc(%s) Base: %s Bone: %s Accel(%s) Velocity(%s)"),
+				*GetNameSafe(CharacterOwner), ClientTimeStamp, LocDiff.Size(), *LocDiff.ToString(), *ClientLoc.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), *BaseString, *ServerData->PendingAdjustment.NewBaseBoneName.ToString(), *Accel.ToString(), *Velocity.ToString());
+			const float DebugLifetime = CVarNetCorrectionLifetime->GetFloat();
+			DrawDebugCapsule(GetWorld(), UpdatedComponent->GetComponentLocation(), CharacterOwner->GetSimpleCollisionHalfHeight(), CharacterOwner->GetSimpleCollisionRadius(), FQuat::Identity, FColor(100, 255, 100), true, DebugLifetime);
+			DrawDebugCapsule(GetWorld(), ClientLoc, CharacterOwner->GetSimpleCollisionHalfHeight(), CharacterOwner->GetSimpleCollisionRadius(), FQuat::Identity, FColor(255, 100, 100), true, DebugLifetime);
+		}
+#endif
+
+		ServerData->LastUpdateTime = GetWorld()->TimeSeconds;
+		ServerData->PendingAdjustment.DeltaTime = DeltaTime;
+		ServerData->PendingAdjustment.TimeStamp = ClientTimeStamp;
+		ServerData->PendingAdjustment.bAckGoodMove = false;
+		ServerData->PendingAdjustment.MovementMode = PackNetworkMovementMode();
+
+		//PerfCountersIncrement(PerfCounter_NumServerMoveCorrections);
+	}
+	else
+	{
+		if (GetDefault<AGameNetworkManager>()->ClientAuthorativePosition)
+		{
+			const FVector LocDiff = UpdatedComponent->GetComponentLocation() - ClientLoc; //-V595
+			if (!LocDiff.IsZero() || ClientMovementMode != PackNetworkMovementMode() || GetMovementBase() != ClientMovementBase || (CharacterOwner && CharacterOwner->GetBasedMovement().BoneName != ClientBaseBoneName))
+			{
+				// Just set the position. On subsequent moves we will resolve initially overlapping conditions.
+				UpdatedComponent->SetWorldLocation(ClientLoc, false); //-V595
+
+																	  // Trust the client's movement mode.
+				ApplyNetworkMovementMode(ClientMovementMode);
+
+				// Update base and floor at new location.
+				SetBase(ClientMovementBase, ClientBaseBoneName);
+				UpdateFloorFromAdjustment();
+
+				// Even if base has not changed, we need to recompute the relative offsets (since we've moved).
+				SaveBaseLocation();
+
+				LastUpdateLocation = UpdatedComponent ? UpdatedComponent->GetComponentLocation() : FVector::ZeroVector;
+				LastUpdateRotation = UpdatedComponent ? UpdatedComponent->GetComponentQuat() : FQuat::Identity;
+				LastUpdateVelocity = Velocity;
+			}
+		}
+
+		// acknowledge receipt of this successful servermove()
+		ServerData->PendingAdjustment.TimeStamp = ClientTimeStamp;
+		ServerData->PendingAdjustment.bAckGoodMove = true;
+	}
+
+	//PerfCountersIncrement(PerfCounter_NumServerMoves);
+
+	ServerData->bForceClientUpdate = false;
+}

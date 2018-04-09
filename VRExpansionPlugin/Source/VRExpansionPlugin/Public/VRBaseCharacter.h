@@ -129,6 +129,7 @@ public:
 	AVRBaseCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	//These functions are now housed in the base character and used when possible, it saves about 7 bits of packet header overhead per send.
+
 	// I'm sending it unreliable because it is being resent pretty often
 	UFUNCTION(Unreliable, Server, WithValidation)
 		void Server_SendTransformCamera(FBPVRComponentPosRep NewTransform);
@@ -405,7 +406,7 @@ public:
 			NewRotation = (NewRotation.Quaternion() * DeltaRot.Quaternion()).Rotator();
 			NewLocation -= NewRotation.RotateVector(PivotPoint);
 
-			if (bUseControllerRotationYaw && OwningController && IsLocallyControlled())
+			if (bUseControllerRotationYaw && OwningController /*&& IsLocallyControlled()*/)
 				OwningController->SetControlRotation(NewRotation);
 
 			// Also setting actor rot because the control rot transfers to it anyway eventually
@@ -440,7 +441,7 @@ public:
 		//NewRotation = NewRot;
 		NewLocation -= NewRotation.RotateVector(PivotPoint);
 
-		if (bUseControllerRotationYaw && OwningController && IsLocallyControlled())
+		if (bUseControllerRotationYaw && OwningController /*&& IsLocallyControlled()*/)
 			OwningController->SetControlRotation(NewRotation);
 
 		// Also setting actor rot because the control rot transfers to it anyway eventually
@@ -472,7 +473,7 @@ public:
 		//NewRotation = NewRot;
 		NewLocation -= NewRotation.RotateVector(PivotPoint);
 
-		if (bUseControllerRotationYaw && OwningController && IsLocallyControlled())
+		if (bUseControllerRotationYaw && OwningController /*&& IsLocallyControlled()*/)
 			OwningController->SetControlRotation(NewRotation);
 
 		// Also setting actor rot because the control rot transfers to it anyway eventually
