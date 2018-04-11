@@ -202,8 +202,8 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 	}
 	else if(LastSliderProgressState != CurrentSliderProgress)
 	{
-		if (!bSliderUsesSnapPoints && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f) ||
-			bSliderUsesSnapPoints && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f)
+		if ((!bSliderUsesSnapPoints && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f)) ||
+			(bSliderUsesSnapPoints && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f))
 			)
 		{
 			// I am working with exacts here because of the clamping, it should actually work with no precision issues
