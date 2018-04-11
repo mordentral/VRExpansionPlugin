@@ -415,8 +415,9 @@ public:
 	}
 
 	// Sets the actors rotation taking into account the HMD as a pivot point (also moves the actor), returns the location difference
+	// bAccountForHMDRotation sets the rot to have the HMD face the given rot, if it is false it ignores the HMD rotation
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
-	FVector SetActorRotationVR(FRotator NewRot, bool bUseYawOnly = true)
+	FVector SetActorRotationVR(FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true)
 	{
 		AController* OwningController = GetController();
 
@@ -434,8 +435,13 @@ public:
 			NewRot.Roll = 0.0f;
 		}
 
-		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->RelativeRotation);
-		NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
+		if (bAccountForHMDRotation)
+		{
+			NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->RelativeRotation);
+			NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
+		}
+		else
+			NewRotation = NewRot;
 
 		NewLocation = OrigLocation + OrigRotation.RotateVector(PivotPoint);
 		//NewRotation = NewRot;
@@ -451,7 +457,7 @@ public:
 	
 	// Sets the actors rotation and location taking into account the HMD as a pivot point (also moves the actor), returns the location difference from the rotation
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
-	FVector SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly = true)
+	FVector SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true)
 	{
 		AController* OwningController = GetController();
 
@@ -466,8 +472,13 @@ public:
 			NewRot.Roll = 0.0f;
 		}
 
-		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->RelativeRotation);//bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
-		NewRotation = (NewRotation.Quaternion().Inverse() * NewRot.Quaternion()).Rotator();
+		if (bAccountForHMDRotation)
+		{
+			NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->RelativeRotation);//bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
+			NewRotation = (NewRotation.Quaternion().Inverse() * NewRot.Quaternion()).Rotator();
+		}
+		else
+			NewRotation = NewRot;
 
 		NewLocation = NewLoc;// +PivotPoint;// NewRotation.RotateVector(PivotPoint);
 		//NewRotation = NewRot;

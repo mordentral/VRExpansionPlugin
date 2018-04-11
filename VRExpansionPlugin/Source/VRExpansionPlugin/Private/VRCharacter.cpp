@@ -14,7 +14,7 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		VRRootReference = Cast<UVRRootComponent>(GetCapsuleComponent());
 		VRRootReference->SetCapsuleSize(20.0f, 96.0f);
-		VRRootReference->VRCapsuleOffset = FVector(-8.0f, 0.0f, 0.0f);
+		//VRRootReference->VRCapsuleOffset = FVector(-8.0f, 0.0f, 0.0f);
 		VRRootReference->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		VRRootReference->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 	}

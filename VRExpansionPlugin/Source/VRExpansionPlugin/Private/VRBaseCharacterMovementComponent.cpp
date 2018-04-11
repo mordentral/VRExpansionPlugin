@@ -527,7 +527,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
-		OwningCharacter->SetActorRotationVR(MoveAction.MoveActionRot, true);
+		OwningCharacter->SetActorRotationVR(MoveAction.MoveActionRot, true, false);
 		//OwningCharacter->AddActorWorldRotationVR(MoveAction.MoveActionRot, true);
 	/*	if (!IsLocallyControlled())
 		{

@@ -100,6 +100,7 @@ public:
 	FTransform OffsetComponentToWorld;
 
 	// Used to offset the collision (IE backwards from the player slightly.
+	// The default 2.15 Z offset is to account for floor hover from the character movement component.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	FVector VRCapsuleOffset;
 
