@@ -2548,7 +2548,6 @@ FTransform UGripMotionControllerComponent::HandleInteractionSettings(float Delta
 
 void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 {
-
 	SCOPE_CYCLE_COUNTER(STAT_TickGrip);
 
 	// Debug test that we aren't floating physics handles
@@ -2556,13 +2555,9 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 	FTransform ParentTransform = this->GetComponentTransform();
 
-	// Set the last controller world location for next frame
-	LastControllerLocation = this->GetComponentLocation();
-
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
 	HandleGripArray(GrippedObjects, ParentTransform, DeltaTime, true);
 	HandleGripArray(LocallyGrippedObjects, ParentTransform, DeltaTime);
-
 }
 
 void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)

@@ -66,6 +66,39 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
+	// Sets the rotation and location depending on the control variables. Trying to remove some code duplication here
+	inline void SetRelativeRotAndLoc(FVector NewRelativeLocation, FRotator NewRelativeRotation, float DeltaTime)
+	{
+		if (bUseFeetLocation)
+		{
+			if (!bIgnoreRotationFromParent)
+			{
+				SetRelativeLocationAndRotation(
+					FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f),
+					GetCalculatedRotation(NewRelativeRotation, DeltaTime)
+				);
+			}
+			else
+			{
+				SetRelativeLocation(FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f));
+			}
+		}
+		else
+		{
+			if (!bIgnoreRotationFromParent)
+			{
+				SetRelativeLocationAndRotation(
+					NewRelativeLocation,
+					GetCalculatedRotation(NewRelativeRotation, DeltaTime)
+				); // Use the HMD height instead
+			}
+			else
+			{
+				SetRelativeLocation(NewRelativeLocation); // Use the HMD height instead
+			}
+		}
+	}
+
 	FQuat GetCalculatedRotation(FRotator InverseRot, float DeltaTime)
 	{
 		FRotator FinalRot = FRotator::ZeroRotator;

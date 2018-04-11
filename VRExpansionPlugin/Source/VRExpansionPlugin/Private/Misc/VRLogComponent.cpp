@@ -10,6 +10,7 @@
 UVRLogComponent::UVRLogComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	PrimaryComponentTick.bCanEverTick = false;
 	MaxLineLength = 130;
 	MaxStoredMessages = 10000;
 }

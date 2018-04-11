@@ -96,9 +96,6 @@ private:
 	GENERATED_UCLASS_BODY()
 	~UGripMotionControllerComponent();
 
-	// Used to set the difference since last tick for TickGrip()
-	FVector LastControllerLocation; 
-
 	// Custom version of the component sweep function to remove that aggravating warning epic is throwing about skeletal mesh components.
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void OnUnregister() override;

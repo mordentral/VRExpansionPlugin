@@ -14,7 +14,7 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
-//	PrimaryComponentTick.TickGroup = TG_PrePhysics;
+	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
 	this->SetIsReplicated(true);
 	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
