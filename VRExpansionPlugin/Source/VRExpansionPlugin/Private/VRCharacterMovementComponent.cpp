@@ -4321,7 +4321,8 @@ bool UVRCharacterMovementComponent::ServerCheckClientErrorVR(float ClientTimeSta
 	}
 	
 	// If we are rolling back client rotation
-	if (!bUseClientControlRotation && !FMath::IsNearlyEqual(FRotator::ClampAxis(ClientYaw), FRotator::ClampAxis(UpdatedComponent->GetComponentRotation().Yaw), 0.01f))
+	// #TODO: Remove magic number here and expose as a console command or in the globals
+	if (!bUseClientControlRotation && !FMath::IsNearlyEqual(FRotator::ClampAxis(ClientYaw), FRotator::ClampAxis(UpdatedComponent->GetComponentRotation().Yaw), 0.02f))
 	{
 		return true;
 	}
