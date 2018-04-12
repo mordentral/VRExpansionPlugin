@@ -458,7 +458,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw)
 {
 	FVRMoveActionContainer MoveAction;
-	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn;
+	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SetRotation;
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(NewYaw * 100.f) / 100.f, 0.0f);
 	MoveActionArray.MoveActions.Add(MoveAction);
 }
@@ -468,7 +468,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector Telep
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_Teleport;
 	MoveAction.MoveActionLoc = RoundDirectMovement(TeleportLocation);
-	MoveAction.MoveActionRot.Yaw = FMath::RoundToFloat(TeleportRotation.Yaw * 10.f) / 10.f;
+	MoveAction.MoveActionRot.Yaw = FMath::RoundToFloat(TeleportRotation.Yaw * 100.f) / 100.f;
 	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
@@ -507,7 +507,10 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 		{
 			/*return */DoMAStopAllMovement(MoveAction);
 		}break;
-		case EVRMoveAction::VRMOVEACTION_Reserved1:
+		case EVRMoveAction::VRMOVEACTION_SetRotation:
+		{
+			/*return */DoMASetRotation(MoveAction);
+		}break;
 		case EVRMoveAction::VRMOVEACTION_None:
 		{}break;
 		default: // All other move actions (CUSTOM)
@@ -528,18 +531,16 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
 		OwningCharacter->SetActorRotationVR(MoveAction.MoveActionRot, true, false);
-		//OwningCharacter->AddActorWorldRotationVR(MoveAction.MoveActionRot, true);
-	/*	if (!IsLocallyControlled())
-		{
-						MoveAction.MoveActionLoc = OwningCharacter->AddActorWorldRotationVR(MoveAction.MoveActionRot, true);
-			OwningCharacter->AddActorWorldOffset(MoveAction.MoveActionLoc);
-			return true;
-		}
-		else
-		{
-			MoveAction.MoveActionLoc = OwningCharacter->AddActorWorldRotationVR(MoveAction.MoveActionRot, true);
-			return true;
-		}*/
+	}
+
+	return false;
+}
+
+bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& MoveAction)
+{
+	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	{
+		OwningCharacter->SetActorRotationVR(MoveAction.MoveActionRot, true);
 	}
 
 	return false;
@@ -549,28 +550,20 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
-		/*if (!IsLocallyControlled())
+		AController* OwningController = OwningCharacter->GetController();
+
+		if (!OwningController)
 		{
-			OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, OwningCharacter->GetActorRotation(), false, false);
-			return true;
+			MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_None;
+			return false;
 		}
-		else
-		{*/
-			AController* OwningController = OwningCharacter->GetController();
 
-			if (!OwningController)
-			{
-				MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_None;
-				return false;
-			}
+		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, MoveAction.MoveActionRot, false, false);
 
-			OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, MoveAction.MoveActionRot, false, false);
+		if (OwningCharacter->bUseControllerRotationYaw)
+			OwningController->SetControlRotation(MoveAction.MoveActionRot);
 
-			if (OwningCharacter->bUseControllerRotationYaw)
-				OwningController->SetControlRotation(MoveAction.MoveActionRot);
-
-			return true;
-	//	}
+		return true;
 	}
 
 	return false;

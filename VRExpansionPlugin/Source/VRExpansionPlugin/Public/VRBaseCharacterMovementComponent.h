@@ -29,7 +29,7 @@ enum class EVRMoveAction : uint8
 	VRMOVEACTION_SnapTurn = 0x01,
 	VRMOVEACTION_Teleport = 0x02,
 	VRMOVEACTION_StopAllMovement = 0x03,
-	VRMOVEACTION_Reserved1 = 0x04,
+	VRMOVEACTION_SetRotation = 0x04,
 	VRMOVEACTION_CUSTOM1 = 0x05,
 	VRMOVEACTION_CUSTOM2 = 0x06,
 	VRMOVEACTION_CUSTOM3 = 0x07,
@@ -91,6 +91,7 @@ public:
 		switch (MoveAction)
 		{
 		case EVRMoveAction::VRMOVEACTION_None: break;
+		case EVRMoveAction::VRMOVEACTION_SetRotation:
 		case EVRMoveAction::VRMOVEACTION_SnapTurn:
 		{
 			uint16 Yaw;
@@ -115,7 +116,7 @@ public:
 
 			if (Ar.IsSaving())
 			{
-				FRotator::CompressAxisToShort(MoveActionRot.Yaw);
+				Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
 
 				Ar << Yaw;
 			}
@@ -124,11 +125,10 @@ public:
 				Ar << Yaw;
 				MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
 			}
+
 			bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);
 		}break;
 		case EVRMoveAction::VRMOVEACTION_StopAllMovement:
-		{}break;
-		case EVRMoveAction::VRMOVEACTION_Reserved1:
 		{}break;
 		default: // Everything else
 		{
@@ -616,7 +616,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw);
 
-	// Perform a snap turn in line with the move action system
+	// Perform a rotation set in line with the move actions system
+	// This node specifically sets the FACING direction to a value, where your HMD is pointed
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_SetRotation(float NewYaw);
 
@@ -638,6 +639,7 @@ public:
 
 	bool CheckForMoveAction();
 	bool DoMASnapTurn(FVRMoveActionContainer& MoveAction);
+	bool DoMASetRotation(FVRMoveActionContainer& MoveAction);
 	bool DoMATeleport(FVRMoveActionContainer& MoveAction);
 	bool DoMAStopAllMovement(FVRMoveActionContainer& MoveAction);
 
