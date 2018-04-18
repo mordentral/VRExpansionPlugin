@@ -323,8 +323,7 @@ public:
 
 				FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
 
-				// #TODO: Come back to this at some point and test if it was fixed....but currently line sizes > default do not render with color in the editor
-				DrawWireCapsule(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, UseEditorCompositing(View) ? 1.0f : 1.25f);
+				DrawWireCapsule(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);
 			}
 		}
 	}

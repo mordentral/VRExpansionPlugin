@@ -40,7 +40,6 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	DefaultPostClimbMovement = EVRConjoinedMovementModes::C_MOVE_Falling;
 
 	bIgnoreSimulatingComponentsInFloorCheck = true;
-	VRReplicateCapsuleHeight = false;
 
 	VRWallSlideScaler = 1.0f;
 	VRLowGravWallFrictionScaler = 1.0f;
@@ -819,7 +818,6 @@ void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMo
 	VRReplicatedMovementMode = NewMovementMode;
 }
 
-
 /*void UVRBaseCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
 {
 	Super::ReplicateMoveToServer(DeltaTime, NewAcceleration);
@@ -1010,8 +1008,15 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 				
 			// Throw out the Z value of the headset, its not used anyway for movement
 			// Instead, re-purpose it to be the capsule half height
-			if (moveComp->VRReplicateCapsuleHeight && C)
-				LFDiff.Z = C->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(moveComp->GetCharacterOwner()))
+			{
+				if (BaseChar->VRReplicateCapsuleHeight && C)
+					LFDiff.Z = C->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+				else
+					LFDiff.Z = 0.0f;
+			}
+			else
+				LFDiff.Z = 0.0f;
 		}
 		else
 		{

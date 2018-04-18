@@ -1501,9 +1501,15 @@ void FSavedMove_VRSimpleCharacter::PrepMoveFor(ACharacter* Character)
 	{
 		CharMove->AdditionalVRInputVector = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 	}
-
-	if (CharMove->VRReplicateCapsuleHeight && LFDiff.Z != CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight())
-		CharMove->VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+	
+	if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharMove->GetCharacterOwner()))
+	{
+		if (BaseChar->VRReplicateCapsuleHeight && LFDiff.Z != CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight())
+		{
+			BaseChar->SetCharacterHalfHeightVR(LFDiff.Z, false);
+			//CharMove->VRRootCapsule->SetCapsuleHalfHeightVR(LFDiff.Z, false);
+		}
+	}
 
 	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
 }
@@ -1657,8 +1663,15 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 		// Add in VR Input velocity
 		AdditionalVRInputVector = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 
-		if (VRReplicateCapsuleHeight && LFDiff.Z != VRRootCapsule->GetUnscaledCapsuleHalfHeight())
-			VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+		if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+		{
+			if (BaseChar->VRReplicateCapsuleHeight && LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+			{
+				//BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
+				BaseChar->SetCharacterHalfHeightVR(LFDiff.Z, false);
+				//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+			}
+		}
 
 		CustomVRInputVector = ConditionalReps.CustomVRInputVector;//CustVRInputVector;
 		MoveActionArray = ConditionalReps.MoveActionArray;

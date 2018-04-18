@@ -22,6 +22,7 @@
  * @see ACharacter, UPawnMovementComponent
  * @see https://docs.unrealengine.com/latest/INT/Gameplay/Framework/Pawn/Character/
  */
+
 UENUM(Blueprintable)
 enum class EVRMoveAction : uint8
 {
@@ -657,10 +658,19 @@ public:
 	}
 
 	// Rewind the relative movement that we had with the HMD, this is exposed to Blueprint so that custom movement modes can use it to rewind prior to movement actions.
+	// Returns the Vector required to get back to the original position (for custom movement modes)
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void RewindVRMovement()
+		FVector RewindVRMovement()
 	{
 		RewindVRRelativeMovement();
+		return AdditionalVRInputVector;
+	}
+
+	// Gets the current CustomInputVector for use in custom movement modes
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		FVector GetCustomInputVector()
+	{
+		return CustomVRInputVector;
 	}
 
 	bool bWasInPushBack;
@@ -765,10 +775,6 @@ public:
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
 		float VREdgeRejectDistance;
-
-	// If true will replicate the capsule height on to clients, allows for dynamic capsule height changes in multiplayer
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
-		bool VRReplicateCapsuleHeight;
 
 	UFUNCTION(BlueprintCallable, Category = "VRMovement|Climbing")
 		void SetClimbingMode(bool bIsClimbing);

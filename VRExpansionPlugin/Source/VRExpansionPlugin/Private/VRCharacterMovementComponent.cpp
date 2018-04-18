@@ -476,9 +476,13 @@ void FSavedMove_VRCharacter::PrepMoveFor(ACharacter* Character)
 		CharMove->VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 		CharMove->AdditionalVRInputVector = CharMove->VRRootCapsule->DifferenceFromLastFrame;
 
-		if (CharMove->VRReplicateCapsuleHeight && !FMath::IsNearlyEqual(this->LFDiff.Z,CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+		if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharMove->GetCharacterOwner()))
 		{
-			CharMove->VRRootCapsule->SetCapsuleHalfHeight(this->LFDiff.Z, false);
+			if (BaseChar->VRReplicateCapsuleHeight && this->LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(this->LFDiff.Z, CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+			{
+				BaseChar->SetCharacterHalfHeightVR(LFDiff.Z, false);
+				//CharMove->VRRootCapsule->SetCapsuleHalfHeight(this->LFDiff.Z, false);
+			}
 		}
 
 		CharMove->VRRootCapsule->GenerateOffsetToWorld(false, false);
@@ -718,8 +722,15 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 			VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 			AdditionalVRInputVector = VRRootCapsule->DifferenceFromLastFrame;
 		
-			if (VRReplicateCapsuleHeight && !FMath::IsNearlyEqual(LFDiff.Z,VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
-				VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+			{
+				if (BaseChar->VRReplicateCapsuleHeight && LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+				{
+					BaseChar->SetCharacterHalfHeightVR(LFDiff.Z, false);
+				//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
+					//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+				}
+			}
 
 			VRRootCapsule->GenerateOffsetToWorld(false, false);
 

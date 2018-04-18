@@ -46,6 +46,9 @@ public:
 		if (VRRootReference)
 		{
 			VRRootReference->SetCapsuleSizeVR(NewRadius, NewHalfHeight, bUpdateOverlaps);
+
+			if (GetNetMode() < ENetMode::NM_Client)
+				ReplicatedCapsuleHeight.CapsuleHeight = VRRootReference->GetUnscaledCapsuleHalfHeight();
 		}
 		else
 		{
@@ -59,6 +62,9 @@ public:
 		if (VRRootReference)
 		{
 			VRRootReference->SetCapsuleHalfHeightVR(HalfHeight, bUpdateOverlaps);
+
+			if (GetNetMode() < ENetMode::NM_Client)
+				ReplicatedCapsuleHeight.CapsuleHeight = VRRootReference->GetUnscaledCapsuleHalfHeight();
 		}
 		else
 		{

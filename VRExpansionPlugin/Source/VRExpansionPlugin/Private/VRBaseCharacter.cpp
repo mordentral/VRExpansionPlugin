@@ -93,12 +93,23 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	// Due to roll/pitch almost never being off 0 for VR the cost is just one byte so i'm fine defaulting it here
 	// End users can reset to byte components if they ever want too.
 	ReplicatedMovement.RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
+
+	VRReplicateCapsuleHeight = false;
 }
 
 void AVRBaseCharacter::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, SeatInformation, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AVRBaseCharacter, VRReplicateCapsuleHeight, COND_None);
+	DOREPLIFETIME_CONDITION(AVRBaseCharacter, ReplicatedCapsuleHeight, COND_SimulatedOnly);
+}
+
+void AVRBaseCharacter::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedCapsuleHeight, VRReplicateCapsuleHeight);
 }
 
 USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const

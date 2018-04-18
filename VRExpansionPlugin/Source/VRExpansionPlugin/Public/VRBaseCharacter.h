@@ -120,6 +120,45 @@ struct TStructOpsTypeTraits< FVRSeatedCharacterInfo > : public TStructOpsTypeTra
 	};
 };
 
+USTRUCT()
+struct VREXPANSIONPLUGIN_API FVRReplicatedCapsuleHeight
+{
+	GENERATED_USTRUCT_BODY()
+public:
+	UPROPERTY()
+		float CapsuleHeight;
+
+	FVRReplicatedCapsuleHeight() :
+		CapsuleHeight(0.0f)
+	{}
+
+	/** Network serialization */
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+		// Forcing a maximum value here so that we can compress it by making assumptions
+		// 1024 max value = 10 bits + 1 bit for sign + 7 bits for precision (up to 128 on precision, so full range 2 digit precision).
+		if (Ar.IsSaving())
+		{
+			bOutSuccess &= WriteFixedCompressedFloat<1024, 18>(CapsuleHeight, Ar);
+		}
+		else
+		{
+			bOutSuccess &= ReadFixedCompressedFloat<1024, 18>(CapsuleHeight, Ar);
+		}
+
+		return bOutSuccess;
+	}
+};
+template<>
+struct TStructOpsTypeTraits< FVRReplicatedCapsuleHeight > : public TStructOpsTypeTraitsBase2<FVRReplicatedCapsuleHeight>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
 UCLASS()
 class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ACharacter
 {
@@ -139,6 +178,28 @@ public:
 
 	UFUNCTION(Unreliable, Server, WithValidation)
 		void Server_SendTransformRightController(FBPVRComponentPosRep NewTransform);
+
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+
+	// If true will replicate the capsule height on to clients, allows for dynamic capsule height changes in multiplayer
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRBaseCharacter")
+		bool VRReplicateCapsuleHeight;
+
+	// OnlyReplicated to simulated clients
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_CapsuleHeight)
+		FVRReplicatedCapsuleHeight ReplicatedCapsuleHeight;
+
+	UFUNCTION()
+	void OnRep_CapsuleHeight()
+	{
+		if (UCapsuleComponent * Capsule = Cast<UCapsuleComponent>(GetRootComponent()))
+		{
+			if (ReplicatedCapsuleHeight.CapsuleHeight > 0.0f && !FMath::IsNearlyEqual(ReplicatedCapsuleHeight.CapsuleHeight, Capsule->GetUnscaledCapsuleHalfHeight()))
+			{
+				SetCharacterHalfHeightVR(ReplicatedCapsuleHeight.CapsuleHeight, false);
+			}
+		}
+	}
 
 	// Override this in c++ or blueprints to pass in an IK mesh to be used in some optimizations
 	// May be extended in the future
@@ -505,6 +566,9 @@ public:
 		{		
 			if(!FMath::IsNearlyEqual(NewRadius, Capsule->GetUnscaledCapsuleRadius()) || !FMath::IsNearlyEqual(NewHalfHeight,Capsule->GetUnscaledCapsuleHalfHeight()))
 				Capsule->SetCapsuleSize(NewRadius, NewHalfHeight, bUpdateOverlaps);
+			
+			if (GetNetMode() < ENetMode::NM_Client)
+				ReplicatedCapsuleHeight.CapsuleHeight = Capsule->GetUnscaledCapsuleHalfHeight();
 		}
 	}
 
@@ -516,6 +580,9 @@ public:
 		{
 			if (!FMath::IsNearlyEqual(HalfHeight, Capsule->GetUnscaledCapsuleHalfHeight()))
 				Capsule->SetCapsuleHalfHeight(HalfHeight, bUpdateOverlaps);
+
+			if(GetNetMode() < ENetMode::NM_Client)
+				ReplicatedCapsuleHeight.CapsuleHeight = Capsule->GetUnscaledCapsuleHalfHeight();
 		}
 	}
 
