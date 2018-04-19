@@ -753,14 +753,72 @@ public:
 	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
 	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
 	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
-	bool GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, UPrimitiveComponent * rootComp, FVector & LocOut);
 	bool SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, bool bUseHybridMultiplier = false);
+	bool GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, UPrimitiveComponent * rootComp, FVector & LocOut);
 
 	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
 	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);
 	bool GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo, int & index);
 	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
 	bool DestroyPhysicsHandle(int32 SceneIndex, physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
+
+	// Creates a physics handle for this grip
+	UFUNCTION(BlueprintCallable, Category = "VRGrip|Custom", meta = (DisplayName = "SetUpPhysicsHandle"))
+	bool SetUpPhysicsHandle_BP(UPARAM(ref)const FBPActorGripInformation &NewGrip)
+	{
+		return SetUpPhysicsHandle(NewGrip);
+	}
+
+	// Destroys a physics handle for this grip
+	UFUNCTION(BlueprintCallable, Category = "VRGrip|Custom", meta = (DisplayName = "DestroyPhysicsHandle"))
+	bool DestroyPhysicsHandle_BP(UPARAM(ref)const FBPActorGripInformation &Grip)
+	{
+		return DestroyPhysicsHandle(Grip);
+	}
+
+	// Update the location of the physics handle
+	UFUNCTION(BlueprintCallable, Category = "VRGrip|Custom", meta = (DisplayName = "UpdatePhysicsHandleTransform"))
+	void UpdatePhysicsHandleTransform_BP(UPARAM(ref)const FBPActorGripInformation &GrippedActor, UPARAM(ref)const FTransform& NewTransform)
+	{
+		return UpdatePhysicsHandleTransform(GrippedActor, NewTransform);
+	}
+
+	// Set stiffness and damping of the handle
+	UFUNCTION(BlueprintCallable, Category = "VRGrip|Custom", meta = (DisplayName = "SetGripConstraintStiffnessAndDamping"))
+	bool SetGripConstraintStiffnessAndDamping_BP(UPARAM(ref)const FBPActorGripInformation &Grip, bool bUseHybridMultiplier = false)
+	{
+		return SetGripConstraintStiffnessAndDamping(&Grip, bUseHybridMultiplier);
+	}
+
+	// Get the grip distance of either the physics handle if there is one, or the difference from the hand to the root component if there isn't
+	UFUNCTION(BlueprintCallable, Category = "VRGrip|Custom", meta = (DisplayName = "GetGripDistance"))
+	bool GetGripDistance_BP(UPARAM(ref)FBPActorGripInformation &Grip, FVector ExpectedLocation, float & CurrentDistance)
+	{
+		if (!Grip.GrippedObject)
+			return false;
+
+		UPrimitiveComponent * RootComp = nullptr;
+
+		if (Grip.GripTargetType == EGripTargetType::ActorGrip)
+		{			
+			RootComp = Cast<UPrimitiveComponent>(Grip.GetGrippedActor()->GetRootComponent());
+		}
+		else
+			RootComp = Grip.GetGrippedComponent();
+
+		if (!RootComp)
+			return false;
+
+		FVector CheckDistance;
+		if (!GetPhysicsJointLength(Grip, RootComp, CheckDistance))
+		{
+			CheckDistance = (ExpectedLocation - RootComp->GetComponentLocation());
+		}
+
+		// Set grip distance now for people to use
+		CurrentDistance = CheckDistance.Size();
+		return true;
+	}
 
 	/** If true, the Position and Orientation args will contain the most recent controller state */
 	virtual bool GripPollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale);

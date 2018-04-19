@@ -660,7 +660,7 @@ public:
 	// Rewind the relative movement that we had with the HMD, this is exposed to Blueprint so that custom movement modes can use it to rewind prior to movement actions.
 	// Returns the Vector required to get back to the original position (for custom movement modes)
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		FVector RewindVRMovement()
+	FVector RewindVRMovement()
 	{
 		RewindVRRelativeMovement();
 		return AdditionalVRInputVector;
@@ -668,7 +668,7 @@ public:
 
 	// Gets the current CustomInputVector for use in custom movement modes
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		FVector GetCustomInputVector()
+	FVector GetCustomInputVector()
 	{
 		return CustomVRInputVector;
 	}

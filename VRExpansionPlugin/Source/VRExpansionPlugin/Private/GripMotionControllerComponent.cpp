@@ -2633,15 +2633,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				if (Grip->GripCollisionType == EGripCollisionType::CustomGrip)
 				{
 					// Don't perform logic on the movement for this object, just pass in the GripTick() event with the controller difference instead
-					if (bRootHasInterface)
-					{
+					if(bRootHasInterface)
 						IVRGripInterface::Execute_TickGrip(root, this, *Grip, DeltaTime);
-					}
-					
-					if (bActorHasInterface)
-					{
+					else if(bActorHasInterface)
 						IVRGripInterface::Execute_TickGrip(actor, this, *Grip, DeltaTime);
-					}
 
 					continue;
 				}
