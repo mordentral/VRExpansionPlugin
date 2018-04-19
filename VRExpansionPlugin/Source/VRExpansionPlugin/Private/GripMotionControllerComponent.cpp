@@ -2090,7 +2090,8 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedObjects()
 	if (!GrippedObjects.Num() && !LocallyGrippedObjects.Num())
 		return;
 
-	for (int i = 0; i < LocallyGrippedObjects.Num(); i++)
+	this->bIsPostTeleport = true;
+	/*for (int i = 0; i < LocallyGrippedObjects.Num(); i++)
 	{
 		TeleportMoveGrip(LocallyGrippedObjects[i], true);
 	}
@@ -2098,7 +2099,7 @@ void UGripMotionControllerComponent::PostTeleportMoveGrippedObjects()
 	for (int i = 0; i < GrippedObjects.Num(); i++)
 	{
 		TeleportMoveGrip(GrippedObjects[i], true);
-	}
+	}*/
 }
 
 
