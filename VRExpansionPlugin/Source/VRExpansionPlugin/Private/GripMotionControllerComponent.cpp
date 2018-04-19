@@ -3096,7 +3096,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	// Get the PxRigidDynamic that we want to grab.
 	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
 	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance())
-	{
+	{	
 		return false;
 	}
 
@@ -3398,10 +3398,18 @@ bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInf
 		return false;
 	// This is supposed to be the difference between the actor and the kinactor / constraint base
 	FTransform tran3 = P2UTransform(HandleInfo->HandleData->getLocalPose(PxJointActorIndex::eACTOR1));
-	
-	FTransform rr = rootComp->GetComponentTransform();
-	// Physx location throws out scale, this is where the problem was
-	rr.SetScale3D(FVector(1,1,1)); 
+
+	FTransform rr;
+	FBodyInstance* rBodyInstance = rootComp->GetBodyInstance(GrippedActor.GrippedBoneName);
+	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance())
+	{
+		rr = rootComp->GetComponentTransform();
+		// Physx location throws out scale, this is where the problem was
+		rr.SetScale3D(FVector(1, 1, 1));
+	}
+	else
+		rr = rBodyInstance->GetUnrealWorldTransform();
+
 	// Make the local pose global
 	tran3 = tran3 * rr;
 
