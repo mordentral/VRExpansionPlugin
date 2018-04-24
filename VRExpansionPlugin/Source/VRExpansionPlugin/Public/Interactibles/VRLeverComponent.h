@@ -60,6 +60,10 @@ enum class EVRInteractibleLeverReturnType : uint8
 /** Delegate for notification when the lever state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FVRLeverStateChangedSignature, bool, LeverStatus, EVRInteractibleLeverEventType, LeverStatusType, float, LeverAngleAtTime);
 
+/**
+* A Lever component, can act like a lever, door, wheel, joystick.
+* If set to replicates it will replicate its values to the clients.
+*/
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
 {
@@ -135,7 +139,17 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	float FullCurrentAngle;
 
 	float LastDeltaAngle;
-	FTransform InitialRelativeTransform;
+
+	// Now replicating this so that it works correctly over the network
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRLeverComponent")
+	FTransform_NetQuantize InitialRelativeTransform;
+
+	UFUNCTION()
+	virtual void OnRep_InitialRelativeTransform()
+	{
+		CalculateCurrentAngle(InitialRelativeTransform);
+	}
+
 	FVector InitialInteractorLocation;
 	FVector InitialInteractorDropLocation;
 	float InitialGripRot;
@@ -231,6 +245,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 			{
 				MomentumAtDrop = 0.0f;
 				this->SetComponentTickEnabled(false);
+				bReplicateMovement = true;
 				return;
 			}
 			else
@@ -257,6 +272,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		if (FMath::IsNearlyEqual(LerpedVal, TargetAngle))
 		{
 			this->SetComponentTickEnabled(false);
+			bReplicateMovement = true;
 			this->SetRelativeRotation((FTransform(SetAxisValue(TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 		}
 		else

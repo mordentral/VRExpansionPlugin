@@ -12,7 +12,7 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
-	bReplicateMovement = false;
+	bReplicateMovement = true;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	BreakDistance = 100.0f;
@@ -69,6 +69,8 @@ void UVRLeverComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME_CONDITION(UVRLeverComponent, InitialRelativeTransform, COND_Custom);
+
 	DOREPLIFETIME(UVRLeverComponent, bRepGameplayTags);
 	DOREPLIFETIME(UVRLeverComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UVRLeverComponent, GameplayTags, COND_Custom);
@@ -77,6 +79,9 @@ void UVRLeverComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
 {
 	Super::PreReplication(ChangedPropertyTracker);
+
+	// Replicate the levers initial transform if we are replicating movement
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, InitialRelativeTransform, bReplicateMovement);
 
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, GameplayTags, bRepGameplayTags);
@@ -91,7 +96,11 @@ void UVRLeverComponent::BeginPlay()
 	// Call the base class 
 	Super::BeginPlay();
 
-	ResetInitialLeverLocation();
+	// If we are the server, or this component doesn't replicate then get the initial lever location
+	if (!bReplicates || GetNetMode() < ENetMode::NM_Client)
+	{
+		ResetInitialLeverLocation();
+	}
 }
 
 void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -121,6 +130,7 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 			if (LerpedRot.Equals(FRotator::ZeroRotator))
 			{
 				this->SetComponentTickEnabled(false);
+				bReplicateMovement = true;
 				this->SetRelativeRotation((FTransform::Identity * InitialRelativeTransform).Rotator());
 			}
 			else
@@ -157,7 +167,13 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 
 		if (!bIsLerping && bUngripAtTargetRotation && bLeverState && HoldingController)
 		{
-			HoldingController->DropObjectByInterface(this);
+			FBPActorGripInformation GripInformation;
+			EBPVRResultSwitch result;
+			HoldingController->GetGripByObject(GripInformation, this, result);
+			if (result == EBPVRResultSwitch::OnSucceeded && HoldingController->HasGripAuthority(GripInformation))
+			{
+				HoldingController->DropObjectByInterface(this);
+			}
 		}
 	}
 }
@@ -285,6 +301,12 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 	LastLeverAngle = CurrentLeverAngle;
 	bIsLerping = false;
 	bIsInFirstTick = true;
+
+	if (GripInformation.GripMovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+	{
+		bReplicateMovement = false;
+	}
+
 	this->SetComponentTickEnabled(true);
 }
 
@@ -302,7 +324,10 @@ void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerCompon
 		bIsLerping = true;
 	}
 	else
+	{
 		this->SetComponentTickEnabled(false);
+		bReplicateMovement = true;
+	}
 }
 
 void UVRLeverComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}

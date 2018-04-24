@@ -24,6 +24,9 @@ enum class EVRInteractibleSliderLerpType : uint8
 /** Delegate for notification when the slider state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRSliderHitPointSignature, float, SliderProgressPoint);
 
+/**
+* A slider component, can act like a scroll bar, or gun bolt, or spline following component
+*/
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
 {
