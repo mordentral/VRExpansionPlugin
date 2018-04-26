@@ -1023,12 +1023,29 @@ public:
 	{}
 };
 
+// Stores a uint32 hash value since BP doesn't support uint32
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPGripHash
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY()
+	uint32 HashValue;
+
+	FBPGripHash() :
+		HashValue(0)
+	{}
+};
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorGripInformation
 {
 	GENERATED_BODY()
 public:
+
+	// Hashed unique ID to identify this grip instance
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
+		FBPGripHash GripIDHash;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripTargetType GripTargetType;
@@ -1122,6 +1139,7 @@ public:
 	// Adding this override to keep un-repped variables from repping over from Client Auth grips
 	FORCEINLINE FBPActorGripInformation& RepCopy(const FBPActorGripInformation& Other)
 	{
+		this->GripIDHash.HashValue = Other.GripIDHash.HashValue;
 		this->GripTargetType = Other.GripTargetType;
 		this->GrippedObject = Other.GrippedObject;
 		this->GripCollisionType = Other.GripCollisionType;
@@ -1155,8 +1173,10 @@ public:
 	//This is here for the Find() function from TArray
 	FORCEINLINE bool operator==(const FBPActorGripInformation &Other) const
 	{
-		if (GrippedObject && GrippedObject == Other.GrippedObject)
+		if (GripIDHash.HashValue == Other.GripIDHash.HashValue)
 			return true;
+			//if (GrippedObject && GrippedObject == Other.GrippedObject)
+			//return true;
 
 		return false;
 	}
@@ -1177,7 +1197,6 @@ public:
 		return false;
 	}
 
-
 	FORCEINLINE bool operator==(const UObject * Other) const
 	{
 		if (Other && GrippedObject == Other)
@@ -1186,7 +1205,16 @@ public:
 		return false;
 	}
 
+	FORCEINLINE bool operator==(const FBPGripHash& Other) const
+	{
+		if (GripIDHash.HashValue == Other.HashValue)
+			return true;
+
+		return false;
+	}
+
 	FBPActorGripInformation() :
+		GripIDHash(),
 		GripTargetType(EGripTargetType::ActorGrip),
 		GrippedObject(nullptr),
 		GripCollisionType(EGripCollisionType::InteractiveCollisionWithPhysics),

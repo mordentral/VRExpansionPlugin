@@ -408,6 +408,22 @@ void UGripMotionControllerComponent::GetGripByObject(FBPActorGripInformation &Gr
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
+void UGripMotionControllerComponent::GetGripByHash(FBPActorGripInformation &Grip, FBPGripHash HashToLookForGrip, EBPVRResultSwitch &Result)
+{
+	FBPActorGripInformation * GripInfo = GrippedObjects.FindByKey(HashToLookForGrip);
+	if (!GripInfo)
+		GripInfo = LocallyGrippedObjects.FindByKey(HashToLookForGrip);
+
+	if (GripInfo)
+	{
+		Grip = *GripInfo;// GrippedObjects[i];
+		Result = EBPVRResultSwitch::OnSucceeded;
+		return;
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+}
+
 void UGripMotionControllerComponent::SetGripPaused(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, bool bIsPaused, bool bNoConstraintWhenPaused)
 {
 	int fIndex = GrippedObjects.Find(Grip);
@@ -968,6 +984,7 @@ bool UGripMotionControllerComponent::GripActor(
 	ActorToGrip->AddTickPrerequisiteComponent(this);
 
 	FBPActorGripInformation newActorGrip;
+	newActorGrip.GripIDHash.HashValue = GetTypeHash(FGuid::NewGuid());
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GrippedObject = ActorToGrip;
 	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
@@ -1154,6 +1171,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	ComponentToGrip->AddTickPrerequisiteComponent(this);
 
 	FBPActorGripInformation newActorGrip;
+	newActorGrip.GripIDHash.HashValue = GetTypeHash(FGuid::NewGuid());
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GrippedObject = ComponentToGrip;
 	
@@ -1655,7 +1673,6 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 	}break;
 	}
 
-	// Remove the drop from the array, can't wait around for replication as the tick function will start in on it.
 	int fIndex = 0;
 	if (LocallyGrippedObjects.Find(NewDrop, fIndex))
 	{
