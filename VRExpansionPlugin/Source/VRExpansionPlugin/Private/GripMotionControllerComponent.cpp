@@ -79,6 +79,8 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bReppedOnce = false;
 	bOffsetByHMD = false;
 	bIsPostTeleport = false;
+
+	GripIDIncrementer = 0;
 }
 
 //=============================================================================
@@ -408,11 +410,11 @@ void UGripMotionControllerComponent::GetGripByObject(FBPActorGripInformation &Gr
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
-void UGripMotionControllerComponent::GetGripByHash(FBPActorGripInformation &Grip, FBPGripHash HashToLookForGrip, EBPVRResultSwitch &Result)
+void UGripMotionControllerComponent::GetGripByID(FBPActorGripInformation &Grip, uint8 IDToLookForGrip, EBPVRResultSwitch &Result)
 {
-	FBPActorGripInformation * GripInfo = GrippedObjects.FindByKey(HashToLookForGrip);
+	FBPActorGripInformation * GripInfo = GrippedObjects.FindByKey(IDToLookForGrip);
 	if (!GripInfo)
-		GripInfo = LocallyGrippedObjects.FindByKey(HashToLookForGrip);
+		GripInfo = LocallyGrippedObjects.FindByKey(IDToLookForGrip);
 
 	if (GripInfo)
 	{
@@ -984,7 +986,7 @@ bool UGripMotionControllerComponent::GripActor(
 	ActorToGrip->AddTickPrerequisiteComponent(this);
 
 	FBPActorGripInformation newActorGrip;
-	newActorGrip.GripIDHash.HashValue = GetTypeHash(FGuid::NewGuid());
+	newActorGrip.GripID = GripIDIncrementer++;
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GrippedObject = ActorToGrip;
 	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
@@ -1171,7 +1173,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	ComponentToGrip->AddTickPrerequisiteComponent(this);
 
 	FBPActorGripInformation newActorGrip;
-	newActorGrip.GripIDHash.HashValue = GetTypeHash(FGuid::NewGuid());
+	newActorGrip.GripID = GripIDIncrementer++;
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GrippedObject = ComponentToGrip;
 	
@@ -1559,6 +1561,23 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 
 void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
+
+	bool bSkipFullDrop = false;
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
+	{
+		if (LocallyGrippedObjects[i].GrippedObject == NewDrop.GrippedObject && LocallyGrippedObjects[i].GripID != NewDrop.GripID)
+		{
+			bSkipFullDrop = true;
+		}
+	}
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
+	{
+		if (GrippedObjects[i].GrippedObject == NewDrop.GrippedObject && GrippedObjects[i].GripID != NewDrop.GripID)
+		{
+			bSkipFullDrop = true;
+		}
+	}
+
 	DestroyPhysicsHandle(NewDrop);
 
 	UPrimitiveComponent *root = NULL;
@@ -1575,16 +1594,67 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 		{
 			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
 
-			pActor->RemoveTickPrerequisiteComponent(this);
-			//this->IgnoreActorWhenMoving(pActor, false);
-
-			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+			if (!bSkipFullDrop)
 			{
-				OwningPawn->MoveIgnoreActorRemove(pActor);
+				pActor->RemoveTickPrerequisiteComponent(this);
+				//this->IgnoreActorWhenMoving(pActor, false);
+
+				if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+				{
+					OwningPawn->MoveIgnoreActorRemove(pActor);
+				}
+
+				if (root)
+				{
+					root->IgnoreActorWhenMoving(this->GetOwner(), false);
+
+					root->SetSimulatePhysics(bSimulate);
+					root->UpdateComponentToWorld(); // This fixes the late update offset
+
+					if (bSimulate)
+						root->WakeAllRigidBodies();
+
+					if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
+						(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
+						root->SetEnableGravity(NewDrop.bOriginalGravity);
+				}
 			}
 
-			if (root)
+			if (IsServer() && !bSkipFullDrop)
 			{
+				pActor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
+			}
+
+			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			{
+				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
+					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
+
+				IVRGripInterface::Execute_OnGripRelease(pActor, this, NewDrop);
+
+				if(!bSkipFullDrop)
+					IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
+			}
+		}
+	}break;
+
+	case EGripTargetType::ComponentGrip:
+		//case EGripTargetType::InteractibleComponentGrip:
+	{
+		root = NewDrop.GetGrippedComponent();
+		if (root)
+		{
+			pActor = root->GetOwner();
+
+			if (!bSkipFullDrop)
+			{
+				root->RemoveTickPrerequisiteComponent(this);
+
+				/*if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+				{
+					OwningPawn->MoveIgnoreActorRemove(pActor);
+				}*/
+
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
 				root->SetSimulatePhysics(bSimulate);
@@ -1598,52 +1668,9 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 					root->SetEnableGravity(NewDrop.bOriginalGravity);
 			}
 
-			if (IsServer())
-			{
-				pActor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
-			}
-
-			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-			{
-				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
-					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
-
-				IVRGripInterface::Execute_OnGripRelease(pActor, this, NewDrop);
-				IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
-			}
-		}
-	}break;
-
-	case EGripTargetType::ComponentGrip:
-		//case EGripTargetType::InteractibleComponentGrip:
-	{
-		root = NewDrop.GetGrippedComponent();
-		if (root)
-		{
-			pActor = root->GetOwner();
-
-			root->RemoveTickPrerequisiteComponent(this);
-
-			/*if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
-			{
-				OwningPawn->MoveIgnoreActorRemove(pActor);
-			}*/
-
-			root->IgnoreActorWhenMoving(this->GetOwner(), false);
-
-			root->SetSimulatePhysics(bSimulate);
-			root->UpdateComponentToWorld(); // This fixes the late update offset
-
-			if (bSimulate)
-				root->WakeAllRigidBodies();
-
-			if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
-				(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
-				root->SetEnableGravity(NewDrop.bOriginalGravity);
-
 			if (pActor)
 			{
-				if (IsServer() && root == pActor->GetRootComponent())
+				if (IsServer() && root == pActor->GetRootComponent() && !bSkipFullDrop)
 				{
 					pActor->SetReplicateMovement(NewDrop.bOriginalReplicatesMovement);
 				}
@@ -1667,23 +1694,36 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
 				IVRGripInterface::Execute_OnGripRelease(root, this, NewDrop);
-				IVRGripInterface::Execute_SetHeld(root, nullptr, false);
+
+				if(!bSkipFullDrop)
+					IVRGripInterface::Execute_SetHeld(root, nullptr, false);
 			}
 		}
 	}break;
 	}
 
+
 	int fIndex = 0;
 	if (LocallyGrippedObjects.Find(NewDrop, fIndex))
 	{
-		LocallyGrippedObjects.RemoveAt(fIndex);
+		if (HasGripAuthority(NewDrop) || GetNetMode() < ENetMode::NM_Client)
+		{
+			LocallyGrippedObjects.RemoveAt(fIndex);
+		}
+		else
+			LocallyGrippedObjects[fIndex].bIsPaused = true; // Pause it instead of dropping, dropping can corrupt the array in rare cases
 	}
 	else
 	{
 		fIndex = 0;
 		if (GrippedObjects.Find(NewDrop, fIndex))
 		{
-			GrippedObjects.RemoveAt(fIndex);
+			if (HasGripAuthority(NewDrop) || GetNetMode() < ENetMode::NM_Client)
+			{
+				GrippedObjects.RemoveAt(fIndex);
+			}
+			else
+				GrippedObjects[fIndex].bIsPaused = true; // Pause it instead of dropping, dropping can corrupt the array in rare cases
 		}
 	}
 }

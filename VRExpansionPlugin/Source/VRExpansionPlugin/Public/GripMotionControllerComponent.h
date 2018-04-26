@@ -123,6 +123,11 @@ public:
 		}
 	}
 
+	// Increments with each grip, wraps back to 0 after max due to modulo operation
+	// I don't think that a 256 grip index is going to be used up and allow duplicates unless
+	// someone does something crazy
+	uint8 GripIDIncrementer;
+
 	// When possible I suggest that you use GetAllGrips/GetGrippedObjects instead of directly referencing this
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedObjects)
 	TArray<FBPActorGripInformation> GrippedObjects;
@@ -519,7 +524,7 @@ public:
 
 	// Gets a grip by its hash
 	UFUNCTION(BlueprintCallable, Category = "VRGrip", meta = (ExpandEnumAsExecs = "Result"))
-	void GetGripByHash(FBPActorGripInformation &Grip, FBPGripHash HashToLookForGrip, EBPVRResultSwitch &Result);
+	void GetGripByID(FBPActorGripInformation &Grip, uint8 IDToLookForGrip, EBPVRResultSwitch &Result);
 
 	// Get the physics velocities of a grip
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
