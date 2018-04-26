@@ -204,12 +204,6 @@ public:
 
 	inline bool HandleGripReplication(FBPActorGripInformation & Grip)
 	{
-		if (Grip.GrippedObject == nullptr)
-		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("Replicated grip Notify grip failed, had a null object?"));
-			return false;
-		}
-
 		if (!Grip.ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
 		{
 			Grip.ValueCache.bWasInitiallyRepped = NotifyGrip(Grip); // Grip it

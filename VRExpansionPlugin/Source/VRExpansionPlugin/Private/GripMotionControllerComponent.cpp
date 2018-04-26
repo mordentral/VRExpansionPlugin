@@ -1563,18 +1563,33 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 {
 
 	bool bSkipFullDrop = false;
-	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
+	UGripMotionControllerComponent * HoldingController = nullptr;
+	bool bIsHeld = false;
+
+	// Check if a different controller is holding it
+	if(NewDrop.GrippedObject && NewDrop.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		IVRGripInterface::Execute_IsHeld(NewDrop.GrippedObject, HoldingController, bIsHeld);
+
+	if (bIsHeld && HoldingController != this)
 	{
-		if (LocallyGrippedObjects[i].GrippedObject == NewDrop.GrippedObject && LocallyGrippedObjects[i].GripID != NewDrop.GripID)
+		// Skip the full drop if held
+		bSkipFullDrop = true;
+	}	
+	else // Now check for this same hand with duplicate grips on this object
+	{
+		for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 		{
-			bSkipFullDrop = true;
+			if (LocallyGrippedObjects[i].GrippedObject == NewDrop.GrippedObject && LocallyGrippedObjects[i].GripID != NewDrop.GripID)
+			{
+				bSkipFullDrop = true;
+			}
 		}
-	}
-	for (int i = 0; i < GrippedObjects.Num(); ++i)
-	{
-		if (GrippedObjects[i].GrippedObject == NewDrop.GrippedObject && GrippedObjects[i].GripID != NewDrop.GripID)
+		for (int i = 0; i < GrippedObjects.Num(); ++i)
 		{
-			bSkipFullDrop = true;
+			if (GrippedObjects[i].GrippedObject == NewDrop.GrippedObject && GrippedObjects[i].GripID != NewDrop.GripID)
+			{
+				bSkipFullDrop = true;
+			}
 		}
 	}
 
