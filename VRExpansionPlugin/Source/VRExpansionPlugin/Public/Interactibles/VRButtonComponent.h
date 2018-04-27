@@ -152,38 +152,12 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
 	float MinTimeBetweenEngaging;
 
+	// Skips filtering overlaps on the button and lets you manage it yourself, this is the alternative to overriding IsValidOverlap
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
+		bool bSkipOverlapFiltering;
 
-	virtual bool IsValidOverlap(UPrimitiveComponent * OverlapComponent)
-	{
-
-		// Early out on the simple checks
-		if (!OverlapComponent || OverlapComponent == GetAttachParent() || OverlapComponent->GetAttachParent() == GetAttachParent())
-			return false;
-
-		// Should return faster checking for owning character
-		AActor * OverlapOwner = OverlapComponent->GetOwner();
-		if (OverlapOwner && OverlapOwner->IsA(ACharacter::StaticClass()))
-			return true;
-
-		// Because epic motion controllers are not owned by characters have to check here too in case someone implements it like that
-		// Now since our grip controllers are a subclass to the std ones we only need to check for the base one instead of both.
-		USceneComponent * OurAttachParent = OverlapComponent->GetAttachParent();
-		if (OurAttachParent && OurAttachParent->IsA(UMotionControllerComponent::StaticClass()))
-			return true;
-
-		// Now check for if it is a grippable object and if it is currently held
-		if (OverlapComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-		{
-			UGripMotionControllerComponent *Controller;
-			bool bIsHeld;
-			IVRGripInterface::Execute_IsHeld(OverlapComponent, Controller, bIsHeld);
-
-			if (bIsHeld)
-				return true;
-		}
-
-		return false;
-	}
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	bool IsValidOverlap(UPrimitiveComponent * OverlapComponent);
 
 	virtual FVector GetTargetRelativeLocation()
 	{

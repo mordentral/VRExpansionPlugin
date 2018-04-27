@@ -986,6 +986,7 @@ bool UGripMotionControllerComponent::GripActor(
 	ActorToGrip->AddTickPrerequisiteComponent(this);
 
 	FBPActorGripInformation newActorGrip;
+	newActorGrip.GripID = GetNextGripID(bIsLocalGrip);
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GrippedObject = ActorToGrip;
 	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
@@ -996,30 +997,6 @@ bool UGripMotionControllerComponent::GripActor(
 	newActorGrip.ValueCache.bWasInitiallyRepped = true; // Set this true on authority side so we can skip a function call on tick
 	newActorGrip.bIsSlotGrip = bIsSlotGrip;
 	newActorGrip.GrippedBoneName = OptionalBoneToGripName;
-
-	// If locally controlled and we are the server, IDs can be 0-255
-	if (IsLocallyControlled() && GetNetMode() < ENetMode::NM_Client)
-	{
-		newActorGrip.GripID = GripIDIncrementer++;
-	}
-	else if (bIsLocalGrip) // Otherwise we need to split them between 0-127 for gripped objects server side
-	{
-		if (GripIDIncrementer < 127)
-			GripIDIncrementer++;
-		else
-			GripIDIncrementer = 0;
-
-		newActorGrip.GripID = GripIDIncrementer + 128;
-	}
-	else // And 128 - 255 for local grips client side
-	{
-		if (GripIDIncrementer < 127)
-			GripIDIncrementer++;
-		else
-			GripIDIncrementer = 0;
-
-		newActorGrip.GripID = GripIDIncrementer;
-	}
 
 	// Ignore late update setting if it doesn't make sense with the grip
 	switch(newActorGrip.GripCollisionType)
@@ -1195,6 +1172,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	ComponentToGrip->AddTickPrerequisiteComponent(this);
 
 	FBPActorGripInformation newActorGrip;
+	newActorGrip.GripID = GetNextGripID(bIsLocalGrip);
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GrippedObject = ComponentToGrip;
 	
@@ -1209,30 +1187,6 @@ bool UGripMotionControllerComponent::GripComponent(
 	newActorGrip.ValueCache.bWasInitiallyRepped = true; // Set this true on authority side so we can skip a function call on tick
 	newActorGrip.bIsSlotGrip = bIsSlotGrip;
 	newActorGrip.GrippedBoneName = OptionalBoneToGripName;
-
-	// If locally controlled and we are the server, IDs can be 0-255
-	if (IsLocallyControlled() && GetNetMode() < ENetMode::NM_Client)
-	{
-		newActorGrip.GripID = GripIDIncrementer++;
-	}
-	else if (bIsLocalGrip) // Otherwise we need to split them between 0-127 for gripped objects server side
-	{
-		if (GripIDIncrementer < 127)
-			GripIDIncrementer++;
-		else
-			GripIDIncrementer = 0;
-
-		newActorGrip.GripID = GripIDIncrementer + 128;
-	}
-	else // And 128 - 255 for local grips client side
-	{
-		if (GripIDIncrementer < 127)
-			GripIDIncrementer++;
-		else
-			GripIDIncrementer = 0;
-
-		newActorGrip.GripID = GripIDIncrementer;
-	}
 
 	// Ignore late update setting if it doesn't make sense with the grip
 	switch (newActorGrip.GripCollisionType)

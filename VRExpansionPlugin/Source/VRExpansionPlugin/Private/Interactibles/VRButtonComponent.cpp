@@ -25,6 +25,8 @@ UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializ
 	this->SetCollisionResponseToAllChannels(ECR_Overlap);
 	OnComponentBeginOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapBegin);
 	OnComponentEndOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapEnd);
+
+	bSkipOverlapFiltering = false;
 }
 
 //=============================================================================
@@ -116,10 +118,51 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 }
 
+bool UVRButtonComponent::IsValidOverlap_Implementation(UPrimitiveComponent * OverlapComponent)
+{
+
+	// Early out on the simple checks
+	if (!OverlapComponent || OverlapComponent == GetAttachParent() || OverlapComponent->GetAttachParent() == GetAttachParent())
+		return false;
+
+	// Should return faster checking for owning character
+	AActor * OverlapOwner = OverlapComponent->GetOwner();
+	if (OverlapOwner && OverlapOwner->IsA(ACharacter::StaticClass()))
+		return true;
+
+	// Because epic motion controllers are not owned by characters have to check here too in case someone implements it like that
+	// Now since our grip controllers are a subclass to the std ones we only need to check for the base one instead of both.
+	USceneComponent * OurAttachParent = OverlapComponent->GetAttachParent();
+	if (OurAttachParent && OurAttachParent->IsA(UMotionControllerComponent::StaticClass()))
+		return true;
+
+	// Now check for if it is a grippable object and if it is currently held
+	if (OverlapComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		UGripMotionControllerComponent *Controller;
+		bool bIsHeld;
+		IVRGripInterface::Execute_IsHeld(OverlapComponent, Controller, bIsHeld);
+
+		if (bIsHeld)
+			return true;
+	}
+	else if(OverlapOwner && OverlapOwner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		UGripMotionControllerComponent *Controller;
+		bool bIsHeld;
+		IVRGripInterface::Execute_IsHeld(OverlapOwner, Controller, bIsHeld);
+
+		if (bIsHeld)
+			return true;
+	}
+
+	return false;
+}
+
 void UVRButtonComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// Other Actor is the actor that triggered the event. Check that is not ourself.  
-	if (bIsEnabled && !InteractingComponent.IsValid() && IsValidOverlap(OtherComp))
+	if (bIsEnabled && !InteractingComponent.IsValid() && (bSkipOverlapFiltering || IsValidOverlap(OtherComp)))
 	{
 		InteractingComponent = OtherComp;
 

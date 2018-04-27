@@ -128,6 +128,32 @@ public:
 	// someone does something crazy
 	uint8 GripIDIncrementer;
 
+	inline uint8 GetNextGripID(bool bIsLocalGrip)
+	{
+		if (IsLocallyControlled() && GetNetMode() < ENetMode::NM_Client)
+		{
+			return GripIDIncrementer++;
+		}
+		else if (bIsLocalGrip) // Otherwise we need to split them between 0-127 for gripped objects server side
+		{
+			if (GripIDIncrementer < 127)
+				GripIDIncrementer++;
+			else
+				GripIDIncrementer = 0;
+
+			return GripIDIncrementer + 128;
+		}
+		else // And 128 - 255 for local grips client side
+		{
+			if (GripIDIncrementer < 127)
+				GripIDIncrementer++;
+			else
+				GripIDIncrementer = 0;
+
+			return GripIDIncrementer;
+		}
+	}
+
 	// When possible I suggest that you use GetAllGrips/GetGrippedObjects instead of directly referencing this
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedObjects)
 	TArray<FBPActorGripInformation> GrippedObjects;
