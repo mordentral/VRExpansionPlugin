@@ -49,6 +49,18 @@ namespace {
 
 } // anonymous namespace
 
+  // CVars
+namespace GripMotionControllerCvars
+{
+	static int32 DrawDebugGripCOM = 0;
+	FAutoConsoleVariableRef CVarDrawCOMDebugSpheres(
+		TEXT("vr.DrawDebugCenterOfMassForGrips"),
+		DrawDebugGripCOM,
+		TEXT("When on, will draw debug speheres for physics grips COM.\n")
+		TEXT("0: Disable, 1: Enable"),
+		ECVF_Default);
+}
+
   //=============================================================================
 UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -3225,7 +3237,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	// Needs to be simulating in order to run physics
 	root->SetSimulatePhysics(true);
-
+	//BodyInstance.SetInstanceSimulatePhysics(bSimulate);
 
 	FBPActorPhysicsHandleInformation * HandleInfo = CreatePhysicsGrip(NewGrip);
 
@@ -3236,7 +3248,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	{	
 		return false;
 	}
-
+	
 	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
 
 	ExecuteOnPxRigidDynamicReadWrite(rBodyInstance, [&](PxRigidDynamic* Actor)
@@ -3283,8 +3295,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				
 				// Trans is our physics location, and it has no scale
 				// Need the scale to get the correct COM position 
-				curCOMPosition /= WorldTransform.GetScale3D();
-
+				curCOMPosition /= rBodyInstance->Scale3D;
+				
 				rBodyInstance->COMNudge = controllerTransform.GetRelativeTransform(WorldTransform).GetLocation() - curCOMPosition;
 				rBodyInstance->UpdateMassProperties();
 			}
@@ -3623,13 +3635,16 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 		else		
 		{	
 			// Debug draw for COM movement with physics grips
-/*#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-			UPrimitiveComponent * me = Cast<UPrimitiveComponent>(GrippedActor.GetGrippedActor()->GetRootComponent());
-			FVector curCOMPosition = me->GetBodyInstance(GrippedActor.GrippedBoneName)->GetCOMPosition();//rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(rBodyInstance->GetCOMPosition());
-			DrawDebugSphere(GetWorld(), curCOMPosition, 4, 32, FColor::Red, false);
-			DrawDebugSphere(GetWorld(), P2UTransform(U2PTransform(HandleInfo->RootBoneRotation * terns) * HandleInfo->COMPosition).GetLocation(), 4, 32, FColor::Cyan, false);
-			//DrawDebugSphere(GetWorld(), terns.GetLocation(), 4, 32, FColor::Cyan, false);
-#endif*/
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+			if (GripMotionControllerCvars::DrawDebugGripCOM)
+			{
+				UPrimitiveComponent * me = Cast<UPrimitiveComponent>(GrippedActor.GripTargetType == EGripTargetType::ActorGrip ? GrippedActor.GetGrippedActor()->GetRootComponent() : GrippedActor.GetGrippedComponent());
+				FVector curCOMPosition = me->GetBodyInstance(GrippedActor.GrippedBoneName)->GetCOMPosition();//rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(rBodyInstance->GetCOMPosition());
+				DrawDebugSphere(GetWorld(), curCOMPosition, 4, 32, FColor::Red, false);
+				DrawDebugSphere(GetWorld(), P2UTransform(U2PTransform(HandleInfo->RootBoneRotation * terns) * HandleInfo->COMPosition).GetLocation(), 4, 32, FColor::Cyan, false);
+				//DrawDebugSphere(GetWorld(), terns.GetLocation(), 4, 32, FColor::Cyan, false);
+			}
+#endif
 			KinActor->setKinematicTarget(U2PTransform(HandleInfo->RootBoneRotation * terns) * HandleInfo->COMPosition);
 		}
 	}
