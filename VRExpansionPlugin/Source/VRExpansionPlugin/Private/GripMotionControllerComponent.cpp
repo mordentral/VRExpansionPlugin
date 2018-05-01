@@ -975,6 +975,7 @@ bool UGripMotionControllerComponent::GripActor(
 
 		if (IVRGripInterface::Execute_IsInteractible(root))
 		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("Gripping an object with bIsInteractible set, this functionality will soon be deprecated. Please use custom grips or interactible components instead."));
 			FBPInteractionSettings IntSettings = IVRGripInterface::Execute_GetInteractionSettings(root);
 			bIgnoreHandRotation = IntSettings.bIgnoreHandRotation;
 		}
@@ -989,6 +990,7 @@ bool UGripMotionControllerComponent::GripActor(
 
 		if (IVRGripInterface::Execute_IsInteractible(ActorToGrip))
 		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("Gripping an object with bIsInteractible set, this functionality will soon be deprecated. Please use custom grips or interactible components instead."));
 			FBPInteractionSettings IntSettings = IVRGripInterface::Execute_GetInteractionSettings(ActorToGrip);
 			bIgnoreHandRotation = IntSettings.bIgnoreHandRotation;
 		}
@@ -1173,6 +1175,7 @@ bool UGripMotionControllerComponent::GripComponent(
 
 		if (IVRGripInterface::Execute_IsInteractible(ComponentToGrip))
 		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("Gripping an object with bIsInteractible set, this functionality will soon be deprecated. Please use custom grips or interactible components instead."));
 			FBPInteractionSettings IntSettings = IVRGripInterface::Execute_GetInteractionSettings(ComponentToGrip);
 			bIgnoreHandRotation = IntSettings.bIgnoreHandRotation;
 		}
@@ -1553,6 +1556,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 	}
 
+	if (!bIsReInit)
+	{
+		// Broadcast a new grip
+		OnGrippedObject.Broadcast(NewGrip);
+	}
+
 	return true;
 }
 
@@ -1752,6 +1761,9 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				GrippedObjects[fIndex].bIsPaused = true; // Pause it instead of dropping, dropping can corrupt the array in rare cases
 		}
 	}
+
+	// Broadcast a new drop
+	OnDroppedObject.Broadcast(NewDrop);
 }
 
 bool UGripMotionControllerComponent::BP_HasGripAuthority(const FBPActorGripInformation &Grip)

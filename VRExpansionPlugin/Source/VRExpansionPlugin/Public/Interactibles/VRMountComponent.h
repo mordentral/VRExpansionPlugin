@@ -147,7 +147,7 @@ class VREXPANSIONPLUGIN_API UVRMountComponent : public UStaticMeshComponent, pub
 	// Grip interface setup
 
 	// Set up as deny instead of allow so that default allows for gripping
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface", meta = (DisplayName = "IsDenyingGrips"))
 		bool DenyGripping();
 
 	// How an interfaced object behaves when teleporting
