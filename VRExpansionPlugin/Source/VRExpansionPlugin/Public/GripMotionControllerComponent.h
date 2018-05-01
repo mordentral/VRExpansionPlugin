@@ -25,6 +25,12 @@ DECLARE_LOG_CATEGORY_EXTERN(LogVRMotionController, Log, All);
 //For UE4 Profiler ~ Stat Group
 DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
 
+/** Delegate for notification when the controller grips a new object. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnGripSignature, const FBPActorGripInformation &, GripInformation);
+
+/** Delegate for notification when the controller drops a gripped object. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnDropSignature, const FBPActorGripInformation &, GripInformation);
+
 /**
 * Utility class for applying an offset to a hierarchy of components in the renderer thread.
 */
@@ -82,7 +88,7 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UMotionContr
 public:
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionController")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
 	bool bOffsetByHMD;
 	
 	FVector LastLocationForLateUpdate;
@@ -110,6 +116,14 @@ protected:
 	FVector GripRenderThreadComponentScale;
 
 public:
+
+	// Called when a object is gripped
+	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
+		FVRGripControllerOnGripSignature OnGrippedObject;
+
+	// Called when a object is dropped
+	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
+		FVRGripControllerOnGripSignature OnDroppedObject;
 
 	// When possible I suggest that you use GetAllGrips/GetGrippedObjects instead of directly referencing this
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "VRGrip", ReplicatedUsing = OnRep_GrippedObjects)

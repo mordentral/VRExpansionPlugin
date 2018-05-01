@@ -1442,6 +1442,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 	}
 
+	if (!bIsReInit)
+	{
+		// Broadcast a new grip
+		OnGrippedObject.Broadcast(NewGrip);
+	}
+
 	return true;
 }
 
@@ -1589,6 +1595,9 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			GrippedObjects.RemoveAt(fIndex);
 		}
 	}
+
+	// Broadcast a new drop
+	OnDroppedObject.Broadcast(NewDrop);
 }
 
 bool UGripMotionControllerComponent::HasGripMovementAuthority(const FBPActorGripInformation &Grip)
