@@ -1138,33 +1138,6 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition(float DeltaSeconds)
 	// would need to be moved to the new smoothing component...... I am on the fence about whether supporting epics smoothing is worth it
 	// or if I should drop it and maybe run my own?
 
-	/*if (bHadMoveActionThisFrame)
-	{
-		FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
-		if (ClientData)
-		{
-			if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
-			{
-				ClientData->MeshTranslationOffset = FVector::ZeroVector;
-				ClientData->SmoothingClientTimeStamp = ClientData->SmoothingServerTimeStamp;
-				bNetworkSmoothingComplete = true;
-			}
-			else if (NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
-			{
-				bNetworkSmoothingComplete = true;
-				// Make sure to snap exactly to target values.
-				ClientData->MeshTranslationOffset = FVector::ZeroVector;
-				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
-			}
-		}
-	}
-	else
-	{
-		SmoothClientPosition_Interpolate(DeltaSeconds);
-		//SmoothClientPosition_UpdateVisuals(); No mesh, don't bother to run this
-		SmoothClientPosition_UpdateVRVisuals();
-	}*/
-
 	SmoothClientPosition_Interpolate(DeltaSeconds);
 	//SmoothClientPosition_UpdateVisuals(); No mesh, don't bother to run this
 	SmoothClientPosition_UpdateVRVisuals();
@@ -1194,14 +1167,14 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 				const FRotator OldRotation = UpdatedComponent->RelativeRotation;
 				Basechar->NetSmoother->RelativeLocation = NewRelLocation;
 				//Mesh->RelativeLocation = NewRelLocation;
-				UpdatedComponent->SetWorldRotation(ClientData->MeshRotationOffset);
+			//	UpdatedComponent->SetWorldRotation(ClientData->MeshRotationOffset);
 
 				// If we did not move from SetWorldRotation, we need to at least call SetRelativeLocation since we were relying on the UpdatedComponent to update the transform of the mesh
-				if (UpdatedComponent->RelativeRotation == OldRotation)
-				{
+				//if (UpdatedComponent->RelativeRotation == OldRotation)
+				//{
 					Basechar->NetSmoother->RelativeLocation = OldLocation;
 					Basechar->NetSmoother->SetRelativeLocation(NewRelLocation);
-				}
+				//}
 			}
 			else
 			{
@@ -1213,14 +1186,16 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			// Adjust mesh location and rotation
 			const FVector NewRelTranslation = UpdatedComponent->GetComponentToWorld().InverseTransformVectorNoScale(ClientData->MeshTranslationOffset) + CharacterOwner->GetBaseTranslationOffset();
 			const FQuat NewRelRotation = ClientData->MeshRotationOffset * CharacterOwner->GetBaseRotationOffset();
+			Basechar->NetSmoother->SetRelativeLocation(NewRelTranslation);
 
-			Basechar->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
+			//Basechar->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
 		{
 			if (!UpdatedComponent->GetComponentQuat().Equals(ClientData->MeshRotationOffset, SCENECOMPONENT_QUAT_TOLERANCE) || !UpdatedComponent->GetComponentLocation().Equals(ClientData->MeshTranslationOffset, KINDA_SMALL_NUMBER))
 			{
-				UpdatedComponent->SetWorldLocationAndRotation(ClientData->MeshTranslationOffset, ClientData->MeshRotationOffset);
+				UpdatedComponent->SetWorldLocation(ClientData->MeshTranslationOffset);
+				//UpdatedComponent->SetWorldLocationAndRotation(ClientData->MeshTranslationOffset, ClientData->MeshRotationOffset);
 			}
 		}
 		else

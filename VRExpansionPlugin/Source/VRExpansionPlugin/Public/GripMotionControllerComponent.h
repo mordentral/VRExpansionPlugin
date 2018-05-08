@@ -259,7 +259,7 @@ public:
 		else // Check for changes from cached information
 		{
 			// Manage lerp states
-			if (Grip.ValueCache.bCachedHasSecondaryAttachment != Grip.SecondaryGripInfo.bHasSecondaryAttachment || !Grip.ValueCache.CachedSecondaryRelativeLocation.Equals(Grip.SecondaryGripInfo.SecondaryRelativeLocation))
+			if (Grip.ValueCache.bCachedHasSecondaryAttachment != Grip.SecondaryGripInfo.bHasSecondaryAttachment || !Grip.ValueCache.CachedSecondaryRelativeTransform.Equals(Grip.SecondaryGripInfo.SecondaryRelativeTransform))
 			{
 				// Reset the secondary grip distance
 				Grip.SecondaryGripInfo.SecondaryGripDistance = 0.0f;
@@ -322,7 +322,7 @@ public:
 
 		// Set caches now for next rep
 		Grip.ValueCache.bCachedHasSecondaryAttachment = Grip.SecondaryGripInfo.bHasSecondaryAttachment;
-		Grip.ValueCache.CachedSecondaryRelativeLocation = Grip.SecondaryGripInfo.SecondaryRelativeLocation;
+		Grip.ValueCache.CachedSecondaryRelativeTransform = Grip.SecondaryGripInfo.SecondaryRelativeTransform;
 		Grip.ValueCache.CachedGripCollisionType = Grip.GripCollisionType;
 		Grip.ValueCache.CachedGripMovementReplicationSetting = Grip.GripMovementReplicationSetting;
 		Grip.ValueCache.CachedStiffness = Grip.Stiffness;
