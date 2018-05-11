@@ -54,7 +54,7 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	this->SetMobility(EComponentMobility::Movable);
 
 	// Default replication on for multiplayer
-	this->bNetLoadOnClient = false;
+	//this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
 	
