@@ -248,6 +248,8 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 	InitialDropLocation = ReversedRelativeTransform.GetTranslation();
 	LastInputKey = -1.0f;
 	LerpedKey = 0.0f;
+	bHitEventThreshold = false;
+	LastSliderProgressState = -1.0f;
 }
 
 void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) 

@@ -226,8 +226,10 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 		if (bSlideDistanceIsInParentSpace)
 			fScaleFactor = fScaleFactor / InitialRelativeTransform.GetScale3D();
 
-		FVector Dist = (-MinSlideDistance + MaxSlideDistance) * fScaleFactor;
-		FVector Progress = ValueToClamp / Dist;
+		FVector MinScale = MinSlideDistance * fScaleFactor;
+
+		FVector Dist = (MinSlideDistance + MaxSlideDistance) * fScaleFactor;
+		FVector Progress = (ValueToClamp - (-MinScale)) / Dist;
 			
 		if (bSliderUsesSnapPoints)
 		{
@@ -242,7 +244,7 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 			Progress.Z = FMath::Clamp(Progress.Z, 0.f, 1.f);
 		}
 		
-		return Progress * Dist;
+		return (Progress * Dist) - (MinScale);
 	}
 
 	// ------------------------------------------------
