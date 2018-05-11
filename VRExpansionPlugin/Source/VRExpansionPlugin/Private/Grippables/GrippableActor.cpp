@@ -27,7 +27,7 @@ AGrippableActor::AGrippableActor(const FObjectInitializer& ObjectInitializer)
 	VRGripInterfaceSettings.HoldingController = nullptr;
 
 	// Default replication on for multiplayer
-	this->bNetLoadOnClient = false;
+	//this->bNetLoadOnClient = false;
 	this->bReplicateMovement = true;
 	this->bReplicates = true;
 	
