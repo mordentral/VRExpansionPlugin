@@ -56,6 +56,11 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	bool bSlideDistanceIsInParentSpace;
 
+	// How far away from an event state before the slider allows throwing the same state again, default of 1.0 means it takes a full toggle
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float EventThrowThreshold;
+	bool bHitEventThreshold;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	int GripPriority;
 

@@ -42,6 +42,8 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	bSliderUsesSnapPoints = false;
 	SnapIncrement = 0.1f;
 	SnapThreshold = 0.1f;
+	EventThrowThreshold = 1.0f;
+	bHitEventThreshold = false;
 
 	// Set to only overlap with things so that its not ruined by touching over actors
 	this->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
@@ -128,9 +130,9 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		bool bLerpToNewKey = true;
 		bool bChangedLocation = false;
 
-		if (	bEnforceSplineLinearity && LastInputKey >= 0.0f &&
-				FMath::Abs((FMath::TruncToFloat(ClosestKey) - FMath::TruncToFloat(LastInputKey))) > 1.0f &&
-				(!bSliderUsesSnapPoints || (SplineProgress - CurrentSliderProgress > SnapIncrement))
+		if (bEnforceSplineLinearity && LastInputKey >= 0.0f &&
+			FMath::Abs((FMath::TruncToFloat(ClosestKey) - FMath::TruncToFloat(LastInputKey))) > 1.0f &&
+			(!bSliderUsesSnapPoints || (SplineProgress - CurrentSliderProgress > SnapIncrement))
 			)
 		{
 			bLerpToNewKey = false;
@@ -143,10 +145,10 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		if (bFollowSplineRotationAndScale)
 		{
 			FTransform trans;
-			if (SplineLerpType != EVRInteractibleSliderLerpType::Lerp_None && LastInputKey >= 0.0f && !FMath::IsNearlyEqual(LerpedKey,LastInputKey))
-			{			
-				GetLerpedKey(LerpedKey, DeltaTime);	
-				trans = SplineComponentToFollow->GetTransformAtSplineInputKey(LerpedKey, ESplineCoordinateSpace::World,true);
+			if (SplineLerpType != EVRInteractibleSliderLerpType::Lerp_None && LastInputKey >= 0.0f && !FMath::IsNearlyEqual(LerpedKey, LastInputKey))
+			{
+				GetLerpedKey(LerpedKey, DeltaTime);
+				trans = SplineComponentToFollow->GetTransformAtSplineInputKey(LerpedKey, ESplineCoordinateSpace::World, true);
 				bChangedLocation = true;
 			}
 			else if (bLerpToNewKey)
@@ -158,7 +160,7 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 			if (bChangedLocation)
 			{
 				trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
-				trans = trans * ParentTransform.Inverse();				
+				trans = trans * ParentTransform.Inverse();
 				this->SetRelativeTransform(trans);
 			}
 		}
@@ -171,13 +173,13 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 				WorldLocation = SplineComponentToFollow->GetLocationAtSplineInputKey(LerpedKey, ESplineCoordinateSpace::World);
 				bChangedLocation = true;
 			}
-			else if(bLerpToNewKey)
+			else if (bLerpToNewKey)
 			{
 				WorldLocation = SplineComponentToFollow->FindLocationClosestToWorldLocation(WorldCalculatedLocation, ESplineCoordinateSpace::World);
 				bChangedLocation = true;
 			}
 
-			if(bChangedLocation)
+			if (bChangedLocation)
 				this->SetRelativeLocation(ParentTransform.InverseTransformPosition(WorldLocation));
 		}
 
@@ -193,14 +195,14 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
 		CurrentSliderProgress = GetCurrentSliderProgress(ClampedLocation * InitialRelativeTransform.GetScale3D());
 	}
-	
+
 	// Skip first check, this will skip an event throw on rounded
 	if (LastSliderProgressState < 0.0f)
-	{	
+	{
 		// Skip first tick, this is our resting position
 		LastSliderProgressState = CurrentSliderProgress;
 	}
-	else if(LastSliderProgressState != CurrentSliderProgress)
+	else if ((LastSliderProgressState != CurrentSliderProgress) || bHitEventThreshold)
 	{
 		if ((!bSliderUsesSnapPoints && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f)) ||
 			(bSliderUsesSnapPoints && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f))
@@ -216,7 +218,13 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 
 			ReceiveSliderHitPoint(LastSliderProgressState);
 			OnSliderHitPoint.Broadcast(LastSliderProgressState);
+			bHitEventThreshold = false;
 		}
+	}
+
+	if (FMath::Abs(LastSliderProgressState - CurrentSliderProgress) >= EventThrowThreshold)
+	{
+		bHitEventThreshold = true;
 	}
 
 	// Converted to a relative value now so it should be correct
