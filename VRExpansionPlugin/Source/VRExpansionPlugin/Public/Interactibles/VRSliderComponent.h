@@ -130,13 +130,18 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 		}
 		else // Not a spline follow
 		{
+			// Doing it min+max because the clamp value subtracts the min value
 			FVector CalculatedLocation = FMath::Lerp(-MinSlideDistance, MaxSlideDistance, NewSliderProgress);
-			FVector ClampedLocation = ClampSlideVector(CalculatedLocation);
 
 			if (bSlideDistanceIsInParentSpace)
-				this->SetRelativeLocation(InitialRelativeTransform.TransformPositionNoScale(ClampedLocation));
-			else
-				this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
+				CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
+
+			FVector ClampedLocation = ClampSlideVector(CalculatedLocation);
+
+			//if (bSlideDistanceIsInParentSpace)
+			//	this->SetRelativeLocation(InitialRelativeTransform.TransformPositionNoScale(ClampedLocation));
+			//else
+			this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
 		}
 
 		CurrentSliderProgress = NewSliderProgress;

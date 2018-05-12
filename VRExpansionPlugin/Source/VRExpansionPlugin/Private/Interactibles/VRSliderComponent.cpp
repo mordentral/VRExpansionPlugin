@@ -193,7 +193,7 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 	{
 		FVector ClampedLocation = ClampSlideVector(CalculatedLocation);
 		this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
-		CurrentSliderProgress = GetCurrentSliderProgress(ClampedLocation * InitialRelativeTransform.GetScale3D());
+		CurrentSliderProgress = GetCurrentSliderProgress(bSlideDistanceIsInParentSpace ? ClampedLocation * InitialRelativeTransform.GetScale3D() : ClampedLocation);
 	}
 
 	// Skip first check, this will skip an event throw on rounded
