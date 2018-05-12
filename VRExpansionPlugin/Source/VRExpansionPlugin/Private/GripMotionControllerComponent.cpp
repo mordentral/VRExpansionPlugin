@@ -3168,19 +3168,21 @@ void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformati
 {
 	// Object has been destroyed without notification to plugin
 
-	// Clean up tailing physics handles with null objects
-	for (int g = PhysicsGrips.Num() - 1; g >= 0; --g)
+	// Doesn't work, uses the object as the search parameter which can now be null
+	if (!DestroyPhysicsHandle(GrippedObjectsArray[GripIndex]))
 	{
-		if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjectsArray[GripIndex].GrippedObject || PhysicsGrips[g].HandledObject->IsPendingKill())
+		// Clean up tailing physics handles with null objects
+		for (int g = PhysicsGrips.Num() - 1; g >= 0; --g)
 		{
-			// Need to delete it from the physics thread
-			DestroyPhysicsHandle(PhysicsGrips[g].SceneIndex, &PhysicsGrips[g].HandleData, &PhysicsGrips[g].KinActorData);
-			PhysicsGrips.RemoveAt(g);
+			if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjectsArray[GripIndex].GrippedObject || PhysicsGrips[g].HandledObject->IsPendingKill())
+			{
+				// Need to delete it from the physics thread
+				DestroyPhysicsHandle(PhysicsGrips[g].SceneIndex, &PhysicsGrips[g].HandleData, &PhysicsGrips[g].KinActorData);
+				PhysicsGrips.RemoveAt(g);
+			}
 		}
 	}
 
-	// Doesn't work, uses the object as the search parameter which can now be null
-	//	DestroyPhysicsHandle(*Grip);
 	if (HasGripAuthority(GrippedObjectsArray[GripIndex]))
 	{
 		DropGrip(GrippedObjectsArray[GripIndex], false);
