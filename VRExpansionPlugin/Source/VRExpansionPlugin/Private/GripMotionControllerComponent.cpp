@@ -2863,13 +2863,14 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 									(Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping)))
 							)
 						{
-							TArray<FOverlapResult> Hits;
+							//TArray<FOverlapResult> Hits;
 							FComponentQueryParams Params(NAME_None, this->GetOwner());
 							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 							Params.AddIgnoredActor(actor);
 							Params.AddIgnoredActors(root->MoveIgnoreActors);
 
-							if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
+							FHitResult Hit;
+							if(GetWorld()->SweepSingleByChannel(Hit, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), root->GetCollisionShape(),Params))
 							{
 								Grip->bColliding = true;
 							}
@@ -2924,16 +2925,18 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							root->SetWorldScale3D(WorldTransform.GetScale3D());
 
 						// Always Sweep current collision state with this, used for constraint strength
-						TArray<FOverlapResult> Hits;
+						//TArray<FOverlapResult> Hits;
 						FComponentQueryParams Params(NAME_None, this->GetOwner());
 						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 
+						FHitResult Hit;
 						// Checking both current and next position for overlap using this grip type #TODO: Do this for normal interactive physics as well?
-						if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params) ||
+						if (GetWorld()->SweepSingleByChannel(Hit, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), root->GetCollisionShape(), Params))
+						/*if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params) ||
 							GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params)
-							)
+							)*/
 						{
 							if (!Grip->bColliding)
 							{
@@ -2967,6 +2970,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 							Params.AddIgnoredActor(actor);
 							Params.AddIgnoredActors(root->MoveIgnoreActors);
+
 							if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params))
 							{
 								Grip->bColliding = true;
@@ -2981,6 +2985,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 								Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 								Params.AddIgnoredActor(actor);
 								Params.AddIgnoredActors(root->MoveIgnoreActors);
+
 								if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params))
 								{
 									Grip->bColliding = true;
