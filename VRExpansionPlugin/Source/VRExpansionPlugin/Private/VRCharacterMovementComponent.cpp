@@ -56,6 +56,15 @@ namespace CharacterMovementComponentStatics
 {
 	static const FName CrouchTraceName = FName(TEXT("CrouchTrace"));
 	static const FName ImmersionDepthName = FName(TEXT("MovementComp_Character_ImmersionDepth"));
+
+	static float fRotationCorrectionThreshold = 0.02f;
+	FAutoConsoleVariableRef CVarRotationCorrectionThreshold(
+		TEXT("vre.RotationCorrectionThreshold"),
+		fRotationCorrectionThreshold,
+		TEXT("Error threshold value before correcting a clients rotation.\n")
+		TEXT("Rotation is replicated at 2 decimal precision, so values less than 0.01 won't matter."),
+		ECVF_Default);
+
 }
 
 void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
@@ -4333,8 +4342,7 @@ bool UVRCharacterMovementComponent::ServerCheckClientErrorVR(float ClientTimeSta
 	}
 	
 	// If we are rolling back client rotation
-	// #TODO: Remove magic number here and expose as a console command or in the globals
-	if (!bUseClientControlRotation && !FMath::IsNearlyEqual(FRotator::ClampAxis(ClientYaw), FRotator::ClampAxis(UpdatedComponent->GetComponentRotation().Yaw), 0.02f))
+	if (!bUseClientControlRotation && !FMath::IsNearlyEqual(FRotator::ClampAxis(ClientYaw), FRotator::ClampAxis(UpdatedComponent->GetComponentRotation().Yaw), CharacterMovementComponentStatics::fRotationCorrectionThreshold))
 	{
 		return true;
 	}
