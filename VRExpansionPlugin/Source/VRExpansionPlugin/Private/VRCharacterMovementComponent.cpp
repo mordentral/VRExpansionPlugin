@@ -12,6 +12,7 @@
 #include "GameFramework/GameState.h"
 #include "Components/PrimitiveComponent.h"
 #include "Animation/AnimMontage.h"
+#include "DrawDebugHelpers.h"
 //#include "PhysicsEngine/DestructibleActor.h"
 #include "VRCharacter.h"
 #include "VRExpansionFunctionLibrary.h"
