@@ -306,7 +306,9 @@ public:
 
 			if (Grip.ValueCache.CachedGripCollisionType != Grip.GripCollisionType ||
 				Grip.ValueCache.CachedGripMovementReplicationSetting != Grip.GripMovementReplicationSetting ||
-				Grip.ValueCache.CachedBoneName != Grip.GrippedBoneName)
+				Grip.ValueCache.CachedBoneName != Grip.GrippedBoneName ||
+				Grip.ValueCache.CachedPhysicsSettings.bUsePhysicsSettings != Grip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings
+				)
 			{
 				ReCreateGrip(Grip); // Need to re-create grip
 			}
@@ -832,13 +834,6 @@ public:
 		return UpdatePhysicsHandleTransform(GrippedActor, NewTransform);
 	}
 
-	// Set stiffness and damping of the handle
-	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "SetGripConstraintStiffnessAndDamping"))
-	bool SetGripConstraintStiffnessAndDamping_BP(UPARAM(ref)const FBPActorGripInformation &Grip, bool bUseHybridMultiplier = false)
-	{
-		return SetGripConstraintStiffnessAndDamping(&Grip, bUseHybridMultiplier);
-	}
-
 	// Get the grip distance of either the physics handle if there is one, or the difference from the hand to the root component if there isn't
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "GetGripDistance"))
 	bool GetGripDistance_BP(UPARAM(ref)FBPActorGripInformation &Grip, FVector ExpectedLocation, float & CurrentDistance)
@@ -885,6 +880,13 @@ public:
 	{
 		return bTracked;
 	}
+
+	/** Returns the first valid device ID for this motion controller (across enabled XR systems)
+	*
+	* If bCheckOpenVROnly is true, then it only checks for OpenVR IDs (for use with my openVR nodes).
+	*/
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController", meta = (ExpandEnumAsExecs = "Result"))
+		void GetControllerDeviceID(FXRDeviceId & DeviceID, EBPVRResultSwitch &Result, bool bCheckOpenVROnly = false);
 
 	/** Whether or not this component has authority within the frame*/
 	bool bHasAuthority;

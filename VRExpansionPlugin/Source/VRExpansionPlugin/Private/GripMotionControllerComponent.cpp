@@ -14,6 +14,7 @@
 #include "VRObjectVersion.h"
 #include "UObject/UObjectGlobals.h" // for FindObject<>
 #include "XRMotionControllerBase.h"
+#include "IXRSystemAssets.h"
 #include "DrawDebugHelpers.h"
 
 #include "VRBaseCharacter.h"
@@ -4107,6 +4108,36 @@ void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Imp
 		}
 	}
 
+}
+
+void UGripMotionControllerComponent::GetControllerDeviceID(FXRDeviceId & DeviceID, EBPVRResultSwitch &Result, bool bCheckOpenVROnly)
+{
+	EControllerHand ControllerHandIndex;
+	if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, ControllerHandIndex))
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
+	TArray<IXRSystemAssets*> XRAssetSystems = IModularFeatures::Get().GetModularFeatureImplementations<IXRSystemAssets>(IXRSystemAssets::GetModularFeatureName());
+	for (IXRSystemAssets* AssetSys : XRAssetSystems)
+	{
+		if (bCheckOpenVROnly && !AssetSys->GetSystemName().IsEqual(FName(TEXT("SteamVR"))))
+			continue;
+
+		const int32 XRID = AssetSys->GetDeviceId(ControllerHandIndex);
+
+		if (XRID != INDEX_NONE)
+		{
+			DeviceID = FXRDeviceId(AssetSys, XRID);
+			Result = EBPVRResultSwitch::OnSucceeded;
+			return;
+		}
+	}
+
+	DeviceID = FXRDeviceId();
+	Result = EBPVRResultSwitch::OnFailed;
+	return;
 }
 
 

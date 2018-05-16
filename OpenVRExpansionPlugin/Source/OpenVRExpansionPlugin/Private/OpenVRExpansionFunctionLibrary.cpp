@@ -83,6 +83,9 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 				"Acer AH100";
 			*/
 
+			// Manufacturer name
+			/*WindowsMR*/
+
 			if (DeviceModelNumber.Find("vive", ESearchCase::IgnoreCase) != INDEX_NONE)
 			{
 				DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
@@ -101,7 +104,19 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 			}	
 			else
 			{
-				DeviceType = EBPOpenVRHMDDeviceType::DT_Unknown;
+				// Check for manufacturer name for windows MR
+				UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String::Prop_ManufacturerName_String_1005, 0, DeviceModelNumber, Result);
+				if (Result == EBPOVRResultSwitch::OnSucceeded)
+				{
+					if (DeviceModelNumber.Find("WindowsMR", ESearchCase::IgnoreCase) != INDEX_NONE)
+					{
+						DeviceType = EBPOpenVRHMDDeviceType::DT_WindowsMR;
+					}
+				}
+				else
+				{
+					DeviceType = EBPOpenVRHMDDeviceType::DT_Unknown;
+				}
 			}
 		}
 	}
