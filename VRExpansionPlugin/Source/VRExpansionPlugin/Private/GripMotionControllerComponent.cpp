@@ -545,6 +545,7 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 		}
 
 		Result = EBPVRResultSwitch::OnSucceeded;
+		SetGripConstraintStiffnessAndDamping(&GrippedObjects[fIndex]);
 		//return;
 	}
 	else
@@ -566,11 +567,10 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
 
 			Result = EBPVRResultSwitch::OnSucceeded;
+			SetGripConstraintStiffnessAndDamping(&LocallyGrippedObjects[fIndex]);
 		//	return;
 		}
 	}
-
-	SetGripConstraintStiffnessAndDamping(&Grip, false);
 }
 
 FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform_BP(
@@ -968,15 +968,21 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 
 	if (!bIsLocalGrip)
-		GrippedObjects.Add(newActorGrip);
+	{
+		int32 Index = GrippedObjects.Add(newActorGrip);
+		if(Index != INDEX_NONE)
+			NotifyGrip(GrippedObjects[Index]);
+	}
 	else
 	{
-		LocallyGrippedObjects.Add(newActorGrip);
+		int32 Index = LocallyGrippedObjects.Add(newActorGrip);
+
 		if(GetNetMode() == ENetMode::NM_Client && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			Server_NotifyLocalGripAddedOrChanged(newActorGrip);
-	}
 
-	NotifyGrip(newActorGrip);
+		if (Index != INDEX_NONE)
+			NotifyGrip(LocallyGrippedObjects[Index]);
+	}
 
 	return true;
 }
@@ -1160,16 +1166,21 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 
 	if (!bIsLocalGrip)
-		GrippedObjects.Add(newActorGrip);
+	{
+		int32 Index = GrippedObjects.Add(newActorGrip);
+		if (Index != INDEX_NONE)
+			NotifyGrip(GrippedObjects[Index]);
+	}
 	else
 	{
-		LocallyGrippedObjects.Add(newActorGrip);
+		int32 Index = LocallyGrippedObjects.Add(newActorGrip);
 
 		if (GetNetMode() == ENetMode::NM_Client && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			Server_NotifyLocalGripAddedOrChanged(newActorGrip);
-	}
 
-	NotifyGrip(newActorGrip);
+		if (Index != INDEX_NONE)
+			NotifyGrip(LocallyGrippedObjects[Index]);
+	}
 
 	return true;
 }
@@ -1313,8 +1324,8 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 			if (!bIsReInit && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
 				IVRGripInterface::Execute_SetHeld(pActor, this, true);
+				IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
 			}
 
 			if (root)
@@ -1364,8 +1375,8 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 			if (!bIsReInit && root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				IVRGripInterface::Execute_OnGrip(root, this, NewGrip);
 				IVRGripInterface::Execute_SetHeld(root, this, true);
+				IVRGripInterface::Execute_OnGrip(root, this, NewGrip);
 			}
 
 			if ((NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
