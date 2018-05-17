@@ -58,11 +58,11 @@ public:
 		FTransform_NetQuantize SocketOffsetTransformRightHand;
 
 	// Setting an axis value here with key bindings will override the equivalent bindings on profile load
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, NotReplicated, Category = "ControllerProfiles")
+	UPROPERTY(EditDefaultsOnly, NotReplicated, Category = "ControllerProfiles")
 	TMap<FName, FAxisMappingDetails> AxisOverrides;
 
 	// Setting action mappings here will override the equivalent bindings on profile load
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, NotReplicated, Category = "ControllerProfiles")
+	UPROPERTY(EditDefaultsOnly, NotReplicated, Category = "ControllerProfiles")
 	TMap<FName, FActionMappingDetails> ActionOverrides;
 
 
