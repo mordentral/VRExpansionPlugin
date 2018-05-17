@@ -48,6 +48,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles")
 		FTransform SocketOffsetTransform;
 
+	// Offset to use with this controller
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles")
+		bool bUseSeperateHandOffsetTransforms;
+
+	// Offset to use with this controller
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles", meta = (editcondition = "bUseSeperateHandOffsetTransforms"))
+		FTransform SocketOffsetTransformRightHand;
+
 	// Setting an axis value here with key bindings will override the equivalent bindings on profile load
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles")
 	TMap<FName, FAxisMappingDetails> AxisOverrides;
@@ -59,17 +67,30 @@ public:
 
 	FBPVRControllerProfile() :
 		ControllerName(NAME_None),
-		SocketOffsetTransform(FTransform::Identity)
+		SocketOffsetTransform(FTransform::Identity),
+		bUseSeperateHandOffsetTransforms(false),
+		SocketOffsetTransformRightHand(FTransform::Identity)
 	{}
 
 	FBPVRControllerProfile(FName ControllerName) :
 		ControllerName(ControllerName),
-		SocketOffsetTransform(FTransform::Identity)
+		SocketOffsetTransform(FTransform::Identity),		
+		bUseSeperateHandOffsetTransforms(false),
+		SocketOffsetTransformRightHand(FTransform::Identity)
 	{}
 
 	FBPVRControllerProfile(FName ControllerName, const FTransform & Offset) :
 		ControllerName(ControllerName),
-		SocketOffsetTransform(Offset)
+		SocketOffsetTransform(Offset),
+		bUseSeperateHandOffsetTransforms(false),
+		SocketOffsetTransformRightHand(FTransform::Identity)
+	{}
+
+	FBPVRControllerProfile(FName ControllerName, const FTransform & Offset, const FTransform & OffsetRight) :
+		ControllerName(ControllerName),
+		SocketOffsetTransform(Offset),
+		bUseSeperateHandOffsetTransforms(true),
+		SocketOffsetTransformRightHand(OffsetRight)
 	{}
 
 };
@@ -88,6 +109,8 @@ public:
 	// Store these to save some processing when getting the transform after a profile is loaded
 	FName CurrentControllerProfileInUse;
 	FTransform CurrentControllerProfileTransform;
+	bool bUseSeperateHandTransforms;
+	FTransform CurrentControllerProfileTransformRight;
 
 	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with a hand
 	UPROPERTY(config, EditAnywhere, Category = "Secondary Grip 1Euro Settings")
@@ -103,17 +126,20 @@ public:
 
 	// Adjust the transform of a socket for a particular controller model, if a name is not sent in, it will use the currently loaded one
 	// If there is no currently loaded one, it will return the input transform as is.
+	// If bIsRightHand and the target profile uses seperate hand transforms it will use the right hand transform
 	UFUNCTION(BlueprintPure, Category = "VRControllerProfiles")
-	static FTransform AdjustTransformByControllerProfile(FName OptionalControllerProfileName, const FTransform & SocketTransform)
+	static FTransform AdjustTransformByControllerProfile(FName OptionalControllerProfileName, const FTransform & SocketTransform, bool bIsRightHand = false)
 	{
 		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
+		FTransform ModifierTrans = FTransform::Identity;
 
 		if (OptionalControllerProfileName == NAME_None)
 		{
 			if (VRSettings.CurrentControllerProfileInUse != NAME_None)
 			{
 				// Use currently loaded transform
-				return SocketTransform * VRSettings.CurrentControllerProfileTransform;
+				return SocketTransform * (((bIsRightHand && VRSettings.bUseSeperateHandTransforms) ? VRSettings.CurrentControllerProfileTransformRight : VRSettings.CurrentControllerProfileTransform));
 			}
 
 			// No override and no default, return base transform back
@@ -128,7 +154,7 @@ public:
 
 		if (FoundProfile)
 		{
-			return SocketTransform * FoundProfile->SocketOffsetTransform;
+			return SocketTransform * (((bIsRightHand && VRSettings.bUseSeperateHandTransforms) ? FoundProfile->SocketOffsetTransformRightHand : FoundProfile->SocketOffsetTransform));
 		}
 
 		// Couldn't find it, return base transform
@@ -341,6 +367,8 @@ public:
 			{
 				VRSettings->CurrentControllerProfileInUse = ControllerProfile.ControllerName;
 				VRSettings->CurrentControllerProfileTransform = ControllerProfile.SocketOffsetTransform;
+				VRSettings->bUseSeperateHandTransforms = ControllerProfile.bUseSeperateHandOffsetTransforms;
+				VRSettings->CurrentControllerProfileTransformRight = ControllerProfile.SocketOffsetTransformRightHand;
 			}
 		}
 
