@@ -2,6 +2,7 @@
 
 #include "GameFramework/PlayerInput.h"
 #include "GameFramework/InputSettings.h"
+#include "VRBPDatatypes.h"
 #include "VRGlobalSettings.generated.h"
 
 
@@ -46,7 +47,7 @@ public:
 
 	// Offset to use with this controller
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles")
-		FTransform SocketOffsetTransform;
+		FTransform_NetQuantize SocketOffsetTransform;
 
 	// Offset to use with this controller
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles")
@@ -54,14 +55,14 @@ public:
 
 	// Offset to use with this controller
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles", meta = (editcondition = "bUseSeperateHandOffsetTransforms"))
-		FTransform SocketOffsetTransformRightHand;
+		FTransform_NetQuantize SocketOffsetTransformRightHand;
 
 	// Setting an axis value here with key bindings will override the equivalent bindings on profile load
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NotReplicated, Category = "ControllerProfiles")
 	TMap<FName, FAxisMappingDetails> AxisOverrides;
 
 	// Setting action mappings here will override the equivalent bindings on profile load
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NotReplicated, Category = "ControllerProfiles")
 	TMap<FName, FActionMappingDetails> ActionOverrides;
 
 
@@ -93,7 +94,12 @@ public:
 		SocketOffsetTransformRightHand(OffsetRight)
 	{}
 
+	FORCEINLINE bool operator==(const FBPVRControllerProfile &Other) const
+	{
+		return this->ControllerName == Other.ControllerName;
+	}
 };
+
 
 UCLASS(config = Engine, defaultconfig)
 class VREXPANSIONPLUGIN_API UVRGlobalSettings : public UObject
@@ -132,8 +138,6 @@ public:
 	{
 		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
 
-		FTransform ModifierTrans = FTransform::Identity;
-
 		if (OptionalControllerProfileName == NAME_None)
 		{
 			if (VRSettings.CurrentControllerProfileInUse != NAME_None)
@@ -156,6 +160,19 @@ public:
 		{
 			return SocketTransform * (((bIsRightHand && VRSettings.bUseSeperateHandTransforms) ? FoundProfile->SocketOffsetTransformRightHand : FoundProfile->SocketOffsetTransform));
 		}
+
+		// Couldn't find it, return base transform
+		return SocketTransform;
+	}
+
+	// Adjust the transform of a socket for a particular controller model
+	// If there is no currently loaded one, it will return the input transform as is.
+	// If bIsRightHand and the target profile uses seperate hand transforms it will use the right hand transform
+	UFUNCTION(BlueprintPure, Category = "VRControllerProfiles")
+		static FTransform AdjustTransformByGivenControllerProfile(UPARAM(ref) FBPVRControllerProfile & ControllerProfile, const FTransform & SocketTransform, bool bIsRightHand = false)
+	{
+		// Use currently loaded transform
+		return SocketTransform * (((bIsRightHand && ControllerProfile.bUseSeperateHandOffsetTransforms) ? ControllerProfile.SocketOffsetTransformRightHand : ControllerProfile.SocketOffsetTransform));
 
 		// Couldn't find it, return base transform
 		return SocketTransform;
@@ -230,11 +247,34 @@ public:
 
 	// Get name of currently loaded profile (if one is loaded)
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles")
-		static FName GetCurrentProfile()
+		static FName GetCurrentProfileName(bool & bHadLoadedProfile)
 	{
 		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
 
+		bHadLoadedProfile = VRSettings.CurrentControllerProfileInUse != NAME_None;	
 		return VRSettings.CurrentControllerProfileInUse;
+	}
+
+	// Get name of currently loaded profile (if one is loaded)
+	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles")
+		static FBPVRControllerProfile GetCurrentProfile(bool & bHadLoadedProfile)
+	{
+		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
+		FName ControllerProfileName = VRSettings.CurrentControllerProfileInUse;
+		const FBPVRControllerProfile * FoundProfile = VRSettings.ControllerProfiles.FindByPredicate([ControllerProfileName](const FBPVRControllerProfile & ArrayItem)
+		{
+			return ArrayItem.ControllerName == ControllerProfileName;
+		});
+
+		bHadLoadedProfile = FoundProfile != nullptr;
+
+		if (bHadLoadedProfile)
+		{
+			return *FoundProfile;
+		}
+		else
+			return FBPVRControllerProfile();
 	}
 
 	// Get a controller profile by name
