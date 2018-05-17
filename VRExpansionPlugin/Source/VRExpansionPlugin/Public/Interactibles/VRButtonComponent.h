@@ -156,7 +156,7 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
 		bool bSkipOverlapFiltering;
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRButtonComponent")
 	bool IsValidOverlap(UPrimitiveComponent * OverlapComponent);
 
 	virtual FVector GetTargetRelativeLocation()
