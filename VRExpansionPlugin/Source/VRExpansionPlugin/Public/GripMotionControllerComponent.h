@@ -32,6 +32,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnGripSignature, co
 /** Delegate for notification when the controller drops a gripped object. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnDropSignature, const FBPActorGripInformation &, GripInformation);
 
+/** Delegate for notification when the controller grips a new object. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRGripControllerOnProfileTransformChanged, const FTransform &, NewRelTransForProcComps, const FTransform &, NewProfileTransform);
+
 /**
 * Utility class for applying an offset to a hierarchy of components in the renderer thread.
 */
@@ -97,6 +100,21 @@ public:
 	bool bOffsetByHMD;
 	
 	FVector LastLocationForLateUpdate;
+
+	// If true will offset the tracked location of the controller by the controller profile that is currently loaded.
+	// Thows the event OnControllerProfileTransformChanged when it happens so that you can adjust specific components
+	// Like procedural ones for the offset (procedural meshes are already correctly offset for the controller and
+	// need rewound.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+		bool bOffsetByControllerProfile;
+
+	// Stores current transform so we don't have to keep casting
+	FTransform CurrentControllerProfileTransform;
+
+	// Called when the controller profile changed and we have a new transform (only if bOffsetByControllerProfile is true)
+	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
+		FVRGripControllerOnProfileTransformChanged OnControllerProfileTransformChanged;
+
 private:
 
 	GENERATED_UCLASS_BODY()
@@ -108,6 +126,7 @@ private:
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 	virtual void Deactivate() override;
 	virtual void BeginDestroy() override;
+	virtual void BeginPlay() override;
 
 protected:
 	//~ Begin UActorComponent Interface.
@@ -116,6 +135,12 @@ protected:
 
 	FTransform GripRenderThreadRelativeTransform;
 	FVector GripRenderThreadComponentScale;
+	FTransform GripRenderThreadProfileTransform;
+
+	FDelegateHandle NewControllerProfileEvent_Handle;
+	UFUNCTION()
+	void NewControllerProfileLoaded();
+	void GetCurrentProfileTransform(bool bBindToNoticationDelegate);
 
 public:
 

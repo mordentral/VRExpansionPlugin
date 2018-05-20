@@ -94,6 +94,10 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bIsPostTeleport = false;
 
 	GripIDIncrementer = 0;
+
+	bOffsetByControllerProfile = true;
+	GripRenderThreadProfileTransform = FTransform::Identity;
+	CurrentControllerProfileTransform = FTransform::Identity;
 }
 
 //=============================================================================
@@ -103,8 +107,67 @@ UGripMotionControllerComponent::~UGripMotionControllerComponent()
 	// Epic had it listed as a crash in the private bug tracker I guess.
 }
 
+void UGripMotionControllerComponent::NewControllerProfileLoaded()
+{
+	GetCurrentProfileTransform(false);
+}
+
+void UGripMotionControllerComponent::GetCurrentProfileTransform(bool bBindToNoticationDelegate)
+{
+	if (bOffsetByControllerProfile)
+	{
+		UVRGlobalSettings* VRSettings = const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+
+		if (VRSettings == nullptr)
+			return;
+
+		EControllerHand HandType;
+		this->GetHandType(HandType);
+
+		FTransform NewControllerProfileTransform = FTransform::Identity;
+
+		if (HandType == EControllerHand::Left || HandType == EControllerHand::AnyHand || !VRSettings->bUseSeperateHandTransforms)
+		{
+			NewControllerProfileTransform = VRSettings->CurrentControllerProfileTransform;
+		}
+		else if (HandType == EControllerHand::Right)
+		{
+			NewControllerProfileTransform = VRSettings->CurrentControllerProfileTransformRight;
+		}
+
+		if (bBindToNoticationDelegate && !NewControllerProfileEvent_Handle.IsValid())
+		{
+			NewControllerProfileEvent_Handle = VRSettings->OnControllerProfileChangedEvent.AddUObject(this, &UGripMotionControllerComponent::NewControllerProfileLoaded);
+		}
+
+		if (!NewControllerProfileTransform.Equals(CurrentControllerProfileTransform))
+		{
+			FTransform OriginalControllerProfileTransform = CurrentControllerProfileTransform;
+			CurrentControllerProfileTransform = NewControllerProfileTransform;
+
+			// Auto adjust for FPS testing pawns
+			if (!bTracked && bUseWithoutTracking)
+			{
+				this->SetRelativeTransform(CurrentControllerProfileTransform * (OriginalControllerProfileTransform.Inverse() * this->GetRelativeTransform()));
+			}
+
+			OnControllerProfileTransformChanged.Broadcast(CurrentControllerProfileTransform.Inverse() * OriginalControllerProfileTransform, CurrentControllerProfileTransform);
+		}
+	}
+}
+
 void UGripMotionControllerComponent::OnUnregister()
 {
+
+	if (NewControllerProfileEvent_Handle.IsValid())
+	{
+		UVRGlobalSettings* VRSettings = const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+		if (VRSettings != nullptr)
+		{
+			VRSettings->OnControllerProfileChangedEvent.Remove(NewControllerProfileEvent_Handle);
+		}
+	}
+
 	for (int i = 0; i < GrippedObjects.Num(); i++)
 	{
 		DestroyPhysicsHandle(GrippedObjects[i]);
@@ -148,10 +211,21 @@ void UGripMotionControllerComponent::BeginDestroy()
 	}
 }
 
+void UGripMotionControllerComponent::BeginPlay()
+{
+	if (IsLocallyControlled())
+	{
+		GetCurrentProfileTransform(true);
+	}
+
+	Super::BeginPlay();
+}
+
 void UGripMotionControllerComponent::SendRenderTransform_Concurrent()
 {
 	GripRenderThreadRelativeTransform = GetRelativeTransform();
 	GripRenderThreadComponentScale = GetComponentScale();
+	GripRenderThreadProfileTransform = CurrentControllerProfileTransform;
 
 	Super::SendRenderTransform_Concurrent();
 }
@@ -2333,7 +2407,6 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 		if (!bUseWithoutTracking)
 		{
-
 			if (!GripViewExtension.IsValid() && GEngine)
 			{
 				GripViewExtension = FSceneViewExtensions::NewExtension<FGripViewExtension>(this);
@@ -2345,6 +2418,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 			if (bNewTrackedState)
 			{
+				SetRelativeTransform(CurrentControllerProfileTransform * FTransform(Orientation, Position, this->RelativeScale3D));
 				SetRelativeLocationAndRotation(Position, Orientation);
 			}
 
@@ -3841,6 +3915,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 {
 	// Not calling PollControllerState from the parent because its private.......
 
+	bool bIsInGameThread = IsInGameThread();
 
 	if (bHasAuthority)
 	{
@@ -3848,7 +3923,6 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 		TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
 		for (auto MotionController : MotionControllers)
 		{
-
 			if (MotionController == nullptr)
 			{
 				continue;
@@ -3859,7 +3933,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 			{
 				if (bOffsetByHMD)
 				{
-					if (IsInGameThread())
+					if (bIsInGameThread)
 					{
 						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 						{
@@ -3877,12 +3951,30 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 						}
 					}
 
+					// #TODO: This is technically unsafe, need to use a seperate value like the transforms for the render thread
+					// If I ever delete the simple char then this setup can just go away anyway though
+					// It has a data race condition right now though
 					Position -= LastLocationForLateUpdate;
 				}
 
+				if (bOffsetByControllerProfile)
+				{
+					FTransform FinalControllerTransform(Orientation,Position);
+					if (bIsInGameThread)
+					{
+						FinalControllerTransform = CurrentControllerProfileTransform * FinalControllerTransform;
+					}
+					else
+					{
+						FinalControllerTransform = GripRenderThreadProfileTransform * FinalControllerTransform;
+					}
+					
+					Orientation = FinalControllerTransform.GetRotation().Rotator();
+					Position = FinalControllerTransform.GetTranslation();
+				}
+
 				// Render thread also calls this, shouldn't be flagging this event in the render thread.
-				// Probably need to report this to epic
-				if (IsInGameThread())
+				if (bIsInGameThread)
 				{
 					InUseMotionController = MotionController;
 					OnMotionControllerUpdated();
