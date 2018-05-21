@@ -739,6 +739,11 @@ public:
 	// Used to smooth filter the secondary influence
 	FBPEuroLowPassFilter SmoothingOneEuro;
 
+	void ClearNonReppedItems()
+	{
+		SmoothingOneEuro.ResetSmoothingFilter();
+	}
+
 	FBPAdvSecondaryGripSettings() :
 		bUseSecondaryGripSettings(false),
 		SecondaryGripScaler(1.0f),
@@ -1159,6 +1164,8 @@ public:
 
 		// Clear out the secondary grip
 		SecondaryGripInfo.ClearNonReppingItems();
+
+		AdvancedGripSettings.SecondaryGripSettings.ClearNonReppedItems();
 	}
 
 	// Adding this override to keep un-repped variables from repping over from Client Auth grips
