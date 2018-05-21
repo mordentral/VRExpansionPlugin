@@ -896,6 +896,13 @@ public:
 	// Store values for frame by frame changes of secondary grips
 	FVector LastRelativeLocation;
 
+	void ClearNonReppingItems()
+	{
+		SecondaryGripDistance = 0.0f;
+		GripLerpState = EGripLerpState::NotLerping;
+		curLerp = 0.0f;
+	}
+
 	FBPSecondaryGripInfo():
 		bHasSecondaryAttachment(false),
 		SecondaryAttachment(nullptr),
@@ -1123,8 +1130,9 @@ public:
 		float CachedDamping;
 		FBPAdvGripPhysicsSettings CachedPhysicsSettings;
 		FName CachedBoneName;
+		uint8 CachedGripID;
 
-		FGripValueCache():
+		FGripValueCache() :
 			bWasInitiallyRepped(false),
 			bCachedHasSecondaryAttachment(false),
 			CachedSecondaryRelativeTransform(FTransform::Identity),
@@ -1132,10 +1140,26 @@ public:
 			CachedGripMovementReplicationSetting(EGripMovementReplicationSettings::ForceClientSideMovement),
 			CachedStiffness(1500.0f),
 			CachedDamping(200.0f),
-			CachedBoneName(NAME_None)
+			CachedBoneName(NAME_None),
+			CachedGripID(0)
 		{}
 
 	}ValueCache;
+
+	void ClearNonReppingItems()
+	{
+		ValueCache = FGripValueCache();
+		bColliding = false;
+		bIsLocked = false;
+		LastLockedRotation = FQuat::Identity;
+		bSkipNextConstraintLengthCheck = false;
+		bIsPaused = false;
+		AdditionTransform = FTransform::Identity;
+		GripDistance = 0.0f;
+
+		// Clear out the secondary grip
+		SecondaryGripInfo.ClearNonReppingItems();
+	}
 
 	// Adding this override to keep un-repped variables from repping over from Client Auth grips
 	FORCEINLINE FBPActorGripInformation& RepCopy(const FBPActorGripInformation& Other)

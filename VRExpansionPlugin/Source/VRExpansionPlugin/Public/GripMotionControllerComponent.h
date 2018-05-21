@@ -169,11 +169,7 @@ public:
 
 	inline uint8 GetNextGripID(bool bIsLocalGrip)
 	{
-		if (IsLocallyControlled() && GetNetMode() < ENetMode::NM_Client)
-		{
-			return GripIDIncrementer++;
-		}
-		else if (bIsLocalGrip) // Otherwise we need to split them between 0-127 for gripped objects server side
+		if (bIsLocalGrip) // We need to split them between 0-127 for gripped objects server side
 		{
 			if (GripIDIncrementer < 127)
 				GripIDIncrementer++;
@@ -269,6 +265,14 @@ public:
 
 	inline bool HandleGripReplication(FBPActorGripInformation & Grip)
 	{
+		if (Grip.ValueCache.bWasInitiallyRepped && Grip.GripID != Grip.ValueCache.CachedGripID)
+		{
+			// There appears to be a bug with TArray replication where if you replace an index with another value of that
+			// Index, it doesn't fully re-init the object, this is a workaround to re-zero non replicated variables
+			// when that happens.
+			Grip.ClearNonReppingItems();
+		}
+		
 		if (!Grip.ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
 		{
 			Grip.ValueCache.bWasInitiallyRepped = NotifyGrip(Grip); // Grip it
@@ -356,6 +360,7 @@ public:
 		Grip.ValueCache.CachedDamping = Grip.Damping;
 		Grip.ValueCache.CachedPhysicsSettings = Grip.AdvancedGripSettings.PhysicsSettings;
 		Grip.ValueCache.CachedBoneName = Grip.GrippedBoneName;
+		Grip.ValueCache.CachedGripID = Grip.GripID;
 
 		return true;
 	}
