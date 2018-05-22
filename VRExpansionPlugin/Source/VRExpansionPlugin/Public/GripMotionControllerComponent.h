@@ -225,6 +225,7 @@ public:
 
 	// Clean up a grip that is "bad", object is being destroyed or was a bad destructible mesh
 	void CleanUpBadGrip(TArray<FBPActorGripInformation> &GrippedObjectsArray, int GripIndex, bool bReplicatedArray);
+	void CleanUpBadPhysicsHandles();
 
 	// Recreates a grip in situations where the collision type or movement replication type may have been changed
 	inline void ReCreateGrip(FBPActorGripInformation & GripInfo)
