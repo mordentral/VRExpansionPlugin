@@ -334,72 +334,79 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles")
 		static bool LoadControllerProfile(const FBPVRControllerProfile & ControllerProfile, bool bSetAsCurrentProfile = true)
 	{
-		//if (ControllerProfile.ActionOverrides.Num() == 0 && ControllerProfile.AxisOverrides.Num() == 0)
-			//return false;
 
 		UInputSettings* InputSettings = const_cast<UInputSettings*>(GetDefault<UInputSettings>());
 		if (InputSettings != nullptr)
 		{
-			// Load button mappings
-			for (auto& Elem : ControllerProfile.ActionOverrides)
+			if (ControllerProfile.ActionOverrides.Num() > 0)
 			{
-				FName ActionName = Elem.Key;
-				FActionMappingDetails Mapping = Elem.Value;
-
-				// We allow for 0 mapped actions here in case you want to delete one
-				if (ActionName == NAME_None /*|| Mapping.ActionMappings.Num() < 1*/)
-					continue;
-
-				// Clear all actions that use our action name first
-				for (int32 ActionIndex = InputSettings->ActionMappings.Num() - 1; ActionIndex >= 0; --ActionIndex)
+				// Load button mappings
+				for (auto& Elem : ControllerProfile.ActionOverrides)
 				{
-					if (InputSettings->ActionMappings[ActionIndex].ActionName == ActionName)
+					FName ActionName = Elem.Key;
+					FActionMappingDetails Mapping = Elem.Value;
+
+					// We allow for 0 mapped actions here in case you want to delete one
+					if (ActionName == NAME_None /*|| Mapping.ActionMappings.Num() < 1*/)
+						continue;
+
+					// Clear all actions that use our action name first
+					for (int32 ActionIndex = InputSettings->ActionMappings.Num() - 1; ActionIndex >= 0; --ActionIndex)
 					{
-						InputSettings->ActionMappings.RemoveAt(ActionIndex);
-						// we don't break because the mapping may have been in the array twice
+						if (InputSettings->ActionMappings[ActionIndex].ActionName == ActionName)
+						{
+							InputSettings->ActionMappings.RemoveAt(ActionIndex);
+							// we don't break because the mapping may have been in the array twice
+						}
 					}
-				}
 
-				// Then add the new bindings
-				for (FInputActionKeyMapping &KeyMapping : Mapping.ActionMappings)
-				{
-					// By default the key mappings don't have an action name, add them here
-					KeyMapping.ActionName = ActionName;
-					InputSettings->ActionMappings.Add(KeyMapping);
+					// Then add the new bindings
+					for (FInputActionKeyMapping &KeyMapping : Mapping.ActionMappings)
+					{
+						// By default the key mappings don't have an action name, add them here
+						KeyMapping.ActionName = ActionName;
+						InputSettings->ActionMappings.Add(KeyMapping);
+					}
 				}
 			}
 
-			// Load axis mappings
-			for (auto& Elem : ControllerProfile.AxisOverrides)
+			if (ControllerProfile.AxisOverrides.Num() > 0)
 			{
-				FName AxisName = Elem.Key;
-				FAxisMappingDetails Mapping = Elem.Value;
-
-				// We allow for 0 mapped Axis's here in case you want to delete one
-				if (AxisName == NAME_None /*|| Mapping.AxisMappings.Num() < 1*/)
-					continue;
-
-				// Clear all Axis's that use our Axis name first
-				for (int32 AxisIndex = InputSettings->AxisMappings.Num() - 1; AxisIndex >= 0; --AxisIndex)
+				// Load axis mappings
+				for (auto& Elem : ControllerProfile.AxisOverrides)
 				{
-					if (InputSettings->AxisMappings[AxisIndex].AxisName == AxisName)
+					FName AxisName = Elem.Key;
+					FAxisMappingDetails Mapping = Elem.Value;
+
+					// We allow for 0 mapped Axis's here in case you want to delete one
+					if (AxisName == NAME_None /*|| Mapping.AxisMappings.Num() < 1*/)
+						continue;
+
+					// Clear all Axis's that use our Axis name first
+					for (int32 AxisIndex = InputSettings->AxisMappings.Num() - 1; AxisIndex >= 0; --AxisIndex)
 					{
-						InputSettings->AxisMappings.RemoveAt(AxisIndex);
-						// we don't break because the mapping may have been in the array twice
+						if (InputSettings->AxisMappings[AxisIndex].AxisName == AxisName)
+						{
+							InputSettings->AxisMappings.RemoveAt(AxisIndex);
+							// we don't break because the mapping may have been in the array twice
+						}
 					}
-				}
 
-				// Then add the new bindings
-				for (FInputAxisKeyMapping &KeyMapping : Mapping.AxisMappings)
-				{
-					// By default the key mappings don't have an Axis name, add them here
-					KeyMapping.AxisName = AxisName;
-					InputSettings->AxisMappings.Add(KeyMapping);
+					// Then add the new bindings
+					for (FInputAxisKeyMapping &KeyMapping : Mapping.AxisMappings)
+					{
+						// By default the key mappings don't have an Axis name, add them here
+						KeyMapping.AxisName = AxisName;
+						InputSettings->AxisMappings.Add(KeyMapping);
+					}
 				}
 			}
 
-			// Tell all players to use the new keymappings
-			InputSettings->ForceRebuildKeymaps();
+			if (ControllerProfile.ActionOverrides.Num() > 0 || ControllerProfile.AxisOverrides.Num() > 0)
+			{
+				// Tell all players to use the new keymappings
+				InputSettings->ForceRebuildKeymaps();
+			}
 		}
 
 		if (bSetAsCurrentProfile)
