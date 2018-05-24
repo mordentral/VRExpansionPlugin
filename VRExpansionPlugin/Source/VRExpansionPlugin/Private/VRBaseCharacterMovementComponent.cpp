@@ -462,12 +462,13 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewY
 	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation, bool bSkipEncroachmentCheck)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_Teleport;
 	MoveAction.MoveActionLoc = RoundDirectMovement(TeleportLocation);
 	MoveAction.MoveActionRot.Yaw = FMath::RoundToFloat(TeleportRotation.Yaw * 100.f) / 100.f;
+	MoveAction.MoveActionRot.Pitch = bSkipEncroachmentCheck ? 1.0f : 0.0f;
 	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
@@ -557,7 +558,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 			return false;
 		}
 
-		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, MoveAction.MoveActionRot, false, false);
+		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, MoveAction.MoveActionRot, false, MoveAction.MoveActionRot.Pitch > 0.0f);
 
 		if (OwningCharacter->bUseControllerRotationYaw)
 			OwningController->SetControlRotation(MoveAction.MoveActionRot);

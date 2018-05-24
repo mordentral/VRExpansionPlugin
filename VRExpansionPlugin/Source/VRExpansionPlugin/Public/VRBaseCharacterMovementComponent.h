@@ -118,13 +118,19 @@ public:
 			if (Ar.IsSaving())
 			{
 				Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
-
 				Ar << Yaw;
+
+				bool bSkipEncroachment = MoveActionRot.Pitch > 0.0f;
+				Ar.SerializeBits(&bSkipEncroachment, 1);
 			}
 			else
 			{
 				Ar << Yaw;
 				MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
+
+				bool bSkipEncroachment;
+				Ar.SerializeBits(&bSkipEncroachment, 1);
+				MoveActionRot.Pitch = bSkipEncroachment ? 1.0f : 0.0f;
 			}
 
 			bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);
@@ -624,7 +630,7 @@ public:
 
 	// Perform a teleport in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation);
+		void PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation, bool bSkipEncroachmentCheck = false);
 
 	// Perform StopAllMovementImmediately in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
