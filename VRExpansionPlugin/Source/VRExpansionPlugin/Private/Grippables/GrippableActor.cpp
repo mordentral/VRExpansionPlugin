@@ -32,6 +32,7 @@ AGrippableActor::AGrippableActor(const FObjectInitializer& ObjectInitializer)
 	this->bReplicates = true;
 	
 	bRepGripSettingsAndGameplayTags = true;
+	bAllowIgnoringAttachOnOwner = true;
 
 	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration
 	// Otherwise we will get some massive slow downs if the replication is allowed to hit the 2 per second minimum default
@@ -43,6 +44,7 @@ void AGrippableActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AGrippableActor, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME(AGrippableActor, bAllowIgnoringAttachOnOwner);
 	DOREPLIFETIME_CONDITION(AGrippableActor, VRGripInterfaceSettings, COND_Custom);
 	DOREPLIFETIME_CONDITION(AGrippableActor, GameplayTags, COND_Custom);
 }
@@ -64,9 +66,9 @@ AGrippableActor::~AGrippableActor()
 
 void AGrippableActor::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
 void AGrippableActor::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
-void AGrippableActor::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void AGrippableActor::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void AGrippableActor::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
-void AGrippableActor::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void AGrippableActor::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void AGrippableActor::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 void AGrippableActor::OnSecondaryGripRelease_Implementation(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 void AGrippableActor::OnUsed_Implementation() {}
@@ -74,6 +76,7 @@ void AGrippableActor::OnEndUsed_Implementation() {}
 void AGrippableActor::OnSecondaryUsed_Implementation() {}
 void AGrippableActor::OnEndSecondaryUsed_Implementation() {}
 void AGrippableActor::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
+bool AGrippableActor::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
 bool AGrippableActor::DenyGripping_Implementation()
 {

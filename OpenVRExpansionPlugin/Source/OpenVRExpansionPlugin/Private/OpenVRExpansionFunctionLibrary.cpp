@@ -452,7 +452,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDevicePropert
 	}
 
 	char charvalue[vr::k_unMaxPropertyStringSize];
-	uint32_t buffersize = 255;
+	uint32_t buffersize = vr::k_unMaxPropertyStringSize;
 	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, EnumPropertyValue, charvalue, buffersize, &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
@@ -855,7 +855,7 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
 
 	char RenderModelName[vr::k_unMaxPropertyStringSize];
-	uint32_t buffersize = 255;
+	uint32_t buffersize = vr::k_unMaxPropertyStringSize;
 	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, vr::ETrackedDeviceProperty::Prop_RenderModelName_String, RenderModelName, buffersize, &pError);
 
 	if (pError != vr::TrackedPropertyError::TrackedProp_Success)

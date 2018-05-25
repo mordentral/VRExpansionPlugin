@@ -382,6 +382,10 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void SetHeld(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld);
 
+	// Returns if the object is socketed currently
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
+
 	// Get interactable settings
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		FBPInteractionSettings GetInteractionSettings();
@@ -399,7 +403,7 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	// Event triggered on the interfaced object when grip is released
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
-		void OnGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation);
+		void OnGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed = false);
 
 	// Event triggered on the interfaced object when child component is gripped
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
@@ -407,7 +411,7 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 
 	// Event triggered on the interfaced object when child component is released
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
-		void OnChildGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation);
+		void OnChildGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed = false);
 
 	// Event triggered on the interfaced object when secondary gripped
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")

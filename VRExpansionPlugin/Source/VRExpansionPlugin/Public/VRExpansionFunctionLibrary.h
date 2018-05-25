@@ -33,7 +33,6 @@ enum class EBPHMDWornState : uint8
 	NotWorn UMETA(DisplayName = "Not Worn"),
 };
 
-
 UCLASS()//, meta = (BlueprintSpawnableComponent))
 class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UBlueprintFunctionLibrary
 {

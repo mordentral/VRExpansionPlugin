@@ -14,6 +14,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);
 
 /** Delegate for notification when the lever state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRSeatThresholdChangedSignature, bool, bIsWithinThreshold, float, ToThresholdScaler);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRPlayerStateReplicatedSignature, const APlayerState *, NewPlayerState);
 
 USTRUCT(Blueprintable)
 struct VREXPANSIONPLUGIN_API FVRSeatedCharacterInfo
@@ -166,6 +167,12 @@ class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ACharacter
 
 public:
 	AVRBaseCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	virtual void OnRep_PlayerState() override;
+
+	// Give my users direct access to an event for when the player state has changed
+	UPROPERTY(BlueprintAssignable, Category = "BaseVRCharacter")
+		FVRPlayerStateReplicatedSignature OnPlayerStateReplicated_Bind;
 
 	//These functions are now housed in the base character and used when possible, it saves about 7 bits of packet header overhead per send.
 

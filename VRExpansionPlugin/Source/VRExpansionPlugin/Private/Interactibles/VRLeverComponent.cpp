@@ -310,7 +310,7 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 	this->SetComponentTickEnabled(true);
 }
 
-void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) 
+void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
 {
 	if(bIsPhysicsLever)
 	{
@@ -331,7 +331,7 @@ void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerCompon
 }
 
 void UVRLeverComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
-void UVRLeverComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UVRLeverComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void UVRLeverComponent::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 void UVRLeverComponent::OnSecondaryGripRelease_Implementation(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 void UVRLeverComponent::OnUsed_Implementation() {}
@@ -339,6 +339,7 @@ void UVRLeverComponent::OnEndUsed_Implementation() {}
 void UVRLeverComponent::OnSecondaryUsed_Implementation() {}
 void UVRLeverComponent::OnEndSecondaryUsed_Implementation() {}
 void UVRLeverComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
+bool UVRLeverComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
 bool UVRLeverComponent::DenyGripping_Implementation()
 {

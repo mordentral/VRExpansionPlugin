@@ -252,14 +252,14 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 	LastSliderProgressState = -1.0f;
 }
 
-void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) 
+void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
 {
 	//this->SetComponentTickEnabled(false);
 	// #TODO: Handle letting go and how lerping works, specifically with the snap points it may be an issue
 }
 
 void UVRSliderComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
-void UVRSliderComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UVRSliderComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void UVRSliderComponent::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 void UVRSliderComponent::OnSecondaryGripRelease_Implementation(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 void UVRSliderComponent::OnUsed_Implementation() {}
@@ -267,6 +267,7 @@ void UVRSliderComponent::OnEndUsed_Implementation() {}
 void UVRSliderComponent::OnSecondaryUsed_Implementation() {}
 void UVRSliderComponent::OnEndSecondaryUsed_Implementation() {}
 void UVRSliderComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
+bool UVRSliderComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
 bool UVRSliderComponent::DenyGripping_Implementation()
 {

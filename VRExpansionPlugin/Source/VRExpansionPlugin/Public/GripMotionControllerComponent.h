@@ -210,13 +210,20 @@ public:
 	// Notify the server that we changed some secondary attachment information
 	UFUNCTION(Reliable, Server, WithValidation)
 		void Server_NotifySecondaryAttachmentChanged(
-			UObject * GrippedObject,
+			uint8 GripID,
 			FBPSecondaryGripInfo SecondaryGripInfo);
+
+	// Notify the server that we changed some secondary attachment information
+	// This one specifically sends out the new relative location for a retain secondary grip
+	UFUNCTION(Reliable, Server, WithValidation)
+		void Server_NotifySecondaryAttachmentChanged_Retain(
+			uint8 GripID,
+			FBPSecondaryGripInfo SecondaryGripInfo, const FTransform_NetQuantize & NewRelativeTransform);
 
 	// Notify change on relative position editing as well, make RPCS callable in blueprint
 	// Notify the server that we locally gripped something
 	UFUNCTION(Reliable, Server, WithValidation)
-	void Server_NotifyLocalGripRemoved(const FBPActorGripInformation & removeGrip, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity);
+	void Server_NotifyLocalGripRemoved(uint8 GripID, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity);
 	
 
 	// Enable this to send the TickGrip event every tick even for non custom grip types - has a slight performance hit
@@ -281,7 +288,7 @@ public:
 			// Tick will keep checking from here on out locally
 			if (!Grip.ValueCache.bWasInitiallyRepped)
 			{
-				UE_LOG(LogVRMotionController, Warning, TEXT("Replicated grip Notify grip failed, was grip called before the object was replicated to the client?"));
+				//UE_LOG(LogVRMotionController, Warning, TEXT("Replicated grip Notify grip failed, was grip called before the object was replicated to the client?"));
 				return false;
 			}
 			//Grip.ValueCache.bWasInitiallyRepped = true; // Set has been initialized
@@ -434,7 +441,7 @@ public:
 		// I like epics new authority check more than mine
 		const AActor* MyOwner = GetOwner();
 		const APawn* MyPawn = Cast<APawn>(MyOwner);
-		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
+		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
 
@@ -455,6 +462,24 @@ public:
 
 		return false;
 	}
+
+	// Drops a gripped object and sockets it to the given component at the given relative transform.
+	// bRetainOwnership controls whether the Owner is reset to null or not.
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		bool DropAndSocketObject(UObject * ObjectToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
+	
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		bool DropAndSocketGrip(const FBPActorGripInformation &GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
+
+	// Notify the server about a new drop and socket
+	UFUNCTION(Reliable, Server, WithValidation, Category = "GripMotionController")
+		void Server_NotifyDropAndSocketGrip(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
+
+	UFUNCTION(Reliable, NetMulticast)
+		void NotifyDropAndSocket(const FBPActorGripInformation &NewDrop);
+
+	void DropAndSocket_Implementation(const FBPActorGripInformation &NewDrop);
+	void Socket_Implementation(UObject * ObjectToSocket, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
 
 	/* Auto grip any uobject that is/root is a primitive component and has the VR Grip Interface
 	these are stored in a Tarray that will prevent destruction of the object, you MUST ungrip an actor if you want to kill it

@@ -405,13 +405,13 @@ void UVRMountComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 	this->SetComponentTickEnabled(true);
 }
 
-void UVRMountComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation)
+void UVRMountComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed)
 {
 		this->SetComponentTickEnabled(false);
 }
 
 void UVRMountComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
-void UVRMountComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation) {}
+void UVRMountComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void UVRMountComponent::OnSecondaryGrip_Implementation(USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 void UVRMountComponent::OnSecondaryGripRelease_Implementation(USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 void UVRMountComponent::OnUsed_Implementation() {}
@@ -419,6 +419,7 @@ void UVRMountComponent::OnEndUsed_Implementation() {}
 void UVRMountComponent::OnSecondaryUsed_Implementation() {}
 void UVRMountComponent::OnEndSecondaryUsed_Implementation() {}
 void UVRMountComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
+bool UVRMountComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
 bool UVRMountComponent::DenyGripping_Implementation()
 {

@@ -97,6 +97,12 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	VRReplicateCapsuleHeight = false;
 }
 
+void AVRBaseCharacter::OnRep_PlayerState()
+{
+	OnPlayerStateReplicated_Bind.Broadcast(PlayerState);
+	Super::OnRep_PlayerState();
+}
+
 void AVRBaseCharacter::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
