@@ -4592,14 +4592,14 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 
 bool UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Validate(
 	uint8 GripID,
-	FBPSecondaryGripInfo SecondaryGripInfo)
+	const FBPSecondaryGripInfo& SecondaryGripInfo)
 {
 	return true;
 }
 
 void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Implementation(
 	uint8 GripID,
-	FBPSecondaryGripInfo SecondaryGripInfo)
+	const FBPSecondaryGripInfo& SecondaryGripInfo)
 {
 
 	for (FBPActorGripInformation & Grip : LocallyGrippedObjects)
@@ -4619,14 +4619,14 @@ void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Imp
 
 bool UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Retain_Validate(
 	uint8 GripID,
-	FBPSecondaryGripInfo SecondaryGripInfo, const FTransform_NetQuantize & NewRelativeTransform)
+	const FBPSecondaryGripInfo& SecondaryGripInfo, const FTransform_NetQuantize & NewRelativeTransform)
 {
 	return true;
 }
 
 void UGripMotionControllerComponent::Server_NotifySecondaryAttachmentChanged_Retain_Implementation(
 	uint8 GripID,
-	FBPSecondaryGripInfo SecondaryGripInfo, const FTransform_NetQuantize & NewRelativeTransform)
+	const FBPSecondaryGripInfo& SecondaryGripInfo, const FTransform_NetQuantize & NewRelativeTransform)
 {
 
 	for (FBPActorGripInformation & Grip : LocallyGrippedObjects)
