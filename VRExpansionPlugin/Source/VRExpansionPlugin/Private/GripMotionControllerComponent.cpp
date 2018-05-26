@@ -585,7 +585,7 @@ void UGripMotionControllerComponent::SetPausedTransform(const FBPActorGripInform
 		if (bTeleport)
 		{
 			FTransform ProxyTrans = PausedTransform;
-			TeleportMoveGrip_Impl(*GripInformation, true, ProxyTrans);
+			TeleportMoveGrip_Impl(*GripInformation, true, true, ProxyTrans);
 		}
 		else
 		{
@@ -2531,7 +2531,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 	return false;
 }
 
-bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedActorToMove)
+bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedActorToMove, bool bTeleportPhysicsGrips)
 {
 	if (!GrippedActorToMove || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
 		return false;
@@ -2542,13 +2542,13 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 
 	if (GripInfo)
 	{
-		return TeleportMoveGrip(*GripInfo);
+		return TeleportMoveGrip(*GripInfo, bTeleportPhysicsGrips);
 	}
 
 	return false;
 }
 
-bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove)
+bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove, bool bTeleportPhysicsGrips)
 {
 	if (!ComponentToMove || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
 		return false;
@@ -2559,19 +2559,19 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 
 	if (GripInfo)
 	{
-		return TeleportMoveGrip(*GripInfo);
+		return TeleportMoveGrip(*GripInfo, bTeleportPhysicsGrips);
 	}
 
 	return false;
 }
 
-bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &Grip, bool bIsForPostTeleport)
+bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport)
 {
 	FTransform EmptyTransform = FTransform::Identity;
-	return TeleportMoveGrip_Impl(Grip, bIsForPostTeleport, EmptyTransform);
+	return TeleportMoveGrip_Impl(Grip, bTeleportPhysicsGrips, bIsForPostTeleport, EmptyTransform);
 }
 
-bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bIsForPostTeleport, FTransform & OptionalTransform)
+bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport, FTransform & OptionalTransform)
 {
 	bool bHasMovementAuthority = HasGripMovementAuthority(Grip);
 
@@ -2705,7 +2705,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 	{
 		PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
 	}
-	else if (Handle && Handle->KinActorData && bIsForPostTeleport)
+	else if (Handle && Handle->KinActorData && bTeleportPhysicsGrips)
 	{
 		// Don't try to autodrop on next tick, let the physx constraint update its local frame first
 		if (HasGripAuthority(Grip))
@@ -3247,7 +3247,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				// If we just teleported, skip this update and just teleport forward
 				if (bIsPostTeleport)
 				{
-					TeleportMoveGrip_Impl(*Grip, true, WorldTransform);
+					TeleportMoveGrip_Impl(*Grip, true, true, WorldTransform);
 					continue;
 				}
 

@@ -831,16 +831,21 @@ public:
 	bool bIsPostTeleport;
 
 	// Move a single gripped item back into position ignoring collision in the way
+	// bTeleportPhysicsGrips says whether we should teleport any physics grips as well
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-	bool TeleportMoveGrippedActor(AActor * GrippedActorToMove);
+	bool TeleportMoveGrippedActor(AActor * GrippedActorToMove, bool bTeleportPhysicsGrips = true);
 
 	// Move a single gripped item back into position ignoring collision in the way
+	// bTeleportPhysicsGrips says whether we should teleport any physics grips as well
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove);
+	bool TeleportMoveGrippedComponent(UPrimitiveComponent * ComponentToMove, bool bTeleportPhysicsGrips = true);
 
+	// Move a single grip back into position ignoring collision in the way
+	// bTeleportPhysicsGrips says whether we should teleport any physics grips as well
+	// bIsForPostTeleport says whether we shuld allow the DropOnTeleport logic to apply or not
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bIsForPostTeleport = false);
-	bool TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bIsForPostTeleport, FTransform & OptionalTransform);
+	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips = true, bool bIsForPostTeleport = false);
+	bool TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport, FTransform & OptionalTransform);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
