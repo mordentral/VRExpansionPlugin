@@ -444,6 +444,13 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
+	// Checks if the controllers own is torn off on the network, used to skip some RPCS
+	inline bool IsTornOff() const
+	{
+		const AActor* MyOwner = GetOwner();
+		return MyOwner ? MyOwner->bTearOff : false;
+	}
+
 
 	inline bool IsServer() const
 	{
