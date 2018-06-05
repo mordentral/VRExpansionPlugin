@@ -2698,7 +2698,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 	if (!OptionalTransform.Equals(FTransform::Identity))
 		WorldTransform = OptionalTransform;
 	else
-		GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface, bRescalePhysicsGrips);
+		GetGripWorldTransform(0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface/*, bRescalePhysicsGrips*/);
 
 	//WorldTransform = Grip.RelativeTransform * ParentTransform;
 
@@ -2891,7 +2891,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 }
 
-void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool & bRescalePhysicsGrips)
+void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface/*, bool & bRescalePhysicsGrips*/)
 {
 
 	// Check for interaction interface and modify transform by it
@@ -3030,7 +3030,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(float DeltaTime, FTra
 				if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_ScalingOnly)
 				{
 					/*Grip.SecondaryScaler*/ Scaler = FVector(frontLoc.Size() / frontLocOrig.Size());
-					bRescalePhysicsGrips = true; // This is for the physics grips
+					//bRescalePhysicsGrips = true; // This is for the physics grips
 
 					if (Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings && Grip.AdvancedGripSettings.SecondaryGripSettings.bLimitGripScaling)
 					{
@@ -3250,7 +3250,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				bool bRescalePhysicsGrips = false;
 				
 				// Get the world transform for this grip after handling secondary grips and interaction differences
-				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface, bRescalePhysicsGrips);
+				GetGripWorldTransform(DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface/*, bRescalePhysicsGrips*/);
+
+				if (!root->GetComponentScale().Equals(WorldTransform.GetScale3D()))
+					bRescalePhysicsGrips = true;
 
 				// If we just teleported, skip this update and just teleport forward
 				if (bIsPostTeleport)
