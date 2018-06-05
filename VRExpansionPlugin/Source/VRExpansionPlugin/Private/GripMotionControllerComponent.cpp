@@ -302,79 +302,6 @@ bool UGripMotionControllerComponent::Server_SendControllerTransform_Validate(FBP
 	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
 }
 
-/*
-void UGripMotionControllerComponent::FGripViewExtension::ProcessGripArrayLateUpdatePrimitives(TArray<FBPActorGripInformation> & GripArray)
-{
-	for (FBPActorGripInformation actor : GripArray)
-	{
-		// Skip actors that are colliding if turning off late updates during collision.
-		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
-
-		// Don't allow late updates with server sided movement, there is no point
-		if (actor.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !MotionControllerComponent->IsServer())
-			continue;
-
-		switch (actor.GripLateUpdateSetting)
-		{
-		case EGripLateUpdateSettings::LateUpdatesAlwaysOff:
-		{
-			continue;
-		}break;
-		case EGripLateUpdateSettings::NotWhenColliding:
-		{
-			if (actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly)
-				continue;
-		}break;
-		case EGripLateUpdateSettings::NotWhenDoubleGripping:
-		{
-			if (actor.SecondaryGripInfo.bHasSecondaryAttachment)
-				continue;
-		}break;
-		case EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping:
-		{
-			if (
-				(actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly) ||
-				(actor.SecondaryGripInfo.bHasSecondaryAttachment)
-				)
-			{
-				continue;
-			}
-		}break;
-		case EGripLateUpdateSettings::LateUpdatesAlwaysOn:
-		default:
-		{}break;
-		}
-
-		// Get late update primitives
-		switch (actor.GripTargetType)
-		{
-		case EGripTargetType::ActorGrip:
-			//case EGripTargetType::InteractibleActorGrip:
-		{
-			AActor * pActor = actor.GetGrippedActor();
-			if (pActor)
-			{
-				if (USceneComponent * rootComponent = pActor->GetRootComponent())
-				{
-					GatherLateUpdatePrimitives(rootComponent, LateUpdatePrimitives);
-				}
-			}
-
-		}break;
-
-		case EGripTargetType::ComponentGrip:
-			//case EGripTargetType::InteractibleComponentGrip:
-		{
-			UPrimitiveComponent * cPrimComp = actor.GetGrippedComponent();
-			if (cPrimComp)
-			{
-				GatherLateUpdatePrimitives(cPrimComp, LateUpdatePrimitives);
-			}
-		}break;
-		}
-	}
-}*/
-
 void UGripMotionControllerComponent::FGripViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
 {
 	if (!MotionControllerComponent)
@@ -384,33 +311,6 @@ void UGripMotionControllerComponent::FGripViewExtension::BeginRenderViewFamily(F
 
 	// Set up the late update state for the controller component
 	LateUpdate.Setup(MotionControllerComponent->CalcNewComponentToWorld(FTransform()), MotionControllerComponent);
-
-	/*FScopeLock ScopeLock(&CritSect);
-
-	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
-	if (MotionControllerComponent->bDisableLowLatencyUpdate || !CVarEnableMotionControllerLateUpdate->GetValueOnGameThread())
-	{
-		return;
-	}	
-
-	LateUpdatePrimitives.Reset();
-	GatherLateUpdatePrimitives(MotionControllerComponent, LateUpdatePrimitives);
-
-	
-	//Add additional late updates registered to this controller that aren't children and aren't gripped
-	//This array is editable in blueprint and can be used for things like arms or the like.
-	
-	for (UPrimitiveComponent* primComp : MotionControllerComponent->AdditionalLateUpdateComponents)
-	{
-		if (primComp)
-			GatherLateUpdatePrimitives(primComp, LateUpdatePrimitives);
-	}	
-
-
-	// Was going to use a lambda here but the overhead cost is higher than just using another function, even more so than using an inline one
-	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->LocallyGrippedObjects);
-	ProcessGripArrayLateUpdatePrimitives(MotionControllerComponent->GrippedObjects);
-	*/
 }
 
 void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
@@ -1977,6 +1877,21 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			root->SetSimulatePhysics(false);
 
 	} break;
+
+	case EGripCollisionType::AttachmentGrip:
+	{
+		if (root)
+			root->SetSimulatePhysics(false);
+
+		// Move it to the correct location automatically
+		if (bHasMovementAuthority)
+			TeleportMoveGrip(NewGrip);
+
+		if(HasGripAuthority(NewGrip) || IsServer())
+			root->AttachToComponent(this, FAttachmentTransformRules::KeepWorldTransform);
+
+	}break;
+
 	case EGripCollisionType::PhysicsOnly:
 	case EGripCollisionType::SweepWithPhysics:
 	case EGripCollisionType::InteractiveHybridCollisionWithSweep:
@@ -2087,6 +2002,10 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 				if (root)
 				{
+
+					if (NewDrop.GripCollisionType == EGripCollisionType::AttachmentGrip && (HasGripAuthority(NewDrop) || IsServer()))
+						root->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
 					root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
 					if (IsServer() || bHadGripAuthority)
@@ -2162,6 +2081,9 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				{
 					OwningPawn->MoveIgnoreActorRemove(pActor);
 				}*/
+
+				if (NewDrop.GripCollisionType == EGripCollisionType::AttachmentGrip && (HasGripAuthority(NewDrop) || IsServer()))
+					root->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
@@ -2692,7 +2614,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 	FBPActorGripInformation copyGrip = Grip;
 	
-	bool bRescalePhysicsGrips = false;
+	//bool bRescalePhysicsGrips = false;
 
 	//FTransform EmptyTransform = FTransform::Identity;
 	if (!OptionalTransform.Equals(FTransform::Identity))
@@ -3268,9 +3190,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				// Maybe add a grip variable of "expected loc" and use that to check next frame, but for now this will do.
 				if ((bRootHasInterface || bActorHasInterface) &&
 					(
-							((Grip->GripCollisionType != EGripCollisionType::PhysicsOnly) && (Grip->GripCollisionType != EGripCollisionType::SweepWithPhysics)) &&
+							(Grip->GripCollisionType != EGripCollisionType::AttachmentGrip) &&
+							(Grip->GripCollisionType != EGripCollisionType::PhysicsOnly) && 
+							(Grip->GripCollisionType != EGripCollisionType::SweepWithPhysics)) &&
 							((Grip->GripCollisionType != EGripCollisionType::InteractiveHybridCollisionWithSweep) || ((Grip->GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep) && Grip->bColliding))
-						)
 					)
 				{
 
@@ -3614,6 +3537,16 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					{
 						// Move the actor, we are not offsetting by the hit result anyway
 						root->SetWorldTransform(WorldTransform, false);
+					}break;
+
+					case EGripCollisionType::AttachmentGrip:
+					{
+						FTransform RelativeTrans = WorldTransform.GetRelativeTransform(ParentTransform);
+						if (!root->GetRelativeTransform().Equals(RelativeTrans))
+						{
+							root->SetRelativeTransform(RelativeTrans);
+						}
+
 					}break;
 
 					case EGripCollisionType::ManipulationGrip:
@@ -4801,6 +4734,10 @@ void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotio
 		if (actor.bIsPaused)
 			continue;
 
+		// Attachment should already handle this for us, don't double transpose the late update
+		if (actor.GripCollisionType == EGripCollisionType::AttachmentGrip)
+			continue;
+
 		switch (actor.GripLateUpdateSetting)
 		{
 		case EGripLateUpdateSettings::LateUpdatesAlwaysOff:
@@ -4809,7 +4746,8 @@ void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotio
 		}break;
 		case EGripLateUpdateSettings::NotWhenColliding:
 		{
-			if (actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && actor.GripCollisionType != EGripCollisionType::PhysicsOnly)
+			if (actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && 
+				actor.GripCollisionType != EGripCollisionType::PhysicsOnly)
 				continue;
 		}break;
 		case EGripLateUpdateSettings::NotWhenDoubleGripping:

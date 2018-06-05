@@ -472,9 +472,13 @@ enum class EGripCollisionType : uint8
 
 	/** Free constraint to controller base with a twist drive. */
 	ManipulationGripWithWristTwist,
+	
+	/** Attachment grips use native attachment and only sets location / rotation if they differ, this grip always late updates*/
+	AttachmentGrip,
 
 	/** Custom grip is to be handled by the object itself, it just sends the TickGrip event every frame but doesn't move the object. */
 	CustomGrip
+
 };
 
 // This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
