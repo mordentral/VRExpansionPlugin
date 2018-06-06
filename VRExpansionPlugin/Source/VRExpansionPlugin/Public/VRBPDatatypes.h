@@ -1341,10 +1341,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bIsInteractible;
 
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "VRGripInterface")
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		bool bIsHeld; // Set on grip notify, not net serializing
 
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "VRGripInterface")
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (editcondition = "bIsInteractible"))
