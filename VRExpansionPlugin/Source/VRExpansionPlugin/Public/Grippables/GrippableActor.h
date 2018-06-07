@@ -49,9 +49,8 @@ class VREXPANSIONPLUGIN_API AGrippableActor : public AActor, public IVRGripInter
 		if (VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive ||
 			VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
 		{
-			const AActor* MyOwner = GetOwner();
-			const APawn* MyPawn = Cast<APawn>(MyOwner);
-			return (MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority));
+			const APawn* MyPawn = Cast<APawn>(GetOwner());
+			return (MyPawn ? MyPawn->IsLocallyControlled() : false);
 		}
 		else
 			return false;
