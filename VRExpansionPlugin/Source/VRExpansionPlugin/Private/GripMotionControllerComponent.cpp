@@ -2731,7 +2731,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			if (bNewTrackedState)
 			{
 				SetRelativeTransform(CurrentControllerProfileTransform * FTransform(Orientation, Position, this->RelativeScale3D));
-				SetRelativeLocationAndRotation(Position, Orientation);
+				//SetRelativeLocationAndRotation(Position, Orientation);
 			}
 
 			// if controller tracking just kicked in 
