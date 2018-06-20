@@ -150,6 +150,8 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 		MomentumAtDrop -= MomentumAtDrop / FramesToAverage;
 		MomentumAtDrop += ((FullCurrentAngle - LastLeverAngle) / DeltaTime) / FramesToAverage;
 
+		MomentumAtDrop = FMath::Min(MaxLeverMomentum, MomentumAtDrop);
+
 		LastLeverAngle = FullCurrentAngle;
 	}
 
@@ -301,6 +303,7 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 	LastLeverAngle = CurrentLeverAngle;
 	bIsLerping = false;
 	bIsInFirstTick = true;
+	MomentumAtDrop = 0.0f;
 
 	if (GripInformation.GripMovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 	{

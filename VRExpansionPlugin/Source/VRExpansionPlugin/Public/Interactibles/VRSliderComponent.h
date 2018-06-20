@@ -21,6 +21,16 @@ enum class EVRInteractibleSliderLerpType : uint8
 	Lerp_InterpConstantTo
 };
 
+UENUM(Blueprintable)
+enum class EVRInteractibleSliderDropBehavior : uint8
+{
+	/** Stays in place on drop */
+	Stay,
+
+	/** Retains momentum on release*/
+	RetainMomentum
+};
+
 /** Delegate for notification when the slider state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRSliderHitPointSignature, float, SliderProgressPoint);
 
@@ -49,6 +59,28 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	FVector MinSlideDistance;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		EVRInteractibleSliderDropBehavior SliderBehaviorWhenReleased;
+
+	// Number of frames to average momentum across for the release momentum (avoids quick waggles)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0", ClampMax = "12", UIMin = "0", UIMax = "12"))
+		int FramesToAverage;
+
+	// Units in degrees per second to slow a momentum lerp down
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "10.0", UIMin = "0.0", UIMax = "10.0"))
+		float SliderMomentumFriction;
+
+	// Maximum momentum of the slider in units of the total distance per second (0.0 - 1.0)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float MaxSliderMomentum;
+
+	UPROPERTY(BlueprintReadOnly, Category = "VRSliderComponent")
+		bool bIsLerping;
+
+	// For momentum retention
+	float MomentumAtDrop;
+	float LastSliderProgress;
+
 	// Gets filled in with the current slider location progress
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRSliderComponent")
 	float CurrentSliderProgress;
@@ -65,7 +97,7 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	int GripPriority;
 
 	// Set this to assign a spline component to the slider
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated/* ReplicatedUsing = OnRep_SplineComponentToFollow*/, Category = "VRSliderComponent")
 	USplineComponent * SplineComponentToFollow; 
 
 	// Where the slider should follow the rotation and scale of the spline as well
@@ -100,10 +132,44 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 		float SnapThreshold;
 
 
-	FTransform InitialRelativeTransform;
+	//FTransform InitialRelativeTransform;
+
+	// Now replicating this so that it works correctly over the network
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRSliderComponent")
+		FTransform_NetQuantize InitialRelativeTransform;
+
+	UFUNCTION()
+	virtual void OnRep_InitialRelativeTransform()
+	{
+		CalculateSliderProgress();
+	}
+
 	FVector InitialInteractorLocation;
 	FVector InitialGripLoc;
 	FVector InitialDropLocation;
+
+	// Calculates the current slider progress
+	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
+	float CalculateSliderProgress()
+	{
+		if (this->SplineComponentToFollow != nullptr)
+		{
+			CurrentSliderProgress = GetCurrentSliderProgress(this->GetComponentLocation());
+		}
+		else
+		{
+			FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+			FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
+			FVector CalculatedLocation = CurrentRelativeTransform.InverseTransformPosition(this->GetComponentLocation());
+
+			//if (bSlideDistanceIsInParentSpace)
+				//CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
+	
+			CurrentSliderProgress = GetCurrentSliderProgress(CalculatedLocation);
+		}
+
+		return CurrentSliderProgress;
+	}
 
 	// Forcefully sets the slider progress to the defined value
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
@@ -169,7 +235,7 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 				this->SetWorldLocation(WorldTransform.GetLocation());
 			}
 
-			GetCurrentSliderProgress(WorldTransform.GetLocation());
+			CurrentSliderProgress = GetCurrentSliderProgress(WorldTransform.GetLocation());
 		}
 
 		if(SplineComponentToFollow == nullptr)
