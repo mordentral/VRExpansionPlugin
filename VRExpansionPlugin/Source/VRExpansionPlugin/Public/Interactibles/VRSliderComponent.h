@@ -66,9 +66,13 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0", ClampMax = "12", UIMin = "0", UIMax = "12"))
 		int FramesToAverage;
 
-	// Units in degrees per second to slow a momentum lerp down
+	// Units in % of total length per second to slow a momentum lerp down
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "10.0", UIMin = "0.0", UIMax = "10.0"))
 		float SliderMomentumFriction;
+
+	// % of elasticity on reaching the end 0 - 1.0 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float SliderRestitution;
 
 	// Maximum momentum of the slider in units of the total distance per second (0.0 - 1.0)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))

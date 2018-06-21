@@ -22,6 +22,7 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 
 	MinSlideDistance = FVector::ZeroVector;
 	MaxSlideDistance = FVector(10.0f, 0.f, 0.f);
+	SliderRestitution = 0.0f;
 	CurrentSliderProgress = 0.0f;
 	LastSliderProgress = 0.0f;
 	
@@ -131,13 +132,31 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 			if (newProgress < 0.0f || FMath::IsNearlyEqual(newProgress, 0.0f, 0.00001f))
 			{
-				bIsLerping = false;
-				this->SetSliderProgress(0.0f);
+				if (SliderRestitution > 0.0f)
+				{
+					// Reverse the momentum
+					MomentumAtDrop = -MomentumAtDrop * SliderRestitution;
+					this->SetSliderProgress(0.0f);
+				}
+				else
+				{
+					bIsLerping = false;
+					this->SetSliderProgress(0.0f);
+				}
 			}
-			else if (newProgress > 1.0f || FMath::IsNearlyEqual(CurrentSliderProgress, 1.0f, 0.00001f))
+			else if (newProgress > 1.0f || FMath::IsNearlyEqual(newProgress, 1.0f, 0.00001f))
 			{
-				bIsLerping = false;
-				this->SetSliderProgress(1.0f);
+				if (SliderRestitution > 0.0f)
+				{
+					// Reverse the momentum
+					MomentumAtDrop = -MomentumAtDrop * SliderRestitution;
+					this->SetSliderProgress(1.0f);
+				}
+				else
+				{
+					bIsLerping = false;
+					this->SetSliderProgress(1.0f);
+				}
 			}
 			else
 			{
