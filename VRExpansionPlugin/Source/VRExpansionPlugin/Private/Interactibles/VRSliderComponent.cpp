@@ -135,7 +135,7 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 				if (SliderRestitution > 0.0f)
 				{
 					// Reverse the momentum
-					MomentumAtDrop = -MomentumAtDrop * SliderRestitution;
+					MomentumAtDrop = -(MomentumAtDrop * SliderRestitution);
 					this->SetSliderProgress(0.0f);
 				}
 				else
@@ -149,7 +149,7 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 				if (SliderRestitution > 0.0f)
 				{
 					// Reverse the momentum
-					MomentumAtDrop = -MomentumAtDrop * SliderRestitution;
+					MomentumAtDrop = -(MomentumAtDrop * SliderRestitution);
 					this->SetSliderProgress(1.0f);
 				}
 				else

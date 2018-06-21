@@ -125,6 +125,10 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "180", UIMin = "0.0", UIMax = "180.0"))
 		float LeverMomentumFriction;
 
+	// % of elasticity on reaching the end 0 - 1.0 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float LeverRestitution;
+
 	// Maximum momentum of the lever in degrees per second
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "180", UIMin = "0.0", UIMax = "180.0"))
 		float MaxLeverMomentum;
@@ -271,9 +275,17 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 
 		if (FMath::IsNearlyEqual(LerpedVal, TargetAngle))
 		{
-			this->SetComponentTickEnabled(false);
-			bReplicateMovement = true;
-			this->SetRelativeRotation((FTransform(SetAxisValue(TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			if (LeverRestitution > 0.0f)
+			{
+				MomentumAtDrop = -(MomentumAtDrop * LeverRestitution);
+				this->SetRelativeRotation((FTransform(SetAxisValue(TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			}
+			else
+			{
+				this->SetComponentTickEnabled(false);
+				bReplicateMovement = true;
+				this->SetRelativeRotation((FTransform(SetAxisValue(TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			}
 		}
 		else
 		{
