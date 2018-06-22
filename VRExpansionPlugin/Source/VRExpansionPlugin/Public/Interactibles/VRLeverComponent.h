@@ -130,7 +130,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		float LeverRestitution;
 
 	// Maximum momentum of the lever in degrees per second
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "180", UIMin = "0.0", UIMax = "180.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0.0", UIMin = "0.0"))
 		float MaxLeverMomentum;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")

@@ -75,7 +75,7 @@ class VREXPANSIONPLUGIN_API UVRSliderComponent : public UStaticMeshComponent, pu
 		float SliderRestitution;
 
 	// Maximum momentum of the slider in units of the total distance per second (0.0 - 1.0)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent|Momentum Settings", meta = (ClampMin = "0.0", UIMin = "0.0"))
 		float MaxSliderMomentum;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRSliderComponent")
