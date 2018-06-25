@@ -1,14 +1,15 @@
 #include "VRGestureComponent.h"
+#include "TimerManager.h"
 
 DECLARE_CYCLE_STAT(TEXT("TickGesture ~ TickingGesture"), STAT_TickGesture, STATGROUP_TickGesture);
 
 UVRGestureComponent::UVRGestureComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.bStartWithTickEnabled = false;
-	PrimaryComponentTick.TickGroup = TG_PrePhysics;
-	PrimaryComponentTick.bTickEvenWhenPaused = false;
+	PrimaryComponentTick.bCanEverTick = false;
+	//PrimaryComponentTick.bStartWithTickEnabled = false;
+	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
+	//PrimaryComponentTick.bTickEvenWhenPaused = false;
 
 	maxSlope = 3;// INT_MAX;
 	//globalThreshold = 10.0f;
@@ -116,7 +117,7 @@ void UGesturesDatabase::FillSplineWithGesture(FVRGesture &Gesture, USplineCompon
 void UVRGestureComponent::BeginRecording(bool bRunDetection, bool bFlattenGesture, bool bDrawGesture, bool bDrawAsSpline, int SamplingHTZ, int SampleBufferSize, float ClampingTolerance)
 {
 	RecordingBufferSize = SampleBufferSize;
-	RecordingHTZ = SamplingHTZ;
+	RecordingDelta = 1.0f / SamplingHTZ;
 	RecordingClampingTolerance = ClampingTolerance;
 	bDrawRecordingGesture = bDrawGesture;
 	bDrawRecordingGestureAsSpline = bDrawAsSpline;
@@ -142,7 +143,6 @@ void UVRGestureComponent::BeginRecording(bool bRunDetection, bool bFlattenGestur
 
 	// Reset does the reserve already
 	GestureLog.Samples.Reset(RecordingBufferSize);
-	RecordingDelta = 0.0f;
 
 	CurrentState = bRunDetection ? EVRGestureState::GES_Detecting : EVRGestureState::GES_Recording;
 
@@ -160,11 +160,13 @@ void UVRGestureComponent::BeginRecording(bool bRunDetection, bool bFlattenGestur
 
 	StartVector = OriginatingTransform.InverseTransformPosition(this->GetComponentLocation());
 	this->SetComponentTickEnabled(true);
+
+	if (!TickGestureTimer_Handle.IsValid())
+		GetWorld()->GetTimerManager().SetTimer(TickGestureTimer_Handle, this, &UVRGestureComponent::TickGesture, RecordingDelta, true);
 }
 
 void UVRGestureComponent::CaptureGestureFrame()
 {
-
 	FVector NewSample = OriginatingTransform.InverseTransformPosition(this->GetComponentLocation()) - StartVector;
 
 	if (bRecordingFlattenGesture)
@@ -279,37 +281,22 @@ void UVRGestureComponent::CaptureGestureFrame()
 	}
 }
 
-void UVRGestureComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+void UVRGestureComponent::TickGesture()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	
 	SCOPE_CYCLE_COUNTER(STAT_TickGesture);
 
 	switch (CurrentState)
 	{
 	case EVRGestureState::GES_Detecting:
 	{
-		RecordingDelta += DeltaTime;
-
-		if (RecordingDelta >= 1.0f / RecordingHTZ)
-		{
-			CaptureGestureFrame();
-			RecognizeGesture(GestureLog);
-			bGestureChanged = false;
-			RecordingDelta = 0.0f;
-		}
+		CaptureGestureFrame();
+		RecognizeGesture(GestureLog);
+		bGestureChanged = false;
 	}break;
 
 	case EVRGestureState::GES_Recording:
 	{
-		RecordingDelta += DeltaTime;
-
-
-		if (RecordingDelta >= 1.0f / RecordingHTZ)
-		{
-			CaptureGestureFrame();
-			RecordingDelta = 0.0f;
-		}
+		CaptureGestureFrame();
 	}break;
 
 	case EVRGestureState::GES_None:
@@ -321,7 +308,8 @@ void UVRGestureComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
 		if (!bDrawRecordingGestureAsSpline)
 		{
 			FTransform DrawTransform = FTransform(StartVector) * OriginatingTransform;
-			DrawDebugGesture(this, DrawTransform, GestureLog, FColor::White);
+			// Setting the lifetime to the recording htz now, should remove the flicker.
+			DrawDebugGesture(this, DrawTransform, GestureLog, FColor::White, false, 0, RecordingDelta, 0.0f);
 		}
 	}
 }

@@ -11,6 +11,7 @@
 #include "Engine/DataAsset.h"
 #include "DrawDebugHelpers.h"
 #include "Components/LineBatchComponent.h"
+#include "Engine/EngineTypes.h"
 #include "VRGestureComponent.generated.h"
 
 DECLARE_STATS_GROUP(TEXT("TICKGesture"), STATGROUP_TickGesture, STATCAT_Advanced);
@@ -403,8 +404,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
 		UMaterial* SplineMaterial;
 
-	// HTZ to run recording at for detection and saving
-	int RecordingHTZ;
+	// HTZ to run recording at for detection and saving - now being used as a frame time instead of a HTZ
+	float RecordingDelta;
 
 	// Number of samples to keep in memory during detection
 	int RecordingBufferSize;
@@ -414,6 +415,9 @@ public:
 	bool bDrawRecordingGesture;
 	bool bDrawRecordingGestureAsSpline;
 	bool bGestureChanged;
+
+	// Handle to our update timer
+	FTimerHandle TickGestureTimer_Handle;
 
 	// Maximum vertical or horizontal steps in a row in the lookup table before throwing out a gesture
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
@@ -440,6 +444,10 @@ public:
 	{
 		Super::BeginDestroy();
 		RecordingGestureDraw.Clear();
+		if (TickGestureTimer_Handle.IsValid())
+		{
+			GetWorld()->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
+		}
 	}
 
 	// Recalculates a gestures size and re-scales it to the given database
@@ -458,7 +466,6 @@ public:
 
 	FVector StartVector;
 	FTransform OriginatingTransform;
-	float RecordingDelta;
 
 	/* Function to begin recording a gesture for detection or saving
 	*
@@ -466,7 +473,8 @@ public:
 	* bFlattenGestue: Should we flatten the gesture into 2 dimensions (more stable detection and recording, less pretty visually)
 	* bDrawGesture: Should we draw the gesture during recording of it
 	* bDrawAsSpline: If true we will use spline meshes, if false we will draw as debug lines
-	* SamplingHTZ: How many times a second we will record a gesture point
+	* SamplingHTZ: How many times a second we will record a gesture point, recording is done with a timer now, i would steer away 
+	* from htz > possible frames as that could cause double timer updates with how timers are implemented.
 	* SampleBufferSize: How many points we will store in history at a time
 	* ClampingTolerance: If larger than 0.0, we will clamp points to a grid of this size
 	*/
@@ -477,6 +485,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
 	FVRGesture EndRecording()
 	{
+		if (TickGestureTimer_Handle.IsValid())
+		{
+			GetWorld()->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
+		}
+
 		this->SetComponentTickEnabled(false);
 		CurrentState = EVRGestureState::GES_None;
 
@@ -507,7 +520,8 @@ public:
 
 	void CaptureGestureFrame();
 
-	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	// Ticks the logic from the gameplay timer.
+	void TickGesture();
 
 
 	// Recognize gesture in the given sequence.
