@@ -708,6 +708,10 @@ public:
 	virtual void PhysCustom_Climbing(float deltaTime, int32 Iterations);
 	virtual void PhysCustom_LowGrav(float deltaTime, int32 Iterations);
 
+
+	// Skip updates with rotational differences
+	virtual void SmoothCorrection(const FVector& OldLocation, const FQuat& OldRotation, const FVector& NewLocation, const FQuat& NewRotation) override;
+
 	/**
 	* Smooth mesh location for network interpolation, based on values set up by SmoothCorrection.
 	* Internally this simply calls SmoothClientPosition_Interpolate() then SmoothClientPosition_UpdateVisuals().
