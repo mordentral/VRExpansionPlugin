@@ -49,7 +49,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 
 	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 
-	NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
+	NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;//Exponential;
 
 	bWasInPushBack = false;
 	bIsInPushBack = false;
@@ -1115,7 +1115,11 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 
 void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocation, const FQuat& OldRotation, const FVector& NewLocation, const FQuat& NewRotation)
 {
-	if (!OldRotation.Equals(NewRotation, 1e-5f))
+	if (
+		NetworkSmoothingMode != ENetworkSmoothingMode::Disabled &&
+		NetworkSmoothingMode != ENetworkSmoothingMode::Replay &&
+		(!OldRotation.Equals(NewRotation, 1e-5f) /*|| Velocity.IsNearlyZero()*/)
+		)
 	{
 		if (!HasValidData())
 		{
@@ -1131,7 +1135,13 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		const bool bIsRemoteAutoProxy = (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy);
 		ensure(bIsSimulatedProxy || bIsRemoteAutoProxy);
 
-		// Skip smoothing if we have a new rotation
+		AVRBaseCharacter * Basechar = Cast<AVRBaseCharacter>(CharacterOwner);
+
+		if (Basechar)
+		{
+			Basechar->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+		}
+
 		UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
 		bNetworkSmoothingComplete = true;
 	}
@@ -1189,7 +1199,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			const FQuat NewRelRotation = ClientData->MeshRotationOffset * CharacterOwner->GetBaseRotationOffset();
 			//Basechar->NetSmoother->SetRelativeLocation(NewRelTranslation);
 
-			Basechar->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
+			Basechar->NetSmoother->SetRelativeLocation/*AndRotation*/(NewRelTranslation);// , NewRelRotation);
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
 		{
