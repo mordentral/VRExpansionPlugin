@@ -282,61 +282,9 @@ struct FTransform_NetQuantize : public FTransform
 	FORCEINLINE FTransform_NetQuantize(const FVector& InX, const FVector& InY, const FVector& InZ, const FVector& InTranslation) 
 		: FTransform(InX, InY, InZ, InTranslation)
 	{}
+public:
 
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
-	{
-		bOutSuccess = true;
-
-		FVector rTranslation;
-		FVector rScale3D;
-		//FQuat rRotation;
-		FRotator rRotation;
-
-		uint16 ShortPitch = 0;
-		uint16 ShortYaw = 0;
-		uint16 ShortRoll = 0;
-
-		if (Ar.IsSaving())
-		{
-			// Because transforms can be vectorized or not, need to use the inline retrievers
-			rTranslation = this->GetTranslation();
-			rScale3D = this->GetScale3D();
-			rRotation = this->Rotator();//this->GetRotation();
-
-			// Translation set to 2 decimal precision
-			bOutSuccess &= SerializePackedVector<100, 30>(rTranslation, Ar);
-
-			// Scale set to 2 decimal precision, had it 1 but realized that I used two already even
-			bOutSuccess &= SerializePackedVector<100, 30>(rScale3D, Ar);
-
-			// Rotation converted to FRotator and short compressed, see below for conversion reason
-			// FRotator already serializes compressed short by default but I can save a func call here
-			rRotation.SerializeCompressedShort(Ar);
-
-			//Ar << rRotation;
-
-			// If I converted it to a rotator and serialized as shorts I would save 6 bytes.
-			// I am unsure about a safe method of compressed serializing a quat, though I read through smallest three
-			// Epic already drops W from the Quat and reconstructs it after the send.
-			// Converting to rotator first may have conversion issues and has a perf cost....needs testing, epic attempts to handle
-			// Singularities in their conversion but I haven't tested it in all circumstances
-			//rRotation.SerializeCompressedShort(Ar);
-		}
-		else // If loading
-		{
-			bOutSuccess &= SerializePackedVector<100, 30>(rTranslation, Ar);
-			bOutSuccess &= SerializePackedVector<100, 30>(rScale3D, Ar);
-
-			rRotation.SerializeCompressedShort(Ar);
-
-			//Ar << rRotation;
-
-			// Set it
-			this->SetComponents(rRotation.Quaternion(), rTranslation, rScale3D);
-		}
-
-		return bOutSuccess;
-	}
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 };
 
 template<>
