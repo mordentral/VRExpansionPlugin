@@ -280,6 +280,19 @@ public:
 			// when that happens.
 			Grip.ClearNonReppingItems();
 		}
+
+		// Ignore server down no rep grips, this is kind of unavoidable unless I make yet another list which I don't want to do
+		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
+		{
+			// skip init
+			Grip.ValueCache.bWasInitiallyRepped = true;
+
+			// null ptr so this doesn't block grip operations
+			Grip.GrippedObject = nullptr;
+			
+			// Set to paused so iteration skips it
+			Grip.bIsPaused = true;
+		}
 		
 		if (!Grip.ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
 		{
