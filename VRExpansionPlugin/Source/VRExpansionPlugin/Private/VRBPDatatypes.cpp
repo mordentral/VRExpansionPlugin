@@ -28,7 +28,7 @@ bool FTransform_NetQuantize::NetSerialize(FArchive& Ar, class UPackageMap* Map, 
 	uint16 ShortYaw = 0;
 	uint16 ShortRoll = 0;
 
-	bool bUseHighPrecision = VRDataTypeCVARs::RepHighPrecisionTransforms;
+	bool bUseHighPrecision = VRDataTypeCVARs::RepHighPrecisionTransforms > 0;
 
 	if (Ar.IsSaving())
 	{
