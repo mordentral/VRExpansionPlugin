@@ -2730,7 +2730,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 			if (bNewTrackedState)
 			{
-				SetRelativeTransform(CurrentControllerProfileTransform * FTransform(Orientation, Position, this->RelativeScale3D));
+				SetRelativeTransform(FTransform(Orientation, Position, this->RelativeScale3D));
 				//SetRelativeLocationAndRotation(Position, Orientation);
 			}
 
