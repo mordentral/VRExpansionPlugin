@@ -110,7 +110,6 @@ public:
 
 	// Stores current transform so we don't have to keep casting
 	FTransform CurrentControllerProfileTransform;
-	bool bLoadedProfile;
 
 	// Called when the controller profile changed and we have a new transform (only if bOffsetByControllerProfile is true)
 	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
