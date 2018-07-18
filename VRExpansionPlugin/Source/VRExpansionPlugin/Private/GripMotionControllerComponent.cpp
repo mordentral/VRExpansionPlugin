@@ -3085,6 +3085,9 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
 	HandleGripArray(GrippedObjects, ParentTransform, DeltaTime, true);
 	HandleGripArray(LocallyGrippedObjects, ParentTransform, DeltaTime);
+
+	// Empty out the teleport flag
+	bIsPostTeleport = false;
 }
 
 void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)
@@ -3581,9 +3584,6 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				CleanUpBadGrip(GrippedObjectsArray, i, bReplicatedArray);
 			}
 		}
-
-		// Empty out the teleport flag
-		bIsPostTeleport = false;
 	}
 }
 
