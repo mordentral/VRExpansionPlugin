@@ -76,6 +76,7 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 			// This is the hacky workaround for now
 			/*
 				"Vive MV";
+				"VIVE_Pro MV"
 				"Oculus Rift CV1";
 				"Lenovo Explorer";
 				"HP Windows Mixed Reality Headset";

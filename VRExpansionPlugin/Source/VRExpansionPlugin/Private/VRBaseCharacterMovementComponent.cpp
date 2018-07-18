@@ -818,11 +818,6 @@ void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMo
 	VRReplicatedMovementMode = NewMovementMode;
 }
 
-/*void UVRBaseCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
-{
-	Super::ReplicateMoveToServer(DeltaTime, NewAcceleration);
-}*/
-
 /*void UVRBaseCharacterMovementComponent::SendClientAdjustment()
 {
 	if (!HasValidData())
@@ -1034,6 +1029,37 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 	FSavedMove_Character::SetInitialPosition(C);
 }
 
+void FSavedMove_VRBaseCharacter::CombineWith(const FSavedMove_Character* OldMove, ACharacter* InCharacter, APlayerController* PC, const FVector& OldStartLocation)
+{
+	UCharacterMovementComponent* CharMovement = InCharacter->GetCharacterMovement();
+	
+	// to combine move, first revert pawn position to PendingMove start position, before playing combined move on client
+	CharMovement->UpdatedComponent->SetWorldLocationAndRotation(OldStartLocation, OldMove->StartRotation, false, nullptr, CharMovement->GetTeleportType());
+	CharMovement->Velocity = OldMove->StartVelocity;
+
+	CharMovement->SetBase(OldMove->StartBase.Get(), OldMove->StartBoneName);
+	CharMovement->CurrentFloor = OldMove->StartFloor;
+
+	// Now that we have reverted to the old position, prepare a new move from that position,
+	// using our current velocity, acceleration, and rotation, but applied over the combined time from the old and new move.
+
+	// Combine times for both moves
+	DeltaTime += OldMove->DeltaTime;
+
+	//FSavedMove_VRBaseCharacter * BaseSavedMove = (FSavedMove_VRBaseCharacter *)NewMove.Get();
+	FSavedMove_VRBaseCharacter * BaseSavedMovePending = (FSavedMove_VRBaseCharacter *)OldMove;
+
+	if (/*BaseSavedMove && */BaseSavedMovePending)
+	{
+		LFDiff.X += BaseSavedMovePending->LFDiff.X;
+		LFDiff.Y += BaseSavedMovePending->LFDiff.Y;
+	}
+
+	// Roll back jump force counters. SetInitialPosition() below will copy them to the saved move.
+	// Changes in certain counters like JumpCurrentCount don't allow move combining, so no need to roll those back (they are the same).
+	InCharacter->JumpForceTimeRemaining = OldMove->JumpForceTimeRemaining;
+	InCharacter->JumpKeyHoldTime = OldMove->JumpKeyHoldTime;
+}
 
 void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostUpdateMode)
 {
@@ -1113,31 +1139,6 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 	FSavedMove_Character::PrepMoveFor(Character);
 }
 
-void UVRBaseCharacterMovementComponent::SmoothClientPosition(float DeltaSeconds)
-{
-	if (!HasValidData() || NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
-	{
-		return;
-	}
-
-	// We shouldn't be running this on a server that is not a listen server.
-	checkSlow(GetNetMode() != NM_DedicatedServer);
-	checkSlow(GetNetMode() != NM_Standalone);
-
-	// Only client proxies or remote clients on a listen server should run this code.
-	const bool bIsSimulatedProxy = (CharacterOwner->Role == ROLE_SimulatedProxy);
-	const bool bIsRemoteAutoProxy = (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy);
-	if (!ensure(bIsSimulatedProxy || bIsRemoteAutoProxy))
-	{
-		return;
-	}
-
-	SmoothClientPosition_Interpolate(DeltaSeconds);
-
-	//SmoothClientPosition_UpdateVisuals(); No mesh, don't bother to run this
-	SmoothClientPosition_UpdateVRVisuals();
-}
-
 void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocation, const FQuat& OldRotation, const FVector& NewLocation, const FQuat& NewRotation)
 {
 	//SCOPE_CYCLE_COUNTER(STAT_CharacterMovementSmoothCorrection);
@@ -1194,7 +1195,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 	}
 	else if (NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
 	{
-		UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation);
+		UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
 		bNetworkSmoothingComplete = true;
 	}
 	else if (FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character())
@@ -1240,7 +1241,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			// Move the capsule, but not the mesh.
 			// Note: we don't change rotation, we lerp towards it in SmoothClientPosition.
 			const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
-			UpdatedComponent->SetWorldLocation(NewLocation);
+			UpdatedComponent->SetWorldLocation(NewLocation, false, nullptr, GetTeleportType());
 		}
 		else
 		{
@@ -1250,7 +1251,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			ClientData->MeshRotationTarget = FQuat::Identity;
 
 			const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
-			UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation);
+			UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 		}
 
 		//////////////////////////////////////////////////////////////////////////
@@ -1287,13 +1288,37 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		ClientData->LastCorrectionTime = MyWorld->GetTimeSeconds();
 
 		//UE_LOG(LogCharacterNetSmoothing, VeryVerbose, TEXT("SmoothCorrection: WorldTime: %.6f, ServerTimeStamp: %.6f, ClientTimeStamp: %.6f, Delta: %.6f for %s"),
-			//MyWorld->GetTimeSeconds(), ClientData->SmoothingServerTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->LastCorrectionDelta, *GetNameSafe(CharacterOwner));
+		//MyWorld->GetTimeSeconds(), ClientData->SmoothingServerTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->LastCorrectionDelta, *GetNameSafe(CharacterOwner));
 		/*
 		Visualize network smoothing was here, removed it
 		*/
 	}
 }
 
+void UVRBaseCharacterMovementComponent::SmoothClientPosition(float DeltaSeconds)
+{
+	if (!HasValidData() || NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
+	{
+		return;
+	}
+
+	// We shouldn't be running this on a server that is not a listen server.
+	checkSlow(GetNetMode() != NM_DedicatedServer);
+	checkSlow(GetNetMode() != NM_Standalone);
+
+	// Only client proxies or remote clients on a listen server should run this code.
+	const bool bIsSimulatedProxy = (CharacterOwner->Role == ROLE_SimulatedProxy);
+	const bool bIsRemoteAutoProxy = (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy);
+	if (!ensure(bIsSimulatedProxy || bIsRemoteAutoProxy))
+	{
+		return;
+	}
+
+	SmoothClientPosition_Interpolate(DeltaSeconds);
+
+	//SmoothClientPosition_UpdateVisuals(); No mesh, don't bother to run this
+	SmoothClientPosition_UpdateVRVisuals();
+}
 
 void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 {
@@ -1319,7 +1344,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			const FVector NewRelTranslation = UpdatedComponent->GetComponentToWorld().InverseTransformVectorNoScale(ClientData->MeshTranslationOffset) + CharacterOwner->GetBaseTranslationOffset();
 			const FQuat NewRelRotation = ClientData->MeshRotationOffset * CharacterOwner->GetBaseRotationOffset();
 			//Basechar->NetSmoother->SetRelativeLocation(NewRelTranslation);
-			
+
 			Basechar->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)

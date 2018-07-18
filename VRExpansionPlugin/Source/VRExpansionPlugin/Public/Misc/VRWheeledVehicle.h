@@ -41,7 +41,7 @@ public:
 	}*/
 
 
-	UFUNCTION()
+	//UFUNCTION()
 		virtual void OnRep_Controller() override
 	{
 		if ((Controller != NULL) && (Controller->GetPawn() == NULL))

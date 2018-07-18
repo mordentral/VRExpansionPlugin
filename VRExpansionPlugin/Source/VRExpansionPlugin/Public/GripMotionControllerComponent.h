@@ -32,7 +32,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnGripSignature, co
 /** Delegate for notification when the controller drops a gripped object. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnDropSignature, const FBPActorGripInformation &, GripInformation);
 
-/** Delegate for notification when the controller grips a new object. */
+/** Delegate for notification when an interactive grip goes out of range and isn't set to auto handle it. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRGripControllerOnGripOutOfRange, const FBPActorGripInformation &, GripInformation, float, Distance);
+
+/** Delegate for notification when the controller profile transform changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRGripControllerOnProfileTransformChanged, const FTransform &, NewRelTransForProcComps, const FTransform &, NewProfileTransform);
 
 /**
@@ -45,10 +48,13 @@ public:
 
 	virtual ~FExpandedLateUpdateManager() {}
 	/** Setup state for applying the render thread late update */
-	void Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component);
+	void Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component, bool bSkipLateUpdate);
 
 	/** Apply the late update delta to the cached components */
 	void Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform);
+	
+	/** Returns true if the LateUpdateSetup data is stale. */
+	bool GetSkipLateUpdate_RenderThread() const;
 
 	/** Increments the double buffered read index, etc. - in prep for the next render frame (read: MUST be called for each frame Setup() was called on). */
 	void PostRender_RenderThread();
@@ -79,6 +85,8 @@ public:
 	FTransform LateUpdateParentToWorld[2];
 	/** Primitives that need late update before rendering */
 	TArray<LateUpdatePrimitiveInfo> LateUpdatePrimitives[2];
+	/** Late Update Info Stale, if this is found true do not late update */
+	bool SkipLateUpdate[2];
 
 	int32 LateUpdateGameWriteIndex;
 	int32 LateUpdateRenderReadIndex;
@@ -115,9 +123,17 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
 		FVRGripControllerOnProfileTransformChanged OnControllerProfileTransformChanged;
 
+	// Called when the controller profile changed and we have a new transform (only if bOffsetByControllerProfile is true)
+	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
+		FVRGripControllerOnGripOutOfRange OnGripOutOfRange;
+
 private:
 
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UGripMotionControllerComponent(const FObjectInitializer& ObjectInitializer);
+
 	~UGripMotionControllerComponent();
 
 	// Custom version of the component sweep function to remove that aggravating warning epic is throwing about skeletal mesh components.
@@ -130,6 +146,7 @@ private:
 
 protected:
 	//~ Begin UActorComponent Interface.
+	virtual void CreateRenderState_Concurrent() override;
 	virtual void SendRenderTransform_Concurrent() override;
 	//~ End UActorComponent Interface.
 
@@ -461,7 +478,7 @@ public:
 	inline bool IsTornOff() const
 	{
 		const AActor* MyOwner = GetOwner();
-		return MyOwner ? MyOwner->bTearOff : false;
+		return MyOwner ? MyOwner->GetTearOff() : false;
 	}
 
 
@@ -743,8 +760,9 @@ public:
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
 	void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface/*, bool & bRescalePhysicsGrips*/);
 
+	// Removed in 4.20
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
-	FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
+	//FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
 
 	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")

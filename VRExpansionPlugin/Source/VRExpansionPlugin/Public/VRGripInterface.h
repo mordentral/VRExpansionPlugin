@@ -120,8 +120,8 @@ public:
 		void OnInput(FKey Key, EInputEvent KeyEvent);
 		
 	// Check if the object is an interactable
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		bool IsInteractible();
+	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		//bool IsInteractible();
 
 	// Returns if the object is held and if so, which pawn is holding it
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -136,6 +136,6 @@ public:
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
 
 	// Get interactable settings
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		FBPInteractionSettings GetInteractionSettings();
+//	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+//		FBPInteractionSettings GetInteractionSettings();
 };

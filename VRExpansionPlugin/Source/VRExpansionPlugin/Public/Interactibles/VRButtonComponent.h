@@ -29,7 +29,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRButtonStateChangedSignature, bool
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UVRButtonComponent(const FObjectInitializer& ObjectInitializer);
+
 
 	~UVRButtonComponent();
 

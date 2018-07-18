@@ -7,7 +7,7 @@
 UVRMountComponent::UVRMountComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	this->bGenerateOverlapEvents = true;
+	this->SetGenerateOverlapEvents(true);
 	this->PrimaryComponentTick.bStartWithTickEnabled = false;
 	PrimaryComponentTick.bCanEverTick = true;
 
@@ -498,10 +498,10 @@ void UVRMountComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocat
 	bHadSlotInRange = false;
 }
 
-bool UVRMountComponent::IsInteractible_Implementation()
+/*bool UVRMountComponent::IsInteractible_Implementation()
 {
 	return false;
-}
+}*/
 
 void UVRMountComponent::IsHeld_Implementation(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld)
 {
@@ -519,9 +519,9 @@ void UVRMountComponent::SetHeld_Implementation(UGripMotionControllerComponent * 
 		HoldingController = nullptr;
 }
 
-FBPInteractionSettings UVRMountComponent::GetInteractionSettings_Implementation()
+/*FBPInteractionSettings UVRMountComponent::GetInteractionSettings_Implementation()
 {
 	return FBPInteractionSettings();
-}
+}*/
 
 

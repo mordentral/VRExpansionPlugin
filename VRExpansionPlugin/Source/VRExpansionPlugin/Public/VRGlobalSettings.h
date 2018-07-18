@@ -102,9 +102,11 @@ public:
 UCLASS(config = Engine, defaultconfig)
 class VREXPANSIONPLUGIN_API UVRGlobalSettings : public UObject
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
+	UVRGlobalSettings(const FObjectInitializer& ObjectInitializer);
+
 
 	DECLARE_MULTICAST_DELEGATE(FVRControllerProfileChangedEvent);
 	/** Delegate for notification when the controller profile changes. */

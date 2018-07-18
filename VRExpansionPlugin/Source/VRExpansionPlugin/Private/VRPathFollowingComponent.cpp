@@ -5,7 +5,7 @@
 
 //#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 13
 #include "Navigation/MetaNavMeshPath.h"
-#include "AI/Navigation/NavLinkCustomInterface.h"
+#include "NavLinkCustomInterface.h"
 //#endif
 
 // Force to use new movement comp

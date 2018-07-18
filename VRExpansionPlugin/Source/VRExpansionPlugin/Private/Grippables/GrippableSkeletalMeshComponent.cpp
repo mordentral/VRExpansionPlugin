@@ -22,7 +22,7 @@ UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectIn
 	VRGripInterfaceSettings.ConstraintBreakDistance = 100.0f;
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
-	VRGripInterfaceSettings.bIsInteractible = false;
+	//VRGripInterfaceSettings.bIsInteractible = false;
 
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
@@ -135,10 +135,10 @@ void UGrippableSkeletalMeshComponent::ClosestGripSlotInRange_Implementation(FVec
 	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
-bool UGrippableSkeletalMeshComponent::IsInteractible_Implementation()
+/*bool UGrippableSkeletalMeshComponent::IsInteractible_Implementation()
 {
 	return VRGripInterfaceSettings.bIsInteractible;
-}
+}*/
 
 void UGrippableSkeletalMeshComponent::IsHeld_Implementation(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld)
 {
@@ -156,7 +156,7 @@ void UGrippableSkeletalMeshComponent::SetHeld_Implementation(UGripMotionControll
 	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }
 
-FBPInteractionSettings UGrippableSkeletalMeshComponent::GetInteractionSettings_Implementation()
+/*FBPInteractionSettings UGrippableSkeletalMeshComponent::GetInteractionSettings_Implementation()
 {
 	return VRGripInterfaceSettings.InteractionSettings;
-}
+}*/

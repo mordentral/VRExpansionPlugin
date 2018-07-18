@@ -28,7 +28,7 @@ public:
 	}
 
 	// Regenerates the base offsetcomponenttoworld that VR uses
-	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
+	//UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
 	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw) override
 	{
 		GenerateOffsetToWorld();
@@ -46,7 +46,7 @@ public:
 	//A helper function that offsets a given vector by the roots collision location
 	//pass in a teleport location and it provides the correct spot for it to be at your feet
 
-	UFUNCTION(BlueprintPure, Category = "VRGrip")
+	//UFUNCTION(BlueprintPure, Category = "VRGrip")
 	virtual FVector GetTeleportLocation(FVector OriginalLocation) override;		
 
 	/** Replicated function sent by client to server - contains client movement and view info. */

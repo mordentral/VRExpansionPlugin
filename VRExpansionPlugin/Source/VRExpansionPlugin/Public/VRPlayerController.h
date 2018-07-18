@@ -16,7 +16,9 @@ class VREXPANSIONPLUGIN_API AVRPlayerController : public APlayerController
 public:
 	AVRPlayerController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	void InitNavigationControl(UPathFollowingComponent*& PathFollowingComp) override;
+	// New path finding return, not actually sending anything currently unless the character created one for us
+	// or the user added one to us. The default implementation is fine for us.
+	//virtual IPathFollowingAgentInterface* GetPathFollowingAgent() const override;
 
 	// Disable the ServerUpdateCamera function defaulted on in PlayerCameraManager
 	// We are manually replicating the camera position and rotation ourselves anyway

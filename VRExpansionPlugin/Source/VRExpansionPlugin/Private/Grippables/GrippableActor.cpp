@@ -21,7 +21,7 @@ AGrippableActor::AGrippableActor(const FObjectInitializer& ObjectInitializer)
 	VRGripInterfaceSettings.ConstraintBreakDistance = 100.0f;
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
-	VRGripInterfaceSettings.bIsInteractible = false;
+	//VRGripInterfaceSettings.bIsInteractible = false;
 
 	VRGripInterfaceSettings.bIsHeld = false;
 	VRGripInterfaceSettings.HoldingController = nullptr;
@@ -138,10 +138,10 @@ void AGrippableActor::ClosestGripSlotInRange_Implementation(FVector WorldLocatio
 	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
-bool AGrippableActor::IsInteractible_Implementation()
+/*bool AGrippableActor::IsInteractible_Implementation()
 {
 	return VRGripInterfaceSettings.bIsInteractible;
-}
+}*/
 
 void AGrippableActor::IsHeld_Implementation(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld)
 {
@@ -159,7 +159,7 @@ void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * Ho
 	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }
 
-FBPInteractionSettings AGrippableActor::GetInteractionSettings_Implementation()
+/*FBPInteractionSettings AGrippableActor::GetInteractionSettings_Implementation()
 {
 	return VRGripInterfaceSettings.InteractionSettings;
-}
+}*/

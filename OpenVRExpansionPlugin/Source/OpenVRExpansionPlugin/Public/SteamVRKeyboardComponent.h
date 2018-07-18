@@ -28,7 +28,11 @@ class OPENVREXPANSIONPLUGIN_API USteamVRKeyboardComponent : public USceneCompone
 
 public:
 
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	USteamVRKeyboardComponent(const FObjectInitializer& ObjectInitializer);
+
 	~USteamVRKeyboardComponent();
 
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;

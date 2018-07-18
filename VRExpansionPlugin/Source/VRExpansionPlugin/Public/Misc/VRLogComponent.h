@@ -6,8 +6,8 @@
 #include "Engine/Canvas.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/Console.h"
-#include "TextRange.h"
-#include "OutputDeviceHelper.h"
+#include "Framework/Text/TextRange.h"
+#include "Core/Public/Misc/OutputDeviceHelper.h"
 #include "VRLogComponent.generated.h"
 
 /**
@@ -196,7 +196,11 @@ private:
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRLogComponent : public UActorComponent
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UVRLogComponent(const FObjectInitializer& ObjectInitializer);
+
 
 	~UVRLogComponent();
 

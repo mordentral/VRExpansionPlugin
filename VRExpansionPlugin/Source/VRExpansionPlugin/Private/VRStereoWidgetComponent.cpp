@@ -630,13 +630,13 @@ public:
 						// Make a material for drawing solid collision stuff
 						auto SolidMaterialInstance = new FColoredMaterialRenderProxy(
 							GEngine->ShadedLevelColorationUnlitMaterial->GetRenderProxy(IsSelected(), IsHovered()),
-							WireframeColor
+							GetWireframeColor()
 						);
 
 						Collector.RegisterOneFrameMaterialProxy(SolidMaterialInstance);
 
 						FTransform GeomTransform(GetLocalToWorld());
-						InBodySetup->AggGeom.GetAggGeom(GeomTransform, WireframeColor.ToFColor(true), SolidMaterialInstance, false, true, UseEditorDepthTest(), ViewIndex, Collector);
+						InBodySetup->AggGeom.GetAggGeom(GeomTransform, GetWireframeColor().ToFColor(true), SolidMaterialInstance, false, true, UseEditorDepthTest(), ViewIndex, Collector);
 					}
 					// wireframe
 					else
@@ -717,7 +717,7 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 		return nullptr;
 	}
 
-	if (WidgetRenderer.IsValid() && CurrentSlateWidget.IsValid())
+	if (WidgetRenderer != nullptr && CurrentSlateWidget.IsValid())
 	{
 		// Create a new MID for the current base material
 		{

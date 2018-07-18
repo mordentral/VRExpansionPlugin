@@ -111,10 +111,9 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 
 	// #TODO: 4.18 - use new late update code if required
 
-	// Don't do any of the below if we aren't the host
+	// Don't do any of the below if we aren't the authority
 	if (bHasAuthority)
 	{
-
 		// For non view target positional updates (third party and the like)
 		if (bSetPositionDuringTick && bLockToHmd && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 		{
@@ -199,45 +198,54 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 
 void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView)
 {
+	bool bIsLocallyControlled = IsLocallyControlled();
+
 	if (bAutoSetLockToHmd)
 	{
-		if (IsLocallyControlled())
+		if (bIsLocallyControlled)
 			bLockToHmd = true;
 		else
 			bLockToHmd = false;
 	}
 
-	if (bLockToHmd && GEngine && GEngine->XRSystem.IsValid() && GetWorld() && GetWorld()->WorldType != EWorldType::Editor)
+	if (bIsLocallyControlled && GEngine && GEngine->XRSystem.IsValid() && GetWorld() && GetWorld()->WorldType != EWorldType::Editor)
 	{
 		IXRTrackingSystem* XRSystem = GEngine->XRSystem.Get();
-
 		auto XRCamera = XRSystem->GetXRCamera();
-		if (XRSystem->IsHeadTrackingAllowed() && XRCamera.IsValid())
+
+		if (XRCamera.IsValid())
 		{
-			const FTransform ParentWorld = CalcNewComponentToWorld(FTransform());
-			XRCamera->SetupLateUpdate(ParentWorld, this);
-			
-			FQuat Orientation;
-			FVector Position;
-			if (XRCamera->UpdatePlayerCamera(Orientation, Position))
+			if (XRSystem->IsHeadTrackingAllowed())
 			{
-				if (bOffsetByHMD)
+				const FTransform ParentWorld = CalcNewComponentToWorld(FTransform());
+				XRCamera->SetupLateUpdate(ParentWorld, this, bLockToHmd == 0);
+				
+				if (bLockToHmd)
 				{
-					Position.X = 0;
-					Position.Y = 0;
+					FQuat Orientation;
+					FVector Position;
+					if (XRCamera->UpdatePlayerCamera(Orientation, Position))
+					{
+						if (bOffsetByHMD)
+						{
+							Position.X = 0;
+							Position.Y = 0;
+						}
+
+						SetRelativeTransform(FTransform(Orientation, Position));
+					}
+					else
+					{
+						SetRelativeScale3D(FVector(1.0f));
+						//ResetRelativeTransform(); stop doing this, it is problematic
+						// Let the camera freeze in the last position instead
+						// Setting scale by itself makes sure we don't get camera scaling but keeps the last location and rotation alive
+					}
 				}
 
-				SetRelativeTransform(FTransform(Orientation, Position));
+				// #TODO: Check back on this, was moved here in 4.20 but shouldn't it be inside of bLockToHMD?
+				XRCamera->OverrideFOV(this->FieldOfView);
 			}
-			else
-			{
-				SetRelativeScale3D(FVector(1.0f));
-				//ResetRelativeTransform(); stop doing this, it is problematic
-				// Let the camera freeze in the last position instead
-				// Setting scale by itself makes sure we don't get camera scaling but keeps the last location and rotation alive
-			}
-
-			XRCamera->OverrideFOV(this->FieldOfView);
 		}
 	}
 

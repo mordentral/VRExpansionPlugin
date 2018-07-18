@@ -364,7 +364,7 @@ public:
 			ClientYaw = (uint16)Yaw32;
 		}
 
-		bool bHasMovementBase = ClientMovementBase != nullptr;
+		bool bHasMovementBase = MovementBaseUtility::IsDynamicBase(ClientMovementBase);
 		Ar.SerializeBits(&bHasMovementBase, 1);
 
 		if (bHasMovementBase)
@@ -438,21 +438,6 @@ class VREXPANSIONPLUGIN_API FSavedMove_VRBaseCharacter : public FSavedMove_Chara
 {
 
 public:
-
-	// Bit masks used by GetCompressedFlags() to encode movement information.
-	/*enum CustomVRCompressedFlags
-	{
-		//FLAG_JumpPressed = 0x01,	// Jump pressed
-		//FLAG_WantsToCrouch = 0x02,	// Wants to crouch
-		//FLAG_Reserved_1 = 0x04,	// Reserved for future use
-		//FLAG_Reserved_2 = 0x08,	// Reserved for future use
-		// Remaining bit masks are available for custom flags.
-		//FLAG_Custom_0 = 0x10,
-		//FLAG_Custom_1 = 0x20,
-		//FLAG_MoveAction = 0x40,//FLAG_Custom_2 = 0x40,
-		//FLAG_SnapTurnRight = 0x80,
-		//FLAG_Custom_3 = 0x80,
-	};*/
 
 	EVRConjoinedMovementModes VRReplicatedMovementMode;
 
@@ -548,6 +533,7 @@ public:
 	}
 
 	virtual void PrepMoveFor(ACharacter* Character) override;
+	virtual void CombineWith(const FSavedMove_Character* OldMove, ACharacter* InCharacter, APlayerController* PC, const FVector& OldStartLocation) override;
 
 	/** Set the properties describing the final position, etc. of the moved pawn. */
 	virtual void PostUpdate(ACharacter* C, EPostUpdateMode PostUpdateMode) override;

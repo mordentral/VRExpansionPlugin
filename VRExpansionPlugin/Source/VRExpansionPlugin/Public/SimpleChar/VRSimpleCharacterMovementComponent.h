@@ -8,7 +8,7 @@
 #include "AITypes.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "AI/Navigation/NavigationTypes.h"
-#include "AI/Navigation/NavigationSystem.h"
+#include "NavigationSystem.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/EngineBaseTypes.h"
 #include "Engine/EngineTypes.h"
@@ -141,16 +141,6 @@ public:
 		//VRCapsuleRotation = FRotator::ZeroRotator;
 		//RequestedVelocity = FVector::ZeroVector;
 	}
-
-	/*bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* Character, float MaxDelta) const override
-	{
-		FSavedMove_VRSimpleCharacter * nMove = (FSavedMove_VRSimpleCharacter *)NewMove.Get();
-
-		if (!nMove || (!LFDiff.IsNearlyZero() && !nMove->LFDiff.IsNearlyZero()))
-			return false;
-
-		return FSavedMove_VRBaseCharacter::CanCombineWith(NewMove, Character, MaxDelta);
-	}*/
 
 };
 

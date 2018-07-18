@@ -19,8 +19,8 @@ public class OpenVRExpansionPlugin : ModuleRules
 		
         PublicIncludePaths.AddRange(
 			new string[] {
-				"OpenVRExpansionPlugin/Public",
-                "HeadMountedDisplay/Public",
+				//"OpenVRExpansionPlugin/Public",
+                //"HeadMountedDisplay/Public",
                 "Runtime/Engine/Private/PhysicsEngine"
 				
 				// ... add public include paths required here ...

@@ -34,9 +34,9 @@ public class VRExpansionPlugin : ModuleRules
 
         PublicIncludePaths.AddRange(
 			new string[] {
-				"VRExpansionPlugin/Public",
-                "VRExpansionPlugin/Public/SimpleChar",
-                "HeadMountedDisplay/Public",
+				//"VRExpansionPlugin/Public",
+                //"VRExpansionPlugin/Public/SimpleChar",
+                //"HeadMountedDisplay/Public",
                 "Runtime/Engine/Private/PhysicsEngine"
 				
 				// ... add public include paths required here ...
@@ -45,8 +45,8 @@ public class VRExpansionPlugin : ModuleRules
 
         PrivateIncludePaths.AddRange(
 			new string[] {
-				"VRExpansionPlugin/Private",
-                "VRExpansionPlugin/Private/SimpleChar",
+				//"VRExpansionPlugin/Private",
+                //"VRExpansionPlugin/Private/SimpleChar",
 				// ... add other private include paths required here ...
 			}
 			);
@@ -67,6 +67,8 @@ public class VRExpansionPlugin : ModuleRules
                     //"NetworkReplayStreaming",
                     //"AIModule",
                     "UMG",
+                    "NavigationSystem",
+                    "AIModule",
 
                     //"Renderer",
                     //"UtilityShaders"

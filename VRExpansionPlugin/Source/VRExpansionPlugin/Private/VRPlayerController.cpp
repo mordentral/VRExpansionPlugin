@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRPlayerController.h"
+#include "AI/NavigationSystemBase.h"
 #include "VRBaseCharacterMovementComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
@@ -21,7 +22,8 @@ void AVRPlayerController::SpawnPlayerCameraManager()
 		PlayerCameraManager->bUseClientSideCameraUpdates = false;
 }
 
-void AVRPlayerController::InitNavigationControl(UPathFollowingComponent*& PathFollowingComp)
+// #TODO 4.20: This was removed
+/*void AVRPlayerController::InitNavigationControl(UPathFollowingComponent*& PathFollowingComp)
 {
 	PathFollowingComp = FindComponentByClass<UPathFollowingComponent>();
 	if (PathFollowingComp == NULL)
@@ -30,7 +32,13 @@ void AVRPlayerController::InitNavigationControl(UPathFollowingComponent*& PathFo
 		PathFollowingComp->RegisterComponentWithWorld(GetWorld());
 		PathFollowingComp->Initialize();
 	}
-}
+}*/
+
+/*IPathFollowingAgentInterface* AVRPlayerController::GetPathFollowingAgent() const
+{
+	// Moved spawning the path following component into the path finding logic instead
+	return FNavigationSystem::FindPathFollowingAgentForActor(*this);
+}*/
 
 void AVRPlayerController::PlayerTick(float DeltaTime)
 {

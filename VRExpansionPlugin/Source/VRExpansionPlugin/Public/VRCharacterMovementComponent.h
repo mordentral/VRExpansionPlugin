@@ -8,7 +8,7 @@
 #include "VRRootComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "AI/Navigation/NavigationTypes.h"
-#include "AI/Navigation/NavigationSystem.h"
+//#include "AI/Navigation/NavigationSystem.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/EngineBaseTypes.h"
 #include "Engine/EngineTypes.h"

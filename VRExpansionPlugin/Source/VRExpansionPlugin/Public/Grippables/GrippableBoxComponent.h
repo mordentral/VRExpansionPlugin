@@ -17,7 +17,11 @@
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, public IVRGripInterface, public IGameplayTagAssetInterface
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UGrippableBoxComponent(const FObjectInitializer& ObjectInitializer);
+
 
 	~UGrippableBoxComponent();
 
@@ -97,8 +101,8 @@ class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, publi
 		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
 	// Check if the object is an interactable
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		bool IsInteractible();
+	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	//	bool IsInteractible();
 
 	// Returns if the object is held and if so, which pawn is holding it
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -113,8 +117,8 @@ class VREXPANSIONPLUGIN_API UGrippableBoxComponent : public UBoxComponent, publi
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
 
 	// Get interactable settings
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		FBPInteractionSettings GetInteractionSettings();
+	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		//FBPInteractionSettings GetInteractionSettings();
 
 
 	// Events //

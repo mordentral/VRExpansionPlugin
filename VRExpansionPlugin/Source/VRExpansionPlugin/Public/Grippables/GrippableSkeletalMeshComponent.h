@@ -17,7 +17,11 @@
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UGrippableSkeletalMeshComponent : public USkeletalMeshComponent, public IVRGripInterface, public IGameplayTagAssetInterface
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UGrippableSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer);
+
 
 	~UGrippableSkeletalMeshComponent();
 
@@ -96,8 +100,8 @@ class VREXPANSIONPLUGIN_API UGrippableSkeletalMeshComponent : public USkeletalMe
 
 
 	// Check if the object is an interactable
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		bool IsInteractible();
+	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		//bool IsInteractible();
 
 	// Returns if the object is held and if so, which pawn is holding it
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
@@ -112,8 +116,8 @@ class VREXPANSIONPLUGIN_API UGrippableSkeletalMeshComponent : public USkeletalMe
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
 
 	// Get interactable settings
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		FBPInteractionSettings GetInteractionSettings();
+	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		//FBPInteractionSettings GetInteractionSettings();
 
 	// Events //
 

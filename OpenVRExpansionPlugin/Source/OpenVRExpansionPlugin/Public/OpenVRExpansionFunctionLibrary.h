@@ -210,9 +210,17 @@ Prop_DisplayMCImageData_Binary				= 2041,
 
 Prop_IconPathName_String = 5000, // DEPRECATED. Value not referenced. Now expected to be part of icon path properties.
 
+
+// Not implemented because very little use, and names are huuggge.....
+Prop_NamedIconPathControllerLeftDeviceOff_String_2051
+Prop_NamedIconPAthControllerRightDeviceOff_String_2052
+Prop_NamedIconPathTrackingReferenceDeviceOff_String_2053
+
+
 // Properties that are used by helpers, but are opaque to applications
 Prop_DisplayHiddenArea_Binary_Start				= 5100,
 Prop_DisplayHiddenArea_Binary_End				= 5150,
+Prop_ParentContainer							= 5151
 
 // Vendors are free to expose private debug data in this reserved region
 Prop_VendorSpecific_Reserved_Start = 10000,
@@ -240,6 +248,8 @@ enum class EVRDeviceProperty_String : uint8
 	Prop_Firmware_ProgrammingTarget_String_1028		UMETA(DisplayName = "Prop_Firmware_ProgrammingTarget_String"),
 	Prop_DriverVersion_String_1031					UMETA(DisplayName = "Prop_DriverVersion_String"),
 	Prop_ResourceRoot_String_1035					UMETA(DisplayName = "Prop_ResourceRoot_String"),
+	Prop_RegisteredDeviceType_String_1036			UMETA(DisplayName = "Prop_RegisteredDeviceType_String"),
+	Prop_InputProfileName_String_1037				UMETA(DisplayName = "Prop_InputProfileName_String"),
 
 	// 1 prefix = 2000 series
 	HMDProp_DisplayMCImageLeft_String_2012			UMETA(DisplayName = "HMDProp_DisplayMCImageLeft_String"),
@@ -295,6 +305,7 @@ enum class EVRDeviceProperty_Bool : uint8
 	HMDProp_DisplayAllowNightMode_Bool_2037				UMETA(DisplayName = "HMDProp_DisplayAllowNightMode_Bool"),
 	HMDProp_DriverDirectModeSendsVsyncEvents_Bool_2043	UMETA(DisplayName = "HMDProp_DriverDirectModeSendsVsyncEvents_Bool"),
 	HMDProp_DisplayDebugMode_Bool_2044					UMETA(DisplayName = "HMDProp_DisplayDebugMode_Bool"),
+	HMDProp_DoNotApplyPrediction_Bool_2054				UMETA(DisplayName = "HMDProp_DoNotApplyPrediction_Bool"),
 
 
 	// 5 prefix = 6000 series
@@ -347,14 +358,16 @@ enum class EVRDeviceProperty_Int32 : uint8
 	Prop_DeviceClass_Int32_1029						UMETA(DisplayName = "Prop_DeviceClass_Int32"),
 
 	// 1 Prefix = 2000 series
-	HMDProp_DisplayMCType_Int32_2008				UMETA(DisplayName = "HMDProp_DisplayMCType_Int32"),
-	HMDProp_EdidVendorID_Int32_2011					UMETA(DisplayName = "HMDProp_EdidVendorID_Int32"),
-	HMDProp_EdidProductID_Int32_2015				UMETA(DisplayName = "HMDProp_EdidProductID_Int32"),
-	HMDProp_DisplayGCType_Int32_2017				UMETA(DisplayName = "HMDProp_DisplayGCType_Int32"),
-	HMDProp_CameraCompatibilityMode_Int32_2033		UMETA(DisplayName = "HMDProp_CameraCompatibilityMode_Int32"),
-	HMDProp_DisplayMCImageWidth_Int32_2038			UMETA(DisplayName = "HMDProp_DisplayMCImageWidth_Int32"),
-	HMDProp_DisplayMCImageHeight_Int32_2039			UMETA(DisplayName = "HMDProp_DisplayMCImageHeight_Int32"),
-	HMDProp_DisplayMCImageNumChannels_Int32_2040	UMETA(DisplayName = "HMDProp_DisplayMCImageNumChannels_Int32"),
+	HMDProp_DisplayMCType_Int32_2008					UMETA(DisplayName = "HMDProp_DisplayMCType_Int32"),
+	HMDProp_EdidVendorID_Int32_2011						UMETA(DisplayName = "HMDProp_EdidVendorID_Int32"),
+	HMDProp_EdidProductID_Int32_2015					UMETA(DisplayName = "HMDProp_EdidProductID_Int32"),
+	HMDProp_DisplayGCType_Int32_2017					UMETA(DisplayName = "HMDProp_DisplayGCType_Int32"),
+	HMDProp_CameraCompatibilityMode_Int32_2033			UMETA(DisplayName = "HMDProp_CameraCompatibilityMode_Int32"),
+	HMDProp_DisplayMCImageWidth_Int32_2038				UMETA(DisplayName = "HMDProp_DisplayMCImageWidth_Int32"),
+	HMDProp_DisplayMCImageHeight_Int32_2039				UMETA(DisplayName = "HMDProp_DisplayMCImageHeight_Int32"),
+	HMDProp_DisplayMCImageNumChannels_Int32_2040		UMETA(DisplayName = "HMDProp_DisplayMCImageNumChannels_Int32"),
+	HMDProp_ExpectedTrackingReferenceCount_Int32_2049	UMETA(DisplayName = "HMDProp_ExpectedTrackingReferenceCount_Int32"),
+	HMDProp_ExpectedControllerCount_Int32_2050			UMETA(DisplayName = "HMDProp_ExpectedControllerCount_Int32"),
 
 	// 2 Prefix = 3000 series
 	ControllerProp_Axis0Type_Int32_3002				UMETA(DisplayName = "ControllerProp_Axis0Type_Int32"),
@@ -418,7 +431,11 @@ UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
 class OPENVREXPANSIONPLUGIN_API UOpenVRExpansionFunctionLibrary : public UBlueprintFunctionLibrary
 {
 	//GENERATED_BODY()
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UOpenVRExpansionFunctionLibrary(const FObjectInitializer& ObjectInitializer);
+
 	~UOpenVRExpansionFunctionLibrary();
 public:
 

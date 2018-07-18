@@ -26,9 +26,11 @@ DECLARE_CYCLE_STAT(TEXT("VR Root Set Capsule Size"), STAT_VRRootSetCapsuleSize, 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
 class VREXPANSIONPLUGIN_API UVRRootComponent : public UCapsuleComponent, public IVRTrackedParentInterface
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
+	UVRRootComponent(const FObjectInitializer& ObjectInitializer);
+
 	friend class FDrawCylinderSceneProxy;
 
 	bool bCalledUpdateTransform;
@@ -68,7 +70,7 @@ protected:
 	virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
 
 	void SendPhysicsTransform(ETeleportType Teleport);
-	virtual void UpdateOverlaps(TArray<FOverlapInfo> const* NewPendingOverlaps = nullptr, bool bDoNotifies = true, const TArray<FOverlapInfo>* OverlapsAtEndLocation = nullptr) override;
+	virtual bool UpdateOverlapsImpl(TArray<FOverlapInfo> const* NewPendingOverlaps = nullptr, bool bDoNotifies = true, const TArray<FOverlapInfo>* OverlapsAtEndLocation = nullptr) override;
 
 	const TArray<FOverlapInfo>* ConvertRotationOverlapsToCurrentOverlaps(TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& CurrentOverlaps);
 	const TArray<FOverlapInfo>* ConvertSweptOverlapsToCurrentOverlaps(

@@ -7,7 +7,7 @@
 UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	this->bGenerateOverlapEvents = true;
+	this->SetGenerateOverlapEvents(true);
 	this->PrimaryComponentTick.bStartWithTickEnabled = false;
 	PrimaryComponentTick.bCanEverTick = true;
 
@@ -218,10 +218,10 @@ void UVRDialComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocati
 	bHadSlotInRange = false;
 }
 
-bool UVRDialComponent::IsInteractible_Implementation()
+/*bool UVRDialComponent::IsInteractible_Implementation()
 {
 	return false;
-}
+}*/
 
 void UVRDialComponent::IsHeld_Implementation(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld)
 {
@@ -239,7 +239,7 @@ void UVRDialComponent::SetHeld_Implementation(UGripMotionControllerComponent * N
 		HoldingController = nullptr;
 }
 
-FBPInteractionSettings UVRDialComponent::GetInteractionSettings_Implementation()
+/*FBPInteractionSettings UVRDialComponent::GetInteractionSettings_Implementation()
 {
 	return FBPInteractionSettings();
-}
+}*/

@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRCharacter.h"
+#include "NavigationSystem.h"
 #include "VRPathFollowingComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
@@ -97,7 +98,7 @@ FVector AVRCharacter::GetNavAgentLocation() const
 
 void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, float AcceptanceRadius, bool bStopOnOverlap, bool bUsePathfinding, bool bProjectDestinationToNavigation, bool bCanStrafe, TSubclassOf<UNavigationQueryFilter> FilterClass, bool bAllowPartialPaths)
 {
-	UNavigationSystem* NavSys = Controller ? UNavigationSystem::GetCurrent(Controller->GetWorld()) : nullptr;
+	UNavigationSystemV1* NavSys = Controller ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(Controller->GetWorld()) : nullptr;
 	if (NavSys == nullptr || Controller == nullptr )
 	{
 		UE_LOG(LogVRCharacter, Warning, TEXT("UVRCharacter::ExtendedSimpleMoveToLocation called for NavSys:%s Controller:%s (if any of these is None then there's your problem"),
@@ -106,7 +107,19 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 	}
 
 	UPathFollowingComponent* PFollowComp = nullptr;
-	Controller->InitNavigationControl(PFollowComp);
+	//Controller->InitNavigationControl(PFollowComp);
+
+	if (Controller)
+	{
+		// New for 4.20, spawning the missing path following component here if there isn't already one
+		PFollowComp = Controller->FindComponentByClass<UPathFollowingComponent>();
+		if (PFollowComp == nullptr)
+		{
+			PFollowComp = NewObject<UVRPathFollowingComponent>(Controller);
+			PFollowComp->RegisterComponentWithWorld(Controller->GetWorld());
+			PFollowComp->Initialize();
+		}
+	}
 
 	if (PFollowComp == nullptr)
 	{

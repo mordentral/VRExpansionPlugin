@@ -933,6 +933,8 @@ struct TStructOpsTypeTraits< FBPSecondaryGripInfo > : public TStructOpsTypeTrait
 	};
 };
 
+// Removed interaction settings in 4.20
+/*
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPInteractionSettings
 {
@@ -970,14 +972,14 @@ public:
 	// to re-enter their offsets all over again......
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		FVector/*_NetQuantize100*/ InitialLinearTranslation;
+		FVector InitialLinearTranslation;
 
 	// To use property, set value as -Distance
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		FVector/*_NetQuantize100*/ MinLinearTranslation;
+		FVector MinLinearTranslation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		FVector/*_NetQuantize100*/ MaxLinearTranslation;
+		FVector MaxLinearTranslation;
 
 	// FRotators already by default NetSerialize as shorts
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
@@ -1006,7 +1008,7 @@ public:
 		MinAngularTranslation(FRotator::ZeroRotator),
 		MaxAngularTranslation(FRotator::ZeroRotator)
 	{}
-};
+};*/
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorGripInformation
@@ -1286,8 +1288,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface|AdvancedGripSettings")
 		FBPAdvGripSettings AdvancedGripSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		bool bIsInteractible;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		//bool bIsInteractible;
 
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		bool bIsHeld; // Set on grip notify, not net serializing
@@ -1295,8 +1297,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (editcondition = "bIsInteractible"))
-		FBPInteractionSettings InteractionSettings;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (editcondition = "bIsInteractible"))
+	//	FBPInteractionSettings InteractionSettings;
 
 	FBPInterfaceProperties():
 		bDenyGripping(false),
@@ -1312,7 +1314,7 @@ public:
 		ConstraintBreakDistance(0.0f),
 		SecondarySlotRange(20.0f),
 		PrimarySlotRange(20.0f),
-		bIsInteractible(false),
+		//bIsInteractible(false),
 		bIsHeld(false),
 		HoldingController(nullptr)
 	{

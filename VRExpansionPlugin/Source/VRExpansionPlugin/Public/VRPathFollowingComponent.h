@@ -6,7 +6,7 @@
 #include "VRRootComponent.h"
 #include "VRCharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
-#include "AI/Navigation/AbstractNavData.h"
+#include "AbstractNavData.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "VRPathFollowingComponent.generated.h"
 

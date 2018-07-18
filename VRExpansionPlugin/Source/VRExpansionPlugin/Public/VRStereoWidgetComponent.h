@@ -19,7 +19,11 @@
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRStereoWidgetComponent : public UWidgetComponent
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UVRStereoWidgetComponent(const FObjectInitializer& ObjectInitializer);
+
 	friend class FStereoLayerComponentVisualizer;
 
 	~UVRStereoWidgetComponent();

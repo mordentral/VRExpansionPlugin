@@ -31,8 +31,7 @@ public:
 	UVRRootComponent * VRRootReference;
 
 	// Regenerates the base offsetcomponenttoworld that VR uses
-	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
-		virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw) override
+	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw) override
 	{
 		if (VRRootReference)
 		{
@@ -40,7 +39,6 @@ public:
 		}
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
 	virtual void SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true) override
 	{
 		if (VRRootReference)
@@ -56,7 +54,6 @@ public:
 		}
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter")
 	virtual void SetCharacterHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true) override
 	{
 		if (VRRootReference)
@@ -76,18 +73,15 @@ public:
 	A helper function that offsets a given vector by the roots collision location
 	pass in a teleport location and it provides the correct spot for it to be at your feet
 	*/
-	UFUNCTION(BlueprintPure, Category = "VRGrip")
 	virtual FVector GetTeleportLocation(FVector OriginalLocation) override;
 	
 
-	UFUNCTION(Reliable, NetMulticast, Category = "VRGrip")
-	virtual void NotifyOfTeleport() override;
+	virtual void NotifyOfTeleport_Implementation() override;
 	
 	// Overriding to correct some nav stuff
 	FVector GetNavAgentLocation() const override;
 
 	// An extended simple move to location with additional parameters
-	UFUNCTION(BlueprintCallable, Category = "VRCharacter", Meta = (AdvancedDisplay = "bStopOnOverlap,bCanStrafe,bAllowPartialPath"))
 		virtual void ExtendedSimpleMoveToLocation(const FVector& GoalLocation, float AcceptanceRadius = -1, bool bStopOnOverlap = false,
 			bool bUsePathfinding = true, bool bProjectDestinationToNavigation = true, bool bCanStrafe = false,
 			TSubclassOf<UNavigationQueryFilter> FilterClass = NULL, bool bAllowPartialPath = true) override;

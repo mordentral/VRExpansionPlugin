@@ -354,9 +354,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FVRGestureDetectedSignature, uint8
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRGestureComponent : public USceneComponent
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
+	UVRGestureComponent(const FObjectInitializer& ObjectInitializer);
+
 
 	// Size of obeservations vectors.
 	//int dim; // Not needed, this is just dimensionality
