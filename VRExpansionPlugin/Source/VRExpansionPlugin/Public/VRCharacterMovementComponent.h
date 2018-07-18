@@ -266,7 +266,7 @@ public:
 	virtual void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const override;
 
 	// Need to use actual capsule location for step up
-	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult) override;
+	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = NULL) override;
 
 	virtual FVector GetPenetrationAdjustment(const FHitResult& Hit) const override
 	{
@@ -324,6 +324,27 @@ public:
 
 	// Overriding the physfalling because valid landing spots were computed incorrectly.
 	virtual void PhysFalling(float deltaTime, int32 Iterations) override;
+
+	virtual void PhysSwimming(float deltaTime, int32 Iterations) override;
+	/**
+	* Handle start swimming functionality
+	* @param OldLocation - Location on last tick
+	* @param OldVelocity - velocity at last tick
+	* @param timeTick - time since at OldLocation
+	* @param remainingTime - DeltaTime to complete transition to swimming
+	* @param Iterations - physics iteration count
+	*/
+	void StartSwimmingVR(FVector OldLocation, FVector OldVelocity, float timeTick, float remainingTime, int32 Iterations);
+
+	/* Swimming uses gravity - but scaled by (1.f - buoyancy) */
+	float SwimVR(FVector Delta, FHitResult& Hit);
+
+	/** Check if swimming pawn just ran into edge of the pool and should jump out. */
+	virtual bool CheckWaterJump(FVector CheckPoint, FVector& WallNormal) override;
+
+	// Shouldn't need to override this
+	/** Get as close to waterline as possible, staying on same side as currently. */
+	//FVector FindWaterLine(FVector Start, FVector End) override;
 
 	// Just calls find floor
 	/** Verify that the supplied hit result is a valid landing spot when falling. */

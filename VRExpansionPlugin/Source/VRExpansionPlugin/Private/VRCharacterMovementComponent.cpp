@@ -49,6 +49,7 @@ DECLARE_CYCLE_STAT(TEXT("Char ProcessLanded"), STAT_CharProcessLanded, STATGROUP
 
 // MAGIC NUMBERS
 const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
+const float SWIMBOBSPEED = -80.f;
 const float VERTICAL_SLOPE_NORMAL_Z = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
 
 // Statics
@@ -333,89 +334,6 @@ void UVRCharacterMovementComponent::UnCrouch(bool bClientSimulation)
 		}
 	}
 }
-
-
-//
-// CROUCH functions need an overhaul
-// NAVIGATION functions need an overhaul or to be removed entirely
-
-// Adjust for component location
-/*
-bool UCharacterMovementComponent::CheckWaterJump(FVector CheckPoint, FVector& WallNormal)
-{
-if (!HasValidData())
-{
-return false;
-}
-// check if there is a wall directly in front of the swimming pawn
-CheckPoint.Z = 0.f;
-FVector CheckNorm = CheckPoint.GetSafeNormal();
-float PawnCapsuleRadius, PawnCapsuleHalfHeight;
-CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleSize(PawnCapsuleRadius, PawnCapsuleHalfHeight);
-CheckPoint = UpdatedComponent->GetComponentLocation() + 1.2f * PawnCapsuleRadius * CheckNorm;
-FVector Extent(PawnCapsuleRadius, PawnCapsuleRadius, PawnCapsuleHalfHeight);
-FHitResult HitInfo(1.f);
-FCollisionQueryParams CapsuleParams(CharacterMovementComponentStatics::CheckWaterJumpName, false, CharacterOwner);
-FCollisionResponseParams ResponseParam;
-InitCollisionParams(CapsuleParams, ResponseParam);
-FCollisionShape CapsuleShape = GetPawnCapsuleCollisionShape(SHRINK_None);
-const ECollisionChannel CollisionChannel = UpdatedComponent->GetCollisionObjectType();
-bool bHit = GetWorld()->SweepSingleByChannel( HitInfo, UpdatedComponent->GetComponentLocation(), CheckPoint, FQuat::Identity, CollisionChannel, CapsuleShape, CapsuleParams, ResponseParam);
-
-if ( bHit && !Cast<APawn>(HitInfo.GetActor()) )
-{
-// hit a wall - check if it is low enough
-WallNormal = -1.f * HitInfo.ImpactNormal;
-FVector Start = UpdatedComponent->GetComponentLocation();
-Start.Z += MaxOutOfWaterStepHeight;
-CheckPoint = Start + 3.2f * PawnCapsuleRadius * WallNormal;
-FCollisionQueryParams LineParams(CharacterMovementComponentStatics::CheckWaterJumpName, true, CharacterOwner);
-FCollisionResponseParams LineResponseParam;
-InitCollisionParams(LineParams, LineResponseParam);
-bHit = GetWorld()->LineTraceSingleByChannel( HitInfo, Start, CheckPoint, CollisionChannel, LineParams, LineResponseParam );
-// if no high obstruction, or it's a valid floor, then pawn can jump out of water
-return !bHit || IsWalkable(HitInfo);
-}
-return false;
-}
-
-
-*/
-
-// Adjust for component location
-/*
-FVector UCharacterMovementComponent::FindWaterLine(FVector InWater, FVector OutofWater)
-{
-FVector Result = OutofWater;
-
-TArray<FHitResult> Hits;
-GetWorld()->LineTraceMultiByChannel(Hits, OutofWater, InWater, UpdatedComponent->GetCollisionObjectType(), FCollisionQueryParams(CharacterMovementComponentStatics::FindWaterLineName, true, CharacterOwner));
-
-for( int32 HitIdx = 0; HitIdx < Hits.Num(); HitIdx++ )
-{
-const FHitResult& Check = Hits[HitIdx];
-if ( !CharacterOwner->IsOwnedBy(Check.GetActor()) && !Check.Component.Get()->IsWorldGeometry() )
-{
-APhysicsVolume *W = Cast<APhysicsVolume>(Check.GetActor());
-if ( W && W->bWaterVolume )
-{
-FVector Dir = (InWater - OutofWater).GetSafeNormal();
-Result = Check.Location;
-if ( W == GetPhysicsVolume() )
-Result += 0.1f * Dir;
-else
-Result -= 0.1f * Dir;
-break;
-}
-}
-}
-
-return Result;
-}
-
-*/
-
-
 
 FNetworkPredictionData_Client* UVRCharacterMovementComponent::GetPredictionData_Client() const
 {
@@ -1049,9 +967,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		const FVector OldLocation = UpdatedComponent->GetComponentLocation();
 
 		// Used for ledge check
-		FVector OldCapsuleLocation = OldLocation;
-		if (VRRootCapsule)
-			OldCapsuleLocation = VRRootCapsule->OffsetComponentToWorld.GetLocation();
+		FVector OldCapsuleLocation = VRRootCapsule ? VRRootCapsule->OffsetComponentToWorld.GetLocation() : OldLocation;
 
 		const FFindFloorResult OldFloor = CurrentFloor;
 
@@ -1134,7 +1050,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			else if (IsSwimming()) //just entered water
 			{
 				RestorePreAdditiveVRMotionVelocity();
-				StartSwimming(OldLocation, OldVelocity, timeTick, remainingTime, Iterations);
+				StartSwimmingVR(OldCapsuleLocation, OldVelocity, timeTick, remainingTime, Iterations);
 				return;
 			}
 		}
@@ -1225,7 +1141,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			if (IsSwimming())
 			{
 				RestorePreAdditiveVRMotionVelocity();
-				StartSwimming(OldLocation, Velocity, timeTick, remainingTime, Iterations);
+				StartSwimmingVR(OldCapsuleLocation, Velocity, timeTick, remainingTime, Iterations);
 				return;
 			}
 
@@ -1567,7 +1483,6 @@ void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 			AdditionalVRInputVector = FVector::ZeroVector;
 		}
 	}
-
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
@@ -2928,6 +2843,8 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		remainingTime -= timeTick;
 
 		const FVector OldLocation = UpdatedComponent->GetComponentLocation();
+		const FVector OldCapsuleLocation = VRRootCapsule ? VRRootCapsule->OffsetComponentToWorld.GetLocation() : OldLocation;
+
 		const FQuat PawnRotation = UpdatedComponent->GetComponentQuat();
 		bJustTeleported = false;
 
@@ -2999,7 +2916,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		if (IsSwimming()) //just entered water
 		{
 			remainingTime += subTimeTickRemaining;
-			StartSwimming(OldLocation, OldVelocity, timeTick, remainingTime, Iterations);
+			StartSwimmingVR(OldCapsuleLocation, OldVelocity, timeTick, remainingTime, Iterations);
 			return;
 		}
 		else if (Hit.bBlockingHit)
@@ -3348,6 +3265,234 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 
 	RestorePreAdditiveVRMotionVelocity();
 }
+
+void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iterations)
+{
+	if (deltaTime < MIN_TICK_TIME)
+	{
+		return;
+	}
+
+	// Rewind the players position by the new capsule location
+	RewindVRRelativeMovement();
+
+	//RestorePreAdditiveRootMotionVelocity();
+
+	float NetFluidFriction = 0.f;
+	float Depth = ImmersionDepth();
+	float NetBuoyancy = Buoyancy * Depth;
+	float OriginalAccelZ = Acceleration.Z;
+	bool bLimitedUpAccel = false;
+
+	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (Velocity.Z > 0.33f * MaxSwimSpeed) && (NetBuoyancy != 0.f))
+	{
+		//damp positive Z out of water
+		Velocity.Z = FMath::Max(0.33f * MaxSwimSpeed, Velocity.Z * Depth*Depth);
+	}
+	else if (Depth < 0.65f)
+	{
+		bLimitedUpAccel = (Acceleration.Z > 0.f);
+		Acceleration.Z = FMath::Min(0.1f, Acceleration.Z);
+	}
+
+	Iterations++;
+	FVector OldLocation = UpdatedComponent->GetComponentLocation();
+	bJustTeleported = false;
+	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+	{
+		const float Friction = 0.5f * GetPhysicsVolume()->FluidFriction * Depth;
+		CalcVelocity(deltaTime, Friction, true, GetMaxBrakingDeceleration());
+		Velocity.Z += GetGravityZ() * deltaTime * (1.f - NetBuoyancy);
+	}
+
+	//ApplyRootMotionToVelocity(deltaTime);
+
+	FVector Adjusted = Velocity * deltaTime;
+	FHitResult Hit(1.f);
+	float remainingTime = deltaTime * SwimVR(Adjusted + AdditionalVRInputVector, Hit);
+
+	//may have left water - if so, script might have set new physics mode
+	if (!IsSwimming())
+	{
+		StartNewPhysics(remainingTime, Iterations);
+		return;
+	}
+
+	if (Hit.Time < 1.f && CharacterOwner)
+	{
+		HandleSwimmingWallHit(Hit, deltaTime);
+		if (bLimitedUpAccel && (Velocity.Z >= 0.f))
+		{
+			// allow upward velocity at surface if against obstacle
+			Velocity.Z += OriginalAccelZ * deltaTime;
+			Adjusted = Velocity * (1.f - Hit.Time)*deltaTime;
+			SwimVR(Adjusted, Hit);
+			if (!IsSwimming())
+			{
+				StartNewPhysics(remainingTime, Iterations);
+				return;
+			}
+		}
+
+		const FVector GravDir = FVector(0.f, 0.f, -1.f);
+		const FVector VelDir = Velocity.GetSafeNormal();
+		const float UpDown = GravDir | VelDir;
+
+		bool bSteppedUp = false;
+		if ((FMath::Abs(Hit.ImpactNormal.Z) < 0.2f) && (UpDown < 0.5f) && (UpDown > -0.2f) && CanStepUp(Hit))
+		{
+			float stepZ = UpdatedComponent->GetComponentLocation().Z;
+			const FVector RealVelocity = Velocity;
+			Velocity.Z = 1.f;	// HACK: since will be moving up, in case pawn leaves the water
+			bSteppedUp = StepUp(GravDir, (Adjusted + AdditionalVRInputVector) * (1.f - Hit.Time), Hit);
+			if (bSteppedUp)
+			{
+				//may have left water - if so, script might have set new physics mode
+				if (!IsSwimming())
+				{
+					StartNewPhysics(remainingTime, Iterations);
+					return;
+				}
+				OldLocation.Z = UpdatedComponent->GetComponentLocation().Z + (OldLocation.Z - stepZ);
+			}
+			Velocity = RealVelocity;
+		}
+
+		if (!bSteppedUp)
+		{
+			//adjust and try again
+			HandleImpact(Hit, deltaTime, Adjusted);
+			SlideAlongSurface(Adjusted, (1.f - Hit.Time), Hit.Normal, Hit, true);
+		}
+	}
+
+	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && !bJustTeleported && ((deltaTime - remainingTime) > KINDA_SMALL_NUMBER) && CharacterOwner)
+	{
+		bool bWaterJump = !GetPhysicsVolume()->bWaterVolume;
+		float velZ = Velocity.Z;
+		Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / (deltaTime - remainingTime);
+		if (bWaterJump)
+		{
+			Velocity.Z = velZ;
+		}
+	}
+
+	if (!GetPhysicsVolume()->bWaterVolume && IsSwimming())
+	{
+		SetMovementMode(MOVE_Falling); //in case script didn't change it (w/ zone change)
+	}
+
+	//may have left water - if so, script might have set new physics mode
+	if (!IsSwimming())
+	{
+		StartNewPhysics(remainingTime, Iterations);
+	}
+}
+
+
+void UVRCharacterMovementComponent::StartSwimmingVR(FVector OldLocation, FVector OldVelocity, float timeTick, float remainingTime, int32 Iterations)
+{
+	if (remainingTime < MIN_TICK_TIME || timeTick < MIN_TICK_TIME)
+	{
+		return;
+	}
+
+	FVector NewLocation = VRRootCapsule ? VRRootCapsule->OffsetComponentToWorld.GetLocation() : UpdatedComponent->GetComponentLocation();
+
+	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && !bJustTeleported)
+	{
+		Velocity = (NewLocation - OldLocation) / timeTick; //actual average velocity
+		Velocity = 2.f*Velocity - OldVelocity; //end velocity has 2* accel of avg
+		Velocity = Velocity.GetClampedToMaxSize(GetPhysicsVolume()->TerminalVelocity);
+	}
+	const FVector End = FindWaterLine(NewLocation, OldLocation);
+	float waterTime = 0.f;
+	if (End != NewLocation)
+	{
+		const float ActualDist = (NewLocation - OldLocation).Size();
+		if (ActualDist > KINDA_SMALL_NUMBER)
+		{
+			waterTime = timeTick * (End - NewLocation).Size() / ActualDist;
+			remainingTime += waterTime;
+		}
+		MoveUpdatedComponent(End - NewLocation, UpdatedComponent->GetComponentQuat(), true);
+	}
+	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (Velocity.Z > 2.f*SWIMBOBSPEED) && (Velocity.Z < 0.f)) //allow for falling out of water
+	{
+		Velocity.Z = SWIMBOBSPEED - Velocity.Size2D() * 0.7f; //smooth bobbing
+	}
+	if ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations))
+	{
+		PhysSwimming(remainingTime, Iterations);
+	}
+}
+
+float UVRCharacterMovementComponent::SwimVR(FVector Delta, FHitResult& Hit)
+{
+	FVector Start = VRRootCapsule ? VRRootCapsule->OffsetComponentToWorld.GetLocation() : UpdatedComponent->GetComponentLocation();
+	
+	float airTime = 0.f;
+	SafeMoveUpdatedComponent(Delta, UpdatedComponent->GetComponentQuat(), true, Hit);
+
+	if (!GetPhysicsVolume()->bWaterVolume) //then left water
+	{
+		FVector NewLoc = VRRootCapsule ? VRRootCapsule->OffsetComponentToWorld.GetLocation() : UpdatedComponent->GetComponentLocation();
+
+		const FVector End = FindWaterLine(Start, NewLoc);
+		const float DesiredDist = Delta.Size();
+		if (End != NewLoc && DesiredDist > KINDA_SMALL_NUMBER)
+		{
+			airTime = (End - NewLoc).Size() / DesiredDist;
+			if (((NewLoc - Start) | (End - NewLoc)) > 0.f)
+			{
+				airTime = 0.f;
+			}
+			SafeMoveUpdatedComponent(End - NewLoc, UpdatedComponent->GetComponentQuat(), true, Hit);
+		}
+	}
+	return airTime;
+}
+
+bool UVRCharacterMovementComponent::CheckWaterJump(FVector CheckPoint, FVector& WallNormal)
+{
+	if (!HasValidData())
+	{
+		return false;
+	}
+	FVector currentLoc = VRRootCapsule ? VRRootCapsule->OffsetComponentToWorld.GetLocation() : UpdatedComponent->GetComponentLocation();
+
+	// check if there is a wall directly in front of the swimming pawn
+	CheckPoint.Z = 0.f;
+	FVector CheckNorm = CheckPoint.GetSafeNormal();
+	float PawnCapsuleRadius, PawnCapsuleHalfHeight;
+	CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleSize(PawnCapsuleRadius, PawnCapsuleHalfHeight);
+	CheckPoint = currentLoc + 1.2f * PawnCapsuleRadius * CheckNorm;
+	FVector Extent(PawnCapsuleRadius, PawnCapsuleRadius, PawnCapsuleHalfHeight);
+	FHitResult HitInfo(1.f);
+	FCollisionQueryParams CapsuleParams(SCENE_QUERY_STAT(CheckWaterJump), false, CharacterOwner);
+	FCollisionResponseParams ResponseParam;
+	InitCollisionParams(CapsuleParams, ResponseParam);
+	FCollisionShape CapsuleShape = GetPawnCapsuleCollisionShape(SHRINK_None);
+	const ECollisionChannel CollisionChannel = UpdatedComponent->GetCollisionObjectType();
+	bool bHit = GetWorld()->SweepSingleByChannel(HitInfo, currentLoc, CheckPoint, FQuat::Identity, CollisionChannel, CapsuleShape, CapsuleParams, ResponseParam);
+
+	if (bHit && !Cast<APawn>(HitInfo.GetActor()))
+	{
+		// hit a wall - check if it is low enough
+		WallNormal = -1.f * HitInfo.ImpactNormal;
+		FVector Start = currentLoc;//UpdatedComponent->GetComponentLocation();
+		Start.Z += MaxOutOfWaterStepHeight;
+		CheckPoint = Start + 3.2f * PawnCapsuleRadius * WallNormal;
+		FCollisionQueryParams LineParams(SCENE_QUERY_STAT(CheckWaterJump), true, CharacterOwner);
+		FCollisionResponseParams LineResponseParam;
+		InitCollisionParams(LineParams, LineResponseParam);
+		bHit = GetWorld()->LineTraceSingleByChannel(HitInfo, Start, CheckPoint, CollisionChannel, LineParams, LineResponseParam);
+		// if no high obstruction, or it's a valid floor, then pawn can jump out of water
+		return !bHit || IsWalkable(HitInfo);
+	}
+	return false;
+}
+
 
 
 void UVRCharacterMovementComponent::ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations)
