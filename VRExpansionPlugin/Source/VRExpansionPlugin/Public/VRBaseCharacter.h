@@ -418,8 +418,11 @@ public:
 			
 			//SetReplicateMovement(false);/ / No longer doing this, allowing it to replicate down to simulated clients now instead
 
+			FAttachmentTransformRules TransformRule = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
+			TransformRule.bWeldSimulatedBodies = true;
+
 			if (SeatParent)
-				AttachToComponent(SeatParent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+				AttachToComponent(SeatParent, TransformRule);
 		}
 		else
 		{

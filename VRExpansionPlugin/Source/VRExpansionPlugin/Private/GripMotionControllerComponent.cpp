@@ -1556,14 +1556,18 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	if (!ObjectToSocket || !SocketingParent)
 		return;
 
+	FAttachmentTransformRules TransformRule = FAttachmentTransformRules::KeepWorldTransform;
+	TransformRule.bWeldSimulatedBodies = true;
+
 	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
 	{
-		root->AttachToComponent(SocketingParent, FAttachmentTransformRules::KeepWorldTransform, OptionalSocketName);
+
+		root->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		root->SetRelativeTransform(RelativeTransformToParent);
 	}
 	else if (AActor * pActor = Cast<AActor>(ObjectToSocket))
 	{
-		pActor->AttachToComponent(SocketingParent, FAttachmentTransformRules::KeepWorldTransform, OptionalSocketName);
+		pActor->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		pActor->SetActorRelativeTransform(RelativeTransformToParent);
 
 		//if (!bRetainOwnership)
