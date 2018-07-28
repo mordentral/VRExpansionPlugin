@@ -484,10 +484,14 @@ public:
 	}
 
 	// Drops a gripped object and sockets it to the given component at the given relative transform.
-	// bRetainOwnership controls whether the Owner is reset to null or not.
+	// *Note*: If both the parent and the child are simulating it also delays a single tick and then re-applies the relative transform.
+	// This is to avoid a race condition where we need to wait for the next physics update.
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		bool DropAndSocketObject(UObject * ObjectToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
 	
+	// Drops a grip and sockets it to the given component at the given relative transform.
+	// *Note*: If both the parent and the child are simulating it also delays a single tick and then re-applies the relative transform.
+	// This is to avoid a race condition where we need to wait for the next physics update.
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		bool DropAndSocketGrip(const FBPActorGripInformation &GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
 
@@ -500,6 +504,11 @@ public:
 
 	void DropAndSocket_Implementation(const FBPActorGripInformation &NewDrop);
 	void Socket_Implementation(UObject * ObjectToSocket, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
+
+	// Resets the transform of a socketed grip 1 tick later, this is to avoid a race condition with simulating grips.
+	// Their constraint can change the transform before or after the attachment happens if the parent and the child are both simulating.
+	UFUNCTION()
+		void SetSocketTransform(UObject * ObjectToSocket, const FTransform_NetQuantize RelativeTransformToParent);
 
 	/* Auto grip any uobject that is/root is a primitive component and has the VR Grip Interface
 	these are stored in a Tarray that will prevent destruction of the object, you MUST ungrip an actor if you want to kill it
