@@ -1503,7 +1503,6 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 		//return false;
 	}
 
-
 	UObject * GrippedObject = GripInfo->GrippedObject;
 
 	if (bWasLocalGrip)
@@ -1517,7 +1516,6 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 			DropAndSocket_Implementation(*GripInfo);
 			if (GrippedObject)
 				Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent);
-
 		}
 		else // Server notifyDrop it
 		{
@@ -1536,6 +1534,19 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 	//GrippedObjects.RemoveAt(FoundIndex);		
 	return true;
 }
+
+void UGripMotionControllerComponent::SetSocketTransform(UObject * ObjectToSocket, const FTransform_NetQuantize RelativeTransformToParent)
+{
+	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
+	{
+		root->SetRelativeTransform(RelativeTransformToParent);
+	}
+	else if (AActor * pActor = Cast<AActor>(ObjectToSocket))
+	{
+		pActor->SetActorRelativeTransform(RelativeTransformToParent);
+	}
+}
+
 
 bool UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Validate(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent)
 {
@@ -1567,19 +1578,31 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	if (!ObjectToSocket || !SocketingParent)
 		return;
 
-	FAttachmentTransformRules TransformRule = FAttachmentTransformRules::KeepWorldTransform;
+	FAttachmentTransformRules TransformRule = FAttachmentTransformRules::KeepWorldTransform;//KeepWorldTransform;
 	TransformRule.bWeldSimulatedBodies = true;
+
+	UPrimitiveComponent * ParentPrim = Cast<UPrimitiveComponent>(SocketingParent);
 
 	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
 	{
-
 		root->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		root->SetRelativeTransform(RelativeTransformToParent);
+
+		// It had a physics handle, I need to delay a tick and set the transform to ensure it skips a race condition
+		if(root->IsSimulatingPhysics() && ParentPrim && ParentPrim->IsSimulatingPhysics())
+			GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &UGripMotionControllerComponent::SetSocketTransform, ObjectToSocket, RelativeTransformToParent));
 	}
 	else if (AActor * pActor = Cast<AActor>(ObjectToSocket))
 	{
 		pActor->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		pActor->SetActorRelativeTransform(RelativeTransformToParent);
+
+		// It had a physics handle, I need to delay a tick and set the transform to ensure it skips a race condition
+		if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
+		{
+			if (root->IsSimulatingPhysics() && ParentPrim && ParentPrim->IsSimulatingPhysics())
+				GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &UGripMotionControllerComponent::SetSocketTransform, ObjectToSocket, RelativeTransformToParent));
+		}
 
 		//if (!bRetainOwnership)
 			//pActor->SetOwner(nullptr);
@@ -1641,8 +1664,10 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 			if (root)
 			{
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
-				root->UpdateComponentToWorld(); // This fixes the late update offset
-				root->SetSimulatePhysics(false);
+
+				// Attachment already handles both of these
+				//root->UpdateComponentToWorld(); // This fixes the late update offset
+				//root->SetSimulatePhysics(false);
 
 				if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
 					(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
@@ -1675,8 +1700,10 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 
 			root->RemoveTickPrerequisiteComponent(this);
 			root->IgnoreActorWhenMoving(this->GetOwner(), false);
-			root->UpdateComponentToWorld();
-			root->SetSimulatePhysics(false);
+
+			// Attachment already handles both of these
+			//root->UpdateComponentToWorld();
+			//root->SetSimulatePhysics(false);
 
 			if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
 				(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
