@@ -3,6 +3,7 @@
 #include "VRPlayerController.h"
 #include "AI/NavigationSystemBase.h"
 #include "VRBaseCharacterMovementComponent.h"
+#include "Engine/Player.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 
