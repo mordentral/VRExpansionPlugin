@@ -16,7 +16,7 @@
 #include "IXRTrackingSystem.h"
 #include "IXRSystemAssets.h"
 #include "DrawDebugHelpers.h"
-
+#include "TimerManager.h"
 #include "VRBaseCharacter.h"
 
 #include "PhysicsPublic.h"
@@ -1598,9 +1598,9 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 		pActor->SetActorRelativeTransform(RelativeTransformToParent);
 
 		// It had a physics handle, I need to delay a tick and set the transform to ensure it skips a race condition
-		if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
+		if (UPrimitiveComponent * rootPrim = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
 		{
-			if (root->IsSimulatingPhysics() && ParentPrim && ParentPrim->IsSimulatingPhysics())
+			if (rootPrim->IsSimulatingPhysics() && ParentPrim && ParentPrim->IsSimulatingPhysics())
 				GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &UGripMotionControllerComponent::SetSocketTransform, ObjectToSocket, RelativeTransformToParent));
 		}
 

@@ -7,6 +7,7 @@
 #include "VRGripInterface.h"
 #include "VRExpansionFunctionLibrary.h"
 #include "GameplayTagContainer.h"
+#include "Components/BoxComponent.h"
 #include "GameplayTagAssetInterface.h"
 #include "GrippableBoxComponent.generated.h"
 

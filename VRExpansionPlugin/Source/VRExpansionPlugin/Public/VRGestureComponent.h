@@ -12,6 +12,8 @@
 #include "DrawDebugHelpers.h"
 #include "Components/LineBatchComponent.h"
 #include "Engine/EngineTypes.h"
+#include "Engine/EngineBaseTypes.h"
+#include "TimerManager.h"
 #include "VRGestureComponent.generated.h"
 
 DECLARE_STATS_GROUP(TEXT("TICKGesture"), STATGROUP_TickGesture, STATCAT_Advanced);

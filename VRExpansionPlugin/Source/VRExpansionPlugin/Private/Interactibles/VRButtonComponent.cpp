@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRButtonComponent.h"
+#include "Interactibles/VRButtonComponent.h"
+#include "Gameframework/Character.h"
 
   //=============================================================================
 UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializer)

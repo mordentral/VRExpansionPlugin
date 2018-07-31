@@ -11,6 +11,7 @@
 #include "NavigationSystem.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/EngineBaseTypes.h"
+#include "Camera/CameraComponent.h"
 #include "Engine/EngineTypes.h"
 #include "GameFramework/PawnMovementComponent.h"
 #include "Interfaces/NetworkPredictionInterface.h"

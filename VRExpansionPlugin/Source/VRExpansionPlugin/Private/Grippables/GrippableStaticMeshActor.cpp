@@ -1,6 +1,6 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "GrippableStaticMeshActor.h"
+#include "Grippables/GrippableStaticMeshActor.h"
 #include "Net/UnrealNetwork.h"
 
 

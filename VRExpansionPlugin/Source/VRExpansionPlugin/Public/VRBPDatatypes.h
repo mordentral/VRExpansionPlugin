@@ -2,7 +2,7 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "EngineMinimal.h"
+//#include "EngineMinimal.h"
 
 #include "PhysicsPublic.h"
 #if WITH_PHYSX

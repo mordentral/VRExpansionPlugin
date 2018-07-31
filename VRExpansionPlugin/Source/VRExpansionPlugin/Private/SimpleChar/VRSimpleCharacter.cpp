@@ -1,6 +1,6 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRSimpleCharacter.h"
+#include "SimpleChar/VRSimpleCharacter.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializer)

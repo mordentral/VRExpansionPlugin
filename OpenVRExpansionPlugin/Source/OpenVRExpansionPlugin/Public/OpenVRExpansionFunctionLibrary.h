@@ -2,7 +2,11 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "EngineMinimal.h"
+#include "UObject/ObjectMacros.h"
+#include "UObject/Object.h"
+#include "Engine/Texture.h"
+#include "Engine/EngineTypes.h"
+//#include "EngineMinimal.h"
 #include "IMotionController.h"
 //#include "VRBPDatatypes.h"
 

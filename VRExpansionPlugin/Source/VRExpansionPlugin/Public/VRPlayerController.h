@@ -4,7 +4,7 @@
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
 #include "VRPathFollowingComponent.h"
-
+#include "Gameframework/PlayerController.h"
 #include "VRPlayerController.generated.h"
 
 

@@ -3,6 +3,9 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
+#include "Gameframework/Character.h"
+#include "Gameframework/CharacterMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
 /** Shared pointer for easy memory management of FSavedMove_Character, for accumulating and replaying network moves. */
