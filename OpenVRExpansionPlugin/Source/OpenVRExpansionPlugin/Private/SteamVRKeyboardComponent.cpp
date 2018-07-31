@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "SteamVRKeyboardComponent.h"
+#include "Engine/Engine.h"
 #include "OpenVRExpansionFunctionLibrary.h"
 //#include "GripMotionControllerComponent.h"
 

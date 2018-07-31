@@ -1,6 +1,6 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "GrippableSkeletalMeshActor.h"
+#include "Grippables/GrippableSkeletalMeshActor.h"
 #include "Net/UnrealNetwork.h"
 
 UOptionalRepSkeletalMeshComponent::UOptionalRepSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer)

@@ -5,11 +5,11 @@
 
 =============================================================================*/
 
-#include "VRSimpleCharacterMovementComponent.h"
+#include "SimpleChar/VRSimpleCharacterMovementComponent.h"
 #include "GameFramework/PhysicsVolume.h"
 #include "GameFramework/GameNetworkManager.h"
 #include "IHeadMountedDisplay.h"
-#include "VRSimpleCharacter.h"
+#include "SimpleChar/VRSimpleCharacter.h"
 #include "NavigationSystem.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/GameState.h"

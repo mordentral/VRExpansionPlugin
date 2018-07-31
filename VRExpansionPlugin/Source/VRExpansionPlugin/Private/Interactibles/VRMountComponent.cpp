@@ -1,6 +1,6 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "VRMountComponent.h"
+#include "Interactibles/VRMountComponent.h"
 #include "Net/UnrealNetwork.h"
 
 //=============================================================================

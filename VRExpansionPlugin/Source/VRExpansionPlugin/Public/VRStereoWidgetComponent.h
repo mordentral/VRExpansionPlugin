@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
-#include "WidgetComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Components/StereoLayerComponent.h"
 
 #include "VRStereoWidgetComponent.generated.h"

@@ -95,7 +95,8 @@ void UGesturesDatabase::FillSplineWithGesture(FVRGesture &Gesture, USplineCompon
 				newSplineMesh->SetMobility(EComponentMobility::Movable);
 				CurrentSplineChildren.Add(newSplineMesh);
 				newSplineMesh->SetStaticMesh(Mesh);
-				newSplineMesh->SetMaterial(0, MeshMat);
+				newSplineMesh->SetMaterial(0, (UMaterialInterface*)MeshMat);
+
 				newSplineMesh->AttachToComponent(SplineComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 				newSplineMesh->SetVisibility(true);
 			}
@@ -225,7 +226,7 @@ void UVRGestureComponent::CaptureGestureFrame()
 					MeshComp->RegisterComponentWithWorld(GetWorld());
 					MeshComp->SetMobility(EComponentMobility::Movable);
 					MeshComp->SetStaticMesh(SplineMesh);
-					MeshComp->SetMaterial(0, SplineMaterial);
+					MeshComp->SetMaterial(0, (UMaterialInterface*)SplineMaterial);
 					bFoundEmptyMesh = true;
 					break;
 				}
@@ -245,7 +246,7 @@ void UVRGestureComponent::CaptureGestureFrame()
 				RecordingGestureDraw.SplineMeshes.Add(MeshComp);
 				MeshIndex = RecordingGestureDraw.SplineMeshes.Num() - 1;
 				MeshComp->SetStaticMesh(SplineMesh);
-				MeshComp->SetMaterial(0, SplineMaterial);
+				MeshComp->SetMaterial(0, (UMaterialInterface*)SplineMaterial);
 				if (!bGetGestureInWorldSpace && TargetCharacter)
 					MeshComp->AttachToComponent(TargetCharacter->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 			}

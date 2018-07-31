@@ -8,6 +8,9 @@
 #include "ReplicatedVRCameraComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
 #include "GripMotionControllerComponent.h"
+#include "Gameframework/Character.h"
+#include "Gameframework/Controller.h"
+#include "Components/CapsuleComponent.h"
 #include "VRBaseCharacter.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);

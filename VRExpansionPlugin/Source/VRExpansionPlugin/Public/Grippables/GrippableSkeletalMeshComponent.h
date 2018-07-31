@@ -8,6 +8,7 @@
 #include "VRExpansionFunctionLibrary.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GrippableSkeletalMeshComponent.generated.h"
 
 /**
