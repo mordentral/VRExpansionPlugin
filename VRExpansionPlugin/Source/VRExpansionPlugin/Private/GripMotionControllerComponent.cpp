@@ -3343,8 +3343,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							Params.AddIgnoredActor(actor);
 							Params.AddIgnoredActors(root->MoveIgnoreActors);
 
-							FHitResult Hit;
-							if(GetWorld()->SweepSingleByChannel(Hit, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), root->GetCollisionShape(),Params))
+							TArray<FHitResult> Hits;
+							
+							// Switched over to component sweep because it picks up on pivot offsets without me manually calculating it
+							if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
 							{
 								Grip->bColliding = true;
 							}
@@ -3405,12 +3407,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 
-						FHitResult Hit;
-						// Checking both current and next position for overlap using this grip type #TODO: Do this for normal interactive physics as well?
-						if (GetWorld()->SweepSingleByChannel(Hit, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), root->GetCollisionShape(), Params))
-						/*if (GetWorld()->ComponentOverlapMultiByChannel(Hits, root, root->GetComponentLocation(), root->GetComponentQuat(), root->GetCollisionObjectType(), Params) ||
-							GetWorld()->ComponentOverlapMultiByChannel(Hits, root, WorldTransform.GetLocation(), WorldTransform.GetRotation(), root->GetCollisionObjectType(), Params)
-							)*/
+						TArray<FHitResult> Hits;
+						// Checking both current and next position for overlap using this grip type
+						// Switched over to component sweep because it picks up on pivot offsets without me manually calculating it
+						if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
 						{
 							if (!Grip->bColliding)
 							{
