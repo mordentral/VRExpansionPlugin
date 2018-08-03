@@ -2113,7 +2113,8 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 				root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
-				if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || (pActor && !pActor->GetIsReplicated()))
+				// Need to set simulation in all of these cases, including if it isn't the root component (simulation isn't replicated on non roots)
+				if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || (pActor && (pActor->GetRootComponent() != root || !pActor->GetIsReplicated())))
 				{
 					root->SetSimulatePhysics(bSimulate);
 					if (bSimulate)
