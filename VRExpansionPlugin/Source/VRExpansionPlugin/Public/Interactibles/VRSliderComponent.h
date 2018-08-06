@@ -33,6 +33,7 @@ enum class EVRInteractibleSliderDropBehavior : uint8
 
 /** Delegate for notification when the slider state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRSliderHitPointSignature, float, SliderProgressPoint);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRSliderFinishedLerpingSignature, float, FinalProgress);
 
 /**
 * A slider component, can act like a scroll bar, or gun bolt, or spline following component
@@ -49,11 +50,19 @@ public:
 	~UVRSliderComponent();
 
 	// Call to use an object
-	UPROPERTY(BlueprintAssignable, Category = "VRLeverComponent")
+	UPROPERTY(BlueprintAssignable, Category = "VRSliderComponent")
 		FVRSliderHitPointSignature OnSliderHitPoint;
 
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Lever State Changed"))
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Slider State Changed"))
 		void ReceiveSliderHitPoint(float SliderProgressPoint);
+
+	UPROPERTY(BlueprintAssignable, Category = "VRSliderComponent")
+		FVRSliderFinishedLerpingSignature OnSliderFinishedLerping;
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Slider Finished Lerping"))
+		void ReceiveSliderFinishedLerping(float FinalProgress);
+
+	
 
 	float LastSliderProgressState;
 
@@ -155,6 +164,9 @@ public:
 	FVector InitialInteractorLocation;
 	FVector InitialGripLoc;
 	FVector InitialDropLocation;
+
+	// Checks if we should throw some events
+	void CheckSliderProgress();
 
 	// Calculates the current slider progress
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")

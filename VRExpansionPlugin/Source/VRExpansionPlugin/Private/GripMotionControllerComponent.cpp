@@ -24,6 +24,7 @@
 
 #if WITH_PHYSX
 #include "PhysXSupport.h"
+#include "PhysicsReplication.h"
 #endif // WITH_PHYSX
 
 //#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 11
@@ -1876,8 +1877,31 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 		{
 			pActor->SetReplicateMovement(false);
 		}
+		if (root)
+		{
 
-	}break;
+			// #TODO: This is a hack until Epic fixes their new physics replication code
+			//		  It forces the replication target to null on grip if we aren't repping movement.
+#if WITH_PHYSX
+			if (UWorld* World = GetWorld())
+			{
+				if (FPhysScene* PhysScene = World->GetPhysicsScene())
+				{
+					if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
+					{
+						FBodyInstance* BI = root->GetBodyInstance(NewGrip.GrippedBoneName);
+						if (BI && BI->IsInstanceSimulatingPhysics())
+						{
+							PhysicsReplication->RemoveReplicatedTarget(root);
+							//PhysicsReplication->SetReplicatedTarget(this, BoneName, UpdatedState);
+						}
+					}
+				}
+			}
+#endif
+		}
+
+	}break; 
 
 	case EGripMovementReplicationSettings::ForceServerSideMovement:
 	{
@@ -3148,7 +3172,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 			FBPActorGripInformation * Grip = &GrippedObjectsArray[i];
 
-
+			
 			if (!Grip) // Shouldn't be possible, but why not play it safe
 				continue;
 

@@ -166,9 +166,16 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 		if (!bIsLerping)
 		{
+			// Notify the end user
+			OnSliderFinishedLerping.Broadcast(CurrentSliderProgress);
+			ReceiveSliderFinishedLerping(CurrentSliderProgress);
+
 			this->SetComponentTickEnabled(false);
 			bReplicateMovement = true;
 		}
+		
+		// Check for the hit point always
+		CheckSliderProgress();
 	}
 }
 
@@ -284,6 +291,18 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		LastSliderProgress = CurrentSliderProgress;
 	}
 
+	CheckSliderProgress();
+
+	// Converted to a relative value now so it should be correct
+	if (GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
+	{
+		GrippingController->DropObjectByInterface(this);
+		return;
+	}
+}
+
+void UVRSliderComponent::CheckSliderProgress()
+{
 	// Skip first check, this will skip an event throw on rounded
 	if (LastSliderProgressState < 0.0f)
 	{
@@ -313,13 +332,6 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 	if (FMath::Abs(LastSliderProgressState - CurrentSliderProgress) >= EventThrowThreshold)
 	{
 		bHitEventThreshold = true;
-	}
-
-	// Converted to a relative value now so it should be correct
-	if (GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
-	{
-		GrippingController->DropObjectByInterface(this);
-		return;
 	}
 }
 

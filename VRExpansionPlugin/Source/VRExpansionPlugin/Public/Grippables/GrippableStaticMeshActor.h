@@ -33,6 +33,7 @@ public:
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 };
 
+
 /**
 *
 */
@@ -132,6 +133,26 @@ public:
 		}
 
 		Super::OnRep_ReplicateMovement();
+	}
+	/*
+	virtual void OnRep_ReplicatedMovement() override
+	{
+		if (VRGripInterfaceSettings.bIsHeld && bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
+		{
+			return;
+		}
+
+		Super::OnRep_ReplicatedMovement();
+	}*/
+	
+	void PostNetReceivePhysicState() override
+	{
+		if (VRGripInterfaceSettings.bIsHeld && bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
+		{
+			return;
+		}
+			
+		Super::PostNetReceivePhysicState();
 	}
 
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")

@@ -135,6 +135,16 @@ public:
 		Super::OnRep_ReplicateMovement();
 	}
 
+	void PostNetReceivePhysicState() override
+	{
+		if (VRGripInterfaceSettings.bIsHeld && bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
+		{
+			return;
+		}
+
+		Super::PostNetReceivePhysicState();
+	}
+
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bRepGripSettingsAndGameplayTags;
 
