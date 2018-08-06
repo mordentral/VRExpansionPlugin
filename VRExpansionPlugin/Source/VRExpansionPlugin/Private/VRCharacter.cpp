@@ -82,13 +82,13 @@ FVector AVRCharacter::GetNavAgentLocation() const
 			AgentLocation = GetCharacterMovement()->GetActorFeetLocation();
 	}
 
-	if (FNavigationSystem::IsValidLocation(AgentLocation) == false && GetCapsuleComponent() != nullptr)
+	if (FNavigationSystem::IsValidLocation(AgentLocation) == false /*&& GetCapsuleComponent() != nullptr*/)
 	{
 		if (VRRootReference)
 		{
 			AgentLocation = VRRootReference->OffsetComponentToWorld.GetLocation() - FVector(0, 0, VRRootReference->GetScaledCapsuleHalfHeight());
 		}
-		else
+		else if(GetCapsuleComponent() != nullptr)
 			AgentLocation = GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
 	}
 
