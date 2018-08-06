@@ -59,6 +59,7 @@ enum class EVRInteractibleLeverReturnType : uint8
 
 /** Delegate for notification when the lever state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FVRLeverStateChangedSignature, bool, LeverStatus, EVRInteractibleLeverEventType, LeverStatusType, float, LeverAngleAtTime);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRLeverFinishedLerpingSignature, float, FinalAngle);
 
 /**
 * A Lever component, can act like a lever, door, wheel, joystick.
@@ -81,6 +82,12 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Lever State Changed"))
 		void ReceiveLeverStateChanged(bool LeverStatus, EVRInteractibleLeverEventType LeverStatusType, float LeverAngleAtTime);
+
+	UPROPERTY(BlueprintAssignable, Category = "VRLeverComponent")
+		FVRLeverFinishedLerpingSignature OnLeverFinishedLerping;
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Lever Finished Lerping"))
+		void ReceiveLeverFinishedLerping(float LeverFinalAngle);
 
 	// Primary axis angle only
 	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")
@@ -253,6 +260,7 @@ public:
 			{
 				MomentumAtDrop = 0.0f;
 				this->SetComponentTickEnabled(false);
+				bIsLerping = false;
 				bReplicateMovement = true;
 				return;
 			}
@@ -287,6 +295,7 @@ public:
 			else
 			{
 				this->SetComponentTickEnabled(false);
+				bIsLerping = false;
 				bReplicateMovement = true;
 				this->SetRelativeRotation((FTransform(SetAxisValue(TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 			}

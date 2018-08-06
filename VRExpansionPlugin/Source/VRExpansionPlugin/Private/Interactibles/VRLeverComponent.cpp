@@ -108,6 +108,8 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 	// Call supers tick (though I don't think any of the base classes to this actually implement it)
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	bool bWasLerping = bIsLerping;
+
 	if (bIsLerping)
 	{
 		FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(GetCurrentParentTransform());
@@ -130,6 +132,7 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 			if (LerpedRot.Equals(FRotator::ZeroRotator))
 			{
 				this->SetComponentTickEnabled(false);
+				bIsLerping = false;
 				bReplicateMovement = true;
 				this->SetRelativeRotation((FTransform::Identity * InitialRelativeTransform).Rotator());
 			}
@@ -144,7 +147,7 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 
 	CalculateCurrentAngle(CurrentRelativeTransform);
 
-	if (!bIsLerping && LeverReturnTypeWhenReleased == EVRInteractibleLeverReturnType::RetainMomentum)
+	if (!bWasLerping && LeverReturnTypeWhenReleased == EVRInteractibleLeverReturnType::RetainMomentum)
 	{
 		// Rolling average across num samples
 		MomentumAtDrop -= MomentumAtDrop / FramesToAverage;
@@ -161,13 +164,13 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 	{
 		bLeverState = bNewLeverState;
 
-		if (bSendLeverEventsDuringLerp || !bIsLerping)
+		if (bSendLeverEventsDuringLerp || !bWasLerping)
 		{
 			ReceiveLeverStateChanged(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, FullCurrentAngle);
 			OnLeverStateChanged.Broadcast(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, FullCurrentAngle);
 		}
 
-		if (!bIsLerping && bUngripAtTargetRotation && bLeverState && HoldingController)
+		if (!bWasLerping && bUngripAtTargetRotation && bLeverState && HoldingController)
 		{
 			FBPActorGripInformation GripInformation;
 			EBPVRResultSwitch result;
@@ -177,6 +180,13 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 				HoldingController->DropObjectByInterface(this);
 			}
 		}
+	}
+
+	// If the lerping state changed from the above
+	if (bWasLerping && !bIsLerping)
+	{
+		OnLeverFinishedLerping.Broadcast(CurrentLeverAngle);
+		ReceiveLeverFinishedLerping(CurrentLeverAngle);
 	}
 }
 
