@@ -120,6 +120,10 @@ public:
 	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		//FBPInteractionSettings GetInteractionSettings();
 
+	// Get grip scripts
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		TArray<UVRGripScriptBase*> GetGripScripts();
+
 	// Events //
 
 	// Event triggered each tick on the interfaced object when gripped, can be used for custom movement or grip based logic

@@ -195,7 +195,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
 		static void OverwriteControllerProfile(UPARAM(ref)FBPVRControllerProfile &OverwritingProfile, bool bSaveOutToConfig = true)
 	{
-		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+		UVRGlobalSettings& VRSettings = *GetMutableDefault<UVRGlobalSettings>();
 
 		for (int i = 0; i < VRSettings.ControllerProfiles.Num(); ++i)
 		{
@@ -213,7 +213,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
 		static void AddControllerProfile(UPARAM(ref)FBPVRControllerProfile &NewProfile, bool bSaveOutToConfig = true)
 	{
-		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+		UVRGlobalSettings& VRSettings = *GetMutableDefault<UVRGlobalSettings>();
 
 		VRSettings.ControllerProfiles.Add(NewProfile);
 
@@ -225,7 +225,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
 		static void DeleteControllerProfile(FName ControllerProfileName, bool bSaveOutToConfig = true)
 	{
-		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+		UVRGlobalSettings& VRSettings = *GetMutableDefault<UVRGlobalSettings>();
 
 		for (int i = VRSettings.ControllerProfiles.Num() - 1; i >= 0; --i)
 		{
@@ -243,7 +243,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles|Operations")
 		static void SaveControllerProfiles()
 	{
-		UVRGlobalSettings& VRSettings = *const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+		UVRGlobalSettings& VRSettings = *GetMutableDefault<UVRGlobalSettings>();
 
 		VRSettings.SaveConfig(CPF_Config, *VRSettings.GetDefaultConfigFilename());
 	}
@@ -337,7 +337,7 @@ public:
 		static bool LoadControllerProfile(const FBPVRControllerProfile & ControllerProfile, bool bSetAsCurrentProfile = true)
 	{
 
-		UInputSettings* InputSettings = const_cast<UInputSettings*>(GetDefault<UInputSettings>());
+		UInputSettings* InputSettings = GetMutableDefault<UInputSettings>();
 		if (InputSettings != nullptr)
 		{
 			if (ControllerProfile.ActionOverrides.Num() > 0)
@@ -413,7 +413,7 @@ public:
 
 		if (bSetAsCurrentProfile)
 		{
-			UVRGlobalSettings* VRSettings = const_cast<UVRGlobalSettings*>(GetDefault<UVRGlobalSettings>());
+			UVRGlobalSettings* VRSettings = GetMutableDefault<UVRGlobalSettings>();
 			if (VRSettings)
 			{
 				VRSettings->CurrentControllerProfileInUse = ControllerProfile.ControllerName;

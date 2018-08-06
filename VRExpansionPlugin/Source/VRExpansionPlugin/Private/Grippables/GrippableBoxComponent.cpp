@@ -158,3 +158,8 @@ void UGrippableBoxComponent::SetHeld_Implementation(UGripMotionControllerCompone
 {
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
+
+TArray<UVRGripScriptBase*> UGrippableBoxComponent::GetGripScripts_Implementation()
+{
+	return VRGripInterfaceSettings.GripLogicScripts;
+}

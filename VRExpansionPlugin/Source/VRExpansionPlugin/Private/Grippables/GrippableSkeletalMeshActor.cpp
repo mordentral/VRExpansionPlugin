@@ -192,3 +192,8 @@ void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerCo
 {
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
+
+TArray<UVRGripScriptBase*> AGrippableSkeletalMeshActor::GetGripScripts_Implementation()
+{
+	return VRGripInterfaceSettings.GripLogicScripts;
+}

@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "VRGripScriptBase.h"
+#include "GripScripts/VRGripScriptBase.h"
  
 UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -8,10 +8,16 @@ UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer
 //	PrimaryComponentTick.bCanEverTick = false;
 //	PrimaryComponentTick.bStartWithTickEnabled = false;
 //	PrimaryComponentTick.TickGroup = ETickingGroup::TG_PrePhysics;
+
+	WorldTransformOverrideType = EGSTransformOverrideType::None;
 }
 
 
-void UVRGripScriptBase::BeginPlay_Implementation() {}
-void UVRGripScriptBase::GetWorldTransform_PreStep_Implementation(FTransform & WorldTransform) {}
-void UVRGripScriptBase::GetWorldTransform_PostStep_Implementation(FTransform & WorldTransform) {}
-void UVRGripScriptBase::GetWorldTransform_Override_Implementation(FTransform & WorldTransform) {}
+//void UVRGripScriptBase::BeginPlay_Implementation() {}
+void UVRGripScriptBase::GetWorldTransform_Implementation(UGripMotionControllerComponent* GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) {}
+void UVRGripScriptBase::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
+void UVRGripScriptBase::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
+
+ 
+EGSTransformOverrideType UVRGripScriptBase::GetWorldTransformOverrideType_Implementation() { return WorldTransformOverrideType; }
+bool UVRGripScriptBase::IsScriptActive_Implementation() { return bIsActive; }

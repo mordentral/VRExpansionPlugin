@@ -160,3 +160,8 @@ void UGrippableStaticMeshComponent::SetHeld_Implementation(UGripMotionController
 {
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
+
+TArray<UVRGripScriptBase*> UGrippableStaticMeshComponent::GetGripScripts_Implementation()
+{
+	return VRGripInterfaceSettings.GripLogicScripts;
+}

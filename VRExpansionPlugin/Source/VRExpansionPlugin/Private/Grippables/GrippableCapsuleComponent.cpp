@@ -161,3 +161,8 @@ void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerCom
 {
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
+
+TArray<UVRGripScriptBase*> UGrippableCapsuleComponent::GetGripScripts_Implementation()
+{
+	return VRGripInterfaceSettings.GripLogicScripts;
+}

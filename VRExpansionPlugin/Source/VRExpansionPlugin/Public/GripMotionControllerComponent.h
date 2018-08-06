@@ -17,6 +17,7 @@
 #include "GripMotionControllerComponent.generated.h"
 
 class AVRBaseCharacter;
+class UVRGripScriptBase;
 
 /**
 *
@@ -102,6 +103,11 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UMotionContr
 {
 
 public:
+
+	// The grip script that defines the default behaviors of grips
+	// Don't edit this unless you really know what you are doing, leave it at GS_Default
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+		TSubclassOf<class UVRGripScriptBase> DefaultGripLogicScript;
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
@@ -767,7 +773,13 @@ public:
 	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray = false);
 
 	// Gets the world transform of a grip, modified by secondary grips and interaction settings
-	void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface/*, bool & bRescalePhysicsGrips*/);
+	void GetGripWorldTransform(TArray<UVRGripScriptBase*>& GripScripts, float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface/*, bool & bRescalePhysicsGrips*/);
+
+	// Calculate component to world without the protected tag, doesn't set it, just returns it
+	FTransform CalcControllerComponentToWorld(FRotator Orientation, FVector Position)
+	{
+		return this->CalcNewComponentToWorld(FTransform(Orientation, Position));
+	}
 
 	// Removed in 4.20
 	// Handle modifying the transform per the grip interaction settings, returns final world transform
