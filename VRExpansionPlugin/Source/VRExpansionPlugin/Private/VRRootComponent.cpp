@@ -570,12 +570,28 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			if (!CharMove || !CharMove->IsActive())
 			{
 				OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+				if (bNavigationRelevant && bRegistered)
+				{
+					UpdateNavigationData();
+					PostUpdateNavigationData();
+				}
 			}
 			else // Let the character movement move the capsule instead
 			{
 				// Skip physics update, let the movement component handle it instead
 				OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
+
+				// This is an edge case, need to check if the nav data needs updated client side
+				if (this->GetOwner()->Role == ENetRole::ROLE_SimulatedProxy)
+				{
+					if (bNavigationRelevant && bRegistered)
+					{
+						UpdateNavigationData();
+						PostUpdateNavigationData();
+					}
+				}
 			}
+
 
 			lastCameraRot = curCameraRot;
 			lastCameraLoc = curCameraLoc;
@@ -640,6 +656,54 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 	//FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
 	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 		
+}
+
+void UVRRootComponent::GetNavigationData(FNavigationRelevantData& Data) const
+{
+	if (bDynamicObstacle)
+	{
+		//Data.Modifiers.CreateAreaModifiers(this, AreaClass);
+		UBodySetup* BodySetup = ((UPrimitiveComponent*)this)->GetBodySetup();
+		if (BodySetup == nullptr)
+		{
+			return;
+		}
+
+		for (int32 Idx = 0; Idx < BodySetup->AggGeom.BoxElems.Num(); Idx++)
+		{
+			const FKBoxElem& BoxElem = BodySetup->AggGeom.BoxElems[Idx];
+			const FBox BoxSize = BoxElem.CalcAABB(FTransform::Identity, 1.0f);
+
+			FAreaNavModifier AreaMod(BoxSize, OffsetComponentToWorld, AreaClass);
+			Data.Modifiers.Add(AreaMod);
+		}
+
+		for (int32 Idx = 0; Idx < BodySetup->AggGeom.SphylElems.Num(); Idx++)
+		{
+			const FKSphylElem& SphylElem = BodySetup->AggGeom.SphylElems[Idx];
+			const FTransform AreaOffset(FVector(0, 0, -SphylElem.Length));
+
+			FAreaNavModifier AreaMod(SphylElem.Radius, SphylElem.Length * 2.0f, AreaOffset *  OffsetComponentToWorld, AreaClass);
+			Data.Modifiers.Add(AreaMod);
+		}
+
+		for (int32 Idx = 0; Idx < BodySetup->AggGeom.ConvexElems.Num(); Idx++)
+		{
+			const FKConvexElem& ConvexElem = BodySetup->AggGeom.ConvexElems[Idx];
+
+			FAreaNavModifier AreaMod(ConvexElem.VertexData, 0, ConvexElem.VertexData.Num(), ENavigationCoordSystem::Unreal, OffsetComponentToWorld, AreaClass);
+			Data.Modifiers.Add(AreaMod);
+		}
+
+		for (int32 Idx = 0; Idx < BodySetup->AggGeom.SphereElems.Num(); Idx++)
+		{
+			const FKSphereElem& SphereElem = BodySetup->AggGeom.SphereElems[Idx];
+			const FTransform AreaOffset(FVector(0, 0, -SphereElem.Radius));
+
+			FAreaNavModifier AreaMod(SphereElem.Radius, SphereElem.Radius * 2.0f, AreaOffset *  OffsetComponentToWorld, AreaClass);
+			Data.Modifiers.Add(AreaMod);
+		}
+	}
 }
 
 #if WITH_EDITOR
