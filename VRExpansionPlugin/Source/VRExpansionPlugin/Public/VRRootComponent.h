@@ -35,6 +35,9 @@ public:
 
 	bool bCalledUpdateTransform;
 
+	// Overriding this and applying the offset to world position for the elements
+	virtual void GetNavigationData(FNavigationRelevantData& Data) const override;
+
 	FORCEINLINE void GenerateOffsetToWorld(bool bUpdateBounds = true, bool bGetPureYaw = true);
 
 	// If valid will use this as the tracked parent instead of the HMD / Parent
@@ -63,6 +66,11 @@ public:
 	inline void OnUpdateTransform_Public(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None)
 	{
 		OnUpdateTransform(UpdateTransformFlags, Teleport);
+		if (bNavigationRelevant && bRegistered)
+		{
+			UpdateNavigationData();
+			PostUpdateNavigationData();
+		}
 	}
 
 protected:
