@@ -57,7 +57,17 @@ public:
 	EGSTransformOverrideType WorldTransformOverrideType;
 
 
-	// Overrides teleport / auto drop
+	// Returns if the script wants auto drop to be ignored
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
+		bool Wants_DenyAutoDrop();
+	virtual bool Wants_DenyAutoDrop_Implementation();
+
+	// Returns if the script is currently active and should be used
+	/*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
+	bool Wants_DenyTeleport();
+	virtual bool Wants_DenyTeleport_Implementation();*/
+	
+
 
 	// Returns the current world transform of the owning object (or root comp of if it is an actor)
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")

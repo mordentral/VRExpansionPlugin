@@ -21,3 +21,5 @@ void UVRGripScriptBase::OnGripRelease_Implementation(UGripMotionControllerCompon
  
 EGSTransformOverrideType UVRGripScriptBase::GetWorldTransformOverrideType_Implementation() { return WorldTransformOverrideType; }
 bool UVRGripScriptBase::IsScriptActive_Implementation() { return bIsActive; }
+bool UVRGripScriptBase::Wants_DenyAutoDrop_Implementation() { return false; }
+//bool UVRGripScriptBase::Wants_DenyTeleport_Implementation() { return false; }
