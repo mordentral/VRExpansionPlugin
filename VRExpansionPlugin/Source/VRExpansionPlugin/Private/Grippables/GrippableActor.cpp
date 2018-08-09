@@ -43,6 +43,7 @@ void AGrippableActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME/*_CONDITION*/(AGrippableActor, GripLogicScripts);// , COND_Custom);
 	DOREPLIFETIME(AGrippableActor, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(AGrippableActor, bAllowIgnoringAttachOnOwner);
 	DOREPLIFETIME_CONDITION(AGrippableActor, VRGripInterfaceSettings, COND_Custom);
@@ -58,10 +59,39 @@ void AGrippableActor::PreReplication(IRepChangedPropertyTracker & ChangedPropert
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableActor, GameplayTags, bRepGripSettingsAndGameplayTags);
 }
 
+bool AGrippableActor::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
+{
+	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script && Script->bRequiresReplicationSupport && !Script->IsPendingKill())
+		{
+			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+		}
+	}
+
+	return WroteSomething;
+}
 
 //=============================================================================
 AGrippableActor::~AGrippableActor()
 {
+}
+
+void AGrippableActor::BeginPlay()
+{
+	// Call the base class 
+	Super::BeginPlay();
+
+	// Call all grip scripts begin play events so they can perform any needed logic
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script)
+		{
+			Script->OnBeginPlay(this);
+		}
+	}
 }
 
 void AGrippableActor::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
@@ -161,7 +191,12 @@ void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * Ho
 
 TArray<UVRGripScriptBase*> AGrippableActor::GetGripScripts_Implementation()
 {
-	return VRGripInterfaceSettings.GripLogicScripts;
+	return GripLogicScripts;
+}
+
+bool AGrippableActor::HasGripScripts_Implementation()
+{
+	return GripLogicScripts.Num()>0;
 }
 
 /*FBPInteractionSettings AGrippableActor::GetInteractionSettings_Implementation()

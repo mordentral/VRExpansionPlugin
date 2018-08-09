@@ -29,17 +29,24 @@ enum class EGSTransformOverrideType : uint8
 	ModifiesWorldTransform
 };
 
-
 UCLASS(Blueprintable, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRGripScriptBase : public UObject
 {
 	GENERATED_BODY()
 public:
-	UVRGripScriptBase(const FObjectInitializer& ObjectInitializer);
-	// Need to add TICK and BeginPlay implementations
 
+	//#TODO: Add OnSecondaryGrip and OnSecondaryGripRelease?
+
+	UVRGripScriptBase(const FObjectInitializer& ObjectInitializer);
+
+	/*bool IsSupportedForNetworking() const override
+	{
+		return bRequiresReplicationSupport || IsNameStableForNetworking();
+	}*/
+	// I don't need to do this, there should be no dynamic script spawning and they are all name stable by default
+	
 	// Returns if the script is currently active and should be used
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
 		bool IsScriptActive();
 	virtual bool IsScriptActive_Implementation();
 
@@ -48,7 +55,7 @@ public:
 	bool bIsActive;
 
 	// Returns if the script is going to modify the world transform of the grip
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
 	EGSTransformOverrideType GetWorldTransformOverrideType();
 	virtual EGSTransformOverrideType GetWorldTransformOverrideType_Implementation();
 
@@ -56,9 +63,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 	EGSTransformOverrideType WorldTransformOverrideType;
 
-
 	// Returns if the script wants auto drop to be ignored
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
 		bool Wants_DenyAutoDrop();
 	virtual bool Wants_DenyAutoDrop_Implementation();
 
@@ -68,6 +74,14 @@ public:
 	virtual bool Wants_DenyTeleport_Implementation();*/
 	
 
+	// If true then this will tell the owning grippable that it needs to be replicated, forcing all other attached scripts to also be replicated
+	// If the other scripts don't replicate any variables then they will have minimal overhead.
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
+		bool bRequiresReplicationSupport;
+
+	virtual void GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const override;
+	virtual bool CallRemoteFunction(UFunction * Function, void * Parms, FOutParmRec * OutParms, FFrame * Stack) override;
+	virtual int32 GetFunctionCallspace(UFunction * Function, void * Parameters, FFrame * Stack) override;
 
 	// Returns the current world transform of the owning object (or root comp of if it is an actor)
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
@@ -87,26 +101,42 @@ public:
 		return FTransform::Identity;
 	}
 
-	// Returns the current world transform of the owning object (or root comp of if it is an actor)
+	// Returns the parent component or actor to this
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 		UObject * GetParent()
 	{
 		return this->GetOuter();
 	}
 
+	// Returns the owning actor 
+	UFUNCTION(BlueprintPure, Category = "VRGripScript")
+		AActor * GetOwner()
+	{
+		return Cast<AActor>(this->GetOutermost());
+	}
 
-	// Implement VRGripInterface so that we can add functionality with it
+	// If we have authority 
+	UFUNCTION(BlueprintPure, Category = "VRGripScript")
+		bool HasAuthority()
+	{
+		if (AActor * MyOwner = Cast<AActor>(this->GetOutermost()))
+		{
+			return MyOwner->Role == ROLE_Authority;
+		}
 
-	// Useful functions to override in c++ for functionality
-	//virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction);
+		return false;
+	}
+
 
 	// Not all scripts will require this function, specific ones that use things like Lever logic however will. Best to call it.
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript|Init")
-		//void BeginPlay();
-		//virtual void BeginPlay_Implementation();
+	// Grippables will automatically call this, however if you manually spawn a grip script during play or you make your own
+	// Interfaced grip object and give it grippables, YOU will be required to call this event on them.
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript|Init")
+		void OnBeginPlay(UObject * CallingOwner);
+		virtual void OnBeginPlay_Implementation(UObject * CallingOwner);
 
 	// Overrides or Modifies the world transform with this grip script
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript|Steps")
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript|Steps")
 		void GetWorldTransform(UGripMotionControllerComponent * GrippingController, float DeltaTime, UPARAM(ref) FTransform & WorldTransform, const FTransform &ParentTransform, UPARAM(ref) FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
 		virtual void GetWorldTransform_Implementation(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
 

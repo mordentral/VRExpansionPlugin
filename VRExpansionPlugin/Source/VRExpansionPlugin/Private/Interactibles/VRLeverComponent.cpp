@@ -479,3 +479,8 @@ TArray<UVRGripScriptBase*> UVRLeverComponent::GetGripScripts_Implementation()
 {
 	return TArray<UVRGripScriptBase*>();
 }
+
+bool UVRLeverComponent::HasGripScripts_Implementation()
+{
+	return false;
+}

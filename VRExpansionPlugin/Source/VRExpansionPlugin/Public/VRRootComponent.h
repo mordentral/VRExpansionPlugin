@@ -211,6 +211,14 @@ FORCEINLINE void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHa
 	}
 
 	CapsuleHalfHeight = FMath::Max3(0.f, NewHalfHeight, NewRadius);
+
+	// Make sure that our character parent updates its replicated var as well
+	if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(GetOwner()))
+	{
+		if (GetNetMode() < ENetMode::NM_Client && BaseChar->VRReplicateCapsuleHeight)
+			BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = CapsuleHalfHeight;
+	}
+
 	CapsuleRadius = FMath::Max(0.f, NewRadius);
 	UpdateBounds();
 	UpdateBodySetup();

@@ -105,9 +105,9 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UMotionContr
 public:
 
 	// The grip script that defines the default behaviors of grips
-	// Don't edit this unless you really know what you are doing, leave it at GS_Default
+	// Don't edit this unless you really know what you are doing, leave it empty
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
-		TSubclassOf<class UVRGripScriptBase> DefaultGripLogicScript;
+		/*TSubclassOf<class UVRGripScriptBase>*/ UVRGripScriptBase* DefaultGripLogicScript;
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")

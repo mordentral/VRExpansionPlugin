@@ -36,7 +36,8 @@ UGrippableStaticMeshComponent::UGrippableStaticMeshComponent(const FObjectInitia
 void UGrippableStaticMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
+	
+	DOREPLIFETIME/*_CONDITION*/(UGrippableStaticMeshComponent, GripLogicScripts);// , COND_Custom);
 	DOREPLIFETIME(UGrippableStaticMeshComponent, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(UGrippableStaticMeshComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UGrippableStaticMeshComponent, VRGripInterfaceSettings, COND_Custom);
@@ -56,10 +57,39 @@ void UGrippableStaticMeshComponent::PreReplication(IRepChangedPropertyTracker & 
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
+bool UGrippableStaticMeshComponent::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
+{
+	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script && Script->bRequiresReplicationSupport && !Script->IsPendingKill())
+		{
+			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+		}
+	}
+
+	return WroteSomething;
+}
 
 //=============================================================================
 UGrippableStaticMeshComponent::~UGrippableStaticMeshComponent()
 {
+}
+
+void UGrippableStaticMeshComponent::BeginPlay()
+{
+	// Call the base class 
+	Super::BeginPlay();
+
+	// Call all grip scripts begin play events so they can perform any needed logic
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script)
+		{
+			Script->OnBeginPlay(this);
+		}
+	}
 }
 
 void UGrippableStaticMeshComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
@@ -163,5 +193,10 @@ void UGrippableStaticMeshComponent::SetHeld_Implementation(UGripMotionController
 
 TArray<UVRGripScriptBase*> UGrippableStaticMeshComponent::GetGripScripts_Implementation()
 {
-	return VRGripInterfaceSettings.GripLogicScripts;
+	return GripLogicScripts;
+}
+
+bool UGrippableStaticMeshComponent::HasGripScripts_Implementation()
+{
+	return GripLogicScripts.Num() > 0;
 }

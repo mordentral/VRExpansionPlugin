@@ -504,3 +504,8 @@ TArray<UVRGripScriptBase*> UVRSliderComponent::GetGripScripts_Implementation()
 {
 	return TArray<UVRGripScriptBase*>();
 }
+
+bool UVRSliderComponent::HasGripScripts_Implementation()
+{
+	return false;
+}

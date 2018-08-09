@@ -66,7 +66,8 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
+	
+	DOREPLIFETIME/*_CONDITION*/(AGrippableSkeletalMeshActor, GripLogicScripts);// , COND_Custom);
 	DOREPLIFETIME(AGrippableSkeletalMeshActor, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(AGrippableSkeletalMeshActor, bAllowIgnoringAttachOnOwner);
 	DOREPLIFETIME_CONDITION(AGrippableSkeletalMeshActor, VRGripInterfaceSettings, COND_Custom);
@@ -82,6 +83,20 @@ void AGrippableSkeletalMeshActor::PreReplication(IRepChangedPropertyTracker & Ch
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableSkeletalMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
 }
 
+bool AGrippableSkeletalMeshActor::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
+{
+	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script && Script->bRequiresReplicationSupport && !Script->IsPendingKill())
+		{
+			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+		}
+	}
+
+	return WroteSomething;
+}
 
 /*void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
@@ -91,6 +106,21 @@ void AGrippableSkeletalMeshActor::PreReplication(IRepChangedPropertyTracker & Ch
 //=============================================================================
 AGrippableSkeletalMeshActor::~AGrippableSkeletalMeshActor()
 {
+}
+
+void AGrippableSkeletalMeshActor::BeginPlay()
+{
+	// Call the base class 
+	Super::BeginPlay();
+
+	// Call all grip scripts begin play events so they can perform any needed logic
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script)
+		{
+			Script->OnBeginPlay(this);
+		}
+	}
 }
 
 void AGrippableSkeletalMeshActor::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
@@ -195,5 +225,10 @@ void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerCo
 
 TArray<UVRGripScriptBase*> AGrippableSkeletalMeshActor::GetGripScripts_Implementation()
 {
-	return VRGripInterfaceSettings.GripLogicScripts;
+	return GripLogicScripts;
+}
+
+bool AGrippableSkeletalMeshActor::HasGripScripts_Implementation()
+{
+	return GripLogicScripts.Num() > 0;
 }

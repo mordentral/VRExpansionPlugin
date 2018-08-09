@@ -102,7 +102,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	GripRenderThreadProfileTransform = FTransform::Identity;
 	CurrentControllerProfileTransform = FTransform::Identity;
 
-	DefaultGripLogicScript = UGS_Default::StaticClass();
+	DefaultGripLogicScript = nullptr;//UGS_Default::StaticClass();
 }
 
 //=============================================================================
@@ -1691,12 +1691,15 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
-				TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(pActor);
-				for (UVRGripScriptBase* Script : GripScripts)
+				if (IVRGripInterface::Execute_HasGripScripts(pActor))
 				{
-					if (Script)
+					TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(pActor);
+					for (UVRGripScriptBase* Script : GripScripts)
 					{
-						Script->OnGripRelease(this, NewDrop, true);
+						if (Script)
+						{
+							Script->OnGripRelease(this, NewDrop, true);
+						}
 					}
 				}
 
@@ -1749,12 +1752,15 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
-				TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(root);
-				for (UVRGripScriptBase* Script : GripScripts)
+				if (IVRGripInterface::Execute_HasGripScripts(root))
 				{
-					if (Script)
+					TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(root);
+					for (UVRGripScriptBase* Script : GripScripts)
 					{
-						Script->OnGripRelease(this, NewDrop, true);
+						if (Script)
+						{
+							Script->OnGripRelease(this, NewDrop, true);
+						}
 					}
 				}
 
@@ -1827,12 +1833,15 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			{
 				IVRGripInterface::Execute_SetHeld(pActor, this, true);
 
-				TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(pActor);
-				for (UVRGripScriptBase* Script : GripScripts)
+				if (IVRGripInterface::Execute_HasGripScripts(pActor))
 				{
-					if (Script)
+					TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(pActor);
+					for (UVRGripScriptBase* Script : GripScripts)
 					{
-						Script->OnGrip(this, NewGrip);
+						if (Script)
+						{
+							Script->OnGrip(this, NewGrip);
+						}
 					}
 				}
 
@@ -1868,12 +1877,15 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			{
 				IVRGripInterface::Execute_SetHeld(root, this, true);
 
-				TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(root);
-				for (UVRGripScriptBase* Script : GripScripts)
+				if (IVRGripInterface::Execute_HasGripScripts(root))
 				{
-					if (Script)
+					TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(root);
+					for (UVRGripScriptBase* Script : GripScripts)
 					{
-						Script->OnGrip(this, NewGrip);
+						if (Script)
+						{
+							Script->OnGrip(this, NewGrip);
+						}
 					}
 				}
 				
@@ -2162,12 +2174,15 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
-				TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(pActor);
-				for (UVRGripScriptBase* Script : GripScripts)
+				if (IVRGripInterface::Execute_HasGripScripts(pActor))
 				{
-					if (Script)
+					TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(pActor);
+					for (UVRGripScriptBase* Script : GripScripts)
 					{
-						Script->OnGripRelease(this, NewDrop, false);
+						if (Script)
+						{
+							Script->OnGripRelease(this, NewDrop, false);
+						}
 					}
 				}
 
@@ -2265,12 +2280,15 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
-				TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(root);
-				for (UVRGripScriptBase* Script : GripScripts)
+				if (IVRGripInterface::Execute_HasGripScripts(root))
 				{
-					if (Script)
+					TArray<UVRGripScriptBase*> GripScripts = IVRGripInterface::Execute_GetGripScripts(root);
+					for (UVRGripScriptBase* Script : GripScripts)
 					{
-						Script->OnGripRelease(this, NewDrop, false);
+						if (Script)
+						{
+							Script->OnGripRelease(this, NewDrop, false);
+						}
 					}
 				}
 
@@ -2748,9 +2766,15 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		TArray<UVRGripScriptBase*> Scripts;
 
 		if (bRootHasInterface)
-			Scripts = IVRGripInterface::Execute_GetGripScripts(PrimComp);
+		{
+			if (IVRGripInterface::Execute_HasGripScripts(PrimComp))
+				Scripts = IVRGripInterface::Execute_GetGripScripts(PrimComp);
+		}
 		else if (bActorHasInterface)
-			Scripts = IVRGripInterface::Execute_GetGripScripts(actor);
+		{
+			if (IVRGripInterface::Execute_HasGripScripts(actor))
+				Scripts = IVRGripInterface::Execute_GetGripScripts(actor);
+		}
 
 		GetGripWorldTransform(Scripts, 0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface/*, bRescalePhysicsGrips*/);
 	}
@@ -2950,7 +2974,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 }
 
-void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptBase*> &GripScripts, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
+void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptBase*>& GripScripts, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
 {
 
 	bool bGetDefaultTransform = true;
@@ -2972,13 +2996,13 @@ void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 		// If none of the scripts override the base transform
 		if (bGetDefaultTransform)
 		{
-			UVRGripScriptBase * DefaultGripScript = (UVRGripScriptBase*)DefaultGripLogicScript->GetDefaultObject();
+			//UVRGripScriptBase * DefaultGripScript = OverrideDefaultGripLogicScript;//(UVRGripScriptBase*)DefaultGripLogicScript->GetDefaultObject();
 			
 			// If our default was none, fall back to the default script
-			if (!DefaultGripScript)
-				DefaultGripScript = GetMutableDefault<UGS_Default>();
+			if (!DefaultGripLogicScript)
+				DefaultGripLogicScript = GetMutableDefault<UGS_Default>();
 
-			DefaultGripScript->GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
+			DefaultGripLogicScript->GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
 		}
 
 		// Get grip script world transform modifiers (if there are any)
@@ -2992,13 +3016,13 @@ void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 	}
 	else
 	{
-		UVRGripScriptBase * DefaultGripScript = (UVRGripScriptBase*)DefaultGripLogicScript->GetDefaultObject();
+		//UVRGripScriptBase * DefaultGripScript = OverrideDefaultGripLogicScript;//(UVRGripScriptBase*)DefaultGripLogicScript->GetDefaultObject();
 
 		// If our default was none, fall back to the default script
-		if (!DefaultGripScript)
-			DefaultGripScript = GetMutableDefault<UGS_Default>();
+		if (!DefaultGripLogicScript)
+			DefaultGripLogicScript = GetMutableDefault<UGS_Default>();
 
-		DefaultGripScript->GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
+		DefaultGripLogicScript->GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
 	}
 
 	return;
@@ -3175,9 +3199,15 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				TArray<UVRGripScriptBase*> GripScripts;
 
 				if (bRootHasInterface)
-					GripScripts = IVRGripInterface::Execute_GetGripScripts(root);
+				{
+					if(IVRGripInterface::Execute_HasGripScripts(root))
+						GripScripts = IVRGripInterface::Execute_GetGripScripts(root);
+				}
 				else if (bActorHasInterface)
-					GripScripts = IVRGripInterface::Execute_GetGripScripts(actor);
+				{
+					if (IVRGripInterface::Execute_HasGripScripts(actor))
+						GripScripts = IVRGripInterface::Execute_GetGripScripts(actor);
+				}
 
 				// Get the world transform for this grip after handling secondary grips and interaction differences
 				GetGripWorldTransform(GripScripts, DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface);
@@ -3237,7 +3267,6 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							if (Grip->GripDistance >= BreakDistance)
 							{
-
 								bool bIgnoreDrop = false;
 								for (UVRGripScriptBase* Script : GripScripts)
 								{

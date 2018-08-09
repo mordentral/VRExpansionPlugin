@@ -248,3 +248,8 @@ TArray<UVRGripScriptBase*> UVRDialComponent::GetGripScripts_Implementation()
 {
 	return TArray<UVRGripScriptBase*>();
 }
+
+bool UVRDialComponent::HasGripScripts_Implementation()
+{
+	return false;
+}
