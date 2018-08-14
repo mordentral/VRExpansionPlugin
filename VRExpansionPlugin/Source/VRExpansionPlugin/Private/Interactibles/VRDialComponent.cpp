@@ -31,6 +31,11 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	BreakDistance = 100.0f;
+
+	bLerpBackOnRelease = false;
+	bSendDialEventsDuringLerp = false;
+	DialReturnSpeed = 90.0f;
+	bIsLerping = false;
 }
 
 //=============================================================================
@@ -70,6 +75,21 @@ void UVRDialComponent::BeginPlay()
 
 void UVRDialComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+	if (bIsLerping)
+	{
+		this->SetDialAngle(FMath::FInterpConstantTo(CurRotBackEnd, 0.f, DeltaTime, DialReturnSpeed), bSendDialEventsDuringLerp);
+		if (CurRotBackEnd == 0.f)
+		{
+			this->SetComponentTickEnabled(false);
+			bIsLerping = false;
+			OnDialFinishedLerping.Broadcast();
+			ReceiveDialFinishedLerping();
+		}
+	}
+	else
+	{
+		this->SetComponentTickEnabled(false);
+	}
 }
 
 void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) 
@@ -82,7 +102,8 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 		return;
 	}
 
-	FRotator curRotation = GrippingController->GetComponentRotation();
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+	FRotator curRotation = GrippingController->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).Rotator();
 
 	float DeltaRot = RotationScaler * GetAxisValue((curRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
 	AddDialAngle(DeltaRot, true);
@@ -101,11 +122,10 @@ void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * Gr
 	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 	InitialDropLocation = ReversedRelativeTransform.GetTranslation();
 
-	//InitialInteractorLocation = this->GetComponentTransform().InverseTransformPosition(RelativeToGripTransform.GetTranslation());
-
 	// Need to rotate this by original hand to dial facing eventually
-	LastRotation = RelativeToGripTransform.GetRotation().Rotator(); // Forcing into world space now so that initial can be correct over the network
-	this->SetComponentTickEnabled(true);
+	LastRotation = RelativeToGripTransform.GetRelativeTransform(CurrentRelativeTransform).Rotator();
+
+	bIsLerping = false;
 }
 
 void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
@@ -117,7 +137,13 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 		CurrentDialAngle = FRotator::ClampAxis(FMath::RoundToFloat(CurRotBackEnd));
 	}
 
-	this->SetComponentTickEnabled(false);
+	if (bLerpBackOnRelease)
+	{
+		bIsLerping = true;
+		this->SetComponentTickEnabled(true);
+	}
+	else
+		this->SetComponentTickEnabled(false);
 }
 
 void UVRDialComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
