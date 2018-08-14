@@ -77,7 +77,12 @@ void UVRDialComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 {
 	if (bIsLerping)
 	{
-		this->SetDialAngle(FMath::FInterpConstantTo(CurRotBackEnd, 0.f, DeltaTime, DialReturnSpeed), bSendDialEventsDuringLerp);
+		// Flip lerp direction if we are on the other side
+		if (CurrentDialAngle > ClockwiseMaximumDialAngle)
+			this->SetDialAngle(FMath::FInterpConstantTo(CurRotBackEnd, 360.f, DeltaTime, DialReturnSpeed), bSendDialEventsDuringLerp);
+		else
+			this->SetDialAngle(FMath::FInterpConstantTo(CurRotBackEnd, 0.f, DeltaTime, DialReturnSpeed), bSendDialEventsDuringLerp);
+
 		if (CurRotBackEnd == 0.f)
 		{
 			this->SetComponentTickEnabled(false);

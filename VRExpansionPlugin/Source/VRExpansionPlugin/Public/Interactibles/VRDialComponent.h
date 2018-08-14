@@ -164,10 +164,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
 		void SetDialAngle(float DialAngle, bool bCallEvents = false)
 	{
-		float MaxCheckValue = 360.0f - CClockwiseMaximumDialAngle;
-
 		CurRotBackEnd = DialAngle;
-
 		AddDialAngle(0.0f);
 	}
 
