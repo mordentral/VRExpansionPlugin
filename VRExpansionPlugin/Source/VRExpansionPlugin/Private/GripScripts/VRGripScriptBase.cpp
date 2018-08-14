@@ -2,6 +2,7 @@
 
 #include "GripScripts/VRGripScriptBase.h"
 #include "GripMotionControllerComponent.h"
+#include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/NetDriver.h"
  
 UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer)
