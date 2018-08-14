@@ -192,12 +192,8 @@ void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerCom
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
 
-TArray<UVRGripScriptBase*> UGrippableCapsuleComponent::GetGripScripts_Implementation()
+bool UGrippableCapsuleComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
-	return GripLogicScripts;
-}
-
-bool UGrippableCapsuleComponent::HasGripScripts_Implementation()
-{
+	ArrayReference = GripLogicScripts;
 	return GripLogicScripts.Num() > 0;
 }

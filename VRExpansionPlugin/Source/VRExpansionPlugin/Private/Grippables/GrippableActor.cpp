@@ -189,14 +189,10 @@ void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * Ho
 	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }
 
-TArray<UVRGripScriptBase*> AGrippableActor::GetGripScripts_Implementation()
+bool AGrippableActor::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
-	return GripLogicScripts;
-}
-
-bool AGrippableActor::HasGripScripts_Implementation()
-{
-	return GripLogicScripts.Num()>0;
+	ArrayReference = GripLogicScripts;
+	return GripLogicScripts.Num() > 0;
 }
 
 /*FBPInteractionSettings AGrippableActor::GetInteractionSettings_Implementation()

@@ -191,12 +191,8 @@ void UGrippableSphereComponent::SetHeld_Implementation(UGripMotionControllerComp
 }*/
 
 
-TArray<UVRGripScriptBase*> UGrippableSphereComponent::GetGripScripts_Implementation()
+bool UGrippableSphereComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
-	return GripLogicScripts;
-}
-
-bool UGrippableSphereComponent::HasGripScripts_Implementation()
-{
+	ArrayReference = GripLogicScripts;
 	return GripLogicScripts.Num() > 0;
 }

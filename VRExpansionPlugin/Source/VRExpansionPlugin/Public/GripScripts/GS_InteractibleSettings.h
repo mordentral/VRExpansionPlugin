@@ -73,21 +73,13 @@ public:
 	{}
 };
 
-UCLASS(Blueprintable, ClassGroup = (VRExpansionPlugin))
+UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UGS_InteractibleSettings : public UVRGripScriptBase
 {
 	GENERATED_BODY()
 public:
 
 	UGS_InteractibleSettings(const FObjectInitializer& ObjectInitializer);
-
-		// Need to add TICK and BeginPlay implementations
-
-		// Implement VRGripInterface so that we can add functionality with it
-
-		// Useful functions to override in c++ for functionality
-		//virtual void BeginPlay() override;
-		//virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction);
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)// Category = "InteractionSettings")
 	FBPGS_InteractionSettings InteractionSettings;

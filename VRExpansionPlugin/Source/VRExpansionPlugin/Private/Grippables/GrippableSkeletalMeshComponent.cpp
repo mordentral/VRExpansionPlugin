@@ -191,12 +191,8 @@ void UGrippableSkeletalMeshComponent::SetHeld_Implementation(UGripMotionControll
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
 
-TArray<UVRGripScriptBase*> UGrippableSkeletalMeshComponent::GetGripScripts_Implementation()
+bool UGrippableSkeletalMeshComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
-	return GripLogicScripts;
-}
-
-bool UGrippableSkeletalMeshComponent::HasGripScripts_Implementation()
-{
+	ArrayReference = GripLogicScripts;
 	return GripLogicScripts.Num() > 0;
 }

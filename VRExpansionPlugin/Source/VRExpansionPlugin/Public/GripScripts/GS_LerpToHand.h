@@ -20,7 +20,7 @@ enum class EVRLerpInterpolationMode : uint8
 	DualQuatInterp
 };
 
-UCLASS(Blueprintable, ClassGroup = (VRExpansionPlugin))
+UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UGS_LerpToHand : public UVRGripScriptBase
 {
 	GENERATED_BODY()

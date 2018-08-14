@@ -9,7 +9,7 @@
 /**
 * The default grip transform logic for the motion controllers
 */
-UCLASS(Blueprintable, ClassGroup = (VRExpansionPlugin))
+UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UGS_Default : public UVRGripScriptBase
 {
 	GENERATED_BODY()

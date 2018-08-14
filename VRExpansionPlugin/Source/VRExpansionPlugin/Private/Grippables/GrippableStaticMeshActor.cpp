@@ -256,12 +256,8 @@ void AGrippableStaticMeshActor::SetHeld_Implementation(UGripMotionControllerComp
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
 
-TArray<UVRGripScriptBase*> AGrippableStaticMeshActor::GetGripScripts_Implementation()
+bool AGrippableStaticMeshActor::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
-	return GripLogicScripts;
-}
-
-bool AGrippableStaticMeshActor::HasGripScripts_Implementation()
-{
+	ArrayReference = GripLogicScripts;
 	return GripLogicScripts.Num() > 0;
 }

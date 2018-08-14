@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "GripScripts/VRGripScriptBase.h"
+#include "GripMotionControllerComponent.h"
 #include "Engine/NetDriver.h"
  
 UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer)
@@ -19,8 +20,10 @@ void UVRGripScriptBase::OnBeginPlay_Implementation(UObject * CallingOwner) {};
 void UVRGripScriptBase::GetWorldTransform_Implementation(UGripMotionControllerComponent* GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) {}
 void UVRGripScriptBase::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void UVRGripScriptBase::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
+void UVRGripScriptBase::OnSecondaryGrip_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
+void UVRGripScriptBase::OnSecondaryGripRelease_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 
- 
+
 EGSTransformOverrideType UVRGripScriptBase::GetWorldTransformOverrideType_Implementation() { return WorldTransformOverrideType; }
 bool UVRGripScriptBase::IsScriptActive_Implementation() { return bIsActive; }
 bool UVRGripScriptBase::Wants_DenyAutoDrop_Implementation() { return false; }
