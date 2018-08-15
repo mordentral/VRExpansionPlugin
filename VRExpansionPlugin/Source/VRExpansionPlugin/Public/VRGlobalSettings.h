@@ -244,8 +244,9 @@ public:
 		static void SaveControllerProfiles()
 	{
 		UVRGlobalSettings& VRSettings = *GetMutableDefault<UVRGlobalSettings>();
+		VRSettings.SaveConfig();
 
-		VRSettings.SaveConfig(CPF_Config, *VRSettings.GetDefaultConfigFilename());
+		//VRSettings.SaveConfig(CPF_Config, *VRSettings.GetGlobalUserConfigFilename());//VRSettings.GetDefaultConfigFilename());
 	}
 
 
