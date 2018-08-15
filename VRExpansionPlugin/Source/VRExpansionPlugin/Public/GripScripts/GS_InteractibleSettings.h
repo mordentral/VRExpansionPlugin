@@ -16,6 +16,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
 		uint32 bLimitsInLocalSpace : 1;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
+		uint32 bGetInitialPositionsOnBeginPlay : 1;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
 		uint32 bLimitX : 1;
 
@@ -37,7 +40,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
 		uint32 bIgnoreHandRotation : 1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear", meta = (editcondition = "!bGetInitialPositionsOnBeginPlay"))
 		FVector_NetQuantize100 InitialLinearTranslation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
@@ -46,7 +49,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
 		FVector_NetQuantize100 MaxLinearTranslation;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular", meta = (editcondition = "!bGetInitialPositionsOnBeginPlay"))
 		FRotator InitialAngularTranslation;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
@@ -57,6 +60,7 @@ public:
 
 	FBPGS_InteractionSettings() :
 		bLimitsInLocalSpace(true),
+		bGetInitialPositionsOnBeginPlay(true),
 		bLimitX(false),
 		bLimitY(false),
 		bLimitZ(false),
@@ -84,7 +88,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)// Category = "InteractionSettings")
 	FBPGS_InteractionSettings InteractionSettings;
 
-	//virtual void BeginPlay_Implementation() override;
+	virtual void OnBeginPlay_Implementation(UObject * CallingOwner) override;
 	virtual void GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) override;
 	virtual void OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) override;
 	virtual void OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed = false) override;

@@ -10,7 +10,16 @@ UGS_InteractibleSettings::UGS_InteractibleSettings(const FObjectInitializer& Obj
 	WorldTransformOverrideType = EGSTransformOverrideType::OverridesWorldTransform;
 }
 
-//void UGS_InteractibleSettings::BeginPlay_Implementation() {}
+void UGS_InteractibleSettings::OnBeginPlay_Implementation(UObject * CallingOwner)
+{
+	if (InteractionSettings.bGetInitialPositionsOnBeginPlay)
+	{
+		FTransform parentTrans = GetParentTransform(InteractionSettings.bLimitsInLocalSpace);
+
+		InteractionSettings.InitialAngularTranslation = parentTrans.Rotator();
+		InteractionSettings.InitialLinearTranslation = parentTrans.GetTranslation();
+	}
+}
 void UGS_InteractibleSettings::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void UGS_InteractibleSettings::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 

@@ -86,13 +86,13 @@ public:
 
 	// Returns the current world transform of the owning object (or root comp of if it is an actor)
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
-	FTransform GetParentTransform()
+	FTransform GetParentTransform(bool bGetWorldTransform = true)
 	{
 		UObject * ParentObj = this->GetOuter();
 
 		if (USceneComponent * PrimParent = Cast<USceneComponent>(ParentObj))
 		{
-			return PrimParent->GetComponentTransform();
+			return bGetWorldTransform ? PrimParent->GetComponentTransform() : PrimParent->GetRelativeTransform();
 		}
 		else if (AActor * ParentActor = Cast<AActor>(ParentObj))
 		{
