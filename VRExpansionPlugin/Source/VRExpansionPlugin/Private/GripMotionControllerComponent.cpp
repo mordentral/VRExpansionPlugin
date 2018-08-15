@@ -1757,6 +1757,8 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 	}break;
 	}
 
+	// Copy over the information instead of working with a reference for the OnDroppedBroadcast
+	FBPActorGripInformation DropBroadcastData = NewDrop;
 
 	int fIndex = 0;
 	if (LocallyGrippedObjects.Find(NewDrop, fIndex))
@@ -1783,7 +1785,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 	}
 
 	// Broadcast a new drop
-	OnDroppedObject.Broadcast(NewDrop);
+	OnDroppedObject.Broadcast(DropBroadcastData);
 }
 
 
@@ -2293,6 +2295,8 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 	}break;
 	}
 
+	// Copy over the information instead of working with a reference for the OnDroppedBroadcast
+	FBPActorGripInformation DropBroadcastData = NewDrop;
 
 	int fIndex = 0;
 	if (LocallyGrippedObjects.Find(NewDrop, fIndex))
@@ -2319,7 +2323,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 	}
 
 	// Broadcast a new drop
-	OnDroppedObject.Broadcast(NewDrop);
+	OnDroppedObject.Broadcast(DropBroadcastData);
 }
 
 bool UGripMotionControllerComponent::BP_HasGripAuthority(const FBPActorGripInformation &Grip)
