@@ -1588,9 +1588,9 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 		pActor->SetActorRelativeTransform(RelativeTransformToParent);
 
 		// It had a physics handle, I need to delay a tick and set the transform to ensure it skips a race condition
-		if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
+		if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
 		{
-			if (root->IsSimulatingPhysics() && ParentPrim && ParentPrim->IsSimulatingPhysics())
+			if (rootComp->IsSimulatingPhysics() && ParentPrim && ParentPrim->IsSimulatingPhysics())
 				GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &UGripMotionControllerComponent::SetSocketTransform, ObjectToSocket, RelativeTransformToParent));
 		}
 
