@@ -8,6 +8,7 @@ UGS_LerpToHand::UGS_LerpToHand(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer)
 {
 	bIsActive = false;
+	bDenyAutoDrop = true; // Always deny auto dropping while this script is active
 	WorldTransformOverrideType = EGSTransformOverrideType::ModifiesWorldTransform;
 
 	LerpInterpolationMode = EVRLerpInterpolationMode::QuatInterp;

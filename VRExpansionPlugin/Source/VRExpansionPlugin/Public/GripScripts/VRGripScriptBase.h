@@ -30,7 +30,7 @@ enum class EGSTransformOverrideType : uint8
 	ModifiesWorldTransform
 };
 
-UCLASS(NotBlueprintable, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin))
+UCLASS(NotBlueprintable, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin), HideCategories = DefaultSettings)
 class VREXPANSIONPLUGIN_API UVRGripScriptBase : public UObject
 {
 	GENERATED_BODY()
@@ -40,34 +40,32 @@ public:
 
 	UVRGripScriptBase(const FObjectInitializer& ObjectInitializer);
 
-	/*bool IsSupportedForNetworking() const override
+	bool IsSupportedForNetworking() const override
 	{
-		return bRequiresReplicationSupport || IsNameStableForNetworking();
-	}*/
+		return true;//bRequiresReplicationSupport || IsNameStableForNetworking();
+	}
 	// I don't need to do this, there should be no dynamic script spawning and they are all name stable by default
 	
 	// Returns if the script is currently active and should be used
-	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
-		bool IsScriptActive();
-	virtual bool IsScriptActive_Implementation();
+	bool IsScriptActive();
 
-	// Is currently active helper variable, normally returned from IsScriptActive()
+	// Is currently active helper variable, returned from IsScriptActive()
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 	bool bIsActive;
 
 	// Returns if the script is going to modify the world transform of the grip
-	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
 	EGSTransformOverrideType GetWorldTransformOverrideType();
-	virtual EGSTransformOverrideType GetWorldTransformOverrideType_Implementation();
 
 	// Whether this script overrides or modifies the world transform
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 	EGSTransformOverrideType WorldTransformOverrideType;
 
 	// Returns if the script wants auto drop to be ignored
-	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
-		bool Wants_DenyAutoDrop();
-	virtual bool Wants_DenyAutoDrop_Implementation();
+	bool Wants_DenyAutoDrop();
+
+	// Returns if we want to deny auto dropping
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
+		bool bDenyAutoDrop;
 
 	// Returns if the script is currently active and should be used
 	/*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
@@ -75,14 +73,20 @@ public:
 	virtual bool Wants_DenyTeleport_Implementation();*/
 	
 
-	// If true then this will tell the owning grippable that it needs to be replicated, forcing all other attached scripts to also be replicated
-	// If the other scripts don't replicate any variables then they will have minimal overhead.
+	// If true then this will tell the owning grippable that it needs to be replicated, this saves some perf when false
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 		bool bRequiresReplicationSupport;
 
 	virtual void GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const override;
 	virtual bool CallRemoteFunction(UFunction * Function, void * Parms, FOutParmRec * OutParms, FFrame * Stack) override;
 	virtual int32 GetFunctionCallspace(UFunction * Function, void * Parameters, FFrame * Stack) override;
+
+	// Returns the expected grip transform (relative * controller + addition)
+	UFUNCTION(BlueprintPure, Category = "VRGripScript")
+	FTransform GetGripTransform(const FBPActorGripInformation &Grip, const FTransform & ParentTransform)
+	{
+		return Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
+	}
 
 	// Returns the current world transform of the owning object (or root comp of if it is an actor)
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
@@ -159,33 +163,17 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
 	void OnSecondaryGripRelease(UGripMotionControllerComponent * Controller, USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation);
 	virtual void OnSecondaryGripRelease_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation);
-	
 
-	// Begin virtual funcs
+
 
 	virtual void CallCorrect_GetWorldTransform(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
 	{
 		GetWorldTransform_Implementation(OwningController, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
 	}
-
-	virtual bool CallCorrect_Wants_DenyAutoDrop()
-	{
-		return Wants_DenyAutoDrop_Implementation();
-	}
-
-	virtual bool CallCorrect_IsScriptActive()
-	{
-		return IsScriptActive_Implementation();
-	}
-
-	virtual EGSTransformOverrideType CallCorrect_GetWorldTransformOverrideType()
-	{
-		return GetWorldTransformOverrideType_Implementation();
-	}
 };
 
 
-UCLASS(Blueprintable, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin))
+UCLASS(Blueprintable, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin), ShowCategories = DefaultSettings)
 class VREXPANSIONPLUGIN_API UVRGripScriptBaseBP : public UVRGripScriptBase
 {
 	GENERATED_BODY()
@@ -195,20 +183,4 @@ public:
 	{
 		GetWorldTransform(OwningController, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
 	}
-
-	virtual bool CallCorrect_Wants_DenyAutoDrop() override
-	{
-		return Wants_DenyAutoDrop();
-	}
-
-	virtual bool CallCorrect_IsScriptActive() override
-	{
-		return IsScriptActive();
-	}
-
-	virtual EGSTransformOverrideType CallCorrect_GetWorldTransformOverrideType() override
-	{
-		return GetWorldTransformOverrideType();
-	}
-
 };

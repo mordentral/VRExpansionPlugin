@@ -7,13 +7,14 @@
 #include "GS_GunTools.generated.h"
 
 UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
-class VREXPANSIONPLUGIN_API UGS_GunTools : public UVRGripScriptBase
+class VREXPANSIONPLUGIN_API UGS_GunTools : public UGS_Default
 {
 	GENERATED_BODY()
 public:
 
 	// Shoulder Attachment component
 	// Shoulder attachment transform
+	// Pivot offset transform for when not shoulder mounted
 
 	// Recoil max magnitude
 	// Recoil falloff

@@ -28,11 +28,6 @@ public:
 
 	UGS_LerpToHand(const FObjectInitializer& ObjectInitializer);
 
-	virtual bool Wants_DenyAutoDrop_Implementation() override
-	{
-		return true;
-	}
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float InterpSpeed;
 

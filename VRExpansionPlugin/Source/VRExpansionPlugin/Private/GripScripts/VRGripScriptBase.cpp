@@ -25,9 +25,9 @@ void UVRGripScriptBase::OnSecondaryGrip_Implementation(UGripMotionControllerComp
 void UVRGripScriptBase::OnSecondaryGripRelease_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * ReleasingSecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
 
 
-EGSTransformOverrideType UVRGripScriptBase::GetWorldTransformOverrideType_Implementation() { return WorldTransformOverrideType; }
-bool UVRGripScriptBase::IsScriptActive_Implementation() { return bIsActive; }
-bool UVRGripScriptBase::Wants_DenyAutoDrop_Implementation() { return false; }
+EGSTransformOverrideType UVRGripScriptBase::GetWorldTransformOverrideType() { return WorldTransformOverrideType; }
+bool UVRGripScriptBase::IsScriptActive() { return bIsActive; }
+bool UVRGripScriptBase::Wants_DenyAutoDrop() { return bDenyAutoDrop; }
 //bool UVRGripScriptBase::Wants_DenyTeleport_Implementation() { return false; }
 
 

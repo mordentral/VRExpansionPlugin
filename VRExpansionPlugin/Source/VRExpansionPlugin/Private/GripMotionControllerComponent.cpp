@@ -104,6 +104,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	CurrentControllerProfileTransform = FTransform::Identity;
 
 	DefaultGripScript = nullptr;
+	DefaultGripScriptClass = UGS_Default::StaticClass();
 }
 
 //=============================================================================
@@ -222,7 +223,9 @@ void UGripMotionControllerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (!DefaultGripScript)
+	if (!DefaultGripScript && DefaultGripScriptClass)
+		DefaultGripScript = DefaultGripScriptClass.GetDefaultObject();
+	else
 		DefaultGripScript = GetMutableDefault<UGS_Default>();
 }
 
@@ -3004,7 +3007,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 		// Get grip script world transform overrides (if there are any)
 		for (UVRGripScriptBase* Script: GripScripts)
 		{
-			if (Script && Script->CallCorrect_IsScriptActive() && Script->CallCorrect_GetWorldTransformOverrideType() == EGSTransformOverrideType::OverridesWorldTransform)
+			if (Script && Script->IsScriptActive() && Script->GetWorldTransformOverrideType() == EGSTransformOverrideType::OverridesWorldTransform)
 			{
 				// One of the grip scripts overrides the default transform
 				bGetDefaultTransform = false;
@@ -3021,7 +3024,7 @@ void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 		// Get grip script world transform modifiers (if there are any)
 		for (UVRGripScriptBase* Script : GripScripts)
 		{
-			if (Script && Script->CallCorrect_IsScriptActive() && Script->CallCorrect_GetWorldTransformOverrideType() != EGSTransformOverrideType::None)
+			if (Script && Script->IsScriptActive() && Script->GetWorldTransformOverrideType() != EGSTransformOverrideType::None)
 			{
 				Script->CallCorrect_GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
 			}
