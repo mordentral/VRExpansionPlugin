@@ -171,6 +171,7 @@ void UGripMotionControllerComponent::OnUnregister()
 		if (VRSettings != nullptr)
 		{
 			VRSettings->OnControllerProfileChangedEvent.Remove(NewControllerProfileEvent_Handle);
+			NewControllerProfileEvent_Handle.Reset();
 		}
 	}
 
