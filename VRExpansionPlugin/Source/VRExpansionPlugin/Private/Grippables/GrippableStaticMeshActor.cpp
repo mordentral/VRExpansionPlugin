@@ -90,7 +90,7 @@ void AGrippableStaticMeshActor::GetLifetimeReplicatedProps(TArray< class FLifeti
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME/*_CONDITION*/(AGrippableStaticMeshActor, GripLogicScripts);// , COND_Custom);
+	DOREPLIFETIME(AGrippableStaticMeshActor, GripLogicScripts);
 	DOREPLIFETIME(AGrippableStaticMeshActor, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(AGrippableStaticMeshActor, bAllowIgnoringAttachOnOwner);
 	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, VRGripInterfaceSettings, COND_Custom);
@@ -101,22 +101,6 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 {
 	Super::PreReplication(ChangedPropertyTracker);
 	
-	// Don't replicate if set to not do it
-	/*bool bReplicateLogicScripts = (GripLogicScripts.Num() == 0); 
-
-	if (!bReplicateLogicScripts)
-	{
-		for (UVRGripScriptBase* Script : GripLogicScripts)
-		{
-			if (Script && Script->bRequiresReplicationSupport)
-			{
-				bReplicateLogicScripts = true;
-				break;
-			}
-		}
-	}*/
-
-	//DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, GripLogicScripts, bReplicateLogicScripts);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
 }
@@ -127,7 +111,7 @@ bool AGrippableStaticMeshActor::ReplicateSubobjects(UActorChannel* Channel, clas
 
 	for (UVRGripScriptBase* Script : GripLogicScripts)
 	{
-		if (Script && Script->bRequiresReplicationSupport && !Script->IsPendingKill())
+		if (Script && !Script->IsPendingKill())
 		{
 			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
 		}

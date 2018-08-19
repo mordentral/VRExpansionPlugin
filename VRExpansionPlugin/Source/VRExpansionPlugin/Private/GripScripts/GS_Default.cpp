@@ -10,7 +10,7 @@ UGS_Default::UGS_Default(const FObjectInitializer& ObjectInitializer) :
 	WorldTransformOverrideType = EGSTransformOverrideType::OverridesWorldTransform;
 }
 
-void UGS_Default::GetWorldTransform_Implementation
+bool UGS_Default::GetWorldTransform_Implementation
 (
 	UGripMotionControllerComponent* GrippingController, 
 	float DeltaTime, FTransform & WorldTransform, 
@@ -23,7 +23,7 @@ void UGS_Default::GetWorldTransform_Implementation
 ) 
 {
 	if (!GrippingController)
-		return;
+		return false;
 
 	// Just simple transform setting
 	WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
@@ -126,6 +126,7 @@ void UGS_Default::GetWorldTransform_Implementation
 			}
 		}
 	}
+	return true;
 }
 
 void UGS_Default::Default_HandleLerpingUpdate(FBPActorGripInformation & Grip, float DeltaTime)

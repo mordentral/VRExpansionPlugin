@@ -18,7 +18,7 @@ public:
 	UGS_Default(const FObjectInitializer& ObjectInitializer);
 
 	//virtual void BeginPlay_Implementation() override;
-	virtual void GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) override;
+	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) override;
 
 	inline void Default_HandleLerpingUpdate(FBPActorGripInformation & Grip, float DeltaTime);
 	inline void Default_GetAnyScaling(FVector & Scaler, FBPActorGripInformation & Grip, FVector & frontLoc, FVector & frontLocOrig, ESecondaryGripType SecondaryType, FTransform & SecondaryTransform);

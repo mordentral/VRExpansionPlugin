@@ -89,7 +89,7 @@ bool AGrippableSkeletalMeshActor::ReplicateSubobjects(UActorChannel* Channel, cl
 
 	for (UVRGripScriptBase* Script : GripLogicScripts)
 	{
-		if (Script && Script->bRequiresReplicationSupport && !Script->IsPendingKill())
+		if (Script && !Script->IsPendingKill())
 		{
 			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
 		}

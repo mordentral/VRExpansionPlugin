@@ -36,13 +36,12 @@ class VREXPANSIONPLUGIN_API UVRGripScriptBase : public UObject
 	GENERATED_BODY()
 public:
 
-	//#TODO: Add OnSecondaryGrip and OnSecondaryGripRelease?
-
 	UVRGripScriptBase(const FObjectInitializer& ObjectInitializer);
 
 	bool IsSupportedForNetworking() const override
 	{
-		return true;//bRequiresReplicationSupport || IsNameStableForNetworking();
+		return true;
+		//return bRequiresReplicationSupport || Super::IsSupportedForNetworking();
 	}
 	// I don't need to do this, there should be no dynamic script spawning and they are all name stable by default
 	
@@ -71,11 +70,6 @@ public:
 	/*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
 	bool Wants_DenyTeleport();
 	virtual bool Wants_DenyTeleport_Implementation();*/
-	
-
-	// If true then this will tell the owning grippable that it needs to be replicated, this saves some perf when false
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
-		bool bRequiresReplicationSupport;
 
 	virtual void GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const override;
 	virtual bool CallRemoteFunction(UFunction * Function, void * Parms, FOutParmRec * OutParms, FFrame * Stack) override;
@@ -117,14 +111,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 		AActor * GetOwner()
 	{
-		return Cast<AActor>(this->GetOutermost());
+		AActor * MyOwner = nullptr;
+		if (AActor * MyOwner = Cast<AActor>(this->GetOuter()))
+		{
+			return MyOwner;
+		}
+		else
+			return Cast<AActor>(this->GetOutermost());
 	}
 
-	// If we have authority 
+	// If the owning actor has authority on this connection 
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 		bool HasAuthority()
 	{
-		if (AActor * MyOwner = Cast<AActor>(this->GetOutermost()))
+		if(AActor * MyOwner = GetOwner())
 		{
 			return MyOwner->Role == ROLE_Authority;
 		}
@@ -135,14 +135,14 @@ public:
 	// Not all scripts will require this function, specific ones that use things like Lever logic however will. Best to call it.
 	// Grippables will automatically call this, however if you manually spawn a grip script during play or you make your own
 	// Interfaced grip object and give it grippables, YOU will be required to call this event on them.
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript|Init")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
 		void OnBeginPlay(UObject * CallingOwner);
 		virtual void OnBeginPlay_Implementation(UObject * CallingOwner);
 
 	// Overrides or Modifies the world transform with this grip script
-	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript|Steps")
-		void GetWorldTransform(UGripMotionControllerComponent * GrippingController, float DeltaTime, /*UPARAM(ref)*/ FTransform & WorldTransform, const FTransform &ParentTransform, UPARAM(ref) FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
-		virtual void GetWorldTransform_Implementation(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
+	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
+		bool GetWorldTransform(UGripMotionControllerComponent * GrippingController, float DeltaTime, UPARAM(ref) FTransform & WorldTransform, const FTransform &ParentTransform, UPARAM(ref) FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
+		virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
 
 	// Event triggered on the interfaced object when gripped
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
@@ -173,7 +173,7 @@ public:
 };
 
 
-UCLASS(Blueprintable, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin), ShowCategories = DefaultSettings)
+UCLASS(Blueprintable, Abstract, ClassGroup = (VRExpansionPlugin), ShowCategories = DefaultSettings)
 class VREXPANSIONPLUGIN_API UVRGripScriptBaseBP : public UVRGripScriptBase
 {
 	GENERATED_BODY()

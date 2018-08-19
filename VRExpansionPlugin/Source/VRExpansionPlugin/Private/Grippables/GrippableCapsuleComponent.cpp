@@ -63,7 +63,7 @@ bool UGrippableCapsuleComponent::ReplicateSubobjects(UActorChannel* Channel, cla
 
 	for (UVRGripScriptBase* Script : GripLogicScripts)
 	{
-		if (Script && Script->bRequiresReplicationSupport && !Script->IsPendingKill())
+		if (Script && !Script->IsPendingKill())
 		{
 			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
 		}

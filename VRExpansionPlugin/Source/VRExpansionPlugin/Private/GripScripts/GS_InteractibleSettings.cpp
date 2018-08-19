@@ -24,7 +24,7 @@ void UGS_InteractibleSettings::OnGrip_Implementation(UGripMotionControllerCompon
 void UGS_InteractibleSettings::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 
 
-void UGS_InteractibleSettings::GetWorldTransform_Implementation
+bool UGS_InteractibleSettings::GetWorldTransform_Implementation
 (
 	UGripMotionControllerComponent* GrippingController, 
 	float DeltaTime, FTransform & WorldTransform, 
@@ -37,7 +37,7 @@ void UGS_InteractibleSettings::GetWorldTransform_Implementation
 ) 
 {
 	if (!root)
-		return;
+		return false;
 
 	FTransform LocalTransform;
 
@@ -95,4 +95,6 @@ void UGS_InteractibleSettings::GetWorldTransform_Implementation
 	{
 		WorldTransform = WorldTransform * LocalTransform;
 	}
+
+	return true;
 }

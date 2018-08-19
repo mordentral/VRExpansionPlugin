@@ -26,7 +26,7 @@ void UGS_LerpToHand::OnGripRelease_Implementation(UGripMotionControllerComponent
 }
 
 
-void UGS_LerpToHand::GetWorldTransform_Implementation
+bool UGS_LerpToHand::GetWorldTransform_Implementation
 (
 	UGripMotionControllerComponent* GrippingController, 
 	float DeltaTime, FTransform & WorldTransform, 
@@ -39,7 +39,7 @@ void UGS_LerpToHand::GetWorldTransform_Implementation
 ) 
 {
 	if (!root)
-		return;
+		return false;
 
 	if (InterpSpeed <= 0.f)
 	{
@@ -84,4 +84,6 @@ void UGS_LerpToHand::GetWorldTransform_Implementation
 	{
 		bIsActive = false;
 	}
+
+	return true;
 }
