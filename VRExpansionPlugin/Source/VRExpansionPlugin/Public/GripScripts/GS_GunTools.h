@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VRGripScriptBase.h"
+#include "GripScripts/GS_Default.h"
 #include "GS_GunTools.generated.h"
 
 UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
@@ -12,18 +13,52 @@ class VREXPANSIONPLUGIN_API UGS_GunTools : public UGS_Default
 	GENERATED_BODY()
 public:
 
-	// Shoulder Attachment component
-	// Shoulder attachment transform
-	// Pivot offset transform for when not shoulder mounted
+	UGS_GunTools(const FObjectInitializer& ObjectInitializer);
+	
+	// Offset to apply to the pivot (good for centering pivot into the palm ect).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings")
+		FVector PivotOffset;
 
-	// Recoil max magnitude
-	// Recoil falloff
-	// Recoil addition transform
+	// Overrides the pivot location to be at this component instead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings")
+		USceneComponent * OverridePivotComponent;
 
-	// ?
+	// Causes the override pivot component to act like a shoulder mount location
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|ShoulderMount")
+		bool bUseOverridePivotAsShoulderMount;
 
-	//virtual void BeginPlay_Implementation() override;
-	//virtual void ModifyWorldTransform_Implementation(float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) override;
-	//virtual void OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) override;
-	//virtual void OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed = false) override;
+	// Relative transform on the gripped object to keep to the shoulder mount
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|ShoulderMount")
+		FTransform_NetQuantize ShoulderMountRelativeTransform;
+
+	// Overrides the relative transform and uses this socket location instead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|ShoulderMount")
+		FName ShoulderMountSocketOverride;
+
+
+	// If this gun has recoil
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil")
+		bool bHasRecoil;
+
+	// Recoil transform to apply per instance
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+		FTransform_NetQuantize InstanceTransform;
+
+	// Maximum recoil addition
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+		FTransform_NetQuantize MaxRecoil;
+
+	// Recoil decay rate, how fast it decays back to baseline
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+		float DecayRate;
+
+	FTransform BackEndRecoilStorage;
+
+	UFUNCTION(BlueprintCallable, Category = "GunTools|Recoil")
+		void AddRecoilInstance(float RecoilInstanceStrength);
+
+	UFUNCTION(BlueprintCallable, Category = "GunTools|Recoil")
+		void ClearRecoil();
+
+	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) override;
 };

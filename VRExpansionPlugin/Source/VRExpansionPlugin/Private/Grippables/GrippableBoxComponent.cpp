@@ -92,6 +92,11 @@ void UGrippableBoxComponent::BeginPlay()
 	}
 }
 
+void UGrippableBoxComponent::SetDenyGripping(bool bDenyGripping)
+{
+	VRGripInterfaceSettings.bDenyGripping = bDenyGripping;
+}
+
 void UGrippableBoxComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
 void UGrippableBoxComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void UGrippableBoxComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}

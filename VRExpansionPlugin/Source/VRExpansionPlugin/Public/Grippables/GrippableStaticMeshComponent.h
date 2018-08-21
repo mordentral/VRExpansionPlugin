@@ -38,6 +38,10 @@ public:
 
 	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
 
+	// Sets the Deny Gripping variable on the FBPInterfaceSettings struct
+	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
+		void SetDenyGripping(bool bDenyGripping);
+
 	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override
 	{
 		TagContainer = GameplayTags;

@@ -92,6 +92,11 @@ void UGrippableStaticMeshComponent::BeginPlay()
 	}
 }
 
+void UGrippableStaticMeshComponent::SetDenyGripping(bool bDenyGripping)
+{
+	VRGripInterfaceSettings.bDenyGripping = bDenyGripping;
+}
+
 void UGrippableStaticMeshComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
 void UGrippableStaticMeshComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void UGrippableStaticMeshComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}

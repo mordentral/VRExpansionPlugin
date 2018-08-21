@@ -1,18 +1,32 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "GS_Default.h"
+#include "GS_GunTools.h"
 #include "VRGripInterface.h"
 #include "GripMotionControllerComponent.h"
-#include "GripScripts/GS_Default.h"
+#include "GripScripts/GS_GunTools.h"
 
-UGS_Default::UGS_Default(const FObjectInitializer& ObjectInitializer) :
+UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer)
 {
 	bIsActive = true;
 	WorldTransformOverrideType = EGSTransformOverrideType::OverridesWorldTransform;
+
+	PivotOffset = FVector::ZeroVector;
+	OverridePivotComponent = nullptr;
+	bUseOverridePivotAsShoulderMount = false;
+	ShoulderMountRelativeTransform = FTransform::Identity;
+	ShoulderMountSocketOverride = NAME_None;
+
+
+	bHasRecoil = false;
+	InstanceTransform = FTransform::Identity;
+	MaxRecoil = FTransform::Identity;
+	DecayRate = 1.f;
+
+	FTransform BackEndRecoilStorage;
 }
 
-bool UGS_Default::GetWorldTransform_Implementation
+bool UGS_GunTools::GetWorldTransform_Implementation
 (
 	UGripMotionControllerComponent* GrippingController, 
 	float DeltaTime, FTransform & WorldTransform, 
@@ -28,7 +42,10 @@ bool UGS_Default::GetWorldTransform_Implementation
 		return false;
 
 	// Just simple transform setting
-	WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
+	if(bHasRecoil)
+		WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * BackEndRecoilStorage * ParentTransform;
+	else
+		WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
 
 	// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
 	if ((Grip.SecondaryGripInfo.bHasSecondaryAttachment && Grip.SecondaryGripInfo.SecondaryAttachment) || Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
@@ -76,7 +93,17 @@ bool UGS_Default::GetWorldTransform_Implementation
 		if (SecondaryType != ESecondaryGripType::SG_Custom)
 		{
 			// Variables needed for multi grip transform
-			FVector BasePoint = GrippingController->GetComponentLocation(); // Get our pivot point
+			FVector BasePoint;
+
+			if (OverridePivotComponent != nullptr)
+			{
+				BasePoint = (OverridePivotComponent->GetComponentTransform() * FTransform(PivotOffset)).GetLocation();
+			}
+			else
+			{
+				BasePoint = (GrippingController->GetComponentTransform() * FTransform(PivotOffset)).GetLocation();
+			}
+				
 			const FTransform PivotToWorld = FTransform(FQuat::Identity, BasePoint);
 			const FTransform WorldToPivot = FTransform(FQuat::Identity, -BasePoint);
 
@@ -157,54 +184,13 @@ bool UGS_Default::GetWorldTransform_Implementation
 	return true;
 }
 
-void UGS_Default::Default_GetAnyScaling(FVector & Scaler, FBPActorGripInformation & Grip, FVector & frontLoc, FVector & frontLocOrig, ESecondaryGripType SecondaryType, FTransform & SecondaryTransform)
+void UGS_GunTools::ClearRecoil()
 {
-	if (Grip.SecondaryGripInfo.GripLerpState != EGripLerpState::EndLerp)
-	{
-
-		//float Scaler = 1.0f;
-		if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_ScalingOnly)
-		{
-			/*Grip.SecondaryScaler*/ Scaler = FVector(frontLoc.Size() / frontLocOrig.Size());
-			//bRescalePhysicsGrips = true; // This is for the physics grips
-
-			if (Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings && Grip.AdvancedGripSettings.SecondaryGripSettings.bLimitGripScaling)
-			{
-				// Get the total scale after modification
-				// #TODO: convert back to singular float version? Can get Min() & Max() to convert the float to a range...think about it
-				FVector WorldScale = /*WorldTransform*/SecondaryTransform.GetScale3D();
-				FVector CombinedScale = WorldScale * Scaler;
-
-				// Clamp to the minimum and maximum values
-				CombinedScale.X = FMath::Clamp(CombinedScale.X, Grip.AdvancedGripSettings.SecondaryGripSettings.MinimumGripScaling.X, Grip.AdvancedGripSettings.SecondaryGripSettings.MaximumGripScaling.X);
-				CombinedScale.Y = FMath::Clamp(CombinedScale.Y, Grip.AdvancedGripSettings.SecondaryGripSettings.MinimumGripScaling.Y, Grip.AdvancedGripSettings.SecondaryGripSettings.MaximumGripScaling.Y);
-				CombinedScale.Z = FMath::Clamp(CombinedScale.Z, Grip.AdvancedGripSettings.SecondaryGripSettings.MinimumGripScaling.Z, Grip.AdvancedGripSettings.SecondaryGripSettings.MaximumGripScaling.Z);
-
-				// Recreate in scaler form so that the transform chain below works as normal
-				Scaler = CombinedScale / WorldScale;
-			}
-			//Scaler = Grip.SecondaryScaler;
-		}
-	}
+	BackEndRecoilStorage = FTransform::Identity;
 }
 
-void UGS_Default::Default_ApplySmoothingAndLerp(FBPActorGripInformation & Grip, FVector &frontLoc, FVector & frontLocOrig, float DeltaTime)
+void UGS_GunTools::AddRecoilInstance(float RecoilInstanceStrength)
 {
-	if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
-	{
-		if (Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler < 1.0f)
-		{
-			FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.RunFilterSmoothing(frontLoc, DeltaTime);
-
-			frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler);
-		}
-
-		frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
-	}
-	else if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
-	{
-		FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.RunFilterSmoothing(frontLoc, DeltaTime);
-
-		frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler);
-	}
+	BackEndRecoilStorage = BackEndRecoilStorage + InstanceTransform;
+	// Clamp to max recoil, and + is wrong need to combine.
 }

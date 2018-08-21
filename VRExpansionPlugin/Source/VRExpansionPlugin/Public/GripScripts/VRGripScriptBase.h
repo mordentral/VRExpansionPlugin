@@ -111,7 +111,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 		AActor * GetOwner()
 	{
-		AActor * MyOwner = nullptr;
 		if (AActor * MyOwner = Cast<AActor>(this->GetOuter()))
 		{
 			return MyOwner;
