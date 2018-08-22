@@ -169,6 +169,11 @@ void AVRBaseCharacter::OnEndWallPushback_Implementation()
 
 }
 
+void AVRBaseCharacter::OnClimbingSteppedUp_Implementation()
+{
+
+}
+
 void AVRBaseCharacter::Server_SendTransformCamera_Implementation(FBPVRComponentPosRep NewTransform)
 {
 	if(VRReplicatedCamera)

@@ -818,6 +818,39 @@ void UVRBaseCharacterMovementComponent::SetReplicatedMovementMode(EVRConjoinedMo
 	VRReplicatedMovementMode = NewMovementMode;
 }
 
+EVRConjoinedMovementModes UVRBaseCharacterMovementComponent::GetReplicatedMovementMode()
+{
+	if (MovementMode == EMovementMode::MOVE_Custom)
+	{
+		return (EVRConjoinedMovementModes)((int8)CustomMovementMode + (int8)EVRConjoinedMovementModes::C_VRMOVE_Climbing);
+	}
+	else
+		return (EVRConjoinedMovementModes)MovementMode.GetValue();
+}
+
+void UVRBaseCharacterMovementComponent::ApplyNetworkMovementMode(const uint8 ReceivedMode)
+{
+	if (CharacterOwner->Role != ENetRole::ROLE_SimulatedProxy)
+	{
+		const uint8 CurrentPackedMovementMode = PackNetworkMovementMode();
+		if (CurrentPackedMovementMode != ReceivedMode)
+		{
+			TEnumAsByte<EMovementMode> NetMovementMode(MOVE_None);
+			TEnumAsByte<EMovementMode> NetGroundMode(MOVE_None);
+			uint8 NetCustomMode(0);
+			UnpackNetworkMovementMode(ReceivedMode, NetMovementMode, NetCustomMode, NetGroundMode);
+
+			// Custom movement modes aren't going to be rolled back as they are client authed for our pawns
+			if (NetMovementMode == EMovementMode::MOVE_Custom || MovementMode == EMovementMode::MOVE_Custom)
+			{
+				return; // Don't rollback custom movement modes, we set the server to trust the client on them now so the server should get corrected
+			}
+		}
+	}
+	
+	Super::ApplyNetworkMovementMode(ReceivedMode);
+}
+
 /*void UVRBaseCharacterMovementComponent::SendClientAdjustment()
 {
 	if (!HasValidData())
