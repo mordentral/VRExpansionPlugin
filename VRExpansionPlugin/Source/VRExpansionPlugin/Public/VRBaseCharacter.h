@@ -224,8 +224,9 @@ public:
 
 	// Called when the client is in climbing mode and is stepped up onto a platform
 	// Generally you should drop the climbing at this point and go into falling movement.
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRMovement")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRMovement")
 		void OnClimbingSteppedUp();
+	virtual void OnClimbingSteppedUp_Implementation();
 
 	// This is the offset location of the player, use this for when checking against player transform instead of the actors transform
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")

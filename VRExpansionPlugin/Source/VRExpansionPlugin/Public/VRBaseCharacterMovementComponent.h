@@ -782,6 +782,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		EVRConjoinedMovementModes DefaultPostClimbMovement;
 
+	// Overloading this to handle an edge case
+	virtual void ApplyNetworkMovementMode(const uint8 ReceivedMode) override;
+
 	/*
 	* This is called client side to make a replicated movement mode change that hits the server in the saved move.
 	*
@@ -791,6 +794,16 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void SetReplicatedMovementMode(EVRConjoinedMovementModes NewMovementMode);
+
+	/*
+	* Call this to convert the current movement mode to a Conjoined one for reference
+	*
+	* Custom Movement Mode is currently limited to 0 - 8, the index's 0 and 1 are currently used up for the plugin movement modes.
+	* So setting it to 0 or 1 would be Climbing, and LowGrav respectivly, this leaves 2-8 as open index's for use.
+	* For a total of 6 Custom movement modes past the currently implemented plugin ones.
+	*/
+	UFUNCTION(BlueprintPure, Category = "VRMovement")
+		EVRConjoinedMovementModes GetReplicatedMovementMode();
 
 	// We use 4 bits for this so a maximum of 16 elements
 	EVRConjoinedMovementModes VRReplicatedMovementMode;
