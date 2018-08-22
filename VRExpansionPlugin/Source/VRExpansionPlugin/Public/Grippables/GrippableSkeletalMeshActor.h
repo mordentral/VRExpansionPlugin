@@ -10,6 +10,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
+#include "GripScripts/VRGripScriptBase.h"
+#include "Engine/ActorChannel.h"
 #include "GrippableSkeletalMeshActor.generated.h"
 
 /**
@@ -47,6 +49,16 @@ public:
 
 
 	~AGrippableSkeletalMeshActor();
+	virtual void BeginPlay() override;
+
+	UPROPERTY(EditDefaultsOnly, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
+		TArray<class UVRGripScriptBase *> GripLogicScripts;
+
+	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
+
+	// Sets the Deny Gripping variable on the FBPInterfaceSettings struct
+	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
+		void SetDenyGripping(bool bDenyGripping);
 
 	// ------------------------------------------------
 	// Gameplay tag interface
@@ -214,6 +226,10 @@ public:
 	// Get interactable settings
 	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		//FBPInteractionSettings GetInteractionSettings();
+
+	// Get grip scripts
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		bool GetGripScripts(UPARAM(ref) TArray<UVRGripScriptBase*> & ArrayReference);
 
 	// Events //
 

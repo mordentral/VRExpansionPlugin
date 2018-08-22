@@ -13,6 +13,7 @@
 #include "VRBPDatatypes.generated.h"
 
 class UGripMotionControllerComponent;
+class UVRGripScriptBase;
 
 UENUM(Blueprintable)
 enum class EVRInteractibleAxis : uint8
@@ -460,15 +461,24 @@ enum class EGripLerpState : uint8
 UENUM(Blueprintable)
 enum class ESecondaryGripType : uint8
 {
-	SG_None, // No secondary grip
-	SG_Free, // Free secondary grip
-	SG_SlotOnly, // Only secondary grip at a slot
-	SG_Free_Retain, // Retain pos on drop
+	// No secondary grip
+	SG_None, 
+	// Free secondary grip
+	SG_Free, 
+	// Only secondary grip at a slot
+	SG_SlotOnly, 
+	// Retain pos on drop
+	SG_Free_Retain, 
+	// Retain pos on drop, slot only
 	SG_SlotOnly_Retain, 
-	SG_FreeWithScaling_Retain, // Scaling with retain pos on drop
+	// Scaling with retain pos on drop
+	SG_FreeWithScaling_Retain, 
+	// Scaling with retain pos on drop, slot only
 	SG_SlotOnlyWithScaling_Retain,
-	SG_Custom, // Does nothing, just provides the events for personal use
-	SG_ScalingOnly, // Does not track the hand, only scales the mesh with it
+	// Does nothing, just provides the events for personal use
+	SG_Custom, 
+	// Does not track the hand, only scales the mesh with it
+	SG_ScalingOnly, 
 };
 
 // Grip Late Update information
@@ -1236,6 +1246,9 @@ struct VREXPANSIONPLUGIN_API FBPInterfaceProperties
 {
 	GENERATED_BODY()
 public:
+
+	//UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Instanced, Category = "VRGripInterface")
+		//TArray<class UVRGripScriptBase *> GripLogicScripts;
 		
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bDenyGripping;

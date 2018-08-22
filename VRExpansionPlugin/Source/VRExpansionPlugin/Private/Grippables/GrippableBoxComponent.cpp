@@ -41,6 +41,7 @@ void UGrippableBoxComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeP
 {
 	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	 DOREPLIFETIME/*_CONDITION*/(UGrippableBoxComponent, GripLogicScripts);// , COND_Custom);
 	DOREPLIFETIME(UGrippableBoxComponent, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(UGrippableBoxComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, VRGripInterfaceSettings, COND_Custom);
@@ -58,6 +59,42 @@ void UGrippableBoxComponent::PreReplication(IRepChangedPropertyTracker & Changed
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
+}
+
+bool UGrippableBoxComponent::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
+{
+	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script && !Script->IsPendingKill())
+		{
+			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+		}
+	}
+
+	return WroteSomething;
+}
+
+
+void UGrippableBoxComponent::BeginPlay()
+{
+	// Call the base class 
+	Super::BeginPlay();
+
+	// Call all grip scripts begin play events so they can perform any needed logic
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script)
+		{
+			Script->OnBeginPlay(this);
+		}
+	}
+}
+
+void UGrippableBoxComponent::SetDenyGripping(bool bDenyGripping)
+{
+	VRGripInterfaceSettings.bDenyGripping = bDenyGripping;
 }
 
 void UGrippableBoxComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
@@ -158,3 +195,9 @@ void UGrippableBoxComponent::SetHeld_Implementation(UGripMotionControllerCompone
 {
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
+
+bool UGrippableBoxComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
+{
+	ArrayReference = GripLogicScripts;
+	return GripLogicScripts.Num() > 0;
+}

@@ -13,10 +13,12 @@
 #include "IXRTrackingSystem.h"
 #include "VRGripInterface.h"
 #include "VRGlobalSettings.h"
+#include "GripScripts/VRGripScriptBase.h"
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 #include "GripMotionControllerComponent.generated.h"
 
 class AVRBaseCharacter;
+class UVRGripScriptBase;
 
 /**
 *
@@ -102,6 +104,12 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UMotionContr
 {
 
 public:
+
+	// The grip script that defines the default behaviors of grips
+	// Don't edit this unless you really know what you are doing, leave it empty
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+		TSubclassOf<class UVRGripScriptBase> DefaultGripScriptClass; //UVRGripScriptBase * DefaultGripLogicScript;
+	UVRGripScriptBase* DefaultGripScript;
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
@@ -360,6 +368,18 @@ public:
 					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+						
+						TArray<UVRGripScriptBase*> GripScripts;
+						if (IVRGripInterface::Execute_GetGripScripts(Grip.GrippedObject, GripScripts))
+						{
+							for (UVRGripScriptBase* Script : GripScripts)
+							{
+								if (Script)
+								{
+									Script->OnSecondaryGrip(this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+								}
+							}
+						}
 					}
 				}
 				else
@@ -367,6 +387,18 @@ public:
 					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGripRelease(Grip.GrippedObject, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+
+						TArray<UVRGripScriptBase*> GripScripts;
+						if (IVRGripInterface::Execute_GetGripScripts(Grip.GrippedObject, GripScripts))
+						{
+							for (UVRGripScriptBase* Script : GripScripts)
+							{
+								if (Script)
+								{
+									Script->OnSecondaryGripRelease(this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+								}
+							}
+						}
 					}
 				}
 			}
@@ -766,12 +798,14 @@ public:
 	// Splitting logic into separate function
 	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray = false);
 
-	// Gets the world transform of a grip, modified by secondary grips and interaction settings
-	void GetGripWorldTransform(float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface/*, bool & bRescalePhysicsGrips*/);
+	// Gets the world transform of a grip, modified by secondary grips
+	void GetGripWorldTransform(TArray<UVRGripScriptBase*>& GripScripts, float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface/*, bool & bRescalePhysicsGrips*/);
 
-	// Removed in 4.20
-	// Handle modifying the transform per the grip interaction settings, returns final world transform
-	//FTransform HandleInteractionSettings(float DeltaTime, const FTransform & ParentTransform, UPrimitiveComponent * root, FBPInteractionSettings InteractionSettings, FBPActorGripInformation & GripInfo);
+	// Calculate component to world without the protected tag, doesn't set it, just returns it
+	inline FTransform CalcControllerComponentToWorld(FRotator Orientation, FVector Position)
+	{
+		return this->CalcNewComponentToWorld(FTransform(Orientation, Position));
+	}
 
 	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")

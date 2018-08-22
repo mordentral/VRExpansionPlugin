@@ -36,7 +36,8 @@ UGrippableCapsuleComponent::UGrippableCapsuleComponent(const FObjectInitializer&
 void UGrippableCapsuleComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
+	
+	DOREPLIFETIME/*_CONDITION*/(UGrippableCapsuleComponent, GripLogicScripts);// , COND_Custom);
 	DOREPLIFETIME(UGrippableCapsuleComponent, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(UGrippableCapsuleComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UGrippableCapsuleComponent, VRGripInterfaceSettings, COND_Custom);
@@ -56,10 +57,44 @@ void UGrippableCapsuleComponent::PreReplication(IRepChangedPropertyTracker & Cha
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
+bool UGrippableCapsuleComponent::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
+{
+	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script && !Script->IsPendingKill())
+		{
+			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+		}
+	}
+
+	return WroteSomething;
+}
 
 //=============================================================================
 UGrippableCapsuleComponent::~UGrippableCapsuleComponent()
 {
+}
+
+void UGrippableCapsuleComponent::BeginPlay()
+{
+	// Call the base class 
+	Super::BeginPlay();
+
+	// Call all grip scripts begin play events so they can perform any needed logic
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script)
+		{
+			Script->OnBeginPlay(this);
+		}
+	}
+}
+
+void UGrippableCapsuleComponent::SetDenyGripping(bool bDenyGripping)
+{
+	VRGripInterfaceSettings.bDenyGripping = bDenyGripping;
 }
 
 void UGrippableCapsuleComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
@@ -161,3 +196,9 @@ void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerCom
 {
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
+
+bool UGrippableCapsuleComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
+{
+	ArrayReference = GripLogicScripts;
+	return GripLogicScripts.Num() > 0;
+}

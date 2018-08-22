@@ -274,3 +274,8 @@ void UVRDialComponent::SetHeld_Implementation(UGripMotionControllerComponent * N
 {
 	return FBPInteractionSettings();
 }*/
+
+bool UVRDialComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
+{
+	return false;
+}

@@ -202,6 +202,9 @@ public:
 	UFUNCTION()
 	void OnRep_CapsuleHeight()
 	{
+		if (!VRReplicateCapsuleHeight)
+			return;
+
 		if (UCapsuleComponent * Capsule = Cast<UCapsuleComponent>(GetRootComponent()))
 		{
 			if (ReplicatedCapsuleHeight.CapsuleHeight > 0.0f && !FMath::IsNearlyEqual(ReplicatedCapsuleHeight.CapsuleHeight, Capsule->GetUnscaledCapsuleHalfHeight()))
@@ -581,7 +584,7 @@ public:
 			if(!FMath::IsNearlyEqual(NewRadius, Capsule->GetUnscaledCapsuleRadius()) || !FMath::IsNearlyEqual(NewHalfHeight,Capsule->GetUnscaledCapsuleHalfHeight()))
 				Capsule->SetCapsuleSize(NewRadius, NewHalfHeight, bUpdateOverlaps);
 			
-			if (GetNetMode() < ENetMode::NM_Client)
+			if (GetNetMode() < ENetMode::NM_Client && VRReplicateCapsuleHeight)
 				ReplicatedCapsuleHeight.CapsuleHeight = Capsule->GetUnscaledCapsuleHalfHeight();
 		}
 	}
@@ -595,7 +598,7 @@ public:
 			if (!FMath::IsNearlyEqual(HalfHeight, Capsule->GetUnscaledCapsuleHalfHeight()))
 				Capsule->SetCapsuleHalfHeight(HalfHeight, bUpdateOverlaps);
 
-			if(GetNetMode() < ENetMode::NM_Client)
+			if(GetNetMode() < ENetMode::NM_Client && VRReplicateCapsuleHeight)
 				ReplicatedCapsuleHeight.CapsuleHeight = Capsule->GetUnscaledCapsuleHalfHeight();
 		}
 	}

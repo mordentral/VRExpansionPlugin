@@ -474,3 +474,8 @@ void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * 
 {
 	return FBPInteractionSettings();
 }*/
+
+bool UVRLeverComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
+{
+	return false;
+}
