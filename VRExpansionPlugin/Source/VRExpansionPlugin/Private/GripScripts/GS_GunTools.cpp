@@ -101,7 +101,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 			}
 			else
 			{
-				BasePoint = (GrippingController->GetComponentTransform() * FTransform(PivotOffset)).GetLocation();
+				BasePoint = (ParentTransform * FTransform(PivotOffset)).GetLocation();
 			}
 				
 			const FTransform PivotToWorld = FTransform(FQuat::Identity, BasePoint);

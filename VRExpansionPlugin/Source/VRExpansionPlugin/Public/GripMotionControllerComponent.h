@@ -18,7 +18,6 @@
 #include "GripMotionControllerComponent.generated.h"
 
 class AVRBaseCharacter;
-class UVRGripScriptBase;
 
 /**
 *
@@ -95,7 +94,6 @@ public:
 
 };
 
-
 /**
 * An override of the MotionControllerComponent that implements position replication and Gripping with grip replication and controllable late updates per object.
 */
@@ -108,7 +106,12 @@ public:
 	// The grip script that defines the default behaviors of grips
 	// Don't edit this unless you really know what you are doing, leave it empty
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
-		TSubclassOf<class UVRGripScriptBase> DefaultGripScriptClass; //UVRGripScriptBase * DefaultGripLogicScript;
+		TSubclassOf<class UVRGripScriptBase> DefaultGripScriptClass;
+	
+	// This is the pointer to the default grip script
+	// It is here to access so if you want to set some variables on your override then you can
+	// Due to a bug with instanced variables and parent classes you can't directly edit this in subclass in the details panel
+	UPROPERTY(VisibleAnywhere, Transient, BlueprintReadOnly, Category = "GripMotionController")
 	UVRGripScriptBase* DefaultGripScript;
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
@@ -146,6 +149,7 @@ public:
 
 	// Custom version of the component sweep function to remove that aggravating warning epic is throwing about skeletal mesh components.
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void InitializeComponent() override;
 	virtual void OnUnregister() override;
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 	virtual void Deactivate() override;

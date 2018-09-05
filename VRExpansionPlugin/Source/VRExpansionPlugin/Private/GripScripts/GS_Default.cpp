@@ -76,7 +76,7 @@ bool UGS_Default::GetWorldTransform_Implementation
 		if (SecondaryType != ESecondaryGripType::SG_Custom)
 		{
 			// Variables needed for multi grip transform
-			FVector BasePoint = GrippingController->GetComponentLocation(); // Get our pivot point
+			FVector BasePoint = ParentTransform.GetLocation(); // Get our pivot point
 			const FTransform PivotToWorld = FTransform(FQuat::Identity, BasePoint);
 			const FTransform WorldToPivot = FTransform(FQuat::Identity, -BasePoint);
 

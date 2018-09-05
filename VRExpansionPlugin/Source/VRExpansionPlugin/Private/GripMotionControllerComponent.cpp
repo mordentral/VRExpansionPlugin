@@ -163,6 +163,16 @@ void UGripMotionControllerComponent::GetCurrentProfileTransform(bool bBindToNoti
 	}
 }
 
+void UGripMotionControllerComponent::InitializeComponent()
+{
+	Super::InitializeComponent();
+
+	if (!DefaultGripScript && DefaultGripScriptClass)
+		DefaultGripScript = DefaultGripScriptClass.GetDefaultObject();
+	else
+		DefaultGripScript = GetMutableDefault<UGS_Default>();
+}
+
 void UGripMotionControllerComponent::OnUnregister()
 {
 
@@ -222,11 +232,6 @@ void UGripMotionControllerComponent::BeginDestroy()
 void UGripMotionControllerComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (!DefaultGripScript && DefaultGripScriptClass)
-		DefaultGripScript = DefaultGripScriptClass.GetDefaultObject();
-	else
-		DefaultGripScript = GetMutableDefault<UGS_Default>();
 }
 
 void UGripMotionControllerComponent::CreateRenderState_Concurrent()

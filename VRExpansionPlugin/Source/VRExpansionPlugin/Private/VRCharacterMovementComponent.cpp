@@ -694,6 +694,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	UE_LOG(LogVRCharacterMovement, Verbose, TEXT("ServerMove Time %f Acceleration %s Position %s DeltaTime %f"),
 		TimeStamp, *Accel.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
 
+	// #TODO: Handle this better at some point? Client also denies it later on during correction (ApplyNetworkMovementMode in base movement)
 	// Pre handling the errors, lets avoid rolling back to/from custom movement modes, they tend to be scripted and this can screw things up
 	const uint8 CurrentPackedMovementMode = PackNetworkMovementMode();
 	if (CurrentPackedMovementMode != ClientMovementMode)
