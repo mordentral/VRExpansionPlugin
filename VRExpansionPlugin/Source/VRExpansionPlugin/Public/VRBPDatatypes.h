@@ -305,6 +305,7 @@ enum class EVRVectorQuantization : uint8
 	RoundTwoDecimals = 1
 };
 
+
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FBPVRComponentPosRep
 {
@@ -316,6 +317,7 @@ public:
 	UPROPERTY(Transient)
 		FRotator Rotation;
 
+	// The quantization level to use for the vector components
 	UPROPERTY(EditDefaultsOnly, Category = Replication, AdvancedDisplay)
 		EVRVectorQuantization QuantizationLevel;
 
@@ -343,14 +345,19 @@ public:
 		uint16 ShortYaw = 0;
 		uint16 ShortRoll = 0;
 		
+		/**
+		*	Valid range 100: 2^22 / 100 = +/- 41,943.04 (419.43 meters)
+		*	Valid range 10: 2^18 / 10 = +/- 26,214.4 (262.144 meters)
+		*	Pos rep is assumed to be in relative space for a tracked component, these numbers should be fine
+		*/
 		if (Ar.IsSaving())
 		{		
 			switch (QuantizationLevel)
 			{
-			case EVRVectorQuantization::RoundTwoDecimals: bOutSuccess &= SerializePackedVector<100, 30>(Position, Ar); break;
-			case EVRVectorQuantization::RoundOneDecimal: bOutSuccess &= SerializePackedVector<10, 24>(Position, Ar); break;
+			case EVRVectorQuantization::RoundTwoDecimals: bOutSuccess &= SerializePackedVector<100, 22/*30*/>(Position, Ar); break;
+			case EVRVectorQuantization::RoundOneDecimal: bOutSuccess &= SerializePackedVector<10, 18/*24*/>(Position, Ar); break;
 			}
-
+			
 			ShortPitch = FRotator::CompressAxisToShort(Rotation.Pitch);
 			ShortYaw = FRotator::CompressAxisToShort(Rotation.Yaw);
 			ShortRoll = FRotator::CompressAxisToShort(Rotation.Roll);
@@ -365,14 +372,14 @@ public:
 
 			switch (QuantizationLevel)
 			{
-			case EVRVectorQuantization::RoundTwoDecimals: bOutSuccess &= SerializePackedVector<100, 30>(Position, Ar); break;
-			case EVRVectorQuantization::RoundOneDecimal: bOutSuccess &= SerializePackedVector<10, 24>(Position, Ar); break;
+			case EVRVectorQuantization::RoundTwoDecimals: bOutSuccess &= SerializePackedVector<100, 22/*30*/>(Position, Ar); break;
+			case EVRVectorQuantization::RoundOneDecimal: bOutSuccess &= SerializePackedVector<10, 18/*24*/>(Position, Ar); break;
 			}
 
 			Ar << ShortPitch;
 			Ar << ShortYaw;
 			Ar << ShortRoll;
-			
+
 			Rotation.Pitch = FRotator::DecompressAxisFromShort(ShortPitch);
 			Rotation.Yaw = FRotator::DecompressAxisFromShort(ShortYaw);
 			Rotation.Roll = FRotator::DecompressAxisFromShort(ShortRoll);
