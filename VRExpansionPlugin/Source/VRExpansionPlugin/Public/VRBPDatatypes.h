@@ -306,6 +306,15 @@ enum class EVRVectorQuantization : uint8
 	RoundTwoDecimals = 1
 };
 
+UENUM()
+enum class EVRRotationQuantization : uint8
+{
+	/** Each rotation component will be rounded to 10 bits (1024 values). */
+	RoundTo10Bits = 0,
+	/** Each rotation component will be rounded to a short. */
+	RoundToShort = 1
+};
+
 
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FBPVRComponentPosRep
@@ -322,8 +331,27 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = Replication, AdvancedDisplay)
 		EVRVectorQuantization QuantizationLevel;
 
+	// The quantization level to use for the rotation components
+	// Using 10 bits mode saves approx 2.25 bytes per replication.
+	UPROPERTY(EditDefaultsOnly, Category = Replication, AdvancedDisplay)
+		EVRRotationQuantization RotationQuantizationLevel;
+
+	FORCEINLINE uint16 CompressAxisTo10BitShort(float Angle)
+	{
+		// map [0->360) to [0->1024) and mask off any winding
+		return FMath::RoundToInt(Angle * 1024.f / 360.f) & 0xFFFF;
+	}
+
+
+	FORCEINLINE float DecompressAxisFrom10BitShort(uint16 Angle)
+	{
+		// map [0->1024) to [0->360)
+		return (Angle * 360.f / 1024.f);
+	}
+
 	FBPVRComponentPosRep():
-		QuantizationLevel(EVRVectorQuantization::RoundTwoDecimals)
+		QuantizationLevel(EVRVectorQuantization::RoundTwoDecimals),
+		RotationQuantizationLevel(EVRRotationQuantization::RoundToShort)
 	{
 		//QuantizationLevel = EVRVectorQuantization::RoundTwoDecimals;
 	}
@@ -337,6 +365,7 @@ public:
 		// Defines the level of Quantization
 		//uint8 Flags = (uint8)QuantizationLevel;
 		Ar.SerializeBits(&QuantizationLevel, 1); // Only two values 0:1
+		Ar.SerializeBits(&RotationQuantizationLevel, 1); // Only two values 0:1
 
 		// No longer using their built in rotation rep, as controllers will rarely if ever be at 0 rot on an axis and 
 		// so the 1 bit overhead per axis is just that, overhead
@@ -358,14 +387,31 @@ public:
 			case EVRVectorQuantization::RoundTwoDecimals: bOutSuccess &= SerializePackedVector<100, 22/*30*/>(Position, Ar); break;
 			case EVRVectorQuantization::RoundOneDecimal: bOutSuccess &= SerializePackedVector<10, 18/*24*/>(Position, Ar); break;
 			}
-			
-			ShortPitch = FRotator::CompressAxisToShort(Rotation.Pitch);
-			ShortYaw = FRotator::CompressAxisToShort(Rotation.Yaw);
-			ShortRoll = FRotator::CompressAxisToShort(Rotation.Roll);
 
-			Ar << ShortPitch;
-			Ar << ShortYaw;
-			Ar << ShortRoll;
+			switch (RotationQuantizationLevel)
+			{
+			case EVRRotationQuantization::RoundTo10Bits:
+			{
+				ShortPitch = CompressAxisTo10BitShort(Rotation.Pitch);
+				ShortYaw = CompressAxisTo10BitShort(Rotation.Yaw);
+				ShortRoll = CompressAxisTo10BitShort(Rotation.Roll);
+
+				Ar.SerializeBits(&ShortPitch, 10);
+				Ar.SerializeBits(&ShortYaw, 10);
+				Ar.SerializeBits(&ShortRoll, 10);
+			}break;
+
+			case EVRRotationQuantization::RoundToShort:
+			{
+				ShortPitch = FRotator::CompressAxisToShort(Rotation.Pitch);
+				ShortYaw = FRotator::CompressAxisToShort(Rotation.Yaw);
+				ShortRoll = FRotator::CompressAxisToShort(Rotation.Roll);
+
+				Ar << ShortPitch;
+				Ar << ShortYaw;
+				Ar << ShortRoll;
+			}break;
+			}
 		}
 		else // If loading
 		{
@@ -377,13 +423,30 @@ public:
 			case EVRVectorQuantization::RoundOneDecimal: bOutSuccess &= SerializePackedVector<10, 18/*24*/>(Position, Ar); break;
 			}
 
-			Ar << ShortPitch;
-			Ar << ShortYaw;
-			Ar << ShortRoll;
+			switch (RotationQuantizationLevel)
+			{
+			case EVRRotationQuantization::RoundTo10Bits:
+			{
+				Ar.SerializeBits(&ShortPitch, 10);
+				Ar.SerializeBits(&ShortYaw, 10);
+				Ar.SerializeBits(&ShortRoll, 10);
 
-			Rotation.Pitch = FRotator::DecompressAxisFromShort(ShortPitch);
-			Rotation.Yaw = FRotator::DecompressAxisFromShort(ShortYaw);
-			Rotation.Roll = FRotator::DecompressAxisFromShort(ShortRoll);
+				Rotation.Pitch = DecompressAxisFrom10BitShort(ShortPitch);
+				Rotation.Yaw = DecompressAxisFrom10BitShort(ShortYaw);
+				Rotation.Roll = DecompressAxisFrom10BitShort(ShortRoll);
+			}break;
+
+			case EVRRotationQuantization::RoundToShort:
+			{
+				Ar << ShortPitch;
+				Ar << ShortYaw;
+				Ar << ShortRoll;
+
+				Rotation.Pitch = FRotator::DecompressAxisFromShort(ShortPitch);
+				Rotation.Yaw = FRotator::DecompressAxisFromShort(ShortYaw);
+				Rotation.Roll = FRotator::DecompressAxisFromShort(ShortRoll);
+			}break;
+			}
 		}
 
 		return bOutSuccess;

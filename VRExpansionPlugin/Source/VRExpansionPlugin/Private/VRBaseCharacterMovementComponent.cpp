@@ -482,7 +482,9 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction M
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = MoveActionToPerform;
-	MoveAction.MoveActionLoc = MoveActionVector;
+
+	// Round the vector to 2 decimal precision
+	MoveAction.MoveActionLoc = RoundDirectMovement(MoveActionVector);
 	MoveAction.MoveActionRot = MoveActionRotator;
 	MoveAction.MoveActionDataReq = DataRequirementsForMoveAction;
 	MoveActionArray.MoveActions.Add(MoveAction);

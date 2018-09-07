@@ -279,10 +279,10 @@ public:
 			//Ar.SerializeBits(&bHasMoveAction, 1);
 
 			if (bHasVRinput)
-				bOutSuccess &= SerializePackedVector<100, 30>(CustomVRInputVector, Ar);
+				bOutSuccess &= SerializePackedVector<100, 22/*30*/>(CustomVRInputVector, Ar);
 
 			if (bHasRequestedVelocity)
-				bOutSuccess &= SerializePackedVector<100, 30>(RequestedVelocity, Ar);
+				bOutSuccess &= SerializePackedVector<100, 22/*30*/>(RequestedVelocity, Ar);
 
 			//if (bHasMoveAction)
 			MoveActionArray.NetSerialize(Ar, Map, bOutSuccess);
