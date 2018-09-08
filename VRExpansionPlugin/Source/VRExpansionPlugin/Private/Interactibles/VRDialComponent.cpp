@@ -107,11 +107,14 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 		return;
 	}
 
-	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+	/*FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 	FRotator curRotation = GrippingController->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).Rotator();
+	*/
+	FRotator curRotation = GrippingController->GetComponentRotation();
 
 	float DeltaRot = RotationScaler * GetAxisValue((curRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
 	AddDialAngle(DeltaRot, true);
+
 
 	LastRotation = curRotation;
 }
@@ -124,11 +127,14 @@ void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * Gr
 	FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
 	FTransform RelativeToGripTransform = ReversedRelativeTransform * this->GetComponentTransform();
 
+	//FTransform InitialTrans = RelativeToGripTransform.GetRelativeTransform(CurrentRelativeTransform);
+
 	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 	InitialDropLocation = ReversedRelativeTransform.GetTranslation();
 
 	// Need to rotate this by original hand to dial facing eventually
-	LastRotation = RelativeToGripTransform.GetRelativeTransform(CurrentRelativeTransform).Rotator();
+	//LastRotation = RelativeToGripTransform.GetRelativeTransform(CurrentRelativeTransform).Rotator();
+	LastRotation = RelativeToGripTransform.GetRotation().Rotator(); // Forcing into world space now so that initial can be correct over the network
 
 	bIsLerping = false;
 }
