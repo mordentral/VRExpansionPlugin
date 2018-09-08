@@ -1677,6 +1677,8 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
+				IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
+
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
@@ -1696,7 +1698,6 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 				}
 
 				IVRGripInterface::Execute_OnGripRelease(pActor, this, NewDrop, true);
-				IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
 			}
 		}
 	}break;
@@ -1733,14 +1734,10 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 				}
 			}
 
-			// Call on child grip release on attached parent component
-			if (root->GetAttachParent() && root->GetAttachParent()->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-			{
-				IVRGripInterface::Execute_OnChildGripRelease(root->GetAttachParent(), this, NewDrop, true);
-			}
-
 			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
+				IVRGripInterface::Execute_SetHeld(root, nullptr, false);
+
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
@@ -1760,7 +1757,12 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 				}
 
 				IVRGripInterface::Execute_OnGripRelease(root, this, NewDrop, true);
-				IVRGripInterface::Execute_SetHeld(root, nullptr, false);
+			}
+
+			// Call on child grip release on attached parent component
+			if (root->GetAttachParent() && root->GetAttachParent()->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			{
+				IVRGripInterface::Execute_OnChildGripRelease(root->GetAttachParent(), this, NewDrop, true);
 			}
 		}
 	}break;
@@ -2168,6 +2170,9 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
+				if (!bSkipFullDrop)
+					IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
+
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
@@ -2187,9 +2192,6 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				}
 
 				IVRGripInterface::Execute_OnGripRelease(pActor, this, NewDrop, false);
-
-				if(!bSkipFullDrop)
-					IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
 			}
 		}
 	}break;
@@ -2269,14 +2271,11 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 			}
 
-			// Call on child grip release on attached parent component
-			if (root->GetAttachParent() && root->GetAttachParent()->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-			{
-				IVRGripInterface::Execute_OnChildGripRelease(root->GetAttachParent(), this, NewDrop, false);
-			}
-
 			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
+				if (!bSkipFullDrop)
+					IVRGripInterface::Execute_SetHeld(root, nullptr, false);
+
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 
@@ -2296,9 +2295,12 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				}
 
 				IVRGripInterface::Execute_OnGripRelease(root, this, NewDrop, false);
+			}
 
-				if(!bSkipFullDrop)
-					IVRGripInterface::Execute_SetHeld(root, nullptr, false);
+			// Call on child grip release on attached parent component
+			if (root->GetAttachParent() && root->GetAttachParent()->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			{
+				IVRGripInterface::Execute_OnChildGripRelease(root->GetAttachParent(), this, NewDrop, false);
 			}
 		}
 	}break;
