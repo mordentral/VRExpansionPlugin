@@ -97,7 +97,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bOffsetByHMD = false;
 	bIsPostTeleport = false;
 
-	GripIDIncrementer = 0;
+	GripIDIncrementer = INVALID_VRGRIP_ID;
 
 	bOffsetByControllerProfile = true;
 	GripRenderThreadProfileTransform = FTransform::Identity;
@@ -421,6 +421,12 @@ void UGripMotionControllerComponent::GetGripByObject(FBPActorGripInformation &Gr
 
 void UGripMotionControllerComponent::GetGripByID(FBPActorGripInformation &Grip, uint8 IDToLookForGrip, EBPVRResultSwitch &Result)
 {
+	if (IDToLookForGrip == INVALID_VRGRIP_ID)
+	{
+		Result = EBPVRResultSwitch::OnFailed;
+		return;
+	}
+
 	FBPActorGripInformation * GripInfo = GrippedObjects.FindByKey(IDToLookForGrip);
 	if (!GripInfo)
 		GripInfo = LocallyGrippedObjects.FindByKey(IDToLookForGrip);
@@ -741,19 +747,42 @@ bool UGripMotionControllerComponent::GripObject(
 
 bool UGripMotionControllerComponent::DropObject(
 	UObject * ObjectToDrop,
+	uint8 GripIDToDrop,
 	bool bSimulate,
 	FVector OptionalAngularVelocity,
 	FVector OptionalLinearVelocity)
 {
-	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToDrop))
+
+	if (ObjectToDrop != nullptr)
 	{
-		return DropComponent(PrimComp, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+		FBPActorGripInformation * GripInfo = GrippedObjects.FindByKey(ObjectToDrop);
+		if (!GripInfo)
+			GripInfo = LocallyGrippedObjects.FindByKey(ObjectToDrop);
+
+		if (GripInfo != nullptr)
+		{
+			return DropGrip(*GripInfo, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+		}
+	}
+	else if (GripIDToDrop != INVALID_VRGRIP_ID)
+	{
+		FBPActorGripInformation * GripInfo = GrippedObjects.FindByKey(GripIDToDrop);
+		if (!GripInfo)
+			GripInfo = LocallyGrippedObjects.FindByKey(GripIDToDrop);
+
+		if (GripInfo != nullptr)
+		{
+			return DropGrip(*GripInfo, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+		}
+	}
+	/*if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToDrop))
+	{
+		return DropComponent(PrimComp, GripIDToDrop, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 	}
 	else if (AActor * Actor = Cast<AActor>(ObjectToDrop))
 	{
-		return DropActor(Actor, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
-	}
-
+		return DropActor(Actor, GripIDToDrop, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+	}*/
 	return false;
 }
 
@@ -861,9 +890,28 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 	return false;
 }
 
-bool UGripMotionControllerComponent::DropObjectByInterface(UObject * ObjectToDrop, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
+bool UGripMotionControllerComponent::DropObjectByInterface(UObject * ObjectToDrop, uint8 GripIDToDrop, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
 {
-	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToDrop))
+	FBPActorGripInformation * GripInfo = nullptr;
+	if (ObjectToDrop != nullptr)
+	{
+		GripInfo = GrippedObjects.FindByKey(ObjectToDrop);
+		if (!GripInfo)
+			GripInfo = LocallyGrippedObjects.FindByKey(ObjectToDrop);
+	}
+	else if (GripIDToDrop != INVALID_VRGRIP_ID)
+	{
+		GripInfo = GrippedObjects.FindByKey(GripIDToDrop);
+		if (!GripInfo)
+			GripInfo = LocallyGrippedObjects.FindByKey(GripIDToDrop);
+	}
+
+	if (GripInfo == nullptr)
+	{
+		return false;
+	}
+
+	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(GripInfo->GrippedObject))
 	{
 		AActor * Owner = PrimComp->GetOwner();
 
@@ -872,19 +920,22 @@ bool UGripMotionControllerComponent::DropObjectByInterface(UObject * ObjectToDro
 
 		if (PrimComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
-			return DropComponent(PrimComp, IVRGripInterface::Execute_SimulateOnDrop(PrimComp), OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(*GripInfo, IVRGripInterface::Execute_SimulateOnDrop(PrimComp), OptionalAngularVelocity, OptionalLinearVelocity);
+			//return DropComponent(PrimComp, IVRGripInterface::Execute_SimulateOnDrop(PrimComp), OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 		else if (Owner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
-			return DropComponent(PrimComp, IVRGripInterface::Execute_SimulateOnDrop(Owner), OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(*GripInfo, IVRGripInterface::Execute_SimulateOnDrop(Owner), OptionalAngularVelocity, OptionalLinearVelocity);
+			//return DropComponent(PrimComp, IVRGripInterface::Execute_SimulateOnDrop(Owner), OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 		else
 		{
 			// Allowing for failsafe dropping here.
-			return DropComponent(PrimComp, true, OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(*GripInfo, true, OptionalAngularVelocity, OptionalLinearVelocity);
+			//return DropComponent(PrimComp, true, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 	}
-	else if (AActor * Actor = Cast<AActor>(ObjectToDrop))
+	else if (AActor * Actor = Cast<AActor>(GripInfo->GrippedObject))
 	{
 		UPrimitiveComponent * root = Cast<UPrimitiveComponent>(Actor->GetRootComponent());
 
@@ -893,16 +944,22 @@ bool UGripMotionControllerComponent::DropObjectByInterface(UObject * ObjectToDro
 
 		if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
-			return DropActor(Actor, IVRGripInterface::Execute_SimulateOnDrop(root), OptionalAngularVelocity, OptionalLinearVelocity);
+			// #TODO: Is this valid? Dropping with roots interface on an actor grip?
+			// It allows for the root comp to be gripped separately, but it should never have been an actor grip then...
+
+			return DropGrip(*GripInfo, IVRGripInterface::Execute_SimulateOnDrop(root), OptionalAngularVelocity, OptionalLinearVelocity);
+			//return DropActor(Actor, GripIDToDrop, IVRGripInterface::Execute_SimulateOnDrop(root), OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 		else if (Actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
-			return DropActor(Actor, IVRGripInterface::Execute_SimulateOnDrop(Actor), OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(*GripInfo, IVRGripInterface::Execute_SimulateOnDrop(Actor), OptionalAngularVelocity, OptionalLinearVelocity);
+			//return DropActor(Actor, GripIDToDrop, IVRGripInterface::Execute_SimulateOnDrop(Actor), OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 		else
 		{
 			// Failsafe drop here
-			return DropActor(Actor, true, OptionalAngularVelocity, OptionalLinearVelocity);
+			return DropGrip(*GripInfo, true, OptionalAngularVelocity, OptionalLinearVelocity);
+			//return DropActor(Actor, GripIDToDrop, true, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
 	}
 
@@ -1278,34 +1335,53 @@ bool UGripMotionControllerComponent::GripComponent(
 
 bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * ComponentToDrop, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
 {
-	if (!ComponentToDrop)
+
+	FBPActorGripInformation *GripInfo;
+	
+	// First check for it in the local grips	
+	GripInfo = LocallyGrippedObjects.FindByKey(ComponentToDrop);
+
+	if (GripInfo != nullptr)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid component"));
-		return false;
+		return DropGrip(*GripInfo, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 	}
 
-	for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
+	/*for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 	{
 		if (LocallyGrippedObjects[i] == ComponentToDrop)
 		{
 			return DropGrip(LocallyGrippedObjects[i], bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
-	}
+	}*/
 
+	// If we aren't the server then fail out
 	if (!IsServer())
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was called on the client side for a replicated grip"));
 		return false;
 	}
 
-	for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
+	// Now check in the server auth gripsop)
+	GripInfo = GrippedObjects.FindByKey(ComponentToDrop);
+
+	if (GripInfo != nullptr)
+	{
+		return DropGrip(*GripInfo, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
+	}
+	else
+	{
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid component"));
+		return false;
+	}
+
+	/*for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 	{
 		if (GrippedObjects[i] == ComponentToDrop)
 		{
 			return DropGrip(GrippedObjects[i], bSimulate,OptionalAngularVelocity, OptionalLinearVelocity);
 		}
-	}
-	return false;
+	}*/
+	//return false;
 }
 
 bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Grip, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
@@ -1390,7 +1466,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	return true;
 }
 
-bool UGripMotionControllerComponent::DropAndSocketObject(UObject * ObjectToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent)
+bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQuantize & RelativeTransformToParent, UObject * ObjectToDrop, uint8 GripIDToDrop, USceneComponent * SocketingParent, FName OptionalSocketName)
 {
 	if (!SocketingParent)
 	{
@@ -1407,7 +1483,11 @@ bool UGripMotionControllerComponent::DropAndSocketObject(UObject * ObjectToDrop,
 	bool bWasLocalGrip = false;
 	FBPActorGripInformation * GripInfo = nullptr;
 
-	GripInfo = LocallyGrippedObjects.FindByKey(ObjectToDrop);
+	if (ObjectToDrop)
+		GripInfo = LocallyGrippedObjects.FindByKey(ObjectToDrop);
+	else if (GripIDToDrop != INVALID_VRGRIP_ID)
+		GripInfo = LocallyGrippedObjects.FindByKey(GripIDToDrop);
+
 	if(GripInfo) // This auto checks if Actor and Component are valid in the == operator
 	{
 		bWasLocalGrip = true;
@@ -1420,7 +1500,10 @@ bool UGripMotionControllerComponent::DropAndSocketObject(UObject * ObjectToDrop,
 			return false;
 		}
 
-		GripInfo = GrippedObjects.FindByKey(ObjectToDrop);
+		if(ObjectToDrop)
+			GripInfo = GrippedObjects.FindByKey(ObjectToDrop);
+		else if(GripIDToDrop != INVALID_VRGRIP_ID)
+			GripInfo = GrippedObjects.FindByKey(GripIDToDrop);
 
 		if(GripInfo) // This auto checks if Actor and Component are valid in the == operator
 		{
@@ -2375,14 +2458,16 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 
 	FBPActorGripInformation * GripToUse = nullptr;
 
-	for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
+	GripToUse = LocallyGrippedObjects.FindByKey(GrippedObjectToAddAttachment);
+
+	/*for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 	{
 		if (LocallyGrippedObjects[i].GrippedObject == GrippedObjectToAddAttachment)
 		{
 			GripToUse = &LocallyGrippedObjects[i];
 			break;
 		}
-	}
+	}*/
 
 	// Search replicated grips if not found in local
 	if (!GripToUse)
@@ -2394,14 +2479,15 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 			return false;
 		}
 
-		for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
+		GripToUse = GrippedObjects.FindByKey(GrippedObjectToAddAttachment);
+		/*for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 		{
 			if (GrippedObjects[i].GrippedObject == GrippedObjectToAddAttachment)
 			{
 				GripToUse = &GrippedObjects[i];
 				break;
 			}
-		}
+		}*/
 	}
 
 	if (GripToUse)
@@ -3095,7 +3181,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 			if (Grip->bIsPaused)
 				continue;
 
-			if (Grip->GrippedObject && !Grip->GrippedObject->IsPendingKill())
+			if (Grip->GripID != INVALID_VRGRIP_ID && Grip->GrippedObject && !Grip->GrippedObject->IsPendingKill())
 			{
 				UPrimitiveComponent *root = NULL;
 				AActor *actor = NULL;
@@ -3253,25 +3339,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 								}
 								else if(HasGripAuthority(*Grip))
 								{
-									switch (Grip->GripTargetType)
-									{
-									case EGripTargetType::ComponentGrip:
-										//case EGripTargetType::InteractibleComponentGrip:
-									{
-										if (bRootHasInterface)
-											DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(root));
-										else
-											DropComponent(root, IVRGripInterface::Execute_SimulateOnDrop(actor));
-									}break;
-									case EGripTargetType::ActorGrip:
-										//case EGripTargetType::InteractibleActorGrip:
-									{
-										if (bRootHasInterface)
-											DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(root));
-										else
-											DropActor(actor, IVRGripInterface::Execute_SimulateOnDrop(actor));
-									}break;
-									}
+									if(bRootHasInterface)
+										DropGrip(*Grip, IVRGripInterface::Execute_SimulateOnDrop(root));
+									else
+										DropGrip(*Grip, IVRGripInterface::Execute_SimulateOnDrop(actor));
 
 									// Don't bother moving it, it is dropped now
 									continue;
@@ -4532,8 +4603,9 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 
 	if (!LocallyGrippedObjects.Contains(newGrip))
 	{
-		LocallyGrippedObjects.Add(newGrip);
+		int32 NewIndex = LocallyGrippedObjects.Add(newGrip);
 
+		HandleGripReplication(LocallyGrippedObjects[NewIndex]);
 		// Initialize the differences, clients will do this themselves on the rep back, this sets up the cache
 		//HandleGripReplication(LocallyGrippedObjects[LocallyGrippedObjects.Num() - 1]);
 	}
@@ -4543,11 +4615,12 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 		if (LocallyGrippedObjects.Find(newGrip, IndexFound))
 		{
 			LocallyGrippedObjects[IndexFound].RepCopy(newGrip);
+			HandleGripReplication(LocallyGrippedObjects[IndexFound]);
 		}
 	}
 
 	// Server has to call this themselves
-	OnRep_LocallyGrippedObjects();
+	//OnRep_LocallyGrippedObjects();
 }
 
 
@@ -4565,7 +4638,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 	if (Result == EBPVRResultSwitch::OnFailed)
 		return;
 
-	if (!DropObjectByInterface(FoundGrip.GrippedObject, AngularVelocity, LinearVelocity))
+	if (!DropObjectByInterface(nullptr, FoundGrip.GripID, AngularVelocity, LinearVelocity))
 	{
 		DropGrip(FoundGrip, false, AngularVelocity, LinearVelocity);
 	}

@@ -192,29 +192,33 @@ public:
 	}
 
 	// Increments with each grip, wraps back to 0 after max due to modulo operation
-	// I don't think that a 256 grip index is going to be used up and allow duplicates unless
+	// I don't think that a 254 (126 total grips) grip index is going to be used up and allow duplicates unless
 	// someone does something crazy
 	uint8 GripIDIncrementer;
 
+
+	// INVALID_VRGRIP_ID is 0, so + 1 is 1
 	inline uint8 GetNextGripID(bool bIsLocalGrip)
 	{
-		if (bIsLocalGrip) // We need to split them between 0-127 for gripped objects server side
-		{
-			if (GripIDIncrementer < 127)
-				GripIDIncrementer++;
-			else
-				GripIDIncrementer = 0;
+		// We are skipping index 0 to leave it for INVALID_GRIP_ID index;
 
-			return GripIDIncrementer + 128;
-		}
-		else // And 128 - 255 for local grips client side
+		if (!bIsLocalGrip) // We need to split them between 0-126 for gripped objects server side
 		{
 			if (GripIDIncrementer < 127)
 				GripIDIncrementer++;
 			else
-				GripIDIncrementer = 0;
+				GripIDIncrementer = (INVALID_VRGRIP_ID + 1);
 
 			return GripIDIncrementer;
+		}
+		else // And 128 - 254 for local grips client side
+		{
+			if (GripIDIncrementer < 127)
+				GripIDIncrementer++;
+			else
+				GripIDIncrementer = (INVALID_VRGRIP_ID + 1);
+
+			return GripIDIncrementer + 128;
 		}
 	}
 
@@ -540,7 +544,7 @@ public:
 	// *Note*: If both the parent and the child are simulating it also delays a single tick and then re-applies the relative transform.
 	// This is to avoid a race condition where we need to wait for the next physics update.
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-		bool DropAndSocketObject(UObject * ObjectToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
+		bool DropAndSocketObject(const FTransform_NetQuantize & RelativeTransformToParent, UObject * ObjectToDrop = nullptr, uint8 GripIDToDrop = 0, USceneComponent * SocketingParent = nullptr, FName OptionalSocketName = NAME_None);
 	
 	// Drops a grip and sockets it to the given component at the given relative transform.
 	// *Note*: If both the parent and the child are simulating it also delays a single tick and then re-applies the relative transform.
@@ -592,10 +596,12 @@ public:
 
 
 	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	
+	// If an object is passed in it will attempt to drop it, otherwise it will attempt to find and drop the given grip id
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		bool DropObject(
-			UObject * ObjectToDrop,
-			bool bSimulate,
+			UObject * ObjectToDrop = nullptr,
+			uint8 GripIdToDrop = 0,
+			bool bSimulate = false,
 			FVector OptionalAngularVelocity = FVector::ZeroVector,
 			FVector OptionalLinearVelocity = FVector::ZeroVector);
 
@@ -603,9 +609,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		bool GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalBoneToGripName = NAME_None, bool bIsSlotGrip = false);
 
-	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	
+	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface
+	// If an object is passed in it will attempt to drop it, otherwise it will attempt to find and drop the given grip id
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-		bool DropObjectByInterface(UObject * ObjectToDrop, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
+		bool DropObjectByInterface(UObject * ObjectToDrop = nullptr, uint8 GripIDToDrop = 0, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
 
 	/* Grip an actor, these are stored in a Tarray that will prevent destruction of the object, you MUST ungrip an actor if you want to kill it
 	   The WorldOffset is the transform that it will remain away from the controller, if you use the world position of the actor then it will grab
@@ -660,7 +667,7 @@ public:
 	// Drop a gripped component
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	bool DropComponent(
-		UPrimitiveComponent* ComponentToDrop, 
+		UPrimitiveComponent* ComponentToDrop,
 		bool bSimulate, 
 		FVector OptionalAngularVelocity = FVector::ZeroVector, 
 		FVector OptionalLinearVelocity = FVector::ZeroVector
@@ -670,7 +677,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	bool DropGrip(
 		const FBPActorGripInformation &Grip, 
-		bool bSimulate, 
+		bool bSimulate = false, 
 		FVector OptionalAngularVelocity = FVector::ZeroVector, 
 		FVector OptionalLinearVelocity = FVector::ZeroVector);
 
