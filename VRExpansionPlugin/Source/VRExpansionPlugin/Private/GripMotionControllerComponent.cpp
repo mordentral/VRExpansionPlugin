@@ -720,6 +720,145 @@ FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform_B
 	return CreateGripRelativeAdditionTransform(GripToSample, AdditionTransform, bGripRelative);
 }
 
+bool UGripMotionControllerComponent::HandleGripReplication(FBPActorGripInformation & Grip)
+{
+	if (Grip.ValueCache.bWasInitiallyRepped && Grip.GripID != Grip.ValueCache.CachedGripID)
+	{
+		// There appears to be a bug with TArray replication where if you replace an index with another value of that
+		// Index, it doesn't fully re-init the object, this is a workaround to re-zero non replicated variables
+		// when that happens.
+		Grip.ClearNonReppingItems();
+	}
+
+	// Ignore server down no rep grips, this is kind of unavoidable unless I make yet another list which I don't want to do
+	if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
+	{
+		// skip init
+		Grip.ValueCache.bWasInitiallyRepped = true;
+
+		// null ptr so this doesn't block grip operations
+		Grip.GrippedObject = nullptr;
+
+		// Set to paused so iteration skips it
+		Grip.bIsPaused = true;
+	}
+
+	if (!Grip.ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
+	{
+		Grip.ValueCache.bWasInitiallyRepped = NotifyGrip(Grip); // Grip it
+
+																// Tick will keep checking from here on out locally
+		if (!Grip.ValueCache.bWasInitiallyRepped)
+		{
+			//UE_LOG(LogVRMotionController, Warning, TEXT("Replicated grip Notify grip failed, was grip called before the object was replicated to the client?"));
+			return false;
+		}
+		//Grip.ValueCache.bWasInitiallyRepped = true; // Set has been initialized
+	}
+	else // Check for changes from cached information
+	{
+		// Manage lerp states
+		if (Grip.ValueCache.bCachedHasSecondaryAttachment != Grip.SecondaryGripInfo.bHasSecondaryAttachment || !Grip.ValueCache.CachedSecondaryRelativeTransform.Equals(Grip.SecondaryGripInfo.SecondaryRelativeTransform))
+		{
+			// Reset the secondary grip distance
+			Grip.SecondaryGripInfo.SecondaryGripDistance = 0.0f;
+
+			const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+			Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = VRSettings.OneEuroCutoffSlope;
+			Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
+			Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = VRSettings.OneEuroMinCutoff;
+			Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
+
+			if (FMath::IsNearlyZero(Grip.SecondaryGripInfo.LerpToRate)) // Zero, could use IsNearlyZero instead
+				Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
+			else
+			{
+				// New lerp
+				if (Grip.SecondaryGripInfo.bHasSecondaryAttachment)
+				{
+					Grip.SecondaryGripInfo.curLerp = Grip.SecondaryGripInfo.LerpToRate;
+					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::StartLerp;
+				}
+				else // Post Lerp
+				{
+					Grip.SecondaryGripInfo.curLerp = Grip.SecondaryGripInfo.LerpToRate;
+					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::EndLerp;
+				}
+			}
+
+			// Now calling the on secondary grip interface function client side as well
+			if (Grip.SecondaryGripInfo.bHasSecondaryAttachment)
+			{
+				if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				{
+					IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+
+					TArray<UVRGripScriptBase*> GripScripts;
+					if (IVRGripInterface::Execute_GetGripScripts(Grip.GrippedObject, GripScripts))
+					{
+						for (UVRGripScriptBase* Script : GripScripts)
+						{
+							if (Script)
+							{
+								Script->OnSecondaryGrip(this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				{
+					IVRGripInterface::Execute_OnSecondaryGripRelease(Grip.GrippedObject, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+
+					TArray<UVRGripScriptBase*> GripScripts;
+					if (IVRGripInterface::Execute_GetGripScripts(Grip.GrippedObject, GripScripts))
+					{
+						for (UVRGripScriptBase* Script : GripScripts)
+						{
+							if (Script)
+							{
+								Script->OnSecondaryGripRelease(this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (Grip.ValueCache.CachedGripCollisionType != Grip.GripCollisionType ||
+			Grip.ValueCache.CachedGripMovementReplicationSetting != Grip.GripMovementReplicationSetting ||
+			Grip.ValueCache.CachedBoneName != Grip.GrippedBoneName ||
+			Grip.ValueCache.CachedPhysicsSettings.bUsePhysicsSettings != Grip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings
+			)
+		{
+			ReCreateGrip(Grip); // Need to re-create grip
+		}
+		else // If re-creating the grip anyway we don't need to do the below
+		{
+			// If the stiffness and damping got changed server side
+			if (!FMath::IsNearlyEqual(Grip.ValueCache.CachedStiffness, Grip.Stiffness) || !FMath::IsNearlyEqual(Grip.ValueCache.CachedDamping, Grip.Damping) || Grip.ValueCache.CachedPhysicsSettings != Grip.AdvancedGripSettings.PhysicsSettings)
+			{
+				SetGripConstraintStiffnessAndDamping(&Grip);
+			}
+		}
+	}
+
+	// Set caches now for next rep
+	Grip.ValueCache.bCachedHasSecondaryAttachment = Grip.SecondaryGripInfo.bHasSecondaryAttachment;
+	Grip.ValueCache.CachedSecondaryRelativeTransform = Grip.SecondaryGripInfo.SecondaryRelativeTransform;
+	Grip.ValueCache.CachedGripCollisionType = Grip.GripCollisionType;
+	Grip.ValueCache.CachedGripMovementReplicationSetting = Grip.GripMovementReplicationSetting;
+	Grip.ValueCache.CachedStiffness = Grip.Stiffness;
+	Grip.ValueCache.CachedDamping = Grip.Damping;
+	Grip.ValueCache.CachedPhysicsSettings = Grip.AdvancedGripSettings.PhysicsSettings;
+	Grip.ValueCache.CachedBoneName = Grip.GrippedBoneName;
+	Grip.ValueCache.CachedGripID = Grip.GripID;
+
+	return true;
+}
+
 bool UGripMotionControllerComponent::GripObject(
 	UObject * ObjectToGrip,
 	const FTransform &WorldOffset,
@@ -2407,39 +2546,9 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 	if (!GrippedObjectToAddAttachment || !SecondaryPointComponent || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
 		return false;
 
-
-	if (GrippedObjectToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-	{
-		ESecondaryGripType SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GrippedObjectToAddAttachment);
-	
-		switch (SecondaryType)
-		{
-		case ESecondaryGripType::SG_None:return false; break;
-
-		//case ESecondaryGripType::SG_FreeWithScaling_Retain:
-		//case ESecondaryGripType::SG_SlotOnly_Retain:
-		//case ESecondaryGripType::SG_SlotOnlyWithScaling_Retain:
-		//case ESecondaryGripType::SG_Free_Retain:
-		//{
-		//	LerpToTime = 0.0f;
-		//}break;
-
-		default:break;
-		}
-	}
-
 	FBPActorGripInformation * GripToUse = nullptr;
 
 	GripToUse = LocallyGrippedObjects.FindByKey(GrippedObjectToAddAttachment);
-
-	/*for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
-	{
-		if (LocallyGrippedObjects[i].GrippedObject == GrippedObjectToAddAttachment)
-		{
-			GripToUse = &LocallyGrippedObjects[i];
-			break;
-		}
-	}*/
 
 	// Search replicated grips if not found in local
 	if (!GripToUse)
@@ -2452,101 +2561,131 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 		}
 
 		GripToUse = GrippedObjects.FindByKey(GrippedObjectToAddAttachment);
-		/*for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
-		{
-			if (GrippedObjects[i].GrippedObject == GrippedObjectToAddAttachment)
-			{
-				GripToUse = &GrippedObjects[i];
-				break;
-			}
-		}*/
 	}
 
 	if (GripToUse)
 	{
-		UPrimitiveComponent * root = nullptr;
-
-		switch (GripToUse->GripTargetType)
-		{
-		case EGripTargetType::ActorGrip:
-		{
-			AActor * pActor = GripToUse->GetGrippedActor();
-
-			if (pActor)
-			{
-				root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-			}
-		}
-			break;
-		case EGripTargetType::ComponentGrip:
-		{
-			root = GripToUse->GetGrippedComponent();
-		}
-			break;
-		}
-
-		if (!root)
-		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was unable to get root component or gripped component."));
-			return false;
-		}
-
-		if (bTransformIsAlreadyRelative)
-			GripToUse->SecondaryGripInfo.SecondaryRelativeTransform = OriginalTransform;
-		else
-			GripToUse->SecondaryGripInfo.SecondaryRelativeTransform = OriginalTransform.GetRelativeTransform(root->GetComponentTransform());
-
-		GripToUse->SecondaryGripInfo.SecondaryAttachment = SecondaryPointComponent;
-		GripToUse->SecondaryGripInfo.bHasSecondaryAttachment = true;
-		GripToUse->SecondaryGripInfo.SecondaryGripDistance = 0.0f;
-
-		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = VRSettings.OneEuroCutoffSlope;
-		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
-		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = VRSettings.OneEuroMinCutoff;
-		
-		GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
-	//	GripToUse->SecondaryGripInfo.SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
-		GripToUse->SecondaryGripInfo.bIsSlotGrip = bIsSlotGrip;
-
-		if (GripToUse->SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
-			LerpToTime = 0.0f;
-
-		if (LerpToTime > 0.0f)
-		{
-			GripToUse->SecondaryGripInfo.LerpToRate = LerpToTime;
-			GripToUse->SecondaryGripInfo.GripLerpState = EGripLerpState::StartLerp;
-			GripToUse->SecondaryGripInfo.curLerp = LerpToTime;
-		}
-
-		if (GrippedObjectToAddAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-		{
-			IVRGripInterface::Execute_OnSecondaryGrip(GrippedObjectToAddAttachment, SecondaryPointComponent, *GripToUse);
-
-			TArray<UVRGripScriptBase*> GripScripts;
-			if (IVRGripInterface::Execute_GetGripScripts(GrippedObjectToAddAttachment, GripScripts))
-			{
-				for (UVRGripScriptBase* Script : GripScripts)
-				{
-					if (Script)
-					{
-						Script->OnSecondaryGrip(this, SecondaryPointComponent, *GripToUse);
-					}
-				}
-			}
-		}
-
-		if (GripToUse->GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && GetNetMode() == ENetMode::NM_Client && !IsTornOff())
-		{
-			Server_NotifySecondaryAttachmentChanged(GripToUse->GripID, GripToUse->SecondaryGripInfo);
-		}
-
-		GripToUse = nullptr;
-
-		return true;
+		return AddSecondaryAttachmentToGrip(*GripToUse, SecondaryPointComponent, OriginalTransform, bTransformIsAlreadyRelative, LerpToTime, bIsSlotGrip);
 	}
 
 	return false;
+}
+
+bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActorGripInformation & GripToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, bool bIsSlotGrip)
+{
+	if (!GripToAddAttachment.GrippedObject || GripToAddAttachment.GripID == INVALID_VRGRIP_ID || !SecondaryPointComponent || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
+		return false;
+
+	FBPActorGripInformation * GripToUse = nullptr;
+
+	GripToUse = LocallyGrippedObjects.FindByKey(GripToAddAttachment.GripID);
+
+	// Search replicated grips if not found in local
+	if (!GripToUse)
+	{
+		// Replicated grips need to be called from server side
+		if (!IsServer())
+		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side with a replicated grip"));
+			return false;
+		}
+
+		GripToUse = GrippedObjects.FindByKey(GripToAddAttachment.GripID);
+	}
+
+	if (!GripToUse || !GripToUse->GrippedObject)
+		return false;
+
+	bool bGrippedObjectIsInterfaced = GripToUse->GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass());
+
+	if (bGrippedObjectIsInterfaced)
+	{
+		ESecondaryGripType SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GripToUse->GrippedObject);
+
+		if (SecondaryType == ESecondaryGripType::SG_None)
+			return false;
+	}
+
+	UPrimitiveComponent * root = nullptr;
+
+	switch (GripToUse->GripTargetType)
+	{
+	case EGripTargetType::ActorGrip:
+	{
+		AActor * pActor = GripToUse->GetGrippedActor();
+
+		if (pActor)
+		{
+			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+		}
+	}
+	break;
+	case EGripTargetType::ComponentGrip:
+	{
+		root = GripToUse->GetGrippedComponent();
+	}
+	break;
+	}
+
+	if (!root)
+	{
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was unable to get root component or gripped component."));
+		return false;
+	}
+
+	if (bTransformIsAlreadyRelative)
+		GripToUse->SecondaryGripInfo.SecondaryRelativeTransform = OriginalTransform;
+	else
+		GripToUse->SecondaryGripInfo.SecondaryRelativeTransform = OriginalTransform.GetRelativeTransform(root->GetComponentTransform());
+
+	GripToUse->SecondaryGripInfo.SecondaryAttachment = SecondaryPointComponent;
+	GripToUse->SecondaryGripInfo.bHasSecondaryAttachment = true;
+	GripToUse->SecondaryGripInfo.SecondaryGripDistance = 0.0f;
+
+	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = VRSettings.OneEuroCutoffSlope;
+	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
+	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = VRSettings.OneEuroMinCutoff;
+
+	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
+	//	GripToUse->SecondaryGripInfo.SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
+	GripToUse->SecondaryGripInfo.bIsSlotGrip = bIsSlotGrip;
+
+	if (GripToUse->SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
+		LerpToTime = 0.0f;
+
+	if (LerpToTime > 0.0f)
+	{
+		GripToUse->SecondaryGripInfo.LerpToRate = LerpToTime;
+		GripToUse->SecondaryGripInfo.GripLerpState = EGripLerpState::StartLerp;
+		GripToUse->SecondaryGripInfo.curLerp = LerpToTime;
+	}
+
+	if (bGrippedObjectIsInterfaced)
+	{
+		IVRGripInterface::Execute_OnSecondaryGrip(GripToUse->GrippedObject, SecondaryPointComponent, *GripToUse);
+
+		TArray<UVRGripScriptBase*> GripScripts;
+		if (IVRGripInterface::Execute_GetGripScripts(GripToUse->GrippedObject, GripScripts))
+		{
+			for (UVRGripScriptBase* Script : GripScripts)
+			{
+				if (Script)
+				{
+					Script->OnSecondaryGrip(this, SecondaryPointComponent, *GripToUse);
+				}
+			}
+		}
+	}
+
+	if (GripToUse->GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && GetNetMode() == ENetMode::NM_Client && !IsTornOff())
+	{
+		Server_NotifySecondaryAttachmentChanged(GripToUse->GripID, GripToUse->SecondaryGripInfo);
+	}
+
+	GripToUse = nullptr;
+
+	return true;
 }
 
 bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * GrippedObjectToRemoveAttachment, float LerpToTime)
@@ -2574,6 +2713,37 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 	// Handle the grip if it was found
 	if (GripToUse && GripToUse->GrippedObject)
 	{
+		return RemoveSecondaryAttachmentFromGrip(*GripToUse, LerpToTime);
+	}
+
+	return false;
+}
+
+bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGrip(const FBPActorGripInformation & GripToRemoveAttachment, float LerpToTime)
+{
+	if (!GripToRemoveAttachment.GrippedObject || GripToRemoveAttachment.GripID == INVALID_VRGRIP_ID || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
+		return false;
+
+	FBPActorGripInformation * GripToUse = nullptr;
+
+	// Duplicating the logic for each array for now
+	GripToUse = LocallyGrippedObjects.FindByKey(GripToRemoveAttachment.GripID);
+
+	// Check replicated grips if it wasn't found in local
+	if (!GripToUse)
+	{
+		if (!IsServer())
+		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip"));
+			return false;
+		}
+
+		GripToUse = GrippedObjects.FindByKey(GripToRemoveAttachment.GripID);
+	}
+
+	// Handle the grip if it was found
+	if (GripToUse && GripToUse->GrippedObject)
+	{
 		if (GripToUse->SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp)
 			LerpToTime = 0.0f;
 
@@ -2595,8 +2765,10 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 		} break;
 		}
 
+		bool bGripObjectHasInterface = GripToUse->GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass());
+
 		ESecondaryGripType SecondaryType = ESecondaryGripType::SG_None;
-		if (GripToUse->GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		if (bGripObjectHasInterface)
 		{
 			SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GripToUse->GrippedObject);
 			//else if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling)
@@ -2607,7 +2779,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 		{
 			switch (SecondaryType)
 			{
-			// All of these retain the position on release
+				// All of these retain the position on release
 			case ESecondaryGripType::SG_FreeWithScaling_Retain:
 			case ESecondaryGripType::SG_SlotOnlyWithScaling_Retain:
 			case ESecondaryGripType::SG_Free_Retain:
@@ -2638,12 +2810,12 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 			GripToUse->SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
 		}
 
-		if (GrippedObjectToRemoveAttachment->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		if (bGripObjectHasInterface)
 		{
-			IVRGripInterface::Execute_OnSecondaryGripRelease(GrippedObjectToRemoveAttachment, GripToUse->SecondaryGripInfo.SecondaryAttachment, *GripToUse);
+			IVRGripInterface::Execute_OnSecondaryGripRelease(GripToUse->GrippedObject, GripToUse->SecondaryGripInfo.SecondaryAttachment, *GripToUse);
 
 			TArray<UVRGripScriptBase*> GripScripts;
-			if (IVRGripInterface::Execute_GetGripScripts(GrippedObjectToRemoveAttachment, GripScripts))
+			if (IVRGripInterface::Execute_GetGripScripts(GripToUse->GrippedObject, GripScripts))
 			{
 				for (UVRGripScriptBase* Script : GripScripts)
 				{
@@ -2669,12 +2841,12 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 			case ESecondaryGripType::SG_SlotOnly_Retain:
 			case ESecondaryGripType::SG_ScalingOnly:
 			{
-				if(!IsTornOff())
+				if (!IsTornOff())
 					Server_NotifySecondaryAttachmentChanged_Retain(GripToUse->GripID, GripToUse->SecondaryGripInfo, GripToUse->RelativeTransform);
 			}break;
 			default:
 			{
-				if(!IsTornOff())
+				if (!IsTornOff())
 					Server_NotifySecondaryAttachmentChanged(GripToUse->GripID, GripToUse->SecondaryGripInfo);
 			}break;
 			}
@@ -2682,7 +2854,6 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 		}
 
 		GripToUse = nullptr;
-
 		return true;
 	}
 

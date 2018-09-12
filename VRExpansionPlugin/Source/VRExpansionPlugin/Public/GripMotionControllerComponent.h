@@ -304,144 +304,8 @@ public:
 		}
 	}
 
-	inline bool HandleGripReplication(FBPActorGripInformation & Grip)
-	{
-		if (Grip.ValueCache.bWasInitiallyRepped && Grip.GripID != Grip.ValueCache.CachedGripID)
-		{
-			// There appears to be a bug with TArray replication where if you replace an index with another value of that
-			// Index, it doesn't fully re-init the object, this is a workaround to re-zero non replicated variables
-			// when that happens.
-			Grip.ClearNonReppingItems();
-		}
-
-		// Ignore server down no rep grips, this is kind of unavoidable unless I make yet another list which I don't want to do
-		if (Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
-		{
-			// skip init
-			Grip.ValueCache.bWasInitiallyRepped = true;
-
-			// null ptr so this doesn't block grip operations
-			Grip.GrippedObject = nullptr;
-			
-			// Set to paused so iteration skips it
-			Grip.bIsPaused = true;
-		}
-		
-		if (!Grip.ValueCache.bWasInitiallyRepped) // Hasn't already been initialized
-		{
-			Grip.ValueCache.bWasInitiallyRepped = NotifyGrip(Grip); // Grip it
-
-			// Tick will keep checking from here on out locally
-			if (!Grip.ValueCache.bWasInitiallyRepped)
-			{
-				//UE_LOG(LogVRMotionController, Warning, TEXT("Replicated grip Notify grip failed, was grip called before the object was replicated to the client?"));
-				return false;
-			}
-			//Grip.ValueCache.bWasInitiallyRepped = true; // Set has been initialized
-		}
-		else // Check for changes from cached information
-		{
-			// Manage lerp states
-			if (Grip.ValueCache.bCachedHasSecondaryAttachment != Grip.SecondaryGripInfo.bHasSecondaryAttachment || !Grip.ValueCache.CachedSecondaryRelativeTransform.Equals(Grip.SecondaryGripInfo.SecondaryRelativeTransform))
-			{
-				// Reset the secondary grip distance
-				Grip.SecondaryGripInfo.SecondaryGripDistance = 0.0f;
-
-				const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = VRSettings.OneEuroCutoffSlope;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = VRSettings.OneEuroMinCutoff;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
-				
-				if (FMath::IsNearlyZero(Grip.SecondaryGripInfo.LerpToRate)) // Zero, could use IsNearlyZero instead
-					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
-				else
-				{
-					// New lerp
-					if (Grip.SecondaryGripInfo.bHasSecondaryAttachment)
-					{
-						Grip.SecondaryGripInfo.curLerp = Grip.SecondaryGripInfo.LerpToRate;
-						Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::StartLerp;
-					}
-					else // Post Lerp
-					{
-						Grip.SecondaryGripInfo.curLerp = Grip.SecondaryGripInfo.LerpToRate;
-						Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::EndLerp;
-					}
-				}
-
-				// Now calling the on secondary grip interface function client side as well
-				if (Grip.SecondaryGripInfo.bHasSecondaryAttachment)
-				{
-					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-					{
-						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
-						
-						TArray<UVRGripScriptBase*> GripScripts;
-						if (IVRGripInterface::Execute_GetGripScripts(Grip.GrippedObject, GripScripts))
-						{
-							for (UVRGripScriptBase* Script : GripScripts)
-							{
-								if (Script)
-								{
-									Script->OnSecondaryGrip(this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
-								}
-							}
-						}
-					}
-				}
-				else
-				{
-					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-					{
-						IVRGripInterface::Execute_OnSecondaryGripRelease(Grip.GrippedObject, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
-
-						TArray<UVRGripScriptBase*> GripScripts;
-						if (IVRGripInterface::Execute_GetGripScripts(Grip.GrippedObject, GripScripts))
-						{
-							for (UVRGripScriptBase* Script : GripScripts)
-							{
-								if (Script)
-								{
-									Script->OnSecondaryGripRelease(this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if (Grip.ValueCache.CachedGripCollisionType != Grip.GripCollisionType ||
-				Grip.ValueCache.CachedGripMovementReplicationSetting != Grip.GripMovementReplicationSetting ||
-				Grip.ValueCache.CachedBoneName != Grip.GrippedBoneName ||
-				Grip.ValueCache.CachedPhysicsSettings.bUsePhysicsSettings != Grip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings
-				)
-			{
-				ReCreateGrip(Grip); // Need to re-create grip
-			}
-			else // If re-creating the grip anyway we don't need to do the below
-			{
-				// If the stiffness and damping got changed server side
-				if ( !FMath::IsNearlyEqual(Grip.ValueCache.CachedStiffness, Grip.Stiffness) || !FMath::IsNearlyEqual(Grip.ValueCache.CachedDamping, Grip.Damping) || Grip.ValueCache.CachedPhysicsSettings != Grip.AdvancedGripSettings.PhysicsSettings)
-				{
-					SetGripConstraintStiffnessAndDamping(&Grip);
-				}
-			}
-		}
-
-		// Set caches now for next rep
-		Grip.ValueCache.bCachedHasSecondaryAttachment = Grip.SecondaryGripInfo.bHasSecondaryAttachment;
-		Grip.ValueCache.CachedSecondaryRelativeTransform = Grip.SecondaryGripInfo.SecondaryRelativeTransform;
-		Grip.ValueCache.CachedGripCollisionType = Grip.GripCollisionType;
-		Grip.ValueCache.CachedGripMovementReplicationSetting = Grip.GripMovementReplicationSetting;
-		Grip.ValueCache.CachedStiffness = Grip.Stiffness;
-		Grip.ValueCache.CachedDamping = Grip.Damping;
-		Grip.ValueCache.CachedPhysicsSettings = Grip.AdvancedGripSettings.PhysicsSettings;
-		Grip.ValueCache.CachedBoneName = Grip.GrippedBoneName;
-		Grip.ValueCache.CachedGripID = Grip.GripID;
-
-		return true;
-	}
+	// Handles variable state changes and specific actions on a grip replication
+	inline bool HandleGripReplication(FBPActorGripInformation & Grip);
 
 	UPROPERTY(BlueprintReadWrite, Category = "GripMotionController")
 	TArray<UPrimitiveComponent *> AdditionalLateUpdateComponents;
@@ -943,9 +807,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false);
 
+	// Adds a secondary attachment point to the grip
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+	bool AddSecondaryAttachmentToGrip(const FBPActorGripInformation & GripToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false);
+
+
 	// Removes a secondary attachment point from a grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	bool RemoveSecondaryAttachmentPoint(UObject * GrippedObjectToRemoveAttachment, float LerpToTime = 0.25f);
+
+	// Removes a secondary attachment point from a grip
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		bool RemoveSecondaryAttachmentFromGrip(const FBPActorGripInformation & GripToRemoveAttachment, float LerpToTime = 0.25f);
 
 	// This is for testing, setting it to true allows you to test grip with a non VR enabled pawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
