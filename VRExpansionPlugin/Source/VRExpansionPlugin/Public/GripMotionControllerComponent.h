@@ -256,18 +256,18 @@ public:
 		// Check for removed gripped actors
 		// This might actually be better left as an RPC multicast
 
-		for (FBPActorGripInformation & Grip : GrippedObjects)
+		for (int i = GrippedObjects.Num() - 1; i >= 0; --i)
 		{
-			HandleGripReplication(Grip);
+			HandleGripReplication(GrippedObjects[i]);
 		}
 	}
 
 	UFUNCTION()
 	virtual void OnRep_LocallyGrippedObjects()
 	{
-		for (FBPActorGripInformation & Grip : LocallyGrippedObjects)
+		for (int i = LocallyGrippedObjects.Num() - 1; i >= 0; --i)
 		{
-			HandleGripReplication(Grip);
+			HandleGripReplication(LocallyGrippedObjects[i]);
 		}
 	}
 

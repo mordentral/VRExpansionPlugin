@@ -1142,8 +1142,9 @@ public:
 		this->bOriginalGravity = Other.bOriginalGravity;
 		this->Damping = Other.Damping;
 		this->Stiffness = Other.Stiffness;
-		this->AdvancedGripSettings = Other.AdvancedGripSettings;
-		this->SecondaryGripInfo = Other.SecondaryGripInfo;
+		this->AdvancedGripSettings = Other.AdvancedGripSettings;		
+		this->SecondaryGripInfo.RepCopy(Other.SecondaryGripInfo); // Run the replication copy version so we don't overwrite vars
+		//this->SecondaryGripInfo = Other.SecondaryGripInfo;
 
 		return *this;
 	}
