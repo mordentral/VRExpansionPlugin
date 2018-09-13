@@ -926,9 +926,9 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 
 	// Has to be movable to work
-	if (root->Mobility != EComponentMobility::Movable)
+	if (root->Mobility != EComponentMobility::Movable && GripCollisionType != EGripCollisionType::CustomGrip)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip an actor set to static mobility and bAllowSetMobility is false"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip an actor set to static mobility not with a Custom Grip"));
 		return false; // It is not movable, can't grip it
 	}
 
@@ -1132,9 +1132,9 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 
 	// Has to be movable to work
-	if (ComponentToGrip->Mobility != EComponentMobility::Movable)
+	if (ComponentToGrip->Mobility != EComponentMobility::Movable && GripCollisionType != EGripCollisionType::CustomGrip)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility and bAllowSetMobility is false"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility not in CustomGrip mode"));
 		return false; // It is not movable, can't grip it
 	}
 
