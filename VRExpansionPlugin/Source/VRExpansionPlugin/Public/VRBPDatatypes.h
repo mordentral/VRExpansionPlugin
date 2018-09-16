@@ -477,7 +477,7 @@ enum class EGripCollisionType : uint8
 	/** Uses Stiffness and damping settings on collision, on no collision uses stiffness values 10x stronger so it has less play. */
 	InteractiveHybridCollisionWithPhysics,
 
-	/** Uses Stiffness and damping settings on collision, on no collision uses stiffness values 10x stronger, no weight. */
+	/** Swaps back and forth between physx grip and a sweep type grip depending on if the held object will be colliding this frame or not. */
 	InteractiveHybridCollisionWithSweep,
 
 	/** Only sweeps movement, will not be offset by geomtry, still pushes physics simulating objects, no weight. */
