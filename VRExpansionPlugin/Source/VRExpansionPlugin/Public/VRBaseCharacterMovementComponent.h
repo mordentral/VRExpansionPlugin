@@ -8,6 +8,10 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
+
+/** Delegate for notification when to handle a climbing step up, will override default step up logic if is bound to. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnPerformClimbingStepUp, FVector, FinalStepUpLocation);
+
 /** Shared pointer for easy memory management of FSavedMove_Character, for accumulating and replaying network moves. */
 //typedef TSharedPtr<class FSavedMove_Character> FSavedMovePtr;
 
@@ -568,6 +572,10 @@ public:
 
 	// Overriding this to run the seated logic
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+
+	// Called when a valid climbing step up movement is found, if bound to the default auto step up is not performed to let custom step up logic happen instead.
+	UPROPERTY(BlueprintAssignable, Category = "VRMovement")
+		FVROnPerformClimbingStepUp OnPerformClimbingStepUp;
 
 	FORCEINLINE bool HasRequestedVelocity()
 	{
