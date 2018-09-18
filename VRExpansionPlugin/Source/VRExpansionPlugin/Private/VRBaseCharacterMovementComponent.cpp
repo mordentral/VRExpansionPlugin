@@ -12,7 +12,6 @@
 #include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
 
-
 UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -648,15 +647,33 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 			//bool bSteppedUp = false;
 			if ((FMath::Abs(Hit.ImpactNormal.Z) < 0.2f) && (UpDown < 0.5f) && (UpDown > -0.2f) && CanStepUp(Hit))
 			{
-				float stepZ = UpdatedComponent->GetComponentLocation().Z;
+				// Scope our movement updates, and do not apply them until all intermediate moves are completed.
+				FVRCharacterScopedMovementUpdate ScopedStepUpMovement(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 
+				float stepZ = UpdatedComponent->GetComponentLocation().Z;
+		
 				// Making it easier to step up here with the multiplier, helps avoid falling back off
 				bSteppedUp = VRClimbStepUp(GravDir, ((Adjusted * VRClimbingStepUpMultiplier) + AdditionalVRInputVector) * (1.f - Hit.Time), Hit, &StepDownResult);
+
+				if (bSteppedUp && OnPerformClimbingStepUp.IsBound())
+				{
+					FVector finalLoc = UpdatedComponent->GetComponentLocation();
+
+					// Rewind the step up, the end user wants to handle it instead
+					ScopedStepUpMovement.RevertMove();
+
+					// Revert to old max step height
+					MaxStepHeight = OldMaxStepHeight;
+					
+					OnPerformClimbingStepUp.Broadcast(finalLoc);
+					return;
+				}
 
 				if (bSteppedUp)
 				{
 					OldLocation.Z = UpdatedComponent->GetComponentLocation().Z + (OldLocation.Z - stepZ);
 				}
+			
 			}
 
 			if (!bSteppedUp)
