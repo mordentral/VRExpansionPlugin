@@ -778,6 +778,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		float VRClimbingStepUpMultiplier;
 
+	// If true will clamp the maximum movement on climbing step up to: VRClimbingStepUpMaxSize
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
+		bool bClampClimbingStepUp;
+
+	// Maximum X/Y vector size to use when climbing stepping up (prevents very deep step ups from large movements).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
+		float VRClimbingStepUpMaxSize;
+
 	// If true will automatically set falling when a stepup occurs during climbing
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Climbing")
 		bool SetDefaultPostClimbMovementOnStepUp;

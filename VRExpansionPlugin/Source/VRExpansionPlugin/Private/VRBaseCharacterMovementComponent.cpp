@@ -34,6 +34,9 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	VRClimbingStepHeight = 96.0f;
 	VRClimbingEdgeRejectDistance = 5.0f;
 	VRClimbingStepUpMultiplier = 1.0f;
+	bClampClimbingStepUp = false;
+	VRClimbingStepUpMaxSize = 20.0f;
+
 	VRClimbingMaxReleaseVelocitySize = 800.0f;
 	SetDefaultPostClimbMovementOnStepUp = true;
 	DefaultPostClimbMovement = EVRConjoinedMovementModes::C_MOVE_Falling;
@@ -651,9 +654,12 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 				FVRCharacterScopedMovementUpdate ScopedStepUpMovement(UpdatedComponent, EScopedUpdate::DeferredUpdates);
 
 				float stepZ = UpdatedComponent->GetComponentLocation().Z;
-		
+				
 				// Making it easier to step up here with the multiplier, helps avoid falling back off
-				bSteppedUp = VRClimbStepUp(GravDir, ((Adjusted * VRClimbingStepUpMultiplier) + AdditionalVRInputVector) * (1.f - Hit.Time), Hit, &StepDownResult);
+					if(bClampClimbingStepUp)
+						bSteppedUp = VRClimbStepUp(GravDir, ((Adjusted.GetClampedToMaxSize2D(VRClimbingStepUpMaxSize) * VRClimbingStepUpMultiplier) + AdditionalVRInputVector) * (1.f - Hit.Time), Hit, &StepDownResult);
+					else
+						bSteppedUp = VRClimbStepUp(GravDir, ((Adjusted * VRClimbingStepUpMultiplier) + AdditionalVRInputVector) * (1.f - Hit.Time), Hit, &StepDownResult);
 
 				if (bSteppedUp && OnPerformClimbingStepUp.IsBound())
 				{
