@@ -1,9 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "GS_Default.h"
+#include "GripScripts/GS_Default.h"
 #include "VRGripInterface.h"
 #include "GripMotionControllerComponent.h"
-#include "GripScripts/GS_Default.h"
 
 UGS_Default::UGS_Default(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer)
