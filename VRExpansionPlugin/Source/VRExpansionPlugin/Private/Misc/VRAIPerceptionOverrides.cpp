@@ -5,12 +5,12 @@
 #include "EngineGlobals.h"
 #include "CollisionQueryParams.h"
 #include "Engine/Engine.h"
-#include "AIModule/Classes/AISystem.h"
-#include "AIModule/Classes/Perception/AIPerceptionComponent.h"
+#include "AISystem.h"
+#include "Perception/AIPerceptionComponent.h"
 #include "VisualLogger/VisualLogger.h"
-#include "AIModule/Classes/Perception/AISightTargetInterface.h"
-#include "AIModule/Classes/Perception/AISenseConfig_Sight.h"
-#include "AIModule/Classes/Perception/AIPerceptionSystem.h"
+#include "Perception/AISightTargetInterface.h"
+#include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AIPerceptionSystem.h"
 
 DEFINE_LOG_CATEGORY(LogAIPerception);
 

@@ -3,9 +3,9 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "VRBaseCharacter.h"
-#include "AIModule/Classes/GenericTeamAgentInterface.h"
-#include "AIModule/Classes/Perception/AISense.h"
-#include "AIModule/Classes/Perception/AISenseConfig.h"
+#include "GenericTeamAgentInterface.h"
+#include "Perception/AISense.h"
+#include "Perception/AISenseConfig.h"
 
 #include "VRAIPerceptionOverrides.generated.h"
 
