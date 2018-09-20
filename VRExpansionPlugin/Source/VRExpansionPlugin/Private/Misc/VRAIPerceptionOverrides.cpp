@@ -139,7 +139,7 @@ bool UAISense_Sight_VR::ShouldAutomaticallySeeTarget(const FDigestedSightPropert
 	{
 		// Changed this up to support my VR Characters
 		const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(TargetActor);
-		const float DistanceToLastSeenLocationSq = FVector::DistSquared(VRChar != nullptr ? VRChar->GetVRLocation() : TargetActor->GetActorLocation(), SightQuery->LastSeenLocation);
+		const float DistanceToLastSeenLocationSq = FVector::DistSquared(VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation(), SightQuery->LastSeenLocation);
 		return (DistanceToLastSeenLocationSq <= PropDigest.AutoSuccessRangeSqFromLastSeenLocation);
 	}
 
@@ -204,7 +204,7 @@ float UAISense_Sight_VR::Update()
 				AActor* TargetActor = Target.Target.Get();
 				// Changed this up to support my VR Characters
 				const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(TargetActor);
-				const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation() : TargetActor->GetActorLocation();
+				const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation();
 
 				const FDigestedSightProperties& PropDigest = DigestedProperties[SightQuery->ObserverId];
 				const float SightRadiusSq = SightQuery->bLastResult ? PropDigest.LoseSightRadiusSq : PropDigest.SightRadiusSq;
@@ -462,7 +462,7 @@ bool UAISense_Sight_VR::RegisterTarget(AActor& TargetActor, FQueriesOperationPos
 
 	// Changed this up to support my VR Characters
 	const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(&TargetActor);
-	const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation() : TargetActor.GetActorLocation();
+	const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor.GetActorLocation();
 
 	for (AIPerception::FListenerMap::TConstIterator ItListener(ListenersMap); ItListener; ++ItListener)
 	{

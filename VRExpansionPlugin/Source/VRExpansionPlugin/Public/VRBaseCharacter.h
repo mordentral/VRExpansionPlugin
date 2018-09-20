@@ -478,7 +478,7 @@ public:
 			FVector NewLocation;
 			FRotator NewRotation;
 			FVector OrigLocation = GetActorLocation();
-			FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+			FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
 			PivotPoint.Z = 0.0f;
 
 			NewRotation = bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
@@ -511,7 +511,7 @@ public:
 		FVector NewLocation;
 		FRotator NewRotation;
 		FVector OrigLocation = GetActorLocation();
-		FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+		FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
 		PivotPoint.Z = 0.0f;
 		
 		FRotator OrigRotation = bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
@@ -550,7 +550,7 @@ public:
 
 		FVector NewLocation;
 		FRotator NewRotation;
-		FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+		FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
 		PivotPoint.Z = 0.0f;
 
 		if (bUseYawOnly)
