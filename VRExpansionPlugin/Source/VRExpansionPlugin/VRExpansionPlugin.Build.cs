@@ -130,11 +130,11 @@ public class VRExpansionPlugin : ModuleRules
         if (Target.bBuildDeveloperTools || (Target.Configuration != UnrealTargetConfiguration.Shipping && Target.Configuration != UnrealTargetConfiguration.Test))
         {
             PrivateDependencyModuleNames.Add("GameplayDebugger");
-          //  PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=1"); Defined in AI module
+            PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=1"); // Already in AI Module, but gameplay abilities and other modules also duplicate the definition
         }
-        /*else
+        else
         {
             PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=0");
-        }*/
+        }
     }
 }

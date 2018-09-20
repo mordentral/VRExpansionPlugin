@@ -336,7 +336,7 @@ FVector AVRBaseCharacter::AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYa
 	FVector NewLocation;
 	FRotator NewRotation;
 	FVector OrigLocation = GetActorLocation();
-	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
 	PivotPoint.Z = 0.0f;
 
 	NewRotation = bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
@@ -366,7 +366,7 @@ FVector AVRBaseCharacter::SetActorRotationVR(FRotator NewRot, bool bUseYawOnly, 
 	FVector NewLocation;
 	FRotator NewRotation;
 	FVector OrigLocation = GetActorLocation();
-	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
 	PivotPoint.Z = 0.0f;
 
 	FRotator OrigRotation = bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
@@ -403,7 +403,7 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 
 	FVector NewLocation;
 	FRotator NewRotation;
-	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation());
+	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
 	PivotPoint.Z = 0.0f;
 
 	if (bUseYawOnly)

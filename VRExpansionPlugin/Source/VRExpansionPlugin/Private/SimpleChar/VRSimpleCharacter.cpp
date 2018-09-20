@@ -90,7 +90,7 @@ void AVRSimpleCharacter::BeginPlay()
 
 FVector AVRSimpleCharacter::GetTeleportLocation(FVector OriginalLocation)
 {
-	//FVector modifier = VRRootReference->GetVRLocation() - this->GetActorLocation();
+	//FVector modifier = VRRootReference->GetVRLocation_Inline() - this->GetActorLocation();
 	//modifier.Z = 0.0f; // Null out Z
 	//return OriginalLocation - modifier;
 	

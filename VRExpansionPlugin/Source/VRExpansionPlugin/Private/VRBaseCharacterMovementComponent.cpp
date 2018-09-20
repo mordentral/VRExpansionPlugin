@@ -941,7 +941,7 @@ void UVRBaseCharacterMovementComponent::ApplyNetworkMovementMode(const uint8 Rec
 		{
 			if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(GetOwner()))
 			{
-				FVector CusVec = VRC->GetVRLocation();
+				FVector CusVec = VRC->GetVRLocation_Inline();
 				GEngine->AddOnScreenDebugMessage(-1, 125.f, IsLocallyControlled() ? FColor::Red : FColor::Green, FString::Printf(TEXT("VrLoc: x: %f, y: %f, X: %f"), CusVec.X, CusVec.Y, CusVec.Z));
 			}
 			GEngine->AddOnScreenDebugMessage(-1, 125.f, FColor::Red, TEXT("Correcting Client Location!"));
@@ -960,7 +960,7 @@ void UVRBaseCharacterMovementComponent::ApplyNetworkMovementMode(const uint8 Rec
 		{
 			if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(GetOwner()))
 			{
-				FVector CusVec = VRC->GetVRLocation();
+				FVector CusVec = VRC->GetVRLocation_Inline();
 				GEngine->AddOnScreenDebugMessage(-1, 125.f, IsLocallyControlled() ? FColor::Red : FColor::Green, FString::Printf(TEXT("VrLoc: x: %f, y: %f, X: %f"), CusVec.X, CusVec.Y, CusVec.Z));
 			}
 			GEngine->AddOnScreenDebugMessage(-1, 125.f, FColor::Red, TEXT("Correcting Client Location!"));

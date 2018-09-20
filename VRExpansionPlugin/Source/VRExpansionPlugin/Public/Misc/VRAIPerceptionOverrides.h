@@ -105,7 +105,7 @@ struct FAISightTargetVR
 	{
 		// Changed this up to support my VR Characters
 		const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(Target);
-		return Target.IsValid() ? (VRChar != nullptr ? VRChar->GetVRLocation() : Target->GetActorLocation()) : FVector::ZeroVector;
+		return Target.IsValid() ? (VRChar != nullptr ? VRChar->GetVRLocation_Inline() : Target->GetActorLocation()) : FVector::ZeroVector;
 	}
 
 	FORCEINLINE const AActor* GetTargetActor() const { return Target.Get(); }
