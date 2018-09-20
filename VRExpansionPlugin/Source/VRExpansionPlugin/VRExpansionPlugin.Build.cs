@@ -123,5 +123,16 @@ public class VRExpansionPlugin : ModuleRules
              "APEX"
             });
         }
+
+        // Allow gameplay debugger on editor builds
+        if (Target.bBuildDeveloperTools || (Target.Configuration != UnrealTargetConfiguration.Shipping && Target.Configuration != UnrealTargetConfiguration.Test))
+        {
+            PrivateDependencyModuleNames.Add("GameplayDebugger");
+          //  PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=1"); Defined in AI module
+        }
+        /*else
+        {
+            PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=0");
+        }*/
     }
 }
