@@ -2,6 +2,7 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#include "UObject/ObjectMacros.h"
 #include "VRBaseCharacter.h"
 #include "AIModule/Classes/GenericTeamAgentInterface.h"
 #include "AIModule/Classes/Perception/AISense.h"
@@ -12,9 +13,10 @@
 class IAISightTargetInterface;
 class UAISense_Sight_VR;
 
+class FGameplayDebuggerCategory;
 class UAIPerceptionComponent;
 
-UCLASS(meta = (DisplayName = "AI Sight config"))
+UCLASS(meta = (DisplayName = "AI Sight VR config"))
 class VREXPANSIONPLUGIN_API UAISenseConfig_Sight_VR : public UAISenseConfig
 {
 	GENERATED_UCLASS_BODY()
@@ -45,6 +47,10 @@ public:
 		float AutoSuccessRangeFromLastSeenLocation;
 
 	virtual TSubclassOf<UAISense> GetSenseImplementation() const override;
+
+#if WITH_GAMEPLAY_DEBUGGER
+	virtual void DescribeSelfToGameplayDebugger(const UAIPerceptionComponent* PerceptionComponent, FGameplayDebuggerCategory* DebuggerCategory) const;
+#endif // WITH_GAMEPLAY_DEBUGGER
 
 };
 

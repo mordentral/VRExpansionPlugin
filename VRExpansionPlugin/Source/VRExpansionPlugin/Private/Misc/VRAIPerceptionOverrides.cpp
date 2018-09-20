@@ -12,16 +12,20 @@
 #include "AIModule/Classes/Perception/AISenseConfig_Sight.h"
 #include "AIModule/Classes/Perception/AIPerceptionSystem.h"
 
+#if WITH_GAMEPLAY_DEBUGGER
+#include "GameplayDebugger/Public/GameplayDebuggerTypes.h"
+#include "GameplayDebugger/Public/GameplayDebuggerCategory.h"
+#endif
 DEFINE_LOG_CATEGORY(LogAIPerception);
 
-#define DO_SIGHT_VLOGGING (0 && ENABLE_VISUAL_LOG)
+#define DO_SIGHT_VLOGGINGVR (0 && ENABLE_VISUAL_LOG)
 
-#if DO_SIGHT_VLOGGING
-#define SIGHT_LOG_SEGMENT UE_VLOG_SEGMENT
-#define SIGHT_LOG_LOCATION UE_VLOG_LOCATION
+#if DO_SIGHT_VLOGGINGVR
+#define SIGHT_LOG_SEGMENTVR UE_VLOG_SEGMENT
+#define SIGHT_LOG_LOCATIONVR UE_VLOG_LOCATION
 #else
-#define SIGHT_LOG_SEGMENT(...)
-#define SIGHT_LOG_LOCATION(...)
+#define SIGHT_LOG_SEGMENTVR(...)
+#define SIGHT_LOG_LOCATIONVR(...)
 #endif // DO_SIGHT_VLOGGING
 
 DECLARE_CYCLE_STAT(TEXT("Perception Sense: Sight"), STAT_AI_Sense_Sight, STATGROUP_AI);
@@ -217,7 +221,7 @@ float UAISense_Sight_VR::Update()
 				}
 				else if (CheckIsTargetInSightPie(Listener, PropDigest, TargetLocation, SightRadiusSq))
 				{
-					SIGHT_LOG_SEGMENT(Listener.Listener.Get()->GetOwner(), Listener.CachedLocation, TargetLocation, FColor::Green, TEXT("%s"), *(Target.TargetId.ToString()));
+					SIGHT_LOG_SEGMENTVR(Listener.Listener.Get()->GetOwner(), Listener.CachedLocation, TargetLocation, FColor::Green, TEXT("%s"), *(Target.TargetId.ToString()));
 
 					FVector OutSeenLocation(0.f);
 					// do line checks
@@ -241,7 +245,7 @@ float UAISense_Sight_VR::Update()
 
 						if (SightQuery->bLastResult == false)
 						{
-							SIGHT_LOG_LOCATION(Listener.Listener.Get()->GetOwner(), TargetLocation, 25.f, FColor::Red, TEXT(""));
+							SIGHT_LOG_LOCATIONVR(Listener.Listener.Get()->GetOwner(), TargetLocation, 25.f, FColor::Red, TEXT(""));
 						}
 
 						TracesCount += NumberOfLoSChecksPerformed;
@@ -272,14 +276,14 @@ float UAISense_Sight_VR::Update()
 
 						if (SightQuery->bLastResult == false)
 						{
-							SIGHT_LOG_LOCATION(Listener.Listener.Get()->GetOwner(), TargetLocation, 25.f, FColor::Red, TEXT(""));
+							SIGHT_LOG_LOCATIONVR(Listener.Listener.Get()->GetOwner(), TargetLocation, 25.f, FColor::Red, TEXT(""));
 						}
 					}
 				}
 				// communicate failure only if we've seen give actor before
 				else if (SightQuery->bLastResult)
 				{
-					SIGHT_LOG_SEGMENT(Listener.Listener.Get()->GetOwner(), Listener.CachedLocation, TargetLocation, FColor::Red, TEXT("%s"), *(Target.TargetId.ToString()));
+					SIGHT_LOG_SEGMENTVR(Listener.Listener.Get()->GetOwner(), Listener.CachedLocation, TargetLocation, FColor::Red, TEXT("%s"), *(Target.TargetId.ToString()));
 					Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, 0.f, TargetLocation, Listener.CachedLocation, FAIStimulus::SensingFailed));
 					SightQuery->bLastResult = false;
 				}
@@ -677,9 +681,65 @@ void UAISense_Sight_VR::OnListenerForgetsAll(const FPerceptionListener& Listener
 UAISenseConfig_Sight_VR::UAISenseConfig_Sight_VR(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	DebugColor = FColor::Green;
+	AutoSuccessRangeFromLastSeenLocation = -1.0;
+	SightRadius = 3000.f;
+	LoseSightRadius = 3500.f;
+	PeripheralVisionAngleDegrees = 90;
+	DetectionByAffiliation.bDetectEnemies = true;
+	Implementation = UAISense_Sight_VR::StaticClass();
 }
 
 TSubclassOf<UAISense> UAISenseConfig_Sight_VR::GetSenseImplementation() const
 {
 	return *Implementation;
 }
+
+#if WITH_GAMEPLAY_DEBUGGER
+static FString DescribeColorHelper(const FColor& Color)
+{
+	int32 MaxColors = GColorList.GetColorsNum();
+	for (int32 Idx = 0; Idx < MaxColors; Idx++)
+	{
+		if (Color == GColorList.GetFColorByIndex(Idx))
+		{
+			return GColorList.GetColorNameByIndex(Idx);
+		}
+	}
+
+	return FString(TEXT("color"));
+}
+
+void UAISenseConfig_Sight_VR::DescribeSelfToGameplayDebugger(const UAIPerceptionComponent* PerceptionComponent, FGameplayDebuggerCategory* DebuggerCategory) const
+{
+	if (PerceptionComponent == nullptr || DebuggerCategory == nullptr)
+	{
+		return;
+	}
+
+	FColor SightRangeColor = FColor::Green;
+	FColor LoseSightRangeColor = FColorList::NeonPink;
+
+	// don't call Super implementation on purpose, replace color description line
+	DebuggerCategory->AddTextLine(
+		FString::Printf(TEXT("%s: {%s}%s {white}rangeIN:{%s}%s {white} rangeOUT:{%s}%s"), *GetSenseName(),
+			*GetDebugColor().ToString(), *DescribeColorHelper(GetDebugColor()),
+			*SightRangeColor.ToString(), *DescribeColorHelper(SightRangeColor),
+			*LoseSightRangeColor.ToString(), *DescribeColorHelper(LoseSightRangeColor))
+	);
+
+	const AActor* BodyActor = PerceptionComponent->GetBodyActor();
+	if (BodyActor != nullptr)
+	{
+		FVector BodyLocation, BodyFacing;
+		PerceptionComponent->GetLocationAndDirection(BodyLocation, BodyFacing);
+
+		DebuggerCategory->AddShape(FGameplayDebuggerShape::MakeCylinder(BodyLocation, LoseSightRadius, 25.0f, LoseSightRangeColor));
+		DebuggerCategory->AddShape(FGameplayDebuggerShape::MakeCylinder(BodyLocation, SightRadius, 25.0f, SightRangeColor));
+
+		const float SightPieLength = FMath::Max(LoseSightRadius, SightRadius);
+		DebuggerCategory->AddShape(FGameplayDebuggerShape::MakeSegment(BodyLocation, BodyLocation + (BodyFacing * SightPieLength), SightRangeColor));
+		DebuggerCategory->AddShape(FGameplayDebuggerShape::MakeSegment(BodyLocation, BodyLocation + (BodyFacing.RotateAngleAxis(PeripheralVisionAngleDegrees, FVector::UpVector) * SightPieLength), SightRangeColor));
+		DebuggerCategory->AddShape(FGameplayDebuggerShape::MakeSegment(BodyLocation, BodyLocation + (BodyFacing.RotateAngleAxis(-PeripheralVisionAngleDegrees, FVector::UpVector) * SightPieLength), SightRangeColor));
+	}
+}
+#endif // WITH_GAMEPLAY_DEBUGGER
