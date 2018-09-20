@@ -10,7 +10,7 @@ FVector AVRAIController::GetFocalPointOnActor(const AActor *Actor) const
 {
 	if (const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(Actor))
 	{
-		return VRChar->GetVRLocation();
+		return VRChar->GetVRLocation_Inline();
 	}
 	else
 		return Super::GetFocalPointOnActor(Actor); // Actor != nullptr ? Actor->GetActorLocation() : FAISystem::InvalidLocation;
@@ -57,7 +57,7 @@ bool AVRAIController::LineOfSightTo(const AActor* Other, FVector ViewPoint, bool
 
 	// Changed this up to support my VR Characters
 	const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(Other);
-	const FVector OtherActorLocation = VRChar != nullptr ? VRChar->GetVRLocation() : Other->GetActorLocation();
+	const FVector OtherActorLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : Other->GetActorLocation();
 
 	const float DistSq = (OtherActorLocation - ViewPoint).SizeSquared();
 	if (DistSq > FARSIGHTTHRESHOLDSQUARED)

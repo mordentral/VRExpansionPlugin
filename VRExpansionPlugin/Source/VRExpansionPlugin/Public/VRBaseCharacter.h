@@ -246,9 +246,14 @@ public:
 		return OffsetComponentToWorld.GetRotation().GetUpVector();
 	}
 
-	// Gets the location of the HMD offset capsule (this retains the Capsule HalfHeigh offset)
+	// Gets the location of the HMD offset capsule (this retains the Capsule HalfHeight offset)
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
-		FVector GetVRLocation() const
+	FVector GetVRLocation() const
+	{
+		return OffsetComponentToWorld.GetLocation();
+	}
+
+	inline FVector GetVRLocation_Inline() const
 	{
 		return OffsetComponentToWorld.GetLocation();
 	}
@@ -259,11 +264,22 @@ public:
 	{
 		return OffsetComponentToWorld.GetRotation().Rotator();
 	}
+	// Gets the location of the HMD, if the camera is missing then it just returns waist location instead
+	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations", meta = (DisplayName = "GetVRHeadLocation", ScriptName = "GetVRHeadLocation", Keywords = "position"))
+		FVector K2_GetVRHeadLocation() const
+	{
+		return GetVRHeadLocation();
+	}
+
+	inline FVector GetVRHeadLocation() const
+	{
+		return VRReplicatedCamera != nullptr ? VRReplicatedCamera->GetComponentLocation() : OffsetComponentToWorld.GetLocation();
+	}
 
 
 	virtual FVector GetTargetLocation(AActor* RequestedBy) const override
 	{
-		return GetVRLocation();
+		return GetVRLocation_Inline();
 	}
 
 	UPROPERTY(BlueprintReadOnly, Replicated, EditAnywhere, Category = "BaseVRCharacter", ReplicatedUsing = OnRep_SeatedCharInfo)
