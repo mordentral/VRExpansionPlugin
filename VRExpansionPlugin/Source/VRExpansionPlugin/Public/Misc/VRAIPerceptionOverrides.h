@@ -16,6 +16,8 @@ class UAISense_Sight_VR;
 class FGameplayDebuggerCategory;
 class UAIPerceptionComponent;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogAIPerceptionVR, Warning, All);
+
 UCLASS(meta = (DisplayName = "AI Sight VR config"))
 class VREXPANSIONPLUGIN_API UAISenseConfig_Sight_VR : public UAISenseConfig
 {

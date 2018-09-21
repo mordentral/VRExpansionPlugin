@@ -16,7 +16,7 @@
 #include "GameplayDebugger/Public/GameplayDebuggerTypes.h"
 #include "GameplayDebugger/Public/GameplayDebuggerCategory.h"
 #endif
-DEFINE_LOG_CATEGORY(LogAIPerception);
+DEFINE_LOG_CATEGORY(LogAIPerceptionVR);
 
 #define DO_SIGHT_VLOGGINGVR (0 && ENABLE_VISUAL_LOG)
 
@@ -312,9 +312,9 @@ float UAISense_Sight_VR::Update()
 		SightQuery->RecalcScore();
 	}
 #ifdef AISENSE_SIGHT_TIMESLICING_DEBUG
-	UE_LOG(LogAIPerception, VeryVerbose, TEXT("UAISense_Sight_VR::Update processed %d sources in %f seconds [time slice limited? %d]"), NumQueriesProcessed, TimeSpent, bHitTimeSliceLimit ? 1 : 0);
+	UE_LOG(LogAIPerceptionVR, VeryVerbose, TEXT("UAISense_Sight_VR::Update processed %d sources in %f seconds [time slice limited? %d]"), NumQueriesProcessed, TimeSpent, bHitTimeSliceLimit ? 1 : 0);
 #else
-	UE_LOG(LogAIPerception, VeryVerbose, TEXT("UAISense_Sight_VR::Update processed %d sources [time slice limited? %d]"), NumQueriesProcessed, bHitTimeSliceLimit ? 1 : 0);
+	UE_LOG(LogAIPerceptionVR, VeryVerbose, TEXT("UAISense_Sight_VR::Update processed %d sources [time slice limited? %d]"), NumQueriesProcessed, bHitTimeSliceLimit ? 1 : 0);
 #endif // AISENSE_SIGHT_TIMESLICING_DEBUG
 
 	if (InvalidQueries.Num() > 0)
@@ -328,7 +328,7 @@ float UAISense_Sight_VR::Update()
 		if (InvalidTargets.Num() > 0)
 		{
 			// this should not be happening since UAIPerceptionSystem::OnPerceptionStimuliSourceEndPlay introduction
-			UE_VLOG(GetPerceptionSystem(), LogAIPerception, Error, TEXT("Invalid sight targets found during UAISense_Sight_VR::Update call"));
+			UE_VLOG(GetPerceptionSystem(), LogAIPerceptionVR, Error, TEXT("Invalid sight targets found during UAISense_Sight_VR::Update call"));
 
 			for (const auto& TargetId : InvalidTargets)
 			{
@@ -417,7 +417,7 @@ void UAISense_Sight_VR::CleanseInvalidSources()
 		}
 	}
 
-	UE_LOG(LogAIPerception, Verbose, TEXT("UAISense_Sight_VR::CleanseInvalidSources called and removed %d invalid sources"), NumInvalidSourcesFound);
+	UE_LOG(LogAIPerceptionVR, Verbose, TEXT("UAISense_Sight_VR::CleanseInvalidSources called and removed %d invalid sources"), NumInvalidSourcesFound);
 
 	if (bInvalidSourcesFound)
 	{
@@ -427,7 +427,7 @@ void UAISense_Sight_VR::CleanseInvalidSources()
 	}
 	else
 	{
-		UE_VLOG(GetPerceptionSystem(), LogAIPerception, Error, TEXT("UAISense_Sight_VR::CleanseInvalidSources called and no invalid targets were found"));
+		UE_VLOG(GetPerceptionSystem(), LogAIPerceptionVR, Error, TEXT("UAISense_Sight_VR::CleanseInvalidSources called and no invalid targets were found"));
 	}
 }
 
