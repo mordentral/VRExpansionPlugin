@@ -84,8 +84,8 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 					LastToggleTime = WorldTime;
 					bToggledThisTouch = true;
 					bButtonState = !bButtonState;
-					ReceiveButtonStateChanged(bButtonState);
-					OnButtonStateChanged.Broadcast(bButtonState);
+					ReceiveButtonStateChanged(bButtonState, LastInteractingActor.Get());
+					OnButtonStateChanged.Broadcast(bButtonState, LastInteractingActor.Get());
 				}
 			}
 		}
@@ -112,8 +112,8 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 		{
 			LastToggleTime = WorldTime;
 			bButtonState = bCheckState;
-			ReceiveButtonStateChanged(bButtonState);
-			OnButtonStateChanged.Broadcast(bButtonState);
+			ReceiveButtonStateChanged(bButtonState, LastInteractingActor.Get());
+			OnButtonStateChanged.Broadcast(bButtonState, LastInteractingActor.Get());
 		}
 	}
 
@@ -160,12 +160,69 @@ bool UVRButtonComponent::IsValidOverlap_Implementation(UPrimitiveComponent * Ove
 	return false;
 }
 
+void UVRButtonComponent::SetLastInteractingActor()
+{
+
+	// Early out on the simple checks
+	if (!InteractingComponent.IsValid() || InteractingComponent == GetAttachParent() || InteractingComponent->GetAttachParent() == GetAttachParent())
+	{
+		LastInteractingActor.Reset();
+		return;
+	}
+
+	// Should return faster checking for owning character
+	AActor * OverlapOwner = InteractingComponent->GetOwner();
+	if (OverlapOwner && OverlapOwner->IsA(ACharacter::StaticClass()))
+	{
+		LastInteractingActor = OverlapOwner;
+		return;
+	}
+
+	// Now check for if it is a grippable object and if it is currently held
+	if (InteractingComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		UGripMotionControllerComponent *Controller;
+		bool bIsHeld;
+		IVRGripInterface::Execute_IsHeld(InteractingComponent.Get(), Controller, bIsHeld);
+
+		if (bIsHeld && Controller && Controller->GetOwner())
+		{
+			LastInteractingActor = Controller->GetOwner();
+			return;
+		}
+	}
+	else if (OverlapOwner && OverlapOwner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		UGripMotionControllerComponent *Controller;
+		bool bIsHeld;
+		IVRGripInterface::Execute_IsHeld(OverlapOwner, Controller, bIsHeld);
+
+		if (bIsHeld && Controller && Controller->GetOwner())
+		{
+			LastInteractingActor = Controller->GetOwner();
+			return;
+		}
+	}
+
+	// Fall back to the owner, wasn't held and wasn't a character
+	if (OverlapOwner)
+	{
+		LastInteractingActor = OverlapOwner;
+		return;
+	}
+
+	LastInteractingActor.Reset();
+	return;
+}
+
 void UVRButtonComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// Other Actor is the actor that triggered the event. Check that is not ourself.  
 	if (bIsEnabled && !InteractingComponent.IsValid() && (bSkipOverlapFiltering || IsValidOverlap(OtherComp)))
 	{
 		InteractingComponent = OtherComp;
+
+		SetLastInteractingActor();
 
 		FTransform OriginalBaseTransform = CalcNewComponentToWorld(InitialRelativeTransform);
 		FVector loc = InteractingComponent->GetComponentLocation();
