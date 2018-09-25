@@ -24,7 +24,7 @@ enum class EVRButtonType : uint8
 };
 
 /** Delegate for notification when the button state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRButtonStateChangedSignature, bool, ButtonState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRButtonStateChangedSignature, bool, ButtonState, AActor *, InteractingActor);
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
@@ -70,8 +70,8 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 
 		if (bCallButtonChangedEvent)
 		{
-			ReceiveButtonStateChanged(bButtonState);
-			OnButtonStateChanged.Broadcast(bButtonState);
+			ReceiveButtonStateChanged(bButtonState, LastInteractingActor.Get());
+			OnButtonStateChanged.Broadcast(bButtonState, LastInteractingActor.Get());
 		}
 	}
 
@@ -111,11 +111,16 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
 		FVRButtonStateChangedSignature OnButtonStateChanged;
 
+	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button State Changed"))
-		void ReceiveButtonStateChanged(bool bCurButtonState);
+		void ReceiveButtonStateChanged(bool bCurButtonState, AActor * InteractingActor);
 
+	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
 		TWeakObjectPtr<UPrimitiveComponent> InteractingComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
+		TWeakObjectPtr<AActor> LastInteractingActor;
 
 
 	// Whether the button is enabled or not (can be interacted with)
@@ -158,6 +163,9 @@ class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRButtonComponent")
 	bool IsValidOverlap(UPrimitiveComponent * OverlapComponent);
+
+	// Sets the Last interacting actor variable
+	void SetLastInteractingActor();
 
 	virtual FVector GetTargetRelativeLocation()
 	{
