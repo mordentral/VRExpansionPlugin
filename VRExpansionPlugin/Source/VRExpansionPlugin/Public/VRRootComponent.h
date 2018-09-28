@@ -114,6 +114,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	FVector VRCapsuleOffset;
 
+	// #TODO: Test with 100.f rounding to make sure it isn't noticable, currently that is what it is
+	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
+		bool bOffsetByHMD;
+
 	// #TODO: See if making this multiplayer compatible is viable
 	// Offsets capsule to be centered on HMD - currently NOT multiplayer compatible
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
@@ -176,8 +181,10 @@ void inline UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGe
 	else
 		CamRotOffset = curCameraRot;
 
-
-	OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
+	if(bOffsetByHMD)
+		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(0, 0, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
+	else
+		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(0, 0, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
 
 	if (owningVRChar)
 	{

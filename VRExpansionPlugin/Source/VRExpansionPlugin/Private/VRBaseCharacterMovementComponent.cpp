@@ -616,11 +616,8 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 	// I am forcing this to 0 to avoid some legacy velocity coming out of other movement modes, climbing should only be direct movement anyway.
 	Velocity = FVector::ZeroVector;
 
-	if (bApplyAdditionalVRInputVectorAsNegative)
-	{
-		// Rewind the players position by the new capsule location
-		RewindVRRelativeMovement();
-	}
+	// Rewind the players position by the new capsule location
+	RewindVRRelativeMovement();
 
 	Iterations++;
 	bJustTeleported = false;
@@ -771,11 +768,8 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 
 	CalcVelocity(deltaTime, Friction, true, 0.0f);
 
-	if (bApplyAdditionalVRInputVectorAsNegative)
-	{
-		// Rewind the players position by the new capsule location
-		RewindVRRelativeMovement();
-	}
+	// Rewind the players position by the new capsule location
+	RewindVRRelativeMovement();
 
 	// Adding in custom VR input vector here, can be used for custom movement during it
 	// AddImpulse is not multiplayer compatible client side

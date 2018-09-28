@@ -306,6 +306,8 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	bCheckAsyncSceneOnMove = false;
 	SetCanEverAffectNavigation(false);
 	bDynamicObstacle = true;
+
+	bOffsetByHMD = false;
 }
 
 /** Represents a UVRRootComponent to the scene manager. */
@@ -654,6 +656,9 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 
 	//FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
+	if(bOffsetByHMD)
+		return FBoxSphereBounds(FVector(0, 0, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	else
 	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 		
 }

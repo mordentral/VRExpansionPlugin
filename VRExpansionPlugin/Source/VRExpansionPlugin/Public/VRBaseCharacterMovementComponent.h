@@ -655,8 +655,11 @@ public:
 	// Rewind the relative movement that we had with the HMD
 	inline void RewindVRRelativeMovement()
 	{
-		//FHitResult AHit;
-		MoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false);
+		if (bApplyAdditionalVRInputVectorAsNegative)
+		{
+			//FHitResult AHit;
+			MoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false);
+		}
 		//SafeMoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false, AHit);
 	}
 
