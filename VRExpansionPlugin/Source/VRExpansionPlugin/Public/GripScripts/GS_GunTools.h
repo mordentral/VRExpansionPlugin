@@ -7,6 +7,7 @@
 #include "GripScripts/GS_Default.h"
 #include "GS_GunTools.generated.h"
 
+// This class is currently under development, DO NOT USE
 UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UGS_GunTools : public UGS_Default
 {

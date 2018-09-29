@@ -307,7 +307,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	SetCanEverAffectNavigation(false);
 	bDynamicObstacle = true;
 
-	bOffsetByHMD = false;
+	//bOffsetByHMD = false;
 }
 
 /** Represents a UVRRootComponent to the scene manager. */
@@ -497,6 +497,16 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 				OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
 			}
 
+			// Get the correct next transform to use
+			/*FTransform NextTransform;
+			if (bOffsetByHMD) // Manually generate it, the current isn't correct
+			{
+				FVector Camdiff = curCameraLoc - lastCameraLoc;
+				NextTransform = FTransform(StoredCameraRotOffset.Quaternion(), FVector(Camdiff.X, Camdiff.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
+			}
+			else
+				NextTransform = OffsetComponentToWorld;*/
+
 			FHitResult OutHit;
 			FCollisionQueryParams Params("RelativeMovementSweep", false, GetOwner());
 			FCollisionResponseParams ResponseParam;
@@ -516,7 +526,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 				}
 
 				if (bAllowWalkingCollision)
-					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation(), FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
+					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation()/*NextTransform.GetLocation()*/, FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
 
 				if (bBlockingHit && OutHit.Component.IsValid())
 				{
@@ -533,7 +543,8 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 			if (bHadRelativeMovement)
 			{
-				DifferenceFromLastFrame = (OffsetComponentToWorld.GetLocation() - LastPosition);// .GetSafeNormal2D();
+				DifferenceFromLastFrame = OffsetComponentToWorld.GetLocation() - LastPosition;
+				//DifferenceFromLastFrame = (NextTransform.GetLocation() - LastPosition);// .GetSafeNormal2D();
 				DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
 				DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
 				DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
@@ -546,6 +557,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			bHadRelativeMovement = false;
 			DifferenceFromLastFrame = FVector::ZeroVector;
 		}
+
+		lastCameraLoc = curCameraLoc;
+		lastCameraRot = curCameraRot;
 	}
 	else
 	{
@@ -656,10 +670,10 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 
 	//FRotator CamRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw(curCameraRot);
-	if(bOffsetByHMD)
+	/*if(bOffsetByHMD)
 		return FBoxSphereBounds(FVector(0, 0, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
-	else
-	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	else*/
+		return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 		
 }
 
