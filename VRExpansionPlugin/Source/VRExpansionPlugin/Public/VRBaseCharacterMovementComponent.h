@@ -3,6 +3,9 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
+#include "AITypes.h"
+#include "AI/Navigation/NavigationTypes.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "Gameframework/Character.h"
 #include "Gameframework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -576,6 +579,11 @@ public:
 	// Called when a valid climbing step up movement is found, if bound to the default auto step up is not performed to let custom step up logic happen instead.
 	UPROPERTY(BlueprintAssignable, Category = "VRMovement")
 		FVROnPerformClimbingStepUp OnPerformClimbingStepUp;
+
+	virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
+
+	// Can't be inline anymore
+	FVector GetActorFeetLocationVR() const;
 
 	FORCEINLINE bool HasRequestedVelocity()
 	{

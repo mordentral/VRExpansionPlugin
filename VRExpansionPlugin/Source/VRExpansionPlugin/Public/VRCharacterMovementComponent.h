@@ -97,7 +97,7 @@ public:
 	//UPROPERTY(BlueprintAssignable, meta = (DisplayName = "MoveCompleted"))
 	//FAIMoveCompletedSignature ReceiveMoveCompleted;
 
-	virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
+	virtual FBasedPosition GetActorFeetLocationBased() const override;
 
 	/**
 	* Checks to see if the current location is not encroaching blocking geometry so the character can leave NavWalking.
@@ -115,12 +115,6 @@ public:
 	void SimulateMovement(float DeltaSeconds) override;
 	void MoveSmooth(const FVector& InVelocity, const float DeltaSeconds, FStepDownResult* OutStepDownResult) override;
 	//void PerformMovement(float DeltaSeconds) override;
-
-	FORCEINLINE FVector GetActorFeetLocation() const { return VRRootCapsule ? (VRRootCapsule->OffsetComponentToWorld.GetLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : UpdatedComponent ? (UpdatedComponent->GetComponentLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : FNavigationSystem::InvalidLocation; }
-	virtual FBasedPosition GetActorFeetLocationBased() const override
-	{
-		return FBasedPosition(NULL, GetActorFeetLocation());
-	}
 
 	///////////////////////////
 	// End Navigation Functions

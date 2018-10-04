@@ -16,18 +16,18 @@ void UVRPathFollowingComponent::SetMovementComponent(UNavMovementComponent* Move
 {
 	Super::SetMovementComponent(MoveComp);
 
-	VRMovementComp = Cast<UVRCharacterMovementComponent>(MovementComp);
+	VRMovementComp = Cast<UVRBaseCharacterMovementComponent>(MovementComp);
 
 	if (VRMovementComp)
 	{
-		OnRequestFinished.AddUObject(VRMovementComp, &UVRCharacterMovementComponent::OnMoveCompleted);
+		OnRequestFinished.AddUObject(VRMovementComp, &UVRBaseCharacterMovementComponent::OnMoveCompleted);
 	}
 }
 
 bool UVRPathFollowingComponent::HasReached(const FVector& TestPoint, EPathFollowingReachMode ReachMode, float InAcceptanceRadius) const
 {
 	// simple test for stationary agent, used as early finish condition
-	const FVector CurrentLocation = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
+	const FVector CurrentLocation = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
 	const float GoalRadius = 0.0f;
 	const float GoalHalfHeight = 0.0f;
 	if (InAcceptanceRadius == UPathFollowingComponent::DefaultAcceptanceRadius)
@@ -68,7 +68,7 @@ bool UVRPathFollowingComponent::HasReached(const AActor& TestGoal, EPathFollowin
 		}
 	}
 
-	const FVector CurrentLocation = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
+	const FVector CurrentLocation = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
 	const float AgentRadiusMod = (ReachMode == EPathFollowingReachMode::ExactLocation) || (ReachMode == EPathFollowingReachMode::OverlapGoal) ? 0.0f : MinAgentRadiusPct;
 	return HasReachedInternal(TestPoint, GoalRadius, GoalHalfHeight, CurrentLocation, InAcceptanceRadius, AgentRadiusMod);
 }
@@ -141,7 +141,7 @@ void UVRPathFollowingComponent::PauseMove(FAIRequestID RequestID, EPathFollowing
 			MovementComp->StopMovementKeepPathing();
 		}
 
-		LocationWhenPaused = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
+		LocationWhenPaused = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
 		PathTimeWhenPaused = Path.IsValid() ? Path->GetTimeStamp() : 0.0f;
 		Status = EPathFollowingStatus::Paused;
 
@@ -200,7 +200,7 @@ int32 UVRPathFollowingComponent::DetermineStartingPathPoint(const FNavigationPat
 			if (ConsideredPath->GetPathPoints().Num() > 2)
 			{
 				// check if is closer to first or second path point (don't assume AI's standing)
-				const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
+				const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation());
 				const FVector PathPt0 = *ConsideredPath->GetPathPointLocation(0);
 				const FVector PathPt1 = *ConsideredPath->GetPathPointLocation(1);
 				// making this test in 2d to avoid situation where agent's Z location not being in "navmesh plane"
@@ -268,7 +268,7 @@ void UVRPathFollowingComponent::UpdatePathSegment()
 	FMetaNavMeshPath* MetaNavPath = bIsUsingMetaPath ? Path->CastPath<FMetaNavMeshPath>() : nullptr;
 
 	// if agent has control over its movement, check finish conditions
-	const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
+	const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation());
 	const bool bCanUpdateState = HasMovementAuthority();
 	if (bCanUpdateState && Status == EPathFollowingStatus::Moving)
 	{
@@ -352,7 +352,7 @@ void UVRPathFollowingComponent::FollowPathSegment(float DeltaTime)
 		return;
 	}
 
-	const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
+	const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation());
 	const FVector CurrentTarget = GetCurrentTargetLocation();
 
 	// set to false by default, we will set set this back to true if appropriate
@@ -403,7 +403,7 @@ bool UVRPathFollowingComponent::HasReachedCurrentTarget(const FVector& CurrentLo
 	const FVector CurrentDirection = GetCurrentDirection();
 
 	// check if moved too far
-	const FVector ToTarget = (CurrentTarget - (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation()));
+	const FVector ToTarget = (CurrentTarget - (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()));
 	const float SegmentDot = FVector::DotProduct(ToTarget, CurrentDirection);
 	if (SegmentDot < 0.0)
 	{
@@ -433,7 +433,7 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 	float RadiusThreshold = 0.0f;
 	float AgentRadiusPct = 0.05f;
 
-	FVector AgentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
+	FVector AgentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation());
 	FVector GoalLocation = GetCurrentTargetLocation();
 	RadiusThreshold = CurrentAcceptanceRadius;
 

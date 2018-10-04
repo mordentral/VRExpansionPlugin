@@ -2703,14 +2703,6 @@ float UVRCharacterMovementComponent::ImmersionDepth() const
 // Navigation Functions
 ///////////////////////////
 
-void UVRCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
-{
-	if (AVRCharacter* vrOwner = Cast<AVRCharacter>(GetCharacterOwner()))
-	{
-		vrOwner->NavigationMoveCompleted(RequestID, Result);
-	}
-}
-
 bool UVRCharacterMovementComponent::TryToLeaveNavWalking()
 {
 	SetNavWalkingPhysics(false);
@@ -3186,7 +3178,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 	DesiredMove.Z = 0.f;
 
 	//const FVector OldPlayerLocation = GetActorFeetLocation();
-	const FVector OldLocation = GetActorFeetLocation();
+	const FVector OldLocation = GetActorFeetLocationVR();
 	const FVector DeltaMove = DesiredMove * deltaTime;
 
 	FVector AdjustedDest = OldLocation + DeltaMove;
@@ -3272,7 +3264,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 		// Update velocity to reflect actual move
 		if (!bJustTeleported /*&& !HasRootMotion()*/)
 		{
-			Velocity = (GetActorFeetLocation() - OldLocation) / deltaTime;
+			Velocity = (GetActorFeetLocationVR() - OldLocation) / deltaTime;
 			MaintainHorizontalGroundVelocity();
 		}
 
@@ -3513,7 +3505,10 @@ bool UVRCharacterMovementComponent::CheckWaterJump(FVector CheckPoint, FVector& 
 	return false;
 }
 
-
+FBasedPosition UVRCharacterMovementComponent::GetActorFeetLocationBased() const
+{
+	return FBasedPosition(NULL, GetActorFeetLocationVR());
+}
 
 void UVRCharacterMovementComponent::ProcessLanded(const FHitResult& Hit, float remainingTime, int32 Iterations)
 {
@@ -3532,7 +3527,7 @@ void UVRCharacterMovementComponent::ProcessLanded(const FHitResult& Hit, float r
 			// otherwise movement will be stuck in infinite loop:
 			// navwalking -> (no navmesh) -> falling -> (standing on something) -> navwalking -> ....
 
-			const FVector TestLocation = GetActorFeetLocation();
+			const FVector TestLocation = GetActorFeetLocationVR();
 			FNavLocation NavLocation;
 
 			const bool bHasNavigationData = FindNavFloor(TestLocation, NavLocation);

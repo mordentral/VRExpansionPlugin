@@ -136,6 +136,26 @@ void UVRBaseCharacterMovementComponent::EndPushBackNotification()
 	}
 }
 
+FVector UVRBaseCharacterMovementComponent::GetActorFeetLocationVR() const
+{
+	if (AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	{
+		return UpdatedComponent ? (BaseCharacter->OffsetComponentToWorld.GetLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : FNavigationSystem::InvalidLocation;
+	}
+	else
+	{
+		return UpdatedComponent ? (UpdatedComponent->GetComponentLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : FNavigationSystem::InvalidLocation;
+	}
+}
+
+void UVRBaseCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
+{
+	if (AVRBaseCharacter* vrOwner = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	{
+		vrOwner->NavigationMoveCompleted(RequestID, Result);
+	}
+}
+
 /*
 bool UVRBaseCharacterMovementComponent::FloorSweepTest(
 	FHitResult& OutHit,

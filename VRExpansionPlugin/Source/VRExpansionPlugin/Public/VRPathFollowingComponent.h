@@ -4,7 +4,7 @@
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
 #include "VRRootComponent.h"
-#include "VRCharacterMovementComponent.h"
+#include "VRBaseCharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "AbstractNavData.h"
 #include "Runtime/Launch/Resources/Version.h"
@@ -19,7 +19,7 @@ class VREXPANSIONPLUGIN_API UVRPathFollowingComponent : public UPathFollowingCom
 
 public:
 	UPROPERTY(transient)
-	UVRCharacterMovementComponent* VRMovementComp;
+	UVRBaseCharacterMovementComponent* VRMovementComp;
 
 	// Add link to VRMovementComp
 	void SetMovementComponent(UNavMovementComponent* MoveComp) override;
