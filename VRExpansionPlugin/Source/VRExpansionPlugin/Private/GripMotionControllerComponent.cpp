@@ -1918,7 +1918,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 		if (bHasMovementAuthority)
 			TeleportMoveGrip(NewGrip);
 
-		if(HasGripAuthority(NewGrip) || IsServer())
+		if(bHasMovementAuthority || IsServer())
 			root->AttachToComponent(this, FAttachmentTransformRules::KeepWorldTransform);
 
 	}break;
