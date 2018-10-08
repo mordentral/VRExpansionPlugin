@@ -1662,6 +1662,9 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 				if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
 					(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
 					root->SetEnableGravity(NewDrop.bOriginalGravity);
+				
+				// Stop Physics sim for socketing
+				root->SetSimulatePhysics(false);
 			}
 
 			if (IsServer()) //&& !bSkipFullDrop)
@@ -1699,6 +1702,9 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 			if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
 				(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
 				root->SetEnableGravity(NewDrop.bOriginalGravity);
+
+			// Stop Physics sim for socketing
+			root->SetSimulatePhysics(false);
 
 			if (pActor)
 			{
