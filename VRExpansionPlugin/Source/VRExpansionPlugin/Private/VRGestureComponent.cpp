@@ -324,21 +324,24 @@ void UVRGestureComponent::RecognizeGesture(FVRGesture inputGesture)
 	int OutGestureIndex = -1;
 	bool bMirrorGesture = false;
 
+	FVector Size = inputGesture.GestureSize.GetSize();
+	float Scaler = GesturesDB->TargetGestureScale / Size.GetMax();
+	float FinalScaler = Scaler;
+
 	for (int i = 0; i < GesturesDB->Gestures.Num(); i++)
 	{
-		FVRGesture exampleGesture = GesturesDB->Gestures[i];
+		FVRGesture &exampleGesture = GesturesDB->Gestures[i];
 
 		if (!exampleGesture.GestureSettings.bEnabled || exampleGesture.Samples.Num() < 1 || inputGesture.Samples.Num() < exampleGesture.GestureSettings.Minimum_Gesture_Length)
 			continue;
 
+		FinalScaler = exampleGesture.GestureSettings.bEnableScaling ? Scaler : 1.f;
+
 		bMirrorGesture = (MirroringHand != EVRGestureMirrorMode::GES_NoMirror && MirroringHand != EVRGestureMirrorMode::GES_MirrorBoth && MirroringHand == exampleGesture.GestureSettings.MirrorMode);
 
-		FVector Size = inputGesture.GestureSize.GetSize();
-		float Scaler = GesturesDB->TargetGestureScale / Size.GetMax();
-
-		if (GetGestureDistance(inputGesture.Samples[0] * Scaler, exampleGesture.Samples[0], bMirrorGesture) < FMath::Square(exampleGesture.GestureSettings.firstThreshold))
+		if (GetGestureDistance(inputGesture.Samples[0] * FinalScaler, exampleGesture.Samples[0], bMirrorGesture) < FMath::Square(exampleGesture.GestureSettings.firstThreshold))
 		{
-			float d = dtw(inputGesture, exampleGesture, bMirrorGesture, Scaler) / (exampleGesture.Samples.Num());
+			float d = dtw(inputGesture, exampleGesture, bMirrorGesture, FinalScaler) / (exampleGesture.Samples.Num());
 			if (d < minDist && d < FMath::Square(exampleGesture.GestureSettings.FullThreshold))
 			{
 				minDist = d;
@@ -348,9 +351,9 @@ void UVRGestureComponent::RecognizeGesture(FVRGesture inputGesture)
 		else if (exampleGesture.GestureSettings.MirrorMode == EVRGestureMirrorMode::GES_MirrorBoth)
 		{
 			bMirrorGesture = true;
-			if (GetGestureDistance(inputGesture.Samples[0] * Scaler, exampleGesture.Samples[0], bMirrorGesture) < FMath::Square(exampleGesture.GestureSettings.firstThreshold))
+			if (GetGestureDistance(inputGesture.Samples[0] * FinalScaler, exampleGesture.Samples[0], bMirrorGesture) < FMath::Square(exampleGesture.GestureSettings.firstThreshold))
 			{
-				float d = dtw(inputGesture, exampleGesture, bMirrorGesture, Scaler) / (exampleGesture.Samples.Num());
+				float d = dtw(inputGesture, exampleGesture, bMirrorGesture, FinalScaler) / (exampleGesture.Samples.Num());
 				if (d < minDist && d < FMath::Square(exampleGesture.GestureSettings.FullThreshold))
 				{
 					minDist = d;
