@@ -64,6 +64,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture|Advanced")
 		bool bEnabled;
 
+	// If enabled this gesture will have sample data scaled to it when recognizing (if false you will want to record the gesture without scaling)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture|Advanced")
+		bool bEnableScaling;
+
 	FVRGestureSettings()
 	{
 		Minimum_Gesture_Length = 1;
@@ -71,6 +75,7 @@ public:
 		FullThreshold = 20.0f;
 		MirrorMode = EVRGestureMirrorMode::GES_NoMirror;
 		bEnabled = true;
+		bEnableScaling = true;
 	}
 };
 
@@ -153,13 +158,13 @@ public:
 		TargetGestureScale = 100.0f;
 	}
 
-	// Recalculate size of gestures and re-scale them to the TargetGestureScale
+	// Recalculate size of gestures and re-scale them to the TargetGestureScale (if bScaleToDatabase is true)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void RecalculateGestures()
+	void RecalculateGestures(bool bScaleToDatabase = true)
 	{
 		for (int i = 0; i < Gestures.Num(); ++i)
 		{
-			Gestures[i].CalculateSizeOfGesture(true, TargetGestureScale);
+			Gestures[i].CalculateSizeOfGesture(bScaleToDatabase, TargetGestureScale);
 		}
 	}
 
@@ -169,7 +174,7 @@ public:
 
 	// Imports a spline as a gesture, Segment len is the max segment length (will break lines up into lengths of this size)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	bool ImportSplineAsGesture(USplineComponent * HostSplineComponent, FString GestureName, bool bKeepSplineCurves = true, float SegmentLen = 10.0f)
+	bool ImportSplineAsGesture(USplineComponent * HostSplineComponent, FString GestureName, bool bKeepSplineCurves = true, float SegmentLen = 10.0f, bool bScaleToDatabase = true)
 	{
 		FVRGesture NewGesture;
 
@@ -256,7 +261,7 @@ public:
 			}
 		}
 
-		NewGesture.CalculateSizeOfGesture(true, this->TargetGestureScale);
+		NewGesture.CalculateSizeOfGesture(bScaleToDatabase, this->TargetGestureScale);
 		Gestures.Add(NewGesture);
 		return true;
 	}
@@ -510,13 +515,13 @@ public:
 		GestureLog.Samples.Reset(RecordingBufferSize);
 	}
 
-	// Saves a VRGesture to the database
+	// Saves a VRGesture to the database, if Scale To Database is true then it will scale the data
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void SaveRecording(UPARAM(ref) FVRGesture &Recording, FString RecordingName)
+	void SaveRecording(UPARAM(ref) FVRGesture &Recording, FString RecordingName, bool bScaleRecordingToDatabase = true)
 	{
 		if (GesturesDB)
 		{
-			Recording.CalculateSizeOfGesture(true, GesturesDB->TargetGestureScale);
+			Recording.CalculateSizeOfGesture(bScaleRecordingToDatabase, GesturesDB->TargetGestureScale);
 			Recording.Name = RecordingName;
 			GesturesDB->Gestures.Add(Recording);
 		}
