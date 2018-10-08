@@ -411,7 +411,7 @@ public:
 
 	// Material to use when drawing splines
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-		UMaterial* SplineMaterial;
+		UMaterialInterface* SplineMaterial;
 
 	// HTZ to run recording at for detection and saving - now being used as a frame time instead of a HTZ
 	float RecordingDelta;
