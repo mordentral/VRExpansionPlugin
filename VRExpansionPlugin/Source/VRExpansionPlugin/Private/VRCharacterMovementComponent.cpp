@@ -987,7 +987,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		}
 
 		//ApplyRootMotionToVelocity(timeTick);
-		ApplyVRMotionToVelocity(timeTick);
+		ApplyVRMotionToVelocity(deltaTime);//timeTick);
 
 		checkCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 
