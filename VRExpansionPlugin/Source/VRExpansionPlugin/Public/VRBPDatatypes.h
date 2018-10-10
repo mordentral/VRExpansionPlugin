@@ -1418,7 +1418,7 @@ public:
 	uint8 GripID;
 
 	/** Physics scene index of the body we are grabbing. */
-	int32 SceneIndex;
+	//int32 SceneIndex; // No longer needed, retrieved at runtime
 	/** Pointer to PhysX joint used by the handle*/
 	physx::PxD6Joint* HandleData;
 	/** Pointer to kinematic actor jointed to grabbed object */

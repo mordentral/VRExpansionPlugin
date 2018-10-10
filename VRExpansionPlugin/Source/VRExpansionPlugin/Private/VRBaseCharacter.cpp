@@ -100,7 +100,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 
 void AVRBaseCharacter::OnRep_PlayerState()
 {
-	OnPlayerStateReplicated_Bind.Broadcast(PlayerState);
+	OnPlayerStateReplicated_Bind.Broadcast(GetPlayerState());
 	Super::OnRep_PlayerState();
 }
 

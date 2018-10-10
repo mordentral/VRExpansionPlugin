@@ -20,7 +20,7 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	Damping = 200.0f;
 
 	HandleData = nullptr;
-	SceneIndex = 0;
+	//SceneIndex = 0;
 
 	bIsPhysicsLever = false;
 	ParentComponent = nullptr;
