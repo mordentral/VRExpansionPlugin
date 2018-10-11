@@ -293,18 +293,20 @@ public:
 	FVRSeatedCharacterInfo SeatInformation;
 
 	// Called when the seated mode is changed
-	UFUNCTION(BlueprintImplementableEvent, Category = "BaseVRCharacter")
+	UFUNCTION(BlueprintNativeEvent, Category = "BaseVRCharacter")
 		void OnSeatedModeChanged(bool bNewSeatedMode, bool bWasAlreadySeated);
+	virtual void OnSeatedModeChanged_Implementation(bool bNewSeatedMode, bool bWasAlreadySeated) {}
 
 	// Called when the the player either transitions to/from the threshold boundry or the scaler value of being outside the boundry changes
 	// Can be used for warnings or screen darkening, ect
-	UFUNCTION(BlueprintImplementableEvent, Category = "BaseVRCharacter")
+	UFUNCTION(BlueprintNativeEvent, Category = "BaseVRCharacter")
 		void OnSeatThreshholdChanged(bool bIsWithinThreshold, float ToThresholdScaler);
-
+	virtual void OnSeatThreshholdChanged_Implementation(bool bIsWithinThreshold, float ToThresholdScaler) {}
+	
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "BaseVRCharacter")
 		FVRSeatThresholdChangedSignature OnSeatThreshholdChanged_Bind;
-
+	
 	void ZeroToSeatInformation()
 	{
 		SetSeatRelativeLocationAndRotationVR(SeatInformation.StoredLocation, -SeatInformation.StoredLocation, FRotator(0.0f, -SeatInformation.StoredYaw, 0.0f), true);
@@ -316,7 +318,7 @@ public:
 	void TickSeatInformation(float DeltaTime);
 
 	UFUNCTION()
-		virtual void OnRep_SeatedCharInfo()
+	virtual void OnRep_SeatedCharInfo()
 	{
 		// Handle setting up the player here
 
@@ -324,41 +326,71 @@ public:
 		{
 			if (SeatInformation.bSitting /*&& !SeatInformation.bWasSeated*/) // Removing WasSeated check because we may be switching seats
 			{
-				if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
-					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+				if(this->Role == ROLE_SimulatedProxy)
+				{
+					root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-				root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					// Set it before it is set below
+					if (!SeatInformation.bWasSeated)
+						SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
 
-				// Set it before it is set below
-				if(!SeatInformation.bWasSeated)
-					SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
+					SeatInformation.bWasSeated = true;
+					bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
+					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+				}
+				else
+				{
+					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
+						charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
 
-				SeatInformation.bWasSeated = true;
-				bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
+					root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-				ZeroToSeatInformation();
-				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+					// Set it before it is set below
+					if (!SeatInformation.bWasSeated)
+						SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
+
+					SeatInformation.bWasSeated = true;
+					bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
+
+					ZeroToSeatInformation();
+					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+				}
 			}
 			else if(!SeatInformation.bSitting && SeatInformation.bWasSeated)
 			{
-				root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+				if (this->Role == ROLE_SimulatedProxy)
+				{
+					root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
-				if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
-					charMovement->SetMovementMode(MOVE_Walking);
+					bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
-				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
+					LeftMotionController->PostTeleportMoveGrippedObjects();
+					RightMotionController->PostTeleportMoveGrippedObjects();
 
-				// Re-purposing them for the new location and rotations
-				SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true);
-				LeftMotionController->PostTeleportMoveGrippedObjects();
-				RightMotionController->PostTeleportMoveGrippedObjects();
+					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+				}
+				else
+				{
+					root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
-				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
-				SeatInformation.ClearTempVals();
+					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
+						charMovement->SetMovementMode(MOVE_Walking);
+
+					bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
+
+					// Re-purposing them for the new location and rotations
+					SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true);
+					LeftMotionController->PostTeleportMoveGrippedObjects();
+					RightMotionController->PostTeleportMoveGrippedObjects();
+
+					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+					SeatInformation.ClearTempVals();
+				}
 			}
 			else // Is just a reposition
 			{
-				ZeroToSeatInformation();
+				if (this->Role != ROLE_SimulatedProxy)
+					ZeroToSeatInformation();
 			}
 		}
 	}
