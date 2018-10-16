@@ -20,8 +20,19 @@ void UGS_InteractibleSettings::OnBeginPlay_Implementation(UObject * CallingOwner
 		InteractionSettings.InitialLinearTranslation = parentTrans.GetTranslation();
 	}
 }
-void UGS_InteractibleSettings::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
-void UGS_InteractibleSettings::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
+void UGS_InteractibleSettings::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
+{
+	if (InteractionSettings.bIgnoreHandRotation && !InteractionSettings.bHasValidBaseTransform)
+	{
+		RemoveRelativeRotation(GrippingController, GripInformation);
+	}
+
+}
+
+void UGS_InteractibleSettings::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
+{
+	InteractionSettings.bHasValidBaseTransform = false;
+}
 
 
 bool UGS_InteractibleSettings::GetWorldTransform_Implementation
@@ -43,11 +54,16 @@ bool UGS_InteractibleSettings::GetWorldTransform_Implementation
 
 	if (InteractionSettings.bIgnoreHandRotation)
 	{
-		LocalTransform = FTransform(FQuat::Identity, Grip.RelativeTransform.GetLocation(), Grip.RelativeTransform.GetScale3D()) * Grip.AdditionTransform;
+		if (!InteractionSettings.bHasValidBaseTransform)
+		{
+			// Removes the rotation portion of the relative grip transform
+			RemoveRelativeRotation(GrippingController, Grip);
+		}
+
 		FTransform RotationalessTransform = ParentTransform;
 		RotationalessTransform.SetRotation(FQuat::Identity);
 
-		WorldTransform = LocalTransform * RotationalessTransform;
+		WorldTransform = InteractionSettings.BaseTransform * Grip.AdditionTransform * RotationalessTransform;
 	}
 	else
 		WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
