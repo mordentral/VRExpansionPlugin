@@ -13,6 +13,9 @@ struct VREXPANSIONPLUGIN_API FBPGS_InteractionSettings
 	GENERATED_BODY()
 public:
 
+	bool bHasValidBaseTransform; // So we don't have to equals the transform
+	FTransform BaseTransform;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
 		uint32 bLimitsInLocalSpace : 1;
 
@@ -74,7 +77,10 @@ public:
 		InitialAngularTranslation(FRotator::ZeroRotator),
 		MinAngularTranslation(FRotator::ZeroRotator),
 		MaxAngularTranslation(FRotator::ZeroRotator)
-	{}
+	{
+		BaseTransform = FTransform::Identity;
+		bHasValidBaseTransform = false;
+	}
 };
 
 UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
@@ -92,4 +98,28 @@ public:
 	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) override;
 	virtual void OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) override;
 	virtual void OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed = false) override;
+
+	// Flags the the interaction settings so that it will regenerate removing the hand rotation.
+	// Use this if you just changed the relative hand transform.
+	UFUNCTION(BlueprintCallable, Category = "InteractionSettings")
+	void RemoveHandRotation()
+	{
+		// Flag the base transform to be re-applied
+		InteractionSettings.bHasValidBaseTransform = false;
+	}
+
+	inline void RemoveRelativeRotation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation)
+	{
+		InteractionSettings.BaseTransform = GripInformation.RelativeTransform;
+
+		// Reconstitute the controller transform relative to the object, then remove the rotation and set it back to relative to controller
+		// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
+		FTransform compTrans = this->GetParentTransform();
+
+		InteractionSettings.BaseTransform = InteractionSettings.BaseTransform.Inverse() * compTrans; // Reconstitute transform
+		InteractionSettings.BaseTransform.SetRotation(FQuat::Identity); // Remove rotation
+
+		InteractionSettings.BaseTransform = compTrans.GetRelativeTransform(InteractionSettings.BaseTransform); // Set back to relative
+		InteractionSettings.bHasValidBaseTransform = true;
+	}
 };
