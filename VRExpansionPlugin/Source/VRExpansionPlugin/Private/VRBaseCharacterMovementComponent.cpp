@@ -1312,8 +1312,11 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 
 			// Move the capsule, but not the mesh.
 			// Note: we don't change rotation, we lerp towards it in SmoothClientPosition.
-			const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
-			UpdatedComponent->SetWorldLocation(NewLocation, false, nullptr, GetTeleportType());
+			if (NewLocation != OldLocation)
+			{
+				const FScopedPreventAttachedComponentMove PreventMeshMove(CharacterOwner->GetMesh());
+				UpdatedComponent->SetWorldLocation(NewLocation, false, nullptr, GetTeleportType());
+			}
 		}
 		else
 		{

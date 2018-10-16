@@ -1226,12 +1226,7 @@ void UVRSimpleCharacterMovementComponent::CallServerMove
 	}
 
 
-	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
-	APlayerCameraManager* PlayerCameraManager = (PC ? PC->PlayerCameraManager : NULL);
-	if (PlayerCameraManager != NULL && PlayerCameraManager->bUseClientSideCameraUpdates)
-	{
-		PlayerCameraManager->bShouldSendClientSideCameraUpdate = true;
-	}
+	MarkForClientCameraUpdate();
 }
 
 void UVRSimpleCharacterMovementComponent::ServerMoveVR(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint8 CompressedMoveFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode)
@@ -1395,21 +1390,43 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 			}
 		}
 
-		// Remove 4.16
-		//ClientData->ClientUpdateTime = GetWorld()->TimeSeconds;
-
 		// Uncomment 4.16
 		ClientData->ClientUpdateTime = MyWorld->TimeSeconds;
 
-		UE_LOG(LogSimpleCharacterMovement, Verbose, TEXT("Client ReplicateMove Time %f Acceleration %s Position %s DeltaTime %f"),
-			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
+		/*UE_LOG(LogSimpleCharacterMovement, Verbose, TEXT("Client ReplicateMove Time %f Acceleration %s Position %s DeltaTime %f"),
+			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);*/
+		UE_CLOG(CharacterOwner && UpdatedComponent, LogSimpleCharacterMovement, Verbose, TEXT("ClientMove Time %f Acceleration %s Velocity %s Position %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d) DualMove? %d"),
+			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *Velocity.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), NewMove->DeltaTime, *GetMovementName(),
+			*GetNameSafe(NewMove->EndBase.Get()), *NewMove->EndBoneName.ToString(), MovementBaseUtility::IsDynamicBase(NewMove->EndBase.Get()) ? 1 : 0, ClientData->PendingMove.IsValid() ? 1 : 0);
+
+
+
+		bool bSendServerMove = true;
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+
+		// Testing options: Simulated packet loss to server
+		const float TimeSinceLossStart = (MyWorld->RealTimeSeconds - ClientData->DebugForcedPacketLossTimerStart);
+		static const auto CVarNetForceClientServerMoveLossDuration = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetForceClientServerMoveLossDuration"));
+		static const auto CVarNetForceClientServerMoveLossPercent = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetForceClientServerMoveLossPercent"));
+		if (ClientData->DebugForcedPacketLossTimerStart > 0.f && (TimeSinceLossStart < CVarNetForceClientServerMoveLossDuration->GetFloat()))
+		{
+			bSendServerMove = false;
+			UE_LOG(LogSimpleCharacterMovement, Log, TEXT("Drop ServerMove, %.2f time remains"), CVarNetForceClientServerMoveLossDuration->GetFloat() - TimeSinceLossStart);
+		}
+		else if (CVarNetForceClientServerMoveLossPercent->GetFloat() != 0.f && (FMath::SRand() < CVarNetForceClientServerMoveLossPercent->GetFloat()))
+		{
+			bSendServerMove = false;
+			ClientData->DebugForcedPacketLossTimerStart = (CVarNetForceClientServerMoveLossDuration->GetFloat() > 0) ? MyWorld->RealTimeSeconds : 0.0f;
+			UE_LOG(LogSimpleCharacterMovement, Log, TEXT("Drop ServerMove, %.2f time remains"), CVarNetForceClientServerMoveLossDuration->GetFloat());
+		}
+		else
+		{
+			ClientData->DebugForcedPacketLossTimerStart = 0.f;
+		}
+#endif
 
 		// Send move to server if this character is replicating movement
-		bool bSendServerMove = true;
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-		static const auto CVarNetForceClientServerMoveLossPercent = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetForceClientServerMoveLossPercent"));
-		bSendServerMove = (CVarNetForceClientServerMoveLossPercent->GetFloat() == 0.f) || (FMath::SRand() >= CVarNetForceClientServerMoveLossPercent->GetFloat());
-#endif
 		if (bSendServerMove)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCallServerMoveVRSimple);
