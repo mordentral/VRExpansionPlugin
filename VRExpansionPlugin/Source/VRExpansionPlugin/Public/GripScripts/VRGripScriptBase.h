@@ -30,7 +30,7 @@ enum class EGSTransformOverrideType : uint8
 	ModifiesWorldTransform
 };
 
-UCLASS(NotBlueprintable, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin), HideCategories = DefaultSettings)
+UCLASS(NotBlueprintable, BlueprintType, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin), HideCategories = DefaultSettings)
 class VREXPANSIONPLUGIN_API UVRGripScriptBase : public UObject
 {
 	GENERATED_BODY()
