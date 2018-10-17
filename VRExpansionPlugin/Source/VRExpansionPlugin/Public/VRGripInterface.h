@@ -142,5 +142,5 @@ public:
 
 	// Get grip scripts
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		bool GetGripScripts(UPARAM(ref) TArray<UVRGripScriptBase*> & ArrayReference);
+		bool GetGripScripts(TArray<UVRGripScriptBase*> & ArrayReference);
 };
