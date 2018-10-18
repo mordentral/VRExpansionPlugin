@@ -1704,8 +1704,8 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 
 			// Have to call this ourselves
 			DropAndSocket_Implementation(*GripInfo);
-			//if (GrippedObject)
-				//Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+			if (GrippedObject)
+				Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		}
 		else // Server notifyDrop it
 		{
@@ -1717,8 +1717,8 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 	else
 	{
 		NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
-		if (GrippedObject)
-			Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+		//if (GrippedObject)
+			//Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 	}
 
 	//GrippedObjects.RemoveAt(FoundIndex);		
