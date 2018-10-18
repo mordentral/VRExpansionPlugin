@@ -408,23 +408,23 @@ public:
 	// *Note*: If both the parent and the child are simulating it also delays a single tick and then re-applies the relative transform.
 	// This is to avoid a race condition where we need to wait for the next physics update.
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-		bool DropAndSocketObject(const FTransform_NetQuantize & RelativeTransformToParent, UObject * ObjectToDrop = nullptr, uint8 GripIDToDrop = 0, USceneComponent * SocketingParent = nullptr, FName OptionalSocketName = NAME_None);
+		bool DropAndSocketObject(const FTransform_NetQuantize & RelativeTransformToParent, UObject * ObjectToDrop = nullptr, uint8 GripIDToDrop = 0, USceneComponent * SocketingParent = nullptr, FName OptionalSocketName = NAME_None, bool bWeldBodies = true);
 	
 	// Drops a grip and sockets it to the given component at the given relative transform.
 	// *Note*: If both the parent and the child are simulating it also delays a single tick and then re-applies the relative transform.
 	// This is to avoid a race condition where we need to wait for the next physics update.
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-		bool DropAndSocketGrip(const FBPActorGripInformation &GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
+		bool DropAndSocketGrip(const FBPActorGripInformation &GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies = true);
 
 	// Notify the server about a new drop and socket
 	UFUNCTION(Reliable, Server, WithValidation, Category = "GripMotionController")
-		void Server_NotifyDropAndSocketGrip(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
+		void Server_NotifyDropAndSocketGrip(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies = true);
 
 	UFUNCTION(Reliable, NetMulticast)
-		void NotifyDropAndSocket(const FBPActorGripInformation &NewDrop);
+		void NotifyDropAndSocket(const FBPActorGripInformation &NewDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies);
 
 	void DropAndSocket_Implementation(const FBPActorGripInformation &NewDrop);
-	void Socket_Implementation(UObject * ObjectToSocket, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent);
+	void Socket_Implementation(UObject * ObjectToSocket, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies = true);
 
 	// Resets the transform of a socketed grip 1 tick later, this is to avoid a race condition with simulating grips.
 	// Their constraint can change the transform before or after the attachment happens if the parent and the child are both simulating.

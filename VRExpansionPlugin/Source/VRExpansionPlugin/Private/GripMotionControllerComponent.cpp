@@ -1577,7 +1577,7 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	return true;
 }
 
-bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQuantize & RelativeTransformToParent, UObject * ObjectToDrop, uint8 GripIDToDrop, USceneComponent * SocketingParent, FName OptionalSocketName)
+bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQuantize & RelativeTransformToParent, UObject * ObjectToDrop, uint8 GripIDToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, bool bWeldBodies)
 {
 	if (!SocketingParent)
 	{
@@ -1628,12 +1628,12 @@ bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQua
 	}
 
 	if(GripInfo)
-		return DropAndSocketGrip(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent);
+		return DropAndSocketGrip(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 	
 	return false;
 }
 
-bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInformation & GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent)
+bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInformation & GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	if (!SocketingParent)
 	{
@@ -1700,25 +1700,25 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 		if (GetNetMode() == ENetMode::NM_Client)
 		{
 			if(!IsTornOff())
-				Server_NotifyDropAndSocketGrip(GripInfo->GripID, SocketingParent, OptionalSocketName, RelativeTransformToParent);
+				Server_NotifyDropAndSocketGrip(GripInfo->GripID, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 
 			// Have to call this ourselves
 			DropAndSocket_Implementation(*GripInfo);
-			if (GrippedObject)
-				Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent);
+			//if (GrippedObject)
+				//Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		}
 		else // Server notifyDrop it
 		{
-			NotifyDropAndSocket(*GripInfo);
-			if (GrippedObject)
-				Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent);
+			NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+			//if (GrippedObject)
+			//	Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		}
 	}
 	else
 	{
-		NotifyDropAndSocket(*GripInfo);
+		NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		if (GrippedObject)
-			Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent);
+			Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 	}
 
 	//GrippedObjects.RemoveAt(FoundIndex);		
@@ -1738,12 +1738,12 @@ void UGripMotionControllerComponent::SetSocketTransform(UObject * ObjectToSocket
 }
 
 
-bool UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Validate(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent)
+bool UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Validate(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	return true;
 }
 
-void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementation(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent)
+void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementation(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	FBPActorGripInformation FoundGrip;
 	EBPVRResultSwitch Result;
@@ -1753,7 +1753,7 @@ void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementati
 	if (Result == EBPVRResultSwitch::OnFailed)
 		return;
 
-	if (!DropAndSocketGrip(FoundGrip, SocketingParent, OptionalSocketName, RelativeTransformToParent))
+	if (!DropAndSocketGrip(FoundGrip, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies))
 	{
 		DropGrip(FoundGrip, false);
 	}
@@ -1762,14 +1762,14 @@ void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementati
 		Socket_Implementation(FoundGrip.GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent);
 }
 
-void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSocket, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent)
+void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSocket, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	// Check for valid objects
 	if (!ObjectToSocket || !SocketingParent)
 		return;
 
 	FAttachmentTransformRules TransformRule = FAttachmentTransformRules::KeepWorldTransform;//KeepWorldTransform;
-	TransformRule.bWeldSimulatedBodies = true;
+	TransformRule.bWeldSimulatedBodies = bWeldBodies;
 
 	UPrimitiveComponent * ParentPrim = Cast<UPrimitiveComponent>(SocketingParent);
 
@@ -1799,7 +1799,7 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	}
 }
 
-void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FBPActorGripInformation &NewDrop)
+void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FBPActorGripInformation &NewDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	// Don't do this if we are the owning player on a local grip, there is no filter for multicast to not send to owner
 	if ((NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
@@ -1811,6 +1811,9 @@ void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FB
 	}
 
 	DropAndSocket_Implementation(NewDrop);
+	
+	if (NewDrop.GrippedObject)
+		Socket_Implementation(NewDrop.GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 }
 
 void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActorGripInformation &NewDrop)
