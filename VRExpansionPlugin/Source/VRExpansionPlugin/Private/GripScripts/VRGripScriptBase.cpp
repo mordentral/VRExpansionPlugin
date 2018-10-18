@@ -17,7 +17,7 @@ UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer
 
 void UVRGripScriptBase::OnBeginPlay_Implementation(UObject * CallingOwner) {};
 
-bool UVRGripScriptBase::GetWorldTransform_Implementation(UGripMotionControllerComponent* GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) { return true; }
+bool UVRGripScriptBase::GetWorldTransform_Implementation(UGripMotionControllerComponent* GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) { return true; }
 void UVRGripScriptBase::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void UVRGripScriptBase::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void UVRGripScriptBase::OnSecondaryGrip_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) {}
@@ -27,6 +27,7 @@ void UVRGripScriptBase::OnSecondaryGripRelease_Implementation(UGripMotionControl
 EGSTransformOverrideType UVRGripScriptBase::GetWorldTransformOverrideType() { return WorldTransformOverrideType; }
 bool UVRGripScriptBase::IsScriptActive() { return bIsActive; }
 bool UVRGripScriptBase::Wants_DenyAutoDrop() { return bDenyAutoDrop; }
+bool UVRGripScriptBase::Wants_ToForceDrop() { return bForceDrop; }
 //bool UVRGripScriptBase::Wants_DenyTeleport_Implementation() { return false; }
 
 

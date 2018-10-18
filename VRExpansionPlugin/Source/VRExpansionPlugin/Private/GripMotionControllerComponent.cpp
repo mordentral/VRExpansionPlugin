@@ -3040,7 +3040,11 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 			IVRGripInterface::Execute_GetGripScripts(actor, Scripts);
 		}
 
-		GetGripWorldTransform(Scripts, 0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface/*, bRescalePhysicsGrips*/);
+		bool bForceADrop = false;
+		bool bHadValidWorldTransform = GetGripWorldTransform(Scripts, 0.0f, WorldTransform, ParentTransform, copyGrip, actor, PrimComp, bRootHasInterface, bActorHasInterface, true, bForceADrop);
+	
+		if (!bHadValidWorldTransform)
+			return false;
 	}
 
 	//WorldTransform = Grip.RelativeTransform * ParentTransform;
@@ -3239,9 +3243,11 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 
 }
 
-void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptBase*>& GripScripts, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
+bool UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptBase*>& GripScripts, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport, bool &bForceADrop)
 {
 	SCOPE_CYCLE_COUNTER(STAT_GetGripTransform);
+
+	bool bHasValidTransform = true;
 
 	if (GripScripts.Num())
 	{
@@ -3261,7 +3267,8 @@ void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 		// If none of the scripts override the base transform
 		if (bGetDefaultTransform && DefaultGripScript)
 		{		
-			DefaultGripScript->CallCorrect_GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
+			bHasValidTransform = DefaultGripScript->CallCorrect_GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface, bIsForTeleport);
+			bForceADrop = DefaultGripScript->Wants_ToForceDrop();
 		}
 
 		// Get grip script world transform modifiers (if there are any)
@@ -3269,7 +3276,12 @@ void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 		{
 			if (Script && Script->IsScriptActive() && Script->GetWorldTransformOverrideType() != EGSTransformOverrideType::None)
 			{
-				Script->CallCorrect_GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
+				bHasValidTransform = Script->CallCorrect_GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface, bIsForTeleport);
+				bForceADrop = Script->Wants_ToForceDrop();
+
+				// Early out, one of the scripts is telling us that the transform isn't valid, something went wrong or the grip is flagged for drop
+				if (!bHasValidTransform || bForceADrop)
+					break;
 			}
 		}
 	}
@@ -3277,11 +3289,12 @@ void UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 	{
 		if (DefaultGripScript)
 		{
-			DefaultGripScript->CallCorrect_GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
+			bHasValidTransform = DefaultGripScript->CallCorrect_GetWorldTransform(this, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface, bIsForTeleport);
+			bForceADrop = DefaultGripScript->Wants_ToForceDrop();
 		}
 	}
 
-	return;
+	return bHasValidTransform;
 }
 
 void UGripMotionControllerComponent::TickGrip(float DeltaTime)
@@ -3400,8 +3413,26 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					IVRGripInterface::Execute_GetGripScripts(actor, GripScripts);
 				}
 
+
+				bool bForceADrop = false;
+
 				// Get the world transform for this grip after handling secondary grips and interaction differences
-				GetGripWorldTransform(GripScripts, DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface);
+				bool bHasValidWorldTransform = GetGripWorldTransform(GripScripts, DeltaTime, WorldTransform, ParentTransform, *Grip, actor, root, bRootHasInterface, bActorHasInterface, false, bForceADrop);
+
+				// If a script or behavior is telling us to skip this and continue on (IE: it dropped the grip)
+				if (bForceADrop)
+				{
+					if (HasGripAuthority(*Grip))
+					{
+						DropObjectByInterface(Grip->GrippedObject);
+					}
+
+					continue;
+				}
+				else if (!bHasValidWorldTransform)
+				{
+					continue;
+				}
 
 				if (!root->GetComponentScale().Equals(WorldTransform.GetScale3D()))
 					bRescalePhysicsGrips = true;

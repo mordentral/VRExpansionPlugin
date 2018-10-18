@@ -35,7 +35,8 @@ bool UGS_LerpToHand::GetWorldTransform_Implementation
 	AActor * actor, 
 	UPrimitiveComponent * root, 
 	bool bRootHasInterface, 
-	bool bActorHasInterface
+	bool bActorHasInterface, 
+	bool bIsForTeleport
 ) 
 {
 	if (!root)
