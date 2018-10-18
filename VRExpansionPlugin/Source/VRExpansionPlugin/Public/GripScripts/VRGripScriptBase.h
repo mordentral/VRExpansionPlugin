@@ -66,6 +66,20 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 		bool bDenyAutoDrop;
 
+	// Returns if the script wants to force a drop
+	bool Wants_ToForceDrop();
+
+	// Returns if we want to force a drop
+	UPROPERTY(BlueprintReadWrite, Category = "DefaultSettings")
+		bool bForceDrop;
+
+	// Flags the grip to be dropped as soon as possible
+	UFUNCTION(BlueprintCallable, Category = "VRGripScript")
+	void ForceGripToDrop()
+	{
+		bForceDrop = true;
+	}
+
 	// Returns if the script is currently active and should be used
 	/*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
 	bool Wants_DenyTeleport();
@@ -140,8 +154,8 @@ public:
 
 	// Overrides or Modifies the world transform with this grip script
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
-		bool GetWorldTransform(UGripMotionControllerComponent * GrippingController, float DeltaTime, UPARAM(ref) FTransform & WorldTransform, const FTransform &ParentTransform, UPARAM(ref) FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
-		virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface);
+		bool GetWorldTransform(UGripMotionControllerComponent * GrippingController, float DeltaTime, UPARAM(ref) FTransform & WorldTransform, const FTransform &ParentTransform, UPARAM(ref) FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport);
+		virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport);
 
 	// Event triggered on the interfaced object when gripped
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
@@ -165,9 +179,9 @@ public:
 
 
 
-	virtual void CallCorrect_GetWorldTransform(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface)
+	virtual bool CallCorrect_GetWorldTransform(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport)
 	{
-		GetWorldTransform_Implementation(OwningController, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
+		return GetWorldTransform_Implementation(OwningController, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface, bIsForTeleport);
 	}
 };
 
@@ -178,8 +192,8 @@ class VREXPANSIONPLUGIN_API UVRGripScriptBaseBP : public UVRGripScriptBase
 	GENERATED_BODY()
 public:
 
-	virtual void CallCorrect_GetWorldTransform(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface) override
+	virtual bool CallCorrect_GetWorldTransform(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) override
 	{
-		GetWorldTransform(OwningController, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface);
+		return GetWorldTransform(OwningController, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface, bIsForTeleport);
 	}
 };

@@ -673,8 +673,8 @@ public:
 	// Splitting logic into separate function
 	void HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray = false);
 
-	// Gets the world transform of a grip, modified by secondary grips
-	void GetGripWorldTransform(TArray<UVRGripScriptBase*>& GripScripts, float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface/*, bool & bRescalePhysicsGrips*/);
+	// Gets the world transform of a grip, modified by secondary grips, returns if it has a valid transform, if not then this tick will be skipped for the object
+	bool GetGripWorldTransform(TArray<UVRGripScriptBase*>& GripScripts, float DeltaTime,FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport, bool &bForceADrop);
 
 	// Calculate component to world without the protected tag, doesn't set it, just returns it
 	inline FTransform CalcControllerComponentToWorld(FRotator Orientation, FVector Position)
