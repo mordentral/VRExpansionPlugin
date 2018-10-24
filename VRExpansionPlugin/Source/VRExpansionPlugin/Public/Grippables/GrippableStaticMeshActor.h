@@ -184,6 +184,66 @@ public:
 		Super::PostNetReceivePhysicState();
 	}
 
+	// Debug printing of when the object is replication destroyed
+	/*virtual void OnSubobjectDestroyFromReplication(UObject *Subobject) override
+	{
+	Super::OnSubobjectDestroyFromReplication(Subobject);
+
+	GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Red, FString::Printf(TEXT("Killed Object On Actor: x: %s"), *Subobject->GetName()));
+	}*/
+
+	// This isn't called very many places but it does come up
+	virtual void MarkComponentsAsPendingKill() override
+	{
+		Super::MarkComponentsAsPendingKill();
+
+		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+		{
+			if (UObject *SubObject = GripLogicScripts[i])
+			{
+				SubObject->MarkPendingKill();
+			}
+		}
+
+		GripLogicScripts.Empty();
+	}
+
+	/** Called right before being marked for destruction due to network replication */
+	// Clean up our objects so that they aren't sitting around for GC
+	virtual void PreDestroyFromReplication() override
+	{
+		Super::PreDestroyFromReplication();
+
+		// Destroy any sub-objects we created
+		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+		{
+			if (UObject *SubObject = GripLogicScripts[i])
+			{
+				OnSubobjectDestroyFromReplication(SubObject); //-V595
+				SubObject->PreDestroyFromReplication();
+				SubObject->MarkPendingKill();
+			}
+		}
+
+		GripLogicScripts.Empty();
+	}
+
+	// On Destroy clean up our objects
+	virtual void BeginDestroy() override
+	{
+		Super::BeginDestroy();
+
+		for (int32 i = 0; i < GripLogicScripts.Num(); i++)
+		{
+			if (UObject *SubObject = GripLogicScripts[i])
+			{
+				SubObject->MarkPendingKill();
+			}
+		}
+
+		GripLogicScripts.Empty();
+	}
+
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bRepGripSettingsAndGameplayTags;
 

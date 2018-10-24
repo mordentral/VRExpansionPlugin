@@ -190,7 +190,8 @@ void UGripMotionControllerComponent::OnUnregister()
 	{
 		DestroyPhysicsHandle(GrippedObjects[i]);
 
-		DropObjectByInterface(GrippedObjects[i].GrippedObject);
+		if(HasGripAuthority(GrippedObjects[i]) || IsServer())
+			DropObjectByInterface(GrippedObjects[i].GrippedObject);
 		//DropObject(GrippedObjects[i].GrippedObject, false);	
 	}
 	GrippedObjects.Empty();
@@ -198,7 +199,9 @@ void UGripMotionControllerComponent::OnUnregister()
 	for (int i = 0; i < LocallyGrippedObjects.Num(); i++)
 	{
 		DestroyPhysicsHandle(LocallyGrippedObjects[i]);
-		DropObjectByInterface(LocallyGrippedObjects[i].GrippedObject);
+
+		if (HasGripAuthority(LocallyGrippedObjects[i]) || IsServer())
+			DropObjectByInterface(LocallyGrippedObjects[i].GrippedObject);
 		//DropObject(LocallyGrippedObjects[i].GrippedObject, false);
 	}
 	LocallyGrippedObjects.Empty();
@@ -1709,16 +1712,16 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 		}
 		else // Server notifyDrop it
 		{
-			NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
-			//if (GrippedObject)
-			//	Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+			NotifyDropAndSocket(*GripInfo);
+			if (GrippedObject)
+				Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		}
 	}
 	else
 	{
-		NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
-		//if (GrippedObject)
-			//Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+		NotifyDropAndSocket(*GripInfo);
+		if (GrippedObject)
+			Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 	}
 
 	//GrippedObjects.RemoveAt(FoundIndex);		
@@ -1799,7 +1802,7 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	}
 }
 
-void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FBPActorGripInformation &NewDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
+void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FBPActorGripInformation &NewDrop)
 {
 	// Don't do this if we are the owning player on a local grip, there is no filter for multicast to not send to owner
 	if ((NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
@@ -1811,9 +1814,6 @@ void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FB
 	}
 
 	DropAndSocket_Implementation(NewDrop);
-	
-	if (NewDrop.GrippedObject)
-		Socket_Implementation(NewDrop.GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 }
 
 void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActorGripInformation &NewDrop)
@@ -2141,21 +2141,21 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			// #TODO: This is a hack until Epic fixes their new physics replication code
 			//		  It forces the replication target to null on grip if we aren't repping movement.
 #if WITH_PHYSX
-			if (UWorld* World = GetWorld())
-			{
-				if (FPhysScene* PhysScene = World->GetPhysicsScene())
+				if (UWorld* World = GetWorld())
 				{
-					if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
+					if (FPhysScene* PhysScene = World->GetPhysicsScene())
 					{
-						FBodyInstance* BI = root->GetBodyInstance(NewGrip.GrippedBoneName);
-						if (BI && BI->IsInstanceSimulatingPhysics())
+						if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
 						{
-							PhysicsReplication->RemoveReplicatedTarget(root);
-							//PhysicsReplication->SetReplicatedTarget(this, BoneName, UpdatedState);
+							FBodyInstance* BI = root->GetBodyInstance(NewGrip.GrippedBoneName);
+							if (BI && BI->IsInstanceSimulatingPhysics())
+							{
+								PhysicsReplication->RemoveReplicatedTarget(root);
+								//PhysicsReplication->SetReplicatedTarget(this, BoneName, UpdatedState);
+							}
 						}
 					}
 				}
-			}
 #endif
 		}
 
@@ -3427,7 +3427,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				{
 					if (HasGripAuthority(*Grip))
 					{
-						DropObjectByInterface(Grip->GrippedObject);
+						if (bRootHasInterface)
+							DropGrip(*Grip, IVRGripInterface::Execute_SimulateOnDrop(root));
+						else if (bActorHasInterface)
+							DropGrip(*Grip, IVRGripInterface::Execute_SimulateOnDrop(actor));
+						else
+							DropGrip(*Grip, true);
 					}
 
 					continue;

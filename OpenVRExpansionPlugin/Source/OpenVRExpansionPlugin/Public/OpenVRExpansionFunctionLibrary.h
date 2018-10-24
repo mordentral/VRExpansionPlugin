@@ -229,9 +229,26 @@ Prop_ParentContainer							= 5151
 // Vendors are free to expose private debug data in this reserved region
 Prop_VendorSpecific_Reserved_Start = 10000,
 Prop_VendorSpecific_Reserved_End = 10999,
+
+Prop_ImuFactoryGyroBias_Vector3				= 2064,
+Prop_ImuFactoryGyroScale_Vector3			= 2065,
+Prop_ImuFactoryAccelerometerBias_Vector3	= 2066,
+Prop_ImuFactoryAccelerometerScale_Vector3	= 2067,
+// reserved 2068
+
+// Driver requested mura correction properties
+Prop_DriverRequestedMuraCorrectionMode_Int32		= 2200,
+Prop_DriverRequestedMuraFeather_InnerLeft_Int32		= 2201,
+Prop_DriverRequestedMuraFeather_InnerRight_Int32	= 2202,
+Prop_DriverRequestedMuraFeather_InnerTop_Int32		= 2203,
+Prop_DriverRequestedMuraFeather_InnerBottom_Int32	= 2204,
+Prop_DriverRequestedMuraFeather_OuterLeft_Int32		= 2205,
+Prop_DriverRequestedMuraFeather_OuterRight_Int32	= 2206,
+Prop_DriverRequestedMuraFeather_OuterTop_Int32		= 2207,
+Prop_DriverRequestedMuraFeather_OuterBottom_Int32	= 2208,
+
+Prop_TrackedDeviceProperty_Max				= 1000000,
 */
-
-
 
 // #TODO: Update these
 UENUM(BlueprintType)
@@ -280,7 +297,11 @@ enum class EVRDeviceProperty_String : uint8
 
 	// 5 prefix = 6000 series
 	DriverProp_UserConfigPath_String_6000			UMETA(DisplayName = "DriverProp_UserConfigPath_String"),
-	DriverProp_InstallPath_String_6001				UMETA(DisplayName = "DriverProp_InstallPath_String")
+	DriverProp_InstallPath_String_6001				UMETA(DisplayName = "DriverProp_InstallPath_String"),
+
+	// Properties that are set internally based on other information provided by drivers
+	DriverProp_ControllerType_String_7000			UMETA(DisplayName = "DriverProp_ControllerType_String"),
+	DriveerProp_LegacyInputProfile_String_7001		UMETA(DisplayName = "DriveerProp_LegacyInputProfile_String")
 
 };
 
@@ -301,6 +322,7 @@ enum class EVRDeviceProperty_Bool : uint8
 	Prop_HasCamera_Bool_1030						UMETA(DisplayName = "Prop_HasCamera_Bool"),
 	Prop_Firmware_ForceUpdateRequired_Bool_1032		UMETA(DisplayName = "Prop_Firmware_ForceUpdateRequired_Bool"),
 	Prop_ViveSystemButtonFixRequired_Bool_1033		UMETA(DisplayName = "Prop_ViveSystemButtonFixRequired_Bool"),
+	Prop_NeverTracked_Bool_1038						UMETA(DisplayName = "Prop_NeverTracked_Bool"),
 
 	// 1 prefix = 2000 series
 	HMDProp_ReportsTimeSinceVSync_Bool_2000				UMETA(DisplayName = "HMDProp_ReportsTimeSinceVSync_Bool"),
@@ -311,13 +333,19 @@ enum class EVRDeviceProperty_Bool : uint8
 	HMDProp_DisplayDebugMode_Bool_2044					UMETA(DisplayName = "HMDProp_DisplayDebugMode_Bool"),
 	HMDProp_DoNotApplyPrediction_Bool_2054				UMETA(DisplayName = "HMDProp_DoNotApplyPrediction_Bool"),
 
+	HMDProp_DriverIsDrawingControllers_Bool_2057				UMETA(DisplayName = "HMDProp_DriverIsDrawingControllers_Bool"),
+	HMDProp_DriverRequestsApplicationPause_Bool_2058			UMETA(DisplayName = "HMDProp_DriverRequestsApplicationPause_Bool"),
+	HMDProp_DriverRequestsReducedRendering_Bool_2059			UMETA(DisplayName = "HMDProp_DriverRequestsReducedRendering_Bool"),
+	HMDProp_ConfigurationIncludesLighthouse20Features_Bool_2069	UMETA(DisplayName = "HMDProp_ConfigurationIncludesLighthouse20Features_Bool"),
+
 
 	// 5 prefix = 6000 series
 	DriverProp_HasDisplayComponent_Bool_6002			UMETA(DisplayName = "DriverProp_HasDisplayComponent_Bool"),
 	DriverProp_HasControllerComponent_Bool_6003			UMETA(DisplayName = "DriverProp_HasControllerComponent_Bool"),
 	DriverProp_HasCameraComponent_Bool_6004				UMETA(DisplayName = "DriverProp_HasCameraComponent_Bool"),
 	DriverProp_HasDriverDirectModeComponent_Bool_6005	UMETA(DisplayName = "DriverProp_HasDriverDirectModeComponent_Bool"),
-	DriverProp_HasVirtualDisplayComponent_Bool_6006		UMETA(DisplayName = "DriverProp_HasVirtualDisplayComponent_Bool")
+	DriverProp_HasVirtualDisplayComponent_Bool_6006		UMETA(DisplayName = "DriverProp_HasVirtualDisplayComponent_Bool"),
+	DriverProp_HasSpatialAnchorsSupport_Bool_6007		UMETA(DisplayName = "DriverProp_HasSpatialAnchorsSupport_Bool")
 
 };
 
@@ -345,6 +373,7 @@ enum class EVRDeviceProperty_Float : uint8
 	HMDProp_ScreenshotHorizontalFieldOfViewDegrees_Float_2034	UMETA(DisplayName = "HMDProp_ScreenshotHorizontalFieldOfViewDegrees_Float"),
 	HMDProp_ScreenshotVerticalFieldOfViewDegrees_Float_2035		UMETA(DisplayName = "HMDProp_ScreenshotVerticalFieldOfViewDegrees_Float"),
 	HMDProp_SecondsFromPhotonsToVblank_Float_2042				UMETA(DisplayName = "HMDProp_SecondsFromPhotonsToVblank_Float"),
+	HMDProp_MinimumIpdStepMeters_Float_2060						UMETA(DisplayName = "HMDProp_MinimumIpdStepMeters_Float"),
 
 	// 3 Prefix = 4000 series
 	TrackRefProp_FieldOfViewLeftDegrees_Float_4000		UMETA(DisplayName = "TrackRefProp_FieldOfViewLeftDegrees_Float"),
@@ -360,6 +389,8 @@ enum class EVRDeviceProperty_Int32 : uint8
 {
 	// No prefix = 1000 series
 	Prop_DeviceClass_Int32_1029						UMETA(DisplayName = "Prop_DeviceClass_Int32"),
+	Prop_NumCameras_Int32_1039						UMETA(DisplayName = "Prop_NumCameras_Int32"),
+	Prop_CameraFrameLayout_Int32_1040				UMETA(DisplayName = "Prop_CameraFrameLayout_Int32"), // EVRTrackedCameraFrameLayout value
 
 	// 1 Prefix = 2000 series
 	HMDProp_DisplayMCType_Int32_2008					UMETA(DisplayName = "HMDProp_DisplayMCType_Int32"),
@@ -372,6 +403,7 @@ enum class EVRDeviceProperty_Int32 : uint8
 	HMDProp_DisplayMCImageNumChannels_Int32_2040		UMETA(DisplayName = "HMDProp_DisplayMCImageNumChannels_Int32"),
 	HMDProp_ExpectedTrackingReferenceCount_Int32_2049	UMETA(DisplayName = "HMDProp_ExpectedTrackingReferenceCount_Int32"),
 	HMDProp_ExpectedControllerCount_Int32_2050			UMETA(DisplayName = "HMDProp_ExpectedControllerCount_Int32"),
+	HMDProp_DistortionMeshResolution_Int32_2056			UMETA(DisplayName = "HMDProp_DistortionMeshResolution_Int32"),
 
 	// 2 Prefix = 3000 series
 	ControllerProp_Axis0Type_Int32_3002				UMETA(DisplayName = "ControllerProp_Axis0Type_Int32"),
@@ -405,6 +437,9 @@ enum class EVRDeviceProperty_UInt64 : uint8
 	HMDProp_AudioFirmwareVersion_Uint64_2032		UMETA(DisplayName = "HMDProp_AudioFirmwareVersion_Uint64"),
 	HMDProp_GraphicsAdapterLuid_Uint64_2045			UMETA(DisplayName = "HMDProp_GraphicsAdapterLuid_Uint64"),
 
+	HMDProp_AudioBridgeFirmwareVersion_Uint64_2061	UMETA(DisplayName = "HMDProp_AudioBridgeFirmwareVersion_Uint64"),
+	HMDProp_ImageBridgeFirmwareVersion_Uint64_2062	UMETA(DisplayName = "HMDProp_ImageBridgeFirmwareVersion_Uint64"),
+
 	// 2 Prefix = 3000 series
 	ControllerProp_SupportedButtons_Uint64_3001		UMETA(DisplayName = "ControllerProp_SupportedButtons_Uint64")
 };
@@ -416,7 +451,9 @@ enum class EVRDeviceProperty_Matrix34 : uint8
 	Prop_StatusDisplayTransform_Matrix34_1013		UMETA(DisplayName = "Prop_StatusDisplayTransform_Matrix34"),
 
 	// 1 Prefix = 2000 series
-	HMDProp_CameraToHeadTransform_Matrix34_2016		UMETA(DisplayName = "HMDProp_CameraToHeadTransform_Matrix34")
+	HMDProp_CameraToHeadTransform_Matrix34_2016		UMETA(DisplayName = "HMDProp_CameraToHeadTransform_Matrix34"),
+	HMDProp_CameraToHeadTransforms_Matrix34_2055	UMETA(DisplayName = "HMDProp_CameraToHeadTransforms_Matrix34"),
+	HMDProp_ImuToHeadTransform_Matrix34_2063		UMETA(DisplayName = "HMDProp_ImToHeadTransform_Matrix34")
 };
 
 // This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.

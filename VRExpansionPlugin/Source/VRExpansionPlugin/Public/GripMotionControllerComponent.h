@@ -421,7 +421,7 @@ public:
 		void Server_NotifyDropAndSocketGrip(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies = true);
 
 	UFUNCTION(Reliable, NetMulticast)
-		void NotifyDropAndSocket(const FBPActorGripInformation &NewDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies);
+		void NotifyDropAndSocket(const FBPActorGripInformation &NewDrop);
 
 	void DropAndSocket_Implementation(const FBPActorGripInformation &NewDrop);
 	void Socket_Implementation(UObject * ObjectToSocket, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies = true);
