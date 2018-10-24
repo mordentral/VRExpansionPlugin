@@ -225,6 +225,14 @@ public:
 			}
 		}
 
+		for (UActorComponent * ActorComp : GetComponents())
+		{
+			// Pending kill components should have already had this called as they were network spawned and are being killed
+			// We only call this on our interfaced components since they are the only ones that should implement grip scripts
+			if (ActorComp && !ActorComp->IsPendingKill() && ActorComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				ActorComp->PreDestroyFromReplication();
+		}
+
 		GripLogicScripts.Empty();
 	}
 
