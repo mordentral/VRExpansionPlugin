@@ -76,9 +76,33 @@ public:
 		GripLogicScripts.Empty();
 	}
 
+	virtual void GetSubobjectsWithStableNamesForNetworking(TArray<UObject*> &ObjList) override
+	{
+		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+		{
+			if (UObject *SubObject = GripLogicScripts[i])
+			{
+				ObjList.Add(SubObject);
+			}
+		}
+	}
+
 	// This one is for components to clean up
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override
 	{
+		// Call the super at the end, after we've done what we needed to do
+		Super::OnComponentDestroyed(bDestroyingHierarchy);
+
+		// Don't set these in editor preview window and the like, it causes saving issues
+		if (UWorld * World = GetWorld())
+		{
+			EWorldType::Type WorldType = World->WorldType;
+			if (WorldType == EWorldType::Editor || WorldType == EWorldType::EditorPreview)
+			{
+				return;
+			}
+		}
+
 		for (int32 i = 0; i < GripLogicScripts.Num(); i++)
 		{
 			if (UObject *SubObject = GripLogicScripts[i])
@@ -88,9 +112,6 @@ public:
 		}
 
 		GripLogicScripts.Empty();
-
-		// Call the super at the end, after we've done what we needed to do
-		Super::OnComponentDestroyed(bDestroyingHierarchy);
 	}
 
 	// Requires bReplicates to be true for the component

@@ -125,12 +125,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 		AActor * GetOwner()
 	{
-		if (AActor * MyOwner = Cast<AActor>(this->GetOuter()))
+		UObject * myOuter = this->GetOuter();
+
+		if (!myOuter)
+			return nullptr;
+
+		if (AActor * ActorOwner = Cast<AActor>(myOuter))
 		{
-			return MyOwner;
+			return ActorOwner;
 		}
-		else
-			return Cast<AActor>(this->GetOutermost());
+		else if (UActorComponent * ComponentOwner = Cast<UActorComponent>(myOuter))
+		{
+			return ComponentOwner->GetOwner();
+		}
+
+		return nullptr;
 	}
 
 	// If the owning actor has authority on this connection 
@@ -140,6 +149,18 @@ public:
 		if(AActor * MyOwner = GetOwner())
 		{
 			return MyOwner->Role == ROLE_Authority;
+		}
+		
+		return false;
+	}
+
+	// If the owning actor is on the server on this connection 
+	UFUNCTION(BlueprintPure, Category = "VRGripScript")
+		bool IsServer()
+	{
+		if (AActor * MyOwner = GetOwner())
+		{
+			return MyOwner->GetNetMode() < ENetMode::NM_Client;
 		}
 
 		return false;
