@@ -14,7 +14,7 @@ void UGS_InteractibleSettings::OnBeginPlay_Implementation(UObject * CallingOwner
 {
 	if (InteractionSettings.bGetInitialPositionsOnBeginPlay)
 	{
-		FTransform parentTrans = GetParentTransform(InteractionSettings.bLimitsInLocalSpace);
+		FTransform parentTrans = GetParentTransform(!InteractionSettings.bLimitsInLocalSpace);
 
 		InteractionSettings.InitialAngularTranslation = parentTrans.Rotator();
 		InteractionSettings.InitialLinearTranslation = parentTrans.GetTranslation();
