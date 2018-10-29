@@ -100,7 +100,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 	FTransform GetParentTransform(bool bGetWorldTransform = true)
 	{
-		UObject * ParentObj = this->GetOuter();
+		UObject * ParentObj = this->GetParent();
 
 		if (USceneComponent * PrimParent = Cast<USceneComponent>(ParentObj))
 		{
@@ -111,7 +111,7 @@ public:
 			return ParentActor->GetActorTransform();
 		}
 
-		return FTransform::Identity;
+		return FTransform::Identity;	
 	}
 
 	// Returns the parent component or actor to this
