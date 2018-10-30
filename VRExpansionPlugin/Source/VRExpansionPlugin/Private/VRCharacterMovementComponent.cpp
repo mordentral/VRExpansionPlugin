@@ -4202,6 +4202,14 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 		ClientLoc += BaseLocation;
 	}
 
+	// Client may send a null movement base when walking on bases with no relative location (to save bandwidth).
+	// In this case don't check movement base in error conditions, use the server one (which avoids an error based on differing bases). Position will still be validated.
+	if (ClientMovementBase == nullptr && ClientMovementMode == MOVE_Walking)
+	{
+		ClientMovementBase = CharacterOwner->GetBasedMovement().MovementBase;
+		ClientBaseBoneName = CharacterOwner->GetBasedMovement().BoneName;
+	}
+
 	// Compute the client error from the server's position
 	// If client has accumulated a noticeable positional error, correct them.
 	bNetworkLargeClientCorrection = ServerData->bForceClientUpdate;
