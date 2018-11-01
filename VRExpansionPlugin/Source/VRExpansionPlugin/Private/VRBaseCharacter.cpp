@@ -397,7 +397,7 @@ FVector AVRBaseCharacter::SetActorRotationVR(FRotator NewRot, bool bUseYawOnly, 
 	return NewLocation - OrigLocation;
 }
 
-FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly, bool bAccountForHMDRotation)
+FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly, bool bAccountForHMDRotation, bool bTeleport)
 {
 	AController* OwningController = GetController();
 
@@ -428,7 +428,7 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 		OwningController->SetControlRotation(NewRotation);
 
 	// Also setting actor rot because the control rot transfers to it anyway eventually
-	SetActorLocationAndRotation(NewLocation, NewRotation);
+	SetActorLocationAndRotation(NewLocation, NewRotation, false, nullptr, bTeleport ? ETeleportType::TeleportPhysics : ETeleportType::None);
 	return NewLocation - NewLoc;
 }
 

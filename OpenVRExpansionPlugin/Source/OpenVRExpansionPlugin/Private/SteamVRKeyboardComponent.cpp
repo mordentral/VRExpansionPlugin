@@ -3,6 +3,7 @@
 #include "SteamVRKeyboardComponent.h"
 #include "Engine/Engine.h"
 #include "OpenVRExpansionFunctionLibrary.h"
+#include "GameFramework/PlayerController.h"
 //#include "GripMotionControllerComponent.h"
 
 

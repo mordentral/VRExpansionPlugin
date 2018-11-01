@@ -379,7 +379,7 @@ public:
 					bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
 					// Re-purposing them for the new location and rotations
-					SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true);
+					SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true);
 					LeftMotionController->PostTeleportMoveGrippedObjects();
 					RightMotionController->PostTeleportMoveGrippedObjects();
 
@@ -424,7 +424,7 @@ public:
 	
 	// Sets the actors rotation and location taking into account the HMD as a pivot point (also moves the actor), returns the location difference from the rotation
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
-		FVector SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true);
+		FVector SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true, bool bTeleport = false);
 
 	// Regenerates the base offsetcomponenttoworld that VR uses
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")

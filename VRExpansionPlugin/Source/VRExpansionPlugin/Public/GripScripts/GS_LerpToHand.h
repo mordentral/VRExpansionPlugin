@@ -28,10 +28,10 @@ public:
 
 	UGS_LerpToHand(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
 	float InterpSpeed;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
 	EVRLerpInterpolationMode LerpInterpolationMode;
 
 	//virtual void BeginPlay_Implementation() override;
