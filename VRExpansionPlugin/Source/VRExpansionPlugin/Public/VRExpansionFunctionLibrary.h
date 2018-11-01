@@ -3,7 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "IMotionController.h"
-
+#include "Kismet/BlueprintFunctionLibrary.h"
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 

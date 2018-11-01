@@ -91,7 +91,7 @@ public:
 
 	UGS_InteractibleSettings(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)// Category = "InteractionSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "InteractionSettings")
 	FBPGS_InteractionSettings InteractionSettings;
 
 	virtual void OnBeginPlay_Implementation(UObject * CallingOwner) override;

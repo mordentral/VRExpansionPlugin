@@ -3,6 +3,8 @@
 //#include "EngineMinimal.h"
 #include "Engine/Engine.h"
 #include "CoreMinimal.h"
+#include "Engine/Texture2D.h"
+#include "RenderUtils.h"
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
 

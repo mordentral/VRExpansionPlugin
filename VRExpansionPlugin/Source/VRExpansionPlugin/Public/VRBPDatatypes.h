@@ -354,6 +354,8 @@ public:
 		RotationQuantizationLevel(EVRRotationQuantization::RoundToShort)
 	{
 		//QuantizationLevel = EVRVectorQuantization::RoundTwoDecimals;
+		Position = FVector::ZeroVector;
+		Rotation = FRotator::ZeroRotator;
 	}
 
 	/** Network serialization */
