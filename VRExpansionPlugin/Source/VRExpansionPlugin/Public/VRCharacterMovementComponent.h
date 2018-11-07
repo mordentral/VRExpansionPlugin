@@ -257,7 +257,7 @@ public:
 
 	// Always called with the capsulecomponent location, no idea why it doesn't just get it inside it already
 	// Had to force it within the function to use VRLocation instead.
-	virtual void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bZeroDelta, const FHitResult* DownwardSweepResult) const override;
+	virtual void FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bCanUseCachedLocation, const FHitResult* DownwardSweepResult = NULL) const;
 
 	// Need to use actual capsule location for step up
 	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = NULL) override;

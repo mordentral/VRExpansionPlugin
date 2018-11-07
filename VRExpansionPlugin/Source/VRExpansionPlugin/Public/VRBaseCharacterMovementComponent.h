@@ -6,8 +6,8 @@
 #include "AITypes.h"
 #include "AI/Navigation/NavigationTypes.h"
 #include "Navigation/PathFollowingComponent.h"
-#include "Gameframework/Character.h"
-#include "Gameframework/CharacterMovementComponent.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 

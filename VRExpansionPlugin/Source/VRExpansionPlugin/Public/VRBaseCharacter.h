@@ -8,8 +8,8 @@
 #include "ReplicatedVRCameraComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
 #include "GripMotionControllerComponent.h"
-#include "Gameframework/Character.h"
-#include "Gameframework/Controller.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/Controller.h"
 #include "Components/CapsuleComponent.h"
 #include "VRBaseCharacter.generated.h"
 
@@ -53,6 +53,8 @@ public:
 
 	void Clear()
 	{
+		bSitting = false;
+		bIsOverThreshold = false;
 		bWasOverLimit = false;
 		bZeroToHead = true;
 		StoredLocation = FVector::ZeroVector;

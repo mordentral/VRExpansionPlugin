@@ -104,7 +104,10 @@ public:
 		FVRGestureSettings GestureSettings;
 
 	FVRGesture()
-	{}
+	{
+		GestureType = 0;
+		GestureSize = FBox();
+	}
 
 	void CalculateSizeOfGesture(bool bAllowResizing = false, float TargetExtentSize = 1.f)
 	{

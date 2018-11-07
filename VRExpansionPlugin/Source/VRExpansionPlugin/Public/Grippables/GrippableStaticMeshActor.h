@@ -12,6 +12,7 @@
 #include "GameplayTagAssetInterface.h"
 #include "GripScripts/VRGripScriptBase.h"
 #include "Engine/ActorChannel.h"
+#include "DrawDebugHelpers.h"
 #include "GrippableStaticMeshActor.generated.h"
 
 
@@ -124,6 +125,22 @@ public:
 
 	virtual void OnRep_ReplicateMovement() override
 	{
+		// Since ReplicatedMovement and AttachmentReplication are REPNOTIFY_Always (and OnRep_AttachmentReplication may call OnRep_ReplicatedMovement directly),
+		// this check is needed since this can still be called on actors for which bReplicateMovement is false - for example, during fast-forward in replay playback.
+		// When this happens, the values in ReplicatedMovement aren't valid, and must be ignored.
+		if (!bReplicateMovement)
+		{
+			return;
+		}
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+		static const auto CVarDrawDebugRepMovement = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("Net.RepMovement.DrawDebug"));
+		if (CVarDrawDebugRepMovement->GetValueOnGameThread() > 0)
+		{
+			DrawDebugCapsule(GetWorld(), ReplicatedMovement.Location, GetSimpleCollisionHalfHeight(), GetSimpleCollisionRadius(), ReplicatedMovement.Rotation.Quaternion(), FColor(100, 255, 100), true, 1.f);
+		}
+#endif
+
 		if (bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
 		{
 			return;
