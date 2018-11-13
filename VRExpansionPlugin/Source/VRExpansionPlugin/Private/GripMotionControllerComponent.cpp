@@ -1653,7 +1653,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 
 			if (root)
 			{
-				root->IgnoreActorWhenMoving(this->GetOwner(), false);
+				//root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
 				// Attachment already handles both of these
 				//root->UpdateComponentToWorld(); // This fixes the late update offset
@@ -1693,7 +1693,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 			pActor = root->GetOwner();
 
 			root->RemoveTickPrerequisiteComponent(this);
-			root->IgnoreActorWhenMoving(this->GetOwner(), false);
+			//root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
 			// Attachment already handles both of these
 			//root->UpdateComponentToWorld();
@@ -1811,7 +1811,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 					(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
 					root->SetEnableGravity(false);
 
-				root->IgnoreActorWhenMoving(this->GetOwner(), true);
+				//root->IgnoreActorWhenMoving(this->GetOwner(), true);
 			}
 
 
@@ -1859,7 +1859,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 				(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
 				root->SetEnableGravity(false);
 
-			root->IgnoreActorWhenMoving(this->GetOwner(), true);
+			//root->IgnoreActorWhenMoving(this->GetOwner(), true);
 		}
 		else
 			return false;
@@ -2043,7 +2043,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 					if (NewDrop.GripCollisionType == EGripCollisionType::AttachmentGrip && (HasGripAuthority(NewDrop) || IsServer()))
 						root->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 
-					root->IgnoreActorWhenMoving(this->GetOwner(), false);
+					//root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
 					if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || !pActor->GetIsReplicated())
 					{
@@ -2122,7 +2122,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				if (NewDrop.GripCollisionType == EGripCollisionType::AttachmentGrip && (HasGripAuthority(NewDrop) || IsServer()))
 					root->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 
-				root->IgnoreActorWhenMoving(this->GetOwner(), false);
+				//root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
 				// Need to set simulation in all of these cases, including if it isn't the root component (simulation isn't replicated on non roots)
 				if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || (pActor && (pActor->GetRootComponent() != root || !pActor->GetIsReplicated())))
