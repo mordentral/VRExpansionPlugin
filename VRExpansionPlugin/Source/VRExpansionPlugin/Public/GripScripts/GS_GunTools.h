@@ -41,10 +41,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil")
 		bool bHasRecoil;
 
-	// Recoil transform to apply per instance
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
-		FTransform_NetQuantize InstanceTransform;
-
 	// Maximum recoil addition
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
 		FTransform_NetQuantize MaxRecoil;
@@ -53,13 +49,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
 		float DecayRate;
 
+	// Recoil lerp rate, how long it takes to lerp to the target recoil amount (0.0f would be instant)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+		float LerpRate;
+
+	// Stores the current amount of recoil
 	FTransform BackEndRecoilStorage;
 
+	// Stores the target amount of recoil
+	FTransform BackEndRecoilTarget;
+	
 	UFUNCTION(BlueprintCallable, Category = "GunTools|Recoil")
-		void AddRecoilInstance(float RecoilInstanceStrength);
+		void AddRecoilInstance(const FTransform & RecoilAddition);
 
 	UFUNCTION(BlueprintCallable, Category = "GunTools|Recoil")
-		void ClearRecoil();
+		void ResetRecoil();
 
 	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) override;
 };

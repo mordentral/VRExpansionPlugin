@@ -64,7 +64,7 @@ return;
 	FTransform PlayerTransform = FTransform::Identity;
 
 	// Get first local player controller
-	APlayerController* PC = nullptr;
+	/*APlayerController* PC = nullptr;
 	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
 		if (Iterator->Get()->IsLocalPlayerController())
@@ -72,6 +72,12 @@ return;
 			PC = Iterator->Get();
 			break;
 		}
+	}*/
+	APlayerController* PC = nullptr;
+	if (UWorld * CurWorld = GetWorld())
+	{
+		const ULocalPlayer* FirstPlayer = GEngine->GetFirstGamePlayer(CurWorld);
+		PC = FirstPlayer ? FirstPlayer->GetPlayerController(CurWorld) : nullptr;
 	}
 
 	if (PC)

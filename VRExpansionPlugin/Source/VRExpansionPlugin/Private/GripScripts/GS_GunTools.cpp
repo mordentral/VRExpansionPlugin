@@ -18,7 +18,6 @@ UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 
 
 	bHasRecoil = false;
-	InstanceTransform = FTransform::Identity;
 	MaxRecoil = FTransform::Identity;
 	DecayRate = 1.f;
 
@@ -184,13 +183,25 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 	return true;
 }
 
-void UGS_GunTools::ClearRecoil()
+void UGS_GunTools::ResetRecoil()
 {
 	BackEndRecoilStorage = FTransform::Identity;
+	BackEndRecoilTarget = FTransform::Identity;
 }
 
-void UGS_GunTools::AddRecoilInstance(float RecoilInstanceStrength)
+void UGS_GunTools::AddRecoilInstance(const FTransform & RecoilAddition)
 {
-	BackEndRecoilStorage = BackEndRecoilStorage + InstanceTransform;
+	BackEndRecoilTarget += RecoilAddition;
 	// Clamp to max recoil, and + is wrong need to combine.
+
+
+	FVector CurVec = BackEndRecoilTarget.GetTranslation();
+	FVector MaxVec = MaxRecoil.GetTranslation();
+
+	// Identity on min value is technically wrong, what if they want to recoil in the opposing direction?
+	CurVec.X = FMath::Clamp(CurVec.X, FMath::Min(0.f, MaxVec.X), FMath::Max(MaxVec.X, 0.f));
+	CurVec.Y = FMath::Clamp(CurVec.Y, FMath::Min(0.f, MaxVec.Y), FMath::Max(MaxVec.Y, 0.f));
+	CurVec.Z = FMath::Clamp(CurVec.Z, FMath::Min(0.f, MaxVec.Z), FMath::Max(MaxVec.Z, 0.f));
+	BackEndRecoilTarget.SetTranslation(CurVec);
+
 }
