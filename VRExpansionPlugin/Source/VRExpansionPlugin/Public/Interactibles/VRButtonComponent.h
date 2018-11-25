@@ -24,7 +24,10 @@ enum class EVRButtonType : uint8
 };
 
 /** Delegate for notification when the button state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRButtonStateChangedSignature, bool, ButtonState, AActor *, InteractingActor);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FVRButtonStateChangedSignature, bool, ButtonState, AActor *, InteractingActor, UPrimitiveComponent *, InteractingComponent);
+
+/** Delegate for notification when the begins a new interaction. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRButtonStartedInteractionSignature, AActor *, InteractingActor, UPrimitiveComponent *, InteractingComponent);
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UVRButtonComponent : public UStaticMeshComponent
@@ -74,8 +77,8 @@ public:
 
 		if (bCallButtonChangedEvent)
 		{
-			ReceiveButtonStateChanged(bButtonState, LastInteractingActor.Get());
-			OnButtonStateChanged.Broadcast(bButtonState, LastInteractingActor.Get());
+			ReceiveButtonStateChanged(bButtonState, LastInteractingActor.Get(), LastInteractingComponent.Get());
+			OnButtonStateChanged.Broadcast(bButtonState, LastInteractingActor.Get(), LastInteractingComponent.Get());
 		}
 	}
 
@@ -111,13 +114,29 @@ public:
 		}
 	}
 
-	// Call to use an object
+	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
 		FVRButtonStateChangedSignature OnButtonStateChanged;
 
 	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button State Changed"))
-		void ReceiveButtonStateChanged(bool bCurButtonState, AActor * InteractingActor);
+		void ReceiveButtonStateChanged(bool bCurButtonState, AActor * InteractingActor, UPrimitiveComponent * InteractingComponent);
+
+	// On Button beginning interaction (may spam a bit depending on if overlap is jittering)
+	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
+		FVRButtonStartedInteractionSignature OnButtonBeginInteraction;
+
+	// On Button ending interaction (may spam a bit depending on if overlap is jittering)
+	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
+		FVRButtonStartedInteractionSignature OnButtonEndInteraction;
+
+	// On Button beginning interaction (may spam a bit depending on if overlap is jittering)
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button Started Interaction"))
+		void ReceiveButtonBeginInteraction(AActor * InteractingActor, UPrimitiveComponent * InteractingComponent);
+
+	// On Button ending interaction (may spam a bit depending on if overlap is jittering)
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button Started Interaction"))
+		void ReceiveButtonEndInteraction(AActor * LastInteractingActor, UPrimitiveComponent * LastInteractingComponent);
 
 	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
@@ -126,6 +145,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
 		TWeakObjectPtr<AActor> LastInteractingActor;
 
+	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
+		TWeakObjectPtr<UPrimitiveComponent> LastInteractingComponent;
 
 	// Whether the button is enabled or not (can be interacted with)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
