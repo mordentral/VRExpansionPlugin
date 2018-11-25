@@ -2770,7 +2770,6 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			{
 				GripViewExtension = FSceneViewExtensions::NewExtension<FGripViewExtension>(this);
 			}
-			// This is the owning player, now you can get the controller's location and rotation from the correct source
 
 			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
 			const bool bNewTrackedState = GripPollControllerState(Position, Orientation, WorldToMeters);
@@ -2778,16 +2777,29 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			if (bNewTrackedState)
 			{
 				SetRelativeTransform(FTransform(Orientation, Position, this->RelativeScale3D));
-				//SetRelativeLocationAndRotation(Position, Orientation);
 			}
 
 			// if controller tracking just kicked in 
-			if (!bTracked && bNewTrackedState && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
+			if (bTracked != bNewTrackedState) 
 			{
-				RefreshDisplayComponent();
-			}
+				if (bNewTrackedState)
+				{
+					// Let everyone know that we started tracking
+					OnStartedTracking.Broadcast();
 
-			bTracked = bNewTrackedState;
+					// Handle the display component
+					// #TODO: Don't run if already has a display model, can't access yet
+					if (bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
+						RefreshDisplayComponent();
+				}
+				else
+				{
+					// Controller tracking just ended
+					OnEndedTracking.Broadcast();
+				}
+
+				bTracked = bNewTrackedState;
+			}
 		}
 
 		if (!bTracked && !bUseWithoutTracking)
