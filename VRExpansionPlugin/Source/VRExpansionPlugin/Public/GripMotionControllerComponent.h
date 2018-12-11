@@ -202,6 +202,15 @@ public:
 		}
 	}
 
+	// The component to use for basing the grip off of instead of the motion controller
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+		TWeakObjectPtr<USceneComponent> CustomPivotComponent;
+
+	inline FTransform GetPivotTransform()
+	{
+		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetComponentTransform() : this->GetComponentTransform();
+	}
+
 	// Increments with each grip, wraps back to 0 after max due to modulo operation
 	// I don't think that a 254 (126 total grips) grip index is going to be used up and allow duplicates unless
 	// someone does something crazy

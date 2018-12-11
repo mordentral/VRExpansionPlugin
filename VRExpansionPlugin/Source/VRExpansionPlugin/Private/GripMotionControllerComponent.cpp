@@ -1084,29 +1084,18 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 	else if (bWorldOffsetIsRelative)
 	{
-		/*FTransform FinalOffset = WorldOffset;
-		if (bIgnoreHandRotation)
+		if (CustomPivotComponent.IsValid() && !bIsSlotGrip)
 		{
-			// Reconstitute the controller transform relative to the object, then remove the rotation and set it back to relative to controller
-			// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
-			FTransform compTrans = root->GetComponentTransform();
-
-			FinalOffset = FinalOffset.Inverse() * compTrans; // Reconstitute transform
-			FinalOffset.SetRotation(FQuat::Identity); // Remove rotation
-
-			FinalOffset = compTrans.GetRelativeTransform(FinalOffset); // Set back to relative
+			newActorGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
-		newActorGrip.RelativeTransform = FinalOffset;*/
-		newActorGrip.RelativeTransform = WorldOffset;
+		else
+		{
+			newActorGrip.RelativeTransform = WorldOffset;
+		}
 	}
 	else
 	{
-		FTransform controllerTrans = this->GetComponentTransform();
-		/*if (bIgnoreHandRotation)
-		{
-			controllerTrans.SetRotation(FQuat::Identity);
-		}*/
-		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(controllerTrans);
+		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(GetPivotTransform());
 	}
 
 	if (!bIsLocalGrip)
@@ -1278,29 +1267,18 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 	else if (bWorldOffsetIsRelative)
 	{
-	/*	FTransform FinalOffset = WorldOffset;
-		if (bIgnoreHandRotation)
+		if (CustomPivotComponent.IsValid() && !bIsSlotGrip)
 		{
-			// Reconstitute the controller transform relative to the object, then remove the rotation and set it back to relative to controller
-			// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
-			FTransform compTrans = ComponentToGrip->GetComponentTransform();
-
-			FinalOffset = FinalOffset.Inverse() * compTrans; // Reconstitute transform
-			FinalOffset.SetRotation(FQuat::Identity); // Remove rotation
-
-			FinalOffset = compTrans.GetRelativeTransform(FinalOffset); // Set back to relative
+			newActorGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
-		newActorGrip.RelativeTransform = FinalOffset;*/
-		newActorGrip.RelativeTransform = WorldOffset;
+		else
+		{
+			newActorGrip.RelativeTransform = WorldOffset;
+		}
 	}
 	else
 	{
-		FTransform controllerTrans = this->GetComponentTransform();
-		/*if (bIgnoreHandRotation)
-		{
-			controllerTrans.SetRotation(FQuat::Identity);
-		}*/
-		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(controllerTrans);
+		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(GetPivotTransform());
 	}
 
 	if (!bIsLocalGrip)
@@ -2656,7 +2634,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGrip(const FBP
 			case ESecondaryGripType::SG_SlotOnly_Retain:
 			case ESecondaryGripType::SG_ScalingOnly:
 			{
-				GripToUse->RelativeTransform = primComp->GetComponentTransform().GetRelativeTransform(this->GetComponentTransform());
+				GripToUse->RelativeTransform = primComp->GetComponentTransform().GetRelativeTransform(GetPivotTransform());
 				GripToUse->SecondaryGripInfo.LerpToRate = 0.0f;
 				GripToUse->SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
 			}break;
@@ -2882,7 +2860,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 	}
 
 	FTransform WorldTransform;
-	FTransform ParentTransform = this->GetComponentTransform();
+	FTransform ParentTransform = GetPivotTransform();
 
 	FBPActorGripInformation copyGrip = Grip;
 	
@@ -3185,7 +3163,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	}
 	//check(PhysicsGrips.Num() <= (GrippedObjects.Num() + LocallyGrippedObjects.Num()));
 
-	FTransform ParentTransform = this->GetComponentTransform();
+	FTransform ParentTransform = GetPivotTransform();
 
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
 	HandleGripArray(GrippedObjects, ParentTransform, DeltaTime, true);
@@ -3847,7 +3825,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 			PxTransform KinPose;
 			FTransform trans = P2UTransform(PActor->getGlobalPose()); //root->GetComponentTransform();
-			FTransform controllerTransform = this->GetComponentTransform();
+			FTransform controllerTransform = GetPivotTransform();
 			FTransform WorldTransform = NewGrip.RelativeTransform * controllerTransform;
 			FTransform RootBoneRotation = FTransform::Identity;
 
