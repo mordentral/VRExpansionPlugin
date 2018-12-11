@@ -203,8 +203,15 @@ public:
 	}
 
 	// The component to use for basing the grip off of instead of the motion controller
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+	UPROPERTY(BlueprintReadWrite, Category = "GripMotionController")
 		TWeakObjectPtr<USceneComponent> CustomPivotComponent;
+
+	// Set the custom pivot component, allows you to use remote grips easier
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+	void SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent)
+	{
+		CustomPivotComponent = NewCustomPivotComponent;
+	}
 
 	inline FTransform GetPivotTransform()
 	{
