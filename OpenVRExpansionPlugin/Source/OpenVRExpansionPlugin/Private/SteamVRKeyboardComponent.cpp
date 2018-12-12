@@ -4,6 +4,7 @@
 #include "Engine/Engine.h"
 #include "OpenVRExpansionFunctionLibrary.h"
 #include "GameFramework/PlayerController.h"
+#include "Engine/LocalPlayer.h"
 //#include "GripMotionControllerComponent.h"
 
 

@@ -10,6 +10,7 @@
 #include "GameplayTagAssetInterface.h"
 #include "Components/SplineComponent.h"
 #include "VRInteractibleFunctionLibrary.h"
+#include "Components/StaticMeshComponent.h"
 
 #include "VRSliderComponent.generated.h"
 

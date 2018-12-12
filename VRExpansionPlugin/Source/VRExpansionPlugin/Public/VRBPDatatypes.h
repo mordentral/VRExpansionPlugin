@@ -1260,7 +1260,7 @@ public:
 
 	FORCEINLINE bool operator==(const AActor * Other) const
 	{
-		if (Other && GrippedObject && GrippedObject == Other)
+		if (Other && GrippedObject && GrippedObject == (const UObject*)Other)
 			return true;
 
 		return false;
@@ -1268,7 +1268,7 @@ public:
 
 	FORCEINLINE bool operator==(const UPrimitiveComponent * Other) const
 	{
-		if (Other && GrippedObject && GrippedObject == Other)
+		if (Other && GrippedObject && GrippedObject == (const UObject*)Other)
 			return true;
 
 		return false;

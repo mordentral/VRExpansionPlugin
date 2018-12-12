@@ -9,6 +9,7 @@
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
 #include "VRInteractibleFunctionLibrary.h"
+#include "Components/StaticMeshComponent.h"
 
 
 #include "VRDialComponent.generated.h"

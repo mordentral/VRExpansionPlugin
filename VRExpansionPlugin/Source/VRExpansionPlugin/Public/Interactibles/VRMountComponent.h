@@ -9,6 +9,7 @@
 #include "GameplayTagAssetInterface.h"
 #include "VRInteractibleFunctionLibrary.h"
 #include "PhysicsEngine/ConstraintInstance.h"
+#include "Components/StaticMeshComponent.h"
 
 #include "PhysicsPublic.h"
 
