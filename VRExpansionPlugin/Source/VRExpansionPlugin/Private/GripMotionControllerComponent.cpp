@@ -2745,7 +2745,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport)
 {
 	FTransform EmptyTransform = FTransform::Identity;
-	return TeleportMoveGrip_Impl(Grip, bTeleportPhysicsGrips, bIsForPostTeIleport, EmptyTransform);
+	return TeleportMoveGrip_Impl(Grip, bTeleportPhysicsGrips, bIsForPostTeleport, EmptyTransform);
 }
 
 bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport, FTransform & OptionalTransform)
