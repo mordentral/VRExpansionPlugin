@@ -596,9 +596,15 @@ enum class EGripTargetType : uint8
 UENUM(Blueprintable)
 enum class EGripInterfaceTeleportBehavior : uint8
 {
+	/* Teleports entire actor */
 	TeleportAllComponents,
+	/* Teleports by the location delta and not the calculated new position of the grip, useful for rag dolls*/
+	DeltaTeleportation,
+	/* Only teleports an actor if the root component is held */
 	OnlyTeleportRootComponent,
+	/* Just drop the grip on teleport */
 	DropOnTeleport,
+	/* Teleporting is not allowed */
 	DontTeleport
 };
 
@@ -1163,6 +1169,9 @@ public:
 	bool bIsLocked;
 	FQuat LastLockedRotation;
 
+	// Used for delta teleports
+	FTransform LastTransform;
+
 	// Need to skip one frame of length check post teleport with constrained objects, the constraint may have not been updated yet.
 	bool bSkipNextConstraintLengthCheck;
 
@@ -1201,6 +1210,7 @@ public:
 		bColliding = false;
 		bIsLocked = false;
 		LastLockedRotation = FQuat::Identity;
+		LastTransform.SetIdentity();
 		bSkipNextConstraintLengthCheck = false;
 		bIsPaused = false;
 		AdditionTransform = FTransform::Identity;
@@ -1310,6 +1320,7 @@ public:
 		GripDistance(0.0f),
 		bIsLocked(false),
 		LastLockedRotation(FRotator::ZeroRotator),
+		LastTransform(FTransform::Identity),
 		bSkipNextConstraintLengthCheck(false)
 	{
 	}	

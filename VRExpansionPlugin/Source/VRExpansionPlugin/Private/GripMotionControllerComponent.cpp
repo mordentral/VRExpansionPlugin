@@ -2745,7 +2745,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport)
 {
 	FTransform EmptyTransform = FTransform::Identity;
-	return TeleportMoveGrip_Impl(Grip, bTeleportPhysicsGrips, bIsForPostTeleport, EmptyTransform);
+	return TeleportMoveGrip_Impl(Grip, bTeleportPhysicsGrips, bIsForPostTeIleport, EmptyTransform);
 }
 
 bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport, FTransform & OptionalTransform)
@@ -2889,7 +2889,12 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 			return false;
 	}
 
-	//WorldTransform = Grip.RelativeTransform * ParentTransform;
+	// Saving this out prior as we are still setting our physics thread to the correct value, the delta is only applied to the object
+	FTransform physicsTrans = WorldTransform;
+	if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation && !Grip.LastTransform.Equals(FTransform::Identity))
+	{
+		WorldTransform = PrimComp->GetComponentTransform() * FTransform(WorldTransform.GetLocation() - Grip.LastTransform.GetLocation());
+	}
 
 	// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
 	
@@ -2914,8 +2919,8 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 			if (PScene)
 			{
 				SCOPED_SCENE_WRITE_LOCK(PScene);
-				Handle->KinActorData->setKinematicTarget(U2PTransform(Handle->RootBoneRotation * WorldTransform) * Handle->COMPosition);
-				Handle->KinActorData->setGlobalPose(U2PTransform(Handle->RootBoneRotation * WorldTransform) * Handle->COMPosition);
+				Handle->KinActorData->setKinematicTarget(U2PTransform(Handle->RootBoneRotation * physicsTrans) * Handle->COMPosition);
+				Handle->KinActorData->setGlobalPose(U2PTransform(Handle->RootBoneRotation * physicsTrans) * Handle->COMPosition);
 			}
 		}
 #endif
@@ -3301,6 +3306,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				{
 					TeleportMoveGrip_Impl(*Grip, true, true, WorldTransform);
 					continue;
+				}
+				else
+				{
+					Grip->LastTransform = WorldTransform;
 				}
 
 				// Auto drop based on distance from expected point
