@@ -122,6 +122,7 @@ public:
 	bool bOffsetByHMD;
 	
 	FVector LastLocationForLateUpdate;
+	FTransform LastRelativePosition;
 
 	// If true will offset the tracked location of the controller by the controller profile that is currently loaded.
 	// Thows the event OnControllerProfileTransformChanged when it happens so that you can adjust specific components

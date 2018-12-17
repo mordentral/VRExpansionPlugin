@@ -1168,9 +1168,9 @@ public:
 	// Locked transitions for swept movement so they don't just rotate in place on contact
 	bool bIsLocked;
 	FQuat LastLockedRotation;
-
-	// Used for delta teleports
-	FTransform LastTransform;
+	
+	// For delta teleport and any future calculations we want to do
+	FTransform LastWorldTransform;
 
 	// Need to skip one frame of length check post teleport with constrained objects, the constraint may have not been updated yet.
 	bool bSkipNextConstraintLengthCheck;
@@ -1210,7 +1210,7 @@ public:
 		bColliding = false;
 		bIsLocked = false;
 		LastLockedRotation = FQuat::Identity;
-		LastTransform.SetIdentity();
+		LastWorldTransform.SetIdentity();
 		bSkipNextConstraintLengthCheck = false;
 		bIsPaused = false;
 		AdditionTransform = FTransform::Identity;
@@ -1320,7 +1320,7 @@ public:
 		GripDistance(0.0f),
 		bIsLocked(false),
 		LastLockedRotation(FRotator::ZeroRotator),
-		LastTransform(FTransform::Identity),
+		LastWorldTransform(FTransform::Identity),
 		bSkipNextConstraintLengthCheck(false)
 	{
 	}	

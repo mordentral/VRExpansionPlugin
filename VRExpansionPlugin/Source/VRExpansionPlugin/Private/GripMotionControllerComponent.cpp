@@ -2745,7 +2745,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 bool UGripMotionControllerComponent::TeleportMoveGrip(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport)
 {
 	FTransform EmptyTransform = FTransform::Identity;
-	return TeleportMoveGrip_Impl(Grip, bTeleportPhysicsGrips, bIsForPostTeIleport, EmptyTransform);
+	return TeleportMoveGrip_Impl(Grip, bTeleportPhysicsGrips, bIsForPostTeleport, EmptyTransform);
 }
 
 bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport, FTransform & OptionalTransform)
@@ -2891,9 +2891,14 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 	// Saving this out prior as we are still setting our physics thread to the correct value, the delta is only applied to the object
 	FTransform physicsTrans = WorldTransform;
-	if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation && !Grip.LastTransform.Equals(FTransform::Identity))
+	if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation && !Grip.LastWorldTransform.Equals(FTransform::Identity))
 	{
-		WorldTransform = PrimComp->GetComponentTransform() * FTransform(WorldTransform.GetLocation() - Grip.LastTransform.GetLocation());
+		FVector DeltaVec = WorldTransform.GetTranslation() - Grip.LastWorldTransform.GetTranslation();
+		FQuat DeltaQuat = Grip.LastWorldTransform.GetRotation().Inverse() * WorldTransform.GetRotation();
+
+		WorldTransform = PrimComp->GetComponentTransform();
+		WorldTransform.AddToTranslation(DeltaVec);
+		WorldTransform.ConcatenateRotation(DeltaQuat);
 	}
 
 	// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
@@ -3176,6 +3181,16 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 	// Empty out the teleport flag
 	bIsPostTeleport = false;
+
+	// Save out the component velocity from this and last frame
+	if(!LastRelativePosition.GetTranslation().IsZero())
+		ComponentVelocity = (RelativeLocation - LastRelativePosition.GetTranslation()) / DeltaTime;
+
+	// #TODO:
+	// Relative angular velocity too?
+	// Maybe add some running averaging here to make it work across frames?
+	// Or Valves 30 frame high point average buffer
+	LastRelativePosition = this->GetRelativeTransform();
 }
 
 void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)
@@ -3309,7 +3324,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				}
 				else
 				{
-					Grip->LastTransform = WorldTransform;
+					Grip->LastWorldTransform = WorldTransform;
 				}
 
 				// Auto drop based on distance from expected point
