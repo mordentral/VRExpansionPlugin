@@ -3320,6 +3320,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				if (bIsPostTeleport)
 				{
 					TeleportMoveGrip_Impl(*Grip, true, true, WorldTransform);
+					Grip->LastWorldTransform = WorldTransform;
 					continue;
 				}
 				else
