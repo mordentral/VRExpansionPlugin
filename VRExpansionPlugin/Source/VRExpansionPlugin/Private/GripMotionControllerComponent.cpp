@@ -2046,7 +2046,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			TeleportMoveGrip(NewGrip);
 
 		if(bHasMovementAuthority || IsServer())
-			root->AttachToComponent(this, FAttachmentTransformRules::KeepWorldTransform);
+			root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform);
 
 	}break;
 
