@@ -115,15 +115,17 @@ class VREXPANSIONPLUGIN_API UVRMountComponent : public UStaticMeshComponent, pub
 		EGripMovementReplicationSettings MovementReplicationSetting;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		float BreakDistance;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float Stiffness;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float Damping;
 
-	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+	// Distance before the object will break out of the hand, 0.0f == never will
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		float BreakDistance;
+
+	// Should we deny gripping on this object
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bDenyGripping;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
