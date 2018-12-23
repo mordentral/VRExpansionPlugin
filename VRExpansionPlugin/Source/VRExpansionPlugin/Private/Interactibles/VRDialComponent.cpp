@@ -93,7 +93,7 @@ void UVRDialComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	}
 	else
 	{
-		this->SetComponentTickEnabled(false);
+		this->SetComponentTickEnabled(false); 
 	}
 }
 
@@ -101,7 +101,7 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 {
 
 	// Handle the auto drop
-	if (GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
+	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;

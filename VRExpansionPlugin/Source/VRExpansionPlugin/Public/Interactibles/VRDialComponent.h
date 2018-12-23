@@ -201,16 +201,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripMovementReplicationSettings MovementReplicationSetting;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		float BreakDistance;
-
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		bool bIsHeld; // Set on grip notify, not net serializing
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+	
+															// Distance before the object will break out of the hand, 0.0f == never will
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		float BreakDistance;
 
-	UPROPERTY(BlueprintReadWrite, Category = "VRGripInterface")
+	// Should we deny gripping on this object
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bDenyGripping;
 
 	// Grip interface setup
