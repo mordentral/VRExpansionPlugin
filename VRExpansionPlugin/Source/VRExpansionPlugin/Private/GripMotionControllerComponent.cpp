@@ -4862,6 +4862,9 @@ void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotio
 		// Skip actors that are colliding if turning off late updates during collision.
 		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
 
+		if (!actor.GrippedObject)
+			continue;
+
 		// Don't allow late updates with server sided movement, there is no point
 		if (actor.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !MotionControllerComponent->IsServer())
 			continue;
@@ -4873,6 +4876,27 @@ void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotio
 		// Attachment should already handle this for us, don't double transpose the late update
 		if (actor.GripCollisionType == EGripCollisionType::AttachmentGrip)
 			continue;
+
+		if (actor.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			TArray<UVRGripScriptBase*> GripScripts;
+			if (IVRGripInterface::Execute_GetGripScripts(actor.GrippedObject, GripScripts))
+			{
+				bool bContinueOn = false;
+				for (UVRGripScriptBase* Script : GripScripts)
+				{
+					if (Script && Script->IsScriptActive() && Script->Wants_DenyLateUpdates())
+					{
+						bContinueOn = true;
+						break;
+					}
+				}
+
+				if (bContinueOn)
+					continue;
+			}
+		}
+
 
 		switch (actor.GripLateUpdateSetting)
 		{
