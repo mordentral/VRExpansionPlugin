@@ -80,6 +80,13 @@ public:
 		bForceDrop = true;
 	}
 
+	// Returns if the script wants to deny late updates
+	bool Wants_DenyLateUpdates();
+
+	// Returns if we want to deny late updates
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
+		bool bDenyLateUpdates;
+
 	// Returns if the script is currently active and should be used
 	/*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
 	bool Wants_DenyTeleport();
