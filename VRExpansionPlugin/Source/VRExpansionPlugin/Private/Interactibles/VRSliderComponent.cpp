@@ -184,7 +184,7 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 	// Handle manual tracking here
 	FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 	FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
-	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
+	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetPivotLocation());
 
 	FVector CalculatedLocation = InitialGripLoc + (CurInteractorLocation - InitialInteractorLocation);
 	
@@ -294,7 +294,7 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 	CheckSliderProgress();
 
 	// Converted to a relative value now so it should be correct
-	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
+	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;

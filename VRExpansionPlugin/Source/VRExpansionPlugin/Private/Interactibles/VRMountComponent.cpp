@@ -90,7 +90,7 @@ void UVRMountComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	// Handle manual tracking here
 
 	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
-	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
+	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetPivotLocation());
 
 	switch (MountRotationAxis)
 	{
@@ -345,7 +345,7 @@ void UVRMountComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 
 	// #TODO: This drop code is incorrect, it is based off of the initial point and not the location at grip - revise it at some point
 	// Also set it to after rotation
-	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
+	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;

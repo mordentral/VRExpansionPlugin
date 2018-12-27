@@ -201,7 +201,7 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	// Handle manual tracking here
 
 	FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
-	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetComponentLocation());
+	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetPivotLocation());
 
 	switch (LeverRotationAxis)
 	{
@@ -258,7 +258,7 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	}
 
 	// Also set it to after rotation
-	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
+	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;

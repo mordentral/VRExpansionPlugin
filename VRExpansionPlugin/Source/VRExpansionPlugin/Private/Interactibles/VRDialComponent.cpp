@@ -101,7 +101,7 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 {
 
 	// Handle the auto drop
-	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetComponentLocation())) >= FMath::Square(BreakDistance))
+	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;
@@ -110,6 +110,8 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 	/*FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 	FRotator curRotation = GrippingController->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).Rotator();
 	*/
+
+	// #TODO: Should this use a pivot rotation? it wouldn't make that much sense to me?
 	FRotator curRotation = GrippingController->GetComponentRotation();
 
 	float DeltaRot = RotationScaler * GetAxisValue((curRotation - LastRotation).GetNormalized(), InteractorRotationAxis);

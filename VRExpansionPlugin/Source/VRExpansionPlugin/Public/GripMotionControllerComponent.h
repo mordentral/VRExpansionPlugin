@@ -214,9 +214,14 @@ public:
 		CustomPivotComponent = NewCustomPivotComponent;
 	}
 
-	inline FTransform GetPivotTransform()
+	FORCEINLINE FTransform GetPivotTransform()
 	{
 		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetComponentTransform() : this->GetComponentTransform();
+	}
+
+	FORCEINLINE FVector GetPivotLocation()
+	{
+		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetComponentLocation() : this->GetComponentLocation();
 	}
 
 	// Increments with each grip, wraps back to 0 after max due to modulo operation
