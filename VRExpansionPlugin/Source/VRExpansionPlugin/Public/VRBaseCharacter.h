@@ -371,17 +371,18 @@ public:
 				}
 				else
 				{
-					root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
 					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
 						charMovement->SetMovementMode(MOVE_Walking);
 
 					bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
 					// Re-purposing them for the new location and rotations
-					SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true);
+					SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true, true);
 					LeftMotionController->PostTeleportMoveGrippedObjects();
 					RightMotionController->PostTeleportMoveGrippedObjects();
+
+					// Enable collision now
+					root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
 					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
 					SeatInformation.ClearTempVals();
