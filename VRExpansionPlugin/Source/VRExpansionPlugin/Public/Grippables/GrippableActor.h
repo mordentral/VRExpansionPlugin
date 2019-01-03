@@ -28,7 +28,7 @@ public:
 	~AGrippableActor();
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditDefaultsOnly, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
 		TArray<class UVRGripScriptBase *> GripLogicScripts;
 
 	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
