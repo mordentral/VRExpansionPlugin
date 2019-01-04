@@ -42,18 +42,18 @@ bool UGS_Default::GetWorldTransform_Implementation
 				Grip.SecondaryGripInfo.curLerp -= DeltaTime;
 			else
 			{
-				if (Grip.SecondaryGripInfo.bHasSecondaryAttachment &&
+				/*if (Grip.SecondaryGripInfo.bHasSecondaryAttachment &&
 					Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings &&
-					Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler < 1.0f)
+					Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED < 1.0f)
 				{
-					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::ConstantLerp;
+					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::ConstantLerp_DEPRECATED;
 				}
-				else
+				else*/
 					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
 			}
 
 		}break;
-		case EGripLerpState::ConstantLerp:
+		//case EGripLerpState::ConstantLerp_DEPRECATED:
 		case EGripLerpState::NotLerping:
 		default:break;
 		}
@@ -132,11 +132,11 @@ bool UGS_Default::GetWorldTransform_Implementation
 
 			Grip.SecondaryGripInfo.SecondaryGripDistance = FVector::Dist(frontLocOrig, frontLoc);
 
-			if (Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings && Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripDistanceInfluence)
+			/*if (Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings && Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripDistanceInfluence_DEPRECATED)
 			{
-				float rotScaler = 1.0f - FMath::Clamp((Grip.SecondaryGripInfo.SecondaryGripDistance - Grip.AdvancedGripSettings.SecondaryGripSettings.GripInfluenceDeadZone) / FMath::Max(Grip.AdvancedGripSettings.SecondaryGripSettings.GripInfluenceDistanceToZero, 1.0f), 0.0f, 1.0f);
+				float rotScaler = 1.0f - FMath::Clamp((Grip.SecondaryGripInfo.SecondaryGripDistance - Grip.AdvancedGripSettings.SecondaryGripSettings.GripInfluenceDeadZone_DEPRECATED) / FMath::Max(Grip.AdvancedGripSettings.SecondaryGripSettings.GripInfluenceDistanceToZero_DEPRECATED, 1.0f), 0.0f, 1.0f);
 				frontLoc = FMath::Lerp(frontLocOrig, frontLoc, rotScaler);
-			}
+			}*/
 
 			// Skip rot val for scaling only
 			if (SecondaryType != ESecondaryGripType::SG_ScalingOnly)
@@ -192,19 +192,19 @@ void UGS_Default::Default_ApplySmoothingAndLerp(FBPActorGripInformation & Grip, 
 {
 	if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
 	{
-		if (Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler < 1.0f)
+		/*if (Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED < 1.0f)
 		{
-			FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.RunFilterSmoothing(frontLoc, DeltaTime);
+			FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
 
-			frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler);
-		}
+			frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED);
+		}*/
 
 		frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
 	}
-	else if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::ConstantLerp) // If there is a frame by frame lerp
+	/*else if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::ConstantLerp_DEPRECATED) // If there is a frame by frame lerp
 	{
-		FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.RunFilterSmoothing(frontLoc, DeltaTime);
+		FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
 
-		frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler);
-	}
+		frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED);
+	}*/
 }

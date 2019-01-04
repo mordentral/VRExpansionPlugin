@@ -2490,12 +2490,12 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 	GripToUse->SecondaryGripInfo.bHasSecondaryAttachment = true;
 	GripToUse->SecondaryGripInfo.SecondaryGripDistance = 0.0f;
 
-	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = VRSettings.OneEuroCutoffSlope;
-	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
-	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = VRSettings.OneEuroMinCutoff;
+	/*const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.CutoffSlope = VRSettings.OneEuroCutoffSlope;
+	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
+	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.MinCutoff = VRSettings.OneEuroMinCutoff;
 
-	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
+	GripToUse->AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.ResetSmoothingFilter();*/
 	//	GripToUse->SecondaryGripInfo.SecondarySmoothingScaler = FMath::Clamp(SecondarySmoothingScaler, 0.01f, 1.0f);
 	GripToUse->SecondaryGripInfo.bIsSlotGrip = bIsSlotGrip;
 

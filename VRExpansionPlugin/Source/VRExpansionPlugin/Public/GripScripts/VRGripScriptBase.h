@@ -7,6 +7,7 @@
 #include "VRBPDatatypes.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
+#include "Net/UnrealNetwork.h"
 
 #include "VRGripScriptBase.generated.h"
 
@@ -88,6 +89,9 @@ public:
 	virtual bool Wants_DenyTeleport_Implementation();*/
 
 	virtual void GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const override;
+	
+	// doesn't currently compile in editor builds, not sure why the linker is screwing up there but works elsewhere
+	//virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker);
 	virtual bool CallRemoteFunction(UFunction * Function, void * Parms, FOutParmRec * OutParms, FFrame * Stack) override;
 	virtual int32 GetFunctionCallspace(UFunction * Function, void * Parameters, FFrame * Stack) override;
 

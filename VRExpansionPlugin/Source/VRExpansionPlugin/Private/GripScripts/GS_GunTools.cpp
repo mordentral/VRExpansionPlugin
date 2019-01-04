@@ -3,26 +3,74 @@
 #include "GripScripts/GS_GunTools.h"
 #include "VRGripInterface.h"
 #include "GripMotionControllerComponent.h"
+#include "VRExpansionFunctionLibrary.h"
+#include "IXRTrackingSystem.h"
+#include "VRGlobalSettings.h"
+#include "VRBaseCharacter.h"
 
 UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer)
 {
 	bIsActive = true;
 	WorldTransformOverrideType = EGSTransformOverrideType::OverridesWorldTransform;
-
 	PivotOffset = FVector::ZeroVector;
-	OverridePivotComponent = nullptr;
-	bUseOverridePivotAsShoulderMount = false;
-	ShoulderMountRelativeTransform = FTransform::Identity;
-	ShoulderMountSocketOverride = NAME_None;
+	VirtualStockComponent = nullptr;
+	MountWorldTransform = FTransform::Identity;
+	StockSnapOffset = FVector(0.f, 0.f, 0.f);
+	bIsMounted = false;
 
 
 	bHasRecoil = false;
-	MaxRecoil = FTransform::Identity;
-	DecayRate = 1.f;
+	MaxRecoilTranslation = FVector::ZeroVector;
+	MaxRecoilRotation = FVector::ZeroVector;
+	MaxRecoilScale = FVector(1.f);
+	bHasActiveRecoil = false;
+	DecayRate = 20.f;
+	LerpRate = 30.f;
 
 	BackEndRecoilStorage = FTransform::Identity;
+
+	StockSnapDistance = 35.f;
+	bUseDistanceBasedStockSnapping = true;
+	SmoothingValueForStock = 0.0f;
+	bSmoothStockHand = false;
+
+	// Speed up the lerp on fast movements for this
+	StockHandSmoothing.DeltaCutoff = 20.0f;
+	StockHandSmoothing.MinCutoff = 5.0f;
+	bDebugDrawVirtualStock = false;
+
+	bUseHighQualityRemoteSimulation = false;
 }
+
+//=============================================================================
+/*void UGS_GunTools::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UGS_GunTools, bUseAdvancedSecondarySettings);
+
+	DOREPLIFETIME_CONDITION(UGS_GunTools, SecondaryGripScaler, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, bUseConstantGripScaler, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, bUseSecondaryGripDistanceInfluence, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, GripInfluenceDeadZone, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, GripInfluenceDistanceToZero, COND_Custom);
+
+	DOREPLIFETIME(UGS_GunTools, PivotOffset);
+
+	DOREPLIFETIME(UGS_GunTools, bUseVirtualStock);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, VirtualStockComponent, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, bUseDistanceBasedStockSnapping, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, StockSnapDistance, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, StockSnapOffset, COND_Custom);
+
+	DOREPLIFETIME(UGS_GunTools, bHasRecoil);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, MaxRecoilTranslation, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, MaxRecoilRotation, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, MaxRecoilScale, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, DecayRate, COND_Custom);
+	DOREPLIFETIME_CONDITION(UGS_GunTools, LerpRate, COND_Custom);
+}*/
 
 bool UGS_GunTools::GetWorldTransform_Implementation
 (
@@ -40,11 +88,102 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 	if (!GrippingController)
 		return false;
 
+	bool bSkipHighQualityOperations = !bUseHighQualityRemoteSimulation && !GrippingController->bHasAuthority;
+
+	/*if (!GunViewExtension.IsValid() && GEngine)
+	{
+		GunViewExtension = FSceneViewExtensions::NewExtension<FGunViewExtension>(GrippingController);
+	}*/
+
 	// Just simple transform setting
-	if(bHasRecoil)
-		WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * BackEndRecoilStorage * ParentTransform;
+	if (bHasRecoil && bHasActiveRecoil)
+	{
+		BackEndRecoilStorage.Blend(BackEndRecoilStorage, BackEndRecoilTarget, FMath::Clamp(LerpRate * DeltaTime, 0.f, 1.f));
+		BackEndRecoilTarget.Blend(BackEndRecoilTarget, FTransform::Identity, FMath::Clamp(DecayRate * DeltaTime, 0.f, 1.f));
+		bHasActiveRecoil = !BackEndRecoilTarget.Equals(FTransform::Identity);
+
+		if (!bHasActiveRecoil)
+		{
+			BackEndRecoilStorage.SetIdentity();
+			BackEndRecoilTarget.SetIdentity();
+		}		
+	}
+
+	if (bHasActiveRecoil)
+	{
+		// Eventually may want to adjust the pivot of the recoil rotation by the PivotOffset vector...
+		WorldTransform = BackEndRecoilStorage * Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
+	}
 	else
 		WorldTransform = Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
+
+	// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
+	if (Grip.SecondaryGripInfo.bHasSecondaryAttachment && Grip.SecondaryGripInfo.SecondaryAttachment)
+	{
+		if (!bSkipHighQualityOperations && bUseVirtualStock)
+		{
+			if (VirtualStockComponent.IsValid())
+			{
+				FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VirtualStockComponent->GetComponentRotation());
+				MountWorldTransform = FTransform(PureYaw.Quaternion(), VirtualStockComponent->GetComponentLocation() + PureYaw.RotateVector(StockSnapOffset));
+			}
+			else if (GrippingController->bHasAuthority && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
+			{
+				FQuat curRot = FQuat::Identity;
+				FVector curLoc = FVector::ZeroVector;
+
+				if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
+				{
+					// Translate hmd offset by the gripping controllers parent component, this should be in the same space
+					FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
+					MountWorldTransform = FTransform(PureYaw.Quaternion(), curLoc + PureYaw.RotateVector(StockSnapOffset)) * GrippingController->GetAttachParent()->GetComponentTransform();
+				}
+			}
+			else if(CameraComponent.IsValid())
+			{		
+				FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(CameraComponent->GetComponentRotation());
+				MountWorldTransform = FTransform(PureYaw.Quaternion(), CameraComponent->GetComponentLocation() + PureYaw.RotateVector(StockSnapOffset));
+			}
+
+			if (FVector::DistSquared(ParentTransform.GetTranslation(), MountWorldTransform.GetTranslation()) <= FMath::Square(StockSnapDistance))
+			{
+				if(!bIsMounted)
+					StockHandSmoothing.ResetSmoothingFilter();
+
+				// Mount up
+				bIsMounted = true;
+
+				// Adjust the mount location to follow the Z of the primary hand
+				FVector WorldTransVec = MountWorldTransform.GetTranslation();
+				WorldTransVec.Z = ParentTransform.GetTranslation().Z;
+				MountWorldTransform.SetLocation(WorldTransVec);
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+				if (bDebugDrawVirtualStock)
+				{
+					DrawDebugLine(GetWorld(), ParentTransform.GetTranslation(), MountWorldTransform.GetTranslation(), FColor::Red);
+					DrawDebugLine(GetWorld(), Grip.SecondaryGripInfo.SecondaryAttachment->GetComponentLocation(), MountWorldTransform.GetTranslation(), FColor::Green);
+					DrawDebugSphere(GetWorld(), MountWorldTransform.GetTranslation(), 10.f, 32, FColor::White);
+				}
+#endif
+			}
+			else
+			{
+				bIsMounted = false;
+			}
+
+			if (bIsMounted && bSmoothStockHand)
+			{
+				FVector smoothedTrans = FMath::Lerp(WorldTransform.GetTranslation(), StockHandSmoothing.RunFilterSmoothing(WorldTransform.GetTranslation(), DeltaTime), SmoothingValueForStock);
+				WorldTransform.SetTranslation(smoothedTrans);
+
+			}
+		}
+	}
+	else
+	{
+		bIsMounted = false;
+	}
 
 	// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
 	if ((Grip.SecondaryGripInfo.bHasSecondaryAttachment && Grip.SecondaryGripInfo.SecondaryAttachment) || Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
@@ -58,18 +197,11 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				Grip.SecondaryGripInfo.curLerp -= DeltaTime;
 			else
 			{
-				if (Grip.SecondaryGripInfo.bHasSecondaryAttachment &&
-					Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings &&
-					Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler < 1.0f)
-				{
-					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::ConstantLerp;
-				}
-				else
-					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
+				Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
 			}
 
 		}break;
-		case EGripLerpState::ConstantLerp:
+		//case EGripLerpState::ConstantLerp_DEPRECATED:
 		case EGripLerpState::NotLerping:
 		default:break;
 		}
@@ -92,19 +224,11 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 		if (SecondaryType != ESecondaryGripType::SG_Custom)
 		{
 			// Variables needed for multi grip transform
-			FVector BasePoint;
-
-			if (OverridePivotComponent != nullptr)
-			{
-				BasePoint = (OverridePivotComponent->GetComponentTransform() * FTransform(PivotOffset)).GetLocation();
-			}
-			else
-			{
-				BasePoint = (ParentTransform * FTransform(PivotOffset)).GetLocation();
-			}
+			FVector BasePoint = ParentTransform.GetLocation();
+			FVector Pivot = (FTransform(PivotOffset) * ParentTransform).GetLocation();
 				
-			const FTransform PivotToWorld = FTransform(FQuat::Identity, BasePoint);
-			const FTransform WorldToPivot = FTransform(FQuat::Identity, -BasePoint);
+			const FTransform PivotToWorld = FTransform(FQuat::Identity, Pivot);//BasePoint);
+			const FTransform WorldToPivot = FTransform(FQuat::Identity, -Pivot);//-BasePoint);
 
 			FVector frontLocOrig;
 			FVector frontLoc;
@@ -147,7 +271,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeTransform.GetLocation())) - BasePoint;
 
 				// Apply any smoothing settings and lerping in / constant lerping
-				Default_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime);
+				GunTools_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime, bSkipHighQualityOperations);
 
 				Grip.SecondaryGripInfo.LastRelativeLocation = frontLoc;
 			}
@@ -158,29 +282,129 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 
 			Grip.SecondaryGripInfo.SecondaryGripDistance = FVector::Dist(frontLocOrig, frontLoc);
 
-			if (Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings && Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripDistanceInfluence)
+			if (!bSkipHighQualityOperations && AdvSecondarySettings.bUseAdvancedSecondarySettings && AdvSecondarySettings.bUseSecondaryGripDistanceInfluence)
 			{
-				float rotScaler = 1.0f - FMath::Clamp((Grip.SecondaryGripInfo.SecondaryGripDistance - Grip.AdvancedGripSettings.SecondaryGripSettings.GripInfluenceDeadZone) / FMath::Max(Grip.AdvancedGripSettings.SecondaryGripSettings.GripInfluenceDistanceToZero, 1.0f), 0.0f, 1.0f);
+				float rotScaler = 1.0f - FMath::Clamp((Grip.SecondaryGripInfo.SecondaryGripDistance - AdvSecondarySettings.GripInfluenceDeadZone) / FMath::Max(AdvSecondarySettings.GripInfluenceDistanceToZero, 1.0f), 0.0f, 1.0f);
 				frontLoc = FMath::Lerp(frontLocOrig, frontLoc, rotScaler);
 			}
 
 			// Skip rot val for scaling only
 			if (SecondaryType != ESecondaryGripType::SG_ScalingOnly)
 			{
-				// Get the rotation difference from the initial second grip
-				FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
+				// Get shoulder mount addition rotation
+				if (!bSkipHighQualityOperations && bUseVirtualStock && bIsMounted)
+				{
+					// Get the rotation difference from the initial second grip
+					FQuat rotVal = FQuat::FindBetweenVectors(GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation(), (frontLoc + BasePoint) - MountWorldTransform.GetTranslation());
+					FQuat MountAdditionRotation = FQuat::FindBetweenVectors(frontLocOrig, GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation());
 
-				// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
-				WorldTransform = WorldTransform * WorldToPivot * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
+					// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
+					WorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
+				}
+				else
+				{
+					// Get the rotation difference from the initial second grip
+					FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
+
+					// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
+					WorldTransform = WorldTransform * WorldToPivot * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
+				}
 			}
 			else
 			{
-				// Rebase the world transform to the pivot point, add the scaler, remove the pivot point rebase
-				WorldTransform = WorldTransform * WorldToPivot * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
+
+				// Get shoulder mount addition rotation
+				if (!bSkipHighQualityOperations && bUseVirtualStock && bIsMounted)
+				{
+					FQuat MountAdditionRotation = FQuat::FindBetweenVectors(frontLocOrig, GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation());
+
+					// Rebase the world transform to the pivot point, add the scaler, remove the pivot point rebase
+					WorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
+				}
+				else
+				{
+					// Rebase the world transform to the pivot point, add the scaler, remove the pivot point rebase
+					WorldTransform = WorldTransform * WorldToPivot * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
+				}
 			}
 		}
 	}
 	return true;
+}
+
+void UGS_GunTools::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation)
+{
+	// Super doesn't do anything on grip
+
+	// Reset smoothing filters
+	if (AdvSecondarySettings.bUseConstantGripScaler)
+	{
+		if (AdvSecondarySettings.bUseGlobalSmoothingSettings)
+		{
+			const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+			AdvSecondarySettings.SecondarySmoothing.CutoffSlope = VRSettings.OneEuroCutoffSlope;
+			AdvSecondarySettings.SecondarySmoothing.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
+			AdvSecondarySettings.SecondarySmoothing.MinCutoff = VRSettings.OneEuroMinCutoff;
+		}
+
+		AdvSecondarySettings.SecondarySmoothing.ResetSmoothingFilter();
+	}
+
+	if (bUseVirtualStock)
+	{
+		ResetStockVariables();
+	}
+
+	GetVirtualStockTarget(GrippingController);
+}
+
+void UGS_GunTools::GetVirtualStockTarget(UGripMotionControllerComponent * GrippingController)
+{
+	if (GrippingController && (GrippingController->bHasAuthority || bUseHighQualityRemoteSimulation))
+	{
+		if (AVRBaseCharacter * vrOwner = Cast<AVRBaseCharacter>(GrippingController->GetOwner()))
+		{
+			CameraComponent = vrOwner->VRReplicatedCamera;
+			return;
+		}
+		else
+		{
+			TArray<USceneComponent*> children = GrippingController->GetOwner()->GetRootComponent()->GetAttachChildren();
+
+			for (int i = 0; i < children.Num(); i++)
+			{
+				if (children[i]->IsA(UCameraComponent::StaticClass()))
+				{
+					CameraComponent = children[i];
+					return;
+				}
+			}
+		}
+
+		CameraComponent = nullptr;
+	}
+}
+
+void UGS_GunTools::OnSecondaryGrip_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation)
+{
+	// Super doesn't do anything on Secondary grip
+
+	// Reset smoothing filters
+	if (AdvSecondarySettings.bUseConstantGripScaler)
+	{
+		if (AdvSecondarySettings.bUseGlobalSmoothingSettings)
+		{
+			const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+			AdvSecondarySettings.SecondarySmoothing.CutoffSlope = VRSettings.OneEuroCutoffSlope;
+			AdvSecondarySettings.SecondarySmoothing.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
+			AdvSecondarySettings.SecondarySmoothing.MinCutoff = VRSettings.OneEuroMinCutoff;
+		}
+
+		AdvSecondarySettings.SecondarySmoothing.ResetSmoothingFilter();
+	}
+
+	if (bUseVirtualStock)
+		ResetStockVariables();
 }
 
 void UGS_GunTools::ResetRecoil()
@@ -191,17 +415,54 @@ void UGS_GunTools::ResetRecoil()
 
 void UGS_GunTools::AddRecoilInstance(const FTransform & RecoilAddition)
 {
-	BackEndRecoilTarget += RecoilAddition;
-	// Clamp to max recoil, and + is wrong need to combine.
+	if (!bHasRecoil)
+		return;
 
+	BackEndRecoilTarget += RecoilAddition;
 
 	FVector CurVec = BackEndRecoilTarget.GetTranslation();
-	FVector MaxVec = MaxRecoil.GetTranslation();
 
 	// Identity on min value is technically wrong, what if they want to recoil in the opposing direction?
-	CurVec.X = FMath::Clamp(CurVec.X, FMath::Min(0.f, MaxVec.X), FMath::Max(MaxVec.X, 0.f));
-	CurVec.Y = FMath::Clamp(CurVec.Y, FMath::Min(0.f, MaxVec.Y), FMath::Max(MaxVec.Y, 0.f));
-	CurVec.Z = FMath::Clamp(CurVec.Z, FMath::Min(0.f, MaxVec.Z), FMath::Max(MaxVec.Z, 0.f));
+	CurVec.X = FMath::Clamp(CurVec.X, FMath::Min(0.f, MaxRecoilTranslation.X), FMath::Max(MaxRecoilTranslation.X, 0.f));
+	CurVec.Y = FMath::Clamp(CurVec.Y, FMath::Min(0.f, MaxRecoilTranslation.Y), FMath::Max(MaxRecoilTranslation.Y, 0.f));
+	CurVec.Z = FMath::Clamp(CurVec.Z, FMath::Min(0.f, MaxRecoilTranslation.Z), FMath::Max(MaxRecoilTranslation.Z, 0.f));
 	BackEndRecoilTarget.SetTranslation(CurVec);
 
+	FVector CurScale = BackEndRecoilTarget.GetScale3D();
+
+	// Identity on min value is technically wrong, what if they want to recoil in the opposing direction?
+	CurScale.X = FMath::Clamp(CurScale.X, FMath::Min(0.f, MaxRecoilScale.X), FMath::Max(MaxRecoilScale.X, 0.f));
+	CurScale.Y = FMath::Clamp(CurScale.Y, FMath::Min(0.f, MaxRecoilScale.Y), FMath::Max(MaxRecoilScale.Y, 0.f));
+	CurScale.Z = FMath::Clamp(CurScale.Z, FMath::Min(0.f, MaxRecoilScale.Z), FMath::Max(MaxRecoilScale.Z, 0.f));
+	BackEndRecoilTarget.SetScale3D(CurScale);
+
+	FRotator curRot = BackEndRecoilTarget.Rotator();
+	curRot.Pitch = FMath::Clamp(curRot.Pitch, FMath::Min(0.f, MaxRecoilRotation.Y), FMath::Max(MaxRecoilRotation.Y, 0.f));
+	curRot.Yaw = FMath::Clamp(curRot.Yaw, FMath::Min(0.f, MaxRecoilRotation.Z), FMath::Max(MaxRecoilRotation.Z, 0.f));
+	curRot.Roll = FMath::Clamp(curRot.Roll, FMath::Min(0.f, MaxRecoilRotation.X), FMath::Max(MaxRecoilRotation.X, 0.f));
+
+	BackEndRecoilTarget.SetRotation(curRot.Quaternion());
+
+	bHasActiveRecoil = !BackEndRecoilTarget.Equals(FTransform::Identity);
+}
+
+void UGS_GunTools::GunTools_ApplySmoothingAndLerp(FBPActorGripInformation & Grip, FVector &frontLoc, FVector & frontLocOrig, float DeltaTime, bool bSkipHighQualitySimulations)
+{
+	if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
+	{
+		if (!bSkipHighQualitySimulations && AdvSecondarySettings.SecondaryGripScaler < 1.0f)
+		{
+			FVector SmoothedValue = AdvSecondarySettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
+
+			frontLoc = FMath::Lerp(frontLoc, SmoothedValue, AdvSecondarySettings.SecondaryGripScaler);
+		}
+
+		Default_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime);
+	}
+	else if (!bSkipHighQualitySimulations && AdvSecondarySettings.bUseAdvancedSecondarySettings && AdvSecondarySettings.bUseConstantGripScaler) // If there is a frame by frame lerp
+	{
+		FVector SmoothedValue = AdvSecondarySettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
+
+		frontLoc = FMath::Lerp(frontLoc, SmoothedValue, AdvSecondarySettings.SecondaryGripScaler);
+	}
 }

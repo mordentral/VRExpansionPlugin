@@ -359,11 +359,11 @@ public:
 				// Reset the secondary grip distance
 				Grip.SecondaryGripInfo.SecondaryGripDistance = 0.0f;
 
-				const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.CutoffSlope = VRSettings.OneEuroCutoffSlope;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.MinCutoff = VRSettings.OneEuroMinCutoff;
-				Grip.AdvancedGripSettings.SecondaryGripSettings.SmoothingOneEuro.ResetSmoothingFilter();
+				/*const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.CutoffSlope = VRSettings.OneEuroCutoffSlope;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.DeltaCutoff = VRSettings.OneEuroDeltaCutoff;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.MinCutoff = VRSettings.OneEuroMinCutoff;
+				Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.ResetSmoothingFilter();*/
 
 				if (FMath::IsNearlyZero(Grip.SecondaryGripInfo.LerpToRate)) // Zero, could use IsNearlyZero instead
 					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;

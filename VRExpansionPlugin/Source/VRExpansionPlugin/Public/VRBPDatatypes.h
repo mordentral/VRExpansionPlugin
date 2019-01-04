@@ -182,12 +182,18 @@ public:
 		DeltaCutoff(InDeltaCutoff)
 	{}
 
+	// The smaller the value the less jitter and the more lag with micro movements
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
 		float MinCutoff;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float CutoffSlope;
+
+	// If latency is too high with fast movements increase this value
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
 		float DeltaCutoff;
+
+	// This is the magnitude of adjustment
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float CutoffSlope;
+
 
 	void ResetSmoothingFilter()
 	{
@@ -525,7 +531,7 @@ enum class EGripLerpState : uint8
 {
 	StartLerp,
 	EndLerp,
-	ConstantLerp,
+	//ConstantLerp_DEPRECATED,
 	NotLerping
 };
 
@@ -743,6 +749,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings")
 		bool bUseSecondaryGripSettings;
 
+	/*
 	// Scaler used for handling the smoothing amount, 0.0f is full smoothing, 1.0f is smoothing off
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripSettings", ClampMin = "0.00", UIMin = "0.00", ClampMax = "1.00", UIMax = "1.00"))
 		float SecondaryGripScaler;
@@ -762,7 +769,7 @@ public:
 	// Distance from grip point in local space before all influence is lost on the secondary grip (1.0f - 0.0f influence over this range)
 	// this comes into effect outside of the deadzone
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripDistanceInfluence", ClampMin = "1.00", UIMin = "1.00", ClampMax = "256.00", UIMax = "256.00"))
-		float GripInfluenceDistanceToZero;
+		float GripInfluenceDistanceToZero;*/
 
 	// Whether clamp the grip scaling in scaling grips
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripSettings"))
@@ -777,20 +784,20 @@ public:
 		FVector_NetQuantize100 MaximumGripScaling;
 
 	// Used to smooth filter the secondary influence
-	FBPEuroLowPassFilter SmoothingOneEuro;
+	//FBPEuroLowPassFilter SecondarySmoothing;
 
 	void ClearNonReppedItems()
 	{
-		SmoothingOneEuro.ResetSmoothingFilter();
+		//SecondarySmoothing.ResetSmoothingFilter();
 	}
 
 	FBPAdvSecondaryGripSettings() :
 		bUseSecondaryGripSettings(false),
-		SecondaryGripScaler(1.0f),
-		bUseSecondaryGripDistanceInfluence(false),
+		/*SecondaryGripScaler_DEPRECATED(1.0f),
+		bUseSecondaryGripDistanceInfluence_DEPRECATED(false),
 		//bUseGripInfluenceDeadZoneAsConstant(false),
-		GripInfluenceDeadZone(50.0f),
-		GripInfluenceDistanceToZero(100.0f),
+		GripInfluenceDeadZone_DEPRECATED(50.0f),
+		GripInfluenceDistanceToZero_DEPRECATED(100.0f),*/
 		bLimitGripScaling(false),
 		MinimumGripScaling(FVector(0.1f)),
 		MaximumGripScaling(FVector(10.0f))
@@ -800,10 +807,10 @@ public:
 	FORCEINLINE FBPAdvSecondaryGripSettings& operator=(const FBPAdvSecondaryGripSettings& Other)
 	{
 		this->bUseSecondaryGripSettings = Other.bUseSecondaryGripSettings;
-		this->SecondaryGripScaler = Other.SecondaryGripScaler;
-		this->bUseSecondaryGripDistanceInfluence = Other.bUseSecondaryGripDistanceInfluence;
-		this->GripInfluenceDeadZone = Other.GripInfluenceDeadZone;
-		this->GripInfluenceDistanceToZero = Other.GripInfluenceDistanceToZero;
+		/*this->SecondaryGripScaler_DEPRECATED = Other.SecondaryGripScaler_DEPRECATED;
+		this->bUseSecondaryGripDistanceInfluence_DEPRECATED = Other.bUseSecondaryGripDistanceInfluence_DEPRECATED;
+		this->GripInfluenceDeadZone_DEPRECATED = Other.GripInfluenceDeadZone_DEPRECATED;
+		this->GripInfluenceDistanceToZero_DEPRECATED = Other.GripInfluenceDistanceToZero_DEPRECATED;*/
 		this->bLimitGripScaling = Other.bLimitGripScaling;
 		this->MinimumGripScaling = Other.MinimumGripScaling;
 		this->MaximumGripScaling = Other.MaximumGripScaling;
@@ -823,15 +830,15 @@ public:
 			//Ar << SecondaryGripScaler;
 
 			// This is 0.0-1.0, using normalized compression to get it smaller, 9 bits = 1 bit + 1 bit sign+value and 7 bits precision for 128 / full 2 digit precision
-			if (Ar.IsSaving())
-				bOutSuccess &= WriteFixedCompressedFloat<1, 9>(SecondaryGripScaler, Ar);
+			/*if (Ar.IsSaving())
+				bOutSuccess &= WriteFixedCompressedFloat<1, 9>(SecondaryGripScaler_DEPRECATED, Ar);
 			else
-				bOutSuccess &= ReadFixedCompressedFloat<1, 9>(SecondaryGripScaler, Ar);
+				bOutSuccess &= ReadFixedCompressedFloat<1, 9>(SecondaryGripScaler_DEPRECATED, Ar);
 			
 			//Ar << bUseSecondaryGripDistanceInfluence;
-			Ar.SerializeBits(&bUseSecondaryGripDistanceInfluence, 1);
+			Ar.SerializeBits(&bUseSecondaryGripDistanceInfluence_DEPRECATED, 1);
 			
-			if (bUseSecondaryGripDistanceInfluence)
+			if (bUseSecondaryGripDistanceInfluence_DEPRECATED)
 			{
 				//Ar << GripInfluenceDeadZone;
 				//Ar << GripInfluenceDistanceToZero;
@@ -841,17 +848,17 @@ public:
 				// 256 max value = 8 bits + 1 bit for sign + 7 bits for precision (up to 128 on precision, so full range 2 digit precision).
 				if (Ar.IsSaving())
 				{
-					bOutSuccess &= WriteFixedCompressedFloat<256, 16>(GripInfluenceDeadZone, Ar);
+					bOutSuccess &= WriteFixedCompressedFloat<256, 16>(GripInfluenceDeadZone_DEPRECATED, Ar);
 					//if(!bUseGripInfluenceDeadZoneAsConstant)
-					bOutSuccess &= WriteFixedCompressedFloat<256, 16>(GripInfluenceDistanceToZero, Ar);
+					bOutSuccess &= WriteFixedCompressedFloat<256, 16>(GripInfluenceDistanceToZero_DEPRECATED, Ar);
 				}
 				else
 				{
-					bOutSuccess &= ReadFixedCompressedFloat<256, 16>(GripInfluenceDeadZone, Ar);
+					bOutSuccess &= ReadFixedCompressedFloat<256, 16>(GripInfluenceDeadZone_DEPRECATED, Ar);
 					//if (!bUseGripInfluenceDeadZoneAsConstant)
-					bOutSuccess &= ReadFixedCompressedFloat<256, 16>(GripInfluenceDistanceToZero, Ar);
+					bOutSuccess &= ReadFixedCompressedFloat<256, 16>(GripInfluenceDistanceToZero_DEPRECATED, Ar);
 				}
-			}
+			}*/
 
 			//Ar << bLimitGripScaling;
 			Ar.SerializeBits(&bLimitGripScaling, 1);
@@ -1020,83 +1027,6 @@ struct TStructOpsTypeTraits< FBPSecondaryGripInfo > : public TStructOpsTypeTrait
 		WithNetSerializer = true
 	};
 };
-
-// Removed interaction settings in 4.20
-/*
-USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
-struct VREXPANSIONPLUGIN_API FBPInteractionSettings
-{
-	GENERATED_BODY()
-public:
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
-		uint32 bLimitsInLocalSpace:1;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		uint32 bLimitX:1;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		uint32 bLimitY:1;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		uint32 bLimitZ:1;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
-		uint32 bLimitPitch:1;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
-		uint32 bLimitYaw:1;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
-		uint32 bLimitRoll:1;
-
-	// Doesn't work totally correctly without using the ConvertToControllerRelativeTransform node in the motion controller
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
-		uint32 bIgnoreHandRotation:1;
-
-	// #TODO: Net quantize the initial and min/max values.
-	// I wanted to do it already but the editor treats it like a different type
-	// and reinitializes ALL values, which obviously is bad as it would force people
-	// to re-enter their offsets all over again......
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		FVector InitialLinearTranslation;
-
-	// To use property, set value as -Distance
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		FVector MinLinearTranslation;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Linear")
-		FVector MaxLinearTranslation;
-
-	// FRotators already by default NetSerialize as shorts
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
-		FRotator InitialAngularTranslation;
-
-	// To use property, set value as -Rotation
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
-		FRotator MinAngularTranslation;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
-		FRotator MaxAngularTranslation;
-
-	FBPInteractionSettings():
-		bLimitsInLocalSpace(true),
-		bLimitX(false),
-		bLimitY(false),
-		bLimitZ(false),
-		bLimitPitch(false),
-		bLimitYaw(false),
-		bLimitRoll(false),
-		bIgnoreHandRotation(false),
-		InitialLinearTranslation(FVector::ZeroVector),
-		MinLinearTranslation(FVector::ZeroVector),
-		MaxLinearTranslation(FVector::ZeroVector),
-		InitialAngularTranslation(FRotator::ZeroRotator),
-		MinAngularTranslation(FRotator::ZeroRotator),
-		MaxAngularTranslation(FRotator::ZeroRotator)
-	{}
-};*/
 
 #define INVALID_VRGRIP_ID 0
 
