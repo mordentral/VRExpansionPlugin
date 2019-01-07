@@ -125,6 +125,16 @@ public:
 
 	virtual void OnRep_ReplicateMovement() override
 	{
+		if (bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
+		{
+			return;
+		}
+
+		Super::OnRep_ReplicateMovement();
+
+		// 4.21 "fixed" the bReplicateMovement issue, had to comment out my old fix to play nice
+		// Leaving the original code here commented out for now as a reference in case I need it.
+		/*
 		// Since ReplicatedMovement and AttachmentReplication are REPNOTIFY_Always (and OnRep_AttachmentReplication may call OnRep_ReplicatedMovement directly),
 		// this check is needed since this can still be called on actors for which bReplicateMovement is false - for example, during fast-forward in replay playback.
 		// When this happens, the values in ReplicatedMovement aren't valid, and must be ignored.
@@ -161,7 +171,7 @@ public:
 
 		}
 
-		Super::OnRep_ReplicateMovement();
+		Super::OnRep_ReplicateMovement();*/
 	}
 	/*
 	virtual void OnRep_ReplicatedMovement() override
