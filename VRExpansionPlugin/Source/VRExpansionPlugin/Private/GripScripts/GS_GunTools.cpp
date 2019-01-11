@@ -7,6 +7,7 @@
 #include "IXRTrackingSystem.h"
 #include "VRGlobalSettings.h"
 #include "VRBaseCharacter.h"
+#include "DrawDebugHelpers.h"
 
 UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer)
@@ -446,23 +447,3 @@ void UGS_GunTools::AddRecoilInstance(const FTransform & RecoilAddition)
 	bHasActiveRecoil = !BackEndRecoilTarget.Equals(FTransform::Identity);
 }
 
-void UGS_GunTools::GunTools_ApplySmoothingAndLerp(FBPActorGripInformation & Grip, FVector &frontLoc, FVector & frontLocOrig, float DeltaTime, bool bSkipHighQualitySimulations)
-{
-	if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
-	{
-		if (!bSkipHighQualitySimulations && AdvSecondarySettings.SecondaryGripScaler < 1.0f)
-		{
-			FVector SmoothedValue = AdvSecondarySettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
-
-			frontLoc = FMath::Lerp(frontLoc, SmoothedValue, AdvSecondarySettings.SecondaryGripScaler);
-		}
-
-		Default_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime);
-	}
-	else if (!bSkipHighQualitySimulations && AdvSecondarySettings.bUseAdvancedSecondarySettings && AdvSecondarySettings.bUseConstantGripScaler) // If there is a frame by frame lerp
-	{
-		FVector SmoothedValue = AdvSecondarySettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
-
-		frontLoc = FMath::Lerp(frontLoc, SmoothedValue, AdvSecondarySettings.SecondaryGripScaler);
-	}
-}
