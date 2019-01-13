@@ -34,6 +34,8 @@ public:
 		USceneComponent* SeatParent;
 	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
 		float StoredYaw;
+	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
+		EVRConjoinedMovementModes PostSeatedMovementMode;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, NotReplicated, Category = "CharacterSeatInfo", meta = (ClampMin = "1.000", UIMin = "1.000", ClampMax = "256.000", UIMax = "256.000"))
 		float AllowedRadius;
@@ -65,6 +67,7 @@ public:
 		AllowedRadiusThreshold = 20.0f;
 		CurrentThresholdScaler = 0.0f;
 		SeatParent = nullptr;
+		PostSeatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Walking;
 	}
 
 	void ClearTempVals()
@@ -103,6 +106,7 @@ public:
 
 		StoredLocation.NetSerialize(Ar, Map, bOutSuccess);
 		Ar << SeatParent;
+		Ar << PostSeatedMovementMode;
 
 		uint16 val;
 		if (Ar.IsSaving())
@@ -293,7 +297,7 @@ public:
 		return GetVRLocation_Inline();
 	}
 
-	UPROPERTY(BlueprintReadOnly, Replicated, EditAnywhere, Category = "BaseVRCharacter", ReplicatedUsing = OnRep_SeatedCharInfo)
+	UPROPERTY(BlueprintReadOnly, Replicated, EditAnywhere, Category = "BaseVRCharacter|Seating", ReplicatedUsing = OnRep_SeatedCharInfo)
 	FVRSeatedCharacterInfo SeatInformation;
 
 	// Called when the seated mode is changed
@@ -322,127 +326,7 @@ public:
 	void TickSeatInformation(float DeltaTime);
 
 	UFUNCTION()
-	virtual void OnRep_SeatedCharInfo()
-	{
-		// Handle setting up the player here
-
-		if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(GetRootComponent()))
-		{
-			if (SeatInformation.bSitting /*&& !SeatInformation.bWasSeated*/) // Removing WasSeated check because we may be switching seats
-			{
-
-				if (SeatInformation.SeatParent /*&& !root->IsAttachedTo(SeatInformation.SeatParent)*/)
-				{
-					FAttachmentTransformRules TransformRule = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
-					TransformRule.bWeldSimulatedBodies = true;
-					AttachToComponent(SeatInformation.SeatParent, TransformRule);
-				}
-
-				if(this->Role == ROLE_SimulatedProxy)
-				{
-					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
-					{
-						charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
-					}
-
-					root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-					// Set it before it is set below
-					if (!SeatInformation.bWasSeated)
-						SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
-
-					SeatInformation.bWasSeated = true;
-					bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
-					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
-				}
-				else
-				{
-					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
-					{
-						charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
-
-						if (this->Role == ROLE_AutonomousProxy)
-						{
-							FNetworkPredictionData_Client_Character* ClientData = charMovement->GetPredictionData_Client_Character();
-							check(ClientData);
-							
-							if (ClientData->SavedMoves.Num())
-							{
-								// Ack our most recent move, we don't want to start sending old moves after un seating.
-								ClientData->AckMove(ClientData->SavedMoves.Num() - 1);
-							}
-						}
-
-					}
-
-					root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-					// Set it before it is set below
-					if (!SeatInformation.bWasSeated)
-						SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
-
-					SeatInformation.bWasSeated = true;
-					bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
-
-					ZeroToSeatInformation();
-					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
-				}
-			}
-			else if(!SeatInformation.bSitting && SeatInformation.bWasSeated)
-			{
-				DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-
-				if (this->Role == ROLE_SimulatedProxy)
-				{
-					root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
-					bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
-
-					SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true, true);
-					LeftMotionController->PostTeleportMoveGrippedObjects();
-					RightMotionController->PostTeleportMoveGrippedObjects();
-
-					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
-				}
-				else
-				{
-					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
-					{
-						charMovement->SetMovementMode(MOVE_Walking);
-					
-						if (this->Role == ROLE_Authority)
-						{
-							//charMovement->ForceReplicationUpdate();
-							FNetworkPredictionData_Server_Character* ServerData = charMovement->GetPredictionData_Server_Character();
-							check(ServerData);
-
-							// Reset client timestamp check so that there isn't a delay on ending seated mode before we accept movement packets
-							ServerData->CurrentClientTimeStamp = 0.f;
-						}
-					
-					}
-
-					bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
-
-					// Re-purposing them for the new location and rotations
-					SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true, true);
-					LeftMotionController->PostTeleportMoveGrippedObjects();
-					RightMotionController->PostTeleportMoveGrippedObjects();
-
-					// Enable collision now
-					root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
-					OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
-					SeatInformation.ClearTempVals();
-				}
-			}
-			else // Is just a reposition
-			{
-				if (this->Role != ROLE_SimulatedProxy)
-					ZeroToSeatInformation();
-			}
-		}
-	}
+		virtual void OnRep_SeatedCharInfo();
 
 	// Re-zeros the seated settings
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "BaseVRCharacter", meta = (DisplayName = "ReZeroSeating"))
@@ -453,12 +337,13 @@ public:
 	// Target loc is for teleport location if standing up, or relative camera location when sitting down.
 	// Target rot is for PURE YAW of standing up, or sitting down (use Get HMDPureYaw).
 	// ZeroToHead places central point on head, if false it will use foot location and ignore Z values instead.
+	// Post Seated movement mode is the movement mode to switch too after seating is canceled, defaults to Walking and only uses it when un-seating.
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "BaseVRCharacter", meta = (DisplayName = "SetSeatedMode"))
-		void Server_SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true);
+		void Server_SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true, EVRConjoinedMovementModes PostSeatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Walking);
 
 	// Sets seated mode on the character and then fires off an event to handle any special setup
 	// Should only be called on the server / net authority
-	bool SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true);
+	bool SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true, EVRConjoinedMovementModes PostSeatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Walking);
 
 	void SetSeatRelativeLocationAndRotationVR(FVector Pivot, FVector NewLoc, FRotator NewRot, bool bUseYawOnly);
 

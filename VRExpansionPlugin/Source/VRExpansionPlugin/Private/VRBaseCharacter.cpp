@@ -124,14 +124,14 @@ USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const
 	return nullptr;
 }
 
-bool AVRBaseCharacter::Server_SetSeatedMode_Validate(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead)
+bool AVRBaseCharacter::Server_SetSeatedMode_Validate(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
 	return true;
 }
 
-void AVRBaseCharacter::Server_SetSeatedMode_Implementation(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead)
+void AVRBaseCharacter::Server_SetSeatedMode_Implementation(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
-	SetSeatedMode(SeatParent, bSetSeatedMode, TargetLoc, TargetYaw, AllowedRadius, AllowedRadiusThreshold, bZeroToHead);
+	SetSeatedMode(SeatParent, bSetSeatedMode, TargetLoc, TargetYaw, AllowedRadius, AllowedRadiusThreshold, bZeroToHead, PostSeatedMovementMode);
 }
 
 void AVRBaseCharacter::Server_ReZeroSeating_Implementation(FVector_NetQuantize100 NewRelativeHeadLoc, float NewRelativeHeadYaw, bool bZeroToHead = true)
@@ -235,6 +235,141 @@ void AVRBaseCharacter::NotifyOfTeleport_Implementation()
 	}
 }
 
+void AVRBaseCharacter::OnRep_SeatedCharInfo()
+{
+	// Handle setting up the player here
+
+	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(GetRootComponent()))
+	{
+		if (SeatInformation.bSitting /*&& !SeatInformation.bWasSeated*/) // Removing WasSeated check because we may be switching seats
+		{
+
+			if (SeatInformation.SeatParent /*&& !root->IsAttachedTo(SeatInformation.SeatParent)*/)
+			{
+				FAttachmentTransformRules TransformRule = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
+				TransformRule.bWeldSimulatedBodies = true;
+				AttachToComponent(SeatInformation.SeatParent, TransformRule);
+			}
+
+			if (this->Role == ROLE_SimulatedProxy)
+			{
+				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				{
+					//charMovement->DisableMovement();
+					//charMovement->SetComponentTickEnabled(false);
+					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+				}
+
+				root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+				// Set it before it is set below
+				if (!SeatInformation.bWasSeated)
+					SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
+
+				SeatInformation.bWasSeated = true;
+				bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
+				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+			}
+			else
+			{
+				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				{
+					//charMovement->DisableMovement();
+					//charMovement->SetComponentTickEnabled(false);
+					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+					//charMovement->bIgnoreClientMovementErrorChecksAndCorrection = true;
+
+					if (this->Role == ROLE_AutonomousProxy)
+					{
+						FNetworkPredictionData_Client_Character* ClientData = charMovement->GetPredictionData_Client_Character();
+						check(ClientData);
+
+						if (ClientData->SavedMoves.Num())
+						{
+							// Ack our most recent move, we don't want to start sending old moves after un seating.
+							ClientData->AckMove(ClientData->SavedMoves.Num() - 1);
+						}
+					}
+
+				}
+
+				root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+				// Set it before it is set below
+				if (!SeatInformation.bWasSeated)
+					SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
+
+				SeatInformation.bWasSeated = true;
+				bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
+
+				ZeroToSeatInformation();
+				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+			}
+		}
+		else if (!SeatInformation.bSitting && SeatInformation.bWasSeated)
+		{
+			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+			if (this->Role == ROLE_SimulatedProxy)
+			{
+				root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+
+				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
+
+				SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true, true);
+				LeftMotionController->PostTeleportMoveGrippedObjects();
+				RightMotionController->PostTeleportMoveGrippedObjects();
+
+				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				{
+					charMovement->ApplyReplicatedMovementMode(SeatInformation.PostSeatedMovementMode);
+					//charMovement->SetComponentTickEnabled(true);
+				}
+
+				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+			}
+			else
+			{
+				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				{
+					charMovement->ApplyReplicatedMovementMode(SeatInformation.PostSeatedMovementMode);
+					//charMovement->bIgnoreClientMovementErrorChecksAndCorrection = false;
+					//charMovement->SetComponentTickEnabled(true);
+
+					if (this->Role == ROLE_Authority)
+					{
+						//charMovement->ForceReplicationUpdate();
+						FNetworkPredictionData_Server_Character * ServerData = charMovement->GetPredictionData_Server_Character();
+						check(ServerData);
+
+						// Reset client timestamp check so that there isn't a delay on ending seated mode before we accept movement packets
+						ServerData->CurrentClientTimeStamp = 1.f;
+					}
+				}
+
+				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
+
+				// Re-purposing them for the new location and rotations
+				SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true, true);
+				LeftMotionController->PostTeleportMoveGrippedObjects();
+				RightMotionController->PostTeleportMoveGrippedObjects();
+
+				// Enable collision now
+				root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
+				SeatInformation.ClearTempVals();
+			}
+		}
+		else // Is just a reposition
+		{
+			if (this->Role != ROLE_SimulatedProxy)
+				ZeroToSeatInformation();
+		}
+	}
+}
+
 void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 {
 	float LastThresholdScaler = SeatInformation.CurrentThresholdScaler;
@@ -279,7 +414,7 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 	}
 }
 
-bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead)
+bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
 	if (!this->HasAuthority() || !SeatParent)
 		return false;
@@ -305,6 +440,7 @@ bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeat
 		SeatInformation.SeatParent = nullptr;
 		SeatInformation.StoredYaw = TargetYaw;
 		SeatInformation.StoredLocation = TargetLoc;
+		SeatInformation.PostSeatedMovementMode = PostSeatedMovementMode;
 		//SetReplicateMovement(true); // No longer doing this, allowing it to replicate down to simulated clients now instead
 		SeatInformation.bSitting = false;
 	}

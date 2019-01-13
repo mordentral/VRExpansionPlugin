@@ -694,6 +694,8 @@ public:
 
 	//virtual void SendClientAdjustment() override;
 
+	virtual bool VerifyClientTimeStamp(float TimeStamp, FNetworkPredictionData_Server_Character & ServerData) override;
+
 	inline void ApplyVRMotionToVelocity(float deltaTime)
 	{
 		if (AdditionalVRInputVector.IsNearlyZero())
@@ -834,6 +836,28 @@ public:
 
 	// We use 4 bits for this so a maximum of 16 elements
 	EVRConjoinedMovementModes VRReplicatedMovementMode;
+
+	FORCEINLINE void ApplyReplicatedMovementMode(EVRConjoinedMovementModes &NewMovementMode, bool bClearMovementMode = false)
+	{
+		if (NewMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//None)
+		{
+			if (NewMovementMode <= EVRConjoinedMovementModes::C_MOVE_MAX)
+			{
+				// Is a default movement mode, just directly set it
+				SetMovementMode((EMovementMode)NewMovementMode);
+			}
+			else // Is Custom
+			{
+				// Auto calculates the difference for our VR movements, index is from 0 so using climbing should get me correct index's as it is the first custom mode
+				SetMovementMode(EMovementMode::MOVE_Custom, (((int8)NewMovementMode - (uint8)EVRConjoinedMovementModes::C_VRMOVE_Climbing)));
+			}
+
+			// Clearing it here instead now, as this way the code can inject it during PerformMovement
+			// Specifically used by the Climbing Step up, so that server rollbacks are supported
+			if(bClearMovementMode)
+				NewMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
+		}
+	}
 
 	void UpdateFromCompressedFlags(uint8 Flags) override
 	{
