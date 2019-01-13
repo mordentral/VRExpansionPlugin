@@ -31,6 +31,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
 		FVector_NetQuantize100 StoredLocation;
 	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
+		USceneComponent* SeatParent;
+	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
 		float StoredYaw;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, NotReplicated, Category = "CharacterSeatInfo", meta = (ClampMin = "1.000", UIMin = "1.000", ClampMax = "256.000", UIMax = "256.000"))
@@ -64,6 +66,7 @@ public:
 		AllowedRadius = 40.0f;
 		AllowedRadiusThreshold = 20.0f;
 		CurrentThresholdScaler = 0.0f;
+		SeatParent = nullptr;
 	}
 
 	void ClearTempVals()
@@ -101,6 +104,7 @@ public:
 		}
 
 		StoredLocation.NetSerialize(Ar, Map, bOutSuccess);
+		Ar << SeatParent;
 
 		uint16 val;
 		if (Ar.IsSaving())
@@ -328,8 +332,21 @@ public:
 		{
 			if (SeatInformation.bSitting /*&& !SeatInformation.bWasSeated*/) // Removing WasSeated check because we may be switching seats
 			{
+
+				if (SeatInformation.SeatParent /*&& !root->IsAttachedTo(SeatInformation.SeatParent)*/)
+				{
+					FAttachmentTransformRules TransformRule = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
+					TransformRule.bWeldSimulatedBodies = true;
+					AttachToComponent(SeatInformation.SeatParent, TransformRule);
+				}
+
 				if(this->Role == ROLE_SimulatedProxy)
 				{
+					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
+					{
+						charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+					}
+
 					root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 					// Set it before it is set below
@@ -343,7 +360,22 @@ public:
 				else
 				{
 					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
+					{
 						charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+
+						if (this->Role == ROLE_AutonomousProxy)
+						{
+							FNetworkPredictionData_Client_Character* ClientData = charMovement->GetPredictionData_Client_Character();
+							check(ClientData);
+							
+							if (ClientData->SavedMoves.Num())
+							{
+								// Ack our most recent move, we don't want to start sending old moves after un seating.
+								ClientData->AckMove(ClientData->SavedMoves.Num() - 1);
+							}
+						}
+
+					}
 
 					root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
@@ -360,12 +392,15 @@ public:
 			}
 			else if(!SeatInformation.bSitting && SeatInformation.bWasSeated)
 			{
+				DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
 				if (this->Role == ROLE_SimulatedProxy)
 				{
 					root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
 					bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
+					SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true, true);
 					LeftMotionController->PostTeleportMoveGrippedObjects();
 					RightMotionController->PostTeleportMoveGrippedObjects();
 
@@ -374,7 +409,20 @@ public:
 				else
 				{
 					if (UCharacterMovementComponent * charMovement = Cast<UCharacterMovementComponent>(GetMovementComponent()))
+					{
 						charMovement->SetMovementMode(MOVE_Walking);
+					
+						if (this->Role == ROLE_Authority)
+						{
+							//charMovement->ForceReplicationUpdate();
+							FNetworkPredictionData_Server_Character* ServerData = charMovement->GetPredictionData_Server_Character();
+							check(ServerData);
+
+							// Reset client timestamp check so that there isn't a delay on ending seated mode before we accept movement packets
+							ServerData->CurrentClientTimeStamp = 0.f;
+						}
+					
+					}
 
 					bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
