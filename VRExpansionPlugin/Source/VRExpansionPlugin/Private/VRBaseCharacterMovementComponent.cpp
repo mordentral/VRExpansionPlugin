@@ -106,6 +106,15 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 	}
 }
 
+bool UVRBaseCharacterMovementComponent::VerifyClientTimeStamp(float TimeStamp, FNetworkPredictionData_Server_Character & ServerData)
+{
+	// Server is auth on seated mode and we want to ignore incoming pending movements after we have decided to set the client to seated mode
+	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+		return false;
+
+	return Super::VerifyClientTimeStamp(TimeStamp, ServerData);
+}
+
 void UVRBaseCharacterMovementComponent::StartPushBackNotification(FHitResult HitResult)
 {
 	bIsInPushBack = true;
@@ -1014,23 +1023,8 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 		}
 	}
 
-	if (VRReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX)//None)
-	{
-		if (VRReplicatedMovementMode <= EVRConjoinedMovementModes::C_MOVE_MAX)
-		{
-			// Is a default movement mode, just directly set it
-			SetMovementMode((EMovementMode)VRReplicatedMovementMode);
-		}
-		else // Is Custom
-		{
-			// Auto calculates the difference for our VR movements, index is from 0 so using climbing should get me correct index's as it is the first custom mode
-			SetMovementMode(EMovementMode::MOVE_Custom, (((int8)VRReplicatedMovementMode - (uint8)EVRConjoinedMovementModes::C_VRMOVE_Climbing)) );
-		}
-
-		// Clearing it here instead now, as this way the code can inject it during PerformMovement
-		// Specifically used by the Climbing Step up, so that server rollbacks are supported
-		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
-	}
+	// Apply any replicated movement modes that are pending
+	ApplyReplicatedMovementMode(VRReplicatedMovementMode, true);
 
 	// Handle move actions here - Should be scoped
 	CheckForMoveAction();
