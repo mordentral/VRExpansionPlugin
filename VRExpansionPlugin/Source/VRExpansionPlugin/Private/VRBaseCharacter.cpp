@@ -142,6 +142,14 @@ void AVRBaseCharacter::Server_ReZeroSeating_Implementation(FVector_NetQuantize10
 	SeatInformation.StoredYaw = NewRelativeHeadYaw;
 	SeatInformation.StoredLocation = NewRelativeHeadLoc;
 
+
+	SeatInformation.StoredYaw = FMath::RoundToFloat(SeatInformation.StoredYaw * 100.f) / 100.f;
+
+	SeatInformation.StoredLocation.X = FMath::RoundToFloat(SeatInformation.StoredLocation.X * 100.f) / 100.f;
+	SeatInformation.StoredLocation.Y = FMath::RoundToFloat(SeatInformation.StoredLocation.Y * 100.f) / 100.f;
+	SeatInformation.StoredLocation.Z = FMath::RoundToFloat(SeatInformation.StoredLocation.Z * 100.f) / 100.f;
+
+
 	// Null out Z so we keep feet location if not zeroing to head
 	if (!bZeroToHead)
 		SeatInformation.StoredLocation.Z = 0.0f;
@@ -273,13 +281,12 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 
 bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead)
 {
-	if (!this->HasAuthority())
+	if (!this->HasAuthority() || !SeatParent)
 		return false;
-
-	AController* OwningController = GetController();
 
 	if (bSetSeatedMode)
 	{
+		SeatInformation.SeatParent = SeatParent;
 		//SeatedCharacter.SeatedCharacter = CharacterToSeat;
 		SeatInformation.bSitting = true;
 		SeatInformation.StoredYaw = TargetYaw;
@@ -292,16 +299,10 @@ bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeat
 			SeatInformation.StoredLocation.Z = 0.0f;
 
 		//SetReplicateMovement(false);/ / No longer doing this, allowing it to replicate down to simulated clients now instead
-
-		FAttachmentTransformRules TransformRule = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
-		TransformRule.bWeldSimulatedBodies = true;
-
-		if (SeatParent)
-			AttachToComponent(SeatParent, TransformRule);
 	}
 	else
 	{
-		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+		SeatInformation.SeatParent = nullptr;
 		SeatInformation.StoredYaw = TargetYaw;
 		SeatInformation.StoredLocation = TargetLoc;
 		//SetReplicateMovement(true); // No longer doing this, allowing it to replicate down to simulated clients now instead

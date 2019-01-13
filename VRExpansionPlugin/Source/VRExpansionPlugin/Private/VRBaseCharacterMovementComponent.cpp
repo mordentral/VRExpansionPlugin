@@ -90,7 +90,6 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 			}
 
 		}
-
 	}
 	else
 		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -882,6 +881,7 @@ void UVRBaseCharacterMovementComponent::ApplyNetworkMovementMode(const uint8 Rec
 			// Custom movement modes aren't going to be rolled back as they are client authed for our pawns
 			if (NetMovementMode == EMovementMode::MOVE_Custom || MovementMode == EMovementMode::MOVE_Custom)
 			{
+				if (NetCustomMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing || CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing)
 				return; // Don't rollback custom movement modes, we set the server to trust the client on them now so the server should get corrected
 			}
 		}

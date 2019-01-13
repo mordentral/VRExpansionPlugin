@@ -579,6 +579,9 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	FVRConditionalMoveRep2 MoveReps,
 	uint8 ClientMovementMode)
 {
+
+
+
 	if (!HasValidData() || !IsComponentTickEnabled())
 	{
 		return;
@@ -707,7 +710,8 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 		// Custom movement modes aren't going to be rolled back as they are client authed for our pawns
 		if (NetMovementMode == EMovementMode::MOVE_Custom || MovementMode == EMovementMode::MOVE_Custom)
 		{
-			SetMovementMode(NetMovementMode, NetCustomMode);
+			if(NetCustomMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing || CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing)
+				SetMovementMode(NetMovementMode, NetCustomMode);
 		}
 	}
 
@@ -721,7 +725,6 @@ void UVRCharacterMovementComponent::CallServerMove
 	const class FSavedMove_Character* OldCMove
 	)
 {
-
 	// This is technically "safe", I know for sure that I am using my own FSavedMove
 	// I would have like to not override any of this, but I need a lot more specific information about the pawn
 	// So just setting flags in the FSaved Move doesn't cut it
@@ -4101,6 +4104,7 @@ bool UVRCharacterMovementComponent::ServerCheckClientErrorVR(float ClientTimeSta
 		{
 			bNetworkLargeClientCorrection = (LocDiff.SizeSquared() > FMath::Square(NetworkLargeClientCorrectionDistance));
 			return true;
+
 		}
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 		static const auto CVarNetForceClientAdjustmentPercent = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetForceClientAdjustmentPercent"));
