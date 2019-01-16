@@ -59,6 +59,46 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bRunControlRotationInMovementComponent = true;
 }
 
+void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
+{
+	if (!HasValidData())
+	{
+		return;
+	}
+
+	if (PreviousMovementMode == EMovementMode::MOVE_Custom && PreviousCustomMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+	{
+		if (MovementMode != EMovementMode::MOVE_Custom || CustomMovementMode != (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+		{
+			if (AVRBaseCharacter * BaseOwner = Cast<AVRBaseCharacter>(CharacterOwner))
+			{
+				BaseOwner->InitSeatedModeTransition();
+			}
+		}
+	}
+	
+	if (MovementMode == EMovementMode::MOVE_Custom)
+	{
+		if (CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing || CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+		{
+			// Kill velocity and clear queued up events
+			StopMovementKeepPathing();
+			CharacterOwner->ResetJumpState();
+			ClearAccumulatedForces();
+
+			if (CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+			{
+				if (AVRBaseCharacter * BaseOwner = Cast<AVRBaseCharacter>(CharacterOwner))
+				{
+					BaseOwner->InitSeatedModeTransition();
+				}
+			}
+		}
+	}
+
+	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
+}
+
 void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 
