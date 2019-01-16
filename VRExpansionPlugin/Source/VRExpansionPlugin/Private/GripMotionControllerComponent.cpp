@@ -2996,8 +2996,8 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			GetCurrentProfileTransform(true);
 		}
 
-		FVector Position;
-		FRotator Orientation;
+		FVector Position = FVector::ZeroVector;
+		FRotator Orientation = FRotator::ZeroRotator;
 
 		if (!bUseWithoutTracking)
 		{
@@ -4447,7 +4447,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 			IXRTrackingSystem* TrackingSys = GEngine->XRSystem.Get();
 			if (TrackingSys)
 			{
-				FQuat OrientationQuat;
+				FQuat OrientationQuat = FQuat::Identity;
 				if (TrackingSys->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, OrientationQuat, Position))
 				{
 					Orientation = OrientationQuat.Rotator();
@@ -4496,8 +4496,8 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 		}
 
 		// Poll state for the most recent controller transform
-		FVector Position;
-		FRotator Orientation;
+		FVector Position = FVector::ZeroVector;
+		FRotator Orientation = FRotator::ZeroRotator;
 
 		if (!MotionControllerComponent->GripPollControllerState(Position, Orientation, WorldToMetersScale))
 		{

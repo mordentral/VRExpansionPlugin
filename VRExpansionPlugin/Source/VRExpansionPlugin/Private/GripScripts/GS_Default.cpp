@@ -102,8 +102,8 @@ bool UGS_Default::GetWorldTransform_Implementation
 					{
 						if (!OtherController->bUseWithoutTracking)
 						{
-							FVector Position;
-							FRotator Orientation;
+							FVector Position = FVector::ZeroVector;
+							FRotator Orientation = FRotator::ZeroRotator;
 							float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
 							if (OtherController->GripPollControllerState(Position, Orientation, WorldToMeters))
 							{

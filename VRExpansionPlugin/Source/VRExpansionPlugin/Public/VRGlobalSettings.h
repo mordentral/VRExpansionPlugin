@@ -419,10 +419,10 @@ public:
 			{
 				VRSettings->CurrentControllerProfileInUse = ControllerProfile.ControllerName;
 				VRSettings->CurrentControllerProfileTransform = ControllerProfile.SocketOffsetTransform;
-				check(!VRSettings->CurrentControllerProfileTransform.ContainsNaN());
+				ensure(!VRSettings->CurrentControllerProfileTransform.ContainsNaN());
 				VRSettings->bUseSeperateHandTransforms = ControllerProfile.bUseSeperateHandOffsetTransforms;
 				VRSettings->CurrentControllerProfileTransformRight = ControllerProfile.SocketOffsetTransformRightHand;
-				check(!VRSettings->CurrentControllerProfileTransformRight.ContainsNaN());
+				ensure(!VRSettings->CurrentControllerProfileTransformRight.ContainsNaN());
 				VRSettings->OnControllerProfileChangedEvent.Broadcast();
 			}
 			else
