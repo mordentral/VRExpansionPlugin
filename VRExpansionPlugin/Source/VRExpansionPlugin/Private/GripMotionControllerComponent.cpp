@@ -4414,7 +4414,6 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 
 				if (bOffsetByControllerProfile)
 				{
-					Orientation.Normalize();
 					FTransform FinalControllerTransform(Orientation,Position);
 					if (bIsInGameThread)
 					{
