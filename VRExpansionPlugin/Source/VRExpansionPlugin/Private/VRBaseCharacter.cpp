@@ -243,6 +243,55 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 	{
 		if (SeatInformation.bSitting /*&& !SeatInformation.bWasSeated*/) // Removing WasSeated check because we may be switching seats
 		{
+			if (this->Role == ROLE_SimulatedProxy)
+			{
+				/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				{
+					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+				}*/
+			}
+			else
+			{
+				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				{
+					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+				}
+			}
+		}
+		else if (!SeatInformation.bSitting && SeatInformation.bWasSeated)
+		{
+			if (this->Role == ROLE_SimulatedProxy)
+			{
+
+				/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				{
+					charMovement->ApplyReplicatedMovementMode(SeatInformation.PostSeatedMovementMode);
+					//charMovement->SetComponentTickEnabled(true);
+				}*/
+
+			}
+			else
+			{
+				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				{
+					charMovement->ApplyReplicatedMovementMode(SeatInformation.PostSeatedMovementMode);
+				}
+			}
+		}
+		else // Is just a reposition
+		{
+			if (this->Role != ROLE_SimulatedProxy)
+				ZeroToSeatInformation();
+		}
+	}
+}
+
+void AVRBaseCharacter::InitSeatedModeTransition()
+{
+	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(GetRootComponent()))
+	{
+		if (SeatInformation.bSitting /*&& !SeatInformation.bWasSeated*/) // Removing WasSeated check because we may be switching seats
+		{
 
 			if (SeatInformation.SeatParent /*&& !root->IsAttachedTo(SeatInformation.SeatParent)*/)
 			{
@@ -257,7 +306,7 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 				{
 					//charMovement->DisableMovement();
 					//charMovement->SetComponentTickEnabled(false);
-					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+					//charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
 				}
 
 				root->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -276,7 +325,7 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 				{
 					//charMovement->DisableMovement();
 					//charMovement->SetComponentTickEnabled(false);
-					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+					//charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
 					//charMovement->bIgnoreClientMovementErrorChecksAndCorrection = true;
 
 					if (this->Role == ROLE_AutonomousProxy)
@@ -333,7 +382,7 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 			{
 				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
 				{
-					charMovement->ApplyReplicatedMovementMode(SeatInformation.PostSeatedMovementMode);
+					//charMovement->ApplyReplicatedMovementMode(SeatInformation.PostSeatedMovementMode);
 					//charMovement->bIgnoreClientMovementErrorChecksAndCorrection = false;
 					//charMovement->SetComponentTickEnabled(true);
 
@@ -361,11 +410,6 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
 				SeatInformation.ClearTempVals();
 			}
-		}
-		else // Is just a reposition
-		{
-			if (this->Role != ROLE_SimulatedProxy)
-				ZeroToSeatInformation();
 		}
 	}
 }

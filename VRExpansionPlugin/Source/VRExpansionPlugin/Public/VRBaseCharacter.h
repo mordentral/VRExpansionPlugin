@@ -330,6 +330,8 @@ public:
 	UFUNCTION()
 		virtual void OnRep_SeatedCharInfo();
 
+	void InitSeatedModeTransition();
+
 	// Re-zeros the seated settings
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "BaseVRCharacter", meta = (DisplayName = "ReZeroSeating"))
 		void Server_ReZeroSeating(FVector_NetQuantize100 NewRelativeHeadLoc, float NewRelativeHeadYaw, bool bZeroToHead = true);

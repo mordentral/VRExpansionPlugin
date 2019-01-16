@@ -576,6 +576,9 @@ public:
 	// Overriding this to run the seated logic
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
+	// Adding seated transition
+	void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
+
 	// Called when a valid climbing step up movement is found, if bound to the default auto step up is not performed to let custom step up logic happen instead.
 	UPROPERTY(BlueprintAssignable, Category = "VRMovement")
 		FVROnPerformClimbingStepUp OnPerformClimbingStepUp;
