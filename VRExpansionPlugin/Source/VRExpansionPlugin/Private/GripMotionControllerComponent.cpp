@@ -4414,6 +4414,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 
 				if (bOffsetByControllerProfile)
 				{
+					Orientation.Normalize();
 					FTransform FinalControllerTransform(Orientation,Position);
 					if (bIsInGameThread)
 					{
@@ -4424,7 +4425,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 						FinalControllerTransform = GripRenderThreadProfileTransform * FinalControllerTransform;
 					}
 					
-					Orientation = FinalControllerTransform.GetRotation().Rotator();
+					Orientation = FinalControllerTransform.Rotator();
 					Position = FinalControllerTransform.GetTranslation();
 				}
 

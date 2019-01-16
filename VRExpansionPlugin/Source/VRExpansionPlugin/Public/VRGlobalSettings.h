@@ -419,8 +419,10 @@ public:
 			{
 				VRSettings->CurrentControllerProfileInUse = ControllerProfile.ControllerName;
 				VRSettings->CurrentControllerProfileTransform = ControllerProfile.SocketOffsetTransform;
+				VRSettings->CurrentControllerProfileTransform.NormalizeRotation();
 				VRSettings->bUseSeperateHandTransforms = ControllerProfile.bUseSeperateHandOffsetTransforms;
 				VRSettings->CurrentControllerProfileTransformRight = ControllerProfile.SocketOffsetTransformRightHand;
+				VRSettings->CurrentControllerProfileTransformRight.NormalizeRotation();
 				VRSettings->OnControllerProfileChangedEvent.Broadcast();
 			}
 			else
