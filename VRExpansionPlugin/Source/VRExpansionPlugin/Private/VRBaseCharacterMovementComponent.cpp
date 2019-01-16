@@ -90,6 +90,17 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 			}
 
 		}
+		else
+		{
+			if (bNetworkUpdateReceived)
+			{
+				if (bNetworkMovementModeChanged)
+				{
+					ApplyNetworkMovementMode(CharacterOwner->GetReplicatedMovementMode());
+					bNetworkMovementModeChanged = false;
+				}
+			}
+		}
 	}
 	else
 		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);

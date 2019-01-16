@@ -321,11 +321,11 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 				LeftMotionController->PostTeleportMoveGrippedObjects();
 				RightMotionController->PostTeleportMoveGrippedObjects();
 
-				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
 				{
 					charMovement->ApplyReplicatedMovementMode(SeatInformation.PostSeatedMovementMode);
 					//charMovement->SetComponentTickEnabled(true);
-				}
+				}*/
 
 				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
 			}
@@ -340,11 +340,11 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 					if (this->Role == ROLE_Authority)
 					{
 						//charMovement->ForceReplicationUpdate();
-						FNetworkPredictionData_Server_Character * ServerData = charMovement->GetPredictionData_Server_Character();
-						check(ServerData);
+						//FNetworkPredictionData_Server_Character * ServerData = charMovement->GetPredictionData_Server_Character();
+						//check(ServerData);
 
 						// Reset client timestamp check so that there isn't a delay on ending seated mode before we accept movement packets
-						ServerData->CurrentClientTimeStamp = 1.f;
+						//ServerData->CurrentClientTimeStamp = 1.f;
 					}
 				}
 
