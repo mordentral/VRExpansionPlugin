@@ -79,15 +79,15 @@ public:
 		SocketOffsetTransformRightHand(FTransform::Identity)
 	{}
 
-	FBPVRControllerProfile(FName ControllerName, const FTransform & Offset) :
-		ControllerName(ControllerName),
+	FBPVRControllerProfile(FName ControllerNameIn, const FTransform & Offset) :
+		ControllerName(ControllerNameIn),
 		SocketOffsetTransform(Offset),
 		bUseSeperateHandOffsetTransforms(false),
 		SocketOffsetTransformRightHand(FTransform::Identity)
 	{}
 
-	FBPVRControllerProfile(FName ControllerName, const FTransform & Offset, const FTransform & OffsetRight) :
-		ControllerName(ControllerName),
+	FBPVRControllerProfile(FName ControllerNameIn, const FTransform & Offset, const FTransform & OffsetRight) :
+		ControllerName(ControllerNameIn),
 		SocketOffsetTransform(Offset),
 		bUseSeperateHandOffsetTransforms(true),
 		SocketOffsetTransformRightHand(OffsetRight)
