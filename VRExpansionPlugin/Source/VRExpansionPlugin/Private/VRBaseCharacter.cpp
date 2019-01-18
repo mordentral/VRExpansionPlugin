@@ -243,18 +243,34 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 	{
 		if (SeatInformation.bSitting /*&& !SeatInformation.bWasSeated*/) // Removing WasSeated check because we may be switching seats
 		{
-			if (this->Role == ROLE_SimulatedProxy)
+			if (SeatInformation.bWasSeated)
 			{
-				/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				if (SeatInformation.SeatParent != this->GetRootComponent()->GetAttachParent())
 				{
-					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
-				}*/
+					InitSeatedModeTransition();
+				}
+				else // Is just a reposition
+				{
+					//if (this->Role != ROLE_SimulatedProxy)
+					ZeroToSeatInformation();
+				}
+
 			}
 			else
 			{
-				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+				if (this->Role == ROLE_SimulatedProxy)
 				{
-					charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+					/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+					{
+						charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+					}*/
+				}
+				else
+				{
+					if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+					{
+						charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
+					}
 				}
 			}
 		}
@@ -277,11 +293,6 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 					charMovement->ApplyReplicatedMovementMode(SeatInformation.PostSeatedMovementMode);
 				}
 			}
-		}
-		else // Is just a reposition
-		{
-			if (this->Role != ROLE_SimulatedProxy)
-				ZeroToSeatInformation();
 		}
 	}
 }
@@ -317,6 +328,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 
 				SeatInformation.bWasSeated = true;
 				bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
+				ZeroToSeatInformation();
 				OnSeatedModeChanged(SeatInformation.bSitting, SeatInformation.bWasSeated);
 			}
 			else
