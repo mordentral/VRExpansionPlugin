@@ -34,6 +34,10 @@ public:
 
 	float CurrentLerpTime;
 
+	// If the initial grip distance is closer than this value then the lerping will not be performed.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
+		float MinDistanceForLerp;
+
 	// Progress from 0.0 to 1.0 that it should take per second to finish lerping.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
 	float InterpSpeed;

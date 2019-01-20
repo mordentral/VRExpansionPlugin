@@ -16,15 +16,28 @@ UGS_LerpToHand::UGS_LerpToHand(const FObjectInitializer& ObjectInitializer) :
 	CurrentLerpTime = 0.0f;
 	OnGripTransform = FTransform::Identity;
 	bUseCurve = false;
+	MinDistanceForLerp = 0.0f;
 }
 
 //void UGS_InteractibleSettings::BeginPlay_Implementation() {}
 void UGS_LerpToHand::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
+	OnGripTransform = GetParentTransform();
+
+	if (MinDistanceForLerp > 0.0f)
+	{
+		FTransform TargetTransform = GripInformation.RelativeTransform * GrippingController->GetPivotTransform();
+		if (FVector::DistSquared(OnGripTransform.GetLocation(), TargetTransform.GetLocation()) < FMath::Square(MinDistanceForLerp))
+		{
+			// Don't init
+			return;
+		}
+	}
+
 	bIsActive = true;
 	CurrentLerpTime = 0.0f;
-	OnGripTransform = GetParentTransform();
 }
+
 void UGS_LerpToHand::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
 {
 	bIsActive = false;
