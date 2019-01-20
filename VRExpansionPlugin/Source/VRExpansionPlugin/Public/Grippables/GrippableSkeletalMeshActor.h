@@ -103,22 +103,6 @@ public:
 			return;
 		}
 
-		// We don't want to skip the update, we aren't a local grip, now lets bypass some of the stupid stuff
-
-		const FRepAttachment ReplicationAttachment = GetAttachmentReplication();
-		if (!ReplicationAttachment.AttachParent)
-		{
-			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-
-			// Handle the case where an object was both detached and moved on the server in the same frame.
-			// Calling this extraneously does not hurt but will properly fire events if the movement state changed while attached.
-			// This is needed because client side movement is ignored when attached #TODO: Should I just delete this in the future?
-			if (bReplicateMovement)
-				OnRep_ReplicatedMovement();
-
-			return;
-		}
-
 		// None of our overrides are required, lets just pass it on now
 		Super::OnRep_AttachmentReplication();
 	}
@@ -128,6 +112,24 @@ public:
 		if (bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
 		{
 			return;
+		}
+
+		if (RootComponent)
+		{
+			const FRepAttachment ReplicationAttachment = GetAttachmentReplication();
+			if (!ReplicationAttachment.AttachParent)
+			{
+				// This "fix" corrects the simulation state not replicating over correctly
+				// If you turn off movement replication, simulate an object, turn movement replication back on and un-simulate, it never knows the difference
+				// This change ensures that it is checking against the current state
+				if (RootComponent->IsSimulatingPhysics() != ReplicatedMovement.bRepPhysics)//SavedbRepPhysics != ReplicatedMovement.bRepPhysics)
+				{
+					// Turn on/off physics sim to match server.
+					SyncReplicatedPhysicsSimulation();
+
+					// It doesn't really hurt to run it here, the super can call it again but it will fail out as they already match
+				}
+			}
 		}
 
 		Super::OnRep_ReplicateMovement();
