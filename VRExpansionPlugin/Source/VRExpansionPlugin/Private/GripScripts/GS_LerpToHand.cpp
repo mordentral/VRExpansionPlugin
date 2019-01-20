@@ -12,19 +12,23 @@ UGS_LerpToHand::UGS_LerpToHand(const FObjectInitializer& ObjectInitializer) :
 	WorldTransformOverrideType = EGSTransformOverrideType::ModifiesWorldTransform;
 
 	LerpInterpolationMode = EVRLerpInterpolationMode::QuatInterp;
-	InterpSpeed = 10.0f;
+	InterpSpeed = 1.0f;
+	CurrentLerpTime = 0.0f;
+	OnGripTransform = FTransform::Identity;
+	bUseCurve = false;
 }
 
 //void UGS_InteractibleSettings::BeginPlay_Implementation() {}
 void UGS_LerpToHand::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
 	bIsActive = true;
+	CurrentLerpTime = 0.0f;
+	OnGripTransform = GetParentTransform();
 }
 void UGS_LerpToHand::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
 {
 	bIsActive = false;
 }
-
 
 bool UGS_LerpToHand::GetWorldTransform_Implementation
 (
@@ -47,9 +51,38 @@ bool UGS_LerpToHand::GetWorldTransform_Implementation
 		bIsActive = false;
 	}
 
-	const float Alpha = FMath::Clamp(DeltaTime * InterpSpeed, 0.f, 1.f);
+	FTransform NA = OnGripTransform;//root->GetComponentTransform();
 
-	FTransform NA = root->GetComponentTransform();
+	float Alpha = 0.0f; 
+
+	if (bUseCurve)
+	{
+		if (FRichCurve * richCurve = OptionalCurveToFollow.GetRichCurve())
+		{
+			if (CurrentLerpTime > richCurve->GetLastKey().Time)
+			{
+				// Stop lerping
+				CurrentLerpTime = 0.0f;
+				bIsActive = false;
+				return true;
+			}
+			else
+			{
+				float curCurveAlpha = richCurve->Eval(CurrentLerpTime);
+				curCurveAlpha = FMath::Clamp(curCurveAlpha, 0.0f, 1.0f);
+
+				Alpha = curCurveAlpha;
+
+				CurrentLerpTime += DeltaTime;
+			}
+		}
+	}
+	else
+	{
+		Alpha = FMath::Clamp(CurrentLerpTime, 0.f, 1.0f);
+		CurrentLerpTime += DeltaTime * InterpSpeed;
+	}
+
 	FTransform NB = WorldTransform;
 	NA.NormalizeRotation();
 	NB.NormalizeRotation();
@@ -81,8 +114,9 @@ bool UGS_LerpToHand::GetWorldTransform_Implementation
 	}
 
 	// Turn it off if we need to
-	if (WorldTransform.Equals(NB, 0.1f))
+	if (Alpha == 1.0f)
 	{
+		CurrentLerpTime = 0.0f;
 		bIsActive = false;
 	}
 

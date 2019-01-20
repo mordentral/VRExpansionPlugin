@@ -7,7 +7,9 @@
 #include "GripScripts/GS_Default.h"
 #include "GS_GunTools.generated.h"
 
-// This class is currently under development, DO NOT USE
+// A grip script that adds useful fire-arm related features to grips
+// Just adding it to the grippable object provides the features without removing standard
+// Grip features.
 UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UGS_GunTools : public UGS_Default
 {
