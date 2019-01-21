@@ -2,6 +2,7 @@
 
 
 #include "GripScripts/GS_LerpToHand.h"
+#include "GripMotionControllerComponent.h"
 #include "Math/DualQuat.h"
 
 UGS_LerpToHand::UGS_LerpToHand(const FObjectInitializer& ObjectInitializer) :
