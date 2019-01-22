@@ -1076,8 +1076,8 @@ bool UGripMotionControllerComponent::GripActor(
 	{
 		// I inverse it so that laying out the sockets makes sense
 		FTransform sockTrans = root->GetSocketTransform(OptionalSnapToSocketName, ERelativeTransformSpace::RTS_Component);
+		sockTrans.SetScale3D(FVector(1.f) / root->GetComponentScale()); // Prep this so that the inverse works correctly
 		newActorGrip.RelativeTransform = sockTrans.Inverse();
-		newActorGrip.RelativeTransform.SetScale3D(ActorToGrip->GetActorScale3D());
 		newActorGrip.bIsSlotGrip = true; // Set this to a slot grip
 
 		ObjectToCheck = NULL; // Null it back out, socketed grips don't use this
@@ -1260,8 +1260,9 @@ bool UGripMotionControllerComponent::GripComponent(
 	{
 		// I inverse it so that laying out the sockets makes sense
 		FTransform sockTrans = ComponentToGrip->GetSocketTransform(OptionalSnapToSocketName, ERelativeTransformSpace::RTS_Component);
+		sockTrans.SetScale3D(FVector(1.f) / ComponentToGrip->GetComponentScale()); // Prep this so that the inverse works correctly
 		newActorGrip.RelativeTransform = sockTrans.Inverse();
-		newActorGrip.RelativeTransform.SetScale3D(ComponentToGrip->GetComponentScale());
+		newActorGrip.bIsSlotGrip = true; // Set this to a slot grip
 
 		ObjectToCheck = NULL; // Null it out, socketed grips don't use this
 	}
