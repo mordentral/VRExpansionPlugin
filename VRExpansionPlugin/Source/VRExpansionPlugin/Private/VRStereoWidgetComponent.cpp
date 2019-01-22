@@ -203,7 +203,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			// Thanks to mitch for the temp work around idea
 
 			// Get first local player controller
-			APlayerController* PC = nullptr;
+			/*APlayerController* PC = nullptr;
 			for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 			{
 				if (Iterator->Get()->IsLocalPlayerController())
@@ -211,6 +211,12 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 					PC = Iterator->Get();
 					break;
 				}
+			}*/
+			APlayerController* PC = nullptr;
+			if (UWorld * CurWorld = GetWorld())
+			{
+				const ULocalPlayer* FirstPlayer = GEngine->GetFirstGamePlayer(CurWorld);
+				PC = FirstPlayer ? FirstPlayer->GetPlayerController(CurWorld) : nullptr;
 			}
 
 			if (PC)
