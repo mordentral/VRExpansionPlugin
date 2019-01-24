@@ -113,11 +113,11 @@ public:
 		float LeverTogglePercentage;
 
 	// The max angle of the lever in the positive direction
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.0", ClampMax = "179.8", UIMin = "0.0", UIMax = "180.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.0", ClampMax = "179.9", UIMin = "0.0", UIMax = "180.0"))
 		float LeverLimitPositive;
 
 	// The max angle of the lever in the negative direction
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.0", ClampMax = "179.8", UIMin = "0.0", UIMax = "180.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.0", ClampMax = "179.9", UIMin = "0.0", UIMax = "180.0"))
 		float LeverLimitNegative;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
@@ -200,12 +200,19 @@ public:
 		{}break;
 		}
 
-		ReturnAxis = FMath::ClampAngle(FRotator::NormalizeAxis(RotAtGrab + ReturnAxis), -LeverLimitNegative, LeverLimitPositive);
-
-		// Ignore rotations that would flip the angle of the lever to the other side, with a 90 degree allowance
-		if (!bIsInFirstTick && ((LeverLimitPositive > 0.0f && LastDeltaAngle >= LeverLimitPositive) || (LeverLimitNegative > 0.0f && LastDeltaAngle <= -LeverLimitNegative)) && FMath::Sign(LastDeltaAngle) != FMath::Sign(ReturnAxis))
+		if (LeverLimitPositive > 0.0f && LeverLimitNegative > 0.0f && FMath::IsNearlyEqual(LeverLimitNegative, 180.f, 0.01f) && FMath::IsNearlyEqual(LeverLimitPositive, 180.f, 0.01f))
 		{
-			ReturnAxis = LastDeltaAngle;
+			// Don't run the clamping or the flip detection, we are a 360 degree lever
+		}
+		else
+		{
+			ReturnAxis = FMath::ClampAngle(FRotator::NormalizeAxis(RotAtGrab + ReturnAxis), -LeverLimitNegative, LeverLimitPositive);
+
+			// Ignore rotations that would flip the angle of the lever to the other side, with a 90 degree allowance
+			if (!bIsInFirstTick && ((LeverLimitPositive > 0.0f && LastDeltaAngle >= LeverLimitPositive) || (LeverLimitNegative > 0.0f && LastDeltaAngle <= -LeverLimitNegative)) && FMath::Sign(LastDeltaAngle) != FMath::Sign(ReturnAxis))
+			{
+				ReturnAxis = LastDeltaAngle;
+			}
 		}
 	
 		bIsInFirstTick = false;
@@ -334,24 +341,21 @@ public:
 
 		case EVRInteractibleLeverAxis::Axis_X:
 		{
-			Angle = GetAxisValue((CurrentRelativeTransform * InitialRelativeTransform.Inverse()).Rotator().GetNormalized());
-
+			Angle = GetDeltaAngle((InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized());
 			FullCurrentAngle = Angle;
 			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 			CurrentLeverForwardVector = FVector(FMath::Sign(Angle), 0.0f, 0.0f);
 		}break;
 		case EVRInteractibleLeverAxis::Axis_Y:
 		{
-			Angle = GetAxisValue((CurrentRelativeTransform * InitialRelativeTransform.Inverse()).Rotator().GetNormalized());
-			
+			Angle = GetDeltaAngle((InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized());
 			FullCurrentAngle = Angle;
 			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 			CurrentLeverForwardVector = FVector(0.0f, FMath::Sign(Angle), 0.0f);
 		}break;
 		case EVRInteractibleLeverAxis::Axis_Z:
 		{
-			Angle = GetAxisValue((CurrentRelativeTransform * InitialRelativeTransform.Inverse()).Rotator().GetNormalized());
-
+			Angle = GetDeltaAngle((InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized());
 			FullCurrentAngle = Angle;
 			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 			CurrentLeverForwardVector = FVector(0.0f, 0.0f, FMath::Sign(Angle));
@@ -437,6 +441,34 @@ public:
 		// Get our initial relative transform to our parent (or not if un-parented).
 		InitialRelativeTransform = this->GetRelativeTransform();
 		CalculateCurrentAngle(InitialRelativeTransform);
+	}
+
+	/**
+	 *    Sets the angle of the lever forcefully
+	 *    @param NewAngle				The new angle to use, for single axis levers the sign of the angle will be used
+	 *    @param DualAxisForwardVector	Only used with dual axis levers, you need to define the forward axis for the angle to apply too
+	*/
+	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
+	void SetLeverAngle(float NewAngle, FVector DualAxisForwardVector)
+	{
+		NewAngle = -NewAngle; // Need to inverse the sign
+
+		FVector ForwardVector = DualAxisForwardVector;
+		switch (LeverRotationAxis)
+		{
+		case EVRInteractibleLeverAxis::Axis_X:
+			ForwardVector = FVector(FMath::Sign(NewAngle), 0.0f, 0.0f); break;		
+		case EVRInteractibleLeverAxis::Axis_Y:
+			ForwardVector = FVector(0.0f, FMath::Sign(NewAngle), 0.0f); break;
+		case EVRInteractibleLeverAxis::Axis_Z:
+			ForwardVector = FVector(0.0f, 0.0f, FMath::Sign(NewAngle)); break;
+		default:break;
+		}
+		
+		CurrentLeverAngle = NewAngle;
+		FQuat NewLeverRotation(ForwardVector, FMath::DegreesToRadians(FMath::Abs(NewAngle)));
+
+		this->SetRelativeTransform(InitialRelativeTransform * FTransform(NewLeverRotation));
 	}
 
 	// ReCalculates the current angle, sets it on the back end, and returns it
@@ -760,6 +792,15 @@ public:
 
 	protected:
 
+		inline float GetDeltaAngle(FQuat DeltaQuat)
+		{
+			FVector Axis;
+			float Angle;
+			DeltaQuat.ToAxisAndAngle(Axis, Angle);
+
+			return FRotator::NormalizeAxis(FMath::RadiansToDegrees(Angle)) * (-FMath::Sign(GetAxisValue(Axis)));
+		}
+
 		inline float GetAxisValue(FRotator CheckRotation)
 		{
 			switch (LeverRotationAxis)
@@ -770,6 +811,20 @@ public:
 				return CheckRotation.Pitch; break;
 			case EVRInteractibleLeverAxis::Axis_Z:
 				return CheckRotation.Yaw; break;
+			default:return 0.0f; break;
+			}
+		}
+
+		inline float GetAxisValue(FVector CheckAxis)
+		{
+			switch (LeverRotationAxis)
+			{
+			case EVRInteractibleLeverAxis::Axis_X:
+				return CheckAxis.X; break;
+			case EVRInteractibleLeverAxis::Axis_Y:
+				return CheckAxis.Y; break;
+			case EVRInteractibleLeverAxis::Axis_Z:
+				return CheckAxis.Z; break;
 			default:return 0.0f; break;
 			}
 		}

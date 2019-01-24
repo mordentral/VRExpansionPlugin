@@ -307,7 +307,7 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 		default:break;
 		}
 
-		RotAtGrab = GetAxisValue(this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).Rotator());
+		RotAtGrab = GetDeltaAngle((CurrentRelativeTransform.GetRotation().Inverse() * this->GetComponentTransform().GetRotation()).GetNormalized());
 	}
 
 	LastLeverAngle = CurrentLeverAngle;
