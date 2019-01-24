@@ -2380,6 +2380,11 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 	OnDroppedObject.Broadcast(DropBroadcastData);
 }
 
+bool UGripMotionControllerComponent::BP_IsLocallyControlled()
+{
+	return IsLocallyControlled();
+}
+
 bool UGripMotionControllerComponent::BP_HasGripAuthority(const FBPActorGripInformation &Grip)
 {
 	return HasGripAuthority(Grip);

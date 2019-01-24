@@ -548,6 +548,10 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
+	// Returns if this is the owning connection for the motion controller
+	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "IsLocallyControlled"))
+		bool BP_IsLocallyControlled();
+
 	// Checks if the controllers own is torn off on the network, used to skip some RPCS
 	inline bool IsTornOff() const
 	{
