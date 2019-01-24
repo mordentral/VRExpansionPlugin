@@ -401,17 +401,8 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 					if (this->Role == ROLE_Authority)
 					{
 						//charMovement->ForceReplicationUpdate();
-						FNetworkPredictionData_Server_Character * ServerData = charMovement->GetPredictionData_Server_Character();
-						check(ServerData);
-						ServerData->CurrentClientTimeStamp = 0.f;
-						ServerData->ServerAccumulatedClientTimeStamp = 0.0f;
-						ServerData->LastUpdateTime=0.f;
-						ServerData->ServerTimeStampLastServerMove=0.f;
-						ServerData->bForceClientUpdate=false;
-						ServerData->TimeDiscrepancy=0.f;
-						ServerData->bResolvingTimeDiscrepancy=false;
-						ServerData->TimeDiscrepancyResolutionMoveDeltaOverride=0.f;
-						ServerData->TimeDiscrepancyAccumulatedClientDeltasSinceLastServerTick=0.f;
+						//FNetworkPredictionData_Server_Character * ServerData = charMovement->GetPredictionData_Server_Character();
+						//check(ServerData);
 
 						// Reset client timestamp check so that there isn't a delay on ending seated mode before we accept movement packets
 						//ServerData->CurrentClientTimeStamp = 1.f;
