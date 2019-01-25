@@ -218,6 +218,27 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 		Rot = FQuat(nAxis, nAngle).Rotator();
 
 		this->SetRelativeRotation((FTransform(Rot) * InitialRelativeTransform).Rotator());
+
+
+		/*
+		// #TODO: go back to testing this?
+		// This aligns the pitch from any side by rewinding yaw and then sampling pitch
+				FVector zAxis;
+		float zAngle = 0.0f;
+		FRotator YawRotinit(0.0f, InitialGripRotX, 0.0f);
+
+		float fYaw = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Y, CurInteractorLocation.X)); //- InitialGripRot;
+		FRotator YawRot(0.0f, fYaw, 0.0f);
+		FQuat finalYawRot = YawRotinit.Quaternion().Inverse() * YawRot.Quaternion();
+		FVector newloc = (YawRot.Quaternion()).UnrotateVector(CurInteractorLocation);
+
+		FVector Start = CurrentRelativeTransform.GetTranslation();
+		FVector End = CurrentRelativeTransform.GetRotation().RotateVector(newloc.GetSafeNormal()*FVector(100.f));
+		DrawDebugLine(GetWorld(), Start,Start + End, FColor::Red);
+
+		//FVector newloc = CurInteractorLocation;
+		float fPitch = FMath::RadiansToDegrees(FMath::Atan2(newloc.Z, newloc.X)) -InitialGripRot;
+		*/
 	}
 	break;
 	case EVRInteractibleLeverAxis::Axis_XZ:

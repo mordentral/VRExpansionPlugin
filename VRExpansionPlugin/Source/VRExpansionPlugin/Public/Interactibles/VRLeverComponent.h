@@ -327,7 +327,7 @@ public:
 			FVector qAxis;
 			float qAngle;
 
-			(CurrentRelativeTransform * InitialRelativeTransform.Inverse()).GetRotation().ToAxisAndAngle(qAxis, qAngle);
+			(InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized().ToAxisAndAngle(qAxis, qAngle);
 
 			FullCurrentAngle = FMath::RadiansToDegrees(qAngle);
 			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
