@@ -23,8 +23,6 @@ UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializ
 	bIsEnabled = true;
 
 	this->SetCollisionResponseToAllChannels(ECR_Overlap);
-	OnComponentBeginOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapBegin);
-	OnComponentEndOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapEnd);
 
 	bSkipOverlapFiltering = false;
 }
@@ -41,6 +39,10 @@ void UVRButtonComponent::BeginPlay()
 
 	ResetInitialButtonLocation();
 	SetButtonToRestingPosition();
+
+	// Init overlaps
+	OnComponentBeginOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapBegin);
+	OnComponentEndOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapEnd);
 }
 
 void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
