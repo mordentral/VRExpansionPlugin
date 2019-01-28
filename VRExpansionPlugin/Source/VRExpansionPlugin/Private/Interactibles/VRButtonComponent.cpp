@@ -39,9 +39,10 @@ void UVRButtonComponent::BeginPlay()
 
 	ResetInitialButtonLocation();
 	SetButtonToRestingPosition();
-
-	// Init overlaps
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("BEGIN PLAY!"));
+	OnComponentBeginOverlap.RemoveDynamic(this, &UVRButtonComponent::OnOverlapBegin);
 	OnComponentBeginOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapBegin);
+	OnComponentEndOverlap.RemoveDynamic(this, &UVRButtonComponent::OnOverlapEnd);
 	OnComponentEndOverlap.AddDynamic(this, &UVRButtonComponent::OnOverlapEnd);
 }
 
