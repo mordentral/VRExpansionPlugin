@@ -463,7 +463,7 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 		CurrentLeverAngle = NewAngle;
 		FQuat NewLeverRotation(ForwardVector, FMath::DegreesToRadians(FMath::Abs(NewAngle)));
 
-		this->SetRelativeTransform(InitialRelativeTransform * FTransform(NewLeverRotation));
+		this->SetRelativeTransform(FTransform(NewLeverRotation) * InitialRelativeTransform);
 	}
 
 	// ReCalculates the current angle, sets it on the back end, and returns it
