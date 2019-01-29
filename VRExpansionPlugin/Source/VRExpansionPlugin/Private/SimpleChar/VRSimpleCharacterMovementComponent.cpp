@@ -982,7 +982,7 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 {
 	if (!bSkipHMDChecks)
 	{
-		if (IsLocallyControlled())
+		if (CharacterOwner->IsLocallyControlled())
 		{
 			FQuat curRot;
 			bool bWasHeadset = false;

@@ -105,6 +105,10 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 		if (!VRRoot->bCalledUpdateTransform)
 			VRRoot->OnUpdateTransform_Public(EUpdateTransformFlags::None, ETeleportType::None);
 	}
+
+	// Make sure these are cleaned out for the next frame
+	AdditionalVRInputVector = FVector::ZeroVector;
+	CustomVRInputVector = FVector::ZeroVector;
 }
 
 void UVRBaseCharacterMovementComponent::StartPushBackNotification(FHitResult HitResult)
@@ -611,12 +615,16 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 		return;
 	}
 
-	// Allow the player to run updates on the climb logic for CustomVRInputVector
-	if (AVRBaseCharacter * characterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
+	// Skip calling into BP if we aren't locally controlled
+	if (CharacterOwner->IsLocallyControlled())
 	{
-		//SCOPE_CYCLE_COUNTER(STAT_TickClimb);
-		characterOwner->K2_UpdateClimbingMovement(deltaTime);
+		// Allow the player to run updates on the climb logic for CustomVRInputVector
+		if (AVRBaseCharacter * characterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
+		{
+			characterOwner->UpdateClimbingMovement(deltaTime);
+		}
 	}
+
 
 	// I am forcing this to 0 to avoid some legacy velocity coming out of other movement modes, climbing should only be direct movement anyway.
 	Velocity = FVector::ZeroVector;
@@ -767,10 +775,14 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 		return;
 	}
 
-	// Allow the player to run updates on the push logic for CustomVRInputVector
-	if (AVRBaseCharacter * characterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
+	// Skip calling into BP if we aren't locally controlled
+	if (CharacterOwner->IsLocallyControlled())
 	{
-		characterOwner->K2_UpdateLowGravMovement(deltaTime);
+		// Allow the player to run updates on the push logic for CustomVRInputVector
+		if (AVRBaseCharacter * characterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
+		{
+			characterOwner->UpdateLowGravMovement(deltaTime);
+		}
 	}
 
 	float Friction = 0.0f; 
@@ -972,7 +984,7 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
 	// This moves it into update scope
-	if (bRunControlRotationInMovementComponent && IsLocallyControlled())
+	if (bRunControlRotationInMovementComponent && CharacterOwner->IsLocallyControlled())
 	{
 		if (AVRPlayerController * PC = Cast<AVRPlayerController>(CharacterOwner->GetController()))
 		{
@@ -1012,8 +1024,8 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	EndPushBackNotification(); // Check if we need to notify of ending pushback
 
 	// Make sure these are cleaned out for the next frame
-	AdditionalVRInputVector = FVector::ZeroVector;
-	CustomVRInputVector = FVector::ZeroVector;
+	//AdditionalVRInputVector = FVector::ZeroVector;
+	//CustomVRInputVector = FVector::ZeroVector;
 
 	// Only clear it here if we are the server, the client clears it later
 	if (CharacterOwner->Role == ROLE_Authority)
@@ -1025,17 +1037,15 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 {
 	// See if we can get the VR capsule location
-	if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
-	{
-		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
+	//if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
+	//{
+		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(C->GetMovementComponent()))
 		{
 
 			// Saving this out early because it will be wiped before the PostUpdate gets the values
 			//ConditionalValues.MoveAction.MoveAction = moveComp->MoveAction.MoveAction;
 
 			VRReplicatedMovementMode = moveComp->VRReplicatedMovementMode;
-
-			ConditionalValues.CustomVRInputVector = moveComp->CustomVRInputVector;
 
 			if (moveComp->HasRequestedVelocity())
 				ConditionalValues.RequestedVelocity = moveComp->RequestedVelocity;
@@ -1044,10 +1054,10 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 				
 			// Throw out the Z value of the headset, its not used anyway for movement
 			// Instead, re-purpose it to be the capsule half height
-			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(moveComp->GetCharacterOwner()))
+			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(C))
 			{
-				if (BaseChar->VRReplicateCapsuleHeight && C)
-					LFDiff.Z = C->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+				if (BaseChar->VRReplicateCapsuleHeight)
+					LFDiff.Z = BaseChar->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
 				else
 					LFDiff.Z = 0.0f;
 			}
@@ -1060,12 +1070,12 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 			ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
 			ConditionalValues.RequestedVelocity = FVector::ZeroVector;
 		}
-	}
-	else
-	{
-		VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
-		ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
-	}
+	//}
+	//else
+	//{
+	//	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
+	//	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
+	//}
 
 	FSavedMove_Character::SetInitialPosition(C);
 }
@@ -1076,14 +1086,15 @@ void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostU
 	FSavedMove_Character::PostUpdate(C, PostUpdateMode);
 
 	// See if we can get the VR capsule location
-	if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
+	//if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
+	//{
+	if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(C->GetMovementComponent()))
 	{
-		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
-		{
-			ConditionalValues.MoveActionArray = moveComp->MoveActionArray;
-			moveComp->MoveActionArray.Clear();
-		}
+		ConditionalValues.CustomVRInputVector = moveComp->CustomVRInputVector;
+		ConditionalValues.MoveActionArray = moveComp->MoveActionArray;
+		moveComp->MoveActionArray.Clear();
 	}
+	//}
 	/*if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
 	{
 		// See if we can get the VR capsule location
