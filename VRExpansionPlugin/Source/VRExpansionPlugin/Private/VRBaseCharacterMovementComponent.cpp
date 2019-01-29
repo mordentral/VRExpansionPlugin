@@ -692,6 +692,13 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 		return;
 	}
 
+	// Allow the player to run updates on the climb logic for CustomVRInputVector
+	if (AVRBaseCharacter * characterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
+	{
+		//SCOPE_CYCLE_COUNTER(STAT_TickClimb);
+		characterOwner->K2_UpdateClimbingMovement(deltaTime);
+	}
+
 	// I am forcing this to 0 to avoid some legacy velocity coming out of other movement modes, climbing should only be direct movement anyway.
 	Velocity = FVector::ZeroVector;
 
@@ -836,6 +843,12 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 	if (deltaTime < MIN_TICK_TIME)
 	{
 		return;
+	}
+
+	// Allow the player to run updates on the push logic for CustomVRInputVector
+	if (AVRBaseCharacter * characterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
+	{
+		characterOwner->K2_UpdateLowGravMovement(deltaTime);
 	}
 
 	float Friction = 0.0f; 
