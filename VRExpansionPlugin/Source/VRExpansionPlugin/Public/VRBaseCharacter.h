@@ -221,6 +221,20 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "VRMovement")
 		void OnClimbingSteppedUp();
 
+	/**
+	* Event for adding to the climbing movement mode. Called by CharacterMovement if MovementMode is set to Climbing.
+	* @note C++ code should override PhysCustom_Climbing() instead.
+	*/
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "UpdateLowGravMovement", ScriptName = "UpdateLowGravMovement"))
+		void K2_UpdateLowGravMovement(float DeltaTime);
+
+	/**
+	 * Event for adding to the climbing movement mode. Called by CharacterMovement if MovementMode is set to Climbing.
+	 * @note C++ code should override PhysCustom_Climbing() instead.
+	 */
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "UpdateClimbingMovement", ScriptName = "UpdateClimbingMovement"))
+		void K2_UpdateClimbingMovement(float DeltaTime);
+
 	// This is the offset location of the player, use this for when checking against player transform instead of the actors transform
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
