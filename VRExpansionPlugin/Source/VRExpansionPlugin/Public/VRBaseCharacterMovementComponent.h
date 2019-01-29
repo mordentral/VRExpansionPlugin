@@ -11,7 +11,6 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
-
 /** Delegate for notification when to handle a climbing step up, will override default step up logic if is bound to. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnPerformClimbingStepUp, FVector, FinalStepUpLocation);
 
@@ -601,14 +600,6 @@ public:
 	bool IsClimbing() const
 	{
 		return ((MovementMode == MOVE_Custom) && (CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing)) && UpdatedComponent;
-	}
-
-	bool IsLocallyControlled() const
-	{
-		// I like epics implementation better than my own
-		const AActor* MyOwner = GetOwner();
-		const APawn* MyPawn = Cast<APawn>(MyOwner);
-		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
 	// Sets the crouching half height since it isn't exposed during runtime to blueprints
