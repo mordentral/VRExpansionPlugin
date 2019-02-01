@@ -17,7 +17,7 @@ UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 	PivotOffset = FVector::ZeroVector;
 	VirtualStockComponent = nullptr;
 	MountWorldTransform = FTransform::Identity;
-	StockSnapOffset = FVector(0.f, 0.f, 0.f);
+	//StockSnapOffset = FVector(0.f, 0.f, 0.f);
 	bIsMounted = false;
 
 
@@ -31,15 +31,17 @@ UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 
 	BackEndRecoilStorage = FTransform::Identity;
 
-	StockSnapDistance = 35.f;
-	bUseDistanceBasedStockSnapping = true;
-	SmoothingValueForStock = 0.0f;
-	bSmoothStockHand = false;
+	//StockSnapDistance = 35.f;
+	//bUseDistanceBasedStockSnapping = true;
+	//SmoothingValueForStock = 0.0f;
+	//bSmoothStockHand = false;
 
 	// Speed up the lerp on fast movements for this
-	StockHandSmoothing.DeltaCutoff = 20.0f;
-	StockHandSmoothing.MinCutoff = 5.0f;
-	bDebugDrawVirtualStock = false;
+	//StockHandSmoothing.DeltaCutoff = 20.0f;
+	//StockHandSmoothing.MinCutoff = 5.0f;
+	//bDebugDrawVirtualStock = false;
+
+	bUseGlobalVirtualStockSettings = true;
 
 	bUseHighQualityRemoteSimulation = false;
 }
@@ -126,7 +128,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 			if (VirtualStockComponent.IsValid())
 			{
 				FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VirtualStockComponent->GetComponentRotation());
-				MountWorldTransform = FTransform(PureYaw.Quaternion(), VirtualStockComponent->GetComponentLocation() + PureYaw.RotateVector(StockSnapOffset));
+				MountWorldTransform = FTransform(PureYaw.Quaternion(), VirtualStockComponent->GetComponentLocation() + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset));
 			}
 			else if (GrippingController->bHasAuthority && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
 			{
@@ -137,19 +139,19 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				{
 					// Translate hmd offset by the gripping controllers parent component, this should be in the same space
 					FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
-					MountWorldTransform = FTransform(PureYaw.Quaternion(), curLoc + PureYaw.RotateVector(StockSnapOffset)) * GrippingController->GetAttachParent()->GetComponentTransform();
+					MountWorldTransform = FTransform(PureYaw.Quaternion(), curLoc + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset)) * GrippingController->GetAttachParent()->GetComponentTransform();
 				}
 			}
 			else if(CameraComponent.IsValid())
 			{		
 				FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(CameraComponent->GetComponentRotation());
-				MountWorldTransform = FTransform(PureYaw.Quaternion(), CameraComponent->GetComponentLocation() + PureYaw.RotateVector(StockSnapOffset));
+				MountWorldTransform = FTransform(PureYaw.Quaternion(), CameraComponent->GetComponentLocation() + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset));
 			}
 
-			if (FVector::DistSquared(ParentTransform.GetTranslation(), MountWorldTransform.GetTranslation()) <= FMath::Square(StockSnapDistance))
+			if (FVector::DistSquared(ParentTransform.GetTranslation(), MountWorldTransform.GetTranslation()) <= FMath::Square(VirtualStockSettings.StockSnapDistance))
 			{
 				if(!bIsMounted)
-					StockHandSmoothing.ResetSmoothingFilter();
+					VirtualStockSettings.StockHandSmoothing.ResetSmoothingFilter();
 
 				// Mount up
 				bIsMounted = true;
@@ -160,7 +162,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				MountWorldTransform.SetLocation(WorldTransVec);
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-				if (bDebugDrawVirtualStock)
+				if (VirtualStockSettings.bDebugDrawVirtualStock)
 				{
 					DrawDebugLine(GetWorld(), ParentTransform.GetTranslation(), MountWorldTransform.GetTranslation(), FColor::Red);
 					DrawDebugLine(GetWorld(), Grip.SecondaryGripInfo.SecondaryAttachment->GetComponentLocation(), MountWorldTransform.GetTranslation(), FColor::Green);
@@ -173,9 +175,9 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				bIsMounted = false;
 			}
 
-			if (bIsMounted && bSmoothStockHand)
+			if (bIsMounted && VirtualStockSettings.bSmoothStockHand)
 			{
-				FVector smoothedTrans = FMath::Lerp(WorldTransform.GetTranslation(), StockHandSmoothing.RunFilterSmoothing(WorldTransform.GetTranslation(), DeltaTime), SmoothingValueForStock);
+				FVector smoothedTrans = FMath::Lerp(WorldTransform.GetTranslation(), VirtualStockSettings.StockHandSmoothing.RunFilterSmoothing(WorldTransform.GetTranslation(), DeltaTime), VirtualStockSettings.SmoothingValueForStock);
 				WorldTransform.SetTranslation(smoothedTrans);
 
 			}
@@ -335,6 +337,17 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 
 void UGS_GunTools::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation)
 {
+
+	if (bUseGlobalVirtualStockSettings)
+	{
+		if (GrippingController->IsLocallyControlled())
+		{
+			FBPVirtualStockSettings VirtualSettings;
+			UVRGlobalSettings::GetVirtualStockGlobalSettings(VirtualSettings);
+			VirtualStockSettings.CopyFrom(VirtualSettings);
+		}
+	}
+
 	// Super doesn't do anything on grip
 
 	// Reset smoothing filters
@@ -446,4 +459,3 @@ void UGS_GunTools::AddRecoilInstance(const FTransform & RecoilAddition)
 
 	bHasActiveRecoil = !BackEndRecoilTarget.Equals(FTransform::Identity);
 }
-

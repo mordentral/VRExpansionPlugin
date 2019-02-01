@@ -3,6 +3,7 @@
 #include "GameFramework/PlayerInput.h"
 #include "GameFramework/InputSettings.h"
 #include "VRBPDatatypes.h"
+#include "GS_GunTools.h"
 #include "VRGlobalSettings.generated.h"
 
 
@@ -107,6 +108,44 @@ class VREXPANSIONPLUGIN_API UVRGlobalSettings : public UObject
 public:
 	UVRGlobalSettings(const FObjectInitializer& ObjectInitializer);
 
+	UPROPERTY(config, EditAnywhere, Category = "GunSettings")
+		FBPVirtualStockSettings VirtualStockSettings;
+
+	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with a hand
+	UPROPERTY(config, EditAnywhere, Category = "GunSettings|Secondary Grip 1Euro Settings")
+		float OneEuroMinCutoff;
+
+	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with a hand
+	UPROPERTY(config, EditAnywhere, Category = "GunSettings|Secondary Grip 1Euro Settings")
+		float OneEuroCutoffSlope;
+
+	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with a hand
+	UPROPERTY(config, EditAnywhere, Category = "GunSettings|Secondary Grip 1Euro Settings")
+		float OneEuroDeltaCutoff;
+
+	// Get the values of the virtual stock settings
+	UFUNCTION(BlueprintCallable, Category = "GunSettings|VirtualStock")
+		static void GetVirtualStockGlobalSettings(FBPVirtualStockSettings & OutVirtualStockSettings)
+	{
+		const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
+		OutVirtualStockSettings.bUseDistanceBasedStockSnapping = VRSettings.VirtualStockSettings.bUseDistanceBasedStockSnapping;
+		OutVirtualStockSettings.StockSnapDistance = VRSettings.VirtualStockSettings.StockSnapDistance;
+		OutVirtualStockSettings.StockSnapOffset = VRSettings.VirtualStockSettings.StockSnapOffset;
+		OutVirtualStockSettings.bSmoothStockHand = VRSettings.VirtualStockSettings.bSmoothStockHand;
+		OutVirtualStockSettings.SmoothingValueForStock = VRSettings.VirtualStockSettings.SmoothingValueForStock;
+	}
+
+	// Alter the values of the virtual stock settings and save them out
+	UFUNCTION(BlueprintCallable, Category = "GunSettings|VirtualStock")
+		static void SaveVirtualStockGlobalSettings(FBPVirtualStockSettings NewVirtualStockSettings)
+	{
+		UVRGlobalSettings& VRSettings = *GetMutableDefault<UVRGlobalSettings>();
+		VRSettings.VirtualStockSettings = NewVirtualStockSettings;
+
+		VRSettings.SaveConfig();
+	}
+
 
 	DECLARE_MULTICAST_DELEGATE(FVRControllerProfileChangedEvent);
 	/** Delegate for notification when the controller profile changes. */
@@ -121,18 +160,6 @@ public:
 	FTransform CurrentControllerProfileTransform;
 	bool bUseSeperateHandTransforms;
 	FTransform CurrentControllerProfileTransformRight;
-
-	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with a hand
-	UPROPERTY(config, EditAnywhere, Category = "Secondary Grip 1Euro Settings")
-	float OneEuroMinCutoff;
-
-	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with a hand
-	UPROPERTY(config, EditAnywhere, Category = "Secondary Grip 1Euro Settings")
-	float OneEuroCutoffSlope;
-
-	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with a hand
-	UPROPERTY(config, EditAnywhere, Category = "Secondary Grip 1Euro Settings")
-	float OneEuroDeltaCutoff;
 
 	// Adjust the transform of a socket for a particular controller model, if a name is not sent in, it will use the currently loaded one
 	// If there is no currently loaded one, it will return the input transform as is.

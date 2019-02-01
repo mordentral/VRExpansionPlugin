@@ -9,6 +9,70 @@
 
 class UGripMotionControllerComponent;
 
+
+// Global settings for this player
+
+USTRUCT(BlueprintType, Category = "GunSettings")
+struct VREXPANSIONPLUGIN_API FBPVirtualStockSettings
+{
+	GENERATED_BODY()
+public:
+
+	// *Global Value* Should we auto snap to the virtual stock by a set distance
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
+		bool bUseDistanceBasedStockSnapping;
+
+	// *Global Value* The distance before snapping to the stock / unsnapping
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
+		float StockSnapDistance;
+
+	// *Global Value* An offset to apply to the HMD location to be considered the neck / mount pivot 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
+		FVector_NetQuantize100 StockSnapOffset;
+
+	// *Global Value* Overrides the pivot location to be at this component instead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock|Smoothing")
+		bool bSmoothStockHand;
+
+	// *Global Value* How much influence the virtual stock smoothing should have, 0.0f is zero smoothing, 1.0f is full smoothing, you should test with full smoothing to get the amount you
+	// want and then set the smoothing value up until it feels right between the fully smoothed and unsmoothed values.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock|Smoothing", meta = (editcondition = "bSmoothStockHand", ClampMin = "0.00", UIMin = "0.00", ClampMax = "1.00", UIMax = "1.00"))
+		float SmoothingValueForStock;
+
+	// Used to smooth filter the virtual stocks primary hand location
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Smoothing")
+		FBPEuroLowPassFilter StockHandSmoothing;
+
+	// Draw debug elements showing the virtual stock location and angles to interacting components
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Debug")
+	bool bDebugDrawVirtualStock;
+
+	void CopyFrom(FBPVirtualStockSettings & B)
+	{
+		bUseDistanceBasedStockSnapping = B.bUseDistanceBasedStockSnapping;
+		StockSnapDistance = B.StockSnapDistance;
+		StockSnapOffset = B.StockSnapOffset;
+		bSmoothStockHand = B.bSmoothStockHand;
+		SmoothingValueForStock = B.SmoothingValueForStock;
+		StockHandSmoothing = B.StockHandSmoothing;
+	}
+
+	FBPVirtualStockSettings()
+	{
+		StockSnapOffset = FVector(0.f, 0.f, 0.f);
+		StockSnapDistance = 35.f;
+		bUseDistanceBasedStockSnapping = true;
+		SmoothingValueForStock = 0.0f;
+		bSmoothStockHand = false;
+
+		// Speed up the lerp on fast movements for this
+		StockHandSmoothing.DeltaCutoff = 20.0f;
+		StockHandSmoothing.MinCutoff = 5.0f;
+
+		bDebugDrawVirtualStock = false;
+	}
+};
+
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FGunTools_AdvSecondarySettings
 {
@@ -108,7 +172,7 @@ public:
 
 	void ResetStockVariables()
 	{
-		StockHandSmoothing.ResetSmoothingFilter();
+		VirtualStockSettings.StockHandSmoothing.ResetSmoothingFilter();
 	}
 
 	void GetVirtualStockTarget(UGripMotionControllerComponent * GrippingController);
@@ -118,8 +182,8 @@ public:
 		bool bUseVirtualStock;
 
 	// Draw debug elements showing the virtual stock location and angles to interacting components
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Debug")
-		bool bDebugDrawVirtualStock;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Debug")
+	//	bool bDebugDrawVirtualStock;
 
 	FTransform MountWorldTransform;
 	bool bIsMounted;
@@ -129,6 +193,15 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 		TWeakObjectPtr<USceneComponent> VirtualStockComponent;
 
+	// Loads the global virtual stock settings on grip (only if locally controlled, you need to manually replicate and store the global settings
+	// In the character if networked).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
+		bool bUseGlobalVirtualStockSettings;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock", meta = (editcondition = "!bUseGlobalVirtualStockSettings"))
+		FBPVirtualStockSettings VirtualStockSettings;
+
+/*
 	// Should we auto snap to the virtual stock by a set distance
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
 		bool bUseDistanceBasedStockSnapping;
@@ -142,8 +215,8 @@ public:
 		FVector_NetQuantize100 StockSnapOffset;
 
 	// Attaches the grip location to the virtual stock location (locationally).
-	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
-		bool bAttachGripToStockLocation;*/
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
+	//	bool bAttachGripToStockLocation;
 
 	// Overrides the pivot location to be at this component instead
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Smoothing")
@@ -153,10 +226,11 @@ public:
 	// want and then set the smoothing value up until it feels right between the fully smoothed and unsmoothed values.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Smoothing", meta = (editcondition = "bSmoothStockHand", ClampMin = "0.00", UIMin = "0.00", ClampMax = "1.00", UIMax = "1.00"))
 		float SmoothingValueForStock;
-
+	
 	// Used to smooth filter the virtual stocks primary hand location
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Smoothing")
 	FBPEuroLowPassFilter StockHandSmoothing;
+	*/
 
 	// If this gun has recoil
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil")
