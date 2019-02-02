@@ -3212,7 +3212,6 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 			FBPActorGripInformation * Grip = &GrippedObjectsArray[i];
 
-			
 			if (!Grip) // Shouldn't be possible, but why not play it safe
 				continue;
 
