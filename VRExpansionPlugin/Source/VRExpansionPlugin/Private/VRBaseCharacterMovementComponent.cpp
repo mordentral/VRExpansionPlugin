@@ -1271,6 +1271,7 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 
 void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocation, const FQuat& OldRotation, const FVector& NewLocation, const FQuat& NewRotation)
 {
+
 	//SCOPE_CYCLE_COUNTER(STAT_CharacterMovementSmoothCorrection);
 	if (!HasValidData())
 	{
@@ -1290,29 +1291,6 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 	const bool bIsSimulatedProxy = (CharacterOwner->Role == ROLE_SimulatedProxy);
 	const bool bIsRemoteAutoProxy = (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy);
 	ensure(bIsSimulatedProxy || bIsRemoteAutoProxy);
-
-	// Skip smoothing in set situations
-	if (
-		NetworkSmoothingMode != ENetworkSmoothingMode::Disabled &&
-		NetworkSmoothingMode != ENetworkSmoothingMode::Replay &&
-		(!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/)
-		)
-	{
-		if (Basechar)
-		{
-			Basechar->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
-		}
-		FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
-		if (ClientData)
-		{
-			ClientData->MeshTranslationOffset = FVector::ZeroVector;
-			ClientData->MeshRotationOffset = FQuat::Identity;
-		}
-		//UpdatedComponent->SetWorldRotation(NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
-		UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
-		bNetworkSmoothingComplete = true;
-		return;
-	}
 
 	// Getting a correction means new data, so smoothing needs to run.
 	bNetworkSmoothingComplete = false;
@@ -1361,27 +1339,58 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		//UE_LOG(LogCharacterNetSmoothing, Verbose, TEXT("Proxy %s SmoothCorrection(%.2f)"), *GetNameSafe(CharacterOwner), FMath::Sqrt(DistSq));
 		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
 		{
-			ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
+			// #TODO: Get this working in the future?
+			// I am currently skipping smoothing on rotation operations
+			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
+			{
+				if (NewLocation != OldLocation)
+				{
+					UpdatedComponent->SetWorldLocation(NewLocation, false, nullptr, GetTeleportType());
+				}
+				Basechar->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				ClientData->MeshTranslationOffset = FVector::ZeroVector;
+				bNetworkSmoothingComplete = true;
+			}
+			else
+			{
+				ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
 
-			// Remember the current and target rotation, we're going to lerp between them
-			ClientData->OriginalMeshRotationOffset = OldRotation;
-			ClientData->MeshRotationOffset = OldRotation;
-			ClientData->MeshRotationTarget = NewRotation;
+				// Remember the current and target rotation, we're going to lerp between them
+				ClientData->OriginalMeshRotationOffset = OldRotation;
+				ClientData->MeshRotationOffset = OldRotation;
+				ClientData->MeshRotationTarget = NewRotation;
 
-			// Move the capsule, but not the mesh.
-			// Note: we don't change rotation, we lerp towards it in SmoothClientPosition.
-			const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
-			UpdatedComponent->SetWorldLocation(NewLocation, false, nullptr, GetTeleportType());
+				// Move the capsule, but not the mesh.
+				// Note: we don't change rotation, we lerp towards it in SmoothClientPosition.
+				if (NewLocation != OldLocation)
+				{
+					const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
+					UpdatedComponent->SetWorldLocation(NewLocation, false, nullptr, GetTeleportType());
+				}
+			}
 		}
 		else
 		{
-			// Calc rotation needed to keep current world rotation after UpdatedComponent moves.
-			// Take difference between where we were rotated before, and where we're going
-			ClientData->MeshRotationOffset = (NewRotation.Inverse() * OldRotation) * ClientData->MeshRotationOffset;
-			ClientData->MeshRotationTarget = FQuat::Identity;
+			// #TODO: Get this working in the future?
+			// I am currently skipping smoothing on rotation operations
+			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
+			{
+				Basechar->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
+				ClientData->MeshTranslationOffset = FVector::ZeroVector;
+				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
+				bNetworkSmoothingComplete = true;
+			}
+			else
+			{
+				// Calc rotation needed to keep current world rotation after UpdatedComponent moves.
+				// Take difference between where we were rotated before, and where we're going
+				ClientData->MeshRotationOffset = (NewRotation.Inverse() * OldRotation) * ClientData->MeshRotationOffset;
+				ClientData->MeshRotationTarget = FQuat::Identity;
 
-			const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
-			UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
+				const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
+				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
+			}
 		}
 
 		//////////////////////////////////////////////////////////////////////////
