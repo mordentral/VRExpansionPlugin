@@ -1421,8 +1421,34 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation &Gri
 	{
 		if (GetNetMode() == ENetMode::NM_Client)
 		{
-			if(!IsTornOff())
-				Server_NotifyLocalGripRemoved(LocallyGrippedObjects[FoundIndex].GripID, OptionalAngularVelocity, OptionalLinearVelocity);
+			if (!IsTornOff())
+			{
+				FVector Position = FVector::ZeroVector;
+				FRotator Rotation = FRotator::ZeroRotator;
+
+				switch (LocallyGrippedObjects[FoundIndex].GripTargetType)
+				{
+				case EGripTargetType::ActorGrip:
+				{
+					if (AActor * GrippedActor = LocallyGrippedObjects[FoundIndex].GetGrippedActor())
+					{
+						Position = GrippedActor->GetActorLocation();
+						Rotation = GrippedActor->GetActorRotation();
+					}
+				}; break;
+				case EGripTargetType::ComponentGrip:
+				{
+					if (UPrimitiveComponent * GrippedPrim = LocallyGrippedObjects[FoundIndex].GetGrippedComponent())
+					{
+						Position = GrippedPrim->GetComponentLocation();
+						Rotation = GrippedPrim->GetComponentRotation();
+					}
+				}break;
+				default:break;
+				}
+
+				Server_NotifyLocalGripRemoved(LocallyGrippedObjects[FoundIndex].GripID, Position, Rotation, OptionalAngularVelocity, OptionalLinearVelocity);
+			}
 
 			// Have to call this ourselves
 			Drop_Implementation(LocallyGrippedObjects[FoundIndex], bSimulate);
@@ -4626,12 +4652,12 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 }
 
 
-bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(uint8 GripID, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity)
+bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(uint8 GripID, FVector_NetQuantize100 PositionAtDrop, FRotator RotationAtDrop, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity)
 {
 	return true;
 }
 
-void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(uint8 GripID, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity)
+void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(uint8 GripID, FVector_NetQuantize100 PositionAtDrop, FRotator RotationAtDrop, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity)
 {
 	FBPActorGripInformation FoundGrip;
 	EBPVRResultSwitch Result;
@@ -4639,6 +4665,15 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 
 	if (Result == EBPVRResultSwitch::OnFailed)
 		return;
+
+	switch (FoundGrip.GripTargetType)
+	{
+	case EGripTargetType::ActorGrip:
+		FoundGrip.GetGrippedActor()->SetActorLocationAndRotation(PositionAtDrop, RotationAtDrop, false, nullptr, ETeleportType::TeleportPhysics); break;
+	case EGripTargetType::ComponentGrip:
+		FoundGrip.GetGrippedComponent()->SetWorldLocationAndRotation(PositionAtDrop, RotationAtDrop, false, nullptr, ETeleportType::TeleportPhysics); break;
+	default:break;
+	}
 
 	if (!DropObjectByInterface(nullptr, FoundGrip.GripID, AngularVelocity, LinearVelocity))
 	{
