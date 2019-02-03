@@ -471,6 +471,57 @@ struct TStructOpsTypeTraits< FBPVRComponentPosRep > : public TStructOpsTypeTrait
 	};
 };
 
+/*
+USTRUCT()
+struct VREXPANSIONPLUGIN_API FBPVRActorPosRep_Timed : public FBPVRComponentPosRep
+{
+	GENERATED_USTRUCT_BODY()
+public:
+
+	FTimerHandle TimerHandle;
+	bool bSmoothReplicatedMotion;
+	bool bReppedOnce;
+
+	void HandleReceivedData(AActor* OwningActor)
+	{
+		if (!OwningActor)
+			return;
+
+		if (bSmoothReplicatedMotion)
+		{
+			if (bReppedOnce)
+			{
+				bLerpingPosition = true;
+				ControllerNetUpdateCount = 0.0f;
+				LastUpdatesRelativePosition = this->RelativeLocation;
+				LastUpdatesRelativeRotation = this->RelativeRotation;
+			}
+			else
+			{
+				OwningActor->SetWorldLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+				bReppedOnce = true;
+			}
+		}
+		else
+			OwningActor->SetWorldLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+	}
+
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		return Super::NetSerialize(Ar, Map, bOutSuccess);
+	}
+};
+
+template<>
+struct TStructOpsTypeTraits< FBPVRActorPosRep_Timed > : public TStructOpsTypeTraitsBase2<FBPVRActorPosRep_Timed>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+*/
+
 UENUM(Blueprintable)
 enum class EGripCollisionType : uint8
 {
@@ -1119,6 +1170,7 @@ public:
 		FBPAdvGripPhysicsSettings CachedPhysicsSettings;
 		FName CachedBoneName;
 		uint8 CachedGripID;
+		USceneComponent * OldSecondaryAttachment;
 
 		FGripValueCache() :
 			bWasInitiallyRepped(false),
@@ -1129,7 +1181,8 @@ public:
 			CachedStiffness(1500.0f),
 			CachedDamping(200.0f),
 			CachedBoneName(NAME_None),
-			CachedGripID(INVALID_VRGRIP_ID)
+			CachedGripID(INVALID_VRGRIP_ID),
+			OldSecondaryAttachment(nullptr)
 		{}
 
 	}ValueCache;
