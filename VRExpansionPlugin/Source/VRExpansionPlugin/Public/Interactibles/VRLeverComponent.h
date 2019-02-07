@@ -783,7 +783,10 @@ class VREXPANSIONPLUGIN_API UVRLeverComponent : public UStaticMeshComponent, pub
 			float Angle;
 			DeltaQuat.ToAxisAndAngle(Axis, Angle);
 
-			return FRotator::NormalizeAxis(FMath::RadiansToDegrees(Angle)) * (-FMath::Sign(GetAxisValue(Axis)));
+			if(LeverRotationAxis == EVRInteractibleLeverAxis::Axis_Z)
+				return FRotator::NormalizeAxis(FMath::RadiansToDegrees(Angle)) * (FMath::Sign(GetAxisValue(Axis)));
+			else
+				return FRotator::NormalizeAxis(FMath::RadiansToDegrees(Angle)) * (-FMath::Sign(GetAxisValue(Axis)));
 		}
 
 		inline float GetAxisValue(FRotator CheckRotation)
