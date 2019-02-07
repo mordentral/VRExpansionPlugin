@@ -83,7 +83,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
 	EVRInteractibleAxis DialRotationAxis;
 
+	// If true then the dial will directly sample the hands rotation instead of using its movement around it.
+	// This is good for roll specific dials but is fairly bad elsewhere.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
+		bool bDialUseDirectHandRotation;
+
+	float LastGripRot;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent", meta = (editcondition = "bDialUseDirectHandRotation"))
 	EVRInteractibleAxis InteractorRotationAxis;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
@@ -142,7 +149,7 @@ public:
 
 		if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 		{
-			this->SetRelativeRotation((FTransform(SetAxisValue(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator, DialRotationAxis)) * InitialRelativeTransform).Rotator());
+			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 			CurrentDialAngle = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
 
 			if (bCallEvents && !FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
@@ -155,7 +162,7 @@ public:
 		}
 		else
 		{
-			this->SetRelativeRotation((FTransform(SetAxisValue(CurRotBackEnd, FRotator::ZeroRotator, DialRotationAxis)) * InitialRelativeTransform).Rotator());
+			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, CurRotBackEnd, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 			CurrentDialAngle = FMath::RoundToFloat(CurRotBackEnd);
 		}
 
@@ -369,52 +376,4 @@ public:
 
 	protected:
 
-		inline float GetAxisValue(FRotator CheckRotation, EVRInteractibleAxis RotationAxis)
-		{
-			switch (RotationAxis)
-			{
-			case EVRInteractibleAxis::Axis_X:
-				return CheckRotation.Roll; break;
-			case EVRInteractibleAxis::Axis_Y:
-				return CheckRotation.Pitch; break;
-			case EVRInteractibleAxis::Axis_Z:
-				return CheckRotation.Yaw; break;
-			default:return 0.0f; break;
-			}
-		}
-
-		inline FRotator SetAxisValue(float SetValue, EVRInteractibleAxis RotationAxis)
-		{
-			FRotator vec = FRotator::ZeroRotator;
-
-			switch (RotationAxis)
-			{
-			case EVRInteractibleAxis::Axis_X:
-				vec.Roll = SetValue; break;
-			case EVRInteractibleAxis::Axis_Y:
-				vec.Pitch = SetValue; break;
-			case EVRInteractibleAxis::Axis_Z:
-				vec.Yaw = SetValue; break;
-			default:break;
-			}
-
-			return vec;
-		}
-
-		inline FRotator SetAxisValue(float SetValue, FRotator Var, EVRInteractibleAxis RotationAxis)
-		{
-			FRotator vec = Var;
-			switch (RotationAxis)
-			{
-			case EVRInteractibleAxis::Axis_X:
-				vec.Roll = SetValue; break;
-			case EVRInteractibleAxis::Axis_Y:
-				vec.Pitch = SetValue; break;
-			case EVRInteractibleAxis::Axis_Z:
-				vec.Yaw = SetValue; break;
-			default:break;
-			}
-
-			return vec;
-		}
 };

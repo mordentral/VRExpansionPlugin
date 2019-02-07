@@ -52,6 +52,127 @@ class VREXPANSIONPLUGIN_API UVRInteractibleFunctionLibrary : public UBlueprintFu
 	GENERATED_BODY()
 public:
 
+	static float GetAtan2Angle(EVRInteractibleAxis AxisToCalc, FVector CurInteractorLocation, float OptionalInitialRotation = 0.0f)
+	{
+		switch (AxisToCalc)
+		{
+		case EVRInteractibleAxis::Axis_X:
+		{
+			return FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Y, CurInteractorLocation.Z)) - OptionalInitialRotation;
+		}break;
+		case EVRInteractibleAxis::Axis_Y:
+		{
+			return FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Z, CurInteractorLocation.X)) - OptionalInitialRotation;
+		}break;
+		case EVRInteractibleAxis::Axis_Z:
+		{
+			return FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Y, CurInteractorLocation.X)) - OptionalInitialRotation;
+		}break;
+		default:
+		{}break;
+		}
+
+		return 0.0f;
+	}
+
+	static float GetDeltaAngleFromTransforms(EVRInteractibleAxis RotAxis, FTransform & InitialRelativeTransform, FTransform &CurrentRelativeTransform)
+	{
+		return GetDeltaAngle(RotAxis, (InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized());
+	}
+
+	static float GetDeltaAngle(EVRInteractibleAxis RotAxis, FQuat DeltaQuat)
+	{
+		FVector Axis;
+		float Angle;
+		DeltaQuat.ToAxisAndAngle(Axis, Angle);
+
+		if (RotAxis == EVRInteractibleAxis::Axis_Z)
+			return FRotator::NormalizeAxis(FMath::RadiansToDegrees(Angle)) * (FMath::Sign(GetAxisValue(RotAxis, Axis)));
+		else
+			return FRotator::NormalizeAxis(FMath::RadiansToDegrees(Angle)) * (-FMath::Sign(GetAxisValue(RotAxis, Axis)));
+	}
+
+	static float GetAxisValue(EVRInteractibleAxis RotAxis, FRotator CheckRotation)
+	{
+		switch (RotAxis)
+		{
+		case EVRInteractibleAxis::Axis_X:
+			return CheckRotation.Roll; break;
+		case EVRInteractibleAxis::Axis_Y:
+			return CheckRotation.Pitch; break;
+		case EVRInteractibleAxis::Axis_Z:
+			return CheckRotation.Yaw; break;
+		default:return 0.0f; break;
+		}
+	}
+
+	static float GetAxisValue(EVRInteractibleAxis RotAxis, FVector CheckAxis)
+	{
+		switch (RotAxis)
+		{
+		case EVRInteractibleAxis::Axis_X:
+			return CheckAxis.X; break;
+		case EVRInteractibleAxis::Axis_Y:
+			return CheckAxis.Y; break;
+		case EVRInteractibleAxis::Axis_Z:
+			return CheckAxis.Z; break;
+		default:return 0.0f; break;
+		}
+	}
+
+	static FVector SetAxisValueVec(EVRInteractibleAxis RotAxis, float SetValue)
+	{
+		FVector vec = FVector::ZeroVector;
+
+		switch (RotAxis)
+		{
+		case EVRInteractibleAxis::Axis_X:
+			vec.X = SetValue; break;
+		case EVRInteractibleAxis::Axis_Y:
+			vec.Y = SetValue; break;
+		case EVRInteractibleAxis::Axis_Z:
+			vec.Z = SetValue; break;
+		default:break;
+		}
+
+		return vec;
+	}
+
+	static FRotator SetAxisValueRot(EVRInteractibleAxis RotAxis, float SetValue)
+	{
+		FRotator vec = FRotator::ZeroRotator;
+
+		switch (RotAxis)
+		{
+		case EVRInteractibleAxis::Axis_X:
+			vec.Roll = SetValue; break;
+		case EVRInteractibleAxis::Axis_Y:
+			vec.Pitch = SetValue; break;
+		case EVRInteractibleAxis::Axis_Z:
+			vec.Yaw = SetValue; break;
+		default:break;
+		}
+
+		return vec;
+	}
+
+	static FRotator SetAxisValueRot(EVRInteractibleAxis RotAxis, float SetValue, FRotator Var)
+	{
+		FRotator vec = Var;
+		switch (RotAxis)
+		{
+		case EVRInteractibleAxis::Axis_X:
+			vec.Roll = SetValue; break;
+		case EVRInteractibleAxis::Axis_Y:
+			vec.Pitch = SetValue; break;
+		case EVRInteractibleAxis::Axis_Z:
+			vec.Yaw = SetValue; break;
+		default:break;
+		}
+
+		return vec;
+	}
+
 	// Get current parent transform
 	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
 	static FTransform Interactible_GetCurrentParentTransform(USceneComponent * SceneComponentToCheck)

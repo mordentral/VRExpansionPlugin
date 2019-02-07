@@ -112,7 +112,7 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 
 	if (bIsLerping)
 	{
-		FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(GetCurrentParentTransform());
+		FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
 
 		switch (LeverRotationAxis)
 		{
@@ -143,7 +143,7 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 		}
 	}
 
-	FTransform CurrentRelativeTransform = this->GetComponentTransform().GetRelativeTransform(GetCurrentParentTransform());
+	FTransform CurrentRelativeTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
 
 	CalculateCurrentAngle(CurrentRelativeTransform);
 
@@ -200,7 +200,7 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 {
 	// Handle manual tracking here
 
-	FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetPivotLocation());
 
 	switch (LeverRotationAxis)
@@ -271,8 +271,7 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	case EVRInteractibleLeverAxis::Axis_Z:
 	{
 		float DeltaAngle = CalcAngle(LeverRotationAxis, CurInteractorLocation);
-
-		this->SetRelativeRotation((FTransform(SetAxisValue(DeltaAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, DeltaAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 		LastDeltaAngle = DeltaAngle;
 	}break;
 	default:break;
@@ -296,11 +295,12 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 	}
 	else
 	{
-		FTransform CurrentRelativeTransform = InitialRelativeTransform * GetCurrentParentTransform();
+		FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 			
 		// This lets me use the correct original location over the network without changes
 		FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
-		FTransform RelativeToGripTransform = ReversedRelativeTransform * this->GetComponentTransform();
+		FTransform CurrentTransform = this->GetComponentTransform();
+		FTransform RelativeToGripTransform = ReversedRelativeTransform * CurrentTransform;
 
 		InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 		InitialInteractorDropLocation = ReversedRelativeTransform.GetTranslation();
@@ -314,21 +314,18 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 			qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
 		}break;
 		case EVRInteractibleLeverAxis::Axis_X:
-		{
-			InitialGripRot = FMath::RadiansToDegrees(FMath::Atan2(InitialInteractorLocation.Y, InitialInteractorLocation.Z));
-		}break;
 		case EVRInteractibleLeverAxis::Axis_Y:
-		{
-			InitialGripRot = FMath::RadiansToDegrees(FMath::Atan2(InitialInteractorLocation.Z, InitialInteractorLocation.X));
-		}break;
 		case EVRInteractibleLeverAxis::Axis_Z:
 		{
-			InitialGripRot = FMath::RadiansToDegrees(FMath::Atan2(InitialInteractorLocation.Y, InitialInteractorLocation.X));
+			// Get our initial interactor rotation
+			InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)LeverRotationAxis, InitialInteractorLocation);
 		}break;
+
 		default:break;
 		}
-
-		RotAtGrab = GetDeltaAngle((CurrentRelativeTransform.GetRotation().Inverse() * this->GetComponentTransform().GetRotation()).GetNormalized());
+		
+		// Get out current rotation at grab
+		RotAtGrab = UVRInteractibleFunctionLibrary::GetDeltaAngleFromTransforms((EVRInteractibleAxis)LeverRotationAxis, CurrentRelativeTransform, CurrentTransform);
 	}
 
 	LastLeverAngle = CurrentLeverAngle;

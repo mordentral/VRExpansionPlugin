@@ -36,6 +36,9 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	bSendDialEventsDuringLerp = false;
 	DialReturnSpeed = 90.0f;
 	bIsLerping = false;
+
+	bDialUseDirectHandRotation = false;
+	LastGripRot = 0.0f;
 }
 
 //=============================================================================
@@ -100,25 +103,33 @@ void UVRDialComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) 
 {
 
+	// #TODO: Should this use a pivot rotation? it wouldn't make that much sense to me?
+	float DeltaRot = 0.0f;
+
+	if (!bDialUseDirectHandRotation)
+	{
+		FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+		FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetPivotLocation());
+		
+		float NewRot = FRotator::ClampAxis(UVRInteractibleFunctionLibrary::GetAtan2Angle(DialRotationAxis, CurInteractorLocation));
+		DeltaRot = RotationScaler * (NewRot - LastGripRot);
+		LastGripRot = NewRot;
+	}
+	else
+	{
+		FRotator curRotation = GrippingController->GetComponentRotation();
+		DeltaRot = RotationScaler * UVRInteractibleFunctionLibrary::GetAxisValue(InteractorRotationAxis, (curRotation - LastRotation).GetNormalized());
+		LastRotation = curRotation;
+	}
+
+	AddDialAngle(DeltaRot, true);
+
 	// Handle the auto drop
 	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this);
 		return;
 	}
-
-	/*FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
-	FRotator curRotation = GrippingController->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).Rotator();
-	*/
-
-	// #TODO: Should this use a pivot rotation? it wouldn't make that much sense to me?
-	FRotator curRotation = GrippingController->GetComponentRotation();
-
-	float DeltaRot = RotationScaler * GetAxisValue((curRotation - LastRotation).GetNormalized(), InteractorRotationAxis);
-	AddDialAngle(DeltaRot, true);
-
-
-	LastRotation = curRotation;
 }
 
 void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
@@ -127,16 +138,22 @@ void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * Gr
 
 	// This lets me use the correct original location over the network without changes
 	FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
-	FTransform RelativeToGripTransform = ReversedRelativeTransform * this->GetComponentTransform();
+	FTransform CurrentTransform = this->GetComponentTransform();
+	FTransform RelativeToGripTransform = ReversedRelativeTransform * CurrentTransform;
 
 	//FTransform InitialTrans = RelativeToGripTransform.GetRelativeTransform(CurrentRelativeTransform);
 
 	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 	InitialDropLocation = ReversedRelativeTransform.GetTranslation();
 
-	// Need to rotate this by original hand to dial facing eventually
-	//LastRotation = RelativeToGripTransform.GetRelativeTransform(CurrentRelativeTransform).Rotator();
-	LastRotation = RelativeToGripTransform.GetRotation().Rotator(); // Forcing into world space now so that initial can be correct over the network
+	if (!bDialUseDirectHandRotation)
+	{
+		LastGripRot = FRotator::ClampAxis(UVRInteractibleFunctionLibrary::GetAtan2Angle(DialRotationAxis, InitialInteractorLocation));
+	}
+	else
+	{
+		LastRotation = RelativeToGripTransform.GetRotation().Rotator(); // Forcing into world space now so that initial can be correct over the network
+	}
 
 	bIsLerping = false;
 }
@@ -145,7 +162,7 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 {
 	if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 	{
-		this->SetRelativeRotation((FTransform(SetAxisValue(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator, DialRotationAxis)) * InitialRelativeTransform).Rotator());		
+		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());		
 		CurRotBackEnd = FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement);
 		CurrentDialAngle = FRotator::ClampAxis(FMath::RoundToFloat(CurRotBackEnd));
 	}

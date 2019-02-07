@@ -182,23 +182,7 @@ public:
 	{
 		float ReturnAxis = 0.0f;
 
-		switch (AxisToCalc)
-		{
-		case EVRInteractibleLeverAxis::Axis_X:
-		{
-			ReturnAxis = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Y, CurInteractorLocation.Z)) - InitialGripRot;
-		}break;
-		case EVRInteractibleLeverAxis::Axis_Y:
-		{
-			ReturnAxis = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Z, CurInteractorLocation.X)) - InitialGripRot;
-		}break;
-		case EVRInteractibleLeverAxis::Axis_Z:
-		{
-			ReturnAxis = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Y, CurInteractorLocation.X)) - InitialGripRot;
-		}break;
-		default:
-		{}break;
-		}
+		ReturnAxis = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)AxisToCalc, CurInteractorLocation, InitialGripRot);
 
 		if (LeverLimitPositive > 0.0f && LeverLimitNegative > 0.0f && FMath::IsNearlyEqual(LeverLimitNegative, 180.f, 0.01f) && FMath::IsNearlyEqual(LeverLimitPositive, 180.f, 0.01f))
 		{
@@ -218,28 +202,6 @@ public:
 		bIsInFirstTick = false;
 		return ReturnAxis;
 	}
-
-	/*float CalcAngleNumber(EVRInteractibleLeverAxis AxisToCalc, FTransform & CurrentRelativeTransform)
-	{
-		FQuat RotTransform = FQuat::Identity;
-
-		if (AxisToCalc == EVRInteractibleLeverAxis::Axis_X)
-			RotTransform = FRotator(FRotator(0.0, -90.0, 0.0)).Quaternion(); // Correct for roll and DotProduct
-
-		FQuat newInitRot = (InitialRelativeTransform.GetRotation() * RotTransform);
-
-		FVector v1 = (CurrentRelativeTransform.GetRotation() * RotTransform).Vector();
-		FVector v2 = (newInitRot).Vector();
-		v1.Normalize();
-		v2.Normalize();
-
-		FVector CrossP = FVector::CrossProduct(v1, v2);
-
-		float angle = FMath::RadiansToDegrees(FMath::Atan2(CrossP.Size(), FVector::DotProduct(v1, v2)));
-		angle *= FMath::Sign(FVector::DotProduct(CrossP, newInitRot.GetRightVector()));
-
-		return angle;
-	}*/
 
 	void LerpAxis(float CurrentAngle, float DeltaTime)
 	{
@@ -298,19 +260,19 @@ public:
 			if (LeverRestitution > 0.0f)
 			{
 				MomentumAtDrop = -(MomentumAtDrop * LeverRestitution);
-				this->SetRelativeRotation((FTransform(SetAxisValue(TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+				this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 			}
 			else
 			{
 				this->SetComponentTickEnabled(false);
 				bIsLerping = false;
 				bReplicateMovement = true;
-				this->SetRelativeRotation((FTransform(SetAxisValue(TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+				this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 			}
 		}
 		else
 		{
-			this->SetRelativeRotation((FTransform(SetAxisValue(LerpedVal, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, LerpedVal, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 		}
 	}
 
@@ -338,44 +300,13 @@ public:
 			CurrentLeverForwardVector = -qAxis;
 
 		}break;
-
-		case EVRInteractibleLeverAxis::Axis_X:
-		{
-			Angle = GetDeltaAngle((InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized());
-			FullCurrentAngle = Angle;
-			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
-			CurrentLeverForwardVector = FVector(FMath::Sign(Angle), 0.0f, 0.0f);
-		}break;
-		case EVRInteractibleLeverAxis::Axis_Y:
-		{
-			Angle = GetDeltaAngle((InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized());
-			FullCurrentAngle = Angle;
-			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
-			CurrentLeverForwardVector = FVector(0.0f, FMath::Sign(Angle), 0.0f);
-		}break;
-		case EVRInteractibleLeverAxis::Axis_Z:
-		{
-			Angle = GetDeltaAngle((InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized());
-			FullCurrentAngle = Angle;
-			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
-			CurrentLeverForwardVector = FVector(0.0f, 0.0f, FMath::Sign(Angle));
-		}break;
-
 		default:
-		{}break;
-		}
-	}
-
-	FTransform GetCurrentParentTransform()
-	{
-		if (ParentComponent.IsValid())
 		{
-			// during grip there is no parent so we do this, might as well do it anyway for lerping as well
-			return ParentComponent->GetComponentTransform();
-		}
-		else
-		{
-			return FTransform::Identity;
+			Angle = UVRInteractibleFunctionLibrary::GetDeltaAngleFromTransforms((EVRInteractibleAxis)LeverRotationAxis, InitialRelativeTransform, CurrentRelativeTransform);
+			FullCurrentAngle = Angle;
+			CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
+			CurrentLeverForwardVector = UVRInteractibleFunctionLibrary::SetAxisValueVec((EVRInteractibleAxis)LeverRotationAxis, FMath::Sign(Angle));
+		}break;
 		}
 	}
 
@@ -475,7 +406,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
 	float ReCalculateCurrentAngle()
 	{
-		FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(GetCurrentParentTransform());
+		FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
 		CalculateCurrentAngle(CurRelativeTransform);
 		return CurrentLeverAngle;
 	}
@@ -540,7 +471,7 @@ public:
 		}
 
 		float rotationalOffset = (LeverLimitPositive - LeverLimitNegative) / 2;
-		FRotator AngularRotationOffset = SetAxisValue(rotationalOffset, FRotator::ZeroRotator);
+		FRotator AngularRotationOffset = UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, rotationalOffset, FRotator::ZeroRotator);
 		FTransform RefFrame2 = FTransform(InitialRelativeTransform.GetRotation() * AngularRotationOffset.Quaternion(), A2Transform.InverseTransformPosition(GetComponentLocation()));
 		
 		// If we don't already have a handle - make one now.
@@ -791,80 +722,5 @@ public:
 		void OnInput(FKey Key, EInputEvent KeyEvent);
 
 	protected:
-
-		inline float GetDeltaAngle(FQuat DeltaQuat)
-		{
-			FVector Axis;
-			float Angle;
-			DeltaQuat.ToAxisAndAngle(Axis, Angle);
-
-			if(LeverRotationAxis == EVRInteractibleLeverAxis::Axis_Z)
-				return FRotator::NormalizeAxis(FMath::RadiansToDegrees(Angle)) * (FMath::Sign(GetAxisValue(Axis)));
-			else
-				return FRotator::NormalizeAxis(FMath::RadiansToDegrees(Angle)) * (-FMath::Sign(GetAxisValue(Axis)));
-		}
-
-		inline float GetAxisValue(FRotator CheckRotation)
-		{
-			switch (LeverRotationAxis)
-			{
-			case EVRInteractibleLeverAxis::Axis_X:
-				return CheckRotation.Roll; break;
-			case EVRInteractibleLeverAxis::Axis_Y:
-				return CheckRotation.Pitch; break;
-			case EVRInteractibleLeverAxis::Axis_Z:
-				return CheckRotation.Yaw; break;
-			default:return 0.0f; break;
-			}
-		}
-
-		inline float GetAxisValue(FVector CheckAxis)
-		{
-			switch (LeverRotationAxis)
-			{
-			case EVRInteractibleLeverAxis::Axis_X:
-				return CheckAxis.X; break;
-			case EVRInteractibleLeverAxis::Axis_Y:
-				return CheckAxis.Y; break;
-			case EVRInteractibleLeverAxis::Axis_Z:
-				return CheckAxis.Z; break;
-			default:return 0.0f; break;
-			}
-		}
-
-		inline FRotator SetAxisValue(float SetValue)
-		{
-			FRotator vec = FRotator::ZeroRotator;
-
-			switch (LeverRotationAxis)
-			{
-			case EVRInteractibleLeverAxis::Axis_X:
-				vec.Roll = SetValue; break;
-			case EVRInteractibleLeverAxis::Axis_Y:
-				vec.Pitch = SetValue; break;
-			case EVRInteractibleLeverAxis::Axis_Z:
-				vec.Yaw = SetValue; break;
-			default:break;
-			}
-
-			return vec;
-		}
-
-		inline FRotator SetAxisValue(float SetValue, FRotator Var)
-		{
-			FRotator vec = Var;
-			switch (LeverRotationAxis)
-			{
-			case EVRInteractibleLeverAxis::Axis_X:
-				vec.Roll = SetValue; break;
-			case EVRInteractibleLeverAxis::Axis_Y:
-				vec.Pitch = SetValue; break;
-			case EVRInteractibleLeverAxis::Axis_Z:
-				vec.Yaw = SetValue; break;
-			default:break;
-			}
-
-			return vec;
-		}
 
 };
