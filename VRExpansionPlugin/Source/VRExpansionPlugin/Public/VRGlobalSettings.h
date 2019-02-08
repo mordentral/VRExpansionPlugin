@@ -3,7 +3,7 @@
 #include "GameFramework/PlayerInput.h"
 #include "GameFramework/InputSettings.h"
 #include "VRBPDatatypes.h"
-#include "GS_GunTools.h"
+#include "GripScripts/GS_GunTools.h"
 #include "VRGlobalSettings.generated.h"
 
 
