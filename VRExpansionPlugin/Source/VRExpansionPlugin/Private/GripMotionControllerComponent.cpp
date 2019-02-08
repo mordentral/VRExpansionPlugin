@@ -998,7 +998,7 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 
 	// Has to be movable to work
-	if (root->Mobility != EComponentMobility::Movable && GripCollisionType != EGripCollisionType::CustomGrip)
+	if (root->Mobility != EComponentMobility::Movable && (GripCollisionType != EGripCollisionType::CustomGrip && GripCollisionType != EGripCollisionType::EventsOnly))
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip an actor set to static mobility not with a Custom Grip"));
 		return false; // It is not movable, can't grip it
@@ -1180,7 +1180,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 
 	// Has to be movable to work
-	if (ComponentToGrip->Mobility != EComponentMobility::Movable && GripCollisionType != EGripCollisionType::CustomGrip)
+	if (ComponentToGrip->Mobility != EComponentMobility::Movable && (GripCollisionType != EGripCollisionType::CustomGrip && GripCollisionType != EGripCollisionType::EventsOnly))
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility not in CustomGrip mode"));
 		return false; // It is not movable, can't grip it
@@ -1915,11 +1915,13 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 			if (root)
 			{
-				// Have to turn off gravity locally
-				if ((NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
-					(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
-					root->SetEnableGravity(false);
-
+				if (NewGrip.GripCollisionType != EGripCollisionType::EventsOnly)
+				{
+					// Have to turn off gravity locally
+					if ((NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
+						(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
+						root->SetEnableGravity(false);
+				}
 				//root->IgnoreActorWhenMoving(this->GetOwner(), true);
 			}
 
@@ -1977,9 +1979,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 				IVRGripInterface::Execute_OnChildGrip(root->GetAttachParent(), this, NewGrip);
 			}
 
-			if ((NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
-				(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
-				root->SetEnableGravity(false);
+			if (NewGrip.GripCollisionType != EGripCollisionType::EventsOnly)
+			{
+				if ((NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
+					(NewGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
+					root->SetEnableGravity(false);
+			}
 
 			//root->IgnoreActorWhenMoving(this->GetOwner(), true);
 		}
@@ -1994,15 +1999,17 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	case EGripMovementReplicationSettings::ClientSide_Authoritive:
 	case EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep:
 	{
-		if (IsServer() && pActor && ((NewGrip.GripTargetType == EGripTargetType::ActorGrip) || (root && root == pActor->GetRootComponent())))
+		if (NewGrip.GripCollisionType != EGripCollisionType::EventsOnly)
 		{
-			pActor->SetReplicateMovement(false);
-		}
-		if (root)
-		{
+			if (IsServer() && pActor && ((NewGrip.GripTargetType == EGripTargetType::ActorGrip) || (root && root == pActor->GetRootComponent())))
+			{
+				pActor->SetReplicateMovement(false);
+			}
+			if (root)
+			{
 
-			// #TODO: This is a hack until Epic fixes their new physics replication code
-			//		  It forces the replication target to null on grip if we aren't repping movement.
+				// #TODO: This is a hack until Epic fixes their new physics replication code
+				//		  It forces the replication target to null on grip if we aren't repping movement.
 #if WITH_PHYSX
 				if (UWorld* World = GetWorld())
 				{
@@ -2020,15 +2027,19 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 					}
 				}
 #endif
+			}
 		}
 
 	}break; 
 
 	case EGripMovementReplicationSettings::ForceServerSideMovement:
 	{
-		if (IsServer() && pActor && ((NewGrip.GripTargetType == EGripTargetType::ActorGrip) || (root && root == pActor->GetRootComponent())))
+		if (NewGrip.GripCollisionType != EGripCollisionType::EventsOnly)
 		{
-			pActor->SetReplicateMovement(true);
+			if (IsServer() && pActor && ((NewGrip.GripTargetType == EGripTargetType::ActorGrip) || (root && root == pActor->GetRootComponent())))
+			{
+				pActor->SetReplicateMovement(true);
+			}
 		}
 	}break;
 
@@ -2053,10 +2064,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	} break;
 
 	// Skip collision intersects with these types, they dont need it
+	case EGripCollisionType::EventsOnly:
 	case EGripCollisionType::CustomGrip:
 	{		
-		if (root)
-			root->SetSimulatePhysics(false);
+		// Should have never been turning off physics here, simulating is a valid custom grip state
+		//if (root)
+			//root->SetSimulatePhysics(false);
 
 	} break;
 
@@ -2190,14 +2203,20 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 					//root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
-					if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || !pActor->GetIsReplicated())
+					if (NewDrop.GripCollisionType != EGripCollisionType::EventsOnly)
 					{
-						root->SetSimulatePhysics(bSimulate);
-						if (bSimulate)
-							root->WakeAllRigidBodies();
-					}
+						if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || !pActor->GetIsReplicated())
+						{
+							if (root->IsSimulatingPhysics() != bSimulate)
+							{
+								root->SetSimulatePhysics(bSimulate);
+								if (bSimulate)
+									root->WakeAllRigidBodies();
+							}
+						}
 
-					root->UpdateComponentToWorld(); // This fixes the late update offset
+						root->UpdateComponentToWorld(); // This fixes the late update offset
+					}
 
 					/*if (NewDrop.GrippedBoneName == NAME_None)
 					{
@@ -2223,9 +2242,12 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 						}
 					}*/
 
-					if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
-						(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
-						root->SetEnableGravity(NewDrop.bOriginalGravity);
+					if (NewDrop.GripCollisionType != EGripCollisionType::EventsOnly)
+					{
+						if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
+							(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
+							root->SetEnableGravity(NewDrop.bOriginalGravity);
+					}
 				}
 			}
 
@@ -2284,16 +2306,21 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 				//root->IgnoreActorWhenMoving(this->GetOwner(), false);
 
-				// Need to set simulation in all of these cases, including if it isn't the root component (simulation isn't replicated on non roots)
-				if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || (pActor && (pActor->GetRootComponent() != root || !pActor->GetIsReplicated())))
+				if (NewDrop.GripCollisionType != EGripCollisionType::EventsOnly)
 				{
-					root->SetSimulatePhysics(bSimulate);
-					if (bSimulate)
-						root->WakeAllRigidBodies();
+					// Need to set simulation in all of these cases, including if it isn't the root component (simulation isn't replicated on non roots)
+					if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || (pActor && (pActor->GetRootComponent() != root || !pActor->GetIsReplicated())))
+					{
+						if (root->IsSimulatingPhysics() != bSimulate)
+						{
+							root->SetSimulatePhysics(bSimulate);
+							if (bSimulate)
+								root->WakeAllRigidBodies();
+						}
+					}
+
+					root->UpdateComponentToWorld(); // This fixes the late update offset
 				}
-
-				root->UpdateComponentToWorld(); // This fixes the late update offset
-
 				/*if (NewDrop.GrippedBoneName == NAME_None)
 				{
 					root->SetSimulatePhysics(bSimulate);
@@ -2318,9 +2345,12 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 					}
 				}*/
 
-				if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
-					(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
-					root->SetEnableGravity(NewDrop.bOriginalGravity);
+				if (NewDrop.GripCollisionType != EGripCollisionType::EventsOnly)
+				{
+					if ((NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewDrop.AdvancedGripSettings.PhysicsSettings.bTurnOffGravityDuringGrip) ||
+						(NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceServerSideMovement && !IsServer()))
+						root->SetEnableGravity(NewDrop.bOriginalGravity);
+				}
 			}
 
 			if (pActor)
@@ -3248,6 +3278,9 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 			if (Grip->GripID != INVALID_VRGRIP_ID && Grip->GrippedObject && !Grip->GrippedObject->IsPendingKill())
 			{
+				if (Grip->GripCollisionType == EGripCollisionType::EventsOnly)
+					continue; // Earliest safe spot to continue at, we needed to check if the object is pending kill or invalid first
+
 				UPrimitiveComponent *root = NULL;
 				AActor *actor = NULL;
 
@@ -4929,8 +4962,7 @@ void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotio
 	{
 		// Skip actors that are colliding if turning off late updates during collision.
 		// Also skip turning off late updates for SweepWithPhysics, as it should always be locked to the hand
-
-		if (!actor.GrippedObject)
+		if (!actor.GrippedObject || actor.GripCollisionType == EGripCollisionType::EventsOnly)
 			continue;
 
 		// Handle late updates even with attachment, we need to add it to a skip list for the primary gatherer to process

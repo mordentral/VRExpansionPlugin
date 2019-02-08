@@ -15,6 +15,15 @@
 //General Advanced Sessions Log
 DECLARE_LOG_CATEGORY_EXTERN(VRInteractibleFunctionLibraryLog, Log, All);
 
+// Declares our interactible axis's
+UENUM(Blueprintable)
+enum class EVRInteractibleAxis : uint8
+{
+	Axis_X,
+	Axis_Y,
+	Axis_Z
+};
+
 // A data structure to hold important interactible data
 // Should be init'd in Beginplay with BeginPlayInit as well as OnGrip with OnGripInit.
 // Works in "static space", it records the original relative transform of the interactible on begin play

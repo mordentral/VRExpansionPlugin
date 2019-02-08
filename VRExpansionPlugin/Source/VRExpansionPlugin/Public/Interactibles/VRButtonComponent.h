@@ -7,6 +7,7 @@
 #include "MotionControllerComponent.h"
 #include "VRGripInterface.h"
 #include "Components/StaticMeshComponent.h"
+#include "VRInteractibleFunctionLibrary.h"
 //#include "VRBPDatatypes.h"
 //#include "VRExpansionFunctionLibrary.h"
 #include "VRButtonComponent.generated.h"

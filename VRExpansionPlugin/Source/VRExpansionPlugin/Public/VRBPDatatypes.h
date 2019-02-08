@@ -15,14 +15,6 @@
 class UGripMotionControllerComponent;
 class UVRGripScriptBase;
 
-UENUM(Blueprintable)
-enum class EVRInteractibleAxis : uint8
-{
-	Axis_X,
-	Axis_Y,
-	Axis_Z
-};
-
 
 // Custom movement modes for the characters
 UENUM(BlueprintType)
@@ -504,7 +496,10 @@ enum class EGripCollisionType : uint8
 	AttachmentGrip,
 
 	/** Custom grip is to be handled by the object itself, it just sends the TickGrip event every frame but doesn't move the object. */
-	CustomGrip
+	CustomGrip,
+
+	/** A grip that does not tick or move, used for drop / grip events only and uses least amount of processing. */
+	EventsOnly
 
 };
 
