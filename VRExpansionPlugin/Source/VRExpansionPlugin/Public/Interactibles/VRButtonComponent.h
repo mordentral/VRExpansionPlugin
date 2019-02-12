@@ -79,8 +79,8 @@ public:
 
 		if (bCallButtonChangedEvent)
 		{
-			ReceiveButtonStateChanged(bButtonState, LastInteractingActor.Get(), LastInteractingComponent.Get());
-			OnButtonStateChanged.Broadcast(bButtonState, LastInteractingActor.Get(), LastInteractingComponent.Get());
+			ReceiveButtonStateChanged(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+			OnButtonStateChanged.Broadcast(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
 		}
 	}
 
@@ -122,7 +122,7 @@ public:
 
 	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button State Changed"))
-		void ReceiveButtonStateChanged(bool bCurButtonState, AActor * InteractingActor, UPrimitiveComponent * InteractingComponent);
+		void ReceiveButtonStateChanged(bool bCurButtonState, AActor * LastInteractingActor, UPrimitiveComponent * InteractingComponent);
 
 	// On Button beginning interaction (may spam a bit depending on if overlap is jittering)
 	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
@@ -145,10 +145,10 @@ public:
 		TWeakObjectPtr<UPrimitiveComponent> InteractingComponent;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
-		TWeakObjectPtr<AActor> LastInteractingActor;
+		TWeakObjectPtr<AActor> LocalLastInteractingActor;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
-		TWeakObjectPtr<UPrimitiveComponent> LastInteractingComponent;
+		TWeakObjectPtr<UPrimitiveComponent> LocalLastInteractingComponent;
 
 	// Whether the button is enabled or not (can be interacted with)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
