@@ -54,7 +54,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRButtonComponent")
 	bool IsButtonInUse()
 	{
-		return InteractingComponent.IsValid();
+		return LocalInteractingComponent.IsValid();
 	}
 
 	// Should be called after the button is moved post begin play
@@ -142,7 +142,7 @@ public:
 
 	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
-		TWeakObjectPtr<UPrimitiveComponent> InteractingComponent;
+		TWeakObjectPtr<UPrimitiveComponent> LocalInteractingComponent;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
 		TWeakObjectPtr<AActor> LocalLastInteractingActor;
