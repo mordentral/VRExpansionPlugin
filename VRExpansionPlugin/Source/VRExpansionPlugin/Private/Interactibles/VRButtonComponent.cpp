@@ -52,19 +52,19 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 	const float WorldTime = GetWorld()->GetTimeSeconds();
 
-	if (InteractingComponent.IsValid())
+	if (LocalInteractingComponent.IsValid())
 	{
 		// If button was set to inactive during use
 		if (!bIsEnabled)
 		{
 			// Remove interacting component and return, next tick will begin lerping back
-			InteractingComponent.Reset();
+			LocalInteractingComponent.Reset();
 			return;
 		}
 
 		FTransform OriginalBaseTransform = CalcNewComponentToWorld(InitialRelativeTransform);
 
-		float CheckDepth = FMath::Clamp(GetAxisValue(InitialLocation) - GetAxisValue(OriginalBaseTransform.InverseTransformPosition(InteractingComponent->GetComponentLocation())), 0.0f, DepressDistance);
+		float CheckDepth = FMath::Clamp(GetAxisValue(InitialLocation) - GetAxisValue(OriginalBaseTransform.InverseTransformPosition(LocalInteractingComponent->GetComponentLocation())), 0.0f, DepressDistance);
 
 		if (CheckDepth > 0.0f)
 		{
@@ -101,7 +101,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			OnButtonEndInteraction.Broadcast(LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
 			ReceiveButtonEndInteraction(LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
 
-			InteractingComponent.Reset(); // Just reset it here so it only does it once
+			LocalInteractingComponent.Reset(); // Just reset it here so it only does it once
 			LocalLastInteractingComponent.Reset();
 		}
 		else
@@ -171,17 +171,17 @@ void UVRButtonComponent::SetLastInteractingActor()
 {
 
 	// Early out on the simple checks
-	if (!InteractingComponent.IsValid() || InteractingComponent == GetAttachParent() || InteractingComponent->GetAttachParent() == GetAttachParent())
+	if (!LocalInteractingComponent.IsValid() || LocalInteractingComponent == GetAttachParent() || LocalInteractingComponent->GetAttachParent() == GetAttachParent())
 	{
 		LocalLastInteractingActor.Reset();
 		LocalLastInteractingComponent.Reset();
 		return;
 	}
 
-	LocalLastInteractingComponent = InteractingComponent;
+	LocalLastInteractingComponent = LocalInteractingComponent;
 
 	// Should return faster checking for owning character
-	AActor * OverlapOwner = InteractingComponent->GetOwner();
+	AActor * OverlapOwner = LocalInteractingComponent->GetOwner();
 	if (OverlapOwner && OverlapOwner->IsA(ACharacter::StaticClass()))
 	{
 		LocalLastInteractingActor = OverlapOwner;
@@ -189,7 +189,7 @@ void UVRButtonComponent::SetLastInteractingActor()
 	}
 
 	// Now check for if it is a grippable object and if it is currently held
-	if (InteractingComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	if (LocalInteractingComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
 		UGripMotionControllerComponent *Controller;
 		bool bIsHeld;
@@ -228,19 +228,19 @@ void UVRButtonComponent::SetLastInteractingActor()
 void UVRButtonComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// Other Actor is the actor that triggered the event. Check that is not ourself.  
-	if (bIsEnabled && !InteractingComponent.IsValid() && (bSkipOverlapFiltering || IsValidOverlap(OtherComp)))
+	if (bIsEnabled && !LocalInteractingComponent.IsValid() && (bSkipOverlapFiltering || IsValidOverlap(OtherComp)))
 	{
-		InteractingComponent = OtherComp;
+		LocalInteractingComponent = OtherComp;
 
 		FTransform OriginalBaseTransform = CalcNewComponentToWorld(InitialRelativeTransform);
-		FVector loc = InteractingComponent->GetComponentLocation();
-		InitialLocation = OriginalBaseTransform.InverseTransformPosition(InteractingComponent->GetComponentLocation());
+		FVector loc = LocalInteractingComponent->GetComponentLocation();
+		InitialLocation = OriginalBaseTransform.InverseTransformPosition(LocalInteractingComponent->GetComponentLocation());
 		InitialComponentLoc = OriginalBaseTransform.InverseTransformPosition(this->GetComponentLocation());
 		bToggledThisTouch = false;
 
 		this->SetComponentTickEnabled(true);
 
-		if (InteractingComponent != LocalLastInteractingComponent.Get())
+		if (LocalInteractingComponent != LocalLastInteractingComponent.Get())
 		{
 			SetLastInteractingActor();
 			OnButtonBeginInteraction.Broadcast(LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
@@ -251,8 +251,8 @@ void UVRButtonComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AAc
 
 void UVRButtonComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (InteractingComponent.IsValid() && OtherComp == InteractingComponent)
+	if (LocalInteractingComponent.IsValid() && OtherComp == LocalInteractingComponent)
 	{
-		InteractingComponent.Reset();
+		LocalInteractingComponent.Reset();
 	}
 }
