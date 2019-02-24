@@ -3924,15 +3924,32 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				// I actually don't need any of this code anymore or the HandleInfo->RootBoneRotation
 				// However I would have to expect people to pass in the bone transform without it.
 				// For now I am keeping it to keep it backwards compatible as it will adjust for root bone rotation automatically then
-				USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
-				if (skele && skele->GetNumBones() > 0)
+				if (USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root))
 				{
-					RootBoneRotation = FTransform(skele->GetBoneTransform(0, FTransform::Identity));
-					HandleInfo->RootBoneRotation = RootBoneRotation;
+					int32 RootBodyIndex = INDEX_NONE;
+					if (const UPhysicsAsset* PhysicsAsset = skele->GetPhysicsAsset())
+					{
+						for (int32 i = 0; i < skele->GetNumBones(); i++)
+						{
+							if (PhysicsAsset->FindBodyIndex(skele->GetBoneName(i)) != INDEX_NONE)
+							{
+								RootBodyIndex = i;
+								break;
+							}
+						}
+					}
+
+					if (RootBodyIndex != INDEX_NONE)
+					{
+						RootBoneRotation = FTransform(skele->GetBoneTransform(RootBodyIndex, FTransform::Identity));
+						HandleInfo->RootBoneRotation = RootBoneRotation;
+					}
 				}
+
 				// Add in root bone rotation
 				WorldTransform = RootBoneRotation * WorldTransform;
 			}
+
 			EPhysicsGripCOMType COMType = NewGrip.AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings;
 
 			if (!NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || COMType == EPhysicsGripCOMType::COM_Default)
