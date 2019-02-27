@@ -1561,6 +1561,9 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 
 	UObject * GrippedObject = GripInfo->GrippedObject;
 
+	int PhysicsHandleIndex = INDEX_NONE;
+	GetPhysicsGripIndex(*GripInfo, PhysicsHandleIndex);
+
 	if (bWasLocalGrip)
 	{
 		if (GetNetMode() == ENetMode::NM_Client)
@@ -1571,35 +1574,47 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 			// Have to call this ourselves
 			DropAndSocket_Implementation(*GripInfo);
 			if (GrippedObject)
-				Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+				Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		}
 		else // Server notifyDrop it
 		{
 			NotifyDropAndSocket(*GripInfo);
 			if (GrippedObject)
-				Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+				Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		}
 	}
 	else
 	{
 		NotifyDropAndSocket(*GripInfo);
 		if (GrippedObject)
-			Socket_Implementation(GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+			Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 	}
 
 	//GrippedObjects.RemoveAt(FoundIndex);		
 	return true;
 }
 
-void UGripMotionControllerComponent::SetSocketTransform(UObject * ObjectToSocket, const FTransform_NetQuantize RelativeTransformToParent)
+void UGripMotionControllerComponent::SetSocketTransform(UObject* ObjectToSocket, /*USceneComponent * SocketingParent,*/ const FTransform_NetQuantize RelativeTransformToParent/*, FName OptionalSocketName, bool bWeldBodies*/)
 {
+
+	/*FAttachmentTransformRules TransformRule = FAttachmentTransformRules::KeepWorldTransform;//KeepWorldTransform;
+	TransformRule.bWeldSimulatedBodies = bWeldBodies;*/
+
 	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
 	{
-		root->SetRelativeTransform(RelativeTransformToParent);
+		//root->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
+		//root->SetRelativeTransform(RelativeTransformToParent);
+
+		if(root->GetAttachParent())
+			root->SetRelativeTransform(RelativeTransformToParent);
 	}
 	else if (AActor * pActor = Cast<AActor>(ObjectToSocket))
 	{
-		pActor->SetActorRelativeTransform(RelativeTransformToParent);
+		//pActor->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
+		//pActor->SetActorRelativeTransform(RelativeTransformToParent);
+
+		if(pActor->GetAttachParentActor())
+			pActor->SetActorRelativeTransform(RelativeTransformToParent);
 	}
 }
 
@@ -1619,16 +1634,19 @@ void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementati
 	if (Result == EBPVRResultSwitch::OnFailed)
 		return;
 
+	int PhysicsHandleIndex = INDEX_NONE;
+	GetPhysicsGripIndex(FoundGrip, PhysicsHandleIndex);
+
 	if (!DropAndSocketGrip(FoundGrip, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies))
 	{
 		DropGrip(FoundGrip, false);
 	}
 	
 	if (FoundGrip.GrippedObject)
-		Socket_Implementation(FoundGrip.GrippedObject, SocketingParent, OptionalSocketName, RelativeTransformToParent);
+		Socket_Implementation(FoundGrip.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent);
 }
 
-void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSocket, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
+void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSocket, bool bWasSimulating, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	// Check for valid objects
 	if (!ObjectToSocket || !SocketingParent)
@@ -1643,25 +1661,21 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	{
 		root->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		root->SetRelativeTransform(RelativeTransformToParent);
-
-		// It had a physics handle, I need to delay a tick and set the transform to ensure it skips a race condition
-		if(root->IsSimulatingPhysics() && ParentPrim && ParentPrim->IsSimulatingPhysics())
-			GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &UGripMotionControllerComponent::SetSocketTransform, ObjectToSocket, RelativeTransformToParent));
 	}
 	else if (AActor * pActor = Cast<AActor>(ObjectToSocket))
 	{
 		pActor->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		pActor->SetActorRelativeTransform(RelativeTransformToParent);
 
-		// It had a physics handle, I need to delay a tick and set the transform to ensure it skips a race condition
-		if (UPrimitiveComponent * rootPrim = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
-		{
-			if (rootPrim->IsSimulatingPhysics() && ParentPrim && ParentPrim->IsSimulatingPhysics())
-				GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &UGripMotionControllerComponent::SetSocketTransform, ObjectToSocket, RelativeTransformToParent));
-		}
-
 		//if (!bRetainOwnership)
 			//pActor->SetOwner(nullptr);
+	}
+
+	// It had a physics handle, I need to delay a tick and set the transform to ensure it skips a race condition
+	// I may need to consider running the entire attachment in here instead in the future
+	if (bWasSimulating)
+	{
+		GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &UGripMotionControllerComponent::SetSocketTransform, ObjectToSocket, /*SocketingParent, */RelativeTransformToParent/*, OptionalSocketName, bWeldBodies*/));
 	}
 }
 
