@@ -1354,12 +1354,10 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			// I am currently skipping smoothing on rotation operations
 			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
 			{
-				if (NewLocation != OldLocation)
-				{
-					UpdatedComponent->SetWorldLocation(NewLocation, false, nullptr, GetTeleportType());
-				}
 				Basechar->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 				ClientData->MeshTranslationOffset = FVector::ZeroVector;
+				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
 				bNetworkSmoothingComplete = true;
 			}
 			else
