@@ -7,6 +7,8 @@
 #include "Curves/CurveFloat.h"
 #include "GS_LerpToHand.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRLerpToHandFinishedSignature);
+
 /** Different methods for interpolating rotation between transforms */
 UENUM(BlueprintType)
 enum class EVRLerpInterpolationMode : uint8
@@ -45,7 +47,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
 	EVRLerpInterpolationMode LerpInterpolationMode;
 	
-
+	UPROPERTY(BlueprintAssignable, Category = "LerpEvents")
+		FVRLerpToHandFinishedSignature OnLerpToHandFinished;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings|Curve")
 		bool bUseCurve;

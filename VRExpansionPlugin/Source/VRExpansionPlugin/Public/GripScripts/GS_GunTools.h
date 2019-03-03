@@ -9,9 +9,10 @@
 
 class UGripMotionControllerComponent;
 
+// Event thrown when we enter into virtual stock mode
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRVirtualStockModeChangedSignature, bool, IsVirtualStockEngaged);
 
 // Global settings for this player
-
 USTRUCT(BlueprintType, Category = "GunSettings")
 struct VREXPANSIONPLUGIN_API FBPVirtualStockSettings
 {
@@ -26,11 +27,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
 		float StockSnapDistance;
 
+	// *Global Value* The distance from the edge of the stock snap distance where it will be at 100% influence
+	// Prior to this threshold being hit it will lerp from standard hold to the virtual stock version.
+	// A value of 0.0f will leave it always off
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock", meta = (ClampMin = "0.00", UIMin = "0.00"))
+		float StockSnapLerpThreshold;
+
+	// Current lerp value of the stock from zero influence to full influence
+	UPROPERTY(BlueprintReadOnly, Category = "VirtualStock")
+		float StockLerpValue;
+
 	// *Global Value* An offset to apply to the HMD location to be considered the neck / mount pivot 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
 		FVector_NetQuantize100 StockSnapOffset;
 
-	// *Global Value* Overrides the pivot location to be at this component instead
+	// *Global Value* Whether we should lerp the location of the rearmost (stock side) hand, mostly used for snipers.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock|Smoothing")
 		bool bSmoothStockHand;
 
@@ -51,6 +62,7 @@ public:
 	{
 		bUseDistanceBasedStockSnapping = B.bUseDistanceBasedStockSnapping;
 		StockSnapDistance = B.StockSnapDistance;
+		StockSnapLerpThreshold = B.StockSnapLerpThreshold;
 		StockSnapOffset = B.StockSnapOffset;
 		bSmoothStockHand = B.bSmoothStockHand;
 		SmoothingValueForStock = B.SmoothingValueForStock;
@@ -61,6 +73,8 @@ public:
 	{
 		StockSnapOffset = FVector(0.f, 0.f, 0.f);
 		StockSnapDistance = 35.f;
+		StockSnapLerpThreshold = 20.0f;
+		StockLerpValue = 0.0f;
 		bUseDistanceBasedStockSnapping = true;
 		SmoothingValueForStock = 0.0f;
 		bSmoothStockHand = false;
@@ -155,13 +169,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Pivot")
 		FVector_NetQuantize100 PivotOffset;
 
-	UFUNCTION(BlueprintCallable, Category = "GunTools|ShoulderMount")
+	UFUNCTION(BlueprintCallable, Category = "GunTools|VirtualStock")
 		void SetVirtualStockComponent(USceneComponent * NewStockComponent)
 	{
 		VirtualStockComponent = NewStockComponent;
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "GunTools|ShoulderMount")
+	UFUNCTION(BlueprintCallable, Category = "GunTools|VirtualStock")
 		void SetVirtualStockEnabled(bool bAllowVirtualStock)
 	{
 		if (!bUseVirtualStock && bAllowVirtualStock)
@@ -176,6 +190,10 @@ public:
 	}
 
 	void GetVirtualStockTarget(UGripMotionControllerComponent * GrippingController);
+
+	// Call to use an object
+	UPROPERTY(BlueprintAssignable, Category = "GunSettings|VirtualStock")
+		FVRVirtualStockModeChangedSignature OnVirtualStockModeChanged;
 
 	// Overrides the pivot location to be at this component instead
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")

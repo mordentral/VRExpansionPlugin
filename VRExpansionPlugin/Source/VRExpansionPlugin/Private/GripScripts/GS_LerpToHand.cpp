@@ -76,6 +76,7 @@ bool UGS_LerpToHand::GetWorldTransform_Implementation
 			if (CurrentLerpTime > richCurve->GetLastKey().Time)
 			{
 				// Stop lerping
+				OnLerpToHandFinished.Broadcast();
 				CurrentLerpTime = 0.0f;
 				bIsActive = false;
 				return true;
@@ -130,6 +131,7 @@ bool UGS_LerpToHand::GetWorldTransform_Implementation
 	// Turn it off if we need to
 	if (Alpha == 1.0f)
 	{
+		OnLerpToHandFinished.Broadcast();
 		CurrentLerpTime = 0.0f;
 		bIsActive = false;
 	}

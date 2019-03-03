@@ -148,13 +148,28 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				MountWorldTransform = FTransform(PureYaw.Quaternion(), CameraComponent->GetComponentLocation() + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset));
 			}
 
-			if (FVector::DistSquared(ParentTransform.GetTranslation(), MountWorldTransform.GetTranslation()) <= FMath::Square(VirtualStockSettings.StockSnapDistance))
-			{
-				if(!bIsMounted)
-					VirtualStockSettings.StockHandSmoothing.ResetSmoothingFilter();
+			float StockSnapDistance = FMath::Square(VirtualStockSettings.StockSnapDistance);
+			float DistSquared = FVector::DistSquared(ParentTransform.GetTranslation(), MountWorldTransform.GetTranslation());
 
-				// Mount up
-				bIsMounted = true;
+			if (DistSquared <= StockSnapDistance)
+			{
+
+				float StockSnapLerpThresh = FMath::Square(VirtualStockSettings.StockSnapLerpThreshold);
+
+				if (StockSnapLerpThresh > 0.0f)
+					VirtualStockSettings.StockLerpValue = 1.0f - FMath::Clamp((DistSquared - (StockSnapDistance - StockSnapLerpThresh)) / StockSnapLerpThresh, 0.0f, 1.0f);
+				else
+					VirtualStockSettings.StockLerpValue = 1.0f; // Just skip lerping logic
+
+				if (!bIsMounted)
+				{
+					VirtualStockSettings.StockHandSmoothing.ResetSmoothingFilter();
+					
+					// Mount up
+					bIsMounted = true;
+
+					OnVirtualStockModeChanged.Broadcast(bIsMounted);
+				}
 
 				// Adjust the mount location to follow the Z of the primary hand
 				FVector WorldTransVec = MountWorldTransform.GetTranslation();
@@ -172,7 +187,12 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 			}
 			else
 			{
-				bIsMounted = false;
+				if (bIsMounted)
+				{
+					bIsMounted = false;
+					VirtualStockSettings.StockLerpValue = 0.0f;
+					OnVirtualStockModeChanged.Broadcast(bIsMounted);
+				}
 			}
 
 			if (bIsMounted && VirtualStockSettings.bSmoothStockHand)
@@ -185,7 +205,12 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 	}
 	else
 	{
-		bIsMounted = false;
+		if (bIsMounted)
+		{
+			bIsMounted = false;
+			VirtualStockSettings.StockLerpValue = 0.0f;
+			OnVirtualStockModeChanged.Broadcast(bIsMounted);
+		}
 	}
 
 	// Check the grip lerp state, this it ouside of the secondary attach check below because it can change the result of it
@@ -301,8 +326,24 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 					FQuat rotVal = FQuat::FindBetweenVectors(GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation(), (frontLoc + BasePoint) - MountWorldTransform.GetTranslation());
 					FQuat MountAdditionRotation = FQuat::FindBetweenVectors(frontLocOrig, GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation());
 
-					// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
-					WorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
+					if (VirtualStockSettings.StockLerpValue < 1.0f)
+					{
+						// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
+						FTransform NA = FTransform(rotVal * MountAdditionRotation, FVector::ZeroVector, Scaler);
+						FTransform NB = FTransform(FQuat::FindBetweenVectors(frontLocOrig, frontLoc), FVector::ZeroVector, Scaler);
+						NA.NormalizeRotation();
+						NB.NormalizeRotation();
+
+						// Quaternion interpolation
+						NA.Blend(NB, NA, VirtualStockSettings.StockLerpValue);
+
+						WorldTransform = WorldTransform * WorldToPivot * NA * PivotToWorld;
+					}
+					else
+					{
+						// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
+						WorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
+					}
 				}
 				else
 				{
@@ -321,8 +362,23 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				{
 					FQuat MountAdditionRotation = FQuat::FindBetweenVectors(frontLocOrig, GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation());
 
-					// Rebase the world transform to the pivot point, add the scaler, remove the pivot point rebase
-					WorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
+					// If it is exactly 1.0f then lets skip all of the extra logic and just set it
+					if (VirtualStockSettings.StockLerpValue < 1.0f)
+					{
+						FTransform NA = FTransform(MountAdditionRotation, FVector::ZeroVector, Scaler);
+						FTransform NB = FTransform(FQuat::Identity, FVector::ZeroVector, Scaler);
+						NA.NormalizeRotation();
+						NB.NormalizeRotation();
+
+						// Quaternion interpolation
+						NA.Blend(NB, NA, VirtualStockSettings.StockLerpValue);
+						WorldTransform = WorldTransform * WorldToPivot * NA * PivotToWorld;
+					}
+					else
+					{
+						// Rebase the world transform to the pivot point, add the scaler, remove the pivot point rebase
+						WorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
+					}
 				}
 				else
 				{
