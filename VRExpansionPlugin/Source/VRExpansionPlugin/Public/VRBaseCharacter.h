@@ -315,6 +315,10 @@ public:
 		return GetVRLocation_Inline();
 	}
 
+	// If true will use the experimental method of unseating that clears some movement replication options.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRBaseCharacter")
+		bool bUseExperimentalUnseatModeFix;
+
 	UPROPERTY(BlueprintReadOnly, Replicated, EditAnywhere, Category = "BaseVRCharacter|Seating", ReplicatedUsing = OnRep_SeatedCharInfo)
 	FVRSeatedCharacterInfo SeatInformation;
 

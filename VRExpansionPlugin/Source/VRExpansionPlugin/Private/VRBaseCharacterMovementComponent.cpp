@@ -99,6 +99,17 @@ void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode Prev
 	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
 }
 
+bool UVRBaseCharacterMovementComponent::ForcePositionUpdate(float DeltaTime)
+{
+	// Skip force updating position if we are seated.
+	if ((MovementMode == EMovementMode::MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated))
+	{
+		return false;
+	}
+
+	return Super::ForcePositionUpdate(DeltaTime);
+}
+
 void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 

@@ -96,6 +96,8 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	ReplicatedMovement.RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
 
 	VRReplicateCapsuleHeight = false;
+
+	bUseExperimentalUnseatModeFix = true;
 }
 
 void AVRBaseCharacter::OnRep_PlayerState()
@@ -400,6 +402,20 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 
 					if (this->Role == ROLE_Authority)
 					{
+						if (bUseExperimentalUnseatModeFix)
+						{
+							FNetworkPredictionData_Server_Character * ServerData = charMovement->GetPredictionData_Server_Character();
+							check(ServerData);
+							ServerData->CurrentClientTimeStamp = 0.f;
+							ServerData->ServerAccumulatedClientTimeStamp = 0.0f;
+							ServerData->LastUpdateTime = 0.f;
+							ServerData->ServerTimeStampLastServerMove = 0.f;
+							ServerData->bForceClientUpdate = false;
+							ServerData->TimeDiscrepancy = 0.f;
+							ServerData->bResolvingTimeDiscrepancy = false;
+							ServerData->TimeDiscrepancyResolutionMoveDeltaOverride = 0.f;
+							ServerData->TimeDiscrepancyAccumulatedClientDeltasSinceLastServerTick = 0.f;
+						}
 						//charMovement->ForceReplicationUpdate();
 						//FNetworkPredictionData_Server_Character * ServerData = charMovement->GetPredictionData_Server_Character();
 						//check(ServerData);

@@ -575,6 +575,9 @@ public:
 	// Overriding this to run the seated logic
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
+	// Skip force updating position if we are seated.
+	virtual bool ForcePositionUpdate(float DeltaTime) override;
+
 	// Adding seated transition
 	void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
 
