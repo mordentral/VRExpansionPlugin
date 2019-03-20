@@ -51,6 +51,8 @@ You need to have visual studio installed and follow the UE4 setup guide for it: 
 
 **[OpenVRExpansionPlugin](https://mordentral.bitbucket.io/OpenVRExpansionPlugin/VR)**
 
+**[Open Input Plugin (Until its more mainstream in the engine it is a seperate module)](https://bitbucket.org/mordentral/openinputmodule)**
+
 **[ExampleTemplate](https://mordentral.bitbucket.io/ExampleTemplate/VR)**  
 
 [Tips & Tricks](https://bitbucket.org/mordentral/vrexpansionplugin/wiki/Plugin%20Tips%20&%20Information)
