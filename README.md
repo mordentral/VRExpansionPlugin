@@ -10,7 +10,10 @@ https://bitbucket.org/mordentral/vrexppluginexample
 
 ### Use Of This Plugin ###
 
-This Plugin is intended to add additional functionality to Open/SteamVR/(All VR now) in UE4. 
+This Plugin is intended to add additional functionality to Open/SteamVR/(All VR now) in UE4.
+
+### Plugin Website ###
+[VREUE4.com](https://vreue4.com)
 
 ### How do I install it? ###
 
