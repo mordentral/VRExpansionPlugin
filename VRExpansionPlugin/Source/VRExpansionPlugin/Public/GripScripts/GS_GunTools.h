@@ -166,16 +166,16 @@ public:
 	FGunTools_AdvSecondarySettings AdvSecondarySettings;
 
 	// Offset to apply to the pivot (good for centering pivot into the palm ect).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Pivot")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pivot")
 		FVector_NetQuantize100 PivotOffset;
 
-	UFUNCTION(BlueprintCallable, Category = "GunTools|VirtualStock")
+	UFUNCTION(BlueprintCallable, Category = "VirtualStock")
 		void SetVirtualStockComponent(USceneComponent * NewStockComponent)
 	{
 		VirtualStockComponent = NewStockComponent;
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "GunTools|VirtualStock")
+	UFUNCTION(BlueprintCallable, Category = "VirtualStock")
 		void SetVirtualStockEnabled(bool bAllowVirtualStock)
 	{
 		if (!bUseVirtualStock && bAllowVirtualStock)
@@ -192,11 +192,11 @@ public:
 	void GetVirtualStockTarget(UGripMotionControllerComponent * GrippingController);
 
 	// Call to use an object
-	UPROPERTY(BlueprintAssignable, Category = "GunSettings|VirtualStock")
+	UPROPERTY(BlueprintAssignable, Category = "VirtualStock")
 		FVRVirtualStockModeChangedSignature OnVirtualStockModeChanged;
 
 	// Overrides the pivot location to be at this component instead
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
 		bool bUseVirtualStock;
 
 	// Draw debug elements showing the virtual stock location and angles to interacting components
@@ -213,10 +213,10 @@ public:
 
 	// Loads the global virtual stock settings on grip (only if locally controlled, you need to manually replicate and store the global settings
 	// In the character if networked).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
 		bool bUseGlobalVirtualStockSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock", meta = (editcondition = "!bUseGlobalVirtualStockSettings"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock", meta = (editcondition = "!bUseGlobalVirtualStockSettings"))
 		FBPVirtualStockSettings VirtualStockSettings;
 
 /*
@@ -251,25 +251,25 @@ public:
 	*/
 
 	// If this gun has recoil
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
 		bool bHasRecoil;
 
 	// Maximum recoil addition
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (editcondition = "bHasRecoil"))
 		FVector_NetQuantize100 MaxRecoilTranslation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (editcondition = "bHasRecoil"))
 		FVector_NetQuantize100 MaxRecoilRotation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (editcondition = "bHasRecoil"))
 		FVector_NetQuantize100 MaxRecoilScale;
 
 	// Recoil decay rate, how fast it decays back to baseline
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (editcondition = "bHasRecoil"))
 		float DecayRate;
 
 	// Recoil lerp rate, how long it takes to lerp to the target recoil amount (0.0f would be instant)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|Recoil", meta = (editcondition = "bHasRecoil"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (editcondition = "bHasRecoil"))
 		float LerpRate;
 
 	// Stores the current amount of recoil
@@ -280,10 +280,10 @@ public:
 
 	bool bHasActiveRecoil;
 	
-	UFUNCTION(BlueprintCallable, Category = "GunTools|Recoil")
+	UFUNCTION(BlueprintCallable, Category = "Recoil")
 		void AddRecoilInstance(const FTransform & RecoilAddition);
 
-	UFUNCTION(BlueprintCallable, Category = "GunTools|Recoil")
+	UFUNCTION(BlueprintCallable, Category = "Recoil")
 		void ResetRecoil();
 
 	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) override;

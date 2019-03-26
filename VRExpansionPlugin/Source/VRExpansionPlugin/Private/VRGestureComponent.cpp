@@ -515,3 +515,214 @@ void UVRGestureComponent::DrawDebugGesture(UObject* WorldContextObject, FTransfo
 	}
 #endif
 }
+
+void UGesturesDatabase::RecalculateGestures(bool bScaleToDatabase)
+{
+	for (int i = 0; i < Gestures.Num(); ++i)
+	{
+		Gestures[i].CalculateSizeOfGesture(bScaleToDatabase, TargetGestureScale);
+	}
+}
+
+bool UGesturesDatabase::ImportSplineAsGesture(USplineComponent * HostSplineComponent, FString GestureName, bool bKeepSplineCurves, float SegmentLen, bool bScaleToDatabase)
+{
+	FVRGesture NewGesture;
+
+	if (HostSplineComponent->GetNumberOfSplinePoints() < 2)
+		return false;
+
+	NewGesture.Name = GestureName;
+
+	FVector FirstPointPos = HostSplineComponent->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::Local);
+
+	float LastDistance = 0.f;
+	float ThisDistance = 0.f;
+	FVector LastDistanceV;
+	FVector ThisDistanceV;
+	FVector DistNormal;
+	float DistAlongSegment = 0.f;
+
+	// Realign to xForward on the gesture, normally splines lay out as X to the right
+	FTransform Realignment = FTransform(FRotator(0.f, 90.f, 0.f), -FirstPointPos);
+
+	// Prefill the first point
+	NewGesture.Samples.Add(Realignment.TransformPosition(HostSplineComponent->GetLocationAtSplinePoint(HostSplineComponent->GetNumberOfSplinePoints() - 1, ESplineCoordinateSpace::Local)));
+
+	// Inserting in reverse order -2 so we start one down
+	for (int i = HostSplineComponent->GetNumberOfSplinePoints() - 2; i >= 0; --i)
+	{
+		if (bKeepSplineCurves)
+		{
+			LastDistance = HostSplineComponent->GetDistanceAlongSplineAtSplinePoint(i + 1);
+			ThisDistance = HostSplineComponent->GetDistanceAlongSplineAtSplinePoint(i);
+
+			DistAlongSegment = FMath::Abs(ThisDistance - LastDistance);
+		}
+		else
+		{
+			LastDistanceV = Realignment.TransformPosition(HostSplineComponent->GetLocationAtSplinePoint(i + 1, ESplineCoordinateSpace::Local));
+			ThisDistanceV = Realignment.TransformPosition(HostSplineComponent->GetLocationAtSplinePoint(i, ESplineCoordinateSpace::Local));
+
+			DistAlongSegment = FVector::Dist(ThisDistanceV, LastDistanceV);
+			DistNormal = ThisDistanceV - LastDistanceV;
+			DistNormal.Normalize();
+		}
+
+
+		float SegmentCount = FMath::FloorToFloat(DistAlongSegment / SegmentLen);
+		float OverFlow = FMath::Fmod(DistAlongSegment, SegmentLen);
+
+		if (SegmentCount < 1)
+		{
+			SegmentCount++;
+		}
+
+		float DistPerSegment = (DistAlongSegment / SegmentCount);
+
+		for (int j = 0; j < SegmentCount; j++)
+		{
+			if (j == SegmentCount - 1 && i > 0)
+				DistPerSegment += OverFlow;
+
+			if (bKeepSplineCurves)
+			{
+				LastDistance -= DistPerSegment;
+				if (j == SegmentCount - 1 && i > 0)
+				{
+					LastDistance = ThisDistance;
+				}
+				FVector loc = Realignment.TransformPosition(HostSplineComponent->GetLocationAtDistanceAlongSpline(LastDistance, ESplineCoordinateSpace::Local));
+
+				if (!loc.IsNearlyZero())
+					NewGesture.Samples.Add(loc);
+			}
+			else
+			{
+				LastDistanceV += DistPerSegment * DistNormal;
+
+				if (j == SegmentCount - 1 && i > 0)
+				{
+					LastDistanceV = ThisDistanceV;
+				}
+
+				if (!LastDistanceV.IsNearlyZero())
+					NewGesture.Samples.Add(LastDistanceV);
+			}
+		}
+	}
+
+	NewGesture.CalculateSizeOfGesture(bScaleToDatabase, this->TargetGestureScale);
+	Gestures.Add(NewGesture);
+	return true;
+}
+
+void FVRGestureSplineDraw::ClearLastPoint()
+{
+	SplineComponent->RemoveSplinePoint(0, false);
+
+	if (SplineMeshes.Num() < NextIndexCleared + 1)
+		NextIndexCleared = 0;
+
+	SplineMeshes[NextIndexCleared]->SetVisibility(false);
+	NextIndexCleared++;
+}
+
+void FVRGestureSplineDraw::Reset()
+{
+	if (SplineComponent != nullptr)
+		SplineComponent->ClearSplinePoints(true);
+
+	for (int i = SplineMeshes.Num() - 1; i >= 0; --i)
+	{
+		if (SplineMeshes[i] != nullptr)
+			SplineMeshes[i]->SetVisibility(false);
+		else
+			SplineMeshes.RemoveAt(i);
+	}
+
+	LastIndexSet = 0;
+	NextIndexCleared = 0;
+}
+
+void FVRGestureSplineDraw::Clear()
+{
+	for (int i = 0; i < SplineMeshes.Num(); ++i)
+	{
+		if (SplineMeshes[i] != nullptr && !SplineMeshes[i]->IsBeingDestroyed())
+		{
+			SplineMeshes[i]->Modify();
+			SplineMeshes[i]->DestroyComponent();
+		}
+	}
+	SplineMeshes.Empty();
+
+	if (SplineComponent != nullptr)
+	{
+		SplineComponent->DestroyComponent();
+		SplineComponent = nullptr;
+	}
+
+	LastIndexSet = 0;
+	NextIndexCleared = 0;
+}
+
+FVRGestureSplineDraw::FVRGestureSplineDraw()
+{
+	SplineComponent = nullptr;
+	NextIndexCleared = 0;
+	LastIndexSet = 0;
+}
+
+FVRGestureSplineDraw::~FVRGestureSplineDraw()
+{
+	Clear();
+}
+
+void UVRGestureComponent::BeginDestroy()
+{
+	Super::BeginDestroy();
+	RecordingGestureDraw.Clear();
+	if (TickGestureTimer_Handle.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
+	}
+}
+
+void UVRGestureComponent::RecalculateGestureSize(FVRGesture & InputGesture, UGesturesDatabase * GestureDB)
+{
+	if (GestureDB != nullptr)
+		InputGesture.CalculateSizeOfGesture(true, GestureDB->TargetGestureScale);
+	else
+		InputGesture.CalculateSizeOfGesture(false);
+}
+
+FVRGesture UVRGestureComponent::EndRecording()
+{
+	if (TickGestureTimer_Handle.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
+	}
+
+	this->SetComponentTickEnabled(false);
+	CurrentState = EVRGestureState::GES_None;
+
+	// Reset the recording gesture
+	RecordingGestureDraw.Reset();
+
+	return GestureLog;
+}
+
+void UVRGestureComponent::ClearRecording()
+{
+	GestureLog.Samples.Reset(RecordingBufferSize);
+}
+
+void UVRGestureComponent::SaveRecording(FVRGesture &Recording, FString RecordingName, bool bScaleRecordingToDatabase)
+{
+	if (GesturesDB)
+	{
+		Recording.CalculateSizeOfGesture(bScaleRecordingToDatabase, GesturesDB->TargetGestureScale);
+		Recording.Name = RecordingName;
+		GesturesDB->Gestures.Add(Recording);
+	}
+}

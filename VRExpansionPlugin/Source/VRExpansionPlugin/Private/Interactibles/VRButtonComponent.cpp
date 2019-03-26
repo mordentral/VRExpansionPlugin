@@ -256,3 +256,75 @@ void UVRButtonComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActo
 		LocalInteractingComponent.Reset();
 	}
 }
+
+FVector UVRButtonComponent::GetTargetRelativeLocation()
+{
+	// If target is the half pressed
+	if (ButtonType == EVRButtonType::Btn_Toggle_Stay && bButtonState)
+	{
+		// 1.e-2f = MORE_KINDA_SMALL_NUMBER
+		return InitialRelativeTransform.TransformPosition(SetAxisValue(-(ButtonEngageDepth + (1.e-2f))));
+	}
+
+	// Else return going all the way back
+	return InitialRelativeTransform.GetTranslation();
+
+}
+
+void UVRButtonComponent::SetButtonToRestingPosition(bool bLerpToPosition)
+{
+	switch (ButtonType)
+	{
+	case EVRButtonType::Btn_Press:
+	{
+	}break;
+	case EVRButtonType::Btn_Toggle_Return:
+	{}break;
+	case EVRButtonType::Btn_Toggle_Stay:
+	{
+		if (!bLerpToPosition)
+		{
+			float ClampMinDepth = 0.0f;
+
+			// If active and a toggled stay, then clamp min to the toggled stay location
+			if (bButtonState)
+				ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_KINDA_SMALL_NUMBER
+
+			float NewDepth = FMath::Clamp(ClampMinDepth, -DepressDistance, ClampMinDepth);
+			this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(SetAxisValue(NewDepth)), false);
+		}
+		else
+			this->SetComponentTickEnabled(true); // This will trigger the lerp to resting position
+
+	}break;
+	default:break;
+	}
+}
+
+void UVRButtonComponent::SetButtonState(bool bNewButtonState, bool bCallButtonChangedEvent, bool bSnapIntoPosition)
+{
+	// No change
+	if (bButtonState == bNewButtonState)
+		return;
+
+	bButtonState = bNewButtonState;
+	SetButtonToRestingPosition(!bSnapIntoPosition);
+	LastToggleTime = GetWorld()->GetTimeSeconds();
+
+	if (bCallButtonChangedEvent)
+	{
+		ReceiveButtonStateChanged(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+		OnButtonStateChanged.Broadcast(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+	}
+}
+
+void UVRButtonComponent::ResetInitialButtonLocation()
+{
+	// Get our initial relative transform to our parent (or not if un-parented).
+	InitialRelativeTransform = this->GetRelativeTransform();
+}
+
+bool UVRButtonComponent::IsButtonInUse()
+{
+	return LocalInteractingComponent.IsValid();
+}

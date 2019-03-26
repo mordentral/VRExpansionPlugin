@@ -55,10 +55,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular", meta = (editcondition = "!bGetInitialPositionsOnBeginPlay"))
 		FRotator InitialAngularTranslation;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
 		FRotator MinAngularTranslation;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AngularSettings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings|Angular")
 		FRotator MaxAngularTranslation;
 
 	FBPGS_InteractionSettings() :

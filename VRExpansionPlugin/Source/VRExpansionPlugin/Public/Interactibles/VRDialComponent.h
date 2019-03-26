@@ -105,76 +105,15 @@ public:
 
 	// Should be called after the dial is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
-	void ResetInitialDialLocation()
-	{
-		// Get our initial relative transform to our parent (or not if un-parented).
-		InitialRelativeTransform = this->GetRelativeTransform();
-		CurRotBackEnd = 0.0f;
-	}
+		void ResetInitialDialLocation();
 
 	// Can be called to recalculate the dial angle after you move it if you want different values
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
-	void AddDialAngle(float DialAngleDelta, bool bCallEvents = false)
-	{
-		float MaxCheckValue = 360.0f - CClockwiseMaximumDialAngle;
-
-		float DeltaRot = DialAngleDelta;
-		float tempCheck = FRotator::ClampAxis(CurRotBackEnd + DeltaRot);
-
-		// Clamp it to the boundaries
-		if (FMath::IsNearlyZero(CClockwiseMaximumDialAngle))
-		{
-			CurRotBackEnd = FMath::Clamp(CurRotBackEnd + DeltaRot, 0.0f, ClockwiseMaximumDialAngle);
-		}
-		else if (FMath::IsNearlyZero(ClockwiseMaximumDialAngle))
-		{
-			if (CurRotBackEnd < MaxCheckValue)
-				CurRotBackEnd = FMath::Clamp(360.0f + DeltaRot, MaxCheckValue, 360.0f);
-			else
-				CurRotBackEnd = FMath::Clamp(CurRotBackEnd + DeltaRot, MaxCheckValue, 360.0f);
-		}
-		else if (tempCheck > ClockwiseMaximumDialAngle && tempCheck < MaxCheckValue)
-		{
-			if (CurRotBackEnd < MaxCheckValue)
-			{
-				CurRotBackEnd = ClockwiseMaximumDialAngle;
-			}
-			else
-			{
-				CurRotBackEnd = MaxCheckValue;
-			}
-		}
-		else
-			CurRotBackEnd = tempCheck;
-
-		if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
-		{
-			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
-			CurrentDialAngle = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
-
-			if (bCallEvents && !FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
-			{
-				ReceiveDialHitSnapAngle(CurrentDialAngle);
-				OnDialHitSnapAngle.Broadcast(CurrentDialAngle);
-			}
-
-			LastSnapAngle = CurrentDialAngle;
-		}
-		else
-		{
-			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, CurRotBackEnd, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
-			CurrentDialAngle = FMath::RoundToFloat(CurRotBackEnd);
-		}
-
-	}
+		void AddDialAngle(float DialAngleDelta, bool bCallEvents = false);
 
 	// Directly sets the dial angle, still obeys maximum limits and snapping though
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
-		void SetDialAngle(float DialAngle, bool bCallEvents = false)
-	{
-		CurRotBackEnd = DialAngle;
-		AddDialAngle(0.0f);
-	}
+		void SetDialAngle(float DialAngle, bool bCallEvents = false);
 
 	// ------------------------------------------------
 	// Gameplay tag interface
@@ -306,10 +245,10 @@ public:
 		void IsHeld(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld);
 
 	// Sets is held, used by the plugin
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
 		void SetHeld(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld);
 
-	// Returns if the object is socketed currently
+	// Returns if the object wants to be socketed
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
 

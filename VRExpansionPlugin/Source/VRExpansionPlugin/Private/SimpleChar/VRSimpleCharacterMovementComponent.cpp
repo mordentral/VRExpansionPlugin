@@ -934,7 +934,7 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 			{
 				if (ShouldCatchAir(OldFloor, CurrentFloor))
 				{
-					CharacterOwner->OnWalkingOffLedge(OldFloor.HitResult.ImpactNormal, OldFloor.HitResult.Normal, OldLocation, timeTick);
+					HandleWalkingOffLedge(OldFloor.HitResult.ImpactNormal, OldFloor.HitResult.Normal, OldLocation, timeTick);
 					if (IsMovingOnGround())
 					{
 						// If still walking, then fall. If not, assume the user set a different mode they want to keep.
@@ -1300,12 +1300,13 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 	}
 
 	NewMove->SetMoveFor(CharacterOwner, DeltaTime, NewAcceleration, *ClientData);
+	const UWorld* MyWorld = GetWorld();
 
 	// see if the two moves could be combined
 	// do not combine moves which have different TimeStamps (before and after reset).
 	if (const FSavedMove_Character* PendingMove = ClientData->PendingMove.Get())
 	{
-		if (!PendingMove->bOldTimeStampBeforeReset && PendingMove->CanCombineWith(NewMovePtr, CharacterOwner, ClientData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation()))
+		if (!PendingMove->bOldTimeStampBeforeReset && PendingMove->CanCombineWith(NewMovePtr, CharacterOwner, ClientData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation(*MyWorld)))
 		{
 			//SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCombineNetMove);
 
@@ -1371,7 +1372,6 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 	{
 		check(NewMove == NewMovePtr.Get());
 		ClientData->SavedMoves.Push(NewMovePtr);
-		const UWorld* MyWorld = GetWorld();
 
 		//const bool bCanDelayMove = (CharacterMovementCVars::NetEnableMoveCombining != 0) && CanDelaySendingMove(NewMove);
 		static const auto CVarNetEnableMoveCombiningVRSimple = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableMoveCombining"));
@@ -1570,6 +1570,9 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVRDual_Implementation(
 	MoveRepsOld.ClientMovementBase = MoveReps.ClientMovementBase;
 	MoveRepsOld.UnpackAndSetINTRotations(View0);
 
+	// Optional scoped movement update to combine moves for cheaper performance on the server.
+	FScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableServerDualMoveScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
+
 	ServerMoveVR_Implementation(TimeStamp0, InAccel0, FVector(1.f, 2.f, 3.f), OldConditionalReps, OldLFDiff, PendingFlags, MoveRepsOld, ClientMovementMode);
 	ServerMoveVR_Implementation(TimeStamp, InAccel, ClientLoc, ConditionalReps, LFDiff, NewFlags, MoveReps, ClientMovementMode);
 }
@@ -1643,10 +1646,11 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	//const uint16 ViewYaw = (View >> 16);
 
 	const FVector Accel = InAccel;
-	// Save move parameters.
-	const float DeltaTime = ServerData->GetServerMoveDeltaTime(TimeStamp, CharacterOwner->GetActorTimeDilation());
-	
 	const UWorld* MyWorld = GetWorld();
+
+	// Save move parameters.
+	const float DeltaTime = ServerData->GetServerMoveDeltaTime(TimeStamp, CharacterOwner->GetActorTimeDilation(*MyWorld));
+
 	ServerData->CurrentClientTimeStamp = TimeStamp;
 	ServerData->ServerTimeStamp = MyWorld->GetTimeSeconds();
 	ServerData->ServerTimeStampLastServerMove = ServerData->ServerTimeStamp;

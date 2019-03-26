@@ -212,6 +212,14 @@ void UGripMotionControllerComponent::OnUnregister()
 	}
 	PhysicsGrips.Empty();
 
+	// Clear any timers that we are managing
+	if (UWorld * myWorld = GetWorld())
+	{
+		myWorld->GetTimerManager().ClearAllTimersForObject(this);
+	}
+
+	ObjectsWaitingForSocketUpdate.Empty();
+
 	Super::OnUnregister();
 }
 
@@ -1596,6 +1604,21 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 
 void UGripMotionControllerComponent::SetSocketTransform(UObject* ObjectToSocket, /*USceneComponent * SocketingParent,*/ const FTransform_NetQuantize RelativeTransformToParent/*, FName OptionalSocketName, bool bWeldBodies*/)
 {
+	if (ObjectsWaitingForSocketUpdate.RemoveSingle(ObjectToSocket) < 1)
+	{
+		// I know that technically it should never happen that the pointers get reset with a uproperty
+		// But does it really hurt to add this pathway anyway?
+		for (int i = ObjectsWaitingForSocketUpdate.Num() - 1; i >= 0; --i)
+		{
+			if (ObjectsWaitingForSocketUpdate[i] == nullptr)
+				ObjectsWaitingForSocketUpdate.RemoveAt(i);
+		}
+
+		return;
+	}
+
+	if (!ObjectToSocket || ObjectToSocket->IsPendingKill())
+		return;
 
 	/*FAttachmentTransformRules TransformRule = FAttachmentTransformRules::KeepWorldTransform;//KeepWorldTransform;
 	TransformRule.bWeldSimulatedBodies = bWeldBodies;*/
@@ -1675,6 +1698,7 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	// I may need to consider running the entire attachment in here instead in the future
 	if (bWasSimulating)
 	{
+		ObjectsWaitingForSocketUpdate.Add(ObjectToSocket);
 		GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &UGripMotionControllerComponent::SetSocketTransform, ObjectToSocket, /*SocketingParent, */RelativeTransformToParent/*, OptionalSocketName, bWeldBodies*/));
 	}
 }
@@ -3511,7 +3535,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							//TArray<FOverlapResult> Hits;
 							FComponentQueryParams Params(NAME_None, this->GetOwner());
-							Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+							//Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 							Params.AddIgnoredActor(actor);
 							Params.AddIgnoredActors(root->MoveIgnoreActors);
 
@@ -3575,7 +3599,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						// Always Sweep current collision state with this, used for constraint strength
 						//TArray<FOverlapResult> Hits;
 						FComponentQueryParams Params(NAME_None, this->GetOwner());
-						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+						//Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 
@@ -3610,7 +3634,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 						TArray<FHitResult> Hits;
 						FComponentQueryParams Params(NAME_None, this->GetOwner());
-						Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
+						//Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 
@@ -4040,7 +4064,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 					// Remember the scene index that the handle joint/actor are in.
 					FPhysScene* RBScene = FPhysxUserData::Get<FPhysScene>(Scene->userData);
-					const uint32 SceneType = rBodyInstance->UseAsyncScene(RBScene) ? PST_Async : PST_Sync;
+					//const uint32 SceneType = rBodyInstance->UseAsyncScene(RBScene) ? PST_Async : PST_Sync;
 					//HandleInfo->SceneIndex = RBScene->PhysXSceneIndex[SceneType];
 
 					// Pretty Much Unbreakable
@@ -4903,19 +4927,45 @@ void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, cons
 		return;
 	}
 
-	const FTransform OldTransform = OldRelativeTransform * LateUpdateParentToWorld[LateUpdateRenderReadIndex];
-	const FTransform NewTransform = NewRelativeTransform * LateUpdateParentToWorld[LateUpdateRenderReadIndex];
-	const FMatrix LateUpdateTransform = (OldTransform.Inverse() * NewTransform).ToMatrixWithScale();
+	const FTransform OldCameraTransform = OldRelativeTransform * LateUpdateParentToWorld[LateUpdateRenderReadIndex];
+	const FTransform NewCameraTransform = NewRelativeTransform * LateUpdateParentToWorld[LateUpdateRenderReadIndex];
+	const FMatrix LateUpdateTransform = (OldCameraTransform.Inverse() * NewCameraTransform).ToMatrixWithScale();
 
-	// Apply delta to the affected scene proxies
-	for (auto PrimitiveInfo : LateUpdatePrimitives[LateUpdateRenderReadIndex])
+	bool bIndicesHaveChanged = false;
+
+	// Apply delta to the cached scene proxies
+	// Also check whether any primitive indices have changed, in case the scene has been modified in the meantime.
+	for (auto PrimitivePair : LateUpdatePrimitives[LateUpdateRenderReadIndex])
 	{
-		FPrimitiveSceneInfo* RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(*PrimitiveInfo.IndexAddress);
-		FPrimitiveSceneInfo* CachedSceneInfo = PrimitiveInfo.SceneInfo;
-		// If the retrieved scene info is different than our cached scene info then the primitive was removed from the scene
-		if (CachedSceneInfo == RetrievedSceneInfo && CachedSceneInfo->Proxy)
+		FPrimitiveSceneInfo* RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(PrimitivePair.Value);
+		FPrimitiveSceneInfo* CachedSceneInfo = PrimitivePair.Key;
+
+		// If the retrieved scene info is different than our cached scene info then the scene has changed in the meantime
+		// and we need to search through the entire scene to make sure it still exists.
+		if (CachedSceneInfo != RetrievedSceneInfo)
+		{
+			bIndicesHaveChanged = true;
+			break; // No need to continue here, as we are going to brute force the scene primitives below anyway.
+		}
+		else if (CachedSceneInfo->Proxy)
 		{
 			CachedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
+			PrimitivePair.Value = -1; // Set the cached index to -1 to indicate that this primitive was already processed
+		}
+	}
+
+	// Indices have changed, so we need to scan the entire scene for primitives that might still exist
+	if (bIndicesHaveChanged)
+	{
+		int32 Index = 0;
+		FPrimitiveSceneInfo* RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(Index++);
+		while (RetrievedSceneInfo)
+		{
+			if (RetrievedSceneInfo->Proxy && LateUpdatePrimitives[LateUpdateRenderReadIndex].Contains(RetrievedSceneInfo) && LateUpdatePrimitives[LateUpdateRenderReadIndex][RetrievedSceneInfo] >= 0)
+			{
+				RetrievedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
+			}
+			RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(Index++);
 		}
 	}
 }
@@ -4936,10 +4986,7 @@ void FExpandedLateUpdateManager::CacheSceneInfo(USceneComponent* Component)
 		FPrimitiveSceneInfo* PrimitiveSceneInfo = PrimitiveComponent->SceneProxy->GetPrimitiveSceneInfo();
 		if (PrimitiveSceneInfo)
 		{
-			LateUpdatePrimitiveInfo PrimitiveInfo;
-			PrimitiveInfo.IndexAddress = PrimitiveSceneInfo->GetIndexAddress();
-			PrimitiveInfo.SceneInfo = PrimitiveSceneInfo;
-			LateUpdatePrimitives[LateUpdateGameWriteIndex].Add(PrimitiveInfo);
+			LateUpdatePrimitives[LateUpdateGameWriteIndex].Emplace(PrimitiveSceneInfo, PrimitiveSceneInfo->GetIndex());
 		}
 	}
 }
@@ -5108,4 +5155,132 @@ void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotio
 		}break;
 		}
 	}
+}
+
+void UGripMotionControllerComponent::GetHandType(EControllerHand& Hand)
+{
+	if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
+	{
+		Hand = EControllerHand::Left;
+	}
+}
+
+void UGripMotionControllerComponent::SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent)
+{
+	CustomPivotComponent = NewCustomPivotComponent;
+}
+
+FTransform UGripMotionControllerComponent::ConvertToControllerRelativeTransform(const FTransform & InTransform)
+{
+	return InTransform.GetRelativeTransform(this->GetComponentTransform());
+}
+
+FTransform UGripMotionControllerComponent::ConvertToGripRelativeTransform(const FTransform& GrippedActorTransform, const FTransform & InTransform)
+{
+	return InTransform.GetRelativeTransform(GrippedActorTransform);
+}
+
+bool UGripMotionControllerComponent::GetIsObjectHeld(const UObject * ObjectToCheck)
+{
+	if (!ObjectToCheck)
+		return false;
+
+	return (GrippedObjects.FindByKey(ObjectToCheck) || LocallyGrippedObjects.FindByKey(ObjectToCheck));
+}
+
+bool UGripMotionControllerComponent::GetIsHeld(const AActor * ActorToCheck)
+{
+	if (!ActorToCheck)
+		return false;
+
+	return (GrippedObjects.FindByKey(ActorToCheck) || LocallyGrippedObjects.FindByKey(ActorToCheck));
+}
+
+bool UGripMotionControllerComponent::GetIsComponentHeld(const UPrimitiveComponent * ComponentToCheck)
+{
+	if (!ComponentToCheck)
+		return false;
+
+	return (GrippedObjects.FindByKey(ComponentToCheck) || LocallyGrippedObjects.FindByKey(ComponentToCheck));
+
+	return false;
+}
+
+bool UGripMotionControllerComponent::GetIsSecondaryAttachment(const USceneComponent * ComponentToCheck, FBPActorGripInformation & Grip)
+{
+	if (!ComponentToCheck)
+		return false;
+
+	for (int i = 0; i < GrippedObjects.Num(); ++i)
+	{
+		if (GrippedObjects[i].SecondaryGripInfo.bHasSecondaryAttachment && GrippedObjects[i].SecondaryGripInfo.SecondaryAttachment == ComponentToCheck)
+		{
+			Grip = GrippedObjects[i];
+			return true;
+		}
+	}
+
+	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
+	{
+		if (LocallyGrippedObjects[i].SecondaryGripInfo.bHasSecondaryAttachment && LocallyGrippedObjects[i].SecondaryGripInfo.SecondaryAttachment == ComponentToCheck)
+		{
+			Grip = LocallyGrippedObjects[i];
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UGripMotionControllerComponent::HasGrippedObjects()
+{
+	return GrippedObjects.Num() > 0 || LocallyGrippedObjects.Num() > 0;
+}
+
+bool UGripMotionControllerComponent::SetUpPhysicsHandle_BP(const FBPActorGripInformation &NewGrip)
+{
+	return SetUpPhysicsHandle(NewGrip);
+}
+
+bool UGripMotionControllerComponent::DestroyPhysicsHandle_BP(const FBPActorGripInformation &Grip)
+{
+	return DestroyPhysicsHandle(Grip);
+}
+
+void UGripMotionControllerComponent::UpdatePhysicsHandleTransform_BP(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform)
+{
+	return UpdatePhysicsHandleTransform(GrippedActor, NewTransform);
+}
+
+bool UGripMotionControllerComponent::GetGripDistance_BP(FBPActorGripInformation &Grip, FVector ExpectedLocation, float & CurrentDistance)
+{
+	if (!Grip.GrippedObject)
+		return false;
+
+	UPrimitiveComponent * RootComp = nullptr;
+
+	if (Grip.GripTargetType == EGripTargetType::ActorGrip)
+	{
+		RootComp = Cast<UPrimitiveComponent>(Grip.GetGrippedActor()->GetRootComponent());
+	}
+	else
+		RootComp = Grip.GetGrippedComponent();
+
+	if (!RootComp)
+		return false;
+
+	FVector CheckDistance;
+	if (!GetPhysicsJointLength(Grip, RootComp, CheckDistance))
+	{
+		CheckDistance = (ExpectedLocation - RootComp->GetComponentLocation());
+	}
+
+	// Set grip distance now for people to use
+	CurrentDistance = CheckDistance.Size();
+	return true;
+}
+
+bool UGripMotionControllerComponent::GripControllerIsTracked() const
+{
+	return bTracked;
 }

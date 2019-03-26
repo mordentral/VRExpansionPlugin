@@ -170,6 +170,11 @@ public:
 	// Using my own as I don't want to cast the standard fsavedmove
 	virtual void CallServerMove(const class FSavedMove_Character* NewMove, const class FSavedMove_Character* OldMove) override;
 
+	/* Resending an (important) old move. Process it if not already processed. */
+	virtual void ServerMoveVROld(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps);
+	virtual void ServerMoveVROld_Implementation(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps);
+	virtual bool ServerMoveVROld_Validate(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps);
+
 	/** Replicated function sent by client to server - contains client movement and view info. */
 	//UFUNCTION(unreliable, server, WithValidation)
 	virtual void ServerMoveVR(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint16 CapsuleYaw, uint8 CompressedMoveFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode);
@@ -262,38 +267,8 @@ public:
 	// Need to use actual capsule location for step up
 	bool StepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = NULL) override;
 
-	virtual FVector GetPenetrationAdjustment(const FHitResult& Hit) const override
-	{
-		// This checks for a walking collision override on the penetrated object
-		// If found then it stops penetration adjustments.
-		if (MovementMode == EMovementMode::MOVE_Walking && VRRootCapsule && VRRootCapsule->bUseWalkingCollisionOverride && Hit.Component.IsValid())
-		{
-			ECollisionResponse WalkingResponse;
-			WalkingResponse = Hit.Component->GetCollisionResponseToChannel(VRRootCapsule->WalkingCollisionOverride);
+	virtual FVector GetPenetrationAdjustment(const FHitResult& Hit) const override;
 
-			if (WalkingResponse == ECR_Ignore || WalkingResponse == ECR_Overlap)
-			{
-				return FVector::ZeroVector;
-			}
-		}
-
-		FVector Result = Super::GetPenetrationAdjustment(Hit);
-
-		if (CharacterOwner)
-		{
-			const bool bIsProxy = (CharacterOwner->Role == ROLE_SimulatedProxy);
-			float MaxDistance = bIsProxy ? MaxDepenetrationWithGeometryAsProxy : MaxDepenetrationWithGeometry;
-			const AActor* HitActor = Hit.GetActor();
-			if (Cast<APawn>(HitActor))
-			{
-				MaxDistance = bIsProxy ? MaxDepenetrationWithPawnAsProxy : MaxDepenetrationWithPawn;
-			}
-
-			Result = Result.GetClampedToMaxSize(MaxDistance);
-		}
-
-		return Result;
-	}
 	// MOVED THIS TO THE BASE VR CHARACTER MOVEMENT COMPONENT
 	// Also added a control variable for it there
 	// Skip physics channels when looking for floor

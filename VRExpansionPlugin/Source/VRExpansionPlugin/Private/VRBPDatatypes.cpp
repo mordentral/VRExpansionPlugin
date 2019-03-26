@@ -90,3 +90,52 @@ bool FTransform_NetQuantize::NetSerialize(FArchive& Ar, class UPackageMap* Map, 
 
 	return bOutSuccess;
 }
+
+// ** Euro Low Pass Filter ** //
+
+void FBPEuroLowPassFilter::ResetSmoothingFilter()
+{
+	RawFilter.bFirstTime = true;
+	DeltaFilter.bFirstTime = true;
+}
+
+FVector FBPEuroLowPassFilter::RunFilterSmoothing(const FVector &InRawValue, const float &InDeltaTime)
+{
+	// Calculate the delta, if this is the first time then there is no delta
+	const FVector Delta = RawFilter.bFirstTime == true ? FVector::ZeroVector : (InRawValue - RawFilter.Previous) * InDeltaTime;
+
+	// Filter the delta to get the estimated
+	const FVector Estimated = DeltaFilter.Filter(Delta, FVector(CalculateAlpha(DeltaCutoff, InDeltaTime)));
+
+	// Use the estimated to calculate the cutoff
+	const FVector Cutoff = CalculateCutoff(Estimated);
+
+	// Filter passed value 
+	return RawFilter.Filter(InRawValue, CalculateAlpha(Cutoff, InDeltaTime));
+}
+
+const FVector FBPEuroLowPassFilter::CalculateCutoff(const FVector& InValue)
+{
+	FVector Result;
+	for (int i = 0; i < 3; i++)
+	{
+		Result[i] = MinCutoff + CutoffSlope * FMath::Abs(InValue[i]);
+	}
+	return Result;
+}
+
+const FVector FBPEuroLowPassFilter::CalculateAlpha(const FVector& InCutoff, const double InDeltaTime) const
+{
+	FVector Result;
+	for (int i = 0; i < 3; i++)
+	{
+		Result[i] = CalculateAlpha(InCutoff[i], InDeltaTime);
+	}
+	return Result;
+}
+
+const float FBPEuroLowPassFilter::CalculateAlpha(const float InCutoff, const double InDeltaTime) const
+{
+	const float tau = 1.0 / (2 * PI * InCutoff);
+	return 1.0 / (1.0 + tau / InDeltaTime);
+}

@@ -164,14 +164,14 @@ public:
 	/** Default constructor */
 	FBPEuroLowPassFilter() :
 		MinCutoff(0.9f),
-		CutoffSlope(0.007f),
-		DeltaCutoff(1.0f)
+		DeltaCutoff(1.0f),
+		CutoffSlope(0.007f)
 	{}
 
 	FBPEuroLowPassFilter(const float InMinCutoff, const float InCutoffSlope, const float InDeltaCutoff) :
 		MinCutoff(InMinCutoff),
-		CutoffSlope(InCutoffSlope),
-		DeltaCutoff(InDeltaCutoff)
+		DeltaCutoff(InDeltaCutoff),
+		CutoffSlope(InCutoffSlope)
 	{}
 
 	// The smaller the value the less jitter and the more lag with micro movements
@@ -187,55 +187,16 @@ public:
 		float CutoffSlope;
 
 
-	void ResetSmoothingFilter()
-	{
-		RawFilter.bFirstTime = true;
-		DeltaFilter.bFirstTime = true;
-	}
+	void ResetSmoothingFilter();
 
 	/** Smooth vector */
-	FVector RunFilterSmoothing(const FVector &InRawValue, const float &InDeltaTime)
-	{
-		// Calculate the delta, if this is the first time then there is no delta
-		const FVector Delta = RawFilter.bFirstTime == true ? FVector::ZeroVector : (InRawValue - RawFilter.Previous) * InDeltaTime;
-
-		// Filter the delta to get the estimated
-		const FVector Estimated = DeltaFilter.Filter(Delta, FVector(CalculateAlpha(DeltaCutoff, InDeltaTime)));
-
-		// Use the estimated to calculate the cutoff
-		const FVector Cutoff = CalculateCutoff(Estimated);
-
-		// Filter passed value 
-		return RawFilter.Filter(InRawValue, CalculateAlpha(Cutoff, InDeltaTime));
-	}
+	FVector RunFilterSmoothing(const FVector &InRawValue, const float &InDeltaTime);
 
 private:
 
-	const FVector CalculateCutoff(const FVector& InValue)
-	{
-		FVector Result;
-		for (int i = 0; i < 3; i++)
-		{
-			Result[i] = MinCutoff + CutoffSlope * FMath::Abs(InValue[i]);
-		}
-		return Result;
-	}
-
-	const FVector CalculateAlpha(const FVector& InCutoff, const double InDeltaTime) const
-	{
-		FVector Result;
-		for (int i = 0; i < 3; i++)
-		{
-			Result[i] = CalculateAlpha(InCutoff[i], InDeltaTime);
-		}
-		return Result;
-	}
-
-	const float CalculateAlpha(const float InCutoff, const double InDeltaTime) const
-	{
-		const float tau = 1.0 / (2 * PI * InCutoff);
-		return 1.0 / (1.0 + tau / InDeltaTime);
-	}
+	const FVector CalculateCutoff(const FVector& InValue);
+	const FVector CalculateAlpha(const FVector& InCutoff, const double InDeltaTime) const;
+	const float CalculateAlpha(const float InCutoff, const double InDeltaTime) const;
 
 	FBasicLowPassFilter RawFilter;
 	FBasicLowPassFilter DeltaFilter;

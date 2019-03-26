@@ -195,6 +195,17 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 	}
 }
 
+// ServerMoveOld
+void AVRCharacter::ServerMoveVROld_Implementation(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps)
+{
+	((UVRCharacterMovementComponent*)GetCharacterMovement())->ServerMoveVROld_Implementation(OldTimeStamp, OldAccel, OldMoveFlags, ConditionalReps);
+}
+
+bool AVRCharacter::ServerMoveVROld_Validate(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps)
+{
+	return ((UVRCharacterMovementComponent*)GetCharacterMovement())->ServerMoveVROld_Validate(OldTimeStamp, OldAccel, OldMoveFlags, ConditionalReps);
+}
+
 bool AVRCharacter::ServerMoveVR_Validate(float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint16 CapsuleYaw, uint8 MoveFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode)
 {
 	return ((UVRCharacterMovementComponent*)GetCharacterMovement())->ServerMoveVR_Validate(TimeStamp, InAccel, ClientLoc, CapsuleLoc, ConditionalReps, LFDiff, CapsuleYaw, MoveFlags, MoveReps, ClientMovementMode);
@@ -398,4 +409,42 @@ void AVRCharacter::ClientAdjustPositionVR_Implementation(float TimeStamp, FVecto
 void AVRCharacter::ClientVeryShortAdjustPositionVR_Implementation(float TimeStamp, FVector NewLoc, uint16 NewYaw, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
 {
 	((UVRCharacterMovementComponent*)GetCharacterMovement())->ClientVeryShortAdjustPositionVR_Implementation(TimeStamp, NewLoc, NewYaw, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+}
+
+void AVRCharacter::RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw)
+{
+	if (VRRootReference)
+	{
+		VRRootReference->GenerateOffsetToWorld(bUpdateBounds, bCalculatePureYaw);
+	}
+}
+
+void AVRCharacter::SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
+{
+	if (VRRootReference)
+	{
+		VRRootReference->SetCapsuleSizeVR(NewRadius, NewHalfHeight, bUpdateOverlaps);
+
+		if (GetNetMode() < ENetMode::NM_Client)
+			ReplicatedCapsuleHeight.CapsuleHeight = VRRootReference->GetUnscaledCapsuleHalfHeight();
+	}
+	else
+	{
+		Super::SetCharacterSizeVR(NewRadius, NewHalfHeight, bUpdateOverlaps);
+	}
+}
+
+void AVRCharacter::SetCharacterHalfHeightVR(float HalfHeight, bool bUpdateOverlaps)
+{
+	if (VRRootReference)
+	{
+		VRRootReference->SetCapsuleHalfHeightVR(HalfHeight, bUpdateOverlaps);
+
+		if (GetNetMode() < ENetMode::NM_Client)
+			ReplicatedCapsuleHeight.CapsuleHeight = VRRootReference->GetUnscaledCapsuleHalfHeight();
+	}
+	else
+	{
+		Super::SetCharacterHalfHeightVR(HalfHeight, bUpdateOverlaps);
+	}
 }

@@ -32,7 +32,7 @@ public:
 	void OnUnregister() override;
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
-	virtual FActorComponentInstanceData* GetComponentInstanceData() const override;
+	virtual TStructOnScope<FActorComponentInstanceData>  GetComponentInstanceData() const override;
 	void ApplyVRComponentInstanceData(class FVRStereoWidgetComponentInstanceData* WidgetInstanceData);
 
 	virtual void UpdateRenderTarget(FIntPoint DesiredRenderTargetSize) override;

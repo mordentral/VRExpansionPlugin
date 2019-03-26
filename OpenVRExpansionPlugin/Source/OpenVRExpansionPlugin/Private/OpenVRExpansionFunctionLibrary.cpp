@@ -399,7 +399,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 		return;
 	}
 
-	ENQUEUE_UNIQUE_RENDER_COMMAND_TWOPARAMETER(
+	/*ENQUEUE_UNIQUE_RENDER_COMMAND_TWOPARAMETER(
 		UpdateDynamicTextureCode,
 		UTexture2D*, pTexture, TargetRenderTarget,
 		const uint8*, pData, pData,
@@ -413,9 +413,27 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 			region.Height = pTexture->GetSizeY();//TEX_HEIGHT;
 
 			FTexture2DResource* resource = (FTexture2DResource*)pTexture->Resource;
-			RHIUpdateTexture2D(resource->GetTexture2DRHI(), 0, region, region.Width * GPixelFormats[pTexture->GetPixelFormat()].BlockBytes/*TEX_PIXEL_SIZE_IN_BYTES*/, pData);
+			RHIUpdateTexture2D(resource->GetTexture2DRHI(), 0, region, region.Width * GPixelFormats[pTexture->GetPixelFormat()].BlockBytes, pData);
 			delete[] pData;
-		});
+		});*/
+
+	UTexture2D* TexturePtr = TargetRenderTarget;
+	const uint8* TextureData = pData;
+	ENQUEUE_RENDER_COMMAND(OpenVRExpansionPlugin_GetVRCameraFrame)(
+		[TexturePtr, TextureData](FRHICommandList& RHICmdList)
+	{
+		FUpdateTextureRegion2D region;
+		region.SrcX = 0;
+		region.SrcY = 0;
+		region.DestX = 0;
+		region.DestY = 0;
+		region.Width = TexturePtr->GetSizeX();// TEX_WIDTH;
+		region.Height = TexturePtr->GetSizeY();//TEX_HEIGHT;
+
+		FTexture2DResource* resource = (FTexture2DResource*)TexturePtr->Resource;
+		RHIUpdateTexture2D(resource->GetTexture2DRHI(), 0, region, region.Width * GPixelFormats[TexturePtr->GetPixelFormat()].BlockBytes/*TEX_PIXEL_SIZE_IN_BYTES*/, TextureData);
+		delete[] TextureData;
+	});
 
 	// Letting the enqueued command free the memory
 	Result = EBPOVRResultSwitch::OnSucceeded;
