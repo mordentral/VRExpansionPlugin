@@ -232,10 +232,10 @@ public:
 		void IsHeld(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld);
 
 	// Sets is held, used by the plugin
-	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void SetHeld(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld);
 
-	// Returns if the object wants to be socketed
+	// Returns if the object is socketed currently
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
 

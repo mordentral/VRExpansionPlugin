@@ -192,16 +192,16 @@ float UAISense_Sight_VR::Update()
 		if (TracesCount < MaxTracesPerTick && bHitTimeSliceLimit == false)
 		{
 			FPerceptionListener& Listener = ListenersMap[SightQuery->ObserverId];
-
+			ensure(Listener.Listener.IsValid());
 			FAISightTargetVR& Target = ObservedTargets[SightQuery->TargetId];
-			AActor* TargetActor = Target.Target.Get();
-			UAIPerceptionComponent* ListenerPtr = Listener.Listener.Get();
-			ensure(ListenerPtr);
+
+			const bool bTargetValid = Target.Target.IsValid();
+			const bool bListenerValid = Listener.Listener.IsValid();
 
 			// @todo figure out what should we do if not valid
-			if (TargetActor && ListenerPtr)
+			if (bTargetValid && bListenerValid)
 			{
-				//AActor* nTargetActor = Target.Target.Get();
+				AActor* TargetActor = Target.Target.Get();
 				// Changed this up to support my VR Characters
 				const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(TargetActor);
 				const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation();
@@ -221,7 +221,7 @@ float UAISense_Sight_VR::Update()
 				}
 				else if (CheckIsTargetInSightPie(Listener, PropDigest, TargetLocation, SightRadiusSq))
 				{
-					SIGHT_LOG_SEGMENTVR(ListenerPtr->GetOwner(), Listener.CachedLocation, TargetLocation, FColor::Green, TEXT("%s"), *(Target.TargetId.ToString()));
+					SIGHT_LOG_SEGMENTVR(Listener.Listener.Get()->GetOwner(), Listener.CachedLocation, TargetLocation, FColor::Green, TEXT("%s"), *(Target.TargetId.ToString()));
 
 					FVector OutSeenLocation(0.f);
 					// do line checks
@@ -229,7 +229,7 @@ float UAISense_Sight_VR::Update()
 					{
 						int32 NumberOfLoSChecksPerformed = 0;
 						// defaulting to 1 to have "full strength" by default instead of "no strength"
-						if (Target.SightTargetInterface->CanBeSeenFrom(Listener.CachedLocation, OutSeenLocation, NumberOfLoSChecksPerformed, StimulusStrength, ListenerPtr->GetBodyActor()) == true)
+						if (Target.SightTargetInterface->CanBeSeenFrom(Listener.CachedLocation, OutSeenLocation, NumberOfLoSChecksPerformed, StimulusStrength, Listener.Listener->GetBodyActor()) == true)
 						{
 							Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, StimulusStrength, OutSeenLocation, Listener.CachedLocation));
 							SightQuery->bLastResult = true;
@@ -245,7 +245,7 @@ float UAISense_Sight_VR::Update()
 
 						if (SightQuery->bLastResult == false)
 						{
-							SIGHT_LOG_LOCATIONVR(ListenerPtr->GetOwner(), TargetLocation, 25.f, FColor::Red, TEXT(""));
+							SIGHT_LOG_LOCATIONVR(Listener.Listener.Get()->GetOwner(), TargetLocation, 25.f, FColor::Red, TEXT(""));
 						}
 
 						TracesCount += NumberOfLoSChecksPerformed;
@@ -256,17 +256,11 @@ float UAISense_Sight_VR::Update()
 						FHitResult HitResult;
 						const bool bHit = World->LineTraceSingleByChannel(HitResult, Listener.CachedLocation, TargetLocation
 							, DefaultSightCollisionChannel
-							, FCollisionQueryParams(SCENE_QUERY_STAT(AILineOfSight), true, ListenerPtr->GetBodyActor()));
+							, FCollisionQueryParams(SCENE_QUERY_STAT(AILineOfSight), true, Listener.Listener->GetBodyActor()));
 
 						++TracesCount;
 
-						auto HitResultActorIsOwnedByTargetActor = [&HitResult, TargetActor]()
-						{
-							AActor* HitResultActor = HitResult.Actor.Get();
-							return (HitResultActor ? HitResultActor->IsOwnedBy(TargetActor) : false);
-						};
-
-						if (bHit == false || HitResultActorIsOwnedByTargetActor())
+						if (bHit == false || (HitResult.Actor.IsValid() && HitResult.Actor->IsOwnedBy(TargetActor)))
 						{
 							Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, 1.f, TargetLocation, Listener.CachedLocation));
 							SightQuery->bLastResult = true;
@@ -282,14 +276,14 @@ float UAISense_Sight_VR::Update()
 
 						if (SightQuery->bLastResult == false)
 						{
-							SIGHT_LOG_LOCATIONVR(ListenerPtr->GetOwner(), TargetLocation, 25.f, FColor::Red, TEXT(""));
+							SIGHT_LOG_LOCATIONVR(Listener.Listener.Get()->GetOwner(), TargetLocation, 25.f, FColor::Red, TEXT(""));
 						}
 					}
 				}
 				// communicate failure only if we've seen give actor before
 				else if (SightQuery->bLastResult)
 				{
-					SIGHT_LOG_SEGMENTVR(ListenerPtr->GetOwner(), Listener.CachedLocation, TargetLocation, FColor::Red, TEXT("%s"), *(Target.TargetId.ToString()));
+					SIGHT_LOG_SEGMENTVR(Listener.Listener.Get()->GetOwner(), Listener.CachedLocation, TargetLocation, FColor::Red, TEXT("%s"), *(Target.TargetId.ToString()));
 					Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, 0.f, TargetLocation, Listener.CachedLocation, FAIStimulus::SensingFailed));
 					SightQuery->bLastResult = false;
 				}
@@ -303,7 +297,7 @@ float UAISense_Sight_VR::Update()
 			{
 				// put this index to "to be removed" array
 				InvalidQueries.Add(QueryIndex);
-				if (TargetActor == nullptr)
+				if (bTargetValid == false)
 				{
 					InvalidTargets.AddUnique(SightQuery->TargetId);
 				}
@@ -502,10 +496,8 @@ bool UAISense_Sight_VR::RegisterTarget(AActor& TargetActor, FQueriesOperationPos
 
 void UAISense_Sight_VR::OnNewListenerImpl(const FPerceptionListener& NewListener)
 {
-	UAIPerceptionComponent* NewListenerPtr = NewListener.Listener.Get();
-	check(NewListenerPtr);
-	const UAISenseConfig_Sight_VR* SenseConfig = Cast<const UAISenseConfig_Sight_VR>(NewListenerPtr->GetSenseConfig(GetSenseID()));
-
+	check(NewListener.Listener.IsValid());
+	const UAISenseConfig_Sight_VR* SenseConfig = Cast<const UAISenseConfig_Sight_VR>(NewListener.Listener->GetSenseConfig(GetSenseID()));
 	check(SenseConfig);
 	const FDigestedSightProperties PropertyDigest(*SenseConfig);
 	DigestedProperties.Add(NewListener.GetListenerID(), PropertyDigest);
@@ -610,11 +602,10 @@ void UAISense_Sight_VR::RemoveAllQueriesByListener(const FPerceptionListener& Li
 	const uint32 ListenerId = Listener.GetListenerID();
 	bool bQueriesRemoved = false;
 
-	for (int32 QueryIndex = SightQueryQueue.Num() - 1; QueryIndex >= 0; --QueryIndex)
+	const FAISightQueryVR* SightQuery = &SightQueryQueue[SightQueryQueue.Num() - 1];
+	for (int32 QueryIndex = SightQueryQueue.Num() - 1; QueryIndex >= 0; --QueryIndex, --SightQuery)
 	{
-		const FAISightQueryVR& SightQuery = SightQueryQueue[QueryIndex];
-
-		if (SightQuery.ObserverId == ListenerId)
+		if (SightQuery->ObserverId == ListenerId)
 		{
 			SightQueryQueue.RemoveAt(QueryIndex, 1, /*bAllowShrinking=*/false);
 			bQueriesRemoved = true;
@@ -638,11 +629,10 @@ void UAISense_Sight_VR::RemoveAllQueriesToTarget(const FAISightTargetVR::FTarget
 
 	bool bQueriesRemoved = false;
 
-	for (int32 QueryIndex = SightQueryQueue.Num() - 1; QueryIndex >= 0; --QueryIndex)
+	const FAISightQueryVR* SightQuery = &SightQueryQueue[SightQueryQueue.Num() - 1];
+	for (int32 QueryIndex = SightQueryQueue.Num() - 1; QueryIndex >= 0; --QueryIndex, --SightQuery)
 	{
-		const FAISightQueryVR& SightQuery = SightQueryQueue[QueryIndex];
-
-		if (SightQuery.TargetId == TargetId)
+		if (SightQuery->TargetId == TargetId)
 		{
 			SightQueryQueue.RemoveAt(QueryIndex, 1, /*bAllowShrinking=*/false);
 			bQueriesRemoved = true;

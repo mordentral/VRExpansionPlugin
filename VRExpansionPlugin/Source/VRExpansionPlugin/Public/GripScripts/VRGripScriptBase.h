@@ -97,43 +97,85 @@ public:
 
 	// Returns the expected grip transform (relative * controller + addition)
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
-		FTransform GetGripTransform(const FBPActorGripInformation &Grip, const FTransform & ParentTransform);
+	FTransform GetGripTransform(const FBPActorGripInformation &Grip, const FTransform & ParentTransform)
+	{
+		return Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
+	}
 
 	// Returns the current world transform of the owning object (or root comp of if it is an actor)
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
-		FTransform GetParentTransform(bool bGetWorldTransform = true);
+	FTransform GetParentTransform(bool bGetWorldTransform = true)
+	{
+		UObject * ParentObj = this->GetParent();
+
+		if (USceneComponent * PrimParent = Cast<USceneComponent>(ParentObj))
+		{
+			return bGetWorldTransform ? PrimParent->GetComponentTransform() : PrimParent->GetRelativeTransform();
+		}
+		else if (AActor * ParentActor = Cast<AActor>(ParentObj))
+		{
+			return ParentActor->GetActorTransform();
+		}
+
+		return FTransform::Identity;	
+	}
 
 	// Returns the parent component or actor to this
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
-		UObject * GetParent();
+		UObject * GetParent()
+	{
+		return this->GetOuter();
+	}
 
 	// Returns the owning actor 
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
-		AActor * GetOwner();
+		AActor * GetOwner()
+	{
+		UObject * myOuter = this->GetOuter();
+
+		if (!myOuter)
+			return nullptr;
+
+		if (AActor * ActorOwner = Cast<AActor>(myOuter))
+		{
+			return ActorOwner;
+		}
+		else if (UActorComponent * ComponentOwner = Cast<UActorComponent>(myOuter))
+		{
+			return ComponentOwner->GetOwner();
+		}
+
+		return nullptr;
+	}
 
 	// If the owning actor has authority on this connection 
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
-		bool HasAuthority();
+		bool HasAuthority()
+	{
+		if(AActor * MyOwner = GetOwner())
+		{
+			return MyOwner->Role == ROLE_Authority;
+		}
+		
+		return false;
+	}
 
 	// If the owning actor is on the server on this connection 
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
-		bool IsServer();
+		bool IsServer()
+	{
+		if (AActor * MyOwner = GetOwner())
+		{
+			return MyOwner->GetNetMode() < ENetMode::NM_Client;
+		}
 
-	void EndPlay(const EEndPlayReason::Type EndPlayReason);
-
-	// Not all scripts will require this function, specific ones that use things like Lever logic however will. Best to call it.
-	// Grippables will automatically call this, however if you manually spawn a grip script during play or you make your own
-	// Interfaced grip object and give it grippables, YOU will be required to call this event on them.
-	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
-		void OnEndPlay(const EEndPlayReason::Type EndPlayReason);
-	virtual void OnEndPlay_Implementation(const EEndPlayReason::Type EndPlayReason);
-
-	void BeginPlay(UObject * CallingOwner);
+		return false;
+	}
 
 	// Not all scripts will require this function, specific ones that use things like Lever logic however will. Best to call it.
 	// Grippables will automatically call this, however if you manually spawn a grip script during play or you make your own
 	// Interfaced grip object and give it grippables, YOU will be required to call this event on them.
-	UFUNCTION(BlueprintNativeEvent, Category = "VRGripScript")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
 		void OnBeginPlay(UObject * CallingOwner);
 		virtual void OnBeginPlay_Implementation(UObject * CallingOwner);
 

@@ -7,7 +7,6 @@
 #include "UObject/Object.h"
 #include "Engine/Texture.h"
 #include "Engine/EngineTypes.h"
-#include "RHI.h"
 //#include "EngineMinimal.h"
 #include "IMotionController.h"
 //#include "VRBPDatatypes.h"
@@ -656,30 +655,17 @@ public:
 		else
 			VRTexture.handle = NULL;
 
-		VRTexture.eColorSpace = vr::EColorSpace::ColorSpace_Auto;
-
-		VRTexture.eType = vr::ETextureType::TextureType_OpenGL;
-#if PLATFORM_MAC
-		VRTexture.eType = vr::ETextureType::TextureType_IOSurface;
+#if PLATFORM_LINUX
+#if STEAMVR_USE_VULKAN_RHI
+		VRTexture.eType = vr::TextureType_Vulkan;
 #else
-		if (IsPCPlatform(GMaxRHIShaderPlatform))
-		{
-			if (IsVulkanPlatform(GMaxRHIShaderPlatform))
-			{
-				VRTexture.eType = vr::ETextureType::TextureType_Vulkan;
-			}
-			else if (IsOpenGLPlatform(GMaxRHIShaderPlatform))
-			{
-				VRTexture.eType = vr::ETextureType::TextureType_OpenGL;
-			}
-#if PLATFORM_WINDOWS
-			else
-			{
-				VRTexture.eType = vr::ETextureType::TextureType_DirectX;
-			}
+		VRTexture.eType = vr::TextureType_OpenGL;
 #endif
-		}
+#else
+		VRTexture.eType = vr::TextureType_DirectX;
 #endif
+		VRTexture.eColorSpace = vr::ColorSpace_Auto;
+
 		return VRTexture;
 	}
 };	

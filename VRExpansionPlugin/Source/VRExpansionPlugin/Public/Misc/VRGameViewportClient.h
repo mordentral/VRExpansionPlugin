@@ -32,34 +32,28 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRExpansionPlugin")
 		EVRGameInputMethod GameInputMethod;
 
-	virtual bool InputKey(const FInputKeyEventArgs& EventArgs) override
+
+	virtual bool InputKey(FViewport* tViewport, int32 ControllerId, FKey Key, EInputEvent EventType, float AmountDepressed = 1.f, bool bGamepad = false) override
 	{
-		// Early out if a gamepad event or ignoring input or is default setup / no GEngine
-		if(GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || EventArgs.IsGamepad())
-			return Super::InputKey(EventArgs);
 
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
 
-		// Also early out if number of players is less than 2
-		if (NumLocalPlayers < 2)
-			return Super::InputKey(EventArgs);
+		// Early out if a gamepad event or ignoring input or is default setup / no GEngine
+		if(NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || bGamepad)
+			return Super::InputKey(tViewport, ControllerId, Key, EventType, AmountDepressed, bGamepad);
 
-		// Its const so have to copy and send a new one in now that the function signature has changed
-		FInputKeyEventArgs NewStruct = EventArgs;
-
-		if (GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
+		if(GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
 		{
 			// keyboard / mouse always go to player 0, so + 1 will be player 2
-			NewStruct.ControllerId++;
-			return Super::InputKey(NewStruct);
+			++ControllerId;
+			return Super::InputKey(tViewport, ControllerId, Key, EventType, AmountDepressed, bGamepad);
 		}
 		else // Shared keyboard and mouse
 		{
 			bool bRetVal = false;
 			for (int32 i = 0; i < NumLocalPlayers; i++)
 			{
-				NewStruct.ControllerId = i;
-				bRetVal = Super::InputKey(NewStruct) || bRetVal;
+				bRetVal = Super::InputKey(tViewport, i, Key, EventType, AmountDepressed, bGamepad) || bRetVal;
 			}
 
 			return bRetVal;

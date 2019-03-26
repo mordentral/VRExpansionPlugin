@@ -595,8 +595,15 @@ public:
 		return bHasRequestedVelocity;
 	}
 
-	void SetHasRequestedVelocity(bool bNewHasRequestedVelocity);
-	bool IsClimbing() const;
+	void SetHasRequestedVelocity(bool bNewHasRequestedVelocity)
+	{
+		bHasRequestedVelocity = bNewHasRequestedVelocity;
+	}
+
+	bool IsClimbing() const
+	{
+		return ((MovementMode == MOVE_Custom) && (CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing)) && UpdatedComponent;
+	}
 
 	// Sets the crouching half height since it isn't exposed during runtime to blueprints
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
@@ -664,11 +671,18 @@ public:
 	// Rewind the relative movement that we had with the HMD, this is exposed to Blueprint so that custom movement modes can use it to rewind prior to movement actions.
 	// Returns the Vector required to get back to the original position (for custom movement modes)
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		FVector RewindVRMovement();
+	FVector RewindVRMovement()
+	{
+		RewindVRRelativeMovement();
+		return AdditionalVRInputVector;
+	}
 
 	// Gets the current CustomInputVector for use in custom movement modes
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		FVector GetCustomInputVector();
+	FVector GetCustomInputVector()
+	{
+		return CustomVRInputVector;
+	}
 
 	bool bWasInPushBack;
 	bool bIsInPushBack;
@@ -842,9 +856,25 @@ public:
 		}
 	}
 
-	void UpdateFromCompressedFlags(uint8 Flags) override;
+	void UpdateFromCompressedFlags(uint8 Flags) override
+	{
+		// If is a custom or VR custom movement mode
+		int32 MovementFlags = (Flags >> 2) & 15;
+		VRReplicatedMovementMode = (EVRConjoinedMovementModes)MovementFlags;
 
-	FVector RoundDirectMovement(FVector InMovement) const;
+		//bWantsToSnapTurn = ((Flags & FSavedMove_VRBaseCharacter::FLAG_SnapTurn) != 0);
+
+		Super::UpdateFromCompressedFlags(Flags);
+	}
+
+	FVector RoundDirectMovement(FVector InMovement) const
+	{
+		// Match FVector_NetQuantize100 (2 decimal place of precision).
+		InMovement.X = FMath::RoundToFloat(InMovement.X * 100.f) / 100.f;
+		InMovement.Y = FMath::RoundToFloat(InMovement.Y * 100.f) / 100.f;
+		InMovement.Z = FMath::RoundToFloat(InMovement.Z * 100.f) / 100.f;
+		return InMovement;
+	}
 
 	// Setting this below 1.0 will change how fast you de-accelerate when touching a wall
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|LowGrav", meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))

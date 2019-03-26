@@ -66,9 +66,8 @@ public:
 	{
 		// I like epics implementation better than my own
 		const AActor* MyOwner = GetOwner();
-		return MyOwner->HasLocalNetOwner();
-		//const APawn* MyPawn = Cast<APawn>(MyOwner);
-		//return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
+		const APawn* MyPawn = Cast<APawn>(MyOwner);
+		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
 	// Sets the rotation and location depending on the control variables. Trying to remove some code duplication here

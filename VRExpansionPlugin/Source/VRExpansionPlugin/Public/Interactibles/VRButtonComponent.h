@@ -52,19 +52,69 @@ public:
 	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintPure, Category = "VRButtonComponent")
-		bool IsButtonInUse();
+	bool IsButtonInUse()
+	{
+		return LocalInteractingComponent.IsValid();
+	}
 
 	// Should be called after the button is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRButtonComponent")
-		void ResetInitialButtonLocation();
+	void ResetInitialButtonLocation()
+	{
+		// Get our initial relative transform to our parent (or not if un-parented).
+		InitialRelativeTransform = this->GetRelativeTransform();
+	}
 
 	// Sets the button state outside of interaction, bSnapIntoPosition is for Toggle_Stay mode, it will lerp into the new position if this is false
 	UFUNCTION(BlueprintCallable, Category = "VRButtonComponent")
-		void SetButtonState(bool bNewButtonState, bool bCallButtonChangedEvent = true, bool bSnapIntoPosition = false);
+	void SetButtonState(bool bNewButtonState, bool bCallButtonChangedEvent = true, bool bSnapIntoPosition = false)
+	{
+		// No change
+		if (bButtonState == bNewButtonState)
+			return;
+
+		bButtonState = bNewButtonState;
+		SetButtonToRestingPosition(!bSnapIntoPosition);
+		LastToggleTime = GetWorld()->GetTimeSeconds();
+
+		if (bCallButtonChangedEvent)
+		{
+			ReceiveButtonStateChanged(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+			OnButtonStateChanged.Broadcast(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+		}
+	}
 
 	// Resets the button to its resting location (mostly for Toggle_Stay)
 	UFUNCTION(BlueprintCallable, Category = "VRButtonComponent")
-		void SetButtonToRestingPosition(bool bLerpToPosition = false);
+	void SetButtonToRestingPosition(bool bLerpToPosition = false)
+	{
+		switch (ButtonType)
+		{
+		case EVRButtonType::Btn_Press:
+		{
+		}break;
+		case EVRButtonType::Btn_Toggle_Return:
+		{}break;
+		case EVRButtonType::Btn_Toggle_Stay:
+		{
+			if (!bLerpToPosition)
+			{
+				float ClampMinDepth = 0.0f;
+
+				// If active and a toggled stay, then clamp min to the toggled stay location
+				if (bButtonState)
+					ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_KINDA_SMALL_NUMBER
+
+				float NewDepth = FMath::Clamp(ClampMinDepth, -DepressDistance, ClampMinDepth);
+				this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(SetAxisValue(NewDepth)), false);
+			}
+			else
+				this->SetComponentTickEnabled(true); // This will trigger the lerp to resting position
+
+		}break;
+		default:break;
+		}
+	}
 
 	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UPROPERTY(BlueprintAssignable, Category = "VRButtonComponent")
@@ -144,7 +194,19 @@ public:
 	// Sets the Last interacting actor variable
 	void SetLastInteractingActor();
 
-	virtual FVector GetTargetRelativeLocation();
+	virtual FVector GetTargetRelativeLocation()
+	{
+		// If target is the half pressed
+		if (ButtonType == EVRButtonType::Btn_Toggle_Stay && bButtonState)
+		{
+			// 1.e-2f = MORE_KINDA_SMALL_NUMBER
+			return InitialRelativeTransform.TransformPosition(SetAxisValue(-(ButtonEngageDepth + (1.e-2f))));
+		}
+		
+		// Else return going all the way back
+		return InitialRelativeTransform.GetTranslation();
+
+	}
 
 protected:
 
