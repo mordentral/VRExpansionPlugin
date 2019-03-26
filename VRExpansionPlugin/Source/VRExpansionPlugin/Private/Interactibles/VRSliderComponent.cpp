@@ -504,3 +504,165 @@ bool UVRSliderComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*
 {
 	return false;
 }
+
+FVector UVRSliderComponent::ClampSlideVector(FVector ValueToClamp)
+{
+	FVector fScaleFactor = FVector(1.0f);
+
+	if (bSlideDistanceIsInParentSpace)
+		fScaleFactor = fScaleFactor / InitialRelativeTransform.GetScale3D();
+
+	FVector MinScale = MinSlideDistance * fScaleFactor;
+
+	FVector Dist = (MinSlideDistance + MaxSlideDistance) * fScaleFactor;
+	FVector Progress = (ValueToClamp - (-MinScale)) / Dist;
+
+	if (bSliderUsesSnapPoints)
+	{
+		Progress.X = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.X, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
+		Progress.Y = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.Y, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
+		Progress.Z = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.Z, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
+	}
+	else
+	{
+		Progress.X = FMath::Clamp(Progress.X, 0.f, 1.f);
+		Progress.Y = FMath::Clamp(Progress.Y, 0.f, 1.f);
+		Progress.Z = FMath::Clamp(Progress.Z, 0.f, 1.f);
+	}
+
+	return (Progress * Dist) - (MinScale);
+}
+
+float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUseKeyInstead, float CurKey)
+{
+	if (SplineComponentToFollow != nullptr)
+	{
+		// In this case it is a world location
+		float ClosestKey = CurKey;
+
+		if (!bUseKeyInstead)
+			ClosestKey = SplineComponentToFollow->FindInputKeyClosestToWorldLocation(CurLocation);
+
+		int32 primaryKey = FMath::TruncToInt(ClosestKey);
+
+		float distance1 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey);
+		float distance2 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey + 1);
+
+		float FinalDistance = ((distance2 - distance1) * (ClosestKey - (float)primaryKey)) + distance1;
+		return FMath::Clamp(FinalDistance / SplineComponentToFollow->GetSplineLength(), 0.0f, 1.0f);
+	}
+
+	// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
+	return FMath::Clamp(FVector::Dist(-MinSlideDistance, CurLocation) / FVector::Dist(-MinSlideDistance, MaxSlideDistance), 0.0f, 1.0f);
+}
+
+void UVRSliderComponent::GetLerpedKey(float &ClosestKey, float DeltaTime)
+{
+	switch (SplineLerpType)
+	{
+	case EVRInteractibleSliderLerpType::Lerp_Interp:
+	{
+		ClosestKey = FMath::FInterpTo(LastInputKey, ClosestKey, DeltaTime, SplineLerpValue);
+	}break;
+	case EVRInteractibleSliderLerpType::Lerp_InterpConstantTo:
+	{
+		ClosestKey = FMath::FInterpConstantTo(LastInputKey, ClosestKey, DeltaTime, SplineLerpValue);
+	}break;
+
+	default: break;
+	}
+}
+
+void UVRSliderComponent::SetSplineComponentToFollow(USplineComponent * SplineToFollow)
+{
+	SplineComponentToFollow = SplineToFollow;
+	ResetInitialSliderLocation();
+}
+
+void UVRSliderComponent::ResetInitialSliderLocation()
+{
+	// Get our initial relative transform to our parent (or not if un-parented).
+	InitialRelativeTransform = this->GetRelativeTransform();
+	FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+
+	if (SplineComponentToFollow != nullptr)
+	{
+		FTransform WorldTransform = SplineComponentToFollow->FindTransformClosestToWorldLocation(this->GetComponentLocation(), ESplineCoordinateSpace::World, true);
+		if (bFollowSplineRotationAndScale)
+		{
+			WorldTransform.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
+			WorldTransform = WorldTransform * ParentTransform.Inverse();
+			this->SetRelativeTransform(WorldTransform);
+		}
+		else
+		{
+			this->SetWorldLocation(WorldTransform.GetLocation());
+		}
+
+		CurrentSliderProgress = GetCurrentSliderProgress(WorldTransform.GetLocation());
+	}
+
+	if (SplineComponentToFollow == nullptr)
+		CurrentSliderProgress = GetCurrentSliderProgress(FVector(0, 0, 0));
+}
+
+void UVRSliderComponent::SetSliderProgress(float NewSliderProgress)
+{
+	NewSliderProgress = FMath::Clamp(NewSliderProgress, 0.0f, 1.0f);
+
+	if (SplineComponentToFollow != nullptr)
+	{
+		FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+		float splineProgress = SplineComponentToFollow->GetSplineLength() * NewSliderProgress;
+
+		if (bFollowSplineRotationAndScale)
+		{
+			FTransform trans = SplineComponentToFollow->GetTransformAtDistanceAlongSpline(splineProgress, ESplineCoordinateSpace::World, true);
+			trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
+			trans = trans * ParentTransform.Inverse();
+			this->SetRelativeTransform(trans);
+		}
+		else
+		{
+			this->SetRelativeLocation(ParentTransform.InverseTransformPosition(SplineComponentToFollow->GetLocationAtDistanceAlongSpline(splineProgress, ESplineCoordinateSpace::World)));
+		}
+	}
+	else // Not a spline follow
+	{
+		// Doing it min+max because the clamp value subtracts the min value
+		FVector CalculatedLocation = FMath::Lerp(-MinSlideDistance, MaxSlideDistance, NewSliderProgress);
+
+		if (bSlideDistanceIsInParentSpace)
+			CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
+
+		FVector ClampedLocation = ClampSlideVector(CalculatedLocation);
+
+		//if (bSlideDistanceIsInParentSpace)
+		//	this->SetRelativeLocation(InitialRelativeTransform.TransformPositionNoScale(ClampedLocation));
+		//else
+		this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
+	}
+
+	CurrentSliderProgress = NewSliderProgress;
+}
+
+float UVRSliderComponent::CalculateSliderProgress()
+{
+	if (this->SplineComponentToFollow != nullptr)
+	{
+		CurrentSliderProgress = GetCurrentSliderProgress(this->GetComponentLocation());
+	}
+	else
+	{
+		FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+		FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
+		FVector CalculatedLocation = CurrentRelativeTransform.InverseTransformPosition(this->GetComponentLocation());
+
+		//if (bSlideDistanceIsInParentSpace)
+			//CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
+
+		CurrentSliderProgress = GetCurrentSliderProgress(CalculatedLocation);
+	}
+
+	return CurrentSliderProgress;
+}

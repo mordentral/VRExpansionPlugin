@@ -19,7 +19,7 @@ UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer
 	bIsActive = false;
 }
 
-
+void UVRGripScriptBase::OnEndPlay_Implementation(const EEndPlayReason::Type EndPlayReason) {};
 void UVRGripScriptBase::OnBeginPlay_Implementation(UObject * CallingOwner) {};
 
 bool UVRGripScriptBase::GetWorldTransform_Implementation(UGripMotionControllerComponent* GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) { return true; }
@@ -83,22 +83,106 @@ void UVRGripScriptBase::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 
 bool UVRGripScriptBase::CallRemoteFunction(UFunction * Function, void * Parms, FOutParmRec * OutParms, FFrame * Stack)
 {
-	AActor* Owner = GetOwner();//Cast<AActor>(GetOuter());
-	if (Owner)
+	bool bProcessed = false;
+
+	if (AActor* MyOwner = GetOwner())
 	{
-		UNetDriver* NetDriver = Owner->GetNetDriver();
-		if (NetDriver)
+		FWorldContext* const Context = GEngine->GetWorldContextFromWorld(GetWorld());
+		if (Context != nullptr)
 		{
-			NetDriver->ProcessRemoteFunction(Owner, Function, Parms, OutParms, Stack, this);
-			return true;
+			for (FNamedNetDriver& Driver : Context->ActiveNetDrivers)
+			{
+				if (Driver.NetDriver != nullptr && Driver.NetDriver->ShouldReplicateFunction(MyOwner, Function))
+				{
+					Driver.NetDriver->ProcessRemoteFunction(MyOwner, Function, Parms, OutParms, Stack, this);
+
+					bProcessed = true;
+				}
+			}
 		}
 	}
 
-	return false;
+	return bProcessed;
 }
 
 int32 UVRGripScriptBase::GetFunctionCallspace(UFunction * Function, void * Parameters, FFrame * Stack)
 {
 	AActor* Owner = GetOwner();// Cast<AActor>(GetOuter());
 	return (Owner ? Owner->GetFunctionCallspace(Function, Parameters, Stack) : FunctionCallspace::Local);
+}
+
+FTransform UVRGripScriptBase::GetGripTransform(const FBPActorGripInformation &Grip, const FTransform & ParentTransform)
+{
+	return Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
+}
+
+FTransform UVRGripScriptBase::GetParentTransform(bool bGetWorldTransform)
+{
+	UObject * ParentObj = this->GetParent();
+
+	if (USceneComponent * PrimParent = Cast<USceneComponent>(ParentObj))
+	{
+		return bGetWorldTransform ? PrimParent->GetComponentTransform() : PrimParent->GetRelativeTransform();
+	}
+	else if (AActor * ParentActor = Cast<AActor>(ParentObj))
+	{
+		return ParentActor->GetActorTransform();
+	}
+
+	return FTransform::Identity;
+}
+
+UObject * UVRGripScriptBase::GetParent()
+{
+	return this->GetOuter();
+}
+
+AActor * UVRGripScriptBase::GetOwner()
+{
+	UObject * myOuter = this->GetOuter();
+
+	if (!myOuter)
+		return nullptr;
+
+	if (AActor * ActorOwner = Cast<AActor>(myOuter))
+	{
+		return ActorOwner;
+	}
+	else if (UActorComponent * ComponentOwner = Cast<UActorComponent>(myOuter))
+	{
+		return ComponentOwner->GetOwner();
+	}
+
+	return nullptr;
+}
+
+bool UVRGripScriptBase::HasAuthority()
+{
+	if (AActor * MyOwner = GetOwner())
+	{
+		return MyOwner->Role == ROLE_Authority;
+	}
+
+	return false;
+}
+
+bool UVRGripScriptBase::IsServer()
+{
+	if (AActor * MyOwner = GetOwner())
+	{
+		return MyOwner->GetNetMode() < ENetMode::NM_Client;
+	}
+
+	return false;
+}
+
+void UVRGripScriptBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	OnEndPlay(EndPlayReason);
+}
+
+void UVRGripScriptBase::BeginPlay(UObject * CallingOwner)
+{
+	// Notify the subscripts about begin play
+	OnBeginPlay(CallingOwner);
 }

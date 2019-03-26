@@ -10,8 +10,8 @@
 #include "VRTrackedParentInterface.generated.h"
 
 
-UINTERFACE(meta = (CannotImplementInterfaceInBlueprint))
-class VREXPANSIONPLUGIN_API UVRTrackedParentInterface: public UInterface
+UINTERFACE(MinimalAPI, meta = (CannotImplementInterfaceInBlueprint))
+class UVRTrackedParentInterface: public UInterface
 {
 	GENERATED_UINTERFACE_BODY()
 };

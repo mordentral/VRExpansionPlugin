@@ -8,7 +8,7 @@
 
 
 AVRPlayerController::AVRPlayerController(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+	: Super(ObjectInitializer)	
 {
 	bDisableServerUpdateCamera = true;
 }

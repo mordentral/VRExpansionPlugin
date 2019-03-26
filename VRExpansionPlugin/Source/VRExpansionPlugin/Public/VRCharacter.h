@@ -31,43 +31,9 @@ public:
 	UVRRootComponent * VRRootReference;
 
 	// Regenerates the base offsetcomponenttoworld that VR uses
-	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw) override
-	{
-		if (VRRootReference)
-		{
-			VRRootReference->GenerateOffsetToWorld(bUpdateBounds, bCalculatePureYaw);
-		}
-	}
-
-	virtual void SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true) override
-	{
-		if (VRRootReference)
-		{
-			VRRootReference->SetCapsuleSizeVR(NewRadius, NewHalfHeight, bUpdateOverlaps);
-
-			if (GetNetMode() < ENetMode::NM_Client)
-				ReplicatedCapsuleHeight.CapsuleHeight = VRRootReference->GetUnscaledCapsuleHalfHeight();
-		}
-		else
-		{
-			Super::SetCharacterSizeVR(NewRadius, NewHalfHeight, bUpdateOverlaps);
-		}
-	}
-
-	virtual void SetCharacterHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true) override
-	{
-		if (VRRootReference)
-		{
-			VRRootReference->SetCapsuleHalfHeightVR(HalfHeight, bUpdateOverlaps);
-
-			if (GetNetMode() < ENetMode::NM_Client)
-				ReplicatedCapsuleHeight.CapsuleHeight = VRRootReference->GetUnscaledCapsuleHalfHeight();
-		}
-		else
-		{
-			Super::SetCharacterHalfHeightVR(HalfHeight, bUpdateOverlaps);
-		}
-	}
+	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw) override;
+	virtual void SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true) override;
+	virtual void SetCharacterHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true) override;
 
 	/* 
 	A helper function that offsets a given vector by the roots collision location
@@ -134,4 +100,10 @@ public:
 	virtual void ServerMoveVRDualHybridRootMotion(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, uint16 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint16 CapsuleYaw, uint8 NewFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode);
 	virtual void ServerMoveVRDualHybridRootMotion_Implementation(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, uint16 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint16 CapsuleYaw, uint8 NewFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode);
 	virtual bool ServerMoveVRDualHybridRootMotion_Validate(float TimeStamp0, FVector_NetQuantize10 InAccel0, uint8 PendingFlags, uint32 View0, FVector_NetQuantize100 OldCapsuleLoc, FVRConditionalMoveRep OldConditionalReps, FVector_NetQuantize100 OldLFDiff, uint16 OldCapsuleYaw, float TimeStamp, FVector_NetQuantize10 InAccel, FVector_NetQuantize100 ClientLoc, FVector_NetQuantize100 CapsuleLoc, FVRConditionalMoveRep ConditionalReps, FVector_NetQuantize100 LFDiff, uint16 CapsuleYaw, uint8 NewFlags, FVRConditionalMoveRep2 MoveReps, uint8 ClientMovementMode);
+
+	/* Resending an (important) old move. Process it if not already processed. */
+	UFUNCTION(unreliable, server, WithValidation)
+	void ServerMoveVROld(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps);
+	void ServerMoveVROld_Implementation(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps);
+	bool ServerMoveVROld_Validate(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps);
 };

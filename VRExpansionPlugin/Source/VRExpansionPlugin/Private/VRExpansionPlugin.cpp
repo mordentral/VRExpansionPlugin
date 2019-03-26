@@ -2,6 +2,9 @@
 
 #include "VRExpansionPlugin.h"
 
+#if WITH_PHYSX
+#include "Grippables/GrippablePhysicsReplication.h"
+#endif
 
 #include "VRGlobalSettings.h"
 #include "ISettingsContainer.h"
@@ -14,6 +17,11 @@ void FVRExpansionPluginModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 	RegisterSettings();
+
+#if WITH_PHYSX
+	FPhysScene_PhysX::PhysicsReplicationFactory = MakeShared<IPhysicsReplicationFactoryVR>();
+	//FPhysScene_ImmediatePhysX::PhysicsReplicationFactory = MakeShared<IPhysicsReplicationFactoryVR>();
+#endif
 }
 
 void FVRExpansionPluginModule::ShutdownModule()

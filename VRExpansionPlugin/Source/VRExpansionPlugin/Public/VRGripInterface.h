@@ -12,7 +12,7 @@
 
 
 UINTERFACE(Blueprintable)
-class VREXPANSIONPLUGIN_API UVRGripInterface: public UInterface
+class UVRGripInterface: public UInterface
 {
 	GENERATED_UINTERFACE_BODY()
 };
@@ -129,7 +129,7 @@ public:
 		void IsHeld(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld);
 
 	// Sets is held, used by the plugin
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
 		void SetHeld(UGripMotionControllerComponent * HoldingController, bool bIsHeld);
 
 	// Returns if the object requests to be socketed to something

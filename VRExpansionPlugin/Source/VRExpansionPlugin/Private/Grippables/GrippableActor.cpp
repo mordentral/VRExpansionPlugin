@@ -46,6 +46,7 @@ void AGrippableActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty
 	DOREPLIFETIME/*_CONDITION*/(AGrippableActor, GripLogicScripts);// , COND_Custom);
 	DOREPLIFETIME(AGrippableActor, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(AGrippableActor, bAllowIgnoringAttachOnOwner);
+	DOREPLIFETIME(AGrippableActor, ClientAuthReplicationData);
 	DOREPLIFETIME_CONDITION(AGrippableActor, VRGripInterfaceSettings, COND_Custom);
 	DOREPLIFETIME_CONDITION(AGrippableActor, GameplayTags, COND_Custom);
 }
@@ -89,7 +90,7 @@ void AGrippableActor::BeginPlay()
 	{
 		if (Script)
 		{
-			Script->OnBeginPlay(this);
+			Script->BeginPlay(this);
 		}
 	}
 }
@@ -188,9 +189,34 @@ void AGrippableActor::IsHeld_Implementation(UGripMotionControllerComponent *& Ho
 void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
 {
 	if (bIsHeld)
+	{
 		VRGripInterfaceSettings.HoldingController = HoldingController;
+
+		if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
+		{
+			IVRReplicationInterface::RemoveObjectFromReplicationManager(this);
+			CeaseReplicationBlocking();
+		}
+	}
 	else
+	{
 		VRGripInterfaceSettings.HoldingController = nullptr;
+
+		if (ClientAuthReplicationData.bUseClientAuthThrowing && ShouldWeSkipAttachmentReplication())
+		{
+			if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(GetRootComponent()))
+			{
+				if (PrimComp->IsSimulatingPhysics())
+				{
+					IVRReplicationInterface::AddObjectToReplicationManager(ClientAuthReplicationData.UpdateRate, this);
+					ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
+
+					if (UWorld * World = GetWorld())
+						ClientAuthReplicationData.TimeAtInitialThrow = World->GetTimeSeconds();
+				}
+			}
+		}
+	}
 
 	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }
@@ -205,3 +231,239 @@ bool AGrippableActor::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> &
 {
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
+
+bool AGrippableActor::PollReplicationEvent(float DeltaTime)
+{
+	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth)
+		return false;
+
+	UWorld *OurWorld = GetWorld();
+	if (!OurWorld)
+		return false;
+
+	if ((OurWorld->GetTimeSeconds() - ClientAuthReplicationData.TimeAtInitialThrow) > 10.0f)
+	{
+		// Lets time out sending, its been 10 seconds since we threw the object and its likely that it is conflicting with some server
+		// Authed movement that is forcing it to keep momentum.
+		return false;
+	}
+
+	// Store current transform for resting check
+	FTransform CurTransform = this->GetActorTransform();
+
+	if (!CurTransform.GetRotation().Equals(ClientAuthReplicationData.LastActorTransform.GetRotation()) || !CurTransform.GetLocation().Equals(ClientAuthReplicationData.LastActorTransform.GetLocation()))
+	{
+		ClientAuthReplicationData.LastActorTransform = CurTransform;
+
+		if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(RootComponent))
+		{
+			// Need to clamp to a max time since start, to handle cases with conflicting collisions
+			if (PrimComp->IsSimulatingPhysics() && ShouldWeSkipAttachmentReplication())
+			{
+				FRepMovementVR ClientAuthMovementRep;
+				if (ClientAuthMovementRep.GatherActorsMovement(this))
+				{
+					Server_GetClientAuthRepliction(ClientAuthMovementRep);
+
+					if (PrimComp->RigidBodyIsAwake())
+						return true;
+				}
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
+	{
+		// Difference is too small, lets end sending location
+		ClientAuthReplicationData.LastActorTransform = FTransform::Identity;
+	}
+
+	AActor* TopOwner = GetOwner();
+
+	if (TopOwner != nullptr)
+	{
+		AActor * tempOwner = TopOwner->GetOwner();
+
+		// I have an owner so search that for the top owner
+		while (tempOwner)
+		{
+			TopOwner = tempOwner;
+			tempOwner = TopOwner->GetOwner();
+		}
+
+		if (APlayerController* PlayerController = Cast<APlayerController>(TopOwner))
+		{
+			if (APlayerState* PlayerState = PlayerController->PlayerState)
+			{
+				if (ClientAuthReplicationData.ResetReplicationHandle.IsValid())
+				{
+					OurWorld->GetTimerManager().ClearTimer(ClientAuthReplicationData.ResetReplicationHandle);
+				}
+
+				// Lets clamp the ping to a min / max value just in case
+				float clampedPing = FMath::Clamp(PlayerState->ExactPing, 0.0f, 1000.0f);
+				OurWorld->GetTimerManager().SetTimer(ClientAuthReplicationData.ResetReplicationHandle, this, &AGrippableActor::CeaseReplicationBlocking, clampedPing, false);
+			}
+		}
+	}
+
+	return false;
+}
+
+void AGrippableActor::CeaseReplicationBlocking()
+{
+	ClientAuthReplicationData.bIsCurrentlyClientAuth = false;
+	if (UWorld * OurWorld = GetWorld())
+	{
+		OurWorld->GetTimerManager().ClearTimer(ClientAuthReplicationData.ResetReplicationHandle);
+	}
+}
+
+void AGrippableActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	CeaseReplicationBlocking();
+
+	// Call all grip scripts begin play events so they can perform any needed logic
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script)
+		{
+			Script->EndPlay(EndPlayReason);
+		}
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+
+bool AGrippableActor::Server_GetClientAuthRepliction_Validate(const FRepMovementVR & newMovement)
+{
+	return true;
+}
+
+void AGrippableActor::Server_GetClientAuthRepliction_Implementation(const FRepMovementVR & newMovement)
+{
+	newMovement.CopyTo(ReplicatedMovement);
+	OnRep_ReplicatedMovement();
+}
+
+void AGrippableActor::OnRep_AttachmentReplication()
+{
+	if (bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
+	{
+		return;
+	}
+
+	// None of our overrides are required, lets just pass it on now
+	Super::OnRep_AttachmentReplication();
+}
+
+void AGrippableActor::OnRep_ReplicateMovement()
+{
+	if (bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
+	{
+		return;
+	}
+
+	if (RootComponent)
+	{
+		const FRepAttachment ReplicationAttachment = GetAttachmentReplication();
+		if (!ReplicationAttachment.AttachParent)
+		{
+			// This "fix" corrects the simulation state not replicating over correctly
+			// If you turn off movement replication, simulate an object, turn movement replication back on and un-simulate, it never knows the difference
+			// This change ensures that it is checking against the current state
+			if (RootComponent->IsSimulatingPhysics() != ReplicatedMovement.bRepPhysics)//SavedbRepPhysics != ReplicatedMovement.bRepPhysics)
+			{
+				// Turn on/off physics sim to match server.
+				SyncReplicatedPhysicsSimulation();
+
+				// It doesn't really hurt to run it here, the super can call it again but it will fail out as they already match
+			}
+		}
+	}
+
+	Super::OnRep_ReplicateMovement();
+}
+
+void AGrippableActor::OnRep_ReplicatedMovement()
+{
+	if (ClientAuthReplicationData.bIsCurrentlyClientAuth && ShouldWeSkipAttachmentReplication())
+	{
+		return;
+	}
+
+	Super::OnRep_ReplicatedMovement();
+}
+
+void AGrippableActor::PostNetReceivePhysicState()
+{
+	if (VRGripInterfaceSettings.bIsHeld && bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
+	{
+		return;
+	}
+
+	Super::PostNetReceivePhysicState();
+}
+
+// This isn't called very many places but it does come up
+void AGrippableActor::MarkComponentsAsPendingKill()
+{
+	Super::MarkComponentsAsPendingKill();
+
+	for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+	{
+		if (UObject *SubObject = GripLogicScripts[i])
+		{
+			SubObject->MarkPendingKill();
+		}
+	}
+
+	GripLogicScripts.Empty();
+}
+
+/** Called right before being marked for destruction due to network replication */
+// Clean up our objects so that they aren't sitting around for GC
+void AGrippableActor::PreDestroyFromReplication()
+{
+	Super::PreDestroyFromReplication();
+
+	// Destroy any sub-objects we created
+	for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+	{
+		if (UObject *SubObject = GripLogicScripts[i])
+		{
+			OnSubobjectDestroyFromReplication(SubObject); //-V595
+			SubObject->PreDestroyFromReplication();
+			SubObject->MarkPendingKill();
+		}
+	}
+
+	for (UActorComponent * ActorComp : GetComponents())
+	{
+		// Pending kill components should have already had this called as they were network spawned and are being killed
+		if (ActorComp && !ActorComp->IsPendingKill() && ActorComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			ActorComp->PreDestroyFromReplication();
+	}
+
+	GripLogicScripts.Empty();
+}
+
+// On Destroy clean up our objects
+void AGrippableActor::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	for (int32 i = 0; i < GripLogicScripts.Num(); i++)
+	{
+		if (UObject *SubObject = GripLogicScripts[i])
+		{
+			SubObject->MarkPendingKill();
+		}
+	}
+
+	GripLogicScripts.Empty();
+}

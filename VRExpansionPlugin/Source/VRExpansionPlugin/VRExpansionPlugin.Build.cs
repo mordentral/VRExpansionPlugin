@@ -87,7 +87,7 @@ public class VRExpansionPlugin : ModuleRules
                 //"HeadMountedDisplay",
                 "RHI",
                 "RenderCore",
-                "ShaderCore",
+               // "ShaderCore",
                 "NetworkReplayStreaming",
                 "AIModule",
                 "UMG",

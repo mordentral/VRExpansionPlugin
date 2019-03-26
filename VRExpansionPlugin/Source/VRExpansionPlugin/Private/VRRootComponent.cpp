@@ -189,10 +189,9 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, bool bAllowSimulatingCo
 
 		// If we started penetrating, we may want to ignore it if we are moving out of penetration.
 		// This helps prevent getting stuck in walls.
-		if (TestHit.bStartPenetrating && !(MoveFlags & MOVECOMP_NeverIgnoreBlockingOverlaps))
+		static const auto CVarHitDistanceTolerance = IConsoleManager::Get().FindConsoleVariable(TEXT("p.HitDistanceTolerance"));
+		if ((TestHit.Distance < CVarHitDistanceTolerance->GetFloat() || TestHit.bStartPenetrating) && !(MoveFlags & MOVECOMP_NeverIgnoreBlockingOverlaps))
 		{
-			// 4.16 converted to AutoConsoleVariable
-			//static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindTConsoleVariableDataFloat(TEXT("p.InitialOverlapTolerance"));
 			static const auto CVarInitialOverlapTolerance = IConsoleManager::Get().FindConsoleVariable(TEXT("p.InitialOverlapTolerance"));
 			const float DotTolerance = CVarInitialOverlapTolerance->GetFloat();
 
@@ -204,8 +203,6 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, bool bAllowSimulatingCo
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
-			// 4.16 converted to autoconsole variable
-			//static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("p.ShowInitialOverlaps"));
 			static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ShowInitialOverlaps"));
 			if (CVarShowInitialOverlaps->GetInt() != 0)
 			{
@@ -303,7 +300,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 
 	CanCharacterStepUpOn = ECB_No;
 	//bShouldUpdatePhysicsVolume = true;
-	bCheckAsyncSceneOnMove = false;
+//	bCheckAsyncSceneOnMove = false;
 	SetCanEverAffectNavigation(false);
 	bDynamicObstacle = true;
 
@@ -636,14 +633,24 @@ void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFl
 		// Just using the 
 		if (this->ShouldRender() && this->SceneProxy)
 		{
-			ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
+			/*ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(
 				FDrawCylinderTransformUpdate,
 				FDrawVRCylinderSceneProxy*, CylinderSceneProxy, (FDrawVRCylinderSceneProxy*)SceneProxy,
 				FTransform, OffsetComponentToWorld, OffsetComponentToWorld, float, CapsuleHalfHeight, CapsuleHalfHeight,
 				{
 					CylinderSceneProxy->UpdateTransform_RenderThread(OffsetComponentToWorld, CapsuleHalfHeight);
 				}
-			);
+			);*/
+
+			FTransform lOffsetComponentToWorld = OffsetComponentToWorld;
+			float lCapsuleHalfHeight = CapsuleHalfHeight;
+			FDrawVRCylinderSceneProxy* CylinderSceneProxy = (FDrawVRCylinderSceneProxy*)SceneProxy;
+			ENQUEUE_RENDER_COMMAND(VRRootComponent_SendNewDebugTransform)(
+				[CylinderSceneProxy, lOffsetComponentToWorld, lCapsuleHalfHeight](FRHICommandList& RHICmdList)
+			{
+				CylinderSceneProxy->UpdateTransform_RenderThread(lOffsetComponentToWorld, lCapsuleHalfHeight);
+			});
+
 		}
 
 		// Don't want to call primitives version, and the scenecomponents version does nothing
@@ -1354,5 +1361,13 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertRotationOverlapsToCurrentOv
 	return Result;
 }
 
+bool UVRRootComponent::IsLocallyControlled() const
+{
+	// I like epics implementation better than my own
+	const AActor* MyOwner = GetOwner();
+	return MyOwner->HasLocalNetOwner();
+	//const APawn* MyPawn = Cast<APawn>(MyOwner);
+	//return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
+}
 
 #undef LOCTEXT_NAMESPACE

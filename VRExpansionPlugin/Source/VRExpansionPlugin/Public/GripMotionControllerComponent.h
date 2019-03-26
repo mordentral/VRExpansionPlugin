@@ -65,19 +65,6 @@ public:
 
 public:
 
-	/*
-	*  Late update primitive info for accessing valid scene proxy info. From the time the info is gathered
-	*  to the time it is later accessed the render proxy can be deleted. To ensure we only access a proxy that is
-	*  still valid we cache the primitive's scene info AND a pointer to its own cached index. If the primitive
-	*  is deleted or removed from the scene then attempting to access it via its index will result in a different
-	*  scene info than the cached scene info.
-	*/
-	struct LateUpdatePrimitiveInfo
-	{
-		const int32*			IndexAddress;
-		FPrimitiveSceneInfo*	SceneInfo;
-	};
-
 	/** A utility method that calls CacheSceneInfo on ParentComponent and all of its descendants */
 	void GatherLateUpdatePrimitives(USceneComponent* ParentComponent, TArray<USceneComponent*> *SkipComponentList = nullptr);
 	void ProcessGripArrayLateUpdatePrimitives(UGripMotionControllerComponent* MotionController, TArray<FBPActorGripInformation> & GripArray, TArray<USceneComponent*> &SkipComponentList);
@@ -88,7 +75,7 @@ public:
 	/** Parent world transform used to reconstruct new world transforms for late update scene proxies */
 	FTransform LateUpdateParentToWorld[2];
 	/** Primitives that need late update before rendering */
-	TArray<LateUpdatePrimitiveInfo> LateUpdatePrimitives[2];
+	TMap<FPrimitiveSceneInfo*, int32> LateUpdatePrimitives[2];
 	/** Late Update Info Stale, if this is found true do not late update */
 	bool SkipLateUpdate[2];
 
@@ -195,13 +182,7 @@ public:
 
 	// Gets the hand enum
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))
-	void GetHandType(EControllerHand& Hand)
-	{
-		if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
-		{
-			Hand = EControllerHand::Left;
-		}
-	}
+		void GetHandType(EControllerHand& Hand);
 
 	// The component to use for basing the grip off of instead of the motion controller
 	UPROPERTY(BlueprintReadWrite, Category = "GripMotionController")
@@ -209,10 +190,7 @@ public:
 
 	// Set the custom pivot component, allows you to use remote grips easier
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-	void SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent)
-	{
-		CustomPivotComponent = NewCustomPivotComponent;
-	}
+		void SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent);
 
 	FORCEINLINE FTransform GetPivotTransform()
 	{
@@ -554,8 +532,9 @@ public:
 	{
 		// I like epics new authority check more than mine
 		const AActor* MyOwner = GetOwner();
-		const APawn* MyPawn = Cast<APawn>(MyOwner);
-		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
+		return MyOwner->HasLocalNetOwner();
+		//const APawn* MyPawn = Cast<APawn>(MyOwner);
+		//return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
 	// Returns if this is the owning connection for the motion controller
@@ -609,6 +588,10 @@ public:
 
 	void DropAndSocket_Implementation(const FBPActorGripInformation &NewDrop);
 	void Socket_Implementation(UObject * ObjectToSocket, bool bWasSimulating, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies = true);
+
+	// Keep a hard reference to the drop to avoid deletion errors
+	UPROPERTY()
+	TArray<UObject*> ObjectsWaitingForSocketUpdate;
 
 	// Resets the transform of a socketed grip 1 tick later, this is to avoid a race condition with simulating grips.
 	// Their constraint can change the transform before or after the attachment happens if the parent and the child are both simulating.
@@ -868,84 +851,31 @@ public:
 
 	// Converts a worldspace transform into being relative to this motion controller
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-	FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform)
-	{
-		return InTransform.GetRelativeTransform(this->GetComponentTransform());
-	}
+		FTransform ConvertToControllerRelativeTransform(const FTransform & InTransform);
 
 	// Creates a secondary grip relative transform
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-	static FTransform ConvertToGripRelativeTransform(const FTransform& GrippedActorTransform, const FTransform & InTransform)
-	{
-		return InTransform.GetRelativeTransform(GrippedActorTransform);
-	}
+		static FTransform ConvertToGripRelativeTransform(const FTransform& GrippedActorTransform, const FTransform & InTransform);
 
 	// Gets if the given object is held by this controller
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-	bool GetIsObjectHeld(const UObject * ObjectToCheck)
-	{
-		if (!ObjectToCheck)
-			return false;
-
-		return (GrippedObjects.FindByKey(ObjectToCheck) || LocallyGrippedObjects.FindByKey(ObjectToCheck));
-	}
+		bool GetIsObjectHeld(const UObject * ObjectToCheck);
 
 	// Gets if the given actor is held by this controller
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-	bool GetIsHeld(const AActor * ActorToCheck)
-	{
-		if (!ActorToCheck)
-			return false;
-
-		return (GrippedObjects.FindByKey(ActorToCheck) || LocallyGrippedObjects.FindByKey(ActorToCheck));
-	}
+		bool GetIsHeld(const AActor * ActorToCheck);
 
 	// Gets if the given component is held by this controller
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-	bool GetIsComponentHeld(const UPrimitiveComponent * ComponentToCheck)
-	{
-		if (!ComponentToCheck)
-			return false;
-
-		return (GrippedObjects.FindByKey(ComponentToCheck) || LocallyGrippedObjects.FindByKey(ComponentToCheck));
-
-		return false;
-	}
+		bool GetIsComponentHeld(const UPrimitiveComponent * ComponentToCheck);
 
 	// Gets if the given Component is a secondary attach point to a gripped actor
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-	bool GetIsSecondaryAttachment(const USceneComponent * ComponentToCheck, FBPActorGripInformation & Grip)
-	{
-		if (!ComponentToCheck)
-			return false;
-
-		for (int i = 0; i < GrippedObjects.Num(); ++i)
-		{
-			if(GrippedObjects[i].SecondaryGripInfo.bHasSecondaryAttachment && GrippedObjects[i].SecondaryGripInfo.SecondaryAttachment == ComponentToCheck)
-			{
-				Grip = GrippedObjects[i];
-				return true;
-			}
-		}
-
-		for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
-		{
-			if (LocallyGrippedObjects[i].SecondaryGripInfo.bHasSecondaryAttachment && LocallyGrippedObjects[i].SecondaryGripInfo.SecondaryAttachment == ComponentToCheck)
-			{
-				Grip = LocallyGrippedObjects[i];
-				return true;
-			}
-		}
-
-		return false;
-	}
+		bool GetIsSecondaryAttachment(const USceneComponent * ComponentToCheck, FBPActorGripInformation & Grip);
 
 	// Get if we have gripped objects, local or replicated
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-	bool HasGrippedObjects()
-	{
-		return GrippedObjects.Num() > 0 || LocallyGrippedObjects.Num() > 0;
-	}
+		bool HasGrippedObjects();
 
 	// Get list of all gripped objects grip info structures (local and normal both)
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
@@ -1025,54 +955,19 @@ public:
 
 	// Creates a physics handle for this grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "SetUpPhysicsHandle"))
-	bool SetUpPhysicsHandle_BP(UPARAM(ref)const FBPActorGripInformation &NewGrip)
-	{
-		return SetUpPhysicsHandle(NewGrip);
-	}
+		bool SetUpPhysicsHandle_BP(UPARAM(ref)const FBPActorGripInformation &NewGrip);
 
 	// Destroys a physics handle for this grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "DestroyPhysicsHandle"))
-	bool DestroyPhysicsHandle_BP(UPARAM(ref)const FBPActorGripInformation &Grip)
-	{
-		return DestroyPhysicsHandle(Grip);
-	}
+		bool DestroyPhysicsHandle_BP(UPARAM(ref)const FBPActorGripInformation &Grip);
 
 	// Update the location of the physics handle
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "UpdatePhysicsHandleTransform"))
-	void UpdatePhysicsHandleTransform_BP(UPARAM(ref)const FBPActorGripInformation &GrippedActor, UPARAM(ref)const FTransform& NewTransform)
-	{
-		return UpdatePhysicsHandleTransform(GrippedActor, NewTransform);
-	}
+		void UpdatePhysicsHandleTransform_BP(UPARAM(ref)const FBPActorGripInformation &GrippedActor, UPARAM(ref)const FTransform& NewTransform);
 
 	// Get the grip distance of either the physics handle if there is one, or the difference from the hand to the root component if there isn't
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "GetGripDistance"))
-	bool GetGripDistance_BP(UPARAM(ref)FBPActorGripInformation &Grip, FVector ExpectedLocation, float & CurrentDistance)
-	{
-		if (!Grip.GrippedObject)
-			return false;
-
-		UPrimitiveComponent * RootComp = nullptr;
-
-		if (Grip.GripTargetType == EGripTargetType::ActorGrip)
-		{			
-			RootComp = Cast<UPrimitiveComponent>(Grip.GetGrippedActor()->GetRootComponent());
-		}
-		else
-			RootComp = Grip.GetGrippedComponent();
-
-		if (!RootComp)
-			return false;
-
-		FVector CheckDistance;
-		if (!GetPhysicsJointLength(Grip, RootComp, CheckDistance))
-		{
-			CheckDistance = (ExpectedLocation - RootComp->GetComponentLocation());
-		}
-
-		// Set grip distance now for people to use
-		CurrentDistance = CheckDistance.Size();
-		return true;
-	}
+		bool GetGripDistance_BP(UPARAM(ref)FBPActorGripInformation &Grip, FVector ExpectedLocation, float & CurrentDistance);
 
 	/** If true, the Position and Orientation args will contain the most recent controller state */
 	virtual bool GripPollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale);
@@ -1086,10 +981,7 @@ public:
 	* This is messy but I have no access to the various private members of the motion controller.
 	*/
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-	bool GripControllerIsTracked() const
-	{
-		return bTracked;
-	}
+		bool GripControllerIsTracked() const;
 
 	/** Returns the first valid device ID for this motion controller (across enabled XR systems)
 	*
