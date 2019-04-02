@@ -105,7 +105,7 @@ public:
 	bool bIsEnabled;
 
 	// Current state of the button, writable to set initial value
-	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "VRButtonComponent")
+	UPROPERTY(EditAnywhere,BlueprintReadWrite, Replicated, Category = "VRButtonComponent")
 	bool bButtonState;
 
 	// #TODO: Offer to autocalulate depress distance / speed based on mesh size?
@@ -146,6 +146,25 @@ public:
 
 	virtual FVector GetTargetRelativeLocation();
 
+	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
+		bool bReplicateMovement;
+
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+
+	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
+	virtual void PostInitProperties() override;
+
+	// Now replicating this so that it works correctly over the network
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRButtonComponent")
+		FTransform_NetQuantize InitialRelativeTransform;
+
+	UFUNCTION()
+		virtual void OnRep_InitialRelativeTransform()
+	{
+		SetButtonToRestingPosition();
+	}
+
 protected:
 
 	// Control variables
@@ -153,7 +172,6 @@ protected:
 	bool bToggledThisTouch;
 	FVector InitialComponentLoc;
 	float LastToggleTime;
-	FTransform InitialRelativeTransform;
 
 	inline float GetAxisValue(FVector CheckLocation)
 	{

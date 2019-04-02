@@ -96,6 +96,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
 		int GripPriority;
 
+	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
+	virtual void PostInitProperties() override;
+
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;
 	FVector InitialDropLocation;
@@ -153,6 +156,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+	bool bOriginalReplicatesMovement;
 	
 															// Distance before the object will break out of the hand, 0.0f == never will
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")

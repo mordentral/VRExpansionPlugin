@@ -12,7 +12,9 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
-	bReplicateMovement = false;
+
+	// Defaulting these true so that they work by default in networked environments
+	bReplicateMovement = true;
 
 	DialRotationAxis = EVRInteractibleAxis::Axis_Z;
 	InteractorRotationAxis = EVRInteractibleAxis::Axis_X;
@@ -68,12 +70,18 @@ void UVRDialComponent::PreReplication(IRepChangedPropertyTracker & ChangedProper
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
+void UVRDialComponent::PostInitProperties()
+{
+	Super::PostInitProperties();
+	ResetInitialDialLocation(); // Load the original dial location
+}
+
 void UVRDialComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
 
-	ResetInitialDialLocation();
+	bOriginalReplicatesMovement = bReplicateMovement;
 }
 
 void UVRDialComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -287,12 +295,26 @@ void UVRDialComponent::IsHeld_Implementation(UGripMotionControllerComponent *& C
 
 void UVRDialComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
 {
-	bIsHeld = bNewIsHeld;
-
-	if (bIsHeld)
+	if (bNewIsHeld)
+	{
 		HoldingController = NewHoldingController;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			if(!bIsHeld)
+				bOriginalReplicatesMovement = bReplicateMovement;
+			bReplicateMovement = false;
+		}
+	}
 	else
+	{
 		HoldingController = nullptr;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			bReplicateMovement = bOriginalReplicatesMovement;
+		}
+	}
+
+	bIsHeld = bNewIsHeld;
 }
 
 /*FBPInteractionSettings UVRDialComponent::GetInteractionSettings_Implementation()

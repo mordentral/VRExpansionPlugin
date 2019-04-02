@@ -89,6 +89,8 @@ void UGrippableSphereComponent::BeginPlay()
 			Script->BeginPlay(this);
 		}
 	}
+
+	bOriginalReplicatesMovement = bReplicateMovement;
 }
 
 void UGrippableSphereComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -198,9 +200,25 @@ void UGrippableSphereComponent::IsHeld_Implementation(UGripMotionControllerCompo
 void UGrippableSphereComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
 {
 	if (bIsHeld)
+	{
+		if (VRGripInterfaceSettings.MovementReplicationType != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			if (!VRGripInterfaceSettings.bIsHeld)
+				bOriginalReplicatesMovement = bReplicateMovement;
+			bReplicateMovement = false;
+		}
+
 		VRGripInterfaceSettings.HoldingController = HoldingController;
+	}
 	else
+	{
+		if (VRGripInterfaceSettings.MovementReplicationType != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			bReplicateMovement = bOriginalReplicatesMovement;
+		}
+
 		VRGripInterfaceSettings.HoldingController = nullptr;
+	}
 
 	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }

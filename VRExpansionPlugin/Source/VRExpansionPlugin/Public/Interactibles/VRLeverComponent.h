@@ -156,6 +156,9 @@ public:
 
 	float LastDeltaAngle;
 
+	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
+	virtual void PostInitProperties() override;
+
 	// Now replicating this so that it works correctly over the network
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRLeverComponent")
 	FTransform_NetQuantize InitialRelativeTransform;
@@ -163,7 +166,7 @@ public:
 	UFUNCTION()
 	virtual void OnRep_InitialRelativeTransform()
 	{
-		CalculateCurrentAngle(InitialRelativeTransform);
+		ReCalculateCurrentAngle();
 	}
 
 	FVector InitialInteractorLocation;
@@ -236,6 +239,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+	bool bOriginalReplicatesMovement;
 
 	TWeakObjectPtr<USceneComponent> ParentComponent;
 

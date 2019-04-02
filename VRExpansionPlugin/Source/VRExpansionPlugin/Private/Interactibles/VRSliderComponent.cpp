@@ -12,6 +12,8 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
+
+	// Defaulting these true so that they work by default in networked environments
 	bReplicateMovement = true;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
@@ -66,8 +68,8 @@ void UVRSliderComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePrope
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UVRSliderComponent, InitialRelativeTransform, COND_Custom);
-	DOREPLIFETIME_CONDITION(UVRSliderComponent, SplineComponentToFollow, COND_Custom);
+	DOREPLIFETIME(UVRSliderComponent, InitialRelativeTransform);
+	DOREPLIFETIME(UVRSliderComponent, SplineComponentToFollow);
 
 	DOREPLIFETIME(UVRSliderComponent, bRepGameplayTags);
 	DOREPLIFETIME(UVRSliderComponent, bReplicateMovement);
@@ -79,8 +81,8 @@ void UVRSliderComponent::PreReplication(IRepChangedPropertyTracker & ChangedProp
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Replicate the levers initial transform if we are replicating movement
-	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRSliderComponent, InitialRelativeTransform, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRSliderComponent, SplineComponentToFollow, bReplicateMovement);
+	//DOREPLIFETIME_ACTIVE_OVERRIDE(UVRSliderComponent, InitialRelativeTransform, bReplicateMovement);
+	//DOREPLIFETIME_ACTIVE_OVERRIDE(UVRSliderComponent, SplineComponentToFollow, bReplicateMovement);
 
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRSliderComponent, GameplayTags, bRepGameplayTags);
@@ -90,27 +92,28 @@ void UVRSliderComponent::PreReplication(IRepChangedPropertyTracker & ChangedProp
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
+void UVRSliderComponent::PostInitProperties()
+{
+	Super::PostInitProperties();
+
+	// Init the slider settings
+	if (USplineComponent * ParentSpline = Cast<USplineComponent>(GetAttachParent()))
+	{
+		SetSplineComponentToFollow(ParentSpline);
+	}
+	else
+	{
+		ResetInitialSliderLocation();
+	}
+}
+
 void UVRSliderComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
+	CalculateSliderProgress();
 
-	// If we are the server, or this component doesn't replicate then get the initial lever location
-	if (!bReplicates || GetNetMode() < ENetMode::NM_Client)
-	{
-		if (USplineComponent * ParentSpline = Cast<USplineComponent>(GetAttachParent()))
-		{
-			SetSplineComponentToFollow(ParentSpline);
-		}
-		else
-		{
-			ResetInitialSliderLocation();
-		}
-	}
-	else
-	{
-		CalculateSliderProgress();
-	}
+	bOriginalReplicatesMovement = bReplicateMovement;
 }
 
 void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -487,12 +490,26 @@ void UVRSliderComponent::IsHeld_Implementation(UGripMotionControllerComponent *&
 
 void UVRSliderComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
 {
-	bIsHeld = bNewIsHeld;
-
-	if (bIsHeld)
+	if (bNewIsHeld)
+	{
 		HoldingController = NewHoldingController;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			if (!bIsHeld)
+				bOriginalReplicatesMovement = bReplicateMovement;
+			bReplicateMovement = false;
+		}
+	}
 	else
+	{
 		HoldingController = nullptr;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			bReplicateMovement = bOriginalReplicatesMovement;
+		}
+	}
+
+	bIsHeld = bNewIsHeld;
 }
 
 /*FBPInteractionSettings UVRSliderComponent::GetInteractionSettings_Implementation()
@@ -576,17 +593,28 @@ void UVRSliderComponent::GetLerpedKey(float &ClosestKey, float DeltaTime)
 void UVRSliderComponent::SetSplineComponentToFollow(USplineComponent * SplineToFollow)
 {
 	SplineComponentToFollow = SplineToFollow;
-	ResetInitialSliderLocation();
+	
+	if (SplineToFollow != nullptr)
+		ResetToParentSplineLocation();
+	else
+		CalculateSliderProgress();
 }
 
 void UVRSliderComponent::ResetInitialSliderLocation()
 {
 	// Get our initial relative transform to our parent (or not if un-parented).
 	InitialRelativeTransform = this->GetRelativeTransform();
-	FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+	ResetToParentSplineLocation();
 
+	if (SplineComponentToFollow == nullptr)
+		CurrentSliderProgress = GetCurrentSliderProgress(FVector(0, 0, 0));
+}
+
+void UVRSliderComponent::ResetToParentSplineLocation()
+{
 	if (SplineComponentToFollow != nullptr)
 	{
+		FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 		FTransform WorldTransform = SplineComponentToFollow->FindTransformClosestToWorldLocation(this->GetComponentLocation(), ESplineCoordinateSpace::World, true);
 		if (bFollowSplineRotationAndScale)
 		{
@@ -601,9 +629,6 @@ void UVRSliderComponent::ResetInitialSliderLocation()
 
 		CurrentSliderProgress = GetCurrentSliderProgress(WorldTransform.GetLocation());
 	}
-
-	if (SplineComponentToFollow == nullptr)
-		CurrentSliderProgress = GetCurrentSliderProgress(FVector(0, 0, 0));
 }
 
 void UVRSliderComponent::SetSliderProgress(float NewSliderProgress)

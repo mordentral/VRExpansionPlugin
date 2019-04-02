@@ -134,6 +134,7 @@ public:
 	// Sets is held, used by the plugin
 	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
 		void SetHeld(UGripMotionControllerComponent * HoldingController, bool bIsHeld);
+	bool bOriginalReplicatesMovement;
 
 	// Returns if the object wants to be socketed
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

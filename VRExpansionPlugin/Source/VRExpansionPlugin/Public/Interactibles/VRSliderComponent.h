@@ -115,8 +115,14 @@ public:
 	int GripPriority;
 
 	// Set this to assign a spline component to the slider
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated/* ReplicatedUsing = OnRep_SplineComponentToFollow*/, Category = "VRSliderComponent")
-	USplineComponent * SplineComponentToFollow; 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated/*Using = OnRep_SplineComponentToFollow*/, Category = "VRSliderComponent")
+	USplineComponent * SplineComponentToFollow;
+
+	/*UFUNCTION()
+	virtual void OnRep_SplineComponentToFollow()
+	{
+		CalculateSliderProgress();
+	}*/
 
 	// Where the slider should follow the rotation and scale of the spline as well
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
@@ -150,7 +156,8 @@ public:
 		float SnapThreshold;
 
 
-	//FTransform InitialRelativeTransform;
+	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
+	virtual void PostInitProperties() override;
 
 	// Now replicating this so that it works correctly over the network
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRSliderComponent")
@@ -184,6 +191,8 @@ public:
 	// Sets the spline component to follow, if empty, just reinitializes the transform and removes the follow component
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
 		void SetSplineComponentToFollow(USplineComponent * SplineToFollow);
+
+	void ResetToParentSplineLocation();
 
 	void GetLerpedKey(float &ClosestKey, float DeltaTime);
 	float GetCurrentSliderProgress(FVector CurLocation, bool bUseKeyInstead = false, float CurKey = 0.f);
@@ -235,6 +244,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+	bool bOriginalReplicatesMovement;
 
 	// Grip interface setup
 

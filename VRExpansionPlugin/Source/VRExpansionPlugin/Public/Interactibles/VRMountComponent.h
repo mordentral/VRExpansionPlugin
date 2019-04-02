@@ -45,6 +45,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMountComponent")
 		EVRInteractibleMountAxis MountRotationAxis;
 
+	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
+	virtual void PostInitProperties() override;
+
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;
 	FVector InitialInteractorDropLocation;
@@ -138,6 +141,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+	bool bOriginalReplicatesMovement;
 
 	// Should be called after the Mount is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRMountComponent")

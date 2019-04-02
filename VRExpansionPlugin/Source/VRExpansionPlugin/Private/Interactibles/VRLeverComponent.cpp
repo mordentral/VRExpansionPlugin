@@ -12,6 +12,8 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
+
+	// Defaulting these true so that they work by default in networked environments
 	bReplicateMovement = true;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
@@ -69,7 +71,7 @@ void UVRLeverComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UVRLeverComponent, InitialRelativeTransform, COND_Custom);
+	DOREPLIFETIME(UVRLeverComponent, InitialRelativeTransform);
 
 	DOREPLIFETIME(UVRLeverComponent, bRepGameplayTags);
 	DOREPLIFETIME(UVRLeverComponent, bReplicateMovement);
@@ -81,7 +83,7 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Replicate the levers initial transform if we are replicating movement
-	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, InitialRelativeTransform, bReplicateMovement);
+	//DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, InitialRelativeTransform, bReplicateMovement);
 
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, GameplayTags, bRepGameplayTags);
@@ -91,16 +93,19 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
+void UVRLeverComponent::PostInitProperties()
+{
+	Super::PostInitProperties();
+	ResetInitialLeverLocation(); // Load the original lever location
+}
+
 void UVRLeverComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
+	ReCalculateCurrentAngle();
 
-	// If we are the server, or this component doesn't replicate then get the initial lever location
-	if (!bReplicates || GetNetMode() < ENetMode::NM_Client)
-	{
-		ResetInitialLeverLocation();
-	}
+	bOriginalReplicatesMovement = bReplicateMovement;
 }
 
 void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -480,12 +485,26 @@ void UVRLeverComponent::IsHeld_Implementation(UGripMotionControllerComponent *& 
 
 void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
 {
-	bIsHeld = bNewIsHeld;
-
-	if (bIsHeld)
+	if (bNewIsHeld)
+	{
 		HoldingController = NewHoldingController;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			if (!bIsHeld)
+				bOriginalReplicatesMovement = bReplicateMovement;
+			bReplicateMovement = false;
+		}
+	}
 	else
+	{
 		HoldingController = nullptr;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			bReplicateMovement = bOriginalReplicatesMovement;
+		}
+	}
+
+	bIsHeld = bNewIsHeld;
 }
 
 /*FBPInteractionSettings UVRLeverComponent::GetInteractionSettings_Implementation()

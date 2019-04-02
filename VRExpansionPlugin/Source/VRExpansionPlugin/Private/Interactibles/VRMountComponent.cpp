@@ -12,7 +12,9 @@ UVRMountComponent::UVRMountComponent(const FObjectInitializer& ObjectInitializer
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
-	bReplicateMovement = false;
+
+	// Defaulting these true so that they work by default in networked environments
+	bReplicateMovement = true;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	BreakDistance = 100.0f;
@@ -65,12 +67,16 @@ void UVRMountComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
+void UVRMountComponent::PostInitProperties()
+{
+	Super::PostInitProperties();
+	ResetInitialMountLocation(); // Load the original mount location
+}
+
 void UVRMountComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
-
-	ResetInitialMountLocation();
 }
 
 void UVRMountComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -511,12 +517,26 @@ void UVRMountComponent::IsHeld_Implementation(UGripMotionControllerComponent *& 
 
 void UVRMountComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
 {
-	bIsHeld = bNewIsHeld;
-
-	if (bIsHeld)
+	if (bNewIsHeld)
+	{
 		HoldingController = NewHoldingController;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			if (!bIsHeld)
+				bOriginalReplicatesMovement = bReplicateMovement;
+			bReplicateMovement = false;
+		}
+	}
 	else
+	{
 		HoldingController = nullptr;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			bReplicateMovement = bOriginalReplicatesMovement;
+		}
+	}
+
+	bIsHeld = bNewIsHeld;
 }
 
 /*FBPInteractionSettings UVRMountComponent::GetInteractionSettings_Implementation()

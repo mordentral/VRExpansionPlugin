@@ -26,6 +26,9 @@ UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializ
 	this->SetCollisionResponseToAllChannels(ECR_Overlap);
 
 	bSkipOverlapFiltering = false;
+	InitialRelativeTransform = FTransform::Identity;
+
+	bReplicateMovement = false;
 }
 
 //=============================================================================
@@ -33,12 +36,38 @@ UVRButtonComponent::~UVRButtonComponent()
 {
 }
 
+void UVRButtonComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UVRButtonComponent, InitialRelativeTransform);
+	DOREPLIFETIME(UVRButtonComponent, bReplicateMovement);
+	DOREPLIFETIME_CONDITION(UVRButtonComponent, bButtonState, COND_InitialOnly);
+}
+
+void UVRButtonComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Replicate the levers initial transform if we are replicating movement
+	//DOREPLIFETIME_ACTIVE_OVERRIDE(UVRButtonComponent, InitialRelativeTransform, bReplicateMovement);
+
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
+}
+
+void UVRButtonComponent::PostInitProperties()
+{
+	Super::PostInitProperties();
+	ResetInitialButtonLocation();
+}
+
 void UVRButtonComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
 
-	ResetInitialButtonLocation();
 	SetButtonToRestingPosition();
 
 	OnComponentBeginOverlap.AddUniqueDynamic(this, &UVRButtonComponent::OnOverlapBegin);
