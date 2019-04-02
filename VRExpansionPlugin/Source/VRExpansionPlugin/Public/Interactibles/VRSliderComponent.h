@@ -115,8 +115,14 @@ public:
 	int GripPriority;
 
 	// Set this to assign a spline component to the slider
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated/* ReplicatedUsing = OnRep_SplineComponentToFollow*/, Category = "VRSliderComponent")
-	USplineComponent * SplineComponentToFollow; 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated/*Using = OnRep_SplineComponentToFollow*/, Category = "VRSliderComponent")
+	USplineComponent * SplineComponentToFollow;
+
+	/*UFUNCTION()
+	virtual void OnRep_SplineComponentToFollow()
+	{
+		CalculateSliderProgress();
+	}*/
 
 	// Where the slider should follow the rotation and scale of the spline as well
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
@@ -150,7 +156,8 @@ public:
 		float SnapThreshold;
 
 
-	//FTransform InitialRelativeTransform;
+	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
+	virtual void PostInitProperties() override;
 
 	// Now replicating this so that it works correctly over the network
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRSliderComponent")
@@ -171,173 +178,25 @@ public:
 
 	// Calculates the current slider progress
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
-	float CalculateSliderProgress()
-	{
-		if (this->SplineComponentToFollow != nullptr)
-		{
-			CurrentSliderProgress = GetCurrentSliderProgress(this->GetComponentLocation());
-		}
-		else
-		{
-			FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
-			FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
-			FVector CalculatedLocation = CurrentRelativeTransform.InverseTransformPosition(this->GetComponentLocation());
-
-			//if (bSlideDistanceIsInParentSpace)
-				//CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
-	
-			CurrentSliderProgress = GetCurrentSliderProgress(CalculatedLocation);
-		}
-
-		return CurrentSliderProgress;
-	}
+		float CalculateSliderProgress();
 
 	// Forcefully sets the slider progress to the defined value
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
-		void SetSliderProgress(float NewSliderProgress)
-	{
-		NewSliderProgress = FMath::Clamp(NewSliderProgress, 0.0f, 1.0f);
-
-		if (SplineComponentToFollow != nullptr)
-		{
-			FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
-			float splineProgress = SplineComponentToFollow->GetSplineLength() * NewSliderProgress;
-			
-			if (bFollowSplineRotationAndScale)
-			{
-				FTransform trans = SplineComponentToFollow->GetTransformAtDistanceAlongSpline(splineProgress, ESplineCoordinateSpace::World, true);
-				trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
-				trans = trans * ParentTransform.Inverse();
-				this->SetRelativeTransform(trans);
-			}
-			else
-			{
-				this->SetRelativeLocation(ParentTransform.InverseTransformPosition(SplineComponentToFollow->GetLocationAtDistanceAlongSpline(splineProgress, ESplineCoordinateSpace::World)));
-			}
-		}
-		else // Not a spline follow
-		{
-			// Doing it min+max because the clamp value subtracts the min value
-			FVector CalculatedLocation = FMath::Lerp(-MinSlideDistance, MaxSlideDistance, NewSliderProgress);
-
-			if (bSlideDistanceIsInParentSpace)
-				CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
-
-			FVector ClampedLocation = ClampSlideVector(CalculatedLocation);
-
-			//if (bSlideDistanceIsInParentSpace)
-			//	this->SetRelativeLocation(InitialRelativeTransform.TransformPositionNoScale(ClampedLocation));
-			//else
-			this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
-		}
-
-		CurrentSliderProgress = NewSliderProgress;
-	}
+		void SetSliderProgress(float NewSliderProgress);
 
 	// Should be called after the slider is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
-	void ResetInitialSliderLocation()
-	{
-		// Get our initial relative transform to our parent (or not if un-parented).
-		InitialRelativeTransform = this->GetRelativeTransform();
-		FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
-
-		if (SplineComponentToFollow != nullptr)
-		{
-			FTransform WorldTransform = SplineComponentToFollow->FindTransformClosestToWorldLocation(this->GetComponentLocation(), ESplineCoordinateSpace::World, true);
-			if (bFollowSplineRotationAndScale)
-			{
-				WorldTransform.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
-				WorldTransform = WorldTransform * ParentTransform.Inverse();
-				this->SetRelativeTransform(WorldTransform);
-			}
-			else
-			{
-				this->SetWorldLocation(WorldTransform.GetLocation());
-			}
-
-			CurrentSliderProgress = GetCurrentSliderProgress(WorldTransform.GetLocation());
-		}
-
-		if(SplineComponentToFollow == nullptr)
-			CurrentSliderProgress = GetCurrentSliderProgress(FVector(0, 0, 0));
-	}
+		void ResetInitialSliderLocation();
 
 	// Sets the spline component to follow, if empty, just reinitializes the transform and removes the follow component
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
-	void SetSplineComponentToFollow(USplineComponent * SplineToFollow)
-	{
-		SplineComponentToFollow = SplineToFollow;
-		ResetInitialSliderLocation();
-	}
+		void SetSplineComponentToFollow(USplineComponent * SplineToFollow);
 
-	void GetLerpedKey(float &ClosestKey, float DeltaTime)
-	{
-		switch (SplineLerpType)
-		{
-		case EVRInteractibleSliderLerpType::Lerp_Interp:
-		{
-			ClosestKey = FMath::FInterpTo(LastInputKey, ClosestKey, DeltaTime, SplineLerpValue);
-		}break;
-		case EVRInteractibleSliderLerpType::Lerp_InterpConstantTo:
-		{
-			ClosestKey = FMath::FInterpConstantTo(LastInputKey, ClosestKey, DeltaTime, SplineLerpValue);
-		}break;
+	void ResetToParentSplineLocation();
 
-		default: break;
-		}
-	}
-
-	float GetCurrentSliderProgress(FVector CurLocation, bool bUseKeyInstead = false, float CurKey = 0.f)
-	{
-		if (SplineComponentToFollow != nullptr)
-		{
-			// In this case it is a world location
-			float ClosestKey = CurKey;
-			
-			if (!bUseKeyInstead)
-				ClosestKey = SplineComponentToFollow->FindInputKeyClosestToWorldLocation(CurLocation);
-
-			int32 primaryKey = FMath::TruncToInt(ClosestKey);
-
-			float distance1 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey);
-			float distance2 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey + 1);
-
-			float FinalDistance = ((distance2 - distance1) * (ClosestKey - (float)primaryKey)) + distance1;
-			return FMath::Clamp(FinalDistance / SplineComponentToFollow->GetSplineLength(), 0.0f, 1.0f);
-		}
-
-		// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
-		return FMath::Clamp(FVector::Dist(-MinSlideDistance, CurLocation) / FVector::Dist(-MinSlideDistance, MaxSlideDistance), 0.0f, 1.0f);
-	}
-
-	FVector ClampSlideVector(FVector ValueToClamp)
-	{
-		FVector fScaleFactor = FVector(1.0f);
-
-		if (bSlideDistanceIsInParentSpace)
-			fScaleFactor = fScaleFactor / InitialRelativeTransform.GetScale3D();
-
-		FVector MinScale = MinSlideDistance * fScaleFactor;
-
-		FVector Dist = (MinSlideDistance + MaxSlideDistance) * fScaleFactor;
-		FVector Progress = (ValueToClamp - (-MinScale)) / Dist;
-			
-		if (bSliderUsesSnapPoints)
-		{
-			Progress.X = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.X, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
-			Progress.Y = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.Y, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
-			Progress.Z = FMath::Clamp(UVRInteractibleFunctionLibrary::Interactible_GetThresholdSnappedValue(Progress.Z, SnapIncrement, SnapThreshold), 0.0f, 1.0f);
-		}
-		else
-		{
-			Progress.X = FMath::Clamp(Progress.X, 0.f, 1.f);
-			Progress.Y = FMath::Clamp(Progress.Y, 0.f, 1.f);
-			Progress.Z = FMath::Clamp(Progress.Z, 0.f, 1.f);
-		}
-		
-		return (Progress * Dist) - (MinScale);
-	}
+	void GetLerpedKey(float &ClosestKey, float DeltaTime);
+	float GetCurrentSliderProgress(FVector CurLocation, bool bUseKeyInstead = false, float CurKey = 0.f);
+	FVector ClampSlideVector(FVector ValueToClamp);
 
 	// ------------------------------------------------
 	// Gameplay tag interface
@@ -385,6 +244,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+	bool bOriginalReplicatesMovement;
 
 	// Grip interface setup
 
@@ -468,10 +328,10 @@ public:
 		void IsHeld(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld);
 
 	// Sets is held, used by the plugin
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
 		void SetHeld(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld);
 
-	// Returns if the object is socketed currently
+	// Returns if the object wants to be socketed
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
 

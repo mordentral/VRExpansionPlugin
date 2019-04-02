@@ -12,7 +12,9 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
-	bReplicateMovement = false;
+
+	// Defaulting these true so that they work by default in networked environments
+	bReplicateMovement = true;
 
 	DialRotationAxis = EVRInteractibleAxis::Axis_Z;
 	InteractorRotationAxis = EVRInteractibleAxis::Axis_X;
@@ -68,12 +70,18 @@ void UVRDialComponent::PreReplication(IRepChangedPropertyTracker & ChangedProper
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
+void UVRDialComponent::PostInitProperties()
+{
+	Super::PostInitProperties();
+	ResetInitialDialLocation(); // Load the original dial location
+}
+
 void UVRDialComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
 
-	ResetInitialDialLocation();
+	bOriginalReplicatesMovement = bReplicateMovement;
 }
 
 void UVRDialComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -287,12 +295,26 @@ void UVRDialComponent::IsHeld_Implementation(UGripMotionControllerComponent *& C
 
 void UVRDialComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
 {
-	bIsHeld = bNewIsHeld;
-
-	if (bIsHeld)
+	if (bNewIsHeld)
+	{
 		HoldingController = NewHoldingController;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			if(!bIsHeld)
+				bOriginalReplicatesMovement = bReplicateMovement;
+			bReplicateMovement = false;
+		}
+	}
 	else
+	{
 		HoldingController = nullptr;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			bReplicateMovement = bOriginalReplicatesMovement;
+		}
+	}
+
+	bIsHeld = bNewIsHeld;
 }
 
 /*FBPInteractionSettings UVRDialComponent::GetInteractionSettings_Implementation()
@@ -303,4 +325,71 @@ void UVRDialComponent::SetHeld_Implementation(UGripMotionControllerComponent * N
 bool UVRDialComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
 	return false;
+}
+
+void UVRDialComponent::SetDialAngle(float DialAngle, bool bCallEvents)
+{
+	CurRotBackEnd = DialAngle;
+	AddDialAngle(0.0f);
+}
+
+void UVRDialComponent::AddDialAngle(float DialAngleDelta, bool bCallEvents)
+{
+	float MaxCheckValue = 360.0f - CClockwiseMaximumDialAngle;
+
+	float DeltaRot = DialAngleDelta;
+	float tempCheck = FRotator::ClampAxis(CurRotBackEnd + DeltaRot);
+
+	// Clamp it to the boundaries
+	if (FMath::IsNearlyZero(CClockwiseMaximumDialAngle))
+	{
+		CurRotBackEnd = FMath::Clamp(CurRotBackEnd + DeltaRot, 0.0f, ClockwiseMaximumDialAngle);
+	}
+	else if (FMath::IsNearlyZero(ClockwiseMaximumDialAngle))
+	{
+		if (CurRotBackEnd < MaxCheckValue)
+			CurRotBackEnd = FMath::Clamp(360.0f + DeltaRot, MaxCheckValue, 360.0f);
+		else
+			CurRotBackEnd = FMath::Clamp(CurRotBackEnd + DeltaRot, MaxCheckValue, 360.0f);
+	}
+	else if (tempCheck > ClockwiseMaximumDialAngle && tempCheck < MaxCheckValue)
+	{
+		if (CurRotBackEnd < MaxCheckValue)
+		{
+			CurRotBackEnd = ClockwiseMaximumDialAngle;
+		}
+		else
+		{
+			CurRotBackEnd = MaxCheckValue;
+		}
+	}
+	else
+		CurRotBackEnd = tempCheck;
+
+	if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+	{
+		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+		CurrentDialAngle = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
+
+		if (bCallEvents && !FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
+		{
+			ReceiveDialHitSnapAngle(CurrentDialAngle);
+			OnDialHitSnapAngle.Broadcast(CurrentDialAngle);
+		}
+
+		LastSnapAngle = CurrentDialAngle;
+	}
+	else
+	{
+		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, CurRotBackEnd, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+		CurrentDialAngle = FMath::RoundToFloat(CurRotBackEnd);
+	}
+
+}
+
+void UVRDialComponent::ResetInitialDialLocation()
+{
+	// Get our initial relative transform to our parent (or not if un-parented).
+	InitialRelativeTransform = this->GetRelativeTransform();
+	CurRotBackEnd = 0.0f;
 }

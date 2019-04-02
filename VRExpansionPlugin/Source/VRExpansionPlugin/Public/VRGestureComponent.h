@@ -163,13 +163,7 @@ public:
 
 	// Recalculate size of gestures and re-scale them to the TargetGestureScale (if bScaleToDatabase is true)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void RecalculateGestures(bool bScaleToDatabase = true)
-	{
-		for (int i = 0; i < Gestures.Num(); ++i)
-		{
-			Gestures[i].CalculateSizeOfGesture(bScaleToDatabase, TargetGestureScale);
-		}
-	}
+		void RecalculateGestures(bool bScaleToDatabase = true);
 
 	// Fills a spline component with a gesture, optionally also generates spline mesh components for it (uses ones already attached if possible)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
@@ -177,97 +171,8 @@ public:
 
 	// Imports a spline as a gesture, Segment len is the max segment length (will break lines up into lengths of this size)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	bool ImportSplineAsGesture(USplineComponent * HostSplineComponent, FString GestureName, bool bKeepSplineCurves = true, float SegmentLen = 10.0f, bool bScaleToDatabase = true)
-	{
-		FVRGesture NewGesture;
+		bool ImportSplineAsGesture(USplineComponent * HostSplineComponent, FString GestureName, bool bKeepSplineCurves = true, float SegmentLen = 10.0f, bool bScaleToDatabase = true);
 
-		if (HostSplineComponent->GetNumberOfSplinePoints() < 2)
-			return false;
-
-		NewGesture.Name = GestureName;
-
-		FVector FirstPointPos = HostSplineComponent->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::Local);
-
-		float LastDistance = 0.f;
-		float ThisDistance = 0.f;
-		FVector LastDistanceV;
-		FVector ThisDistanceV;
-		FVector DistNormal;
-		float DistAlongSegment = 0.f;
-
-		// Realign to xForward on the gesture, normally splines lay out as X to the right
-		FTransform Realignment = FTransform(FRotator(0.f, 90.f, 0.f), -FirstPointPos);
-
-		// Prefill the first point
-		NewGesture.Samples.Add(Realignment.TransformPosition(HostSplineComponent->GetLocationAtSplinePoint(HostSplineComponent->GetNumberOfSplinePoints() - 1, ESplineCoordinateSpace::Local)));
-
-		// Inserting in reverse order -2 so we start one down
-		for (int i = HostSplineComponent->GetNumberOfSplinePoints() - 2; i >= 0; --i)
-		{
-			if (bKeepSplineCurves)
-			{
-				LastDistance = HostSplineComponent->GetDistanceAlongSplineAtSplinePoint(i + 1);
-				ThisDistance = HostSplineComponent->GetDistanceAlongSplineAtSplinePoint(i);
-
-				DistAlongSegment = FMath::Abs(ThisDistance - LastDistance);
-			}
-			else
-			{
-				LastDistanceV = Realignment.TransformPosition(HostSplineComponent->GetLocationAtSplinePoint(i + 1, ESplineCoordinateSpace::Local));
-				ThisDistanceV = Realignment.TransformPosition(HostSplineComponent->GetLocationAtSplinePoint(i, ESplineCoordinateSpace::Local));
-
-				DistAlongSegment = FVector::Dist(ThisDistanceV, LastDistanceV);
-				DistNormal = ThisDistanceV - LastDistanceV;
-				DistNormal.Normalize();
-			}
-
-
-			float SegmentCount = FMath::FloorToFloat(DistAlongSegment / SegmentLen);
-			float OverFlow = FMath::Fmod(DistAlongSegment, SegmentLen);
-
-			if (SegmentCount < 1)
-			{
-				SegmentCount++;
-			}
-
-			float DistPerSegment = (DistAlongSegment / SegmentCount);
-
-			for (int j = 0; j < SegmentCount; j++)
-			{
-				if (j == SegmentCount - 1 && i > 0)
-					DistPerSegment += OverFlow;
-
-				if (bKeepSplineCurves)
-				{
-					LastDistance -= DistPerSegment;
-					if (j == SegmentCount - 1 && i > 0)
-					{
-						LastDistance = ThisDistance;
-					}
-					FVector loc = Realignment.TransformPosition(HostSplineComponent->GetLocationAtDistanceAlongSpline(LastDistance, ESplineCoordinateSpace::Local));
-
-					if (!loc.IsNearlyZero())
-						NewGesture.Samples.Add(loc);
-				}
-				else
-				{
-					LastDistanceV += DistPerSegment * DistNormal;
-
-					if (j == SegmentCount - 1 && i > 0)
-					{
-						LastDistanceV = ThisDistanceV;
-					}
-
-					if (!LastDistanceV.IsNearlyZero())
-						NewGesture.Samples.Add(LastDistanceV);
-				}
-			}
-		}
-
-		NewGesture.CalculateSizeOfGesture(bScaleToDatabase, this->TargetGestureScale);
-		Gestures.Add(NewGesture);
-		return true;
-	}
 };
 
 
@@ -287,68 +192,16 @@ public:
 	int NextIndexCleared;
 
 	// Marches through the array and clears the last point
-	void ClearLastPoint()
-	{
-		SplineComponent->RemoveSplinePoint(0, false);
-
-		if (SplineMeshes.Num() < NextIndexCleared + 1)
-			NextIndexCleared = 0;
-
-		SplineMeshes[NextIndexCleared]->SetVisibility(false);
-		NextIndexCleared++;
-	}
+	void ClearLastPoint();
 
 	// Hides all spline meshes and re-inits the spline component
-	void Reset()
-	{
-		if(SplineComponent != nullptr)
-			SplineComponent->ClearSplinePoints(true);
+	void Reset();
 
-		for (int i = SplineMeshes.Num() - 1; i >= 0; --i)
-		{
-			if (SplineMeshes[i] != nullptr)
-				SplineMeshes[i]->SetVisibility(false);
-			else
-				SplineMeshes.RemoveAt(i);
-		}
+	void Clear();
 
-		LastIndexSet = 0;
-		NextIndexCleared = 0;
-	}
+	FVRGestureSplineDraw();
 
-	void Clear()
-	{
-		for (int i = 0; i < SplineMeshes.Num(); ++i)
-		{
-			if (SplineMeshes[i] != nullptr && !SplineMeshes[i]->IsBeingDestroyed())
-			{
-				SplineMeshes[i]->Modify();
-				SplineMeshes[i]->DestroyComponent();
-			}
-		}
-		SplineMeshes.Empty();
-
-		if (SplineComponent != nullptr)
-		{
-			SplineComponent->DestroyComponent();
-			SplineComponent = nullptr;
-		}
-
-		LastIndexSet = 0;
-		NextIndexCleared = 0;
-	}
-
-	FVRGestureSplineDraw()
-	{
-		SplineComponent = nullptr;
-		NextIndexCleared = 0;
-		LastIndexSet = 0;
-	}
-
-	~FVRGestureSplineDraw()
-	{
-		Clear();
-	}
+	~FVRGestureSplineDraw();
 };
 
 /** Delegate for notification when the lever state changes. */
@@ -452,25 +305,11 @@ public:
 		return FVector::DistSquared(Seq1, Seq2);
 	}
 
-	void BeginDestroy() override
-	{
-		Super::BeginDestroy();
-		RecordingGestureDraw.Clear();
-		if (TickGestureTimer_Handle.IsValid())
-		{
-			GetWorld()->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
-		}
-	}
+	void BeginDestroy() override;
 
 	// Recalculates a gestures size and re-scales it to the given database
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void RecalculateGestureSize(UPARAM(ref) FVRGesture & InputGesture, UGesturesDatabase * GestureDB)
-	{
-		if(GestureDB != nullptr)
-			InputGesture.CalculateSizeOfGesture(true, GestureDB->TargetGestureScale);
-		else
-			InputGesture.CalculateSizeOfGesture(false);
-	}
+		void RecalculateGestureSize(UPARAM(ref) FVRGesture & InputGesture, UGesturesDatabase * GestureDB);
 
 	// Draw a gesture with a debug line batch
 	UFUNCTION(BlueprintCallable, Category = "VRGestures", meta = (WorldContext = "WorldContextObject"))
@@ -495,40 +334,15 @@ public:
 
 	// Ends recording and returns the recorded gesture
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	FVRGesture EndRecording()
-	{
-		if (TickGestureTimer_Handle.IsValid())
-		{
-			GetWorld()->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
-		}
-
-		this->SetComponentTickEnabled(false);
-		CurrentState = EVRGestureState::GES_None;
-
-		// Reset the recording gesture
-		RecordingGestureDraw.Reset();
-
-		return GestureLog;
-	}
+		FVRGesture EndRecording();
 
 	// Clears the current recording
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void ClearRecording()
-	{
-		GestureLog.Samples.Reset(RecordingBufferSize);
-	}
+		void ClearRecording();
 
 	// Saves a VRGesture to the database, if Scale To Database is true then it will scale the data
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void SaveRecording(UPARAM(ref) FVRGesture &Recording, FString RecordingName, bool bScaleRecordingToDatabase = true)
-	{
-		if (GesturesDB)
-		{
-			Recording.CalculateSizeOfGesture(bScaleRecordingToDatabase, GesturesDB->TargetGestureScale);
-			Recording.Name = RecordingName;
-			GesturesDB->Gestures.Add(Recording);
-		}
-	}
+		void SaveRecording(UPARAM(ref) FVRGesture &Recording, FString RecordingName, bool bScaleRecordingToDatabase = true);
 
 	void CaptureGestureFrame();
 

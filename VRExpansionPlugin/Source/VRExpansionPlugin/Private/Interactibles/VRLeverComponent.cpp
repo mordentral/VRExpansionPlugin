@@ -12,6 +12,8 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	PrimaryComponentTick.bCanEverTick = true;
 
 	bRepGameplayTags = false;
+
+	// Defaulting these true so that they work by default in networked environments
 	bReplicateMovement = true;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
@@ -69,7 +71,7 @@ void UVRLeverComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UVRLeverComponent, InitialRelativeTransform, COND_Custom);
+	DOREPLIFETIME(UVRLeverComponent, InitialRelativeTransform);
 
 	DOREPLIFETIME(UVRLeverComponent, bRepGameplayTags);
 	DOREPLIFETIME(UVRLeverComponent, bReplicateMovement);
@@ -81,7 +83,7 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Replicate the levers initial transform if we are replicating movement
-	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, InitialRelativeTransform, bReplicateMovement);
+	//DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, InitialRelativeTransform, bReplicateMovement);
 
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, GameplayTags, bRepGameplayTags);
@@ -91,16 +93,19 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
+void UVRLeverComponent::PostInitProperties()
+{
+	Super::PostInitProperties();
+	ResetInitialLeverLocation(); // Load the original lever location
+}
+
 void UVRLeverComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
+	ReCalculateCurrentAngle();
 
-	// If we are the server, or this component doesn't replicate then get the initial lever location
-	if (!bReplicates || GetNetMode() < ENetMode::NM_Client)
-	{
-		ResetInitialLeverLocation();
-	}
+	bOriginalReplicatesMovement = bReplicateMovement;
 }
 
 void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -480,12 +485,26 @@ void UVRLeverComponent::IsHeld_Implementation(UGripMotionControllerComponent *& 
 
 void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
 {
-	bIsHeld = bNewIsHeld;
-
-	if (bIsHeld)
+	if (bNewIsHeld)
+	{
 		HoldingController = NewHoldingController;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			if (!bIsHeld)
+				bOriginalReplicatesMovement = bReplicateMovement;
+			bReplicateMovement = false;
+		}
+	}
 	else
+	{
 		HoldingController = nullptr;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			bReplicateMovement = bOriginalReplicatesMovement;
+		}
+	}
+
+	bIsHeld = bNewIsHeld;
 }
 
 /*FBPInteractionSettings UVRLeverComponent::GetInteractionSettings_Implementation()
@@ -496,4 +515,323 @@ void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * 
 bool UVRLeverComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
 	return false;
+}
+
+bool UVRLeverComponent::DestroyConstraint()
+{
+#if WITH_PHYSX
+	if (HandleData)
+	{
+		// use correct scene
+		PxScene* PScene = HandleData->getScene();//GetPhysXSceneFromIndex(SceneIndex);
+		if (PScene)
+		{
+			PScene->lockWrite();
+			//SCOPED_SCENE_WRITE_LOCK(PScene);
+			// Destroy joint.
+			HandleData->release();
+			PScene->unlockWrite();
+		}
+
+		HandleData = NULL;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+#endif // WITH_PHYSX
+
+	return true;
+}
+
+bool UVRLeverComponent::SetupConstraint()
+{
+#if WITH_PHYSX
+
+	if (HandleData)
+		return true;
+
+	// Get the PxRigidDynamic that we want to grab.
+	FBodyInstance* rBodyInstance = this->GetBodyInstance(NAME_None);
+	if (!rBodyInstance)
+	{
+		return false;
+	}
+
+
+	FTransform A2Transform = FTransform::Identity;//GetComponentTransform().Inverse();
+	if (ParentComponent.IsValid())
+	{
+		UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ParentComponent.Get());
+
+		if (PrimComp)
+			A2Transform = PrimComp->GetComponentTransform();
+	}
+
+	float rotationalOffset = (LeverLimitPositive - LeverLimitNegative) / 2;
+	FRotator AngularRotationOffset = UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, rotationalOffset, FRotator::ZeroRotator);
+	FTransform RefFrame2 = FTransform(InitialRelativeTransform.GetRotation() * AngularRotationOffset.Quaternion(), A2Transform.InverseTransformPosition(GetComponentLocation()));
+
+	// If we don't already have a handle - make one now.
+	if (!HandleData)
+	{
+		FPhysicsCommand::ExecuteWrite(BodyInstance.ActorHandle, [&](const FPhysicsActorHandle& Actor)
+			//ExecuteOnPxRigidDynamicReadWrite(rBodyInstance, [&](PxRigidDynamic* Actor)
+		{
+			if (PxRigidActor* PActor = FPhysicsInterface::GetPxRigidActor_AssumesLocked(Actor))
+			{
+				PxScene* Scene = PActor->getScene();
+				PxD6Joint* NewJoint = NULL;
+				PxRigidDynamic * ParentBody = NULL;
+
+				if (ParentComponent.IsValid())
+				{
+					UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ParentComponent.Get());
+
+					if (PrimComp && PrimComp->BodyInstance.IsValidBodyInstance())
+					{
+						ParentBody = FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(PrimComp->BodyInstance.ActorHandle);
+						//ParentBody = PrimComp->BodyInstance.GetPxRigidDynamic_AssumesLocked();
+					}
+				}
+
+				NewJoint = PxD6JointCreate(Scene->getPhysics(), ParentBody, U2PTransform(RefFrame2), PActor, PxTransform(PxIdentity));
+
+				if (!NewJoint)
+				{
+					HandleData = NULL;
+				}
+				else
+				{
+					// No constraint instance
+					NewJoint->userData = NULL; // don't need
+					HandleData = NewJoint;
+
+					// Remember the scene index that the handle joint/actor are in.
+					FPhysScene* RBScene = FPhysxUserData::Get<FPhysScene>(Scene->userData);
+					//const uint32 SceneType = rBodyInstance->UseAsyncScene(RBScene) ? PST_Async : PST_Sync;
+					//SceneIndex = RBScene->PhysXSceneIndex[SceneType];
+
+					// Pretty Much Unbreakable
+					NewJoint->setBreakForce(PX_MAX_REAL, PX_MAX_REAL);
+					//	NewJoint->setConstraintFlag(PxConstraintFlag::ePROJECTION, true);
+
+					//	NewJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
+
+					PxConstraintFlags Flags = NewJoint->getConstraintFlags();
+
+					// False flags
+					//Flags |= PxConstraintFlag::ePROJECTION;
+					Flags |= PxConstraintFlag::eCOLLISION_ENABLED;
+
+					// True flags
+					Flags &= ~PxConstraintFlag::ePROJECTION;
+
+					NewJoint->setConstraintFlag(PxConstraintFlag::ePROJECTION, true);
+					NewJoint->setProjectionAngularTolerance(FMath::DegreesToRadians(0.1f));
+					NewJoint->setProjectionLinearTolerance(0.1f);
+					NewJoint->setConstraintFlags(Flags);
+
+					// Setting up the joint
+					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eLOCKED);
+					NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eLOCKED);
+					NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eLOCKED);
+
+					NewJoint->setMotion(PxD6Axis::eTWIST, LeverRotationAxis == EVRInteractibleLeverAxis::Axis_X || LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
+					NewJoint->setMotion(PxD6Axis::eSWING1, LeverRotationAxis == EVRInteractibleLeverAxis::Axis_Y || LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
+					NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
+
+					const float CorrectedLeverLimit = (LeverLimitPositive + LeverLimitNegative) / 2;
+					const float LeverLimitRad = CorrectedLeverLimit * (PI / 180.0f);
+					//PxReal LimitContactDistance = FMath::DegreesToRadians(FMath::Max(1.f, ProfileInstance.ConeLimit.ContactDistance));
+
+					//The limit values need to be clamped so it will be valid in PhysX
+					PxReal ZLimitAngle = FMath::ClampAngle(CorrectedLeverLimit, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
+					PxReal YLimitAngle = FMath::ClampAngle(CorrectedLeverLimit, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
+					//PxReal LimitContactDistance = FMath::DegreesToRadians(FMath::Max(1.f, ProfileInstance.ConeLimit.ContactDistance * FMath::Min(InSwing1LimitScale, InSwing2LimitScale)));
+
+					NewJoint->setSwingLimit(PxJointLimitCone(YLimitAngle, ZLimitAngle));
+					NewJoint->setTwistLimit(PxJointAngularLimitPair(-LeverLimitRad, LeverLimitRad));
+
+					return true;
+				}
+			}
+			return false;
+		});
+	}
+
+#else
+	return false;
+#endif // WITH_PHYSX
+
+	return false;
+}
+
+float UVRLeverComponent::ReCalculateCurrentAngle()
+{
+	FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
+	CalculateCurrentAngle(CurRelativeTransform);
+	return CurrentLeverAngle;
+}
+
+void UVRLeverComponent::SetLeverAngle(float NewAngle, FVector DualAxisForwardVector)
+{
+	NewAngle = -NewAngle; // Need to inverse the sign
+
+	FVector ForwardVector = DualAxisForwardVector;
+	switch (LeverRotationAxis)
+	{
+	case EVRInteractibleLeverAxis::Axis_X:
+		ForwardVector = FVector(FMath::Sign(NewAngle), 0.0f, 0.0f); break;
+	case EVRInteractibleLeverAxis::Axis_Y:
+		ForwardVector = FVector(0.0f, FMath::Sign(NewAngle), 0.0f); break;
+	case EVRInteractibleLeverAxis::Axis_Z:
+		ForwardVector = FVector(0.0f, 0.0f, FMath::Sign(NewAngle)); break;
+	default:break;
+	}
+
+	CurrentLeverAngle = NewAngle;
+	FQuat NewLeverRotation(ForwardVector, FMath::DegreesToRadians(FMath::Abs(NewAngle)));
+
+	this->SetRelativeTransform(FTransform(NewLeverRotation) * InitialRelativeTransform);
+}
+
+void UVRLeverComponent::ResetInitialLeverLocation()
+{
+	// Get our initial relative transform to our parent (or not if un-parented).
+	InitialRelativeTransform = this->GetRelativeTransform();
+	CalculateCurrentAngle(InitialRelativeTransform);
+}
+
+void UVRLeverComponent::CalculateCurrentAngle(FTransform & CurrentRelativeTransform)
+{
+	float Angle;
+
+	switch (LeverRotationAxis)
+	{
+	case EVRInteractibleLeverAxis::Axis_XY:
+	case EVRInteractibleLeverAxis::Axis_XZ:
+	{
+		// Manually calculating the angle here because RotationBetween() from FQuat uses Yaw/Pitch so roll would be incorrect
+		FVector qAxis;
+		float qAngle;
+
+		(InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized().ToAxisAndAngle(qAxis, qAngle);
+
+		FullCurrentAngle = FMath::RadiansToDegrees(qAngle);
+		CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
+
+		if (LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY)
+			qAxis.Z = 0.0f; // Doing 2D axis values
+
+		CurrentLeverForwardVector = -qAxis;
+
+	}break;
+	default:
+	{
+		Angle = UVRInteractibleFunctionLibrary::GetDeltaAngleFromTransforms((EVRInteractibleAxis)LeverRotationAxis, InitialRelativeTransform, CurrentRelativeTransform);
+		FullCurrentAngle = Angle;
+		CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
+		CurrentLeverForwardVector = UVRInteractibleFunctionLibrary::SetAxisValueVec((EVRInteractibleAxis)LeverRotationAxis, FMath::Sign(Angle));
+	}break;
+	}
+}
+
+void UVRLeverComponent::LerpAxis(float CurrentAngle, float DeltaTime)
+{
+	float TargetAngle = 0.0f;
+	float FinalReturnSpeed = LeverReturnSpeed;
+
+	switch (LeverReturnTypeWhenReleased)
+	{
+	case EVRInteractibleLeverReturnType::LerpToMax:
+	{
+		if (CurrentAngle >= 0)
+			TargetAngle = FMath::RoundToFloat(LeverLimitPositive);
+		else
+			TargetAngle = -FMath::RoundToFloat(LeverLimitNegative);
+	}break;
+	case EVRInteractibleLeverReturnType::LerpToMaxIfOverThreshold:
+	{
+		if ((!FMath::IsNearlyZero(LeverLimitPositive) && CurrentAngle >= (LeverLimitPositive * LeverTogglePercentage)))
+			TargetAngle = FMath::RoundToFloat(LeverLimitPositive);
+		else if ((!FMath::IsNearlyZero(LeverLimitNegative) && CurrentAngle <= -(LeverLimitNegative * LeverTogglePercentage)))
+			TargetAngle = -FMath::RoundToFloat(LeverLimitNegative);
+	}break;
+	case EVRInteractibleLeverReturnType::RetainMomentum:
+	{
+		if (FMath::IsNearlyZero(MomentumAtDrop * DeltaTime, 0.1f))
+		{
+			MomentumAtDrop = 0.0f;
+			this->SetComponentTickEnabled(false);
+			bIsLerping = false;
+			bReplicateMovement = true;
+			return;
+		}
+		else
+		{
+			MomentumAtDrop = FMath::FInterpTo(MomentumAtDrop, 0.0f, DeltaTime, LeverMomentumFriction);
+
+			FinalReturnSpeed = FMath::Abs(MomentumAtDrop);
+
+			if (MomentumAtDrop >= 0.0f)
+				TargetAngle = FMath::RoundToFloat(LeverLimitPositive);
+			else
+				TargetAngle = -FMath::RoundToFloat(LeverLimitNegative);
+		}
+
+	}break;
+	case EVRInteractibleLeverReturnType::ReturnToZero:
+	default:
+	{}break;
+	}
+
+	//float LerpedVal = FMath::FixedTurn(CurrentAngle, TargetAngle, FinalReturnSpeed * DeltaTime);
+	float LerpedVal = FMath::FInterpConstantTo(CurrentAngle, TargetAngle, DeltaTime, FinalReturnSpeed);
+
+	if (FMath::IsNearlyEqual(LerpedVal, TargetAngle))
+	{
+		if (LeverRestitution > 0.0f)
+		{
+			MomentumAtDrop = -(MomentumAtDrop * LeverRestitution);
+			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+		}
+		else
+		{
+			this->SetComponentTickEnabled(false);
+			bIsLerping = false;
+			bReplicateMovement = true;
+			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+		}
+	}
+	else
+	{
+		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, LerpedVal, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+	}
+}
+
+float UVRLeverComponent::CalcAngle(EVRInteractibleLeverAxis AxisToCalc, FVector CurInteractorLocation)
+{
+	float ReturnAxis = 0.0f;
+
+	ReturnAxis = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)AxisToCalc, CurInteractorLocation, InitialGripRot);
+
+	if (LeverLimitPositive > 0.0f && LeverLimitNegative > 0.0f && FMath::IsNearlyEqual(LeverLimitNegative, 180.f, 0.01f) && FMath::IsNearlyEqual(LeverLimitPositive, 180.f, 0.01f))
+	{
+		// Don't run the clamping or the flip detection, we are a 360 degree lever
+	}
+	else
+	{
+		ReturnAxis = FMath::ClampAngle(FRotator::NormalizeAxis(RotAtGrab + ReturnAxis), -LeverLimitNegative, LeverLimitPositive);
+
+		// Ignore rotations that would flip the angle of the lever to the other side, with a 90 degree allowance
+		if (!bIsInFirstTick && ((LeverLimitPositive > 0.0f && LastDeltaAngle >= LeverLimitPositive) || (LeverLimitNegative > 0.0f && LastDeltaAngle <= -LeverLimitNegative)) && FMath::Sign(LastDeltaAngle) != FMath::Sign(ReturnAxis))
+		{
+			ReturnAxis = LastDeltaAngle;
+		}
+	}
+
+	bIsInFirstTick = false;
+	return ReturnAxis;
 }

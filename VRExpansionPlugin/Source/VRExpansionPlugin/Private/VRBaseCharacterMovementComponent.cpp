@@ -57,6 +57,9 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bIsInPushBack = false;
 
 	bRunControlRotationInMovementComponent = true;
+
+	// Allow merging dual movements, generally this is wanted for the perf increase
+	bEnableServerDualMoveScopedMovementUpdates = true;
 }
 
 void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
@@ -1439,7 +1442,11 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 
 		// Don't let the client fall too far behind or run ahead of new server time.
 		const double ServerDeltaTime = ClientData->SmoothingServerTimeStamp - OldServerTimeStamp;
-		const double MaxDelta = FMath::Clamp(ServerDeltaTime * 1.25, 0.0, ClientData->MaxMoveDeltaTime * 2.0);
+		const double MaxOffset = ClientData->MaxClientSmoothingDeltaTime;
+		const double MinOffset = FMath::Min(double(ClientData->SmoothNetUpdateTime), MaxOffset);
+
+		// MaxDelta is the farthest behind we're allowed to be after receiving a new server time.
+		const double MaxDelta = FMath::Clamp(ServerDeltaTime * 1.25, MinOffset, MaxOffset);
 		ClientData->SmoothingClientTimeStamp = FMath::Clamp(ClientData->SmoothingClientTimeStamp, ClientData->SmoothingServerTimeStamp - MaxDelta, ClientData->SmoothingServerTimeStamp);
 
 		// Compute actual delta between new server timestamp and client simulation.
@@ -1549,4 +1556,45 @@ void FVRCharacterScopedMovementUpdate::RevertMove()
 		// Fix offset
 		RootComponent->GenerateOffsetToWorld();
 	}
+}
+
+void UVRBaseCharacterMovementComponent::SetHasRequestedVelocity(bool bNewHasRequestedVelocity)
+{
+	bHasRequestedVelocity = bNewHasRequestedVelocity;
+}
+
+bool UVRBaseCharacterMovementComponent::IsClimbing() const
+{
+	return ((MovementMode == MOVE_Custom) && (CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing)) && UpdatedComponent;
+}
+
+FVector UVRBaseCharacterMovementComponent::RewindVRMovement()
+{
+	RewindVRRelativeMovement();
+	return AdditionalVRInputVector;
+}
+
+FVector UVRBaseCharacterMovementComponent::GetCustomInputVector()
+{
+	return CustomVRInputVector;
+}
+
+void UVRBaseCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
+{
+	// If is a custom or VR custom movement mode
+	int32 MovementFlags = (Flags >> 2) & 15;
+	VRReplicatedMovementMode = (EVRConjoinedMovementModes)MovementFlags;
+
+	//bWantsToSnapTurn = ((Flags & FSavedMove_VRBaseCharacter::FLAG_SnapTurn) != 0);
+
+	Super::UpdateFromCompressedFlags(Flags);
+}
+
+FVector UVRBaseCharacterMovementComponent::RoundDirectMovement(FVector InMovement) const
+{
+	// Match FVector_NetQuantize100 (2 decimal place of precision).
+	InMovement.X = FMath::RoundToFloat(InMovement.X * 100.f) / 100.f;
+	InMovement.Y = FMath::RoundToFloat(InMovement.Y * 100.f) / 100.f;
+	InMovement.Z = FMath::RoundToFloat(InMovement.Z * 100.f) / 100.f;
+	return InMovement;
 }

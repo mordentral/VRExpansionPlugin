@@ -88,13 +88,7 @@ protected:
 public:
 	void BeginPlay() override;
 
-	bool IsLocallyControlled() const
-	{
-		// I like epics implementation better than my own
-		const AActor* MyOwner = GetOwner();
-		const APawn* MyPawn = Cast<APawn>(MyOwner);
-		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
-	}
+	bool IsLocallyControlled() const;
 
 	UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	USceneComponent * TargetPrimitiveComponent;

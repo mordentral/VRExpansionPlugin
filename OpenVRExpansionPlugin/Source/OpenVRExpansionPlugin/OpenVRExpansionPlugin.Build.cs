@@ -38,7 +38,7 @@ public class OpenVRExpansionPlugin : ModuleRules
                 "HeadMountedDisplay",
                 "RHI",
                 "RenderCore",
-                "ShaderCore",
+               // "ShaderCore",
                 "ProceduralMeshComponent",
                // "VRExpansionPlugin"
                // "EngineSettings"

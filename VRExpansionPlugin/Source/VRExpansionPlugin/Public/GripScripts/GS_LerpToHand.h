@@ -50,9 +50,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "LerpEvents")
 		FVRLerpToHandFinishedSignature OnLerpToHandFinished;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings|Curve")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpCurve")
 		bool bUseCurve;
-	UPROPERTY(Category = "LerpSettings|Curve", EditAnywhere, meta = (editcondition = "bUseCurve"))
+	UPROPERTY(Category = "LerpCurve", EditAnywhere, meta = (editcondition = "bUseCurve"))
 		FRuntimeFloatCurve OptionalCurveToFollow;
 
 	FTransform OnGripTransform;

@@ -28,6 +28,7 @@ public:
 
 	~UGrippableCapsuleComponent();
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
 		TArray<class UVRGripScriptBase *> GripLogicScripts;
@@ -57,60 +58,12 @@ public:
 
 	/** Called right before being marked for destruction due to network replication */
 	// Clean up our objects so that they aren't sitting around for GC
-	virtual void PreDestroyFromReplication() override
-	{
-		Super::PreDestroyFromReplication();
+	virtual void PreDestroyFromReplication() override;
 
-		// Destroy any sub-objects we created
-		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
-		{
-			if (UObject *SubObject = GripLogicScripts[i])
-			{
-				SubObject->PreDestroyFromReplication();
-				SubObject->MarkPendingKill();
-			}
-		}
-
-		GripLogicScripts.Empty();
-	}
-
-	virtual void GetSubobjectsWithStableNamesForNetworking(TArray<UObject*> &ObjList) override
-	{
-		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
-		{
-			if (UObject *SubObject = GripLogicScripts[i])
-			{
-				ObjList.Add(SubObject);
-			}
-		}
-	}
+	virtual void GetSubobjectsWithStableNamesForNetworking(TArray<UObject*> &ObjList) override;
 
 	// This one is for components to clean up
-	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override
-	{
-		// Call the super at the end, after we've done what we needed to do
-		Super::OnComponentDestroyed(bDestroyingHierarchy);
-
-		// Don't set these in editor preview window and the like, it causes saving issues
-		if (UWorld * World = GetWorld())
-		{
-			EWorldType::Type WorldType = World->WorldType;
-			if (WorldType == EWorldType::Editor || WorldType == EWorldType::EditorPreview)
-			{
-				return;
-			}
-		}
-
-		for (int32 i = 0; i < GripLogicScripts.Num(); i++)
-		{
-			if (UObject *SubObject = GripLogicScripts[i])
-			{
-				SubObject->MarkPendingKill();
-			}
-		}
-
-		GripLogicScripts.Empty();
-	}
+	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 
 	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
@@ -177,10 +130,11 @@ public:
 		void IsHeld(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld);
 
 	// Sets is held, used by the plugin
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
 		void SetHeld(UGripMotionControllerComponent * HoldingController, bool bIsHeld);
+	bool bOriginalReplicatesMovement;
 
-	// Returns if the object is socketed currently
+	// Returns if the object wants to be socketed
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
 

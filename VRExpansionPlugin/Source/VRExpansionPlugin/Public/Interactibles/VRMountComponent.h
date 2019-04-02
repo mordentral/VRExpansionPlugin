@@ -45,6 +45,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMountComponent")
 		EVRInteractibleMountAxis MountRotationAxis;
 
+	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
+	virtual void PostInitProperties() override;
+
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;
 	FVector InitialInteractorDropLocation;
@@ -138,6 +141,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+	bool bOriginalReplicatesMovement;
 
 	// Should be called after the Mount is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRMountComponent")
@@ -232,10 +236,10 @@ public:
 		void IsHeld(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld);
 
 	// Sets is held, used by the plugin
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
 		void SetHeld(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld);
 
-	// Returns if the object is socketed currently
+	// Returns if the object wants to be socketed
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
 

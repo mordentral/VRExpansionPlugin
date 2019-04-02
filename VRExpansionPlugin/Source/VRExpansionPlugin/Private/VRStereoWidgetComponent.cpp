@@ -462,8 +462,8 @@ public:
 		const bool bWireframe = AllowDebugViewmodes() && ViewFamily.EngineShowFlags.Wireframe;
 
 		auto WireframeMaterialInstance = new FColoredMaterialRenderProxy(
-			GEngine->WireframeMaterial ? GEngine->WireframeMaterial->GetRenderProxy(IsSelected()) : nullptr,
-			FLinearColor(0, 0.5f, 1.f)
+			GEngine->WireframeMaterial ? GEngine->WireframeMaterial->GetRenderProxy() : nullptr,
+			FLinearColor(0, 0.5f, 1.f)	
 		);
 
 		Collector.RegisterOneFrameMaterialProxy(WireframeMaterialInstance);
@@ -475,10 +475,10 @@ public:
 		}
 		else
 		{
-			ParentMaterialProxy = MaterialInstance->GetRenderProxy(IsSelected());
+			ParentMaterialProxy = MaterialInstance->GetRenderProxy();
 		}
 #else
-		FMaterialRenderProxy* ParentMaterialProxy = MaterialInstance->GetRenderProxy(IsSelected());
+		FMaterialRenderProxy* ParentMaterialProxy = MaterialInstance->GetRenderProxy();
 #endif
 
 		//FSpriteTextureOverrideRenderProxy* TextureOverrideMaterialProxy = new FSpriteTextureOverrideRenderProxy(ParentMaterialProxy,
@@ -635,7 +635,7 @@ public:
 					{
 						// Make a material for drawing solid collision stuff
 						auto SolidMaterialInstance = new FColoredMaterialRenderProxy(
-							GEngine->ShadedLevelColorationUnlitMaterial->GetRenderProxy(IsSelected(), IsHovered()),
+							GEngine->ShadedLevelColorationUnlitMaterial->GetRenderProxy(),
 							GetWireframeColor()
 						);
 
@@ -667,7 +667,9 @@ public:
 		Result.bDrawRelevance = IsShown(View) && bVisible && View->Family->EngineShowFlags.WidgetComponents;
 		Result.bDynamicRelevance = true;
 		Result.bShadowRelevance = IsShadowCast(View);
+		Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 		Result.bEditorPrimitiveRelevance = false;
+		Result.bVelocityRelevance = IsMovable() && Result.bOpaqueRelevance && Result.bRenderInMainPass;
 
 		return Result;
 	}
@@ -711,29 +713,13 @@ private:
 
 FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 {
-	// Always clear the material instance in case we're going from 3D to 2D.
-	if (MaterialInstance)
-	{
-		MaterialInstance = nullptr;
-	
-	}
-	
 	if (Space == EWidgetSpace::Screen)
 	{
 		return nullptr;
 	}
 
-	if (WidgetRenderer != nullptr && CurrentSlateWidget.IsValid())
+	if (WidgetRenderer && CurrentSlateWidget.IsValid())
 	{
-		// Create a new MID for the current base material
-		{
-			UMaterialInterface* BaseMaterial = GetMaterial(0);
-
-			MaterialInstance = UMaterialInstanceDynamic::Create(BaseMaterial, this);
-
-			UpdateMaterialInstanceParameters();
-		}
-
 		RequestRedraw();
 		LastWidgetRenderTime = 0;
 
@@ -743,39 +729,36 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 	return nullptr;
 }
 
-
-class FVRStereoWidgetComponentInstanceData : public FSceneComponentInstanceData
+class FVRStereoWidgetComponentInstanceData : public FActorComponentInstanceData
 {
 public:
 	FVRStereoWidgetComponentInstanceData(const UVRStereoWidgetComponent* SourceComponent)
-		: FSceneComponentInstanceData(SourceComponent)
-		, WidgetClass(SourceComponent->GetWidgetClass())
+		: FActorComponentInstanceData(SourceComponent)
 		, RenderTarget(SourceComponent->GetRenderTarget())
 	{}
 
 	virtual void ApplyToComponent(UActorComponent* Component, const ECacheApplyPhase CacheApplyPhase) override
 	{
-		FSceneComponentInstanceData::ApplyToComponent(Component, CacheApplyPhase);
+		FActorComponentInstanceData::ApplyToComponent(Component, CacheApplyPhase);
 		CastChecked<UVRStereoWidgetComponent>(Component)->ApplyVRComponentInstanceData(this);
 	}
 
-	virtual void AddReferencedObjects(FReferenceCollector& Collector) override
+	/*virtual void AddReferencedObjects(FReferenceCollector& Collector) override
 	{
-		FSceneComponentInstanceData::AddReferencedObjects(Collector);
+		FActorComponentInstanceData::AddReferencedObjects(Collector);
 
 		UClass* WidgetUClass = *WidgetClass;
 		Collector.AddReferencedObject(WidgetUClass);
 		Collector.AddReferencedObject(RenderTarget);
-	}
+	}*/
 
 public:
-	TSubclassOf<UUserWidget> WidgetClass;
 	UTextureRenderTarget2D* RenderTarget;
 };
 
-FActorComponentInstanceData* UVRStereoWidgetComponent::GetComponentInstanceData() const
+TStructOnScope<FActorComponentInstanceData> UVRStereoWidgetComponent::GetComponentInstanceData() const
 {
-	return new FVRStereoWidgetComponentInstanceData(this);
+	return MakeStructOnScope<FActorComponentInstanceData, FVRStereoWidgetComponentInstanceData>(this);
 }
 
 void UVRStereoWidgetComponent::ApplyVRComponentInstanceData(FVRStereoWidgetComponentInstanceData* WidgetInstanceData)

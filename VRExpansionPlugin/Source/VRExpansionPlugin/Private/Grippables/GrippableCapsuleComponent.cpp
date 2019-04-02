@@ -87,7 +87,24 @@ void UGrippableCapsuleComponent::BeginPlay()
 	{
 		if (Script)
 		{
-			Script->OnBeginPlay(this);
+			Script->BeginPlay(this);
+		}
+	}
+
+	bOriginalReplicatesMovement = bReplicateMovement;
+}
+
+void UGrippableCapsuleComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// Call the base class 
+	Super::EndPlay(EndPlayReason);
+
+	// Call all grip scripts begin play events so they can perform any needed logic
+	for (UVRGripScriptBase* Script : GripLogicScripts)
+	{
+		if (Script)
+		{
+			Script->EndPlay(EndPlayReason);
 		}
 	}
 }
@@ -185,9 +202,25 @@ void UGrippableCapsuleComponent::IsHeld_Implementation(UGripMotionControllerComp
 void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
 {
 	if (bIsHeld)
+	{
+		if (VRGripInterfaceSettings.MovementReplicationType != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			if (!VRGripInterfaceSettings.bIsHeld)
+				bOriginalReplicatesMovement = bReplicateMovement;
+			bReplicateMovement = false;
+		}
+
 		VRGripInterfaceSettings.HoldingController = HoldingController;
+	}
 	else
+	{
+		if (VRGripInterfaceSettings.MovementReplicationType != EGripMovementReplicationSettings::ForceServerSideMovement)
+		{
+			bReplicateMovement = bOriginalReplicatesMovement;
+		}
+
 		VRGripInterfaceSettings.HoldingController = nullptr;
+	}
 
 	VRGripInterfaceSettings.bIsHeld = bIsHeld;
 }
@@ -201,4 +234,58 @@ bool UGrippableCapsuleComponent::GetGripScripts_Implementation(TArray<UVRGripScr
 {
 	ArrayReference = GripLogicScripts;
 	return GripLogicScripts.Num() > 0;
+}
+
+void UGrippableCapsuleComponent::PreDestroyFromReplication()
+{
+	Super::PreDestroyFromReplication();
+
+	// Destroy any sub-objects we created
+	for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+	{
+		if (UObject *SubObject = GripLogicScripts[i])
+		{
+			SubObject->PreDestroyFromReplication();
+			SubObject->MarkPendingKill();
+		}
+	}
+
+	GripLogicScripts.Empty();
+}
+
+void UGrippableCapsuleComponent::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*> &ObjList)
+{
+	for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+	{
+		if (UObject *SubObject = GripLogicScripts[i])
+		{
+			ObjList.Add(SubObject);
+		}
+	}
+}
+
+void UGrippableCapsuleComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+	// Call the super at the end, after we've done what we needed to do
+	Super::OnComponentDestroyed(bDestroyingHierarchy);
+
+	// Don't set these in editor preview window and the like, it causes saving issues
+	if (UWorld * World = GetWorld())
+	{
+		EWorldType::Type WorldType = World->WorldType;
+		if (WorldType == EWorldType::Editor || WorldType == EWorldType::EditorPreview)
+		{
+			return;
+		}
+	}
+
+	for (int32 i = 0; i < GripLogicScripts.Num(); i++)
+	{
+		if (UObject *SubObject = GripLogicScripts[i])
+		{
+			SubObject->MarkPendingKill();
+		}
+	}
+
+	GripLogicScripts.Empty();
 }

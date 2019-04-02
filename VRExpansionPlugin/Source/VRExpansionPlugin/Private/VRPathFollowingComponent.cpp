@@ -247,6 +247,10 @@ bool UVRPathFollowingComponent::UpdateBlockDetection()
 
 void UVRPathFollowingComponent::UpdatePathSegment()
 {
+#if !UE_BUILD_SHIPPING
+	DEBUG_bMovingDirectlyToGoal = false;
+#endif // !UE_BUILD_SHIPPING
+
 	if ((Path.IsValid() == false) || (MovementComp == nullptr))
 	{
 		//UE_CVLOG(Path.IsValid() == false, this, LogPathFollowing, Log, TEXT("Aborting move due to not having a valid path object"));
@@ -306,6 +310,10 @@ void UVRPathFollowingComponent::UpdatePathSegment()
 			}
 
 			UpdateMoveFocus();
+
+#if !UE_BUILD_SHIPPING
+			DEBUG_bMovingDirectlyToGoal = true;
+#endif // !UE_BUILD_SHIPPING
 		}
 		// check if current move segment is finished
 		else if (HasReachedCurrentTarget(CurrentLocation))
