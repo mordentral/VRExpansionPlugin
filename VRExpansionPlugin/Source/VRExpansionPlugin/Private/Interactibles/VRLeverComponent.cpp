@@ -93,9 +93,9 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
-void UVRLeverComponent::PostInitProperties()
+void UVRLeverComponent::OnRegister()
 {
-	Super::PostInitProperties();
+	Super::OnRegister();
 	ResetInitialLeverLocation(); // Load the original lever location
 }
 
@@ -138,7 +138,7 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 			{
 				this->SetComponentTickEnabled(false);
 				bIsLerping = false;
-				bReplicateMovement = true;
+				bReplicateMovement = bOriginalReplicatesMovement;
 				this->SetRelativeRotation((FTransform::Identity * InitialRelativeTransform).Rotator());
 			}
 			else
@@ -338,11 +338,6 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 	bIsInFirstTick = true;
 	MomentumAtDrop = 0.0f;
 
-	if (GripInformation.GripMovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
-	{
-		bReplicateMovement = false;
-	}
-
 	this->SetComponentTickEnabled(true);
 }
 
@@ -358,11 +353,13 @@ void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerCompon
 	if (LeverReturnTypeWhenReleased != EVRInteractibleLeverReturnType::Stay)
 	{		
 		bIsLerping = true;
+		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+			bReplicateMovement = false;
 	}
 	else
 	{
 		this->SetComponentTickEnabled(false);
-		bReplicateMovement = true;
+		bReplicateMovement = bOriginalReplicatesMovement;
 	}
 }
 
@@ -490,7 +487,7 @@ void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * 
 		HoldingController = NewHoldingController;
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
-			if (!bIsHeld)
+			if (!bIsHeld && !bIsLerping)
 				bOriginalReplicatesMovement = bReplicateMovement;
 			bReplicateMovement = false;
 		}
@@ -766,7 +763,7 @@ void UVRLeverComponent::LerpAxis(float CurrentAngle, float DeltaTime)
 			MomentumAtDrop = 0.0f;
 			this->SetComponentTickEnabled(false);
 			bIsLerping = false;
-			bReplicateMovement = true;
+			bReplicateMovement = bOriginalReplicatesMovement;
 			return;
 		}
 		else
@@ -801,7 +798,7 @@ void UVRLeverComponent::LerpAxis(float CurrentAngle, float DeltaTime)
 		{
 			this->SetComponentTickEnabled(false);
 			bIsLerping = false;
-			bReplicateMovement = true;
+			bReplicateMovement = bOriginalReplicatesMovement;
 			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 		}
 	}

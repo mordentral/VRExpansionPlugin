@@ -67,9 +67,9 @@ void UVRMountComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
-void UVRMountComponent::PostInitProperties()
+void UVRMountComponent::OnRegister()
 {
-	Super::PostInitProperties();
+	Super::OnRegister();
 	ResetInitialMountLocation(); // Load the original mount location
 }
 

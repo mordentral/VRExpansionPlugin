@@ -92,9 +92,9 @@ void UVRSliderComponent::PreReplication(IRepChangedPropertyTracker & ChangedProp
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
-void UVRSliderComponent::PostInitProperties()
+void UVRSliderComponent::OnRegister()
 {
-	Super::PostInitProperties();
+	Super::OnRegister();
 
 	// Init the slider settings
 	if (USplineComponent * ParentSpline = Cast<USplineComponent>(GetAttachParent()))
@@ -111,6 +111,7 @@ void UVRSliderComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
+
 	CalculateSliderProgress();
 
 	bOriginalReplicatesMovement = bReplicateMovement;
@@ -174,7 +175,7 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			ReceiveSliderFinishedLerping(CurrentSliderProgress);
 
 			this->SetComponentTickEnabled(false);
-			bReplicateMovement = true;
+			bReplicateMovement = bOriginalReplicatesMovement;
 		}
 		
 		// Check for the hit point always
@@ -372,11 +373,14 @@ void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerCompo
 	{
 		bIsLerping = true;
 		this->SetComponentTickEnabled(true);
+
+		if(MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
+			bReplicateMovement = false;
 	}
 	else
 	{
 		this->SetComponentTickEnabled(false);
-		bReplicateMovement = true;
+		bReplicateMovement = bOriginalReplicatesMovement;
 	}
 }
 
@@ -495,7 +499,7 @@ void UVRSliderComponent::SetHeld_Implementation(UGripMotionControllerComponent *
 		HoldingController = NewHoldingController;
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
-			if (!bIsHeld)
+			if (!bIsHeld && !bIsLerping)
 				bOriginalReplicatesMovement = bReplicateMovement;
 			bReplicateMovement = false;
 		}

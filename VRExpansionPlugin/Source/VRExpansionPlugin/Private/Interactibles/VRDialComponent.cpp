@@ -70,9 +70,9 @@ void UVRDialComponent::PreReplication(IRepChangedPropertyTracker & ChangedProper
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
-void UVRDialComponent::PostInitProperties()
+void UVRDialComponent::OnRegister()
 {
-	Super::PostInitProperties();
+	Super::OnRegister();
 	ResetInitialDialLocation(); // Load the original dial location
 }
 

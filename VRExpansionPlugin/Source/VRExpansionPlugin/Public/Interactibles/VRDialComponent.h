@@ -97,7 +97,7 @@ public:
 		int GripPriority;
 
 	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
-	virtual void PostInitProperties() override;
+	virtual void OnRegister() override;
 
 	FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;

@@ -57,9 +57,9 @@ void UVRButtonComponent::PreReplication(IRepChangedPropertyTracker & ChangedProp
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
-void UVRButtonComponent::PostInitProperties()
+void UVRButtonComponent::OnRegister()
 {
-	Super::PostInitProperties();
+	Super::OnRegister();
 	ResetInitialButtonLocation();
 }
 

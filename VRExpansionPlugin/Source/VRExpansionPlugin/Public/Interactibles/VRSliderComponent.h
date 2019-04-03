@@ -157,7 +157,7 @@ public:
 
 
 	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
-	virtual void PostInitProperties() override;
+	virtual void OnRegister() override;
 
 	// Now replicating this so that it works correctly over the network
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRSliderComponent")
