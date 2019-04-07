@@ -17,6 +17,9 @@ UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer
 	bDenyLateUpdates = false;
 	bForceDrop = false;
 	bIsActive = false;
+
+	bCanEverTick = false;
+	bAllowTicking = false;
 }
 
 void UVRGripScriptBase::OnEndPlay_Implementation(const EEndPlayReason::Type EndPlayReason) {};
@@ -48,6 +51,49 @@ void UVRGripScriptBase::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 	{
 		BPClass->GetLifetimeBlueprintReplicationList(OutLifetimeProps);
 	}
+}
+
+void UVRGripScriptBase::Tick(float DeltaTime)
+{
+	// Do nothing by default
+}
+
+bool UVRGripScriptBase::IsTickable() const
+{
+	return bAllowTicking;
+}
+
+UWorld* UVRGripScriptBase::GetTickableGameObjectWorld() const
+{
+	return GetWorld();
+}
+
+bool UVRGripScriptBase::IsTickableInEditor() const
+{
+	return false;
+}
+
+bool UVRGripScriptBase::IsTickableWhenPaused() const
+{
+	return false;
+}
+
+ETickableTickType UVRGripScriptBase::GetTickableTickType() const
+{
+	if(IsTemplate(RF_ClassDefaultObject))
+		return ETickableTickType::Never;
+
+	return bCanEverTick ? ETickableTickType::Conditional : ETickableTickType::Never;
+}
+
+TStatId UVRGripScriptBase::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UVRGripScriptBase, STATGROUP_Tickables);
+}
+
+void UVRGripScriptBase::SetTickEnabled(bool bTickEnabled)
+{
+	bAllowTicking = bTickEnabled;
 }
 
 
@@ -185,4 +231,9 @@ void UVRGripScriptBase::BeginPlay(UObject * CallingOwner)
 {
 	// Notify the subscripts about begin play
 	OnBeginPlay(CallingOwner);
+}
+
+void UVRGripScriptBaseBP::Tick(float DeltaTime)
+{
+	ReceiveTick(DeltaTime);
 }

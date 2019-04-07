@@ -27,7 +27,7 @@ enum class EGSTransformOverrideType : uint8
 };
 
 UCLASS(NotBlueprintable, BlueprintType, EditInlineNew, DefaultToInstanced, Abstract, ClassGroup = (VRExpansionPlugin), HideCategories = DefaultSettings)
-class VREXPANSIONPLUGIN_API UVRGripScriptBase : public UObject
+class VREXPANSIONPLUGIN_API UVRGripScriptBase : public UObject, public FTickableGameObject
 {
 	GENERATED_BODY()
 public:
@@ -94,6 +94,40 @@ public:
 	//virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker);
 	virtual bool CallRemoteFunction(UFunction * Function, void * Parms, FOutParmRec * OutParms, FFrame * Stack) override;
 	virtual int32 GetFunctionCallspace(UFunction * Function, void * Parameters, FFrame * Stack) override;
+
+
+
+	// FTickableGameObject functions
+	
+	
+	// If true then this scrip can tick when bAllowticking is true
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Tick Settings")
+		bool bCanEverTick;
+
+	// If true and we bCanEverTick, then will fire off the tick function
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tick Settings")
+		bool bAllowTicking;
+
+	// Set whether the grip script can tick or not
+	UFUNCTION(BlueprintCallable, Category = "Tick Settings")
+		void SetTickEnabled(bool bTickEnabled);
+
+	/**
+	 * Function called every frame on this GripScript. Override this function to implement custom logic to be executed every frame.
+	 * Only executes if bCanEverTick is true and bAllowTicking is true
+	 *
+	 * @param DeltaTime - The time since the last tick.
+	 */
+	virtual void Tick(float DeltaTime) override;
+	virtual bool IsTickable() const override;
+	virtual UWorld* GetTickableGameObjectWorld() const override;
+	virtual bool IsTickableInEditor() const;
+	virtual bool IsTickableWhenPaused() const override;
+	virtual ETickableTickType GetTickableTickType() const;
+	virtual TStatId GetStatId() const override;
+
+	// End tickable object information
+
 
 	// Returns the expected grip transform (relative * controller + addition)
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
@@ -181,4 +215,10 @@ public:
 	{
 		return GetWorldTransform(OwningController, DeltaTime, WorldTransform, ParentTransform, Grip, actor, root, bRootHasInterface, bActorHasInterface, bIsForTeleport);
 	}
+
+	virtual void Tick(float DeltaTime) override;
+
+	/** Event called every frame if ticking is enabled */
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Tick"))
+		void ReceiveTick(float DeltaSeconds);
 };
