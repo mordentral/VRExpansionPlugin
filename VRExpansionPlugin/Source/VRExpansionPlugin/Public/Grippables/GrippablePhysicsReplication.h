@@ -17,6 +17,7 @@
 #include "Engine/Classes/GameFramework/PlayerState.h"
 #include "Engine/Player.h"
 #include "PhysicsEngine/PhysicsSettings.h"
+#include "Components/SkeletalMeshComponent.h"
 #if WITH_PHYSX
 #include "Physics/PhysicsInterfaceUtils.h"
 #include "Physics/PhysScene_PhysX.h"
