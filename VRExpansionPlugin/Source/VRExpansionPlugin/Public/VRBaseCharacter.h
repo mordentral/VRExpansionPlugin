@@ -29,11 +29,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
 		bool bZeroToHead;
 	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
-		FVector_NetQuantize100 StoredLocation;
+		FTransform_NetQuantize StoredTargetTransform;
+	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
+		FTransform_NetQuantize InitialRelCameraTransform;
 	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
 		USceneComponent* SeatParent;
-	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
-		float StoredYaw;
 	UPROPERTY(BlueprintReadOnly, Category = "CharacterSeatInfo")
 		EVRConjoinedMovementModes PostSeatedMovementMode;
 
@@ -61,8 +61,8 @@ public:
 		bIsOverThreshold = false;
 		bWasOverLimit = false;
 		bZeroToHead = true;
-		StoredLocation = FVector::ZeroVector;
-		StoredYaw = 0;
+		StoredTargetTransform = FTransform::Identity;
+		InitialRelCameraTransform = FTransform::Identity;
 		bWasSeated = false;
 		bOriginalControlRotation = false;
 		AllowedRadius = 40.0f;
@@ -92,6 +92,8 @@ public:
 
 		if (bSitting)
 		{
+			InitialRelCameraTransform.NetSerialize(Ar, Map, bOutSuccess);
+
 			// Forcing a maximum value here so that we can compress it by making assumptions
 			// 256 max value = 8 bits + 1 bit for sign + 7 bits for precision (up to 128 on precision, so full range 2 digit precision).
 			if (Ar.IsSaving())
@@ -106,22 +108,9 @@ public:
 			}
 		}
 
-		StoredLocation.NetSerialize(Ar, Map, bOutSuccess);
+		StoredTargetTransform.NetSerialize(Ar, Map, bOutSuccess);
 		Ar << SeatParent;
-		Ar << PostSeatedMovementMode;
-
-		uint16 val;
-		if (Ar.IsSaving())
-		{
-			val = FRotator::CompressAxisToShort(StoredYaw);
-			Ar << val;
-		}
-		else
-		{
-			Ar << val;
-			StoredYaw = FRotator::DecompressAxisFromShort(val);
-		}
-		
+		Ar << PostSeatedMovementMode;	
 		return bOutSuccess;
 	}
 };
@@ -339,7 +328,7 @@ public:
 	
 	void ZeroToSeatInformation()
 	{
-		SetSeatRelativeLocationAndRotationVR(SeatInformation.StoredLocation, -SeatInformation.StoredLocation, FRotator(0.0f, -SeatInformation.StoredYaw, 0.0f), true);
+		SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
 		LeftMotionController->PostTeleportMoveGrippedObjects();
 		RightMotionController->PostTeleportMoveGrippedObjects();
 	}
@@ -354,22 +343,22 @@ public:
 
 	// Re-zeros the seated settings
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "BaseVRCharacter", meta = (DisplayName = "ReZeroSeating"))
-		void Server_ReZeroSeating(FVector_NetQuantize100 NewRelativeHeadLoc, float NewRelativeHeadYaw, bool bZeroToHead = true);
+		void Server_ReZeroSeating(FTransform_NetQuantize NewTargetTransform, FTransform_NetQuantize NewInitialRelCameraTransform, bool bZeroToHead = true);
 
 
 	// Sets seated mode on the character and then fires off an event to handle any special setup
-	// Target loc is for teleport location if standing up, or relative camera location when sitting down.
-	// Target rot is for PURE YAW of standing up, or sitting down (use Get HMDPureYaw).
+	// Target Transform is for teleport location if standing up, or relative camera location when sitting down.
+	// InitialRelCameraTransform is generally the relative transform of the camera at the time of requesting to sit.
 	// ZeroToHead places central point on head, if false it will use foot location and ignore Z values instead.
 	// Post Seated movement mode is the movement mode to switch too after seating is canceled, defaults to Walking and only uses it when un-seating.
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "BaseVRCharacter", meta = (DisplayName = "SetSeatedMode"))
-		void Server_SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true, EVRConjoinedMovementModes PostSeatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Walking);
+		void Server_SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform_NetQuantize TargetTransform, FTransform_NetQuantize InitialRelCameraTransform, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true, EVRConjoinedMovementModes PostSeatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Walking);
 
 	// Sets seated mode on the character and then fires off an event to handle any special setup
 	// Should only be called on the server / net authority
-	bool SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector TargetLoc, float TargetYaw, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true, EVRConjoinedMovementModes PostSeatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Walking);
+	bool SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform TargetTransform, FTransform InitialRelCameraTransform, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true, EVRConjoinedMovementModes PostSeatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Walking);
 
-	void SetSeatRelativeLocationAndRotationVR(FVector Pivot, FVector NewLoc, FRotator NewRot, bool bUseYawOnly);
+	void SetSeatRelativeLocationAndRotationVR(FVector LocDelta);
 
 	// Adds a rotation delta taking into account the HMD as a pivot point (also moves the actor), returns final location difference
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")

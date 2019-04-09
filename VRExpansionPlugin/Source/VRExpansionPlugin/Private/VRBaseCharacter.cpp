@@ -126,40 +126,35 @@ USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const
 	return nullptr;
 }
 
-bool AVRBaseCharacter::Server_SetSeatedMode_Validate(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
+bool AVRBaseCharacter::Server_SetSeatedMode_Validate(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform_NetQuantize TargetTransform, FTransform_NetQuantize InitialRelCameraTransform, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
 	return true;
 }
 
-void AVRBaseCharacter::Server_SetSeatedMode_Implementation(USceneComponent * SeatParent, bool bSetSeatedMode, FVector_NetQuantize100 TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
+void AVRBaseCharacter::Server_SetSeatedMode_Implementation(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform_NetQuantize TargetTransform, FTransform_NetQuantize InitialRelCameraTransform, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
-	SetSeatedMode(SeatParent, bSetSeatedMode, TargetLoc, TargetYaw, AllowedRadius, AllowedRadiusThreshold, bZeroToHead, PostSeatedMovementMode);
+	SetSeatedMode(SeatParent, bSetSeatedMode, TargetTransform, InitialRelCameraTransform, AllowedRadius, AllowedRadiusThreshold, bZeroToHead, PostSeatedMovementMode);
 }
 
-void AVRBaseCharacter::Server_ReZeroSeating_Implementation(FVector_NetQuantize100 NewRelativeHeadLoc, float NewRelativeHeadYaw, bool bZeroToHead)
+void AVRBaseCharacter::Server_ReZeroSeating_Implementation(FTransform_NetQuantize NewTargetTransform, FTransform_NetQuantize NewInitialRelCameraTransform, bool bZeroToHead)
 {
-	if (FMath::IsNearlyEqual(SeatInformation.StoredYaw, NewRelativeHeadYaw) && SeatInformation.StoredLocation.Equals(NewRelativeHeadLoc))
-		return;
+	SeatInformation.StoredTargetTransform = NewTargetTransform;
+	SeatInformation.InitialRelCameraTransform = NewInitialRelCameraTransform;
 
-	SeatInformation.StoredYaw = NewRelativeHeadYaw;
-	SeatInformation.StoredLocation = NewRelativeHeadLoc;
+	// Purify the yaw of the initial rotation
+	SeatInformation.InitialRelCameraTransform.SetRotation(UVRExpansionFunctionLibrary::GetHMDPureYaw_I(NewInitialRelCameraTransform.Rotator()).Quaternion());
 
-
-	SeatInformation.StoredYaw = FMath::RoundToFloat(SeatInformation.StoredYaw * 100.f) / 100.f;
-
-	SeatInformation.StoredLocation.X = FMath::RoundToFloat(SeatInformation.StoredLocation.X * 100.f) / 100.f;
-	SeatInformation.StoredLocation.Y = FMath::RoundToFloat(SeatInformation.StoredLocation.Y * 100.f) / 100.f;
-	SeatInformation.StoredLocation.Z = FMath::RoundToFloat(SeatInformation.StoredLocation.Z * 100.f) / 100.f;
-
-
-	// Null out Z so we keep feet location if not zeroing to head
-	if (!bZeroToHead)
-		SeatInformation.StoredLocation.Z = 0.0f;
+	// #TODO: Need to handle non 1 scaled values here eventually
+	if (bZeroToHead)
+	{
+		FVector newLocation = SeatInformation.InitialRelCameraTransform.GetTranslation();
+		SeatInformation.StoredTargetTransform.AddToTranslation(FVector(0, 0, -newLocation.Z));
+	}
 
 	OnRep_SeatedCharInfo();
 }
 
-bool AVRBaseCharacter::Server_ReZeroSeating_Validate(FVector_NetQuantize100 NewLoc, float NewYaw, bool bZeroToHead = true)
+bool AVRBaseCharacter::Server_ReZeroSeating_Validate(FTransform_NetQuantize NewTargetTransform, FTransform_NetQuantize NewInitialRelCameraTransform, bool bZeroToHead)
 {
 	return true;
 }
@@ -380,7 +375,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 
 				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
-				SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true, true);
+				SetActorLocationAndRotationVR(SeatInformation.StoredTargetTransform.GetTranslation(), SeatInformation.StoredTargetTransform.Rotator(), true, true, true);
 				LeftMotionController->PostTeleportMoveGrippedObjects();
 				RightMotionController->PostTeleportMoveGrippedObjects();
 
@@ -428,7 +423,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
 				// Re-purposing them for the new location and rotations
-				SetActorLocationAndRotationVR(SeatInformation.StoredLocation, FRotator(0.0f, SeatInformation.StoredYaw, 0.0f), true, true, true);
+				SetActorLocationAndRotationVR(SeatInformation.StoredTargetTransform.GetTranslation(), SeatInformation.StoredTargetTransform.Rotator(), true, true, true);
 				LeftMotionController->PostTeleportMoveGrippedObjects();
 				RightMotionController->PostTeleportMoveGrippedObjects();
 
@@ -448,27 +443,32 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 	bool bLastOverThreshold = SeatInformation.bIsOverThreshold;
 
 	FVector NewLoc = VRReplicatedCamera->RelativeLocation;
+	FVector OrigLocation = SeatInformation.InitialRelCameraTransform.GetTranslation();
 
 	if (!SeatInformation.bZeroToHead)
+	{
 		NewLoc.Z = 0.0f;
+		OrigLocation.Z = 0.0f;
+	}
 
-	float AbsDistance = FMath::Abs(FVector::Dist(SeatInformation.StoredLocation, NewLoc));
+	float AbsDistance = FMath::Abs(FVector::Dist(OrigLocation, NewLoc));
+
+	//FTransform newTrans = SeatInformation.StoredTargetTransform * SeatInformation.SeatParent->GetComponentTransform();
 
 	// If over the allowed distance
 	if (AbsDistance > SeatInformation.AllowedRadius)
 	{
 		// Force them back into range
-		FVector diff = NewLoc - SeatInformation.StoredLocation;
+		FVector diff = NewLoc - OrigLocation;
 		diff.Normalize();
 		diff = (-diff * (AbsDistance - SeatInformation.AllowedRadius));
 
-		FRotator Rot = FRotator(0.0f, -SeatInformation.StoredYaw, 0.0f);
-		SetSeatRelativeLocationAndRotationVR(SeatInformation.StoredLocation, (-SeatInformation.StoredLocation) + Rot.RotateVector(diff), Rot, true);
+		SetSeatRelativeLocationAndRotationVR(diff);
 		SeatInformation.bWasOverLimit = true;
 	}
 	else if (SeatInformation.bWasOverLimit) // Make sure we are in the zero point otherwise
 	{
-		SetSeatRelativeLocationAndRotationVR(SeatInformation.StoredLocation, -SeatInformation.StoredLocation, FRotator(0.0f, -SeatInformation.StoredYaw, 0.0f), true);
+		SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
 		SeatInformation.bWasOverLimit = false;
 	}
 
@@ -486,7 +486,7 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 	}
 }
 
-bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FVector TargetLoc, float TargetYaw, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
+bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform TargetTransform, FTransform InitialRelCameraTransform, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
 	if (!this->HasAuthority() || !SeatParent)
 		return false;
@@ -494,24 +494,29 @@ bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeat
 	if (bSetSeatedMode)
 	{
 		SeatInformation.SeatParent = SeatParent;
-		//SeatedCharacter.SeatedCharacter = CharacterToSeat;
 		SeatInformation.bSitting = true;
-		SeatInformation.StoredYaw = TargetYaw;
-		SeatInformation.StoredLocation = TargetLoc;
+		SeatInformation.bZeroToHead = bZeroToHead;
+		SeatInformation.StoredTargetTransform = TargetTransform;
+		SeatInformation.InitialRelCameraTransform = InitialRelCameraTransform;
+
+		// Purify the yaw of the initial rotation
+		SeatInformation.InitialRelCameraTransform.SetRotation(UVRExpansionFunctionLibrary::GetHMDPureYaw_I(InitialRelCameraTransform.Rotator()).Quaternion());
 		SeatInformation.AllowedRadius = AllowedRadius;
 		SeatInformation.AllowedRadiusThreshold = AllowedRadiusThreshold;
 
-		// Null out Z so we keep feet location if not zeroing to head
-		if (!bZeroToHead)
-			SeatInformation.StoredLocation.Z = 0.0f;
+		// #TODO: Need to handle non 1 scaled values here eventually
+		if (bZeroToHead)
+		{
+			FVector newLocation = SeatInformation.InitialRelCameraTransform.GetTranslation();
+			SeatInformation.StoredTargetTransform.AddToTranslation(FVector(0, 0, -newLocation.Z));
+		}
 
 		//SetReplicateMovement(false);/ / No longer doing this, allowing it to replicate down to simulated clients now instead
 	}
 	else
 	{
 		SeatInformation.SeatParent = nullptr;
-		SeatInformation.StoredYaw = TargetYaw;
-		SeatInformation.StoredLocation = TargetLoc;
+		SeatInformation.StoredTargetTransform = TargetTransform;
 		SeatInformation.PostSeatedMovementMode = PostSeatedMovementMode;
 		//SetReplicateMovement(true); // No longer doing this, allowing it to replicate down to simulated clients now instead
 		SeatInformation.bSitting = false;
@@ -523,9 +528,9 @@ bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeat
 	return true;
 }
 
-void AVRBaseCharacter::SetSeatRelativeLocationAndRotationVR(FVector Pivot, FVector NewLoc, FRotator NewRot, bool bUseYawOnly)
+void AVRBaseCharacter::SetSeatRelativeLocationAndRotationVR(FVector DeltaLoc)
 {
-	if (bUseYawOnly)
+	/*if (bUseYawOnly)
 	{
 		NewRot.Pitch = 0.0f;
 		NewRot.Roll = 0.0f;
@@ -534,7 +539,22 @@ void AVRBaseCharacter::SetSeatRelativeLocationAndRotationVR(FVector Pivot, FVect
 	NewLoc = NewLoc + Pivot;
 	NewLoc -= NewRot.RotateVector(Pivot);
 
-	SetActorRelativeTransform(FTransform(NewRot, NewLoc, GetCapsuleComponent()->RelativeScale3D));
+	SetActorRelativeTransform(FTransform(NewRot, NewLoc, GetCapsuleComponent()->RelativeScale3D));*/
+
+	FTransform NewTrans = SeatInformation.StoredTargetTransform;// *SeatInformation.SeatParent->GetComponentTransform();
+
+	FVector NewLocation;
+	FRotator NewRotation;
+	FVector PivotPoint = SeatInformation.InitialRelCameraTransform.GetTranslation();
+	PivotPoint.Z = 0.0f;
+
+	NewRotation = SeatInformation.InitialRelCameraTransform.Rotator();
+	NewRotation = (NewRotation.Quaternion().Inverse() * NewTrans.GetRotation()).Rotator();
+	NewLocation = NewTrans.GetTranslation();
+	NewLocation -= NewRotation.RotateVector(PivotPoint + (-DeltaLoc));	
+
+	// Also setting actor rot because the control rot transfers to it anyway eventually
+	SetActorRelativeTransform(FTransform(NewRotation, NewLocation, GetCapsuleComponent()->RelativeScale3D));
 }
 
 
