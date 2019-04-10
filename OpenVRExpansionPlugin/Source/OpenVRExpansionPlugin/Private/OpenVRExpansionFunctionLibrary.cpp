@@ -1249,7 +1249,7 @@ bool UOpenVRExpansionFunctionLibrary::FadeVRGrid(float fSeconds, bool bFadeIn)
 #endif
 }
 
-bool UOpenVRExpansionFunctionLibrary::GetCurrentVRGripAlpha(float & VRGridAlpha)
+bool UOpenVRExpansionFunctionLibrary::GetCurrentVRGridAlpha(float & VRGridAlpha)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
 	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Not SteamVR Supported Platform!!"));

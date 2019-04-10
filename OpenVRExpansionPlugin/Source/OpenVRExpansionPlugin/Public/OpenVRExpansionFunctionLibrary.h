@@ -640,7 +640,7 @@ public:
 
 	/** Get current alpha value of grid. */
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
-		static bool GetCurrentVRGripAlpha(float & VRGridAlpha);
+		static bool GetCurrentVRGridAlpha(float & VRGridAlpha);
 
 	// Sets whether the compositor is allows to render or not (reverts to base compositor / grid when active)
 	// Useful to place players out of the app during frame drops/hitches/loading and into the vr skybox.
