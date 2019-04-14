@@ -7,6 +7,7 @@
 #include "VRBPDatatypes.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
+#include "Tickable.h"
 #include "Net/UnrealNetwork.h"
 
 #include "VRGripScriptBase.generated.h"
