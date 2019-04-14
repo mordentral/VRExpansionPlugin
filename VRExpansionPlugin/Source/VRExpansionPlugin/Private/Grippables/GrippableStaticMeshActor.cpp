@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Grippables/GrippableStaticMeshActor.h"
+#include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 
 // #TODO: Pull request this? This macro could be very useful
