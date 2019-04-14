@@ -3,6 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 //#include "EngineMinimal.h"
+#include "Components/PrimitiveComponent.h"
 
 #include "PhysicsPublic.h"
 #if WITH_PHYSX
