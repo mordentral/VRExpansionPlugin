@@ -14,6 +14,7 @@
 #include "Engine/ActorChannel.h"
 #include "DrawDebugHelpers.h"
 #include "Grippables/GrippablePhysicsReplication.h"
+#include "Misc/BucketUpdateSubsystem.h"
 #include "GrippableSkeletalMeshActor.generated.h"
 
 /**
@@ -42,7 +43,7 @@ public:
 *
 */
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
-class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshActor, public IVRGripInterface, public IGameplayTagAssetInterface, public IVRReplicationInterface
+class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshActor, public IVRGripInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -70,15 +71,15 @@ public:
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
 		FVRClientAuthReplicationData ClientAuthReplicationData;
 
-	// From IVRReplicationInterface
-	virtual bool PollReplicationEvent(float DeltaTime) override;
+	UFUNCTION()
+	bool PollReplicationEvent();
 
 	UFUNCTION(Category = "Networking")
 		void CeaseReplicationBlocking();
 
 	// Notify the server that we locally gripped something
 	UFUNCTION(UnReliable, Server, WithValidation, Category = "Networking")
-		void Server_GetClientAuthRepliction(const FRepMovementVR & newMovement);
+		void Server_GetClientAuthReplication(const FRepMovementVR & newMovement);
 
 	// End client auth throwing data and functions //
 

@@ -24,8 +24,6 @@
 //#include "Physics/Experimental/PhysScene_ImmediatePhysX.h"
 #include "PhysicsReplication.h"
 #endif
-#include <functional>
-#include <vector>
 
 #include "GrippablePhysicsReplication.generated.h"
 //#include "GrippablePhysicsReplication.generated.h"
@@ -41,210 +39,16 @@
 	TEXT(" 1: use the valve input controller. You will have to define input bindings for the controllers you want to support."),
 	ECVF_ReadOnly);*/
 
-UINTERFACE(MinimalAPI, meta = (CannotImplementInterfaceInBlueprint))
-class UVRReplicationInterface : public UInterface
-{
-	GENERATED_UINTERFACE_BODY()
-};
-
-
-class VREXPANSIONPLUGIN_API IVRReplicationInterface
-{
-	GENERATED_IINTERFACE_BODY()
-
-public:
-
-	// Runs the replication tick, returns if replication is still ongoing
-	virtual bool PollReplicationEvent(float DeltaTime) = 0;
-
-
-	static bool AddObjectToReplicationManager(uint32 UpdateHTZ, UObject * ObjectToAdd);
-	static bool RemoveObjectFromReplicationManager(UObject * ObjectToRemove);
-};
-
-USTRUCT()
-struct VREXPANSIONPLUGIN_API FReplicationBucket
-{
-	GENERATED_BODY()
-public:
-	float nUpdateRate;
-	float nUpdateCount;
-
-	TArray<TWeakObjectPtr<UObject>> CallbackReferences;
-
-	bool Update(float DeltaTime)
-	{
-		//#TODO: Need to consider batching / spreading out load if there are a lot of updating objects
-
-		// Check for if this bucket is ready to fire events
-		nUpdateCount += DeltaTime;
-		if (nUpdateCount >= nUpdateRate)
-		{
-			nUpdateCount = 0.0f;
-			for (int i = CallbackReferences.Num() - 1; i >= 0; --i)
-			{
-				if (CallbackReferences[i].IsValid() && !CallbackReferences[i]->IsPendingKill())
-				{
-					if (IVRReplicationInterface * ASI = Cast<IVRReplicationInterface>(CallbackReferences[i]))
-					{
-						if (ASI->PollReplicationEvent(DeltaTime))
-						{
-							// Skip deleting the entry, it still wants to run
-							continue;
-						}
-					}
-				}
-
-				// Remove the callback, it is complete or invalid
-				CallbackReferences.RemoveAt(i);
-			}
-		}
-
-		return (CallbackReferences.Num() > 0);
-	}
-
-	FReplicationBucket() {}
-
-	FReplicationBucket(uint32 UpdateHTZ) :
-		nUpdateRate(1.0f/UpdateHTZ),
-		nUpdateCount(0.0f)
-	{
-		int vv = 0;
-	}
-};
-
-USTRUCT()//Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
-struct VREXPANSIONPLUGIN_API FReplicationBucketContainer
-{
-	GENERATED_BODY()
-public:
-
-
-	bool bNeedsUpdate;
-	TMap<uint32, FReplicationBucket> ReplicationBuckets;
-
-	void UpdateBuckets(float DeltaTime)
-	{
-		TArray<uint32> BucketsToRemove;
-		for(auto& Bucket : ReplicationBuckets)
-		{
-			if (!Bucket.Value.Update(DeltaTime))
-			{
-				// Delete empty bucket here, need to run this loop in reverse
-				BucketsToRemove.Add(Bucket.Key);
-			}
-		}
-
-		// Remove unused buckets so that they don't get ticked
-		for(const uint32 Key : BucketsToRemove)
-		{
-			ReplicationBuckets.Remove(Key);
-		}
-
-		if (ReplicationBuckets.Num() < 1)
-			bNeedsUpdate = false;
-	}
-	
-	bool AddReplicatingObject(uint32 UpdateHTZ, UObject* InObject)
-	{
-		if (!InObject)
-			return false;
-
-		// First verify that this object isn't already contained in a bucket, if it is then erase it so that we can replace it below
-		RemoveReplicatingObject(InObject);
-
-		if (IVRReplicationInterface * ReplicationInterface = Cast<IVRReplicationInterface>(InObject))
-		{
-			if (ReplicationBuckets.Contains(UpdateHTZ))
-			{
-				ReplicationBuckets[UpdateHTZ].CallbackReferences.Add(MakeWeakObjectPtr(InObject));
-			}
-			else
-			{
-				FReplicationBucket & newBucket = ReplicationBuckets.Add(UpdateHTZ, FReplicationBucket(UpdateHTZ));
-				ReplicationBuckets[UpdateHTZ].CallbackReferences.Add(MakeWeakObjectPtr(InObject));
-			}
-
-			if (ReplicationBuckets.Num() > 0)
-				bNeedsUpdate = true;
-
-			return true;
-		}
-
-		return false;
-	}
-	/*
-	template<typename classType>
-	bool AddReplicatingObject(uint32 UpdateHTZ, classType* InObject, void(classType::* _Func)())
-	{
-	}
-	*/
-
-	bool RemoveReplicatingObject(UObject* ObjectToRemoveFromQueue)
-	{
-		// Store if we ended up removing it
-		bool bRemovedObject = false;
-
-		//TWeakObjectPtr<UObject> *FoundValue;
-		TArray<uint32> BucketsToRemove;
-		for (auto& Bucket : ReplicationBuckets)
-		{
-			for (int i = Bucket.Value.CallbackReferences.Num() - 1; i >= 0; --i)
-			{
-				if (Bucket.Value.CallbackReferences[i].Get() == ObjectToRemoveFromQueue)
-				{
-					Bucket.Value.CallbackReferences.RemoveAt(i);
-					bRemovedObject = true;
-
-					if (Bucket.Value.CallbackReferences.Num() < 1)
-					{
-						BucketsToRemove.Add(Bucket.Key);
-					}
-
-					// Leave the loop, this is called in add as well so we should never get duplicate entries
-					break;
-				}
-			}
-
-			if (bRemovedObject)
-			{
-				break;
-			}
-		}
-
-		// Remove unused buckets so that they don't get ticked
-		for (const uint32 Key : BucketsToRemove)
-		{
-			ReplicationBuckets.Remove(Key);
-		}
-
-		if (ReplicationBuckets.Num() < 1)
-			bNeedsUpdate = false;
-
-		return bRemovedObject;
-	}
-
-	FReplicationBucketContainer() :
-		bNeedsUpdate(false)
-	{
-	};
-
-};
-
 #if WITH_PHYSX
 class FPhysicsReplicationVR : public FPhysicsReplication
 {
 public:
 
-	FReplicationBucketContainer BucketContainer;
-
 	FPhysicsReplicationVR(FPhysScene* PhysScene);
+	static bool IsInitialized();
 
 	virtual void OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrimitiveComponent>, FReplicatedPhysicsTarget>& ComponentsToTargets) override
 	{
-		if(BucketContainer.bNeedsUpdate)
-			BucketContainer.UpdateBuckets(DeltaSeconds);
-
 		// Skip all of the custom logic if we aren't the server
 		if (const UWorld* World = GetOwningWorld())
 		{

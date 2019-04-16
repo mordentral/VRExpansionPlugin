@@ -240,7 +240,7 @@ void AGrippableStaticMeshActor::SetHeld_Implementation(UGripMotionControllerComp
 		
 		if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
 		{
-			IVRReplicationInterface::RemoveObjectFromReplicationManager(this);
+			GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
 			CeaseReplicationBlocking();
 		}
 	}
@@ -254,7 +254,8 @@ void AGrippableStaticMeshActor::SetHeld_Implementation(UGripMotionControllerComp
 			{
 				if (PrimComp->IsSimulatingPhysics())
 				{
-					IVRReplicationInterface::AddObjectToReplicationManager(ClientAuthReplicationData.UpdateRate, this);
+					// The subsystem automatically removes entries with the same function signature so its safe to just always add here
+					GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
 					ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
 
 					if (UWorld * World = GetWorld())
@@ -278,20 +279,20 @@ bool AGrippableStaticMeshActor::GetGripScripts_Implementation(TArray<UVRGripScri
 	return GripLogicScripts.Num() > 0;
 }
 
-bool AGrippableStaticMeshActor::PollReplicationEvent(float DeltaTime)
+bool AGrippableStaticMeshActor::PollReplicationEvent()
 {
 	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth)
-		return false;
+		return false; // Tell the bucket subsystem to remove us from consideration
 
 	UWorld *OurWorld = GetWorld();
 	if (!OurWorld)
-		return false;
+		return false; // Tell the bucket subsystem to remove us from consideration
 
 	if ((OurWorld->GetTimeSeconds() - ClientAuthReplicationData.TimeAtInitialThrow) > 10.0f)
 	{
 		// Lets time out sending, its been 10 seconds since we threw the object and its likely that it is conflicting with some server
 		// Authed movement that is forcing it to keep momentum.
-		return false;
+		return false; // Tell the bucket subsystem to remove us from consideration
 	}
 
 	// Store current transform for resting check
@@ -309,7 +310,7 @@ bool AGrippableStaticMeshActor::PollReplicationEvent(float DeltaTime)
 				FRepMovementVR ClientAuthMovementRep;
 				if (ClientAuthMovementRep.GatherActorsMovement(this))
 				{
-					Server_GetClientAuthRepliction(ClientAuthMovementRep);
+					Server_GetClientAuthReplication(ClientAuthMovementRep);
 
 					if (PrimComp->RigidBodyIsAwake())
 						return true;
@@ -318,7 +319,7 @@ bool AGrippableStaticMeshActor::PollReplicationEvent(float DeltaTime)
 		}
 		else
 		{
-			return false;
+			return false; // Tell the bucket subsystem to remove us from consideration
 		}
 	}
 	else
@@ -356,7 +357,7 @@ bool AGrippableStaticMeshActor::PollReplicationEvent(float DeltaTime)
 		}
 	}
 
-	return false;
+	return false; // Tell the bucket subsystem to remove us from consideration
 }
 
 void AGrippableStaticMeshActor::CeaseReplicationBlocking()
@@ -370,6 +371,11 @@ void AGrippableStaticMeshActor::CeaseReplicationBlocking()
 
 void AGrippableStaticMeshActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
+	{
+		GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
+	}
+
 	CeaseReplicationBlocking();
 
 	// Call all grip scripts begin play events so they can perform any needed logic
@@ -385,12 +391,12 @@ void AGrippableStaticMeshActor::EndPlay(const EEndPlayReason::Type EndPlayReason
 }
 
 
-bool AGrippableStaticMeshActor::Server_GetClientAuthRepliction_Validate(const FRepMovementVR & newMovement)
+bool AGrippableStaticMeshActor::Server_GetClientAuthReplication_Validate(const FRepMovementVR & newMovement)
 {
 	return true;
 }
 
-void AGrippableStaticMeshActor::Server_GetClientAuthRepliction_Implementation(const FRepMovementVR & newMovement)
+void AGrippableStaticMeshActor::Server_GetClientAuthReplication_Implementation(const FRepMovementVR & newMovement)
 {
 	newMovement.CopyTo(ReplicatedMovement);
 	OnRep_ReplicatedMovement();

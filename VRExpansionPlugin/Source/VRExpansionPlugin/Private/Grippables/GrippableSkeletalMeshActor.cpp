@@ -223,7 +223,7 @@ void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerCo
 
 		if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
 		{
-			IVRReplicationInterface::RemoveObjectFromReplicationManager(this);
+			GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
 			CeaseReplicationBlocking();
 		}
 	}
@@ -237,7 +237,8 @@ void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerCo
 			{
 				if (PrimComp->IsSimulatingPhysics())
 				{
-					IVRReplicationInterface::AddObjectToReplicationManager(ClientAuthReplicationData.UpdateRate, this);
+					// The subsystem automatically removes entries with the same function signature so its safe to just always add here
+					GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
 					ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
 
 					if (UWorld * World = GetWorld())
@@ -261,7 +262,7 @@ bool AGrippableSkeletalMeshActor::GetGripScripts_Implementation(TArray<UVRGripSc
 	return GripLogicScripts.Num() > 0;
 }
 
-bool AGrippableSkeletalMeshActor::PollReplicationEvent(float DeltaTime)
+bool AGrippableSkeletalMeshActor::PollReplicationEvent()
 {
 	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth)
 		return false;
@@ -292,7 +293,7 @@ bool AGrippableSkeletalMeshActor::PollReplicationEvent(float DeltaTime)
 				FRepMovementVR ClientAuthMovementRep;
 				if (ClientAuthMovementRep.GatherActorsMovement(this))
 				{
-					Server_GetClientAuthRepliction(ClientAuthMovementRep);
+					Server_GetClientAuthReplication(ClientAuthMovementRep);
 
 					if (PrimComp->RigidBodyIsAwake())
 						return true;
@@ -353,6 +354,11 @@ void AGrippableSkeletalMeshActor::CeaseReplicationBlocking()
 
 void AGrippableSkeletalMeshActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
+	{
+		GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
+	}
+
 	CeaseReplicationBlocking();
 
 	// Call all grip scripts begin play events so they can perform any needed logic
@@ -368,12 +374,12 @@ void AGrippableSkeletalMeshActor::EndPlay(const EEndPlayReason::Type EndPlayReas
 }
 
 
-bool AGrippableSkeletalMeshActor::Server_GetClientAuthRepliction_Validate(const FRepMovementVR & newMovement)
+bool AGrippableSkeletalMeshActor::Server_GetClientAuthReplication_Validate(const FRepMovementVR & newMovement)
 {
 	return true;
 }
 
-void AGrippableSkeletalMeshActor::Server_GetClientAuthRepliction_Implementation(const FRepMovementVR & newMovement)
+void AGrippableSkeletalMeshActor::Server_GetClientAuthReplication_Implementation(const FRepMovementVR & newMovement)
 {
 	newMovement.CopyTo(ReplicatedMovement);
 	OnRep_ReplicatedMovement();
