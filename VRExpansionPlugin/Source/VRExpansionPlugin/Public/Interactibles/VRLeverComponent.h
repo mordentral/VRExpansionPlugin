@@ -284,15 +284,6 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool SimulateOnDrop();
 
-	/*// Grip type to use when gripping a slot
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		EGripCollisionType SlotGripType();
-
-	// Grip type to use when not gripping a slot
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		EGripCollisionType FreeGripType();
-		*/
-
 	// Secondary grip type
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		ESecondaryGripType SecondaryGripType();
@@ -309,14 +300,6 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		EGripLateUpdateSettings GripLateUpdateSetting();
 
-	/*// What grip stiffness to use if using a physics constraint
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		float GripStiffness();
-
-	// What grip damping to use if using a physics constraint
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		float GripDamping();
-		*/
 		// What grip stiffness and damping to use if using a physics constraint
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void GetGripStiffnessAndDamping(float &GripStiffnessOut, float &GripDampingOut);
@@ -329,29 +312,17 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripBreakDistance();
 
-	/*// Get closest secondary slot in range
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestSecondarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
-
-	// Get closest primary slot in range
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void ClosestPrimarySlotInRange(FVector WorldLocation, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
-		*/
-
 	// Get grip primary slot in range
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
-
-
-
-	// Check if the object is an interactable
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		//bool IsInteractible();
-
-	// Returns if the object is held and if so, which pawn is holding it
+	// Check if an object allows multiple grips at one time
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void IsHeld(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld);
+		bool AllowsMultipleGrips();
+
+	// Returns if the object is held and if so, which controllers are holding it
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void IsHeld(TArray<UGripMotionControllerComponent *>& CurHoldingControllers, bool & bCurIsHeld);
 
 	// Sets is held, used by the plugin
 	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
@@ -360,10 +331,6 @@ public:
 	// Returns if the object wants to be socketed
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
-
-	// Get interactable settings
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		//FBPInteractionSettings GetInteractionSettings();
 
 	// Get grip scripts
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

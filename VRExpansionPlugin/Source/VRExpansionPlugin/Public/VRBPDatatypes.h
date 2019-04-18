@@ -1349,12 +1349,12 @@ struct VREXPANSIONPLUGIN_API FBPInterfaceProperties
 {
 	GENERATED_BODY()
 public:
-
-	//UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Instanced, Category = "VRGripInterface")
-		//TArray<class UVRGripScriptBase *> GripLogicScripts;
 		
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bDenyGripping;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+		bool bAllowMultipleGrips;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripInterfaceTeleportBehavior OnTeleportBehavior;
@@ -1362,17 +1362,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bSimulateOnDrop;
 
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-	//	uint8 EnumObjectType;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripCollisionType SlotDefaultGripType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		EGripCollisionType FreeDefaultGripType;
-
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-	//	bool bCanHaveDoubleGrip;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		ESecondaryGripType SecondaryGripType;
@@ -1389,9 +1383,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintDamping;
 
-	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		FBPAdvGripPhysicsSettings PhysicsSettings;*/
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float ConstraintBreakDistance;
 
@@ -1404,20 +1395,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface|AdvancedGripSettings")
 		FBPAdvGripSettings AdvancedGripSettings;
 
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
-		//bool bIsInteractible;
-
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		bool bIsHeld; // Set on grip notify, not net serializing
 
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
-		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+		TArray<UGripMotionControllerComponent *> HoldingControllers; // Set on grip notify, not net serializing
 
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (editcondition = "bIsInteractible"))
-	//	FBPInteractionSettings InteractionSettings;
 
 	FBPInterfaceProperties():
 		bDenyGripping(false),
+		bAllowMultipleGrips(false),
 		OnTeleportBehavior(EGripInterfaceTeleportBehavior::DropOnTeleport),
 		bSimulateOnDrop(true),
 		SlotDefaultGripType(EGripCollisionType::ManipulationGrip),
@@ -1430,9 +1417,7 @@ public:
 		ConstraintBreakDistance(0.0f),
 		SecondarySlotRange(20.0f),
 		PrimarySlotRange(20.0f),
-		//bIsInteractible(false),
-		bIsHeld(false),
-		HoldingController(nullptr)
+		bIsHeld(false)
 	{
 	}
 };

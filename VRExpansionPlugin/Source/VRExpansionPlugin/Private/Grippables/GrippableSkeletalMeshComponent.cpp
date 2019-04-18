@@ -12,9 +12,7 @@ UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectIn
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
 	VRGripInterfaceSettings.SecondaryGripType = ESecondaryGripType::SG_None;
-	//VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 	VRGripInterfaceSettings.ConstraintStiffness = 1500.0f;
@@ -22,10 +20,8 @@ UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectIn
 	VRGripInterfaceSettings.ConstraintBreakDistance = 100.0f;
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
-	//VRGripInterfaceSettings.bIsInteractible = false;
 
 	VRGripInterfaceSettings.bIsHeld = false;
-	VRGripInterfaceSettings.HoldingController = nullptr;
 
 	bReplicateMovement = false;
 	//this->bReplicates = true;
@@ -187,14 +183,14 @@ void UGrippableSkeletalMeshComponent::ClosestGripSlotInRange_Implementation(FVec
 	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
-/*bool UGrippableSkeletalMeshComponent::IsInteractible_Implementation()
+bool UGrippableSkeletalMeshComponent::AllowsMultipleGrips_Implementation()
 {
-	return VRGripInterfaceSettings.bIsInteractible;
-}*/
+	return VRGripInterfaceSettings.bAllowMultipleGrips;
+}
 
-void UGrippableSkeletalMeshComponent::IsHeld_Implementation(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld)
+void UGrippableSkeletalMeshComponent::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & HoldingControllers, bool & bIsHeld)
 {
-	HoldingController = VRGripInterfaceSettings.HoldingController;
+	HoldingControllers = VRGripInterfaceSettings.HoldingControllers;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
 }
 
@@ -209,7 +205,7 @@ void UGrippableSkeletalMeshComponent::SetHeld_Implementation(UGripMotionControll
 			bReplicateMovement = false;
 		}
 
-		VRGripInterfaceSettings.HoldingController = HoldingController;
+		VRGripInterfaceSettings.HoldingControllers.AddUnique(HoldingController);
 	}
 	else
 	{
@@ -218,10 +214,10 @@ void UGrippableSkeletalMeshComponent::SetHeld_Implementation(UGripMotionControll
 			bReplicateMovement = bOriginalReplicatesMovement;
 		}
 
-		VRGripInterfaceSettings.HoldingController = nullptr;
+		VRGripInterfaceSettings.HoldingControllers.Remove(HoldingController);
 	}
 
-	VRGripInterfaceSettings.bIsHeld = bIsHeld;
+	VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;
 }
 
 /*FBPInteractionSettings UGrippableSkeletalMeshComponent::GetInteractionSettings_Implementation()

@@ -120,13 +120,13 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void OnInput(FKey Key, EInputEvent KeyEvent);
 		
-	// Check if the object is an interactable
-	//UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		//bool IsInteractible();
-
-	// Returns if the object is held and if so, which pawn is holding it
+	// Check if an object allows multiple grips at one time
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void IsHeld(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld);
+		bool AllowsMultipleGrips();
+
+	// Returns if the object is held and if so, which controllers are holding it
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
+		void IsHeld(TArray<UGripMotionControllerComponent*> & HoldingControllers, bool & bIsHeld);
 
 	// Sets is held, used by the plugin
 	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
@@ -135,10 +135,6 @@ public:
 	// Returns if the object requests to be socketed to something
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		bool RequestsSocketing(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform);
-
-	// Get interactable settings
-//	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-//		FBPInteractionSettings GetInteractionSettings();
 
 	// Get grip scripts
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

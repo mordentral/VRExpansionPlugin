@@ -1021,6 +1021,16 @@ bool UGripMotionControllerComponent::GripActor(
 		if(IVRGripInterface::Execute_DenyGripping(root))
 			return false; // Interface is saying not to grip it right now
 
+		if (!IVRGripInterface::Execute_AllowsMultipleGrips(root))
+		{
+			TArray<UGripMotionControllerComponent*> HoldingControllers;
+			bool bIsHeld;
+			IVRGripInterface::Execute_IsHeld(root, HoldingControllers, bIsHeld);
+
+			if (bIsHeld)
+				return false; // Can't multiple grip this object
+		}
+
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(root);
 		ObjectToCheck = root;
 	}
@@ -1028,6 +1038,16 @@ bool UGripMotionControllerComponent::GripActor(
 	{
 		if(IVRGripInterface::Execute_DenyGripping(ActorToGrip))
 			return false; // Interface is saying not to grip it right now
+
+		if (!IVRGripInterface::Execute_AllowsMultipleGrips(ActorToGrip))
+		{
+			TArray<UGripMotionControllerComponent*> HoldingControllers;
+			bool bIsHeld;
+			IVRGripInterface::Execute_IsHeld(ActorToGrip, HoldingControllers, bIsHeld);
+
+			if (bIsHeld)
+				return false; // Can't multiple grip this object
+		}
 
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(ActorToGrip);
 		ObjectToCheck = ActorToGrip;
@@ -1202,6 +1222,16 @@ bool UGripMotionControllerComponent::GripComponent(
 	{
 		if(IVRGripInterface::Execute_DenyGripping(ComponentToGrip))
 			return false; // Interface is saying not to grip it right now
+
+		if (!IVRGripInterface::Execute_AllowsMultipleGrips(ComponentToGrip))
+		{
+			TArray<UGripMotionControllerComponent*> HoldingControllers;
+			bool bIsHeld;
+			IVRGripInterface::Execute_IsHeld(ComponentToGrip, HoldingControllers, bIsHeld);
+
+			if (bIsHeld)
+				return false; // Can't multiple grip this object
+		}
 
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(ComponentToGrip);
 		ObjectToCheck = ComponentToGrip;
@@ -1778,7 +1808,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
+				IVRGripInterface::Execute_SetHeld(pActor, this, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
@@ -1840,7 +1870,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 
 			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				IVRGripInterface::Execute_SetHeld(root, nullptr, false);
+				IVRGripInterface::Execute_SetHeld(root, this, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
@@ -2168,14 +2198,14 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 {
 
 	bool bSkipFullDrop = false;
-	UGripMotionControllerComponent * HoldingController = nullptr;
+	TArray<UGripMotionControllerComponent *> HoldingControllers;
 	bool bIsHeld = false;
 
 	// Check if a different controller is holding it
 	if(NewDrop.GrippedObject && NewDrop.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
-		IVRGripInterface::Execute_IsHeld(NewDrop.GrippedObject, HoldingController, bIsHeld);
+		IVRGripInterface::Execute_IsHeld(NewDrop.GrippedObject, HoldingControllers, bIsHeld);
 
-	if (bIsHeld && HoldingController != this)
+	if (bIsHeld && (!HoldingControllers.Contains(this) || HoldingControllers.Num() > 1))
 	{
 		// Skip the full drop if held
 		bSkipFullDrop = true;
@@ -2298,7 +2328,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				if (!bSkipFullDrop)
-					IVRGripInterface::Execute_SetHeld(pActor, nullptr, false);
+					IVRGripInterface::Execute_SetHeld(pActor, this, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
@@ -2410,7 +2440,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				if (!bSkipFullDrop)
-					IVRGripInterface::Execute_SetHeld(root, nullptr, false);
+					IVRGripInterface::Execute_SetHeld(root, this, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);

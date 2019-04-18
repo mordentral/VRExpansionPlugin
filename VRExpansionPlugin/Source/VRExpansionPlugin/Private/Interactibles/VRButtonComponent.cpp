@@ -176,18 +176,18 @@ bool UVRButtonComponent::IsValidOverlap_Implementation(UPrimitiveComponent * Ove
 	// Now check for if it is a grippable object and if it is currently held
 	if (OverlapComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		UGripMotionControllerComponent *Controller;
+		TArray<UGripMotionControllerComponent *> Controllers;
 		bool bIsHeld;
-		IVRGripInterface::Execute_IsHeld(OverlapComponent, Controller, bIsHeld);
+		IVRGripInterface::Execute_IsHeld(OverlapComponent, Controllers, bIsHeld);
 
 		if (bIsHeld)
 			return true;
 	}
 	else if(OverlapOwner && OverlapOwner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		UGripMotionControllerComponent *Controller;
+		TArray<UGripMotionControllerComponent *> Controllers;
 		bool bIsHeld;
-		IVRGripInterface::Execute_IsHeld(OverlapOwner, Controller, bIsHeld);
+		IVRGripInterface::Execute_IsHeld(OverlapOwner, Controllers, bIsHeld);
 
 		if (bIsHeld)
 			return true;
@@ -220,26 +220,34 @@ void UVRButtonComponent::SetLastInteractingActor()
 	// Now check for if it is a grippable object and if it is currently held
 	if (LocalInteractingComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		UGripMotionControllerComponent *Controller;
+		TArray<UGripMotionControllerComponent *> Controllers;
 		bool bIsHeld;
-		IVRGripInterface::Execute_IsHeld(LocalLastInteractingComponent.Get(), Controller, bIsHeld);
+		IVRGripInterface::Execute_IsHeld(LocalLastInteractingComponent.Get(), Controllers, bIsHeld);
 
-		if (bIsHeld && Controller && Controller->GetOwner())
+		if (bIsHeld && Controllers.Num())
 		{
-			LocalLastInteractingActor = Controller->GetOwner();
-			return;
+			AActor * ControllerOwner = Controllers[0] != nullptr ? Controllers[0]->GetOwner() : nullptr;
+			if (ControllerOwner)
+			{
+				LocalLastInteractingActor = ControllerOwner;
+				return;
+			}
 		}
 	}
 	else if (OverlapOwner && OverlapOwner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		UGripMotionControllerComponent *Controller;
+		TArray<UGripMotionControllerComponent *> Controllers;
 		bool bIsHeld;
-		IVRGripInterface::Execute_IsHeld(OverlapOwner, Controller, bIsHeld);
+		IVRGripInterface::Execute_IsHeld(OverlapOwner, Controllers, bIsHeld);
 
-		if (bIsHeld && Controller && Controller->GetOwner())
+		if (bIsHeld && Controllers.Num())
 		{
-			LocalLastInteractingActor = Controller->GetOwner();
-			return;
+			AActor * ControllerOwner = Controllers[0] != nullptr ? Controllers[0]->GetOwner() : nullptr;
+			if (ControllerOwner)
+			{
+				LocalLastInteractingActor = ControllerOwner;
+				return;
+			}
 		}
 	}
 

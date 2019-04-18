@@ -17,9 +17,7 @@ UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectI
 	VRGripInterfaceSettings.bSimulateOnDrop = true;
 	VRGripInterfaceSettings.SlotDefaultGripType = EGripCollisionType::ManipulationGrip;
 	VRGripInterfaceSettings.FreeDefaultGripType = EGripCollisionType::ManipulationGrip;
-	//VRGripInterfaceSettings.bCanHaveDoubleGrip = false;
 	VRGripInterfaceSettings.SecondaryGripType = ESecondaryGripType::SG_None;
-	//VRGripInterfaceSettings.GripTarget = EGripTargetType::ComponentGrip;
 	VRGripInterfaceSettings.MovementReplicationType = EGripMovementReplicationSettings::ForceClientSideMovement;
 	VRGripInterfaceSettings.LateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff;
 	VRGripInterfaceSettings.ConstraintStiffness = 1500.0f;
@@ -27,9 +25,7 @@ UGrippableBoxComponent::UGrippableBoxComponent(const FObjectInitializer& ObjectI
 	VRGripInterfaceSettings.ConstraintBreakDistance = 100.0f;
 	VRGripInterfaceSettings.SecondarySlotRange = 20.0f;
 	VRGripInterfaceSettings.PrimarySlotRange = 20.0f;
-	//VRGripInterfaceSettings.bIsInteractible = false;
 	VRGripInterfaceSettings.bIsHeld = false;
-	VRGripInterfaceSettings.HoldingController = nullptr;
 
 	bReplicateMovement = false;
 	//this->bReplicates = true;
@@ -187,14 +183,14 @@ void UGrippableBoxComponent::ClosestGripSlotInRange_Implementation(FVector World
 	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform);
 }
 
-/*bool UGrippableBoxComponent::IsInteractible_Implementation()
+bool UGrippableBoxComponent::AllowsMultipleGrips_Implementation()
 {
-	return VRGripInterfaceSettings.bIsInteractible;
-}*/
+	return VRGripInterfaceSettings.bAllowMultipleGrips;
+}
 
-void UGrippableBoxComponent::IsHeld_Implementation(UGripMotionControllerComponent *& HoldingController, bool & bIsHeld)
+void UGrippableBoxComponent::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & HoldingControllers, bool & bIsHeld)
 {
-	HoldingController = VRGripInterfaceSettings.HoldingController;
+	HoldingControllers = VRGripInterfaceSettings.HoldingControllers;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
 }
 
@@ -209,7 +205,7 @@ void UGrippableBoxComponent::SetHeld_Implementation(UGripMotionControllerCompone
 			bReplicateMovement = false;
 		}
 
-		VRGripInterfaceSettings.HoldingController = HoldingController;
+		VRGripInterfaceSettings.HoldingControllers.AddUnique(HoldingController);
 	}
 	else
 	{
@@ -218,10 +214,10 @@ void UGrippableBoxComponent::SetHeld_Implementation(UGripMotionControllerCompone
 			bReplicateMovement = bOriginalReplicatesMovement;
 		}
 
-		VRGripInterfaceSettings.HoldingController = nullptr;
+		VRGripInterfaceSettings.HoldingControllers.Remove(HoldingController);
 	}
 
-	VRGripInterfaceSettings.bIsHeld = bIsHeld;
+	VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;
 }
 
 /*FBPInteractionSettings UGrippableBoxComponent::GetInteractionSettings_Implementation()

@@ -282,14 +282,17 @@ void UVRDialComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocati
 	bHadSlotInRange = false;
 }
 
-/*bool UVRDialComponent::IsInteractible_Implementation()
+bool UVRDialComponent::AllowsMultipleGrips_Implementation()
 {
 	return false;
-}*/
+}
 
-void UVRDialComponent::IsHeld_Implementation(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld)
+void UVRDialComponent::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & CurHoldingControllers, bool & bCurIsHeld)
 {
-	CurHoldingController = HoldingController;
+	CurHoldingControllers.Empty();
+	if (HoldingController != nullptr)
+		CurHoldingControllers.Add(HoldingController);
+
 	bCurIsHeld = bIsHeld;
 }
 

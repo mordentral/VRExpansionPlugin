@@ -504,14 +504,17 @@ void UVRMountComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocat
 	bHadSlotInRange = false;
 }
 
-/*bool UVRMountComponent::IsInteractible_Implementation()
+bool UVRMountComponent::AllowsMultipleGrips_Implementation()
 {
 	return false;
-}*/
+}
 
-void UVRMountComponent::IsHeld_Implementation(UGripMotionControllerComponent *& CurHoldingController, bool & bCurIsHeld)
+void UVRMountComponent::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & CurHoldingControllers, bool & bCurIsHeld)
 {
-	CurHoldingController = HoldingController;
+	CurHoldingControllers.Empty();
+	if (HoldingController != nullptr)
+		CurHoldingControllers.Add(HoldingController);
+
 	bCurIsHeld = bIsHeld;
 }
 
