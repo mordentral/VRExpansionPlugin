@@ -737,21 +737,22 @@ void UVRLeverComponent::CalculateCurrentAngle(FTransform & CurrentTransform)
 	case EVRInteractibleLeverAxis::Axis_XY:
 	case EVRInteractibleLeverAxis::FlightStick_XY:
 	{
-		FQuat CurrentRelRot = CurrentTransform.GetRotation();
+		FTransform RelativeToSpace = CurrentTransform.GetRelativeTransform(InitialRelativeTransform);
+		FQuat CurrentRelRot = RelativeToSpace.GetRotation();// CurrentTransform.GetRotation();
+		FVector UpVec = CurrentRelRot.GetUpVector();
 
-		CurrentLeverForwardVector = FVector::VectorPlaneProject(CurrentRelRot.GetUpVector(), FVector::UpVector);
+		CurrentLeverForwardVector = FVector::VectorPlaneProject(UpVec, FVector::UpVector);
 		CurrentLeverForwardVector.Normalize();
 
-		FullCurrentAngle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(CurrentRelRot.GetUpVector(), FVector::UpVector)));
+		FullCurrentAngle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(UpVec, FVector::UpVector)));
 		CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 
-		AllCurrentLeverAngles.Roll = FMath::RoundToFloat(UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_X, CurrentRelRot.GetUpVector()));
-		AllCurrentLeverAngles.Pitch = FMath::RoundToFloat(UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_Y, CurrentRelRot.GetForwardVector()));
+		AllCurrentLeverAngles.Roll = FMath::RoundToFloat(FMath::Sign(UpVec.Y) * FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(FVector(0.0f, UpVec.Y, UpVec.Z), FVector::UpVector))));
+		AllCurrentLeverAngles.Pitch = FMath::RoundToFloat(FMath::Sign(UpVec.X) * FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(FVector(UpVec.X, 0.0f, UpVec.Z), FVector::UpVector))));
 
 		if (LeverRotationAxis == EVRInteractibleLeverAxis::FlightStick_XY)
 		{
-			FTransform RelativeToSpace = CurrentTransform.GetRelativeTransform(InitialRelativeTransform);
-			AllCurrentLeverAngles.Yaw = FMath::RoundToFloat(UVRExpansionFunctionLibrary::GetHMDPureYaw_I(RelativeToSpace.Rotator()).Yaw);
+			AllCurrentLeverAngles.Yaw = FMath::RoundToFloat(UVRExpansionFunctionLibrary::GetHMDPureYaw_I(CurrentRelRot.Rotator()).Yaw);
 		}
 		else
 			AllCurrentLeverAngles.Yaw = 0.0f;
