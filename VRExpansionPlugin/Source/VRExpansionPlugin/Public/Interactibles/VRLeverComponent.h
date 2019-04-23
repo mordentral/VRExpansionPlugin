@@ -8,7 +8,8 @@
 #include "VRGripInterface.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
-#include "VRInteractibleFunctionLibrary.h"
+#include "Interactibles/VRInteractibleFunctionLibrary.h"
+#include "VRExpansionFunctionLibrary.h"
 #include "PhysicsEngine/ConstraintInstance.h"
 #include "Components/StaticMeshComponent.h"
 
@@ -29,7 +30,7 @@ enum class EVRInteractibleLeverAxis : uint8
 	Axis_Y,
 	Axis_Z,
 	Axis_XY,
-	Axis_XZ
+	FlightStick_XY
 };
 
 UENUM(Blueprintable)
@@ -93,6 +94,10 @@ public:
 	// Primary axis angle only
 	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")
 		float CurrentLeverAngle;
+
+	// Writes out all current angles to this rotator, useful mostly for XY and Flight stick modes
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
+		FRotator AllCurrentLeverAngles;
 
 	// Bearing Direction, for X/Y is their signed direction, for XY mode it is an actual 2D directional vector
 	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")
@@ -169,6 +174,10 @@ public:
 		ReCalculateCurrentAngle();
 	}
 
+	// Flight stick variables
+	FTransform InteractorOffsetTransform;
+	FTransform CalcTransform;
+
 	FVector InitialInteractorLocation;
 	FVector InitialInteractorDropLocation;
 	float InitialGripRot;
@@ -181,11 +190,11 @@ public:
 	float MomentumAtDrop;
 	float LastLeverAngle;
 
-	float CalcAngle(EVRInteractibleLeverAxis AxisToCalc, FVector CurInteractorLocation);
+	float CalcAngle(EVRInteractibleLeverAxis AxisToCalc, FVector CurInteractorLocation, bool bSkipLimits = false);
 
 	void LerpAxis(float CurrentAngle, float DeltaTime);
 
-	void CalculateCurrentAngle(FTransform & CurrentRelativeTransform);
+	void CalculateCurrentAngle(FTransform & CurrentTransform);
 
 	// ------------------------------------------------
 	// Gameplay tag interface

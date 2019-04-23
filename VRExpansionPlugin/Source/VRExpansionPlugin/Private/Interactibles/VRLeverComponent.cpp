@@ -49,6 +49,9 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 
 	InitialRelativeTransform = FTransform::Identity;
 	InitialInteractorLocation = FVector::ZeroVector;
+	InteractorOffsetTransform = FTransform::Identity;
+	AllCurrentLeverAngles = FRotator::ZeroRotator;
+	CalcTransform = FTransform::Identity;
 	InitialGripRot = 0.0f;
 	qRotAtGrab = FQuat::Identity;
 	bIsLerping = false;
@@ -128,29 +131,31 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 			LerpAxis(FullCurrentAngle, DeltaTime);
 		}break;
 		case EVRInteractibleLeverAxis::Axis_XY:
-		case EVRInteractibleLeverAxis::Axis_XZ:
+		case EVRInteractibleLeverAxis::FlightStick_XY:
 		{
 			// Only supporting LerpToZero with this mode currently
-			FRotator curRot = CurRelativeTransform.GetRelativeTransform(InitialRelativeTransform).Rotator();
-			FRotator LerpedRot = FMath::RInterpConstantTo(curRot, FRotator::ZeroRotator, DeltaTime, LeverReturnSpeed);
+			FQuat LerpedQuat = FMath::QInterpConstantTo(CurRelativeTransform.GetRelativeTransform(InitialRelativeTransform).GetRotation(), FQuat::Identity, DeltaTime, FMath::DegreesToRadians(LeverReturnSpeed));
 
-			if (LerpedRot.Equals(FRotator::ZeroRotator))
+			if (LerpedQuat.IsIdentity())
 			{
 				this->SetComponentTickEnabled(false);
 				bIsLerping = false;
 				bReplicateMovement = bOriginalReplicatesMovement;
-				this->SetRelativeRotation((FTransform::Identity * InitialRelativeTransform).Rotator());
+				this->SetRelativeRotation(InitialRelativeTransform.Rotator());
+				CalcTransform = InitialRelativeTransform;
 			}
 			else
-				this->SetRelativeRotation((FTransform(LerpedRot.Quaternion()) * InitialRelativeTransform).Rotator());
+			{
+				CalcTransform = (FTransform(LerpedQuat) * InitialRelativeTransform);
+				this->SetRelativeRotation(CalcTransform.Rotator());
+			}
 		}break;
 		default:break;
 		}
 	}
 
-	FTransform CurrentRelativeTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
+	CalculateCurrentAngle(CalcTransform);
 
-	CalculateCurrentAngle(CurrentRelativeTransform);
 
 	if (!bWasLerping && LeverReturnTypeWhenReleased == EVRInteractibleLeverReturnType::RetainMomentum)
 	{
@@ -204,13 +209,15 @@ void UVRLeverComponent::OnUnregister()
 void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) 
 {
 	// Handle manual tracking here
+	FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
 
-	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
-	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(GrippingController->GetPivotLocation());
+	FVector CurInteractorLocation = CurrentRelativeTransform.InverseTransformPosition((InteractorOffsetTransform * GrippingController->GetPivotTransform()).GetTranslation());
 
 	switch (LeverRotationAxis)
 	{
 	case EVRInteractibleLeverAxis::Axis_XY:
+	case EVRInteractibleLeverAxis::FlightStick_XY:
 	{
 		FRotator Rot;
 
@@ -222,62 +229,38 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 		nAngle = FMath::Clamp(nAngle, 0.0f, FMath::DegreesToRadians(LeverLimitPositive));
 		Rot = FQuat(nAxis, nAngle).Rotator();
 
-		this->SetRelativeRotation((FTransform(Rot) * InitialRelativeTransform).Rotator());
+		if (LeverRotationAxis == EVRInteractibleLeverAxis::FlightStick_XY)
+		{
+			// Store our projected relative transform
+			CalcTransform = (FTransform(Rot) * InitialRelativeTransform);
 
+			// Fixup yaw if this is a flight stick
+			CurInteractorLocation = (CalcTransform * ParentTransform).InverseTransformPosition(GrippingController->GetPivotLocation());
 
-		/*
-		// #TODO: go back to testing this?
-		// This aligns the pitch from any side by rewinding yaw and then sampling pitch
-				FVector zAxis;
-		float zAngle = 0.0f;
-		FRotator YawRotinit(0.0f, InitialGripRotX, 0.0f);
+			float CurrentLeverYawAngle = UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_Z, CurInteractorLocation, InitialGripRot);
+			FQuat newLocalRot = CalcTransform.GetRotation() * FQuat(FVector::UpVector, FMath::DegreesToRadians(CurrentLeverYawAngle));
+			this->SetRelativeRotation(newLocalRot.Rotator());
+			
+			newLocalRot *= InitialRelativeTransform.GetRotation().Inverse();
+			AllCurrentLeverAngles.Yaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(newLocalRot.Rotator()).Yaw;
 
-		float fYaw = FMath::RadiansToDegrees(FMath::Atan2(CurInteractorLocation.Y, CurInteractorLocation.X)); //- InitialGripRot;
-		FRotator YawRot(0.0f, fYaw, 0.0f);
-		FQuat finalYawRot = YawRotinit.Quaternion().Inverse() * YawRot.Quaternion();
-		FVector newloc = (YawRot.Quaternion()).UnrotateVector(CurInteractorLocation);
-
-		FVector Start = CurrentRelativeTransform.GetTranslation();
-		FVector End = CurrentRelativeTransform.GetRotation().RotateVector(newloc.GetSafeNormal()*FVector(100.f));
-		DrawDebugLine(GetWorld(), Start,Start + End, FColor::Red);
-
-		//FVector newloc = CurInteractorLocation;
-		float fPitch = FMath::RadiansToDegrees(FMath::Atan2(newloc.Z, newloc.X)) -InitialGripRot;
-		*/
+			CalcTransform = CalcTransform;// *ParentTransform;
+		}
+		else
+		{
+			CalcTransform = FTransform(Rot) * InitialRelativeTransform;
+			this->SetRelativeRotation(CalcTransform.Rotator());
+		}
 	}
 	break;
-	case EVRInteractibleLeverAxis::Axis_XZ:
-	{
-		//Yaw Axis
-		FVector nAxis;
-		float nAngle = 0.0f;
-		FQuat BetweenTemp;
-
-		BetweenTemp = FQuat::FindBetweenVectors(qRotAtGrab.UnrotateVector(FVector(InitialInteractorLocation.X, InitialInteractorLocation.Y, 0.0f)), FVector(CurInteractorLocation.X, CurInteractorLocation.Y, 0));
-		//BetweenTemp.ToAxisAndAngle(nAxis, nAngle);
-
-		float yaw = BetweenTemp.Rotator().Yaw;// FQuat(nAxis, nAngle).Rotator().Yaw;
-
-		//Pitch axis. CurInteractionLocation has to be rotated by yaw to not interfere with yaw axis. Also allows separated axis limitation if necessary.	
-		FVector CurInteractionLocationLimitedPitch = FRotator(0, yaw, 0).UnrotateVector(CurInteractorLocation);
-
-		BetweenTemp = FQuat::FindBetweenVectors(qRotAtGrab.UnrotateVector(FVector(0.0f, InitialInteractorLocation.Y, InitialInteractorLocation.Z)), FVector(0, CurInteractionLocationLimitedPitch.Y, CurInteractionLocationLimitedPitch.Z));
-		//BetweenTemp.ToAxisAndAngle(nAxis, nAngle);
-		//nAngle = FMath::Clamp(nAnglePitch, 0.0f, FMath::DegreesToRadians(LeverLimitPositive));
-
-		float pitch = BetweenTemp.Rotator().Roll;
-
-		//Final Rotation
-		FRotator ShortestDistanceRot = FRotator(0, yaw, pitch);
-		this->SetRelativeRotation((FTransform(ShortestDistanceRot) * InitialRelativeTransform).Rotator());	
-	}break;
 	case EVRInteractibleLeverAxis::Axis_X:
 	case EVRInteractibleLeverAxis::Axis_Y:
 	case EVRInteractibleLeverAxis::Axis_Z:
 	{
 		float DeltaAngle = CalcAngle(LeverRotationAxis, CurInteractorLocation);
-		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, DeltaAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 		LastDeltaAngle = DeltaAngle;
+		CalcTransform = (FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, DeltaAngle, FRotator::ZeroRotator)) * InitialRelativeTransform);
+		this->SetRelativeRotation(CalcTransform.Rotator());
 	}break;
 	default:break;
 	}
@@ -305,21 +288,52 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 		// This lets me use the correct original location over the network without changes
 		FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
 		FTransform CurrentTransform = this->GetComponentTransform();
-		FTransform RelativeToGripTransform = ReversedRelativeTransform * CurrentTransform;
+		FTransform RelativeToGripTransform = FTransform::Identity;
+
+		if (LeverRotationAxis == EVRInteractibleLeverAxis::FlightStick_XY)
+		{
+			// Offset the grip to the same height on the cross axis and centered on the lever
+			FVector InitialInteractorOffset = ReversedRelativeTransform.GetTranslation();
+			FTransform InitTrans = ReversedRelativeTransform;
+			InitialInteractorOffset.X = 0;
+			InitialInteractorOffset.Y = 0;
+			InteractorOffsetTransform = ReversedRelativeTransform;
+			InteractorOffsetTransform.AddToTranslation(-InitialInteractorOffset);
+			InteractorOffsetTransform = FTransform(InteractorOffsetTransform.ToInverseMatrixWithScale());
+
+			InitialInteractorOffset = ReversedRelativeTransform.GetTranslation();
+			InitialInteractorOffset.Z = 0;
+
+			InitTrans.AddToTranslation(-InitialInteractorOffset);
+			RelativeToGripTransform = InitTrans * CurrentTransform;
+		}
+		else
+		{
+			RelativeToGripTransform = ReversedRelativeTransform * CurrentTransform;
+			InteractorOffsetTransform = FTransform::Identity;
+		}
 
 		InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
 		InitialInteractorDropLocation = ReversedRelativeTransform.GetTranslation();
 
-
 		switch (LeverRotationAxis)
 		{
 		case EVRInteractibleLeverAxis::Axis_XY:
-		case EVRInteractibleLeverAxis::Axis_XZ:
 		{
 			qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
 		}break;
+		case EVRInteractibleLeverAxis::FlightStick_XY:
+		{
+			qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
+			InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_Z, ReversedRelativeTransform.GetTranslation());
+		}break;
 		case EVRInteractibleLeverAxis::Axis_X:
 		case EVRInteractibleLeverAxis::Axis_Y:
+		{
+			// Get our initial interactor rotation
+			InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)LeverRotationAxis, InitialInteractorLocation);
+		}break;
+
 		case EVRInteractibleLeverAxis::Axis_Z:
 		{
 			// Get our initial interactor rotation
@@ -333,6 +347,7 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 		RotAtGrab = UVRInteractibleFunctionLibrary::GetDeltaAngleFromTransforms((EVRInteractibleAxis)LeverRotationAxis, CurrentRelativeTransform, CurrentTransform);
 	}
 
+	CalcTransform = FTransform::Identity;
 	LastLeverAngle = CurrentLeverAngle;
 	bIsLerping = false;
 	bIsInFirstTick = true;
@@ -350,9 +365,14 @@ void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerCompon
 		this->AttachToComponent(ParentComponent.Get(), AttachRules);
 	}
 	
+	// Clear the flight stick offset
+	if(LeverRotationAxis == EVRInteractibleLeverAxis::FlightStick_XY)
+		this->SetRelativeRotation(CalcTransform.Rotator());
+
 	if (LeverReturnTypeWhenReleased != EVRInteractibleLeverReturnType::Stay)
 	{		
 		bIsLerping = true;
+		this->SetComponentTickEnabled(true);
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 			bReplicateMovement = false;
 	}
@@ -670,8 +690,9 @@ bool UVRLeverComponent::SetupConstraint()
 
 float UVRLeverComponent::ReCalculateCurrentAngle()
 {
-	FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
-	CalculateCurrentAngle(CurRelativeTransform);
+	CalcTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
+	//CalcTransform = this->GetComponentTransform();
+	CalculateCurrentAngle(CalcTransform);
 	return CurrentLeverAngle;
 }
 
@@ -701,39 +722,51 @@ void UVRLeverComponent::ResetInitialLeverLocation()
 {
 	// Get our initial relative transform to our parent (or not if un-parented).
 	InitialRelativeTransform = this->GetRelativeTransform();
-	CalculateCurrentAngle(InitialRelativeTransform);
+	CalcTransform = this->GetComponentTransform();
+	CalculateCurrentAngle(CalcTransform);
 }
 
-void UVRLeverComponent::CalculateCurrentAngle(FTransform & CurrentRelativeTransform)
+void UVRLeverComponent::CalculateCurrentAngle(FTransform & CurrentTransform)
 {
 	float Angle;
 
 	switch (LeverRotationAxis)
 	{
 	case EVRInteractibleLeverAxis::Axis_XY:
-	case EVRInteractibleLeverAxis::Axis_XZ:
+	case EVRInteractibleLeverAxis::FlightStick_XY:
 	{
+
+		FQuat CurrentRelRot = CurrentTransform/*.GetRelativeTransform(InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this))*/.GetRotation();
+
 		// Manually calculating the angle here because RotationBetween() from FQuat uses Yaw/Pitch so roll would be incorrect
 		FVector qAxis;
 		float qAngle;
 
-		(InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized().ToAxisAndAngle(qAxis, qAngle);
+		CurrentRelRot.ToAxisAndAngle(qAxis, qAngle);
 
 		FullCurrentAngle = FMath::RadiansToDegrees(qAngle);
 		CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 
-		if (LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY)
-			qAxis.Z = 0.0f; // Doing 2D axis values
+		qAxis.Z = 0.0f; // Doing 2D axis values
 
 		CurrentLeverForwardVector = -qAxis;
+
+		AllCurrentLeverAngles.Roll = UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_X, CurrentRelRot.GetUpVector());
+		AllCurrentLeverAngles.Pitch = UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_Y, CurrentRelRot.GetForwardVector());
+
+		if (bIsLerping)
+			AllCurrentLeverAngles.Yaw = 0.0f;
 
 	}break;
 	default:
 	{
+		FTransform CurrentRelativeTransform = CurrentTransform;// .GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
 		Angle = UVRInteractibleFunctionLibrary::GetDeltaAngleFromTransforms((EVRInteractibleAxis)LeverRotationAxis, InitialRelativeTransform, CurrentRelativeTransform);
 		FullCurrentAngle = Angle;
 		CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 		CurrentLeverForwardVector = UVRInteractibleFunctionLibrary::SetAxisValueVec((EVRInteractibleAxis)LeverRotationAxis, FMath::Sign(Angle));
+		AllCurrentLeverAngles = UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, CurrentLeverAngle, FRotator::ZeroRotator);
+
 	}break;
 	}
 }
@@ -795,27 +828,33 @@ void UVRLeverComponent::LerpAxis(float CurrentAngle, float DeltaTime)
 		if (LeverRestitution > 0.0f)
 		{
 			MomentumAtDrop = -(MomentumAtDrop * LeverRestitution);
-			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			CalcTransform = (FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform);
+			this->SetRelativeRotation(CalcTransform.Rotator());
 		}
 		else
 		{
 			this->SetComponentTickEnabled(false);
 			bIsLerping = false;
 			bReplicateMovement = bOriginalReplicatesMovement;
-			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			CalcTransform = (FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, TargetAngle, FRotator::ZeroRotator)) * InitialRelativeTransform);
+			this->SetRelativeRotation(CalcTransform.Rotator());
 		}
 	}
 	else
 	{
-		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, LerpedVal, FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+		CalcTransform = (FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, LerpedVal, FRotator::ZeroRotator)) * InitialRelativeTransform);
+		this->SetRelativeRotation(CalcTransform.Rotator());
 	}
 }
 
-float UVRLeverComponent::CalcAngle(EVRInteractibleLeverAxis AxisToCalc, FVector CurInteractorLocation)
+float UVRLeverComponent::CalcAngle(EVRInteractibleLeverAxis AxisToCalc, FVector CurInteractorLocation, bool bSkipLimits)
 {
 	float ReturnAxis = 0.0f;
 
 	ReturnAxis = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)AxisToCalc, CurInteractorLocation, InitialGripRot);
+
+	if (bSkipLimits)
+		return ReturnAxis;
 
 	if (LeverLimitPositive > 0.0f && LeverLimitNegative > 0.0f && FMath::IsNearlyEqual(LeverLimitNegative, 180.f, 0.01f) && FMath::IsNearlyEqual(LeverLimitPositive, 180.f, 0.01f))
 	{
