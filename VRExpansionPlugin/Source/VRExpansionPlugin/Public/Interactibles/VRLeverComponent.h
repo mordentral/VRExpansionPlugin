@@ -176,7 +176,6 @@ public:
 
 	// Flight stick variables
 	FTransform InteractorOffsetTransform;
-	FTransform CalcTransform;
 
 	FVector InitialInteractorLocation;
 	FVector InitialInteractorDropLocation;
