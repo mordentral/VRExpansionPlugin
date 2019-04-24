@@ -49,7 +49,6 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRDialComponent|Lerping")
 		bool bIsLerping;
-
 	UPROPERTY(BlueprintAssignable, Category = "VRDialComponent|Lerping")
 		FVRDialFinishedLerpingSignature OnDialFinishedLerping;
 
@@ -99,7 +98,19 @@ public:
 	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
 	virtual void OnRegister() override;
 
-	FTransform InitialRelativeTransform;
+	// Now replicating this so that it works correctly over the network
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRDialComponent")
+		FTransform_NetQuantize InitialRelativeTransform;
+
+	UFUNCTION()
+		virtual void OnRep_InitialRelativeTransform()
+	{
+		CalculateDialProgress();
+	}
+
+	void CalculateDialProgress();
+
+	//FTransform InitialRelativeTransform;
 	FVector InitialInteractorLocation;
 	FVector InitialDropLocation;
 	float CurRotBackEnd;
@@ -112,7 +123,7 @@ public:
 
 	// Can be called to recalculate the dial angle after you move it if you want different values
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
-		void AddDialAngle(float DialAngleDelta, bool bCallEvents = false);
+		void AddDialAngle(float DialAngleDelta, bool bCallEvents = false, bool bSkipSettingRot = false);
 
 	// Directly sets the dial angle, still obeys maximum limits and snapping though
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")

@@ -70,6 +70,7 @@ void UVRSliderComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePrope
 
 	DOREPLIFETIME(UVRSliderComponent, InitialRelativeTransform);
 	DOREPLIFETIME(UVRSliderComponent, SplineComponentToFollow);
+	//DOREPLIFETIME_CONDITION(UVRSliderComponent, bIsLerping, COND_InitialOnly);
 
 	DOREPLIFETIME(UVRSliderComponent, bRepGameplayTags);
 	DOREPLIFETIME(UVRSliderComponent, bReplicateMovement);

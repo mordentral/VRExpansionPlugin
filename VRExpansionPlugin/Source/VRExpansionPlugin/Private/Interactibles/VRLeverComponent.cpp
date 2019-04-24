@@ -74,6 +74,7 @@ void UVRLeverComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UVRLeverComponent, InitialRelativeTransform);
+	//DOREPLIFETIME_CONDITION(UVRLeverComponent, bIsLerping, COND_InitialOnly);
 
 	DOREPLIFETIME(UVRLeverComponent, bRepGameplayTags);
 	DOREPLIFETIME(UVRLeverComponent, bReplicateMovement);
@@ -92,7 +93,7 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D,	bReplicateMovement);
 }
 
 void UVRLeverComponent::OnRegister()
