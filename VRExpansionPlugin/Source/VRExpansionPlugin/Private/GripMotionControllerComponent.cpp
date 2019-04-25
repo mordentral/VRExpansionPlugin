@@ -2269,6 +2269,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 {
 
 	bool bSkipFullDrop = false;
+	bool bSkipOurDrop = false;
 	TArray<UGripMotionControllerComponent *> HoldingControllers;
 	bool bIsHeld = false;
 
@@ -2288,6 +2289,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			if (LocallyGrippedObjects[i].GrippedObject == NewDrop.GrippedObject && LocallyGrippedObjects[i].GripID != NewDrop.GripID)
 			{
 				bSkipFullDrop = true;
+				bSkipOurDrop = true;
 			}
 		}
 		for (int i = 0; i < GrippedObjects.Num(); ++i)
@@ -2295,6 +2297,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			if (GrippedObjects[i].GrippedObject == NewDrop.GrippedObject && GrippedObjects[i].GripID != NewDrop.GripID)
 			{
 				bSkipFullDrop = true;
+				bSkipOurDrop = true;
 			}
 		}
 	}
@@ -2398,7 +2401,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				if (!bSkipFullDrop)
+				if (!bSkipOurDrop)
 					IVRGripInterface::Execute_SetHeld(pActor, this, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
@@ -2510,7 +2513,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				if (!bSkipFullDrop)
+				if (!bSkipOurDrop)
 					IVRGripInterface::Execute_SetHeld(root, this, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
