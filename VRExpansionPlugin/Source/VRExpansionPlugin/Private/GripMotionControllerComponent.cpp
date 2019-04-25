@@ -1016,19 +1016,39 @@ bool UGripMotionControllerComponent::GripActor(
 	UObject * ObjectToCheck = NULL; // Used if having to calculate the transform
 	//bool bIgnoreHandRotation = false;
 
+	TArray<UGripMotionControllerComponent*> HoldingControllers;
+	bool bIsHeld;
+	bool bHadOriginalSettings = false;
+	bool bOriginalGravity = false;
+	bool bOriginalReplication = false;
+
 	if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
 		if(IVRGripInterface::Execute_DenyGripping(root))
 			return false; // Interface is saying not to grip it right now
 
-		if (!IVRGripInterface::Execute_AllowsMultipleGrips(root))
+		IVRGripInterface::Execute_IsHeld(root, HoldingControllers, bIsHeld);
+		bool bAllowMultipleGrips = IVRGripInterface::Execute_AllowsMultipleGrips(root);
+		if (bIsHeld && !bAllowMultipleGrips)
 		{
-			TArray<UGripMotionControllerComponent*> HoldingControllers;
-			bool bIsHeld;
-			IVRGripInterface::Execute_IsHeld(root, HoldingControllers, bIsHeld);
+			return false; // Can't multiple grip this object
+		}
+		else if (bIsHeld)
+		{
+			// If we are held by multiple controllers then lets copy our original values from the first one	
+			if (HoldingControllers[0] != nullptr)
+			{
+				FBPActorGripInformation gripInfo;
+				EBPVRResultSwitch result;
+				HoldingControllers[0]->GetGripByObject(gripInfo, root, result);
 
-			if (bIsHeld)
-				return false; // Can't multiple grip this object
+				if (result != EBPVRResultSwitch::OnFailed)
+				{
+					bHadOriginalSettings = true;
+					bOriginalGravity = gripInfo.bOriginalGravity;
+					bOriginalReplication = gripInfo.bOriginalReplicatesMovement;
+				}
+			}
 		}
 
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(root);
@@ -1039,14 +1059,28 @@ bool UGripMotionControllerComponent::GripActor(
 		if(IVRGripInterface::Execute_DenyGripping(ActorToGrip))
 			return false; // Interface is saying not to grip it right now
 
-		if (!IVRGripInterface::Execute_AllowsMultipleGrips(ActorToGrip))
+		IVRGripInterface::Execute_IsHeld(ActorToGrip, HoldingControllers, bIsHeld);
+		bool bAllowMultipleGrips = IVRGripInterface::Execute_AllowsMultipleGrips(ActorToGrip);
+		if (bIsHeld && !bAllowMultipleGrips)
 		{
-			TArray<UGripMotionControllerComponent*> HoldingControllers;
-			bool bIsHeld;
-			IVRGripInterface::Execute_IsHeld(ActorToGrip, HoldingControllers, bIsHeld);
+			return false; // Can't multiple grip this object
+		}
+		else if (bIsHeld)
+		{
+			// If we are held by multiple controllers then lets copy our original values from the first one	
+			if (HoldingControllers[0] != nullptr)
+			{
+				FBPActorGripInformation gripInfo;
+				EBPVRResultSwitch result;
+				HoldingControllers[0]->GetGripByObject(gripInfo, ActorToGrip, result);
 
-			if (bIsHeld)
-				return false; // Can't multiple grip this object
+				if (result != EBPVRResultSwitch::OnFailed)
+				{
+					bHadOriginalSettings = true;
+					bOriginalGravity = gripInfo.bOriginalGravity;
+					bOriginalReplication = gripInfo.bOriginalReplicatesMovement;
+				}
+			}
 		}
 
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(ActorToGrip);
@@ -1060,8 +1094,16 @@ bool UGripMotionControllerComponent::GripActor(
 	newActorGrip.GripID = GetNextGripID(bIsLocalGrip);
 	newActorGrip.GripCollisionType = GripCollisionType;
 	newActorGrip.GrippedObject = ActorToGrip;
-	newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
-	newActorGrip.bOriginalGravity = root->IsGravityEnabled();
+	if (bHadOriginalSettings)
+	{
+		newActorGrip.bOriginalReplicatesMovement = bOriginalReplication;
+		newActorGrip.bOriginalGravity = bOriginalGravity;
+	}
+	else
+	{
+		newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
+		newActorGrip.bOriginalGravity = root->IsGravityEnabled();
+	}
 	newActorGrip.Stiffness = GripStiffness;
 	newActorGrip.Damping = GripDamping;
 	newActorGrip.AdvancedGripSettings = AdvancedGripSettings;
@@ -1218,20 +1260,41 @@ bool UGripMotionControllerComponent::GripComponent(
 	UObject * ObjectToCheck = NULL;
 	//bool bIgnoreHandRotation = false;
 
+	TArray<UGripMotionControllerComponent*> HoldingControllers;
+	bool bIsHeld;
+	bool bHadOriginalSettings = false;
+	bool bOriginalGravity = false;
+	bool bOriginalReplication = false;
+
 	if (ComponentToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
 		if(IVRGripInterface::Execute_DenyGripping(ComponentToGrip))
 			return false; // Interface is saying not to grip it right now
 
-		if (!IVRGripInterface::Execute_AllowsMultipleGrips(ComponentToGrip))
+		IVRGripInterface::Execute_IsHeld(ComponentToGrip, HoldingControllers, bIsHeld);
+		bool bAllowMultipleGrips = IVRGripInterface::Execute_AllowsMultipleGrips(ComponentToGrip);
+		if (bIsHeld && !bAllowMultipleGrips)
 		{
-			TArray<UGripMotionControllerComponent*> HoldingControllers;
-			bool bIsHeld;
-			IVRGripInterface::Execute_IsHeld(ComponentToGrip, HoldingControllers, bIsHeld);
-
-			if (bIsHeld)
-				return false; // Can't multiple grip this object
+			return false; // Can't multiple grip this object
 		}
+		else if(bIsHeld)
+		{
+			// If we are held by multiple controllers then lets copy our original values from the first one	
+			if (HoldingControllers[0] != nullptr)
+			{
+				FBPActorGripInformation gripInfo;
+				EBPVRResultSwitch result;
+				HoldingControllers[0]->GetGripByObject(gripInfo, ComponentToGrip, result);
+
+				if (result != EBPVRResultSwitch::OnFailed)
+				{
+					bHadOriginalSettings = true;
+					bOriginalGravity = gripInfo.bOriginalGravity;
+					bOriginalReplication = gripInfo.bOriginalReplicatesMovement;
+				}
+			}
+		}
+		
 
 		AdvancedGripSettings = IVRGripInterface::Execute_AdvancedGripSettings(ComponentToGrip);
 		ObjectToCheck = ComponentToGrip;
@@ -1242,35 +1305,43 @@ bool UGripMotionControllerComponent::GripComponent(
 
 	ComponentToGrip->AddTickPrerequisiteComponent(this);
 
-	FBPActorGripInformation newActorGrip;
-	newActorGrip.GripID = GetNextGripID(bIsLocalGrip);
-	newActorGrip.GripCollisionType = GripCollisionType;
-	newActorGrip.GrippedObject = ComponentToGrip;
+	FBPActorGripInformation newComponentGrip;
+	newComponentGrip.GripID = GetNextGripID(bIsLocalGrip);
+	newComponentGrip.GripCollisionType = GripCollisionType;
+	newComponentGrip.GrippedObject = ComponentToGrip;
 	
-	if(ComponentToGrip->GetOwner())
-		newActorGrip.bOriginalReplicatesMovement = ComponentToGrip->GetOwner()->bReplicateMovement;
+	if (bHadOriginalSettings)
+	{
+		newComponentGrip.bOriginalReplicatesMovement = bOriginalReplication;
+		newComponentGrip.bOriginalGravity = bOriginalGravity;
+	}
+	else
+	{
+		if (ComponentToGrip->GetOwner())
+			newComponentGrip.bOriginalReplicatesMovement = ComponentToGrip->GetOwner()->bReplicateMovement;
 
-	newActorGrip.bOriginalGravity = ComponentToGrip->IsGravityEnabled();
-	newActorGrip.Stiffness = GripStiffness;
-	newActorGrip.Damping = GripDamping;
-	newActorGrip.AdvancedGripSettings = AdvancedGripSettings;
-	newActorGrip.GripTargetType = EGripTargetType::ComponentGrip;
-	newActorGrip.ValueCache.bWasInitiallyRepped = true; // Set this true on authority side so we can skip a function call on tick
-	newActorGrip.bIsSlotGrip = bIsSlotGrip;
-	newActorGrip.GrippedBoneName = OptionalBoneToGripName;
+		newComponentGrip.bOriginalGravity = ComponentToGrip->IsGravityEnabled();
+	}
+	newComponentGrip.Stiffness = GripStiffness;
+	newComponentGrip.Damping = GripDamping;
+	newComponentGrip.AdvancedGripSettings = AdvancedGripSettings;
+	newComponentGrip.GripTargetType = EGripTargetType::ComponentGrip;
+	newComponentGrip.ValueCache.bWasInitiallyRepped = true; // Set this true on authority side so we can skip a function call on tick
+	newComponentGrip.bIsSlotGrip = bIsSlotGrip;
+	newComponentGrip.GrippedBoneName = OptionalBoneToGripName;
 
 	// Ignore late update setting if it doesn't make sense with the grip
-	switch (newActorGrip.GripCollisionType)
+	switch (newComponentGrip.GripCollisionType)
 	{
 	case EGripCollisionType::ManipulationGrip:
 	case EGripCollisionType::ManipulationGripWithWristTwist:
 	{
-		newActorGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff; // Late updates are bad for this grip
+		newComponentGrip.GripLateUpdateSetting = EGripLateUpdateSettings::LateUpdatesAlwaysOff; // Late updates are bad for this grip
 	}break;
 
 	default:
 	{
-		newActorGrip.GripLateUpdateSetting = GripLateUpdateSetting;
+		newComponentGrip.GripLateUpdateSetting = GripLateUpdateSetting;
 	}break;
 	}
 
@@ -1281,26 +1352,26 @@ bool UGripMotionControllerComponent::GripComponent(
 		{
 			if (ComponentToGrip->GetOwner()->bReplicateMovement)
 			{
-				newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceServerSideMovement;
+				newComponentGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceServerSideMovement;
 			}
 			else
 			{
-				newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
+				newComponentGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 			}
 		}
 		else
-			newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
+			newComponentGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
 	}
 	else
-		newActorGrip.GripMovementReplicationSetting = GripMovementReplicationSetting;
+		newComponentGrip.GripMovementReplicationSetting = GripMovementReplicationSetting;
 
 	if (OptionalSnapToSocketName.IsValid() && ComponentToGrip->DoesSocketExist(OptionalSnapToSocketName))
 	{
 		// I inverse it so that laying out the sockets makes sense
 		FTransform sockTrans = ComponentToGrip->GetSocketTransform(OptionalSnapToSocketName, ERelativeTransformSpace::RTS_Component);
 		sockTrans.SetScale3D(FVector(1.f) / ComponentToGrip->GetComponentScale()); // Prep this so that the inverse works correctly
-		newActorGrip.RelativeTransform = sockTrans.Inverse();
-		newActorGrip.bIsSlotGrip = true; // Set this to a slot grip
+		newComponentGrip.RelativeTransform = sockTrans.Inverse();
+		newComponentGrip.bIsSlotGrip = true; // Set this to a slot grip
 
 		ObjectToCheck = NULL; // Null it out, socketed grips don't use this
 	}
@@ -1308,30 +1379,30 @@ bool UGripMotionControllerComponent::GripComponent(
 	{
 		if (CustomPivotComponent.IsValid() && !bIsSlotGrip)
 		{
-			newActorGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
+			newComponentGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
 		else
 		{
-			newActorGrip.RelativeTransform = WorldOffset;
+			newComponentGrip.RelativeTransform = WorldOffset;
 		}
 	}
 	else
 	{
-		newActorGrip.RelativeTransform = WorldOffset.GetRelativeTransform(GetPivotTransform());
+		newComponentGrip.RelativeTransform = WorldOffset.GetRelativeTransform(GetPivotTransform());
 	}
 
 	if (!bIsLocalGrip)
 	{
-		int32 Index = GrippedObjects.Add(newActorGrip);
+		int32 Index = GrippedObjects.Add(newComponentGrip);
 		if (Index != INDEX_NONE)
 			NotifyGrip(GrippedObjects[Index]);
 	}
 	else
 	{
-		int32 Index = LocallyGrippedObjects.Add(newActorGrip);
+		int32 Index = LocallyGrippedObjects.Add(newComponentGrip);
 
-		if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
-			Server_NotifyLocalGripAddedOrChanged(newActorGrip);
+		if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newComponentGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			Server_NotifyLocalGripAddedOrChanged(newComponentGrip);
 
 		if (Index != INDEX_NONE)
 			NotifyGrip(LocallyGrippedObjects[Index]);
