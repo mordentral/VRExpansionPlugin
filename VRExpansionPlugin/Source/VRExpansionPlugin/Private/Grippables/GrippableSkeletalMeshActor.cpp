@@ -205,17 +205,17 @@ bool AGrippableSkeletalMeshActor::AllowsMultipleGrips_Implementation()
 	return VRGripInterfaceSettings.bAllowMultipleGrips;
 }
 
-void AGrippableSkeletalMeshActor::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & HoldingControllers, bool & bIsHeld)
+void AGrippableSkeletalMeshActor::IsHeld_Implementation(TArray<FBPGripPair> & HoldingControllers, bool & bIsHeld)
 {
 	HoldingControllers = VRGripInterfaceSettings.HoldingControllers;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
 }
 
-void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
+void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, uint8 GripID, bool bIsHeld)
 {
 	if (bIsHeld)
 	{
-		VRGripInterfaceSettings.HoldingControllers.AddUnique(HoldingController);
+		VRGripInterfaceSettings.HoldingControllers.AddUnique(FBPGripPair(HoldingController, GripID));
 
 		if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
 		{
@@ -225,23 +225,23 @@ void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerCo
 	}
 	else
 	{
-		VRGripInterfaceSettings.HoldingControllers.Remove(HoldingController);
+		VRGripInterfaceSettings.HoldingControllers.Remove(FBPGripPair(HoldingController, GripID));
 
-		if (ClientAuthReplicationData.bUseClientAuthThrowing && ShouldWeSkipAttachmentReplication())
-		{
-			if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(GetRootComponent()))
+			if (ClientAuthReplicationData.bUseClientAuthThrowing && ShouldWeSkipAttachmentReplication())
 			{
-				if (PrimComp->IsSimulatingPhysics())
+				if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(GetRootComponent()))
 				{
-					// The subsystem automatically removes entries with the same function signature so its safe to just always add here
-					GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
-					ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
+					if (PrimComp->IsSimulatingPhysics())
+					{
+						// The subsystem automatically removes entries with the same function signature so its safe to just always add here
+						GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
+						ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
 
-					if (UWorld * World = GetWorld())
-						ClientAuthReplicationData.TimeAtInitialThrow = World->GetTimeSeconds();
+						if (UWorld * World = GetWorld())
+							ClientAuthReplicationData.TimeAtInitialThrow = World->GetTimeSeconds();
+					}
 				}
 			}
-		}
 	}
 
 	VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;

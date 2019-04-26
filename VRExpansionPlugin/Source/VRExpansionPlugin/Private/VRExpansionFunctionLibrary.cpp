@@ -373,6 +373,16 @@ FTransform_NetQuantize UVRExpansionFunctionLibrary::Conv_TransformToTransformNet
 	return FTransform_NetQuantize(InTransform);
 }
 
+UGripMotionControllerComponent * UVRExpansionFunctionLibrary::Conv_GripPairToMotionController(const FBPGripPair &GripPair)
+{
+	return GripPair.HoldingController;
+}
+
+uint8 UVRExpansionFunctionLibrary::Conv_GripPairToGripID(const FBPGripPair &GripPair)
+{
+	return GripPair.GripID;
+}
+
 FVector_NetQuantize UVRExpansionFunctionLibrary::Conv_FVectorToFVectorNetQuantize(const FVector &InVector)
 {
 	return FVector_NetQuantize(InVector);

@@ -189,13 +189,13 @@ bool UGrippableCapsuleComponent::AllowsMultipleGrips_Implementation()
 	return VRGripInterfaceSettings.bAllowMultipleGrips;
 }
 
-void UGrippableCapsuleComponent::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & HoldingControllers, bool & bIsHeld)
+void UGrippableCapsuleComponent::IsHeld_Implementation(TArray<FBPGripPair> & HoldingControllers, bool & bIsHeld)
 {
 	HoldingControllers = VRGripInterfaceSettings.HoldingControllers;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
 }
 
-void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
+void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, uint8 GripID, bool bIsHeld)
 {
 	if (bIsHeld)
 	{
@@ -206,7 +206,7 @@ void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerCom
 			bReplicateMovement = false;
 		}
 
-		VRGripInterfaceSettings.HoldingControllers.AddUnique(HoldingController);
+		VRGripInterfaceSettings.HoldingControllers.AddUnique(FBPGripPair(HoldingController, GripID));
 	}
 	else
 	{
@@ -215,7 +215,7 @@ void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerCom
 			bReplicateMovement = bOriginalReplicatesMovement;
 		}
 
-		VRGripInterfaceSettings.HoldingControllers.Remove(nullptr);
+		VRGripInterfaceSettings.HoldingControllers.Remove(FBPGripPair(HoldingController, GripID));
 	}
 
 	VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;

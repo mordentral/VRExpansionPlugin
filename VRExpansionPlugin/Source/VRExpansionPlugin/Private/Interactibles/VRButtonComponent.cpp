@@ -176,7 +176,7 @@ bool UVRButtonComponent::IsValidOverlap_Implementation(UPrimitiveComponent * Ove
 	// Now check for if it is a grippable object and if it is currently held
 	if (OverlapComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		TArray<UGripMotionControllerComponent *> Controllers;
+		TArray<FBPGripPair> Controllers;
 		bool bIsHeld;
 		IVRGripInterface::Execute_IsHeld(OverlapComponent, Controllers, bIsHeld);
 
@@ -185,7 +185,7 @@ bool UVRButtonComponent::IsValidOverlap_Implementation(UPrimitiveComponent * Ove
 	}
 	else if(OverlapOwner && OverlapOwner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		TArray<UGripMotionControllerComponent *> Controllers;
+		TArray<FBPGripPair> Controllers;
 		bool bIsHeld;
 		IVRGripInterface::Execute_IsHeld(OverlapOwner, Controllers, bIsHeld);
 
@@ -220,13 +220,13 @@ void UVRButtonComponent::SetLastInteractingActor()
 	// Now check for if it is a grippable object and if it is currently held
 	if (LocalInteractingComponent->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		TArray<UGripMotionControllerComponent *> Controllers;
+		TArray<FBPGripPair> Controllers;
 		bool bIsHeld;
 		IVRGripInterface::Execute_IsHeld(LocalLastInteractingComponent.Get(), Controllers, bIsHeld);
 
 		if (bIsHeld && Controllers.Num())
 		{
-			AActor * ControllerOwner = Controllers[0] != nullptr ? Controllers[0]->GetOwner() : nullptr;
+			AActor * ControllerOwner = Controllers[0].HoldingController != nullptr ? Controllers[0].HoldingController->GetOwner() : nullptr;
 			if (ControllerOwner)
 			{
 				LocalLastInteractingActor = ControllerOwner;
@@ -236,13 +236,13 @@ void UVRButtonComponent::SetLastInteractingActor()
 	}
 	else if (OverlapOwner && OverlapOwner->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		TArray<UGripMotionControllerComponent *> Controllers;
+		TArray<FBPGripPair> Controllers;
 		bool bIsHeld;
 		IVRGripInterface::Execute_IsHeld(OverlapOwner, Controllers, bIsHeld);
 
 		if (bIsHeld && Controllers.Num())
 		{
-			AActor * ControllerOwner = Controllers[0] != nullptr ? Controllers[0]->GetOwner() : nullptr;
+			AActor * ControllerOwner = Controllers[0].HoldingController != nullptr ? Controllers[0].HoldingController->GetOwner() : nullptr;
 			if (ControllerOwner)
 			{
 				LocalLastInteractingActor = ControllerOwner;

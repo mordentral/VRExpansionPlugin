@@ -128,11 +128,11 @@ public:
 
 	// Returns if the object is held and if so, which controllers are holding it
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void IsHeld(TArray<UGripMotionControllerComponent*> & HoldingControllers, bool & bIsHeld);
+		void IsHeld(TArray<FBPGripPair> & HoldingControllers, bool & bIsHeld);
 
 	// Sets is held, used by the plugin
 	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
-		void SetHeld(UGripMotionControllerComponent * HoldingController, bool bIsHeld);
+		void SetHeld(UGripMotionControllerComponent * HoldingController, uint8 GripID, bool bIsHeld);
 	bool bOriginalReplicatesMovement;
 
 	// Returns if the object wants to be socketed

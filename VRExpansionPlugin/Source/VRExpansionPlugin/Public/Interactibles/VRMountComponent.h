@@ -140,7 +140,7 @@ public:
 		bool bIsHeld; // Set on grip notify, not net serializing
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
-		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
+		FBPGripPair HoldingGrip; // Set on grip notify, not net serializing
 	bool bOriginalReplicatesMovement;
 
 	// Should be called after the Mount is moved post begin play
@@ -207,11 +207,11 @@ public:
 
 	// Returns if the object is held and if so, which controllers are holding it
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		void IsHeld(TArray<UGripMotionControllerComponent *>& CurHoldingControllers, bool & bCurIsHeld);
+		void IsHeld(TArray<FBPGripPair>& CurHoldingControllers, bool & bCurIsHeld);
 
 	// Sets is held, used by the plugin
 	UFUNCTION(BlueprintNativeEvent, /*BlueprintCallable,*/ Category = "VRGripInterface")
-		void SetHeld(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld);
+		void SetHeld(UGripMotionControllerComponent * NewHoldingController, uint8 GripID, bool bNewIsHeld);
 
 	// Returns if the object wants to be socketed
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

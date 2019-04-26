@@ -301,7 +301,7 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 	// Converted to a relative value now so it should be correct
 	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
-		GrippingController->DropObjectByInterface(this);
+		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
 		return;
 	}
 }
@@ -487,20 +487,25 @@ bool UVRSliderComponent::AllowsMultipleGrips_Implementation()
 	return false;
 }
 
-void UVRSliderComponent::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & CurHoldingControllers, bool & bCurIsHeld)
+void UVRSliderComponent::IsHeld_Implementation(TArray<FBPGripPair> & CurHoldingControllers, bool & bCurIsHeld)
 {
 	CurHoldingControllers.Empty();
-	if (HoldingController != nullptr)
-		CurHoldingControllers.Add(HoldingController);
-
-	bCurIsHeld = bIsHeld;
+	if (HoldingGrip.IsValid())
+	{
+		CurHoldingControllers.Add(HoldingGrip);
+		bCurIsHeld = bIsHeld;
+	}
+	else
+	{
+		bCurIsHeld = false;
+	}
 }
 
-void UVRSliderComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
+void UVRSliderComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, uint8 GripID, bool bNewIsHeld)
 {
 	if (bNewIsHeld)
 	{
-		HoldingController = NewHoldingController;
+		HoldingGrip = FBPGripPair(NewHoldingController, GripID);
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
 			if (!bIsHeld && !bIsLerping)
@@ -510,7 +515,7 @@ void UVRSliderComponent::SetHeld_Implementation(UGripMotionControllerComponent *
 	}
 	else
 	{
-		HoldingController = nullptr;
+		HoldingGrip.Clear();
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
 			bReplicateMovement = bOriginalReplicatesMovement;

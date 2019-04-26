@@ -1016,7 +1016,7 @@ bool UGripMotionControllerComponent::GripActor(
 	UObject * ObjectToCheck = NULL; // Used if having to calculate the transform
 	//bool bIgnoreHandRotation = false;
 
-	TArray<UGripMotionControllerComponent*> HoldingControllers;
+	TArray<FBPGripPair> HoldingControllers;
 	bool bIsHeld;
 	bool bHadOriginalSettings = false;
 	bool bOriginalGravity = false;
@@ -1036,11 +1036,11 @@ bool UGripMotionControllerComponent::GripActor(
 		else if (bIsHeld)
 		{
 			// If we are held by multiple controllers then lets copy our original values from the first one	
-			if (HoldingControllers[0] != nullptr)
+			if (HoldingControllers[0].HoldingController != nullptr)
 			{
 				FBPActorGripInformation gripInfo;
 				EBPVRResultSwitch result;
-				HoldingControllers[0]->GetGripByObject(gripInfo, root, result);
+				HoldingControllers[0].HoldingController->GetGripByID(gripInfo, HoldingControllers[0].GripID, result);
 
 				if (result != EBPVRResultSwitch::OnFailed)
 				{
@@ -1068,11 +1068,11 @@ bool UGripMotionControllerComponent::GripActor(
 		else if (bIsHeld)
 		{
 			// If we are held by multiple controllers then lets copy our original values from the first one	
-			if (HoldingControllers[0] != nullptr)
+			if (HoldingControllers[0].HoldingController != nullptr)
 			{
 				FBPActorGripInformation gripInfo;
 				EBPVRResultSwitch result;
-				HoldingControllers[0]->GetGripByObject(gripInfo, ActorToGrip, result);
+				HoldingControllers[0].HoldingController->GetGripByID(gripInfo, HoldingControllers[0].GripID, result);
 
 				if (result != EBPVRResultSwitch::OnFailed)
 				{
@@ -1260,7 +1260,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	UObject * ObjectToCheck = NULL;
 	//bool bIgnoreHandRotation = false;
 
-	TArray<UGripMotionControllerComponent*> HoldingControllers;
+	TArray<FBPGripPair> HoldingControllers;
 	bool bIsHeld;
 	bool bHadOriginalSettings = false;
 	bool bOriginalGravity = false;
@@ -1280,11 +1280,11 @@ bool UGripMotionControllerComponent::GripComponent(
 		else if(bIsHeld)
 		{
 			// If we are held by multiple controllers then lets copy our original values from the first one	
-			if (HoldingControllers[0] != nullptr)
+			if (HoldingControllers[0].HoldingController != nullptr)
 			{
 				FBPActorGripInformation gripInfo;
 				EBPVRResultSwitch result;
-				HoldingControllers[0]->GetGripByObject(gripInfo, ComponentToGrip, result);
+				HoldingControllers[0].HoldingController->GetGripByID(gripInfo, HoldingControllers[0].GripID, result);
 
 				if (result != EBPVRResultSwitch::OnFailed)
 				{
@@ -1879,7 +1879,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				IVRGripInterface::Execute_SetHeld(pActor, this, false);
+				IVRGripInterface::Execute_SetHeld(pActor, this, NewDrop.GripID, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
@@ -1941,7 +1941,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 
 			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				IVRGripInterface::Execute_SetHeld(root, this, false);
+				IVRGripInterface::Execute_SetHeld(root, this, NewDrop.GripID, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
@@ -2035,7 +2035,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 			if (!bIsReInit && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				IVRGripInterface::Execute_SetHeld(pActor, this, true);
+				IVRGripInterface::Execute_SetHeld(pActor, this, NewGrip.GripID, true);
 
 				TArray<UVRGripScriptBase*> GripScripts;
 				if (IVRGripInterface::Execute_GetGripScripts(pActor, GripScripts))
@@ -2081,7 +2081,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 			if (!bIsReInit && root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				IVRGripInterface::Execute_SetHeld(root, this, true);
+				IVRGripInterface::Execute_SetHeld(root, this, NewGrip.GripID, true);
 
 				TArray<UVRGripScriptBase*> GripScripts;
 				if (IVRGripInterface::Execute_GetGripScripts(root, GripScripts))
@@ -2269,8 +2269,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 {
 
 	bool bSkipFullDrop = false;
-	bool bSkipOurDrop = false;
-	TArray<UGripMotionControllerComponent *> HoldingControllers;
+	TArray<FBPGripPair> HoldingControllers;
 	bool bIsHeld = false;
 
 	// Check if a different controller is holding it
@@ -2289,7 +2288,6 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			if (LocallyGrippedObjects[i].GrippedObject == NewDrop.GrippedObject && LocallyGrippedObjects[i].GripID != NewDrop.GripID)
 			{
 				bSkipFullDrop = true;
-				bSkipOurDrop = true;
 			}
 		}
 		for (int i = 0; i < GrippedObjects.Num(); ++i)
@@ -2297,7 +2295,6 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			if (GrippedObjects[i].GrippedObject == NewDrop.GrippedObject && GrippedObjects[i].GripID != NewDrop.GripID)
 			{
 				bSkipFullDrop = true;
-				bSkipOurDrop = true;
 			}
 		}
 	}
@@ -2401,8 +2398,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				if (!bSkipOurDrop)
-					IVRGripInterface::Execute_SetHeld(pActor, this, false);
+				IVRGripInterface::Execute_SetHeld(pActor, this, NewDrop.GripID, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
@@ -2513,8 +2509,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
-				if (!bSkipOurDrop)
-					IVRGripInterface::Execute_SetHeld(root, this, false);
+				IVRGripInterface::Execute_SetHeld(root, this, NewDrop.GripID, false);
 
 				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);

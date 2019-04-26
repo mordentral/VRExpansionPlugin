@@ -179,17 +179,17 @@ bool AGrippableActor::AllowsMultipleGrips_Implementation()
 	return VRGripInterfaceSettings.bAllowMultipleGrips;
 }
 
-void AGrippableActor::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & HoldingControllers, bool & bIsHeld)
+void AGrippableActor::IsHeld_Implementation(TArray<FBPGripPair> & HoldingControllers, bool & bIsHeld)
 {
 	HoldingControllers = VRGripInterfaceSettings.HoldingControllers;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
 }
 
-void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
+void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, uint8 GripID, bool bIsHeld)
 {
 	if (bIsHeld)
 	{
-		VRGripInterfaceSettings.HoldingControllers.AddUnique(HoldingController);
+		VRGripInterfaceSettings.HoldingControllers.AddUnique(FBPGripPair(HoldingController, GripID));
 
 		if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
 		{
@@ -199,7 +199,7 @@ void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * Ho
 	}
 	else
 	{
-		VRGripInterfaceSettings.HoldingControllers.Remove(HoldingController);
+		VRGripInterfaceSettings.HoldingControllers.Remove(FBPGripPair(HoldingController, GripID));
 
 		if (ClientAuthReplicationData.bUseClientAuthThrowing && ShouldWeSkipAttachmentReplication())
 		{

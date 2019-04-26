@@ -1345,6 +1345,56 @@ public:
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPGripPair
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripPair")
+	UGripMotionControllerComponent * HoldingController;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripPair")
+	uint8 GripID;
+
+	FBPGripPair() :
+		HoldingController(nullptr),
+		GripID(INVALID_VRGRIP_ID)
+	{}
+
+	FBPGripPair(UGripMotionControllerComponent * Controller, uint8 ID) :
+		HoldingController(Controller),
+		GripID(ID)
+	{}
+
+	void Clear()
+	{
+		HoldingController = nullptr;
+		GripID = INVALID_VRGRIP_ID;
+	}
+
+	bool IsValid()
+	{
+		return HoldingController != nullptr && GripID != INVALID_VRGRIP_ID;
+	}
+
+	FORCEINLINE bool operator==(const FBPGripPair & Other) const
+	{
+		return (Other.HoldingController == HoldingController && ((GripID != INVALID_VRGRIP_ID) && (GripID == Other.GripID)));
+	}
+
+	FORCEINLINE bool operator==(const UGripMotionControllerComponent * Other) const
+	{
+		return (Other == HoldingController);
+	}
+
+	FORCEINLINE bool operator==(const uint8 & Other) const
+	{
+		return GripID == Other;
+	}
+
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPInterfaceProperties
 {
 	GENERATED_BODY()
@@ -1399,8 +1449,7 @@ public:
 		bool bIsHeld; // Set on grip notify, not net serializing
 
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
-		TArray<UGripMotionControllerComponent *> HoldingControllers; // Set on grip notify, not net serializing
-
+		TArray<FBPGripPair> HoldingControllers; // Set on grip notify, not net serializing
 
 	FBPInterfaceProperties():
 		bDenyGripping(false),

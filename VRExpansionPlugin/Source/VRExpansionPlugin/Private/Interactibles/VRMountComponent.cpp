@@ -353,7 +353,7 @@ void UVRMountComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	// Also set it to after rotation
 	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
-		GrippingController->DropObjectByInterface(this);
+		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
 		return;
 	}
 }
@@ -509,20 +509,25 @@ bool UVRMountComponent::AllowsMultipleGrips_Implementation()
 	return false;
 }
 
-void UVRMountComponent::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & CurHoldingControllers, bool & bCurIsHeld)
+void UVRMountComponent::IsHeld_Implementation(TArray<FBPGripPair> & CurHoldingControllers, bool & bCurIsHeld)
 {
 	CurHoldingControllers.Empty();
-	if (HoldingController != nullptr)
-		CurHoldingControllers.Add(HoldingController);
-
-	bCurIsHeld = bIsHeld;
+	if (HoldingGrip.IsValid())
+	{
+		CurHoldingControllers.Add(HoldingGrip);
+		bCurIsHeld = bIsHeld;
+	}
+	else
+	{
+		bCurIsHeld = false;
+	}
 }
 
-void UVRMountComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
+void UVRMountComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, uint8 GripID, bool bNewIsHeld)
 {
 	if (bNewIsHeld)
 	{
-		HoldingController = NewHoldingController;
+		HoldingGrip = FBPGripPair(NewHoldingController, GripID);
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
 			if (!bIsHeld)
@@ -532,7 +537,7 @@ void UVRMountComponent::SetHeld_Implementation(UGripMotionControllerComponent * 
 	}
 	else
 	{
-		HoldingController = nullptr;
+		HoldingGrip.Clear();
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
 			bReplicateMovement = bOriginalReplicatesMovement;

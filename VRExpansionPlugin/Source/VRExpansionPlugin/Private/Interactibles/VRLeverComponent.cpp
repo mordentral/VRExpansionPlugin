@@ -179,14 +179,14 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 			OnLeverStateChanged.Broadcast(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, FullCurrentAngle);
 		}
 
-		if (!bWasLerping && bUngripAtTargetRotation && bLeverState && HoldingController)
+		if (!bWasLerping && bUngripAtTargetRotation && bLeverState && HoldingGrip.IsValid())
 		{
 			FBPActorGripInformation GripInformation;
 			EBPVRResultSwitch result;
-			HoldingController->GetGripByObject(GripInformation, this, result);
-			if (result == EBPVRResultSwitch::OnSucceeded && HoldingController->HasGripAuthority(GripInformation))
+			HoldingGrip.HoldingController->GetGripByID(GripInformation, HoldingGrip.GripID, result);
+			if (result == EBPVRResultSwitch::OnSucceeded && HoldingGrip.HoldingController->HasGripAuthority(GripInformation))
 			{
-				HoldingController->DropObjectByInterface(this);
+				HoldingGrip.HoldingController->DropObjectByInterface(this, HoldingGrip.GripID);
 			}
 		}
 	}
@@ -279,7 +279,7 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	// Also set it to after rotation
 	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
-		GrippingController->DropObjectByInterface(this);
+		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
 		return;
 	}
 }
@@ -500,20 +500,25 @@ bool UVRLeverComponent::AllowsMultipleGrips_Implementation()
 	return false;
 }
 
-void UVRLeverComponent::IsHeld_Implementation(TArray<UGripMotionControllerComponent *> & CurHoldingControllers, bool & bCurIsHeld)
+void UVRLeverComponent::IsHeld_Implementation(TArray<FBPGripPair> & CurHoldingControllers, bool & bCurIsHeld)
 {
 	CurHoldingControllers.Empty();
-	if (HoldingController != nullptr)
-		CurHoldingControllers.Add(HoldingController);
-
-	bCurIsHeld = bIsHeld;
+	if (HoldingGrip.IsValid())
+	{
+		CurHoldingControllers.Add(HoldingGrip);
+		bCurIsHeld = bIsHeld;
+	}
+	else
+	{
+		bCurIsHeld = false;
+	}
 }
 
-void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, bool bNewIsHeld)
+void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * NewHoldingController, uint8 GripID, bool bNewIsHeld)
 {
 	if (bNewIsHeld)
 	{
-		HoldingController = NewHoldingController;
+		HoldingGrip = FBPGripPair(NewHoldingController, GripID);
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
 			if (!bIsHeld && !bIsLerping)
@@ -523,7 +528,7 @@ void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * 
 	}
 	else
 	{
-		HoldingController = nullptr;
+		HoldingGrip.Clear();
 		if (MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 		{
 			bReplicateMovement = bOriginalReplicatesMovement;

@@ -207,6 +207,14 @@ public:
 	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|FVectorNetQuantize")
 		static FVector_NetQuantize100 MakeVector_NetQuantize100(FVector InVector);
 
+	/** Converts a FBPGripPair into a MotionController */
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToController (FBPGripPair)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary")
+		static UGripMotionControllerComponent * Conv_GripPairToMotionController(const FBPGripPair &GripPair);
+
+	/** Converts a FBPGripPair into a GripID */
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToGripID (FBPGripPair)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary")
+		static uint8 Conv_GripPairToGripID(const FBPGripPair &GripPair);
+
 	// Adds a USceneComponent Subclass, that is based on the passed in Class, and added to the Outer(Actor) object
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Add Scene Component By Class"), Category = "VRExpansionLibrary")
 		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, const FTransform & ComponentRelativeTransform);
