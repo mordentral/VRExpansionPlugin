@@ -199,10 +199,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
 		bool bUseVirtualStock;
 
-	// Draw debug elements showing the virtual stock location and angles to interacting components
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Debug")
-	//	bool bDebugDrawVirtualStock;
-
 	FTransform MountWorldTransform;
 	bool bIsMounted;
 	TWeakObjectPtr<USceneComponent> CameraComponent;
@@ -218,37 +214,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock", meta = (editcondition = "!bUseGlobalVirtualStockSettings"))
 		FBPVirtualStockSettings VirtualStockSettings;
-
-/*
-	// Should we auto snap to the virtual stock by a set distance
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
-		bool bUseDistanceBasedStockSnapping;
-
-	// The distance before snapping to the stock / unsnapping
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
-	 float StockSnapDistance;
-
-	// An offset to apply to the HMD location to be considered the neck / mount pivot 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
-		FVector_NetQuantize100 StockSnapOffset;
-
-	// Attaches the grip location to the virtual stock location (locationally).
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock")
-	//	bool bAttachGripToStockLocation;
-
-	// Overrides the pivot location to be at this component instead
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Smoothing")
-		bool bSmoothStockHand;
-
-	// How much influence the virtual stock smoothing should have, 0.0f is zero smoothing, 1.0f is full smoothing, you should test with full smoothing to get the amount you
-	// want and then set the smoothing value up until it feels right between the fully smoothed and unsmoothed values.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Smoothing", meta = (editcondition = "bSmoothStockHand", ClampMin = "0.00", UIMin = "0.00", ClampMax = "1.00", UIMax = "1.00"))
-		float SmoothingValueForStock;
-	
-	// Used to smooth filter the virtual stocks primary hand location
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Smoothing")
-	FBPEuroLowPassFilter StockHandSmoothing;
-	*/
 
 	// If this gun has recoil
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
@@ -288,25 +253,36 @@ public:
 
 	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) override;
 	
-	inline void GunTools_ApplySmoothingAndLerp(FBPActorGripInformation & Grip, FVector &frontLoc, FVector & frontLocOrig, float DeltaTime, bool bSkipHighQualitySimulations)
+	// Applies the two hand modifier, broke this out into a function so that we can handle late updates
+	static void ApplyTwoHandModifier(FTransform & OriginalTransform)
 	{
+
+
+	}
+
+	// Returns the smoothed value now
+	inline FVector GunTools_ApplySmoothingAndLerp(FBPActorGripInformation & Grip, FVector &frontLoc, FVector & frontLocOrig, float DeltaTime, bool bSkipHighQualitySimulations)
+	{
+		FVector SmoothedValue = frontLoc;
+
 		if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
 		{
 			if (!bSkipHighQualitySimulations && AdvSecondarySettings.SecondaryGripScaler < 1.0f)
 			{
-				FVector SmoothedValue = AdvSecondarySettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
-
+				SmoothedValue = AdvSecondarySettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
 				frontLoc = FMath::Lerp(frontLoc, SmoothedValue, AdvSecondarySettings.SecondaryGripScaler);
+
 			}
 
 			Default_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime);
 		}
 		else if (!bSkipHighQualitySimulations && AdvSecondarySettings.bUseAdvancedSecondarySettings && AdvSecondarySettings.bUseConstantGripScaler) // If there is a frame by frame lerp
 		{
-			FVector SmoothedValue = AdvSecondarySettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
-
+			SmoothedValue = AdvSecondarySettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
 			frontLoc = FMath::Lerp(frontLoc, SmoothedValue, AdvSecondarySettings.SecondaryGripScaler);
 		}
+
+		return SmoothedValue;
 	}
 };
 

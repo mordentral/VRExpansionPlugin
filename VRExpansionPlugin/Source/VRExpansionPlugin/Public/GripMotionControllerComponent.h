@@ -941,8 +941,9 @@ public:
 	bool CheckComponentWithSweep(UPrimitiveComponent * ComponentToCheck, FVector Move, FRotator newOrientation, bool bSkipSimulatingComponents/*, bool & bHadBlockingHitOut*/);
 	
 	// For physics handle operations
+	void OnGripMassUpdated(FBodyInstance* GripBodyInstance);
 	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
-	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip);
+	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip, bool bSkipUnregistering = false);
 	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
 	bool SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, bool bUseHybridMultiplier = false);
 	bool GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, UPrimitiveComponent * rootComp, FVector & LocOut);

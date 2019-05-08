@@ -31,49 +31,10 @@ UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 
 	BackEndRecoilStorage = FTransform::Identity;
 
-	//StockSnapDistance = 35.f;
-	//bUseDistanceBasedStockSnapping = true;
-	//SmoothingValueForStock = 0.0f;
-	//bSmoothStockHand = false;
-
-	// Speed up the lerp on fast movements for this
-	//StockHandSmoothing.DeltaCutoff = 20.0f;
-	//StockHandSmoothing.MinCutoff = 5.0f;
-	//bDebugDrawVirtualStock = false;
-
 	bUseGlobalVirtualStockSettings = true;
 
 	bUseHighQualityRemoteSimulation = false;
 }
-
-//=============================================================================
-/*void UGS_GunTools::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(UGS_GunTools, bUseAdvancedSecondarySettings);
-
-	DOREPLIFETIME_CONDITION(UGS_GunTools, SecondaryGripScaler, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, bUseConstantGripScaler, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, bUseSecondaryGripDistanceInfluence, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, GripInfluenceDeadZone, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, GripInfluenceDistanceToZero, COND_Custom);
-
-	DOREPLIFETIME(UGS_GunTools, PivotOffset);
-
-	DOREPLIFETIME(UGS_GunTools, bUseVirtualStock);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, VirtualStockComponent, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, bUseDistanceBasedStockSnapping, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, StockSnapDistance, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, StockSnapOffset, COND_Custom);
-
-	DOREPLIFETIME(UGS_GunTools, bHasRecoil);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, MaxRecoilTranslation, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, MaxRecoilRotation, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, MaxRecoilScale, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, DecayRate, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGS_GunTools, LerpRate, COND_Custom);
-}*/
 
 bool UGS_GunTools::GetWorldTransform_Implementation
 (
