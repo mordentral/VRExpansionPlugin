@@ -3992,11 +3992,21 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 		{
 			if (FBodyInstance * rBodyInstance = root->GetBodyInstance())
 			{
+				// Get our original values
+				FVector vel = rBodyInstance->GetUnrealWorldVelocity();
+				FVector aVel = rBodyInstance->GetUnrealWorldAngularVelocityInRadians();
+				FVector originalCOM = rBodyInstance->GetCOMPosition();
+
 				// #TODO: Should this be done on drop instead?
 				if(!bSkipUnregistering)
 					rBodyInstance->OnRecalculatedMassProperties.RemoveAll(this);
 
 				rBodyInstance->UpdateMassProperties();
+
+				// Offset the linear velocity by the new COM position and set it
+				vel += FVector::CrossProduct(aVel, rBodyInstance->GetCOMPosition() - originalCOM);
+				rBodyInstance->SetLinearVelocity(vel, false);
+
 			}
 		}
 	}
@@ -4067,6 +4077,7 @@ void UGripMotionControllerComponent::OnGripMassUpdated(FBodyInstance* GripBodyIn
 
 				FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
 				localCom.SetLocation(Loc);
+
 				FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
 			});
 		}
@@ -4171,7 +4182,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 
 			if (COMType == EPhysicsGripCOMType::COM_SetAndGripAt)
-			{
+			{			
 				// Update the center of mass
 				FVector Loc = (FTransform((RootBoneRotation * NewGrip.RelativeTransform).ToInverseMatrixWithScale())).GetLocation();
 				Loc *= rBodyInstance->Scale3D;
@@ -4206,8 +4217,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				PxRigidDynamic* KinActor = Scene->getPhysics().createRigidDynamic(KinPose);
 				KinActor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
 
-				KinActor->setMass(0.0f); // 1.0f;
-				KinActor->setMassSpaceInertiaTensor(PxVec3(0.0f, 0.0f, 0.0f));// PxVec3(1.0f, 1.0f, 1.0f));
+				KinActor->setMass(1.0f); // 1.0f;
+				KinActor->setMassSpaceInertiaTensor(PxVec3(1.0f, 1.0f, 1.0f));// PxVec3(1.0f, 1.0f, 1.0f));
 				KinActor->setMaxDepenetrationVelocity(PX_MAX_F32);
 
 				// No bodyinstance
