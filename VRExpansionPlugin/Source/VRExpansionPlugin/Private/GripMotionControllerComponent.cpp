@@ -3866,17 +3866,20 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 
 		if (root)
 		{
-			root->SetCenterOfMass(FVector(0, 0, 0), Grip.GrippedBoneName);
+			if (FBodyInstance * rBodyInstance = root->GetBodyInstance())
+			{
 				// Get our original values
 				FVector vel = rBodyInstance->GetUnrealWorldVelocity();
 				FVector aVel = rBodyInstance->GetUnrealWorldAngularVelocityInRadians();
 				FVector originalCOM = rBodyInstance->GetCOMPosition();
 
+				rBodyInstance->COMNudge = FVector::ZeroVector;
+				rBodyInstance->UpdateMassProperties();
 
 				// Offset the linear velocity by the new COM position and set it
 				vel += FVector::CrossProduct(aVel, rBodyInstance->GetCOMPosition() - originalCOM);
 				rBodyInstance->SetLinearVelocity(vel, false);
-
+			}
 		}
 	}
 
