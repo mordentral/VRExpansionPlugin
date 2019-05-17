@@ -3867,6 +3867,16 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 		if (root)
 		{
 			root->SetCenterOfMass(FVector(0, 0, 0), Grip.GrippedBoneName);
+				// Get our original values
+				FVector vel = rBodyInstance->GetUnrealWorldVelocity();
+				FVector aVel = rBodyInstance->GetUnrealWorldAngularVelocityInRadians();
+				FVector originalCOM = rBodyInstance->GetCOMPosition();
+
+
+				// Offset the linear velocity by the new COM position and set it
+				vel += FVector::CrossProduct(aVel, rBodyInstance->GetCOMPosition() - originalCOM);
+				rBodyInstance->SetLinearVelocity(vel, false);
+
 		}
 	}
 
@@ -3878,6 +3888,7 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 
 	return true;
 }
+
 
 bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip)
 {
@@ -3981,7 +3992,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 
 			if (COMType == EPhysicsGripCOMType::COM_SetAndGripAt)
-			{
+			{			
 				FVector curCOMPosition = P2UVector(PActor->getCMassLocalPose().p);
 
 				// Trans is our physics location, and it has no scale
@@ -4013,8 +4024,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				PxRigidDynamic* KinActor = Scene->getPhysics().createRigidDynamic(KinPose);
 				KinActor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
 
-				KinActor->setMass(0.0f); // 1.0f;
-				KinActor->setMassSpaceInertiaTensor(PxVec3(0.0f, 0.0f, 0.0f));// PxVec3(1.0f, 1.0f, 1.0f));
+				KinActor->setMass(1.0f); // 1.0f;
+				KinActor->setMassSpaceInertiaTensor(PxVec3(1.0f, 1.0f, 1.0f));// PxVec3(1.0f, 1.0f, 1.0f));
 				KinActor->setMaxDepenetrationVelocity(PX_MAX_F32);
 
 				// No bodyinstance
