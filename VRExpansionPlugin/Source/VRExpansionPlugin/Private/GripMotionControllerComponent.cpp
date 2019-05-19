@@ -4132,7 +4132,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 			PxTransform KinPose;
 			FTransform trans = P2UTransform(PActor->getGlobalPose()); //root->GetComponentTransform();
-			FTransform controllerTransform = GetPivotTransform();
 			FTransform RootBoneRotation = FTransform::Identity;
 
 			if (NewGrip.GrippedBoneName != NAME_None)
@@ -4193,19 +4192,22 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 				// Bind to further updates in order to keep it alive
 				rBodyInstance->OnRecalculatedMassProperties.AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
-			
+				
+				trans.SetLocation(FPhysicsInterface::GetComTransform_AssumesLocked(Actor).GetLocation());
 				HandleInfo->bSetCOM = true;
 			}
 
 			if (COMType == EPhysicsGripCOMType::COM_GripAtControllerLoc)
 			{
-				trans.SetLocation(controllerTransform.GetLocation());
-				HandleInfo->COMPosition = U2PTransform(FTransform(rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(controllerTransform.GetLocation())));
+				FVector ControllerLoc = (FTransform(NewGrip.RelativeTransform.ToInverseMatrixWithScale()) * root->GetComponentTransform()).GetLocation();
+				trans.SetLocation(ControllerLoc);
+				HandleInfo->COMPosition = U2PTransform(FTransform(rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(ControllerLoc)));
 			}
 			else if (COMType != EPhysicsGripCOMType::COM_AtPivot)
 			{
-				trans.SetLocation(rBodyInstance->GetCOMPosition());
-				HandleInfo->COMPosition = U2PTransform(FTransform(rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(rBodyInstance->GetCOMPosition())));
+				FVector ComLoc = FPhysicsInterface::GetComTransform_AssumesLocked(Actor).GetLocation();
+				trans.SetLocation(ComLoc);
+				HandleInfo->COMPosition = U2PTransform(FTransform(rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(ComLoc)));
 			}
 
 			KinPose = U2PTransform(trans);
