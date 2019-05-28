@@ -22,6 +22,8 @@ UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializ
 	MinTimeBetweenEngaging = 0.1f;
 
 	bIsEnabled = true;
+	StateChangeAuthorityType = EVRStateChangeAuthorityType::CanChangeState_All;
+	bButtonState = false;
 
 	this->SetCollisionResponseToAllChannels(ECR_Overlap);
 
@@ -109,13 +111,19 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 			if (ButtonType == EVRButtonType::Btn_Toggle_Return || ButtonType == EVRButtonType::Btn_Toggle_Stay)
 			{
-				if (!bToggledThisTouch && NewDepth <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
+				if ((StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_All) ||
+					(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Server && GetNetMode() < ENetMode::NM_Client) ||
+					(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Owner && LocalLastInteractingActor.IsValid() && LocalLastInteractingActor->HasLocalNetOwner()))
 				{
-					LastToggleTime = WorldTime;
-					bToggledThisTouch = true;
-					bButtonState = !bButtonState;
-					ReceiveButtonStateChanged(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
-					OnButtonStateChanged.Broadcast(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+
+					if (!bToggledThisTouch && NewDepth <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
+					{
+						LastToggleTime = WorldTime;
+						bToggledThisTouch = true;
+						bButtonState = !bButtonState;
+						ReceiveButtonStateChanged(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+						OnButtonStateChanged.Broadcast(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+					}
 				}
 			}
 		}
@@ -141,15 +149,20 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 	// Press buttons always get checked, both during press AND during lerping for if they are active or not.
 	if (ButtonType == EVRButtonType::Btn_Press)
 	{
-		// Check for if we should set the state of the button, done here as for the press button the lerp counts for input
-		bool bCheckState = (GetAxisValue(InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation)) <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER);
-		if (bButtonState != bCheckState && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
-
+		if ((StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_All) ||
+			(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Server && GetNetMode() < ENetMode::NM_Client) ||
+			(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Owner && LocalLastInteractingActor.IsValid() && LocalLastInteractingActor->HasLocalNetOwner()))
 		{
-			LastToggleTime = WorldTime;
-			bButtonState = bCheckState;
-			ReceiveButtonStateChanged(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
-			OnButtonStateChanged.Broadcast(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+			// Check for if we should set the state of the button, done here as for the press button the lerp counts for input
+			bool bCheckState = (GetAxisValue(InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation)) <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER);
+			if (bButtonState != bCheckState && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
+
+			{
+				LastToggleTime = WorldTime;
+				bButtonState = bCheckState;
+				ReceiveButtonStateChanged(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+				OnButtonStateChanged.Broadcast(bButtonState, LocalLastInteractingActor.Get(), LocalLastInteractingComponent.Get());
+			}
 		}
 	}
 

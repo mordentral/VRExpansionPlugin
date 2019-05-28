@@ -25,6 +25,18 @@ enum class EVRButtonType : uint8
 	Btn_Toggle_Stay
 };
 
+// VR Button SyncOptions
+UENUM(Blueprintable)
+enum class EVRStateChangeAuthorityType : uint8
+{
+	/* Button state can be changed on all connections */
+	CanChangeState_All,
+	/* Button state can be changed only on the server */
+	CanChangeState_Server,
+	/* Button state can be changed only on the owner of the interacting primitive */
+	CanChangeState_Owner
+};
+
 /** Delegate for notification when the button state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FVRButtonStateChangedSignature, bool, ButtonState, AActor *, InteractingActor, UPrimitiveComponent *, InteractingComponent);
 
@@ -108,7 +120,9 @@ public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Replicated, Category = "VRButtonComponent")
 	bool bButtonState;
 
-	// #TODO: Offer to autocalulate depress distance / speed based on mesh size?
+	// Who is allowed to change the button state
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRButtonComponent|Replication")
+		EVRStateChangeAuthorityType StateChangeAuthorityType;
 
 	// Speed that the button de-presses when no longer interacted with
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
