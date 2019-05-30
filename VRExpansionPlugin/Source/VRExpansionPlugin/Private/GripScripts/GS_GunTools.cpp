@@ -128,7 +128,6 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 					
 					// Mount up
 					bIsMounted = true;
-
 					OnVirtualStockModeChanged.Broadcast(bIsMounted);
 				}
 
@@ -196,9 +195,11 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 		}
 	}
 
+
 	// Handle the interp and multi grip situations, re-checking the grip situation here as it may have changed in the switch above.
 	if ((Grip.SecondaryGripInfo.bHasSecondaryAttachment && Grip.SecondaryGripInfo.SecondaryAttachment) || Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
 	{
+		FTransform NewWorldTransform = WorldTransform;
 		FTransform SecondaryTransform = Grip.RelativeTransform * ParentTransform;
 
 		// Checking secondary grip type for the scaling setting
@@ -220,16 +221,13 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 			const FTransform WorldToPivot = FTransform(FQuat::Identity, -Pivot);//-BasePoint);
 
 			FVector frontLocOrig;
-			FVector UnModifiedFrontLocOrig;
 			FVector frontLoc;
 
 			// Ending lerp out of a multi grip
 			if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
 			{
-				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeTransform.GetLocation())) - BasePoint;
-				frontLoc = Grip.SecondaryGripInfo.LastRelativeLocation;
-
-				frontLocOrig = FMath::Lerp(frontLoc, frontLocOrig, FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
+				WorldTransform.Blend(WorldTransform, RelativeTransOnSecondaryRelease* GrippingController->GetPivotTransform(), FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
+				return true;
 			}
 			else // Is in a multi grip, might be lerping into it as well.
 			{
@@ -260,8 +258,6 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 
 				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeTransform.GetLocation())) - BasePoint;
 
-				UnModifiedFrontLocOrig = frontLocOrig;
-
 				// Apply any smoothing settings and lerping in / constant lerping
 				GunTools_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime, bSkipHighQualityOperations);
 
@@ -288,7 +284,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				{
 					// Get the rotation difference from the initial second grip
 					FQuat rotVal = FQuat::FindBetweenVectors(GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation(), (frontLoc + BasePoint) - MountWorldTransform.GetTranslation());
-					FQuat MountAdditionRotation = FQuat::FindBetweenVectors(UnModifiedFrontLocOrig, GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation());
+					FQuat MountAdditionRotation = FQuat::FindBetweenVectors(frontLocOrig, GrippingController->GetPivotLocation() - MountWorldTransform.GetTranslation());
 
 					if (VirtualStockSettings.StockLerpValue < 1.0f)
 					{
@@ -301,12 +297,12 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 						// Quaternion interpolation
 						NA.Blend(NB, NA, VirtualStockSettings.StockLerpValue);
 
-						WorldTransform = WorldTransform * WorldToPivot * NA * PivotToWorld;
+						NewWorldTransform = WorldTransform * WorldToPivot * NA * PivotToWorld;
 					}
 					else
 					{
 						// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
-						WorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
+						NewWorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
 					}
 				}
 				else
@@ -315,7 +311,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 					FQuat rotVal = FQuat::FindBetweenVectors(frontLocOrig, frontLoc);
 
 					// Rebase the world transform to the pivot point, add the rotation, remove the pivot point rebase
-					WorldTransform = WorldTransform * WorldToPivot * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
+					NewWorldTransform = WorldTransform * WorldToPivot * FTransform(rotVal, FVector::ZeroVector, Scaler) * PivotToWorld;
 				}
 			}
 			else
@@ -336,22 +332,37 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 
 						// Quaternion interpolation
 						NA.Blend(NB, NA, VirtualStockSettings.StockLerpValue);
-						WorldTransform = WorldTransform * WorldToPivot * NA * PivotToWorld;
+						NewWorldTransform = WorldTransform * WorldToPivot * NA * PivotToWorld;
 					}
 					else
 					{
 						// Rebase the world transform to the pivot point, add the scaler, remove the pivot point rebase
-						WorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
+						NewWorldTransform = WorldTransform * WorldToPivot * MountAdditionRotation * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
 					}
 				}
 				else
 				{
 					// Rebase the world transform to the pivot point, add the scaler, remove the pivot point rebase
-					WorldTransform = WorldTransform * WorldToPivot * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
+					NewWorldTransform = WorldTransform * WorldToPivot * FTransform(FQuat::Identity, FVector::ZeroVector, Scaler) * PivotToWorld;
 				}
 			}
 		}
+
+		if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp)
+		{
+			WorldTransform.Blend(NewWorldTransform, WorldTransform, FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
+		}
+		else
+		{
+			WorldTransform = NewWorldTransform;
+		}
+
+		if (Grip.SecondaryGripInfo.bHasSecondaryAttachment)
+		{
+			RelativeTransOnSecondaryRelease = WorldTransform.GetRelativeTransform(GrippingController->GetPivotTransform());
+		}
 	}
+
 	return true;
 }
 

@@ -201,6 +201,7 @@ public:
 
 	FTransform MountWorldTransform;
 	bool bIsMounted;
+	FTransform RelativeTransOnSecondaryRelease;
 	TWeakObjectPtr<USceneComponent> CameraComponent;
 
 	// Overrides the default behavior of using the HMD location for the stock and uses this component instead
@@ -273,8 +274,7 @@ public:
 				frontLoc = FMath::Lerp(frontLoc, SmoothedValue, AdvSecondarySettings.SecondaryGripScaler);
 
 			}
-
-			Default_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime);
+			//Default_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime);
 		}
 		else if (!bSkipHighQualitySimulations && AdvSecondarySettings.bUseAdvancedSecondarySettings && AdvSecondarySettings.bUseConstantGripScaler) // If there is a frame by frame lerp
 		{
