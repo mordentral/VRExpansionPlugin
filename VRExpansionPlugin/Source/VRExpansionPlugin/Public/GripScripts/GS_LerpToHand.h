@@ -35,14 +35,25 @@ public:
 	UGS_LerpToHand(const FObjectInitializer& ObjectInitializer);
 
 	float CurrentLerpTime;
+	float LerpSpeed;
 
 	// If the initial grip distance is closer than this value then the lerping will not be performed.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
 		float MinDistanceForLerp;
 
-	// Progress from 0.0 to 1.0 that it should take per second to finish lerping.
+	// How many seconds the lerp should take
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
-	float InterpSpeed;
+		float LerpDuration;
+
+	// The minimum speed (in UU per second) that that the lerp should have across the initial grip distance
+	// Will speed the LerpSpeed up to try and maintain this initial speed if required
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
+		float MinSpeedForLerp;
+
+	// The maximum speed (in UU per second) that the lerp should have across the initial grip distance
+	// Will slow the LerpSpeed down to try and maintain this initial speed if required
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
+		float MaxSpeedForLerp;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings")
 	EVRLerpInterpolationMode LerpInterpolationMode;
@@ -50,9 +61,12 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "LerpEvents")
 		FVRLerpToHandFinishedSignature OnLerpToHandFinished;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpSettings|Curve")
+	// Whether to use a curve map to map the lerp to
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LerpCurve")
 		bool bUseCurve;
-	UPROPERTY(Category = "LerpSettings|Curve", EditAnywhere, meta = (editcondition = "bUseCurve"))
+
+	// The curve to follow when using a curve map, only uses from 0.0 - 1.0 of the curve timeline and maps it across the entire duration
+	UPROPERTY(Category = "LerpCurve", EditAnywhere, meta = (editcondition = "bUseCurve"))
 		FRuntimeFloatCurve OptionalCurveToFollow;
 
 	FTransform OnGripTransform;

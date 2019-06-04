@@ -13,11 +13,14 @@ UGS_LerpToHand::UGS_LerpToHand(const FObjectInitializer& ObjectInitializer) :
 	WorldTransformOverrideType = EGSTransformOverrideType::ModifiesWorldTransform;
 
 	LerpInterpolationMode = EVRLerpInterpolationMode::QuatInterp;
-	InterpSpeed = 1.0f;
+	LerpDuration = 1.f;
+	LerpSpeed = 0.0f;
 	CurrentLerpTime = 0.0f;
 	OnGripTransform = FTransform::Identity;
 	bUseCurve = false;
 	MinDistanceForLerp = 0.0f;
+	MinSpeedForLerp = 0.f;
+	MaxSpeedForLerp = 0.f;
 }
 
 //void UGS_InteractibleSettings::BeginPlay_Implementation() {}
@@ -25,15 +28,35 @@ void UGS_LerpToHand::OnGrip_Implementation(UGripMotionControllerComponent * Grip
 {
 	OnGripTransform = GetParentTransform();
 
-	if (MinDistanceForLerp > 0.0f)
+	FTransform TargetTransform = GripInformation.RelativeTransform * GrippingController->GetPivotTransform();
+	float Distance = FVector::Dist(OnGripTransform.GetLocation(), TargetTransform.GetLocation());
+	if (MinDistanceForLerp > 0.0f && Distance < MinDistanceForLerp)
 	{
-		FTransform TargetTransform = GripInformation.RelativeTransform * GrippingController->GetPivotTransform();
-		if (FVector::DistSquared(OnGripTransform.GetLocation(), TargetTransform.GetLocation()) < FMath::Square(MinDistanceForLerp))
-		{
-			// Don't init
-			return;
-		}
+		// Don't init
+		return;
 	}
+	else
+	{
+		float LerpScaler = 1.0f;
+		float DistanceToSpeed = Distance / LerpDuration;
+		if (DistanceToSpeed < MinSpeedForLerp)
+		{
+			LerpScaler = MinSpeedForLerp / DistanceToSpeed;
+		}
+		else if (MaxSpeedForLerp > 0.f && DistanceToSpeed > MaxSpeedForLerp)
+		{
+			LerpScaler = MaxSpeedForLerp / DistanceToSpeed;
+		}
+		else
+		{
+			LerpScaler = 1.0f;
+		}
+
+		// Get the modified lerp speed
+		LerpSpeed = ((1.f / LerpDuration) * LerpScaler);
+	}
+
+
 
 	bIsActive = true;
 	CurrentLerpTime = 0.0f;
@@ -60,7 +83,7 @@ bool UGS_LerpToHand::GetWorldTransform_Implementation
 	if (!root)
 		return false;
 
-	if (InterpSpeed <= 0.f)
+	if (LerpDuration <= 0.f)
 	{
 		bIsActive = false;
 	}
@@ -69,11 +92,15 @@ bool UGS_LerpToHand::GetWorldTransform_Implementation
 
 	float Alpha = 0.0f; 
 
+
+	Alpha = FMath::Clamp(CurrentLerpTime, 0.f, 1.0f);
+	CurrentLerpTime += DeltaTime * LerpSpeed;
+
 	if (bUseCurve)
 	{
 		if (FRichCurve * richCurve = OptionalCurveToFollow.GetRichCurve())
 		{
-			if (CurrentLerpTime > richCurve->GetLastKey().Time)
+			/*if (CurrentLerpTime > richCurve->GetLastKey().Time)
 			{
 				// Stop lerping
 				OnLerpToHandFinished.Broadcast();
@@ -81,21 +108,12 @@ bool UGS_LerpToHand::GetWorldTransform_Implementation
 				bIsActive = false;
 				return true;
 			}
-			else
+			else*/
 			{
-				float curCurveAlpha = richCurve->Eval(CurrentLerpTime);
-				curCurveAlpha = FMath::Clamp(curCurveAlpha, 0.0f, 1.0f);
-
-				Alpha = curCurveAlpha;
-
-				CurrentLerpTime += DeltaTime;
+				Alpha = FMath::Clamp(richCurve->Eval(Alpha), 0.f, 1.f);
+				//CurrentLerpTime += DeltaTime;
 			}
 		}
-	}
-	else
-	{
-		Alpha = FMath::Clamp(CurrentLerpTime, 0.f, 1.0f);
-		CurrentLerpTime += DeltaTime * InterpSpeed;
 	}
 
 	FTransform NB = WorldTransform;
