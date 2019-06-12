@@ -814,7 +814,7 @@ bool UOpenVRExpansionFunctionLibrary::IsOpenVRDeviceConnected(int32 OpenVRDevice
 #endif
 }
 
-UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPOpenVRTrackedDeviceClass DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, int32 OverrideDeviceID)
+UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject* WorldContextObject, FString RenderModelNameOverride, FString& RenderModelNameOut, EBPOpenVRTrackedDeviceClass DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, int32 OverrideDeviceID)
 {
 
 #if !STEAMVR_SUPPORTED_PLATFORM
@@ -848,43 +848,56 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 		return nullptr;
 	}
 
-	int32 DeviceID = 0;
-	if (OverrideDeviceID != -1)
+	char RenderModelName[vr::k_unMaxPropertyStringSize];
+
+	if (!RenderModelNameOverride.IsEmpty())
 	{
-		DeviceID = (uint32)OverrideDeviceID;
-		if (OverrideDeviceID > (vr::k_unMaxTrackedDeviceCount - 1) || VRSystem->GetTrackedDeviceClass(DeviceID) == vr::k_unTrackedDeviceIndexInvalid)
-		{
-			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Override Tracked Device Was Missing!!"));
-			Result = EAsyncBlueprintResultSwitch::OnFailure;
-			return nullptr;
-		}
+		FMemory::Memzero(&RenderModelName, vr::k_unMaxPropertyStringSize);
+		int len = RenderModelNameOverride.Len();
+		FMemory::Memcpy(&RenderModelName, *RenderModelNameOverride, len > vr::k_unMaxPropertyStringSize ? vr::k_unMaxPropertyStringSize : len);
+		RenderModelNameOut = RenderModelNameOverride;
 	}
 	else
 	{
-		TArray<int32> FoundIDs;
-		UOpenVRExpansionFunctionLibrary::GetOpenVRDevicesByType(DeviceType, FoundIDs);
-
-		if (FoundIDs.Num() == 0)
+		int32 DeviceID = 0;
+		if (OverrideDeviceID != -1)
 		{
-			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Tracked Devices!!"));
+			DeviceID = (uint32)OverrideDeviceID;
+			if (OverrideDeviceID > (vr::k_unMaxTrackedDeviceCount - 1) || VRSystem->GetTrackedDeviceClass(DeviceID) == vr::k_unTrackedDeviceIndexInvalid)
+			{
+				UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Override Tracked Device Was Missing!!"));
+				Result = EAsyncBlueprintResultSwitch::OnFailure;
+				return nullptr;
+			}
+		}
+		else
+		{
+			TArray<int32> FoundIDs;
+			UOpenVRExpansionFunctionLibrary::GetOpenVRDevicesByType(DeviceType, FoundIDs);
+
+			if (FoundIDs.Num() == 0)
+			{
+				UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Tracked Devices!!"));
+				Result = EAsyncBlueprintResultSwitch::OnFailure;
+				return nullptr;
+			}
+
+			DeviceID = FoundIDs[0];
+		}
+
+		vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
+
+		uint32_t buffersize = vr::k_unMaxPropertyStringSize;
+		uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, vr::ETrackedDeviceProperty::Prop_RenderModelName_String, RenderModelName, buffersize, &pError);
+
+		if (pError != vr::TrackedPropertyError::TrackedProp_Success)
+		{
+			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Render Model Name String!!"));
 			Result = EAsyncBlueprintResultSwitch::OnFailure;
 			return nullptr;
 		}
 
-		DeviceID = FoundIDs[0];
-	}
-
-	vr::TrackedPropertyError pError = vr::TrackedPropertyError::TrackedProp_Success;
-
-	char RenderModelName[vr::k_unMaxPropertyStringSize];
-	uint32_t buffersize = vr::k_unMaxPropertyStringSize;
-	uint32_t ret = VRSystem->GetStringTrackedDeviceProperty(DeviceID, vr::ETrackedDeviceProperty::Prop_RenderModelName_String, RenderModelName, buffersize, &pError);
-
-	if (pError != vr::TrackedPropertyError::TrackedProp_Success)
-	{
-		UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Render Model Name String!!"));
-		Result = EAsyncBlueprintResultSwitch::OnFailure;
-		return nullptr;
+		RenderModelNameOut = FString(ANSI_TO_TCHAR(RenderModelName));
 	}
 
 	//uint32_t numComponents = VRRenderModels->GetComponentCount("vr_controller_vive_1_5");

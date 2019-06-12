@@ -552,8 +552,9 @@ public:
 	static void GetOpenVRDevicesByType(EBPOpenVRTrackedDeviceClass TypeToRetreive, TArray<int32> &FoundIndexs);
 
 	// Gets the model / texture of a SteamVR Device, can use to fill procedural mesh components or just get the texture of them to apply to a pre-made model.
+	// If the render model name override is empty then the render model name will be automatically retrieved from SteamVR and RenderModelNameOut will be filled with it.
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", DisplayName = "GetVRDeviceModelAndTexture", ExpandEnumAsExecs = "Result", AdvancedDisplay = "OverrideDeviceID"))
-	static UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, EBPOpenVRTrackedDeviceClass DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, int32 OverrideDeviceID = -1);
+	static UTexture2D * GetVRDeviceModelAndTexture(UObject* WorldContextObject, FString RenderModelNameOverride, FString & RenderModelNameOut, EBPOpenVRTrackedDeviceClass DeviceType, TArray<UProceduralMeshComponent *> ProceduralMeshComponentsToFill, bool bCreateCollision, EAsyncBlueprintResultSwitch &Result, int32 OverrideDeviceID = -1);
 	
 	// Gets a String device property
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetVRDevicePropertyString", ExpandEnumAsExecs = "Result"))
