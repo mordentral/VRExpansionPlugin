@@ -1155,9 +1155,9 @@ public:
 	UPROPERTY()
 		bool bOriginalGravity;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		float Damping;
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		float Stiffness;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
@@ -1195,28 +1195,11 @@ public:
 	struct FGripValueCache
 	{
 		bool bWasInitiallyRepped;
-		bool bCachedHasSecondaryAttachment;
-		FTransform_NetQuantize CachedSecondaryRelativeTransform;
-		EGripCollisionType CachedGripCollisionType;
-		EGripMovementReplicationSettings CachedGripMovementReplicationSetting;
-		float CachedStiffness;
-		float CachedDamping;
-		FBPAdvGripPhysicsSettings CachedPhysicsSettings;
-		FName CachedBoneName;
 		uint8 CachedGripID;
-		USceneComponent * OldSecondaryAttachment;
 
 		FGripValueCache() :
 			bWasInitiallyRepped(false),
-			bCachedHasSecondaryAttachment(false),
-			CachedSecondaryRelativeTransform(FTransform::Identity),
-			CachedGripCollisionType(EGripCollisionType::InteractiveCollisionWithSweep),
-			CachedGripMovementReplicationSetting(EGripMovementReplicationSettings::ForceClientSideMovement),
-			CachedStiffness(1500.0f),
-			CachedDamping(200.0f),
-			CachedBoneName(NAME_None),
-			CachedGripID(INVALID_VRGRIP_ID),
-			OldSecondaryAttachment(nullptr)
+			CachedGripID(INVALID_VRGRIP_ID)
 		{}
 
 	}ValueCache;
@@ -1471,6 +1454,18 @@ public:
 	}
 };
 
+
+/*USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPAdvancedConstraintSettings
+{
+	GENERATED_BODY()
+public:
+
+	void ApplyAdvancedSettings(FBPActorPhysicsHandleInformation & PhysicsHandleInformation)
+	{
+		// Apply settings here
+	}
+};*/
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
