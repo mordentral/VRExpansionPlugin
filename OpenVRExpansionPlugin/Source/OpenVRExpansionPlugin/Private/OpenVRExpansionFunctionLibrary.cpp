@@ -831,12 +831,12 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 	}
 
 	char RenderModelName[vr::k_unMaxPropertyStringSize];
+	FMemory::Memzero(&RenderModelName, vr::k_unMaxPropertyStringSize);
 
 	if (!RenderModelNameOverride.IsEmpty())
 	{
-		FMemory::Memzero(&RenderModelName, vr::k_unMaxPropertyStringSize);
 		int len = RenderModelNameOverride.Len();
-		FMemory::Memcpy(&RenderModelName, *RenderModelNameOverride, len > vr::k_unMaxPropertyStringSize ? vr::k_unMaxPropertyStringSize : len);
+		FMemory::Memcpy(&RenderModelName, TCHAR_TO_ANSI(*RenderModelNameOverride), len > vr::k_unMaxPropertyStringSize ? vr::k_unMaxPropertyStringSize : len);
 		RenderModelNameOut = RenderModelNameOverride;
 	}
 	else
@@ -877,6 +877,7 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Couldn't Get Render Model Name String!!"));
 			Result = EAsyncBlueprintResultSwitch::OnFailure;
 			return nullptr;
+
 		}
 
 		RenderModelNameOut = FString(ANSI_TO_TCHAR(RenderModelName));
