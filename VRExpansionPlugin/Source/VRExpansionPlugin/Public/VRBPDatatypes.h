@@ -6,9 +6,11 @@
 #include "Components/PrimitiveComponent.h"
 
 #include "PhysicsPublic.h"
+#include "PhysicsEngine/ConstraintDrives.h"
+
 #if WITH_PHYSX
-#include "PhysXPublic.h"
-#include "PhysXSupport.h"
+//#include "PhysXPublic.h"
+//#include "PhysicsEngine/PhysXSupport.h"
 #endif // WITH_PHYSX
 
 #include "VRBPDatatypes.generated.h"
@@ -1455,18 +1457,6 @@ public:
 };
 
 
-/*USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
-struct VREXPANSIONPLUGIN_API FBPAdvancedConstraintSettings
-{
-	GENERATED_BODY()
-public:
-
-	void ApplyAdvancedSettings(FBPActorPhysicsHandleInformation & PhysicsHandleInformation)
-	{
-		// Apply settings here
-	}
-};*/
-
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
 {
@@ -1476,26 +1466,22 @@ public:
 		UObject * HandledObject;
 	uint8 GripID;
 
-	/** Physics scene index of the body we are grabbing. */
-	//int32 SceneIndex; // No longer needed, retrieved at runtime
-	/** Pointer to PhysX joint used by the handle*/
-	physx::PxD6Joint* HandleData;
-	/** Pointer to kinematic actor jointed to grabbed object */
-	physx::PxRigidDynamic* KinActorData;
+	FPhysicsActorHandle KinActorData2;
+	FPhysicsConstraintHandle HandleData2;
+	FLinearDriveConstraint LinConstraint;
+	FAngularDriveConstraint AngConstraint;
 
-	physx::PxTransform COMPosition;
+	FTransform LastPhysicsTransform;
+	FTransform COMPosition;
 	FTransform RootBoneRotation;
 
 	bool bSetCOM;
 
 	FBPActorPhysicsHandleInformation()
-	{
-		HandleData = NULL;
-		KinActorData = NULL;		
+	{	
 		HandledObject = nullptr;
-		//Actor = nullptr;
-		//Component = nullptr;
-		COMPosition = U2PTransform(FTransform::Identity);
+		LastPhysicsTransform = FTransform::Identity;
+		COMPosition = FTransform::Identity;
 		GripID = INVALID_VRGRIP_ID;
 		RootBoneRotation = FTransform::Identity;
 		bSetCOM = false;
@@ -1506,4 +1492,113 @@ public:
 		return ((GripID != INVALID_VRGRIP_ID) && (GripID == Other.GripID));
 	}
 
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPAdvancedPhysicsHandleAxisSettings
+{
+	GENERATED_BODY()
+public:
+	/** The spring strength of the drive. Force proportional to the position error. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Constraint, meta = (ClampMin = "0.0"))
+		float Stiffness;
+
+	/** The damping strength of the drive. Force proportional to the velocity error. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Constraint, meta = (ClampMin = "0.0"))
+		float Damping;
+
+	/** The force limit of the drive. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Constraint, meta = (ClampMin = "0.0"))
+		float MaxForce;
+
+	/** Enables/Disables position drive (orientation if using angular drive)*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Constraint)
+		bool bEnablePositionDrive;
+
+	/** Enables/Disables velocity drive (damping) (angular velocity if using angular drive) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Constraint)
+		bool bEnableVelocityDrive;
+
+	FBPAdvancedPhysicsHandleAxisSettings()
+	{
+		Stiffness = 0.f;
+		Damping = 0.f;
+		MaxForce = MAX_FLT;
+		bEnablePositionDrive = true;
+		bEnableVelocityDrive = true;
+	}
+
+	void FillFrom(FConstraintDrive& ConstraintDrive)
+	{
+		Damping = ConstraintDrive.Damping;
+		Stiffness = ConstraintDrive.Stiffness;
+		MaxForce = ConstraintDrive.MaxForce;
+		bEnablePositionDrive = ConstraintDrive.bEnablePositionDrive;
+		bEnableVelocityDrive = ConstraintDrive.bEnableVelocityDrive;
+	}
+
+	void FillTo(FConstraintDrive& ConstraintDrive) const
+	{
+		ConstraintDrive.Damping = Damping;
+		ConstraintDrive.Stiffness = Stiffness;
+		ConstraintDrive.MaxForce = MaxForce;
+		ConstraintDrive.bEnablePositionDrive = bEnablePositionDrive;
+		ConstraintDrive.bEnableVelocityDrive = bEnableVelocityDrive;
+	}
+
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPAdvancedPhysicsHandleSettings
+{
+	GENERATED_BODY()
+public:
+
+	// The settings for the XAxis
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Linear Constraint Settings")
+		FBPAdvancedPhysicsHandleAxisSettings XAxisSettings;
+
+	// The settings for the YAxis
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Linear Constraint Settings")
+		FBPAdvancedPhysicsHandleAxisSettings YAxisSettings;
+
+	// The settings for the ZAxis
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Linear Constraint Settings")
+		FBPAdvancedPhysicsHandleAxisSettings ZAxisSettings;
+
+	// The settings for the Orientation (Slerp only for now)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Angular Constraint Settings")
+		FBPAdvancedPhysicsHandleAxisSettings SlerpSettings;
+
+
+	// FConstraintSettings  - settings for various things like distance limits
+	// Add a deletegate bindable in the motion controller
+
+	bool FillFrom(FBPActorPhysicsHandleInformation* HandleInfo)
+	{
+		if (!HandleInfo)
+			return false;
+
+		XAxisSettings.FillFrom(HandleInfo->LinConstraint.XDrive);
+		YAxisSettings.FillFrom(HandleInfo->LinConstraint.YDrive);
+		ZAxisSettings.FillFrom(HandleInfo->LinConstraint.ZDrive);
+
+		SlerpSettings.FillFrom(HandleInfo->AngConstraint.SlerpDrive);
+
+		return true;
+	}
+
+	bool FillTo(FBPActorPhysicsHandleInformation* HandleInfo) const
+	{
+		if (!HandleInfo)
+			return false;
+
+		XAxisSettings.FillTo(HandleInfo->LinConstraint.XDrive);
+		YAxisSettings.FillTo(HandleInfo->LinConstraint.YDrive);
+		ZAxisSettings.FillTo(HandleInfo->LinConstraint.ZDrive);
+
+		SlerpSettings.FillTo(HandleInfo->AngConstraint.SlerpDrive);
+
+		return true;
+	}
 };

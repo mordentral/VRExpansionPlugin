@@ -10,7 +10,7 @@
 #include "Algo/Copy.h"
 
 #if WITH_PHYSX
-#include "PhysXSupport.h"
+//#include "PhysXSupport.h"
 #endif // WITH_PHYSX
 
 #include "Components/PrimitiveComponent.h"

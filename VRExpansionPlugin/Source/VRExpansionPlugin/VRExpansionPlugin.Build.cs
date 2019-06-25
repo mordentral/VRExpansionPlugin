@@ -37,7 +37,7 @@ public class VRExpansionPlugin : ModuleRules
 				//"VRExpansionPlugin/Public",
                 //"VRExpansionPlugin/Public/SimpleChar",
                 //"HeadMountedDisplay/Public",
-                "Runtime/Engine/Private/PhysicsEngine"
+                //"Runtime/Engine/Private/PhysicsEngine"
 				
 				// ... add public include paths required here ...
 			}
@@ -113,7 +113,7 @@ public class VRExpansionPlugin : ModuleRules
 			);
 
         // Don't load APEX on incompatible platforms
-        if (
+       /* if (
             Target.Platform != UnrealTargetPlatform.IOS &&
             Target.Platform != UnrealTargetPlatform.TVOS &&
             Target.Platform != UnrealTargetPlatform.Android &&
@@ -124,7 +124,7 @@ public class VRExpansionPlugin : ModuleRules
             {                   
              "APEX"
             });
-        }
+        }*/
 
         // Allow gameplay debugger on editor builds
         if (Target.bBuildDeveloperTools || (Target.Configuration != UnrealTargetConfiguration.Shipping && Target.Configuration != UnrealTargetConfiguration.Test))

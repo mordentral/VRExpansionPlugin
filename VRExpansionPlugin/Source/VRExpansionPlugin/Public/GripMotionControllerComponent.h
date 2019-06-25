@@ -289,7 +289,8 @@ public:
 		int HandleIndex = 0;
 		if (GetPhysicsGripIndex(GripInfo, HandleIndex))
 		{
-			DestroyPhysicsHandle(/*PhysicsGrips[HandleIndex].SceneIndex,*/ &PhysicsGrips[HandleIndex].HandleData, &PhysicsGrips[HandleIndex].KinActorData);
+
+			DestroyPhysicsHandle(&PhysicsGrips[HandleIndex]);
 			PhysicsGrips.RemoveAt(HandleIndex);
 		}
 
@@ -938,18 +939,26 @@ public:
 	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
 	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip, bool bSkipUnregistering = false);
 	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
-	bool SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, bool bUseHybridMultiplier = false);
+	bool SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, bool bUseHybridMultiplier = false);	
 	bool GetPhysicsJointLength(const FBPActorGripInformation &GrippedActor, UPrimitiveComponent * rootComp, FVector & LocOut);
 
 	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
 	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);
 	bool GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo, int & index);
 	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
-	bool DestroyPhysicsHandle(/*int32 SceneIndex,*/ physx::PxD6Joint** HandleData, physx::PxRigidDynamic** KinActorData);
+	bool DestroyPhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo);
+	
+	// Gets the advanced physics handle settings
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "GetPhysicsHandleSettings"))
+		bool GetPhysicsHandleSettings(UPARAM(ref)const FBPActorGripInformation & Grip, FBPAdvancedPhysicsHandleSettings& PhysicsHandleSettingsOut);
+
+	// Sets the advanced physics handle settings, also automatically updates it
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "SetPhysicsHandleSettings"))
+		bool SetPhysicsHandleSettings(UPARAM(ref)const FBPActorGripInformation& Grip, UPARAM(ref) const FBPAdvancedPhysicsHandleSettings& PhysicsHandleSettingsIn);
 
 	// Creates a physics handle for this grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "SetUpPhysicsHandle"))
-		bool SetUpPhysicsHandle_BP(UPARAM(ref)const FBPActorGripInformation &NewGrip);
+		bool SetUpPhysicsHandle_BP(UPARAM(ref)const FBPActorGripInformation &Grip);
 
 	// Destroys a physics handle for this grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "DestroyPhysicsHandle"))
@@ -967,17 +976,6 @@ public:
 	// Get the grip distance of either the physics handle if there is one, or the difference from the hand to the root component if there isn't
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "GetGripDistance"))
 		bool GetGripDistance_BP(UPARAM(ref)FBPActorGripInformation &Grip, FVector ExpectedLocation, float & CurrentDistance);
-
-	// Creates a physics handle for this grip
-	/*UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "SetAdvancedConstraintSettings"))
-		bool SetAdvancedConstraintSettings(UPARAM(ref)const FBPActorGripInformation& GripToEdit, UPARAM(ref) FBPAdvancedConstraintSettings & AdvancedSettings)
-	{
-		if (FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(GripToEdit))
-		{
-			AdvancedSettings.ApplyAdvancedSettings(*HandleInfo);
-		}
-		return true;
-	}*/
 
 	/** If true, the Position and Orientation args will contain the most recent controller state */
 	virtual bool GripPollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale);
