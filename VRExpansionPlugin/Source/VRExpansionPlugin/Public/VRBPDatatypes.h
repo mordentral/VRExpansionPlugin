@@ -1571,7 +1571,7 @@ public:
 		FBPAdvancedPhysicsHandleAxisSettings SlerpSettings;
 
 
-	// FConstraintSettings  - settings for various things like distance limits
+	// FConstraintSettings // settings for various things like distance limits
 	// Add a deletegate bindable in the motion controller
 
 	bool FillFrom(FBPActorPhysicsHandleInformation* HandleInfo)

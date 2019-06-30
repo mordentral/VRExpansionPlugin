@@ -51,8 +51,8 @@ public class OpenVRExpansionPlugin : ModuleRules
 			new string[]
 			{
 			"SteamVR",
-			"OpenVR",
-			"SteamVRController"
+			"OpenVR"
+			//"SteamVRController"
 			});
 		}
 

@@ -24,21 +24,14 @@
 #include "PhysicsPublic.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/ConstraintDrives.h"
-#include "Physics/PhysicsInterfaceCore.h"
-#include "Physics/PhysicsInterfaceTypes.h"
 #include "PhysicsReplication.h"
 
+// Delete this eventually when the physics interface is fixed
 #if WITH_PHYSX
-//#include "PhysScene_PhysX.h"
-//#include "PhysXSupport.h"
-
 #include "PhysXPublic.h"
 #endif // WITH_PHYSX
 
-//#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 11
-//#else
 #include "Features/IModularFeatures.h"
-//#endif
 
 DEFINE_LOG_CATEGORY(LogVRMotionController);
 //For UE4 Profiler ~ Stat
