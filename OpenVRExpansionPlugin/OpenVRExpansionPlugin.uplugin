@@ -29,10 +29,6 @@
 	],
 	"Plugins": [
 		{
-			"Name": "SteamVR",
-			"Enabled": true
-		},
-		{
 			"Name": "ProceduralMeshComponent",
 			"Enabled": true
 		}

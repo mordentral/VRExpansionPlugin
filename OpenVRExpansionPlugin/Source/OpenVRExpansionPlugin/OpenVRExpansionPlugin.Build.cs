@@ -50,7 +50,7 @@ public class OpenVRExpansionPlugin : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-			"SteamVR",
+			//"SteamVR",
 			"OpenVR"
 			//"SteamVRController"
 			});

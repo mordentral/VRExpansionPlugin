@@ -26,7 +26,7 @@ static FName SteamVRSystemName(TEXT("SteamVR"));
 #if STEAMVR_SUPPORTED_PLATFORM
 #include "openvr.h"
 //#include "ISteamVRPlugin.h"
-#include "SteamVRFunctionLibrary.h"
+//#include "SteamVRFunctionLibrary.h"
 
 #endif // STEAMVR_SUPPORTED_PLATFORM
 
