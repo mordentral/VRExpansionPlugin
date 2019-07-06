@@ -3209,33 +3209,27 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			}
 
 			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+			ETrackingStatus LastTrackingStatus = CurrentTrackingStatus;
 			const bool bNewTrackedState = GripPollControllerState(Position, Orientation, WorldToMeters);
 
-			if (bNewTrackedState)
+			bTracked = bNewTrackedState && CurrentTrackingStatus != ETrackingStatus::NotTracked;
+			if (bTracked)
 			{
 				SetRelativeTransform(FTransform(Orientation, Position, this->RelativeScale3D));
 			}
 
-			// if controller tracking just kicked in 
-			if (bTracked != bNewTrackedState) 
+			// if controller tracking just changed
+			if (LastTrackingStatus != CurrentTrackingStatus)
 			{
-				if (bNewTrackedState)
-				{
-					// Let everyone know that we started tracking
-					OnStartedTracking.Broadcast();
+				OnTrackingChanged.Broadcast(CurrentTrackingStatus);
 
+				if (LastTrackingStatus == ETrackingStatus::NotTracked)
+				{
 					// Handle the display component
 					// #TODO: Don't run if already has a display model, can't access yet
 					if (bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
 						RefreshDisplayComponent();
 				}
-				else
-				{
-					// Controller tracking just ended
-					OnEndedTracking.Broadcast();
-				}
-
-				bTracked = bNewTrackedState;
 			}
 		}
 
@@ -4754,7 +4748,9 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				continue;
 			}
 			
-			CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
+			if(bIsInGameThread)
+				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
+
 			if (MotionController->GetControllerOrientationAndPosition(PlayerIndex, MotionSource, Orientation, Position, WorldToMetersScale))
 			{
 				if (bOffsetByHMD)

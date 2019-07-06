@@ -28,7 +28,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogVRMotionController, Log, All);
 DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
 
 /** Delegate for notification when the controller grips a new object. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRGripControllerOnTrackingEventSignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnTrackingEventSignature, const ETrackingStatus &, NewTrackingStatus);
 
 /** Delegate for notification when the controller grips a new object. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnGripSignature, const FBPActorGripInformation &, GripInformation);
@@ -166,11 +166,7 @@ public:
 
 	// Called when a controller first gets a valid tracked frame
 	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
-		FVRGripControllerOnTrackingEventSignature OnStartedTracking;
-
-	// Called when a controller first gets a valid tracked frame
-	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
-		FVRGripControllerOnTrackingEventSignature OnEndedTracking;
+		FVRGripControllerOnTrackingEventSignature OnTrackingChanged;
 
 	// Called when a object is gripped
 	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
