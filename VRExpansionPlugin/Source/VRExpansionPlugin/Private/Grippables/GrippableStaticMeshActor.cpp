@@ -233,7 +233,10 @@ void AGrippableStaticMeshActor::IsHeld_Implementation(UGripMotionControllerCompo
 void AGrippableStaticMeshActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
 {
 	if (bIsHeld)
+	{
+		VRGripInterfaceSettings.bWasHeld = true;
 		VRGripInterfaceSettings.HoldingController = HoldingController;
+	}
 	else
 		VRGripInterfaceSettings.HoldingController = nullptr;
 

@@ -188,7 +188,10 @@ void AGrippableActor::IsHeld_Implementation(UGripMotionControllerComponent *& Ho
 void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
 {
 	if (bIsHeld)
+	{
+		VRGripInterfaceSettings.bWasHeld = true;
 		VRGripInterfaceSettings.HoldingController = HoldingController;
+	}
 	else
 		VRGripInterfaceSettings.HoldingController = nullptr;
 

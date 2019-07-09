@@ -184,7 +184,10 @@ void UGrippableSkeletalMeshComponent::IsHeld_Implementation(UGripMotionControlle
 void UGrippableSkeletalMeshComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
 {
 	if (bIsHeld)
+	{
+		VRGripInterfaceSettings.bWasHeld = true;
 		VRGripInterfaceSettings.HoldingController = HoldingController;
+	}
 	else
 		VRGripInterfaceSettings.HoldingController = nullptr;
 

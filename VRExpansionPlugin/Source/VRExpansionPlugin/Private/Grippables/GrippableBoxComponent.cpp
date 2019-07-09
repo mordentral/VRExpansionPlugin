@@ -184,7 +184,10 @@ void UGrippableBoxComponent::IsHeld_Implementation(UGripMotionControllerComponen
 void UGrippableBoxComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, bool bIsHeld)
 {
 	if (bIsHeld)
+	{
+		VRGripInterfaceSettings.bWasHeld = true;
 		VRGripInterfaceSettings.HoldingController = HoldingController;
+	}
 	else
 		VRGripInterfaceSettings.HoldingController = nullptr;
 
