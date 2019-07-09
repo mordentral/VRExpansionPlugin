@@ -1448,6 +1448,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		bool bIsHeld; // Set on grip notify, not net serializing
 
+	// If this grip was ever held
+	bool bWasHeld;
+
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		UGripMotionControllerComponent * HoldingController; // Set on grip notify, not net serializing
 
@@ -1470,6 +1473,7 @@ public:
 		PrimarySlotRange(20.0f),
 		//bIsInteractible(false),
 		bIsHeld(false),
+		bWasHeld(false),
 		HoldingController(nullptr)
 	{
 	}
