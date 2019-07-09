@@ -110,7 +110,7 @@ public:
 	// Should we skip attachment replication (vr settings say we are a client auth grip and our owner is locally controlled)
 	inline bool ShouldWeSkipAttachmentReplication() const
 	{
-		if(GetNetMode() < ENetMode::NM_Client)
+		if(!VRGripInterfaceSettings.bWasHeld || GetNetMode() < ENetMode::NM_Client)
 			return false;
 
 		if (VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive ||

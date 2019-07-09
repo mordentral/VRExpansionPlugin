@@ -1433,6 +1433,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		bool bIsHeld; // Set on grip notify, not net serializing
 
+	// If this grip was ever held
+	bool bWasHeld;;
+
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "VRGripInterface")
 		TArray<FBPGripPair> HoldingControllers; // Set on grip notify, not net serializing
 
@@ -1451,7 +1454,8 @@ public:
 		ConstraintBreakDistance(0.0f),
 		SecondarySlotRange(20.0f),
 		PrimarySlotRange(20.0f),
-		bIsHeld(false)
+		bIsHeld(false),
+		bWasHeld(false)
 	{
 	}
 };

@@ -239,6 +239,8 @@ void AGrippableStaticMeshActor::SetHeld_Implementation(UGripMotionControllerComp
 			GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
 			CeaseReplicationBlocking();
 		}
+
+		VRGripInterfaceSettings.bWasHeld = true;
 	}
 	else
 	{

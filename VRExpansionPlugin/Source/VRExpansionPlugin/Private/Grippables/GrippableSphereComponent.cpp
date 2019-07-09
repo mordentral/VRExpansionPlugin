@@ -204,6 +204,7 @@ void UGrippableSphereComponent::SetHeld_Implementation(UGripMotionControllerComp
 			bReplicateMovement = false;
 		}
 
+		VRGripInterfaceSettings.bWasHeld = true;
 		VRGripInterfaceSettings.HoldingControllers.AddUnique(FBPGripPair(HoldingController, GripID));
 	}
 	else
