@@ -71,6 +71,14 @@ public:
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
 		FVRClientAuthReplicationData ClientAuthReplicationData;
 
+	// Add this to client side physics replication (until coming to rest or timeout period is hit)
+	UFUNCTION(BlueprintCallable, Category = "Networking")
+		bool AddToClientReplicationBucket();
+
+	// Remove this from client side physics replication
+	UFUNCTION(BlueprintCallable, Category = "Networking")
+		bool RemoveFromClientReplicationBucket();
+
 	UFUNCTION()
 	bool PollReplicationEvent();
 
@@ -106,17 +114,15 @@ public:
 		bool bAllowIgnoringAttachOnOwner;
 
 	// Should we skip attachment replication (vr settings say we are a client auth grip and our owner is locally controlled)
-	inline bool ShouldWeSkipAttachmentReplication() const
+	inline bool ShouldWeSkipAttachmentReplication(bool bConsiderHeld = true) const
 	{
-		if (!VRGripInterfaceSettings.bWasHeld || GetNetMode() < ENetMode::NM_Client)
+		if ((bConsiderHeld && !VRGripInterfaceSettings.bWasHeld) || GetNetMode() < ENetMode::NM_Client)
 			return false;
 
 		if (VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive ||
 			VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
 		{
 			return HasLocalNetOwner();
-			//const APawn* MyPawn = Cast<APawn>(GetOwner());
-			//return (MyPawn ? MyPawn->IsLocallyControlled() : false);
 		}
 		else
 			return false;

@@ -185,36 +185,54 @@ void AGrippableActor::IsHeld_Implementation(TArray<FBPGripPair> & HoldingControl
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
 }
 
+bool AGrippableActor::AddToClientReplicationBucket()
+{
+	if (ShouldWeSkipAttachmentReplication(false))
+	{
+		// The subsystem automatically removes entries with the same function signature so its safe to just always add here
+		GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
+		ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
+
+		if (UWorld * World = GetWorld())
+			ClientAuthReplicationData.TimeAtInitialThrow = World->GetTimeSeconds();
+
+		return true;
+	}
+
+	return false;
+}
+
+bool AGrippableActor::RemoveFromClientReplicationBucket()
+{
+	if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
+	{
+		GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
+		CeaseReplicationBlocking();
+		return true;
+	}
+
+	return false;
+}
+
 void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, uint8 GripID, bool bIsHeld)
 {
 	if (bIsHeld)
 	{
 		VRGripInterfaceSettings.HoldingControllers.AddUnique(FBPGripPair(HoldingController, GripID));
-
-		if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
-		{
-			GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
-			CeaseReplicationBlocking();
-		}
+		RemoveFromClientReplicationBucket();
 
 		VRGripInterfaceSettings.bWasHeld = true;
 	}
 	else
 	{
 		VRGripInterfaceSettings.HoldingControllers.Remove(FBPGripPair(HoldingController, GripID));
-
-		if (ClientAuthReplicationData.bUseClientAuthThrowing && ShouldWeSkipAttachmentReplication())
+		if (ClientAuthReplicationData.bUseClientAuthThrowing && ShouldWeSkipAttachmentReplication(false))
 		{
 			if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(GetRootComponent()))
 			{
 				if (PrimComp->IsSimulatingPhysics())
 				{
-					// The subsystem automatically removes entries with the same function signature so its safe to just always add here
-					GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
-					ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
-
-					if (UWorld * World = GetWorld())
-						ClientAuthReplicationData.TimeAtInitialThrow = World->GetTimeSeconds();
+					AddToClientReplicationBucket();
 				}
 			}
 		}
@@ -260,7 +278,7 @@ bool AGrippableActor::PollReplicationEvent()
 		if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(RootComponent))
 		{
 			// Need to clamp to a max time since start, to handle cases with conflicting collisions
-			if (PrimComp->IsSimulatingPhysics() && ShouldWeSkipAttachmentReplication())
+			if (PrimComp->IsSimulatingPhysics() && ShouldWeSkipAttachmentReplication(false))
 			{
 				FRepMovementVR ClientAuthMovementRep;
 				if (ClientAuthMovementRep.GatherActorsMovement(this))
@@ -306,7 +324,7 @@ bool AGrippableActor::PollReplicationEvent()
 				}
 
 				// Lets clamp the ping to a min / max value just in case
-				float clampedPing = FMath::Clamp(PlayerState->ExactPing, 0.0f, 1000.0f);
+				float clampedPing = FMath::Clamp(PlayerState->ExactPing * 0.001f, 0.0f, 1000.0f);
 				OurWorld->GetTimerManager().SetTimer(ClientAuthReplicationData.ResetReplicationHandle, this, &AGrippableActor::CeaseReplicationBlocking, clampedPing, false);
 			}
 		}
@@ -317,21 +335,22 @@ bool AGrippableActor::PollReplicationEvent()
 
 void AGrippableActor::CeaseReplicationBlocking()
 {
-	ClientAuthReplicationData.bIsCurrentlyClientAuth = false;
-	if (UWorld * OurWorld = GetWorld())
+	if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
+		ClientAuthReplicationData.bIsCurrentlyClientAuth = false;
+
+	if (ClientAuthReplicationData.ResetReplicationHandle.IsValid())
 	{
-		OurWorld->GetTimerManager().ClearTimer(ClientAuthReplicationData.ResetReplicationHandle);
+		if (UWorld * OurWorld = GetWorld())
+		{
+			OurWorld->GetTimerManager().ClearTimer(ClientAuthReplicationData.ResetReplicationHandle);
+		}
 	}
 }
 
 void AGrippableActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
-	{
-		GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
-	}
 
-	CeaseReplicationBlocking();
+	RemoveFromClientReplicationBucket();
 
 	// Call all grip scripts begin play events so they can perform any needed logic
 	for (UVRGripScriptBase* Script : GripLogicScripts)
@@ -398,7 +417,7 @@ void AGrippableActor::OnRep_ReplicateMovement()
 
 void AGrippableActor::OnRep_ReplicatedMovement()
 {
-	if (ClientAuthReplicationData.bIsCurrentlyClientAuth && ShouldWeSkipAttachmentReplication())
+	if (ClientAuthReplicationData.bIsCurrentlyClientAuth && ShouldWeSkipAttachmentReplication(false))
 	{
 		return;
 	}
@@ -408,7 +427,7 @@ void AGrippableActor::OnRep_ReplicatedMovement()
 
 void AGrippableActor::PostNetReceivePhysicState()
 {
-	if (VRGripInterfaceSettings.bIsHeld && bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication())
+	if (VRGripInterfaceSettings.bIsHeld && bAllowIgnoringAttachOnOwner && ShouldWeSkipAttachmentReplication(false))
 	{
 		return;
 	}
