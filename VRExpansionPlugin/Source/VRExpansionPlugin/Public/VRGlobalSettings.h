@@ -380,12 +380,12 @@ public:
 					if (ActionName == NAME_None /*|| Mapping.ActionMappings.Num() < 1*/)
 						continue;
 
-					// Clear all actions that use our action name first
-					for (int32 ActionIndex = InputSettings->ActionMappings.Num() - 1; ActionIndex >= 0; --ActionIndex)
+					const TArray<FInputActionKeyMapping>& ActionMappings = InputSettings->GetActionMappings();
+					for (int32 ActionIndex = ActionMappings.Num() - 1; ActionIndex >= 0; --ActionIndex)
 					{
-						if (InputSettings->ActionMappings[ActionIndex].ActionName == ActionName)
+						if (ActionMappings[ActionIndex].ActionName == ActionName)
 						{
-							InputSettings->ActionMappings.RemoveAt(ActionIndex);
+							InputSettings->RemoveActionMapping(ActionMappings[ActionIndex], false);
 							// we don't break because the mapping may have been in the array twice
 						}
 					}
@@ -395,7 +395,7 @@ public:
 					{
 						// By default the key mappings don't have an action name, add them here
 						KeyMapping.ActionName = ActionName;
-						InputSettings->ActionMappings.Add(KeyMapping);
+						InputSettings->AddActionMapping(KeyMapping, false);
 					}
 				}
 			}
@@ -412,12 +412,14 @@ public:
 					if (AxisName == NAME_None /*|| Mapping.AxisMappings.Num() < 1*/)
 						continue;
 
+					const TArray<FInputAxisKeyMapping>& AxisMappings = InputSettings->GetAxisMappings();
+
 					// Clear all Axis's that use our Axis name first
-					for (int32 AxisIndex = InputSettings->AxisMappings.Num() - 1; AxisIndex >= 0; --AxisIndex)
+					for (int32 AxisIndex = AxisMappings.Num() - 1; AxisIndex >= 0; --AxisIndex)
 					{
-						if (InputSettings->AxisMappings[AxisIndex].AxisName == AxisName)
+						if (AxisMappings[AxisIndex].AxisName == AxisName)
 						{
-							InputSettings->AxisMappings.RemoveAt(AxisIndex);
+							InputSettings->RemoveAxisMapping(AxisMappings[AxisIndex], false);
 							// we don't break because the mapping may have been in the array twice
 						}
 					}
@@ -427,7 +429,7 @@ public:
 					{
 						// By default the key mappings don't have an Axis name, add them here
 						KeyMapping.AxisName = AxisName;
-						InputSettings->AxisMappings.Add(KeyMapping);
+						InputSettings->AddAxisMapping(KeyMapping, false);
 					}
 				}
 			}

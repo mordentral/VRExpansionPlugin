@@ -20,7 +20,7 @@ DEFINE_LOG_CATEGORY(LogVRRootComponent);
 
 DECLARE_CYCLE_STAT(TEXT("VRRootMovement"), STAT_VRRootMovement, STATGROUP_VRRootComponent);
 
-typedef TArray<FOverlapInfo, TInlineAllocator<3>> TInlineOverlapInfoArray;
+typedef TArray<const FOverlapInfo*, TInlineAllocator<8>> TInlineOverlapPointerArray;
 
 // Helper to see if two components can possibly generate overlaps with each other.
 FORCEINLINE_DEBUGGABLE static bool CanComponentsGenerateOverlap(const UPrimitiveComponent* MyComponent, /*const*/ UPrimitiveComponent* OtherComp)
@@ -32,6 +32,22 @@ FORCEINLINE_DEBUGGABLE static bool CanComponentsGenerateOverlap(const UPrimitive
 		&& MyComponent->GetCollisionResponseToComponent(OtherComp) == ECR_Overlap;
 }
 
+// Predicate to identify components from overlaps array that can overlap
+struct FPredicateFilterCanOverlap
+{
+	FPredicateFilterCanOverlap(const UPrimitiveComponent& OwningComponent)
+		: MyComponent(OwningComponent)
+	{
+	}
+
+	bool operator() (const FOverlapInfo& Info) const
+	{
+		return CanComponentsGenerateOverlap(&MyComponent, Info.OverlapInfo.GetComponent());
+	}
+
+private:
+	const UPrimitiveComponent& MyComponent;
+};
 
 // Predicate to remove components from overlaps array that can no longer overlap
 struct FPredicateFilterCannotOverlap
@@ -49,6 +65,56 @@ struct FPredicateFilterCannotOverlap
 private:
 	const UPrimitiveComponent& MyComponent;
 };
+
+// Helper to initialize an array to point to data members in another array.
+template <class ElementType, class AllocatorType1, class AllocatorType2>
+FORCEINLINE_DEBUGGABLE static void GetPointersToArrayData(TArray<const ElementType*, AllocatorType1>& Pointers, const TArray<ElementType, AllocatorType2>& DataArray)
+{
+	const int32 NumItems = DataArray.Num();
+	Pointers.SetNumUninitialized(NumItems);
+	for (int32 i = 0; i < NumItems; i++)
+	{
+		Pointers[i] = &(DataArray[i]);
+	}
+}
+
+template <class ElementType, class AllocatorType1>
+FORCEINLINE_DEBUGGABLE static void GetPointersToArrayData(TArray<const ElementType*, AllocatorType1>& Pointers, const TArrayView<const ElementType>& DataArray)
+{
+	const int32 NumItems = DataArray.Num();
+	Pointers.SetNumUninitialized(NumItems);
+	for (int32 i = 0; i < NumItems; i++)
+	{
+		Pointers[i] = &(DataArray[i]);
+	}
+}
+
+// Helper to initialize an array to point to data members in another array which satisfy a predicate.
+template <class ElementType, class AllocatorType1, class AllocatorType2, typename PredicateT>
+FORCEINLINE_DEBUGGABLE static void GetPointersToArrayDataByPredicate(TArray<const ElementType*, AllocatorType1>& Pointers, const TArray<ElementType, AllocatorType2>& DataArray, PredicateT Predicate)
+{
+	Pointers.Reserve(Pointers.Num() + DataArray.Num());
+	for (const ElementType& Item : DataArray)
+	{
+		if (Invoke(Predicate, Item))
+		{
+			Pointers.Add(&Item);
+		}
+	}
+}
+
+template <class ElementType, class AllocatorType1, typename PredicateT>
+FORCEINLINE_DEBUGGABLE static void GetPointersToArrayDataByPredicate(TArray<const ElementType*, AllocatorType1>& Pointers, const TArrayView<const ElementType>& DataArray, PredicateT Predicate)
+{
+	Pointers.Reserve(Pointers.Num() + DataArray.Num());
+	for (const ElementType& Item : DataArray)
+	{
+		if (Invoke(Predicate, Item))
+		{
+			Pointers.Add(&Item);
+		}
+	}
+}
 
 static int32 bEnableFastOverlapCheck = 1;
 
@@ -127,6 +193,12 @@ struct FFastOverlapInfoCompare
 			&& MyBaseInfo.GetBodyIndex() == Info.GetBodyIndex();
 	}
 
+	bool operator() (const FOverlapInfo* Info)
+	{
+		return MyBaseInfo.OverlapInfo.Component.HasSameIndexAndSerialNumber(Info->OverlapInfo.Component)
+			&& MyBaseInfo.GetBodyIndex() == Info->GetBodyIndex();
+	}
+
 private:
 	const FOverlapInfo& MyBaseInfo;
 
@@ -138,6 +210,13 @@ template<class AllocatorType>
 FORCEINLINE_DEBUGGABLE int32 IndexOfOverlapFast(const TArray<FOverlapInfo, AllocatorType>& OverlapArray, const FOverlapInfo& SearchItem)
 {
 	return OverlapArray.IndexOfByPredicate(FFastOverlapInfoCompare(SearchItem));
+}
+
+// Version that works with arrays of pointers and pointers to search items.
+template<class AllocatorType>
+FORCEINLINE_DEBUGGABLE int32 IndexOfOverlapFast(const TArray<const FOverlapInfo*, AllocatorType>& OverlapPtrArray, const FOverlapInfo* SearchItem)
+{
+	return OverlapPtrArray.IndexOfByPredicate(FFastOverlapInfoCompare(*SearchItem));
 }
 
 // Helper for adding an FOverlapInfo uniquely to an Array, using IndexOfOverlapFast and knowing that at least one overlap is valid (non-null).
@@ -226,8 +305,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, bool bAllowSimulatingCo
 
 	return false;
 }
-
-static bool ShouldIgnoreOverlapResult(const UWorld* World, const AActor* ThisActor, const UPrimitiveComponent& ThisComponent, const AActor* OtherActor, const UPrimitiveComponent& OtherComponent, bool bCheckOverlapFlags)
+static FORCEINLINE_DEBUGGABLE bool ShouldIgnoreOverlapResult(const UWorld* World, const AActor* ThisActor, const UPrimitiveComponent& ThisComponent, const AActor* OtherActor, const UPrimitiveComponent& OtherComponent, bool bCheckOverlapFlags)
 {
 	// Don't overlap with self
 	if (&ThisComponent == &OtherComponent)
@@ -830,7 +908,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	bool bMoved = false;
 	bool bIncludesOverlapsAtEnd = false;
 	bool bRotationOnly = false;
-	TArray<FOverlapInfo> PendingOverlaps;
+	TInlineOverlapInfoArray PendingOverlaps;
 	AActor* const Actor = GetOwner();
 	FVector OrigLocation = GetComponentLocation();
 
@@ -1020,22 +1098,24 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 		{
 			if (bIncludesOverlapsAtEnd)
 			{
-				TArray<FOverlapInfo> OverlapsAtEndLocation;
-				const TArray<FOverlapInfo>* OverlapsAtEndLocationPtr = nullptr; // When non-null, used as optimization to avoid work in UpdateOverlaps.
+				TInlineOverlapInfoArray OverlapsAtEndLocation;
+				bool bHasEndOverlaps = false;
 				if (bRotationOnly)
 				{
-					OverlapsAtEndLocationPtr = ConvertRotationOverlapsToCurrentOverlaps(OverlapsAtEndLocation, GetOverlapInfos());
+					bHasEndOverlaps = ConvertRotationOverlapsToCurrentOverlaps(OverlapsAtEndLocation, OverlappingComponents);
 				}
 				else
 				{
-					OverlapsAtEndLocationPtr = ConvertSweptOverlapsToCurrentOverlaps(OverlapsAtEndLocation, PendingOverlaps, 0, /*GetComponentLocation()*/OffsetComponentToWorld.GetLocation(), GetComponentQuat());
+					bHasEndOverlaps = ConvertSweptOverlapsToCurrentOverlaps(OverlapsAtEndLocation, PendingOverlaps, 0, GetComponentLocation(), GetComponentQuat());
 				}
-
-				UpdateOverlaps(&PendingOverlaps, true, OverlapsAtEndLocationPtr);
+				TOverlapArrayView PendingOverlapsView(PendingOverlaps);
+				TOverlapArrayView OverlapsAtEndView(OverlapsAtEndLocation);
+				UpdateOverlaps(&PendingOverlapsView, true, bHasEndOverlaps ? &OverlapsAtEndView : nullptr);
 			}
 			else
 			{
-				UpdateOverlaps(&PendingOverlaps, true, nullptr);
+				TOverlapArrayView PendingOverlapsView(PendingOverlaps);
+				UpdateOverlaps(&PendingOverlapsView, true, nullptr);
 			}
 		}
 	}
@@ -1073,7 +1153,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	return bMoved;
 }
 
-bool UVRRootComponent::UpdateOverlapsImpl(const TArray<FOverlapInfo>* NewPendingOverlaps, bool bDoNotifies, const TArray<FOverlapInfo>* OverlapsAtEndLocation)
+bool UVRRootComponent::UpdateOverlapsImpl(const TOverlapArrayView* NewPendingOverlaps, bool bDoNotifies, const TOverlapArrayView* OverlapsAtEndLocation)
 {
 	//SCOPE_CYCLE_COUNTER(STAT_UpdateOverlaps);
 	bool bCanSkipUpdateOverlaps = true;
@@ -1096,52 +1176,58 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TArray<FOverlapInfo>* NewPending
 			if (NewPendingOverlaps)
 			{	 
 				// Note: BeginComponentOverlap() only triggers overlaps where GetGenerateOverlapEvents() is true on both components.
-				for (int32 Idx = 0; Idx < NewPendingOverlaps->Num(); ++Idx)
+				const int32 NumNewPendingOverlaps = NewPendingOverlaps->Num();
+				for (int32 Idx = 0; Idx < NumNewPendingOverlaps; ++Idx)
 				{
 					BeginComponentOverlap((*NewPendingOverlaps)[Idx], bDoNotifies);
 				}
 			}
 
-			const TArray<FOverlapInfo>* OverlapsAtEndLocationPtr;
+			const TOverlapArrayView* OverlapsAtEndLocationPtr = OverlapsAtEndLocation;
 
-			// TODO: Filter this better so it runs even less often?
+			// #TODO: Filter this better so it runs even less often?
 			// Its not that bad currently running off of NewPendingOverlaps
 			// It forces checking for end location overlaps again if none are registered, just in case
 			// the capsule isn't setting things correctly.
+			
 			TArray<FOverlapInfo> OverlapsAtEnd;
+			TOverlapArrayView OverlapsAtEndLoc;
 			if ((!OverlapsAtEndLocation || OverlapsAtEndLocation->Num() < 1) && NewPendingOverlaps && NewPendingOverlaps->Num() > 0)
 			{
-				OverlapsAtEndLocationPtr = ConvertSweptOverlapsToCurrentOverlaps(OverlapsAtEnd, *NewPendingOverlaps, 0, OffsetComponentToWorld.GetLocation(), GetComponentQuat());
+				ConvertSweptOverlapsToCurrentOverlaps(OverlapsAtEnd, *NewPendingOverlaps, 0, OffsetComponentToWorld.GetLocation(), GetComponentQuat());
+				OverlapsAtEndLoc = TOverlapArrayView(OverlapsAtEnd);
+				OverlapsAtEndLocationPtr = &OverlapsAtEndLoc;
 			}
-			else
-				OverlapsAtEndLocationPtr = OverlapsAtEndLocation;
 
-			// now generate full list of new touches, so we can compare to existing list and
-			// determine what changed
-			TInlineOverlapInfoArray NewOverlappingComponents;
+			// now generate full list of new touches, so we can compare to existing list and determine what changed
 
-			// If pending kill, we should not generate any new overlaps
-			if (!IsPendingKill())
+			TInlineOverlapInfoArray OverlapMultiResult;
+			TInlineOverlapPointerArray NewOverlappingComponentPtrs;
+
+			// If pending kill, we should not generate any new overlaps. Also not if overlaps were just disabled during BeginComponentOverlap.
+			if (!IsPendingKill() && GetGenerateOverlapEvents())
 			{
 				// 4.17 converted to auto cvar
 				static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
 				// Might be able to avoid testing for new overlaps at the end location.
-				if (OverlapsAtEndLocationPtr != NULL && CVarAllowCachedOverlaps && PrevTransform.Equals(GetComponentTransform()))
+				if (OverlapsAtEndLocationPtr != nullptr && CVarAllowCachedOverlaps->GetInt() > 0 && PrevTransform.Equals(GetComponentTransform()))
 				{
 					UE_LOG(LogVRRootComponent, VeryVerbose, TEXT("%s->%s Skipping overlap test!"), *GetNameSafe(GetOwner()), *GetName());
-					NewOverlappingComponents = *OverlapsAtEndLocationPtr;
-
-					// BeginComponentOverlap may have disabled what we thought were valid overlaps at the end (collision response or overlap flags could change).
-					// Or we have overlaps from a scoped update that didn't require overlap events, but we need to remove those now.
-					if (NewPendingOverlaps && NewPendingOverlaps->Num() > 0)
+					const bool bCheckForInvalid = (NewPendingOverlaps && NewPendingOverlaps->Num() > 0);
+					if (bCheckForInvalid)
 					{
-						NewOverlappingComponents.RemoveAllSwap(FPredicateFilterCannotOverlap(*this), false);
+						// BeginComponentOverlap may have disabled what we thought were valid overlaps at the end (collision response or overlap flags could change).
+						GetPointersToArrayDataByPredicate(NewOverlappingComponentPtrs, *OverlapsAtEndLocationPtr, FPredicateFilterCanOverlap(*this));
+					}
+					else
+					{
+						GetPointersToArrayData(NewOverlappingComponentPtrs, *OverlapsAtEndLocationPtr);
 					}
 				}
 				else
 				{
 					UE_LOG(LogVRRootComponent, VeryVerbose, TEXT("%s->%s Performing overlaps!"), *GetNameSafe(GetOwner()), *GetName());
-					UWorld* const MyWorld = MyActor->GetWorld();
+					UWorld* const MyWorld = GetWorld();
 					TArray<FOverlapResult> Overlaps;
 					// note this will optionally include overlaps with components in the same actor (depending on bIgnoreChildren). 
 
@@ -1159,26 +1245,30 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TArray<FOverlapInfo>* NewPending
 						UPrimitiveComponent* const HitComp = Result.Component.Get();
 						if (HitComp && (HitComp != this) && HitComp->GetGenerateOverlapEvents())
 						{
-							if (!ShouldIgnoreOverlapResult(MyWorld, MyActor, *this, Result.GetActor(), *HitComp,  true))
+							const bool bCheckOverlapFlags = false; // Already checked above
+							if (!ShouldIgnoreOverlapResult(MyWorld, MyActor, *this, Result.GetActor(), *HitComp, bCheckOverlapFlags))
 							{
-								NewOverlappingComponents.Add(FOverlapInfo(HitComp, Result.ItemIndex));		// don't need to add unique unless the overlap check can return dupes
+								OverlapMultiResult.Emplace(HitComp, Result.ItemIndex);		// don't need to add unique unless the overlap check can return dupes
 							}
 						}
 					}
+
+					// Fill pointers to overlap results. We ensure below that OverlapMultiResult stays in scope so these pointers remain valid.
+					GetPointersToArrayData(NewOverlappingComponentPtrs, OverlapMultiResult);
 				}
 			}
 
+			// If we have any overlaps from BeginComponentOverlap() (from now or in the past), see if anything has changed by filtering NewOverlappingComponents
 			if (OverlappingComponents.Num() > 0)
 			{
-				// make a copy of the old that we can manipulate to avoid n^2 searching later
-				TInlineOverlapInfoArray OldOverlappingComponents;
+				TInlineOverlapPointerArray OldOverlappingComponentPtrs;
 				if (bIgnoreChildren)
 				{
-					Algo::CopyIf(OverlappingComponents, OldOverlappingComponents, FPredicateOverlapHasDifferentActor(*MyActor));
+					GetPointersToArrayDataByPredicate(OldOverlappingComponentPtrs, OverlappingComponents, FPredicateOverlapHasDifferentActor(*MyActor));
 				}
 				else
 				{
-					OldOverlappingComponents = OverlappingComponents;
+					GetPointersToArrayData(OldOverlappingComponentPtrs, OverlappingComponents);
 				}
 
 				// Now we want to compare the old and new overlap lists to determine 
@@ -1186,49 +1276,61 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TArray<FOverlapInfo>* NewPending
 				// what overlaps are in new and not in old (need begin overlap notifies).
 				// We do this by removing common entries from both lists, since overlapping status has not changed for them.
 				// What is left over will be what has changed.
-				for (int32 CompIdx = 0; CompIdx < OldOverlappingComponents.Num() && NewOverlappingComponents.Num() > 0; ++CompIdx)
+				for (int32 CompIdx = 0; CompIdx < OldOverlappingComponentPtrs.Num() && NewOverlappingComponentPtrs.Num() > 0; ++CompIdx)
 				{
-					// RemoveSingleSwap is ok, since it is not necessary to maintain order
+					// RemoveAtSwap is ok, since it is not necessary to maintain order
 					const bool bAllowShrinking = false;
 
-
-					const FOverlapInfo& SearchItem = OldOverlappingComponents[CompIdx];
-					const int32 NewElementIdx = IndexOfOverlapFast(NewOverlappingComponents, SearchItem);
+					const FOverlapInfo* SearchItem = OldOverlappingComponentPtrs[CompIdx];
+					const int32 NewElementIdx = IndexOfOverlapFast(NewOverlappingComponentPtrs, SearchItem);
 					if (NewElementIdx != INDEX_NONE)
 					{
-						NewOverlappingComponents.RemoveAtSwap(NewElementIdx, 1, bAllowShrinking);
-						OldOverlappingComponents.RemoveAtSwap(CompIdx, 1, bAllowShrinking);
+						NewOverlappingComponentPtrs.RemoveAtSwap(NewElementIdx, 1, bAllowShrinking);
+						OldOverlappingComponentPtrs.RemoveAtSwap(CompIdx, 1, bAllowShrinking);
 						--CompIdx;
 					}
 				}
 
-				// OldOverlappingComponents now contains only previous overlaps that are confirmed to no longer be valid.
-				for (auto CompIt = OldOverlappingComponents.CreateIterator(); CompIt; ++CompIt)
+				const int32 NumOldOverlaps = OldOverlappingComponentPtrs.Num();
+				if (NumOldOverlaps > 0)
 				{
-					const FOverlapInfo& OtherOverlap = *CompIt;
-					if (OtherOverlap.OverlapInfo.Component.IsValid())
+					// Now we have to make a copy of the overlaps because we can't keep pointers to them, that list is about to be manipulated in EndComponentOverlap().
+					TInlineOverlapInfoArray OldOverlappingComponents;
+					OldOverlappingComponents.SetNumUninitialized(NumOldOverlaps);
+					for (int32 i = 0; i < NumOldOverlaps; i++)
 					{
-						EndComponentOverlap(OtherOverlap, bDoNotifies, false);
+						OldOverlappingComponents[i] = *(OldOverlappingComponentPtrs[i]);
 					}
-					else
-					{
-						// Remove stale item. Reclaim memory only if it's getting large, to try to avoid churn but avoid bloating component's memory usage.
-						const bool bAllowShrinking = (OverlappingComponents.Max() >= 24);
 
-						const int32 StaleElementIndex = IndexOfOverlapFast(OverlappingComponents, OtherOverlap);
-						if (StaleElementIndex != INDEX_NONE)
+					// OldOverlappingComponents now contains only previous overlaps that are confirmed to no longer be valid.
+					for (const FOverlapInfo& OtherOverlap : OldOverlappingComponents)
+					{
+						if (OtherOverlap.OverlapInfo.Component.IsValid())
 						{
-							OverlappingComponents.RemoveAtSwap(StaleElementIndex, 1, bAllowShrinking);
+							EndComponentOverlap(OtherOverlap, bDoNotifies, false);
+						}
+						else
+						{
+							// Remove stale item. Reclaim memory only if it's getting large, to try to avoid churn but avoid bloating component's memory usage.
+							const bool bAllowShrinking = (OverlappingComponents.Max() >= 24);
+							const int32 StaleElementIndex = IndexOfOverlapFast(OverlappingComponents, OtherOverlap);
+							if (StaleElementIndex != INDEX_NONE)
+							{
+								OverlappingComponents.RemoveAtSwap(StaleElementIndex, 1, bAllowShrinking);
+							}
 						}
 					}
 				}
 			}
 
+			// Ensure these arrays are still in scope, because we kept pointers to them in NewOverlappingComponentPtrs.
+			static_assert(sizeof(OverlapMultiResult) != 0, "Variable must be in this scope");
+			static_assert(sizeof(OverlapsAtEndLocationPtr) != 0, "Variable must be in this scope");
+
 			// NewOverlappingComponents now contains only new overlaps that didn't exist previously.
-			for (auto CompIt = NewOverlappingComponents.CreateIterator(); CompIt; ++CompIt)
+			for (const FOverlapInfo* NewOverlap : NewOverlappingComponentPtrs)
 			{
-				const FOverlapInfo& OtherOverlap = *CompIt;
-				BeginComponentOverlap(OtherOverlap, bDoNotifies);
+				BeginComponentOverlap(*NewOverlap, bDoNotifies);
 			}
 		}
 	}
@@ -1269,13 +1371,14 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TArray<FOverlapInfo>* NewPending
 }
 
 
-const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverlaps(
-	TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& SweptOverlaps, int32 SweptOverlapsIndex,
+template<typename AllocatorType>
+bool UVRRootComponent::ConvertSweptOverlapsToCurrentOverlaps(
+	TArray<FOverlapInfo, AllocatorType>& OverlapsAtEndLocation, const TOverlapArrayView& SweptOverlaps, int32 SweptOverlapsIndex,
 	const FVector& EndLocation, const FQuat& EndRotationQuat)
 {
 	checkSlow(SweptOverlapsIndex >= 0);
 
-	const TArray<FOverlapInfo>* Result = nullptr;
+	bool bResult = false;
 	const bool bForceGatherOverlaps = !ShouldCheckOverlapFlagToQueueOverlaps(*this);
 
 	static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
@@ -1291,7 +1394,9 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 
 				// Check components we hit during the sweep, keep only those still overlapping
 				const FCollisionQueryParams UnusedQueryParams(NAME_None, FCollisionQueryParams::GetUnknownStatId());
-				for (int32 Index = SweptOverlapsIndex; Index < SweptOverlaps.Num(); ++Index)
+				const int32 NumSweptOverlaps = SweptOverlaps.Num();
+				OverlapsAtEndLocation.Reserve(OverlapsAtEndLocation.Num() + NumSweptOverlaps);
+				for (int32 Index = SweptOverlapsIndex; Index < NumSweptOverlaps; ++Index)
 				{
 					const FOverlapInfo& OtherOverlap = SweptOverlaps[Index];
 					UPrimitiveComponent* OtherPrimitive = OtherOverlap.OverlapInfo.GetComponent();
@@ -1300,12 +1405,12 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 						if (OtherPrimitive->bMultiBodyOverlap)
 						{
 							// Not handled yet. We could do it by checking every body explicitly and track each body index in the overlap test, but this seems like a rare need.
-							return nullptr;
+							return false;
 						}
 						else if (Cast<USkeletalMeshComponent>(OtherPrimitive) || Cast<USkeletalMeshComponent>(this))
 						{
 							// SkeletalMeshComponent does not support this operation, and would return false in the test when an actual query could return true.
-							return nullptr;
+							return false;
 						}
 						else if (OtherPrimitive->ComponentOverlapComponent(this, EndLocation, EndRotationQuat, UnusedQueryParams))
 						{
@@ -1319,27 +1424,47 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertSweptOverlapsToCurrentOverl
 				checkfSlow(OverlapsAtEndLocation.FindByPredicate(FPredicateOverlapHasSameActor(*Actor)) == nullptr,
 					TEXT("Child overlaps should not be included in the SweptOverlaps() array in UPrimitiveComponent::ConvertSweptOverlapsToCurrentOverlaps()."));
 
-				Result = &OverlapsAtEndLocation;
+				bResult = true;
 			}
 			else
 			{
 				if (SweptOverlaps.Num() == 0 && AreAllCollideableDescendantsRelative())
 				{
 					// Add overlaps with components in this actor.
-					GetOverlapsWithActor(Actor, OverlapsAtEndLocation);
-					Result = &OverlapsAtEndLocation;
+					GetOverlapsWithActor_Template(Actor, OverlapsAtEndLocation);
+					bResult = true;
 				}
 			}
 		}
 	}
 
-	return Result;
+	return bResult;
 }
 
 
-const TArray<FOverlapInfo>* UVRRootComponent::ConvertRotationOverlapsToCurrentOverlaps(TArray<FOverlapInfo>& OverlapsAtEndLocation, const TArray<FOverlapInfo>& CurrentOverlaps)
+template<typename AllocatorType>
+bool UVRRootComponent::GetOverlapsWithActor_Template(const AActor* Actor, TArray<FOverlapInfo, AllocatorType>& OutOverlaps) const
 {
-	const TArray<FOverlapInfo>* Result = nullptr;
+	const int32 InitialCount = OutOverlaps.Num();
+	if (Actor)
+	{
+		for (int32 OverlapIdx = 0; OverlapIdx < OverlappingComponents.Num(); ++OverlapIdx)
+		{
+			UPrimitiveComponent const* const PrimComp = OverlappingComponents[OverlapIdx].OverlapInfo.Component.Get();
+			if (PrimComp && (PrimComp->GetOwner() == Actor))
+			{
+				OutOverlaps.Add(OverlappingComponents[OverlapIdx]);
+			}
+		}
+	}
+
+	return InitialCount != OutOverlaps.Num();
+}
+
+template<typename AllocatorType>
+bool UVRRootComponent::ConvertRotationOverlapsToCurrentOverlaps(TArray<FOverlapInfo, AllocatorType>& OutOverlapsAtEndLocation, const TOverlapArrayView& CurrentOverlaps)
+{
+	bool bResult = false;
 	const bool bForceGatherOverlaps = !ShouldCheckOverlapFlagToQueueOverlaps(*this);
 
 	static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
@@ -1352,13 +1477,14 @@ const TArray<FOverlapInfo>* UVRRootComponent::ConvertRotationOverlapsToCurrentOv
 			if (bEnableFastOverlapCheck)
 			{
 				// Add all current overlaps that are not children. Children test for their own overlaps after we update our own, and we ignore children in our own update.
-				Algo::CopyIf(CurrentOverlaps, OverlapsAtEndLocation, FPredicateOverlapHasDifferentActor(*Actor));
-				Result = &OverlapsAtEndLocation;
+				OutOverlapsAtEndLocation.Reserve(OutOverlapsAtEndLocation.Num() + CurrentOverlaps.Num());
+				Algo::CopyIf(CurrentOverlaps, OutOverlapsAtEndLocation, FPredicateOverlapHasDifferentActor(*Actor));
+				bResult = true;
 			}
 		}
 	}
 
-	return Result;
+	return bResult;
 }
 
 bool UVRRootComponent::IsLocallyControlled() const

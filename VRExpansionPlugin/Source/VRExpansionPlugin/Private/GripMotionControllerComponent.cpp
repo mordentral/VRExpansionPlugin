@@ -4043,9 +4043,9 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 			// Remove event registration
 			if (!bSkipUnregistering)
 			{
-				if (rBodyInstance->OnRecalculatedMassProperties.IsBoundToObject(this))
+				if (rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 				{
-					rBodyInstance->OnRecalculatedMassProperties.RemoveAll(this);
+					rBodyInstance->OnRecalculatedMassProperties().RemoveAll(this);
 				}
 			}
 
@@ -4222,9 +4222,9 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		}
 
 		// Bind to further updates in order to keep it alive
-		if (!rBodyInstance->OnRecalculatedMassProperties.IsBoundToObject(this))
+		if (!rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 		{
-			rBodyInstance->OnRecalculatedMassProperties.AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
+			rBodyInstance->OnRecalculatedMassProperties().AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
 		}
 
 		KinPose = trans;
@@ -4244,7 +4244,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			ActorParams.bQueryOnly = false;// true; // True or false?
 			ActorParams.bStatic = false;
 			ActorParams.Scene = FPhysicsInterface::GetCurrentScene(Actor);
-			HandleInfo->KinActorData2 = FPhysicsInterface::CreateActor(ActorParams);
+			FPhysicsInterface::CreateActor(ActorParams, HandleInfo->KinActorData2);
 			
 			if (HandleInfo->KinActorData2.IsValid())
 			{

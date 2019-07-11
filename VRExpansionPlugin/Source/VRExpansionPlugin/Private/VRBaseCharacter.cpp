@@ -345,7 +345,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 						if (ClientData->SavedMoves.Num())
 						{
 							// Ack our most recent move, we don't want to start sending old moves after un seating.
-							ClientData->AckMove(ClientData->SavedMoves.Num() - 1);
+							ClientData->AckMove(ClientData->SavedMoves.Num() - 1, *charMovement);
 						}
 					}
 
