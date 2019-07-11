@@ -715,7 +715,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	}
 
 	// Perform actual movement
-	if ((MyWorld->GetWorldSettings()->GetPauserPlayerState() == NULL) && (DeltaTime > 0.f))
+	if ((MyWorld->GetWorldSettings()->Pauser == NULL) && (DeltaTime > 0.f))
 	{
 		if (PC)
 		{
@@ -4124,7 +4124,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		}
 	}
 
-	ClientData->AckMove(MoveIndex, *this);
+	ClientData->AckMove(MoveIndex);
 
 	FVector WorldShiftedNewLocation;
 	//  Received Location is relative to dynamic base

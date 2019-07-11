@@ -151,10 +151,10 @@ bool UVRGripScriptBase::CallRemoteFunction(UFunction * Function, void * Parms, F
 	return bProcessed;
 }
 
-int32 UVRGripScriptBase::GetFunctionCallspace(UFunction * Function, FFrame * Stack)
+int32 UVRGripScriptBase::GetFunctionCallspace(UFunction * Function, void * Parameters, FFrame * Stack)
 {
 	AActor* Owner = GetOwner();// Cast<AActor>(GetOuter());
-	return (Owner ? Owner->GetFunctionCallspace(Function, Stack) : FunctionCallspace::Local);
+	return (Owner ? Owner->GetFunctionCallspace(Function, Parameters, Stack) : FunctionCallspace::Local);
 }
 
 FTransform UVRGripScriptBase::GetGripTransform(const FBPActorGripInformation &Grip, const FTransform & ParentTransform)
