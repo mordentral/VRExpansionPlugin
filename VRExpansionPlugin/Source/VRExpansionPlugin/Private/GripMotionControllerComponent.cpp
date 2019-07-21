@@ -4133,8 +4133,16 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	{	
 		return false;
 	}
-	
+
+
 	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
+	
+	if (!HandleInfo->KinActorData2.IsValid())
+	{
+		// Reset the mass properties, this avoids an issue with some weird replication issues
+		// We only do this on initial grip
+		rBodyInstance->UpdateMassProperties();
+	}
 
 	/*if (NewGrip.GrippedBoneName != NAME_None)
 	{
