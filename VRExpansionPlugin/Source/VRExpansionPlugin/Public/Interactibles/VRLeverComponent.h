@@ -26,11 +26,16 @@
 UENUM(Blueprintable)
 enum class EVRInteractibleLeverAxis : uint8
 {
+	/* Rotates only towards the X Axis */
 	Axis_X,
+	/* Rotates only towards the Y Axis */
 	Axis_Y,
+	/* Rotates only towards the Z Axis */
 	Axis_Z,
+	/* Rotates freely on the XY Axis' */
 	Axis_XY,
-	FlightStick_XY
+	/* Acts like a flight stick, with AllCurrentLeverAngles being the positive / negative of the current full angle (yaw based on initial grip delta) */
+	FlightStick_XY,
 };
 
 UENUM(Blueprintable)
@@ -133,6 +138,15 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		float LeverReturnSpeed;
+
+	// If true then we will blend the values of the XY axis' by the AngleThreshold, lowering Pitch/Yaw influence based on how far from leaning into the axis that the lever is
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Flight Stick Settings")
+		bool bBlendAxisValuesByAngleThreshold;
+
+	// The angle threshold to blend around, default of 90.0 blends 0.0 to 1.0 smoothly across entire sweep
+	// A value of 45 would blend it to 0 halfway rotated to the other axis, while 180 would still leave half the influence when fully rotated out of facing
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Flight Stick Settings", meta = (ClampMin = "1.0", ClampMax = "360.0", UIMin = "1.0", UIMax = "360.0"))
+		float AngleThreshold;
 
 	// Number of frames to average momentum across for the release momentum (avoids quick waggles)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0", ClampMax = "12", UIMin = "0", UIMax = "12"))

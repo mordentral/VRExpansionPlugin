@@ -43,6 +43,10 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	LeverMomentumFriction = 5.0f;
 	MaxLeverMomentum = 180.0f;
 	FramesToAverage = 3;
+
+	bBlendAxisValuesByAngleThreshold = false;
+	AngleThreshold = 90.0f;
+
 	LastLeverAngle = 0.0f;
 
 	bSendLeverEventsDuringLerp = false;
@@ -753,8 +757,18 @@ void UVRLeverComponent::CalculateCurrentAngle(FTransform & CurrentTransform)
 		FullCurrentAngle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(UpVec, FVector::UpVector)));
 		CurrentLeverAngle = FMath::RoundToFloat(FullCurrentAngle);
 
-		AllCurrentLeverAngles.Roll = FMath::RoundToFloat(FMath::Sign(UpVec.Y) * FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(FVector(0.0f, UpVec.Y, UpVec.Z), FVector::UpVector))));
-		AllCurrentLeverAngles.Pitch = FMath::RoundToFloat(FMath::Sign(UpVec.X) * FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(FVector(UpVec.X, 0.0f, UpVec.Z), FVector::UpVector))));
+		AllCurrentLeverAngles.Roll = FMath::Sign(UpVec.Y) * FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(FVector(0.0f, UpVec.Y, UpVec.Z), FVector::UpVector)));
+		AllCurrentLeverAngles.Pitch = FMath::Sign(UpVec.X) * FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(FVector(UpVec.X, 0.0f, UpVec.Z), FVector::UpVector)));
+
+		if (bBlendAxisValuesByAngleThreshold)
+		{
+			FVector ProjectedLoc = FVector(UpVec.X, UpVec.Y, 0.0f).GetSafeNormal();
+			AllCurrentLeverAngles.Pitch *= FMath::Clamp(1.0f - (FMath::Abs(FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(ProjectedLoc, FMath::Sign(UpVec.X) * FVector::ForwardVector)))) / AngleThreshold), 0.0f, 1.0f);
+			AllCurrentLeverAngles.Roll *= FMath::Clamp(1.0f - (FMath::Abs(FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(ProjectedLoc, FMath::Sign(UpVec.Y) * FVector::RightVector)))) / AngleThreshold), 0.0f, 1.0f);
+		}
+
+		AllCurrentLeverAngles.Roll = FMath::RoundToFloat(AllCurrentLeverAngles.Roll);
+		AllCurrentLeverAngles.Pitch = FMath::RoundToFloat(AllCurrentLeverAngles.Pitch);
 
 		if (LeverRotationAxis == EVRInteractibleLeverAxis::FlightStick_XY)
 		{
