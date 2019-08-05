@@ -1179,8 +1179,7 @@ bool UGripMotionControllerComponent::GripActor(
 	if (!bIsLocalGrip)
 	{
 		int32 Index = GrippedObjects.Add(newActorGrip);
-		if(Index != INDEX_NONE)
-			NotifyGrip(GrippedObjects[Index]);
+		NotifyGrip(newActorGrip);
 	}
 	else
 	{
@@ -1188,9 +1187,8 @@ bool UGripMotionControllerComponent::GripActor(
 
 		if(GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			Server_NotifyLocalGripAddedOrChanged(newActorGrip);
-
-		if (Index != INDEX_NONE)
-			NotifyGrip(LocallyGrippedObjects[Index]);
+		
+		NotifyGrip(newActorGrip);
 	}
 
 	return true;
@@ -1402,8 +1400,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	if (!bIsLocalGrip)
 	{
 		int32 Index = GrippedObjects.Add(newComponentGrip);
-		if (Index != INDEX_NONE)
-			NotifyGrip(GrippedObjects[Index]);
+		NotifyGrip(newComponentGrip);
 	}
 	else
 	{
@@ -1412,8 +1409,7 @@ bool UGripMotionControllerComponent::GripComponent(
 		if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newComponentGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			Server_NotifyLocalGripAddedOrChanged(newComponentGrip);
 
-		if (Index != INDEX_NONE)
-			NotifyGrip(LocallyGrippedObjects[Index]);
+		NotifyGrip(newComponentGrip);
 	}
 
 	return true;
