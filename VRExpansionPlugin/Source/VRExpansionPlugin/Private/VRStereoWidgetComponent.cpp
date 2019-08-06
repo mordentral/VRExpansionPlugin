@@ -63,12 +63,15 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	, bLastVisible(false)
 {
 	bShouldCreateProxy = true;
-	bLastWidgetDrew = false;
 	bUseEpicsWorldLockedStereo = false;
 	// Replace quad size with DrawSize instead
 	//StereoLayerQuadSize = DrawSize;
 
 	PrimaryComponentTick.TickGroup = TG_DuringPhysics;
+
+	bIsDirty = true;
+	bDirtyRenderTarget = false;
+	bIsSleeping = false;
 	//Texture = nullptr;
 }
 
@@ -102,6 +105,14 @@ void UVRStereoWidgetComponent::OnUnregister()
 	Super::OnUnregister();
 }
 
+
+void UVRStereoWidgetComponent::DrawWidgetToRenderTarget(float DeltaTime)
+{
+	Super::DrawWidgetToRenderTarget(DeltaTime);
+
+	bDirtyRenderTarget = true;
+}
+
 void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 
@@ -109,6 +120,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	bool bWidgetDrew = ShouldDrawWidget();
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	bool bIsVisible = IsVisible() && !bIsSleeping && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
 
 	if (StereoWidgetCvars::ForceNoStereoWithVRWidgets)
 	{
@@ -137,7 +150,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		{
 			bShouldCreateProxy = true;
 			MarkRenderStateDirty(); // Recreate
-			if (LayerId)
+			if (LayerId)	
 			{
 				if (GEngine->StereoRenderingDevice.IsValid())
 				{
@@ -177,9 +190,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	if (StereoLayers == nullptr)
 		return;
 
-	FTransform Transform;
+	FTransform Transform = LastTransform;
 	// Never true until epic fixes back end code
-	// #TODO: FIXME when they FIXIT (Slated 4.17)
 	if (false)//StereoLayerType == SLT_WorldLocked)
 	{
 		Transform = GetComponentTransform();
@@ -188,7 +200,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	{
 		Transform = GetRelativeTransform();
 	}
-	else // World locked here now
+	else if(bIsVisible) // World locked here now
 	{
 
 		if (bUseEpicsWorldLockedStereo)
@@ -202,16 +214,6 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			// Fix this when stereo world locked works again
 			// Thanks to mitch for the temp work around idea
 
-			// Get first local player controller
-			/*APlayerController* PC = nullptr;
-			for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
-			{
-				if (Iterator->Get()->IsLocalPlayerController())
-				{
-					PC = Iterator->Get();
-					break;
-				}
-			}*/
 			APlayerController* PC = nullptr;
 			if (UWorld * CurWorld = GetWorld())
 			{
@@ -257,18 +259,24 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 
 	// If the transform changed dirty the layer and push the new transform
-	if (!bIsDirty && (bLastVisible != bVisible || bWidgetDrew != bLastWidgetDrew || FMemory::Memcmp(&LastTransform, &Transform, sizeof(Transform)) != 0))
+	
+	if (!bIsDirty)
 	{
-		bIsDirty = true;
+		if (bLastVisible != bIsVisible)
+		{
+			bIsDirty = true;
+		}
+		else if (bDirtyRenderTarget || FMemory::Memcmp(&LastTransform, &Transform, sizeof(Transform)) != 0)
+		{
+			bIsDirty = true;
+		}
 	}
 
-	bool bCurrVisible = bVisible;
-	if (!RenderTarget || !RenderTarget->Resource || !bWidgetDrew)
+	bool bCurrVisible = bIsVisible;
+	if (!RenderTarget || !RenderTarget->Resource)
 	{
 		bCurrVisible = false;
 	}
-
-	bLastWidgetDrew = bWidgetDrew;
 
 	if (bIsDirty)
 	{
@@ -285,15 +293,6 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			IStereoLayers::FLayerDesc LayerDsec;
 			LayerDsec.Priority = Priority;
 			LayerDsec.QuadSize = FVector2D(DrawSize);//StereoLayerQuadSize;
-
-			/*if (DrawSize.X != DrawSize.Y)
-			{
-				// This might be a SteamVR only thing, it appears to always make the quad the largest of the two on the back end
-				if (DrawSize.X > DrawSize.Y) 
-					LayerDsec.QuadSize.Y = LayerDsec.QuadSize.X;
-				else
-					LayerDsec.QuadSize.X = LayerDsec.QuadSize.Y;
-			}*/
 
 			LayerDsec.UVRect = UVRect;
 			LayerDsec.Transform = Transform;
@@ -343,19 +342,6 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			}break;
 			}
 
-			/*switch (StereoLayerType)
-			{
-			case SLT_WorldLocked:
-				LayerDsec.PositionType = IStereoLayers::WorldLocked;
-				break;
-			case SLT_TrackerLocked:
-				LayerDsec.PositionType = IStereoLayers::TrackerLocked;
-				break;
-			case SLT_FaceLocked:
-				LayerDsec.PositionType = IStereoLayers::FaceLocked;
-				break;
-			}*/
-
 			switch (GeometryMode)
 			{
 			case EWidgetGeometryMode::Cylinder:
@@ -369,24 +355,6 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			}break;
 			}
 
-			// Can't use the cubemap with widgets currently, maybe look into it?
-			/*switch (StereoLayerShape)
-			{
-			case SLSH_QuadLayer:
-				LayerDsec.ShapeType = IStereoLayers::QuadLayer;
-				break;
-
-			case SLSH_CylinderLayer:
-				LayerDsec.ShapeType = IStereoLayers::CylinderLayer;
-				break;
-
-			case SLSH_CubemapLayer:
-				LayerDsec.ShapeType = IStereoLayers::CubemapLayer;
-				break;
-			default:
-				break;
-			}*/
-
 			if (LayerId)
 			{
 				StereoLayers->SetLayerDesc(LayerId, LayerDsec);
@@ -396,16 +364,13 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				LayerId = StereoLayers->CreateLayer(LayerDsec);
 			}
 		}
-		LastTransform = Transform;
-		bLastVisible = bCurrVisible;
-		bIsDirty = false;
+
 	}
 
-	if (bTextureNeedsUpdate && LayerId)
-	{
-		StereoLayers->MarkTextureForUpdate(LayerId);
-		bTextureNeedsUpdate = false;
-	}
+	LastTransform = Transform;
+	bLastVisible = bCurrVisible;
+	bIsDirty = false;
+	bDirtyRenderTarget = false;
 #endif
 }
 

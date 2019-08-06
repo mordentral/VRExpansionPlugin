@@ -31,7 +31,7 @@ public:
 	void BeginDestroy() override;
 	void OnUnregister() override;
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
-
+	virtual void DrawWidgetToRenderTarget(float DeltaTime) override;
 	virtual TStructOnScope<FActorComponentInstanceData>  GetComponentInstanceData() const override;
 	void ApplyVRComponentInstanceData(class FVRStereoWidgetComponentInstanceData* WidgetInstanceData);
 
@@ -52,6 +52,10 @@ public:
 	// If true, use Epics world locked stereo implementation instead of my own temp solution
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		bool bUseEpicsWorldLockedStereo;
+
+	// If true will not render or update until false
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+		bool bIsSleeping;
 
 	/**
 	* Change the layer's render priority, higher priorities render on top of lower priorities
@@ -121,11 +125,11 @@ public:
 		int32 Priority;
 
 	bool bShouldCreateProxy;
-	bool bLastWidgetDrew;
 
 private:
 	/** Dirty state determines whether the stereo layer needs updating **/
 	bool bIsDirty;
+	bool bDirtyRenderTarget;
 
 	/** Texture needs to be marked for update **/
 	bool bTextureNeedsUpdate;
