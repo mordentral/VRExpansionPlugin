@@ -236,10 +236,10 @@ public:
 		float BreakDistance;
 
 	// Should we deny gripping on this object
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (ScriptName = "IsDenyGripping"))
 		bool bDenyGripping;
 
-	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
+	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface", meta = (ScriptName = "IsCurrentlyHeld"))
 		bool bIsHeld; // Set on grip notify, not net serializing
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
