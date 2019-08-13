@@ -33,6 +33,7 @@ void UGS_LerpToHand::OnGrip_Implementation(UGripMotionControllerComponent * Grip
 	if (MinDistanceForLerp > 0.0f && Distance < MinDistanceForLerp)
 	{
 		// Don't init
+		OnLerpToHandFinished.Broadcast();
 		return;
 	}
 	else
