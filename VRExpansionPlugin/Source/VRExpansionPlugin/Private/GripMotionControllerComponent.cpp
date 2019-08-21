@@ -4033,7 +4033,7 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 
 	if (root)
 	{
-		if (FBodyInstance * rBodyInstance = root->GetBodyInstance())
+		if (FBodyInstance * rBodyInstance = root->GetBodyInstance(Grip.GrippedBoneName))
 		{
 			// #TODO: Should this be done on drop instead?
 			// Remove event registration
@@ -4125,7 +4125,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	// Get the PxRigidDynamic that we want to grab.
 	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
-	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance())
+	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !rBodyInstance->ActorHandle.IsValid())
 	{	
 		return false;
 	}
@@ -4223,12 +4223,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			FVector ComLoc = FPhysicsInterface::GetComTransform_AssumesLocked(Actor).GetLocation();
 			trans.SetLocation(ComLoc);
 			HandleInfo->COMPosition = FTransform(rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(ComLoc));
-		}
-
-		// Bind to further updates in order to keep it alive
-		if (!rBodyInstance->OnRecalculatedMassProperties.IsBoundToObject(this))
-		{
-			rBodyInstance->OnRecalculatedMassProperties.AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
 		}
 
 		KinPose = trans;
@@ -4432,6 +4426,12 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 		}
 	});
+
+	// Bind to further updates in order to keep it alive
+	if (!rBodyInstance->OnRecalculatedMassProperties.IsBoundToObject(this))
+	{
+		rBodyInstance->OnRecalculatedMassProperties.AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
+	}
 
 	return true;
 }
