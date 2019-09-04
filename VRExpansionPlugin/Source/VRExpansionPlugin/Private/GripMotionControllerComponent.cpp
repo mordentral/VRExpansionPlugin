@@ -245,20 +245,46 @@ void UGripMotionControllerComponent::BeginPlay()
 }
 
 void UGripMotionControllerComponent::CreateRenderState_Concurrent()
-{
-	Super::CreateRenderState_Concurrent();
-	/*GripRenderThreadRelativeTransform = GetRelativeTransform();
-	GripRenderThreadComponentScale = GetComponentScale();*/
-	GripRenderThreadProfileTransform = CurrentControllerProfileTransform;
+{	
+	// Don't bother updating this stuff if we aren't local or using them
+	if (bHasAuthority && !bDisableLowLatencyUpdate && bIsActive)
+	{
+		GripRenderThreadRelativeTransform = GetRelativeTransform();
+		GripRenderThreadComponentScale = GetComponentScale();
+		GripRenderThreadProfileTransform = CurrentControllerProfileTransform;
+	}
+
+	Super::Super::CreateRenderState_Concurrent();
 }
 
 void UGripMotionControllerComponent::SendRenderTransform_Concurrent()
 {
-	GripRenderThreadRelativeTransform = GetRelativeTransform();
-	GripRenderThreadComponentScale = GetComponentScale();
-	GripRenderThreadProfileTransform = CurrentControllerProfileTransform;
+	// Don't bother updating this stuff if we aren't local or using them
+	if (bHasAuthority && !bDisableLowLatencyUpdate && bIsActive)
+	{
+		struct FPrimitiveUpdateRenderThreadRelativeTransformParams
+		{
+			FTransform RenderThreadRelativeTransform;
+			FVector RenderThreadComponentScale;
+			FTransform RenderThreadProfileTransform;
+		};
 
-	Super::SendRenderTransform_Concurrent();
+		FPrimitiveUpdateRenderThreadRelativeTransformParams UpdateParams;
+		UpdateParams.RenderThreadRelativeTransform = GetRelativeTransform();
+		UpdateParams.RenderThreadComponentScale = GetComponentScale();
+		UpdateParams.RenderThreadProfileTransform = CurrentControllerProfileTransform;
+
+		ENQUEUE_RENDER_COMMAND(UpdateRTRelativeTransformCommand)(
+			[UpdateParams, this](FRHICommandListImmediate& RHICmdList)
+			{
+				GripRenderThreadRelativeTransform = UpdateParams.RenderThreadRelativeTransform;
+				GripRenderThreadComponentScale = UpdateParams.RenderThreadComponentScale;
+				GripRenderThreadProfileTransform = UpdateParams.RenderThreadProfileTransform;
+			});
+	}
+
+	// Skip bases motion controllers implementation, we don't want to double update to the render thread
+	Super::Super::SendRenderTransform_Concurrent();
 }
 
 FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::GetPhysicsGrip(const FBPActorGripInformation & GripInfo)
@@ -297,17 +323,25 @@ FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::CreatePhysics
 void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	 
+	 // Don't ever replicate these, they are getting replaced by my custom send anyway
+	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeLocation);
+	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeRotation);
+	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeScale3D);
 
 	// Skipping the owner with this as the owner will use the controllers location directly
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, ReplicatedControllerTransform, COND_SkipOwner);
 	DOREPLIFETIME(UGripMotionControllerComponent, GrippedObjects);
 	DOREPLIFETIME(UGripMotionControllerComponent, ControllerNetUpdateRate);
+	DOREPLIFETIME(UGripMotionControllerComponent, bSmoothReplicatedMotion);	
+	DOREPLIFETIME(UGripMotionControllerComponent, bReplicateWithoutTracking);
+	
 
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, LocallyGrippedObjects, COND_SkipOwner);
 //	DOREPLIFETIME(UGripMotionControllerComponent, bReplicateControllerTransform);
 }
 
-void UGripMotionControllerComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+/*void UGripMotionControllerComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
 {
 	Super::PreReplication(ChangedPropertyTracker);
 
@@ -315,7 +349,7 @@ void UGripMotionControllerComponent::PreReplication(IRepChangedPropertyTracker &
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, false);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, false);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, false);
-}
+}*/
 
 void UGripMotionControllerComponent::Server_SendControllerTransform_Implementation(FBPVRComponentPosRep NewTransform)
 {
@@ -3266,6 +3300,19 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	}
 	else
 	{
+		// Clear the view extension if active after unpossessing, just in case
+		if (GripViewExtension.IsValid())
+		{
+			{
+				// This component could be getting accessed from the render thread so it needs to wait
+				// before clearing MotionControllerComponent and allowing the destructor to continue
+				FScopeLock ScopeLock(&CritSect);
+				GripViewExtension->MotionControllerComponent = NULL;
+			}
+
+			GripViewExtension.Reset();
+		}
+
 		if (bLerpingPosition)
 		{
 			ControllerNetUpdateCount += DeltaTime;
@@ -4039,9 +4086,9 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 			// Remove event registration
 			if (!bSkipUnregistering)
 			{
-				if (rBodyInstance->OnRecalculatedMassProperties.IsBoundToObject(this))
+				if (rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 				{
-					rBodyInstance->OnRecalculatedMassProperties.RemoveAll(this);
+					rBodyInstance->OnRecalculatedMassProperties().RemoveAll(this);
 				}
 			}
 
@@ -4129,7 +4176,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	{	
 		return false;
 	}
-
 
 	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
 	
@@ -4242,7 +4288,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			ActorParams.bQueryOnly = false;// true; // True or false?
 			ActorParams.bStatic = false;
 			ActorParams.Scene = FPhysicsInterface::GetCurrentScene(Actor);
-			HandleInfo->KinActorData2 = FPhysicsInterface::CreateActor(ActorParams);
+			FPhysicsInterface::CreateActor(ActorParams, HandleInfo->KinActorData2);
 			
 			if (HandleInfo->KinActorData2.IsValid())
 			{
@@ -4428,9 +4474,9 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	});
 
 	// Bind to further updates in order to keep it alive
-	if (!rBodyInstance->OnRecalculatedMassProperties.IsBoundToObject(this))
+	if (!rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 	{
-		rBodyInstance->OnRecalculatedMassProperties.AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
+		rBodyInstance->OnRecalculatedMassProperties().AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
 	}
 
 	return true;
@@ -5243,7 +5289,7 @@ void FExpandedLateUpdateManager::CacheSceneInfo(USceneComponent* Component)
 	if (PrimitiveComponent && PrimitiveComponent->SceneProxy)
 	{
 		FPrimitiveSceneInfo* PrimitiveSceneInfo = PrimitiveComponent->SceneProxy->GetPrimitiveSceneInfo();
-		if (PrimitiveSceneInfo)
+		if (PrimitiveSceneInfo && PrimitiveSceneInfo->IsIndexValid())
 		{
 			LateUpdatePrimitives[LateUpdateGameWriteIndex].Emplace(PrimitiveSceneInfo, PrimitiveSceneInfo->GetIndex());
 		}

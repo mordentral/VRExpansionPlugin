@@ -142,7 +142,7 @@ public:
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void InitializeComponent() override;
 	virtual void OnUnregister() override;
-	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+	//virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 	virtual void Deactivate() override;
 	virtual void BeginDestroy() override;
 	virtual void BeginPlay() override;

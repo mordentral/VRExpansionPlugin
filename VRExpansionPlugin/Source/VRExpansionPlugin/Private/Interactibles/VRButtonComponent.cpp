@@ -44,6 +44,7 @@ void UVRButtonComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePrope
 
 	DOREPLIFETIME(UVRButtonComponent, InitialRelativeTransform);
 	DOREPLIFETIME(UVRButtonComponent, bReplicateMovement);
+	DOREPLIFETIME(UVRButtonComponent, StateChangeAuthorityType);
 	DOREPLIFETIME_CONDITION(UVRButtonComponent, bButtonState, COND_InitialOnly);
 }
 

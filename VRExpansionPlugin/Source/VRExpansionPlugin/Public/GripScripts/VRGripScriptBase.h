@@ -94,9 +94,7 @@ public:
 	// doesn't currently compile in editor builds, not sure why the linker is screwing up there but works elsewhere
 	//virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker);
 	virtual bool CallRemoteFunction(UFunction * Function, void * Parms, FOutParmRec * OutParms, FFrame * Stack) override;
-	virtual int32 GetFunctionCallspace(UFunction * Function, void * Parameters, FFrame * Stack) override;
-
-
+	virtual int32 GetFunctionCallspace(UFunction * Function, FFrame * Stack) override;
 
 	// FTickableGameObject functions
 	

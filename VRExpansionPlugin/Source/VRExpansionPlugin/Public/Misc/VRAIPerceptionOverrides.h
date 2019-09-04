@@ -45,10 +45,14 @@ public:
 		FAISenseAffiliationFilter DetectionByAffiliation;
 
 	/** If not an InvalidRange (which is the default), we will always be able to see the target that has already been seen if they are within this range of their last seen location. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sense", config, meta = (UIMin = 0.0, ClampMin = 0.0))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sense", config)
 		float AutoSuccessRangeFromLastSeenLocation;
 
 	virtual TSubclassOf<UAISense> GetSenseImplementation() const override;
+
+#if WITH_EDITOR
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
+#endif // WITH_EDITOR
 
 #if WITH_GAMEPLAY_DEBUGGER
 	virtual void DescribeSelfToGameplayDebugger(const UAIPerceptionComponent* PerceptionComponent, FGameplayDebuggerCategory* DebuggerCategory) const;
@@ -225,6 +229,7 @@ protected:
 	void OnListenerRemovedImpl(const FPerceptionListener& UpdatedListener);
 
 	void GenerateQueriesForListener(const FPerceptionListener& Listener, const FDigestedSightProperties& PropertyDigest);
+	void GenerateQueriesForListener(const FPerceptionListener& Listener, const FDigestedSightProperties& PropertyDigest, TFunctionRef<void(FAISightQueryVR&)> OnAddedFunc);
 
 	enum FQueriesOperationPostProcess
 	{
@@ -232,10 +237,13 @@ protected:
 		Sort
 	};
 	void RemoveAllQueriesByListener(const FPerceptionListener& Listener, FQueriesOperationPostProcess PostProcess);
+	void RemoveAllQueriesByListener(const FPerceptionListener& Listener, FQueriesOperationPostProcess PostProcess, TFunctionRef<void(const FAISightQueryVR&)> OnRemoveFunc);
 	void RemoveAllQueriesToTarget(const FAISightTargetVR::FTargetId& TargetId, FQueriesOperationPostProcess PostProcess);
+	void RemoveAllQueriesToTarget(const FAISightTargetVR::FTargetId& TargetId, FQueriesOperationPostProcess PostProcess, TFunctionRef<void(const FAISightQueryVR&)> OnRemoveFunc);
 
 	/** returns information whether new LoS queries have been added */
 	bool RegisterTarget(AActor& TargetActor, FQueriesOperationPostProcess PostProcess);
+	bool RegisterTarget(AActor& TargetActor, FQueriesOperationPostProcess PostProcess, TFunctionRef<void(FAISightQueryVR&)> OnAddedFunc);
 
 	FORCEINLINE void SortQueries() { SightQueryQueue.Sort(FAISightQueryVR::FSortPredicate()); }
 

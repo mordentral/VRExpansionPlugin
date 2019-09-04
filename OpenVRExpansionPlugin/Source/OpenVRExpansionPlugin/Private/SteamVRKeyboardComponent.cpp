@@ -53,9 +53,10 @@ return;
 		return;
 	}
 
-	vr::HmdError HmdErr;
-	//vr::IVROverlay * VROverlay = (vr::IVROverlay*)(*UOpenVRExpansionFunctionLibrary::VRGetGenericInterfaceFn)(vr::IVROverlay_Version, &HmdErr);
-	vr::IVROverlay * VROverlay = (vr::IVROverlay*)vr::VR_GetGenericInterface(vr::IVROverlay_Version, &HmdErr);
+	vr::IVROverlay* VROverlay = vr::VROverlay();
+
+	
+	vr::IVRInput* VRInput = vr::VRInput();
 
 	if (!VROverlay)
 	{
