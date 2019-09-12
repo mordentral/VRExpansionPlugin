@@ -6,7 +6,7 @@
 #include "Engine/Canvas.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/Console.h"
-#include "UnrealString.h"
+#include "Containers/UnrealString.h"
 #include "Core/Public/Misc/OutputDeviceHelper.h"
 #include "VRLogComponent.generated.h"
 

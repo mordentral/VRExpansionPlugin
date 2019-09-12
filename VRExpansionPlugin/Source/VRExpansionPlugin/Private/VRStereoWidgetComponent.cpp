@@ -120,6 +120,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	bool bWidgetDrew = ShouldDrawWidget();
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
 	bool bIsVisible = IsVisible() && !bIsSleeping && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
 
 	if (StereoWidgetCvars::ForceNoStereoWithVRWidgets)
