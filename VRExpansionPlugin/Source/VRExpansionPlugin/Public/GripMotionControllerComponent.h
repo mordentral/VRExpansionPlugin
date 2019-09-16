@@ -366,7 +366,7 @@ public:
 
 				if (bSendReleaseEvent)
 				{
-					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					if (Grip.GrippedObject && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGripRelease(Grip.GrippedObject, OldGripInfo->SecondaryGripInfo.SecondaryAttachment, Grip);
 
@@ -386,7 +386,7 @@ public:
 
 				if (bSendGripEvent)
 				{
-					if (Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					if (Grip.GrippedObject && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
 
