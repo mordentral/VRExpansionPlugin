@@ -18,7 +18,6 @@
 class UGripMotionControllerComponent;
 class UVRGripScriptBase;
 
-
 // Custom movement modes for the characters
 UENUM(BlueprintType)
 enum class EVRCustomMovementMode : uint8
@@ -451,7 +450,8 @@ struct TStructOpsTypeTraits< FTransform_NetQuantize > : public TStructOpsTypeTra
 {
 	enum
 	{
-		WithNetSerializer = true
+		WithNetSerializer = true,
+		WithNetSharedSerialization = true,
 	};
 };
 
@@ -619,7 +619,8 @@ struct TStructOpsTypeTraits< FBPVRComponentPosRep > : public TStructOpsTypeTrait
 {
 	enum
 	{
-		WithNetSerializer = true
+		WithNetSerializer = true,
+		WithNetSharedSerialization = true,
 	};
 };
 

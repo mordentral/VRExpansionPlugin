@@ -19,6 +19,70 @@ DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRSeatThresholdChangedSignature, bool, bIsWithinThreshold, float, ToThresholdScaler);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRPlayerStateReplicatedSignature, const APlayerState *, NewPlayerState);
 
+USTRUCT()
+struct VREXPANSIONPLUGIN_API FRepMovementVRCharacter : public FRepMovement
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Transient)
+		bool bJustTeleported;
+
+	UPROPERTY(Transient)
+		AActor* Owner;
+
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		FRepMovement BaseSettings = Owner ? Owner->ReplicatedMovement : FRepMovement();
+
+		// pack bitfield with flags
+		uint8 Flags = (bSimulatedPhysicSleep << 0) | (bRepPhysics << 1) | (bJustTeleported << 2);
+		Ar.SerializeBits(&Flags, 3);
+		bSimulatedPhysicSleep = (Flags & (1 << 0)) ? 1 : 0;
+		bRepPhysics = (Flags & (1 << 1)) ? 1 : 0;
+		bJustTeleported = (Flags & (1 << 2)) ? 1 : 0;
+
+		bOutSuccess = true;
+
+		// update location, rotation, linear velocity
+		bOutSuccess &= SerializeQuantizedVector(Ar, Location, BaseSettings.LocationQuantizationLevel);
+
+		switch (BaseSettings.RotationQuantizationLevel)
+		{
+		case ERotatorQuantization::ByteComponents:
+		{
+			Rotation.SerializeCompressed(Ar);
+			break;
+		}
+
+		case ERotatorQuantization::ShortComponents:
+		{
+			Rotation.SerializeCompressedShort(Ar);
+			break;
+		}
+		}
+
+		bOutSuccess &= SerializeQuantizedVector(Ar, LinearVelocity, BaseSettings.VelocityQuantizationLevel);
+
+		// update angular velocity if required
+		if (bRepPhysics)
+		{
+			bOutSuccess &= SerializeQuantizedVector(Ar, AngularVelocity, BaseSettings.VelocityQuantizationLevel);
+		}
+
+		return true;
+	}
+};
+
+template<>
+struct TStructOpsTypeTraits<FRepMovementVRCharacter> : public TStructOpsTypeTraitsBase2<FRepMovementVRCharacter>
+{
+	enum
+	{
+		WithNetSerializer = true,
+		WithNetSharedSerialization = true,
+	};
+};
+
 USTRUCT(Blueprintable)
 struct VREXPANSIONPLUGIN_API FVRSeatedCharacterInfo
 {
@@ -171,6 +235,16 @@ public:
 	AVRBaseCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	virtual void OnRep_PlayerState() override;
+
+	/** Used for replication of our RootComponent's position and velocity */
+	UPROPERTY(ReplicatedUsing = OnRep_ReplicatedMovement)
+		struct FRepMovementVRCharacter ReplicatedMovementVR;
+
+	bool bFlagTeleported;
+
+	// Injecting our custom teleport notification
+	virtual void OnRep_ReplicatedMovement() override;
+	virtual void GatherCurrentMovement() override;
 
 	// Give my users direct access to an event for when the player state has changed
 	UPROPERTY(BlueprintAssignable, Category = "BaseVRCharacter")
@@ -329,8 +403,9 @@ public:
 	void ZeroToSeatInformation()
 	{
 		SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
-		LeftMotionController->PostTeleportMoveGrippedObjects();
-		RightMotionController->PostTeleportMoveGrippedObjects();
+		NotifyOfTeleport();
+		//LeftMotionController->PostTeleportMoveGrippedObjects();
+		//RightMotionController->PostTeleportMoveGrippedObjects();
 	}
 	
 	// Called from the movement component
@@ -430,7 +505,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 		virtual FVector GetTeleportLocation(FVector OriginalLocation);
 
-	UFUNCTION(Reliable, NetMulticast, Category = "VRGrip")
+	UFUNCTION(/*Reliable, NetMulticast, */Category = "VRGrip")
 		virtual void NotifyOfTeleport();
 
 
