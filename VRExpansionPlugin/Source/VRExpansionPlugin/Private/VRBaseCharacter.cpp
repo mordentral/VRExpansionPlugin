@@ -98,6 +98,9 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	VRReplicateCapsuleHeight = false;
 
 	bUseExperimentalUnseatModeFix = true;
+
+	ReplicatedMovementVR.Owner = this;
+	bFlagTeleported = false;
 }
 
 void AVRBaseCharacter::OnRep_PlayerState()
@@ -112,6 +115,9 @@ void AVRBaseCharacter::GetLifetimeReplicatedProps(TArray< class FLifetimePropert
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, SeatInformation, COND_None);
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, VRReplicateCapsuleHeight, COND_None);
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, ReplicatedCapsuleHeight, COND_SimulatedOnly);
+
+	DISABLE_REPLICATED_PROPERTY(AActor, ReplicatedMovement);
+	DOREPLIFETIME_CONDITION_NOTIFY(AVRBaseCharacter, ReplicatedMovementVR, COND_SimulatedOrPhysics, REPNOTIFY_Always);
 }
 
 void AVRBaseCharacter::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -119,6 +125,8 @@ void AVRBaseCharacter::PreReplication(IRepChangedPropertyTracker & ChangedProper
 	Super::PreReplication(ChangedPropertyTracker);
 
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedCapsuleHeight, VRReplicateCapsuleHeight);
+
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedMovementVR, bReplicateMovement);
 }
 
 USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const
@@ -220,17 +228,50 @@ FVector AVRBaseCharacter::GetTeleportLocation(FVector OriginalLocation)
 }
 
 
-void AVRBaseCharacter::NotifyOfTeleport_Implementation()
+void AVRBaseCharacter::NotifyOfTeleport()
 {
-	if (!IsLocallyControlled())
-	{
-		if (LeftMotionController)
-			LeftMotionController->bIsPostTeleport = true;
+	if(GetNetMode() < ENetMode::NM_Client)
+		bFlagTeleported = true;
 
-		if (RightMotionController)
-			RightMotionController->bIsPostTeleport = true;
-	}
+	if (LeftMotionController)
+		LeftMotionController->bIsPostTeleport = true;
+
+	if (RightMotionController)
+		RightMotionController->bIsPostTeleport = true;
 }
+
+void AVRBaseCharacter::OnRep_ReplicatedMovement()
+{
+	ReplicatedMovement.AngularVelocity = ReplicatedMovementVR.AngularVelocity;
+	ReplicatedMovement.bRepPhysics = ReplicatedMovementVR.bRepPhysics;
+	ReplicatedMovement.bSimulatedPhysicSleep = ReplicatedMovementVR.bSimulatedPhysicSleep;
+	ReplicatedMovement.LinearVelocity = ReplicatedMovementVR.LinearVelocity;
+	ReplicatedMovement.Location = ReplicatedMovementVR.Location;
+	ReplicatedMovement.Rotation = ReplicatedMovementVR.Rotation;
+
+	if (ReplicatedMovementVR.bJustTeleported && !IsLocallyControlled())
+	{
+		// Server should never get this value so it shouldn't be double throwing for them
+		NotifyOfTeleport();
+	}
+
+	Super::OnRep_ReplicatedMovement();
+}
+
+void AVRBaseCharacter::GatherCurrentMovement()
+{
+	Super::GatherCurrentMovement();
+
+	ReplicatedMovementVR.AngularVelocity = ReplicatedMovement.AngularVelocity;
+	ReplicatedMovementVR.bRepPhysics = ReplicatedMovement.bRepPhysics;
+	ReplicatedMovementVR.bSimulatedPhysicSleep = ReplicatedMovement.bSimulatedPhysicSleep;
+	ReplicatedMovementVR.LinearVelocity = ReplicatedMovement.LinearVelocity;
+	ReplicatedMovementVR.Location = ReplicatedMovement.Location;
+	ReplicatedMovementVR.Rotation = ReplicatedMovement.Rotation;
+	ReplicatedMovementVR.bJustTeleported = bFlagTeleported;
+	bFlagTeleported = false;
+}
+
 
 void AVRBaseCharacter::OnRep_SeatedCharInfo()
 {

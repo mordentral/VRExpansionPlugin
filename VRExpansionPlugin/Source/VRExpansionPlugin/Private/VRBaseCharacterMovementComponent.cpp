@@ -543,20 +543,21 @@ void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Move
 		CustomVRInputVector += Movement; // If not a client, don't bother to round this down.
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, bool bFlagGripTeleport)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
-
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
+	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, bool bFlagGripTeleport)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SetRotation;
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(NewYaw * 100.f) / 100.f, 0.0f);
+	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 	MoveActionArray.MoveActions.Add(MoveAction);
 }
 
@@ -630,6 +631,13 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
+		// If we are flagged to teleport the grips
+		if (MoveAction.MoveActionRot.Roll > 0.0f)
+		{
+			OwningCharacter->NotifyOfTeleport();
+			MoveAction.MoveActionRot.Roll = 0.0f;
+		}
+		
 		OwningCharacter->SetActorRotationVR(MoveAction.MoveActionRot, true, false);
 	}
 
@@ -640,6 +648,13 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
+		// If we are flagged to teleport the grips
+		if (MoveAction.MoveActionRot.Roll > 0.0f)
+		{
+			OwningCharacter->NotifyOfTeleport();
+			MoveAction.MoveActionRot.Roll = 0.0f;
+		}
+
 		OwningCharacter->SetActorRotationVR(MoveAction.MoveActionRot, true);
 	}
 
@@ -658,7 +673,9 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 			return false;
 		}
 
-		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, MoveAction.MoveActionRot, false, MoveAction.MoveActionRot.Pitch > 0.0f);
+		bool bSkipEncroachmentCheck = MoveAction.MoveActionRot.Pitch > 0.0f;
+		MoveAction.MoveActionRot.Pitch = 0.0f;
+		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, MoveAction.MoveActionRot, false, bSkipEncroachmentCheck);
 
 		if (OwningCharacter->bUseControllerRotationYaw)
 			OwningController->SetControlRotation(MoveAction.MoveActionRot);
