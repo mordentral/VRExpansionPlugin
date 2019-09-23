@@ -505,10 +505,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGrip")
 		virtual FVector GetTeleportLocation(FVector OriginalLocation);
 
-	// Notifies that we should teleport the both hand grips on next tick
-	// When called server side will automatically apply to remote clients as well.
-	// Owning clients get it on server correction automatically already.
-	UFUNCTION(BlueprintCallable, Category = "VRGrip")
+	UFUNCTION(/*Reliable, NetMulticast, */Category = "VRGrip")
 		virtual void NotifyOfTeleport();
 
 

@@ -1311,20 +1311,6 @@ void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
 	FSavedMove_Character::PrepMoveFor(Character);
 }
 
-void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
-{
-	Super::OnClientCorrectionReceived(ClientData, TimeStamp, NewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
-
-
-	// If we got corrected then lets teleport our grips, this means that we were out of sync with the server or the server moved us
-	AVRBaseCharacter* Basechar = Cast<AVRBaseCharacter>(CharacterOwner);
-
-	if (Basechar)
-	{
-		Basechar->NotifyOfTeleport();
-	}
-}
-
 void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocation, const FQuat& OldRotation, const FVector& NewLocation, const FQuat& NewRotation)
 {
 
