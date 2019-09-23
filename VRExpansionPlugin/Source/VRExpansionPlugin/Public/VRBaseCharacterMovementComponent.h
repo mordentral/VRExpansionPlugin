@@ -616,12 +616,12 @@ public:
 
 	// Perform a snap turn in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw, bool bFlagGripTeleport = false);
+		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw);
 
 	// Perform a rotation set in line with the move actions system
 	// This node specifically sets the FACING direction to a value, where your HMD is pointed
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_SetRotation(float NewYaw, bool bFlagGripTeleport = false);
+		void PerformMoveAction_SetRotation(float NewYaw);
 
 	// Perform a teleport in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")

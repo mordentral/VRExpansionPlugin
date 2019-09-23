@@ -42,10 +42,31 @@ bool AVRCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestR
 
 	if (bTeleportSucceeded)
 	{
-		NotifyOfTeleport();
+		if (GetNetMode() != ENetMode::NM_Client)
+		{
+			NotifyOfTeleport();
+		}
+
+		if (LeftMotionController)
+			LeftMotionController->bIsPostTeleport = true;
+
+		if (RightMotionController)
+			RightMotionController->bIsPostTeleport = true;
 	}
 
 	return bTeleportSucceeded;
+}
+
+void AVRCharacter::NotifyOfTeleport_Implementation()
+{
+	if (!IsLocallyControlled())
+	{
+		if (LeftMotionController)
+			LeftMotionController->bIsPostTeleport = true;
+
+		if (RightMotionController)
+			RightMotionController->bIsPostTeleport = true;
+	}
 }
 
 FVector AVRCharacter::GetNavAgentLocation() const

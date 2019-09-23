@@ -41,6 +41,8 @@ public:
 	*/
 	virtual FVector GetTeleportLocation(FVector OriginalLocation) override;
 	
+
+	virtual void NotifyOfTeleport_Implementation() override;
 	
 	// Overriding to correct some nav stuff
 	FVector GetNavAgentLocation() const override;
