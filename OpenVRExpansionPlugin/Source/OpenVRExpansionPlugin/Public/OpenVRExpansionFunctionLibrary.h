@@ -495,11 +495,25 @@ UENUM(Blueprintable)
 enum class EBPOpenVRHMDDeviceType : uint8
 {
 	DT_SteamVR,
+	DT_ValveIndex,
 	DT_Vive,
+	DT_ViveCosmos,
 	DT_OculusHMD,
 	DT_WindowsMR,
-	DT_OSVR,
+	//DT_OSVR,
 	DT_Unknown
+};
+
+// This needs to be updated as the original gets changed, that or hope they make the original blueprint accessible.
+UENUM(Blueprintable)
+enum class EBPOpenVRControllerDeviceType : uint8
+{
+	DT_IndexController,
+	DT_ViveController,
+	DT_RiftController,
+	DT_RiftSController,
+	DT_WMRController,
+	DT_UnknownController
 };
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
@@ -566,6 +580,10 @@ public:
 	// Gets whether an HMD device is connected, this is an expanded version for SteamVR
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetOpenVRHMDType"))
 		static EBPOpenVRHMDDeviceType GetOpenVRHMDType();
+
+	// Gets what type of controller is plugged in
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true", DisplayName = "GetOpenVRControllerType"))
+		static EBPOpenVRControllerDeviceType GetOpenVRControllerType();
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|SteamVR", meta = (bIgnoreSelf = "true"))

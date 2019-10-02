@@ -45,7 +45,7 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 		// Already declared in some of our includes here
 		//static const FName SteamVRSysName(TEXT("SteamVR"));
 		static const FName OculusSystemName(TEXT("OculusHMD"));
-		static const FName OSVRSystemName(TEXT("OSVR"));
+		//static const FName OSVRSystemName(TEXT("OSVR"));
 
 		FName DeviceName(NAME_None);
 		DeviceName = GEngine->XRSystem->GetSystemName();
@@ -55,8 +55,8 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 			DeviceType = EBPOpenVRHMDDeviceType::DT_SteamVR;
 		else if (DeviceName == OculusSystemName)
 			DeviceType = EBPOpenVRHMDDeviceType::DT_OculusHMD;
-		else if (DeviceName == OSVRSystemName)
-			DeviceType = EBPOpenVRHMDDeviceType::DT_OSVR;
+		//else if (DeviceName == OSVRSystemName)
+			//DeviceType = EBPOpenVRHMDDeviceType::DT_OSVR;
 	}
 
 #if !STEAMVR_SUPPORTED_PLATFORM
@@ -70,15 +70,16 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 		EBPOVRResultSwitch Result;
 
 		// Using index 0 as it is always HMD
-		UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String::Prop_ModelNumber_String_1001, 0, DeviceModelNumber, Result);
+		UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String::Prop_ModelNumber_String_1001, vr::k_unTrackedDeviceIndex_Hmd, DeviceModelNumber, Result);
 		if (Result == EBPOVRResultSwitch::OnSucceeded)
 		{
-			UE_LOG(OpenVRExpansionFunctionLibraryLog, Display, TEXT("OpenVRDeviceType - Prop_ModelNumber_String_1001: %s"), *DeviceModelNumber);
+			//UE_LOG(OpenVRExpansionFunctionLibraryLog, Display, TEXT("OpenVRDeviceType - Prop_ModelNumber_String_1001: %s"), *DeviceModelNumber);
 
 			//#TODO: Screw this eventually, need it to be actual string value comparisons for each model
 			// This is the hacky workaround for now
 			/*
 				"Vive MV";
+				"Vive Cosmos"
 				"VIVE_Pro MV"
 				"Oculus Rift CV1";
 				"Lenovo Explorer";
@@ -90,10 +91,19 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 			// Manufacturer name
 			/*WindowsMR*/
 
-			if (DeviceModelNumber.Find("vive", ESearchCase::IgnoreCase) != INDEX_NONE)
+			if (DeviceModelNumber.Find("index", ESearchCase::IgnoreCase) != INDEX_NONE)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_ValveIndex;
+			}
+			else if (DeviceModelNumber.Find("vive_cosmos", ESearchCase::IgnoreCase) != INDEX_NONE)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_ViveCosmos;
+			}
+			else if (DeviceModelNumber.Find("vive", ESearchCase::IgnoreCase) != INDEX_NONE)
 			{
 				DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
 			}
+
 			else if (DeviceModelNumber.Find("oculus", ESearchCase::IgnoreCase) != INDEX_NONE)
 			{
 				DeviceType = EBPOpenVRHMDDeviceType::DT_OculusHMD;
@@ -109,7 +119,7 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 			else
 			{
 				// Check for manufacturer name for windows MR
-				UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String::Prop_ManufacturerName_String_1005, 0, DeviceModelNumber, Result);
+				UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String::Prop_ManufacturerName_String_1005, vr::k_unTrackedDeviceIndex_Hmd, DeviceModelNumber, Result);
 				if (Result == EBPOVRResultSwitch::OnSucceeded)
 				{
 					if (DeviceModelNumber.Find("WindowsMR", ESearchCase::IgnoreCase) != INDEX_NONE)
@@ -120,8 +130,96 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 				else
 				{
 					DeviceType = EBPOpenVRHMDDeviceType::DT_Unknown;
+#if WITH_EDITOR
+					UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Tell VRE about unhandled HMD model type: %s !!!"), *DeviceModelNumber);
+#endif
 				}
 			}
+		}
+	}
+
+	return DeviceType;
+#endif
+}
+
+EBPOpenVRControllerDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRControllerType()
+{
+
+	EBPOpenVRControllerDeviceType DeviceType = EBPOpenVRControllerDeviceType::DT_UnknownController;
+
+#if !STEAMVR_SUPPORTED_PLATFORM
+	return DeviceType;
+#else
+
+	if (!GEngine->XRSystem.IsValid() || (GEngine->XRSystem->GetSystemName() != SteamVRSystemName))
+	{
+		return DeviceType;
+	}
+
+	vr::IVRSystem* VRSystem = vr::VRSystem();
+
+	if (!VRSystem)
+	{
+		return DeviceType;
+	}
+
+	int32 DeviceIndexOut = INDEX_NONE;
+	int32 FallbackIndex = INDEX_NONE;
+
+	for (uint32 DeviceIndex = 0; DeviceIndex < vr::k_unMaxTrackedDeviceCount; ++DeviceIndex)
+	{
+		const vr::ETrackedDeviceClass DeviceClass = VRSystem->GetTrackedDeviceClass(DeviceIndex);
+		if (DeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller)
+		{
+			// NOTE: GetControllerRoleForTrackedDeviceIndex() only seems to return a valid role if the device is on and being tracked
+			const vr::ETrackedControllerRole ControllerRole = VRSystem->GetControllerRoleForTrackedDeviceIndex(DeviceIndex);
+			if (ControllerRole != vr::TrackedControllerRole_LeftHand && ControllerRole != vr::TrackedControllerRole_RightHand)
+			{
+				continue;
+			}
+
+			DeviceIndexOut = DeviceIndex;
+			break;
+		}
+	}
+
+	if (DeviceIndexOut == INDEX_NONE)
+	{
+		return DeviceType;
+	}
+
+	EBPOVRResultSwitch Result;
+
+	FString DeviceModelNumber;
+	UOpenVRExpansionFunctionLibrary::GetVRDevicePropertyString(EVRDeviceProperty_String::Prop_ModelNumber_String_1001, DeviceIndexOut, DeviceModelNumber, Result);
+	if (Result == EBPOVRResultSwitch::OnSucceeded)
+	{
+		if (DeviceModelNumber.Find("knuckles", ESearchCase::IgnoreCase) != INDEX_NONE || DeviceModelNumber.Find("index", ESearchCase::IgnoreCase) != INDEX_NONE)
+		{
+			DeviceType = EBPOpenVRControllerDeviceType::DT_IndexController;
+		}
+		else if (DeviceModelNumber.Find("VIVE Controller Pro", ESearchCase::IgnoreCase) != INDEX_NONE) // Vive Wand
+		{
+			DeviceType = EBPOpenVRControllerDeviceType::DT_ViveController;
+		}
+		else if (DeviceModelNumber.Find("VIVE Controller", ESearchCase::IgnoreCase) != INDEX_NONE) // Vive Wand
+		{
+			DeviceType = EBPOpenVRControllerDeviceType::DT_ViveController;
+		}
+		else if (DeviceModelNumber.Find("oculus rift cv1", ESearchCase::IgnoreCase) != INDEX_NONE) // Oculus Rift CV1
+		{
+			DeviceType = EBPOpenVRControllerDeviceType::DT_RiftController;
+		}		
+		else if (DeviceModelNumber.Find("oculus rift s", ESearchCase::IgnoreCase) != INDEX_NONE) // Oculus Rift CV1
+		{
+			DeviceType = EBPOpenVRControllerDeviceType::DT_RiftSController;
+		}
+		else
+		{
+#if WITH_EDITOR
+			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Tell VRE about unhandled controller model type: %s !!!"), *DeviceModelNumber);
+			// Add other controllers here
+#endif
 		}
 	}
 
