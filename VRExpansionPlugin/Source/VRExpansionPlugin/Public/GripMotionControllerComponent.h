@@ -811,10 +811,18 @@ public:
 	// Checks if we have grip authority
 	inline bool HasGripAuthority(const FBPActorGripInformation &Grip);
 
+	// Checks if we have grip authority over a given object
+	inline bool HasGripAuthority(const UObject * ObjToCheck);
+
 	// Returns if we have grip authority (can call drop / grip on this grip)
 	// Mostly for networked games as local grips are client authed and all others are server authed
 	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "HasGripAuthority"))
 		bool BP_HasGripAuthority(const FBPActorGripInformation &Grip);
+
+	// Returns if we have grip authority (can call drop / grip on this grip)
+	// Mostly for networked games as local grips are client authed and all others are server authed
+	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "HasGripAuthorityForObject"))
+		bool BP_HasGripAuthorityForObject(const UObject* ObjToCheck);
 
 	// Checks if we should be handling the movement of a grip based on settings for it
 	inline bool HasGripMovementAuthority(const FBPActorGripInformation &Grip);
@@ -1066,6 +1074,29 @@ bool inline UGripMotionControllerComponent::HasGripAuthority(const FBPActorGripI
 		Grip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && IsServer()) ||
 		((Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
 			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && bHasAuthority))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool inline UGripMotionControllerComponent::HasGripAuthority(const UObject * ObjToCheck)
+{
+	if (!ObjToCheck)
+		return false;
+
+	// If it isn't interfaced and we are the server, then allow gripping it
+	if (!ObjToCheck->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()) && IsServer())
+		return true;
+
+	// I know that it is bad practice to const_cast here, but I want the object to be passed in const
+	EGripMovementReplicationSettings MovementRepType = IVRGripInterface::Execute_GripMovementReplicationType(const_cast<UObject*>(ObjToCheck));
+
+	if (((MovementRepType != EGripMovementReplicationSettings::ClientSide_Authoritive &&
+		MovementRepType != EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && IsServer()) ||
+		((MovementRepType == EGripMovementReplicationSettings::ClientSide_Authoritive ||
+			MovementRepType == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && bHasAuthority))
 	{
 		return true;
 	}

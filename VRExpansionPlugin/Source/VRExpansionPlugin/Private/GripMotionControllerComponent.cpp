@@ -2623,6 +2623,11 @@ bool UGripMotionControllerComponent::BP_HasGripAuthority(const FBPActorGripInfor
 	return HasGripAuthority(Grip);
 }
 
+bool UGripMotionControllerComponent::BP_HasGripAuthorityForObject(const UObject * ObjToCheck)
+{
+	return HasGripAuthority(ObjToCheck);
+}
+
 bool UGripMotionControllerComponent::BP_HasGripMovementAuthority(const FBPActorGripInformation &Grip)
 {
 	return HasGripMovementAuthority(Grip);
@@ -4216,6 +4221,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				if (RootBodyIndex != INDEX_NONE)
 				{
 					RootBoneRotation = FTransform(skele->GetBoneTransform(RootBodyIndex, FTransform::Identity));
+					RootBoneRotation.SetScale3D(FVector(1.f));
 					HandleInfo->RootBoneRotation = RootBoneRotation;
 				}
 			}
@@ -4359,7 +4365,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					NewLinDrive.bEnableVelocityDrive = true;
 					NewLinDrive.Damping = Damping;
 					NewLinDrive.Stiffness = Stiffness;
-					NewLinDrive.MaxForce = MAX_FLT;
 
 					HandleInfo->LinConstraint.bEnablePositionDrive = true;
 					HandleInfo->LinConstraint.XDrive = NewLinDrive;
@@ -4378,7 +4383,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 						NewAngDrive.bEnableVelocityDrive = true;
 						NewAngDrive.Damping = AngularDamping;
 						NewAngDrive.Stiffness = AngularStiffness;
-						NewAngDrive.MaxForce = MAX_FLT;
+						//NewAngDrive.MaxForce = MAX_FLT;
 
 						HandleInfo->AngConstraint.AngularDriveMode = EAngularDriveMode::TwistAndSwing;
 						//AngParams.AngularDriveMode = EAngularDriveMode::SLERP;
@@ -4405,14 +4410,14 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					NewLinDrive.bEnableVelocityDrive = true;
 					NewLinDrive.Damping = Damping;
 					NewLinDrive.Stiffness = Stiffness;
-					NewLinDrive.MaxForce = MAX_FLT;
+					//NewLinDrive.MaxForce = MAX_FLT;
 
 					FConstraintDrive NewAngDrive;
 					NewAngDrive.bEnablePositionDrive = true;
 					NewAngDrive.bEnableVelocityDrive = true;
 					NewAngDrive.Damping = AngularDamping;
 					NewAngDrive.Stiffness = AngularStiffness;
-					NewAngDrive.MaxForce = MAX_FLT;
+					//NewAngDrive.MaxForce = MAX_FLT;
 
 					HandleInfo->LinConstraint.bEnablePositionDrive = true;
 					HandleInfo->LinConstraint.XDrive = NewLinDrive;
@@ -4555,8 +4560,8 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 
 				FPhysicsInterface::UpdateLinearDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->LinConstraint);
 
-				HandleInfo->AngConstraint.TwistDrive.Damping = AngularDamping;
-				HandleInfo->AngConstraint.TwistDrive.Stiffness = AngularStiffness;
+				HandleInfo->AngConstraint.SlerpDrive.Damping = AngularDamping;
+				HandleInfo->AngConstraint.SlerpDrive.Stiffness = AngularStiffness;
 				FPhysicsInterface::UpdateAngularDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->AngConstraint);
 			}
 

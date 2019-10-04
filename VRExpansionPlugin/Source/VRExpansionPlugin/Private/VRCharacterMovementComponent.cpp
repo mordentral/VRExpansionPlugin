@@ -1557,7 +1557,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	//VRCameraCollider = NULL;
 	// 0.1f is low slide and still impacts surfaces well
 	// This variable is a bit of a hack, it reduces the movement of the pawn in the direction of relative movement
-	WallRepulsionMultiplier = 0.01f;
+	//WallRepulsionMultiplier = 0.01f;
 	bUseClientControlRotation = false;
 	bAllowMovementMerging = false;
 	bRequestedMoveUseAcceleration = false;

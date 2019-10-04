@@ -70,8 +70,8 @@ public:
 	bool bAllowMovementMerging;
 
 	// Higher values will cause more slide but better step up
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
-	float WallRepulsionMultiplier;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
+	//float WallRepulsionMultiplier;
 
 	/**
 	* Checks if new capsule size fits (no encroachment), and call CharacterOwner->OnStartCrouch() if successful.

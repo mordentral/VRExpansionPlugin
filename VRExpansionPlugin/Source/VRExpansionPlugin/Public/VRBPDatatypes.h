@@ -675,7 +675,6 @@ enum class EBPHMDDeviceType : uint8
 	DT_SteamVR,
 	DT_GearVR,
 	DT_GoogleVR,
-	DT_OSVR,
 	DT_AppleARKit,
 	DT_GoogleARCore,
 	DT_Unknown
@@ -823,6 +822,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
 		float AngularDamping;
 
+	// Maximum force that this constraint can apply (default of 0 is infinite)
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings", ClampMin = "0.000", UIMin = "0.000"))
+		//float MaxForce;
+
 	FBPAdvGripPhysicsSettings():
 		bUsePhysicsSettings(false),
 		PhysicsConstraintType(EPhysicsGripConstraintType::AccelerationConstraint),
@@ -830,7 +833,8 @@ public:
 		bTurnOffGravityDuringGrip(false),
 		bUseCustomAngularValues(false),
 		AngularStiffness(0.0f),
-		AngularDamping(0.0f)
+		AngularDamping(0.0f)//,
+		//MaxForce(0.f)
 	{}
 
 	FORCEINLINE bool operator==(const FBPAdvGripPhysicsSettings &Other) const
@@ -839,9 +843,11 @@ public:
 			PhysicsGripLocationSettings == Other.PhysicsGripLocationSettings &&
 			bTurnOffGravityDuringGrip == Other.bTurnOffGravityDuringGrip &&
 			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
+			PhysicsConstraintType == Other.PhysicsConstraintType &&
 			FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) &&
-			FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) &&
-			PhysicsConstraintType == Other.PhysicsConstraintType);
+			FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) //&&
+			//FMath::IsNearlyEqual(MaxForce, Other.MaxForce)
+			);
 	}
 
 	FORCEINLINE bool operator!=(const FBPAdvGripPhysicsSettings &Other) const
@@ -850,9 +856,11 @@ public:
 			PhysicsGripLocationSettings != Other.PhysicsGripLocationSettings ||
 			bTurnOffGravityDuringGrip != Other.bTurnOffGravityDuringGrip ||
 			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
+			PhysicsConstraintType != Other.PhysicsConstraintType ||
 			!FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) ||
-			!FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) ||
-			PhysicsConstraintType != Other.PhysicsConstraintType);
+			!FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) //||
+			//!FMath::IsNearlyEqual(MaxForce, Other.MaxForce)
+			);
 	}
 
 	/** Network serialization */
@@ -879,6 +887,8 @@ public:
 				Ar << AngularStiffness;
 				Ar << AngularDamping;
 			}
+
+			//Ar << MaxForce;
 		}
 
 		bOutSuccess = true;
@@ -1528,7 +1538,7 @@ public:
 	{
 		Stiffness = 0.f;
 		Damping = 0.f;
-		MaxForce = MAX_FLT;
+		MaxForce = 0.f;
 		bEnablePositionDrive = true;
 		bEnableVelocityDrive = true;
 	}
