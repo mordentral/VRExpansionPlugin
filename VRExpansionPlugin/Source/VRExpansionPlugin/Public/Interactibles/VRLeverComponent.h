@@ -16,9 +16,8 @@
 #include "PhysicsPublic.h"
 
 #if WITH_PHYSX
-//#include "PhysXSupport.h"
+#include "PhysXPublic.h"
 #endif // WITH_PHYSX
-
 
 #include "VRLeverComponent.generated.h"
 

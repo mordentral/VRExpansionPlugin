@@ -57,14 +57,20 @@ public:
 	EGSTransformOverrideType WorldTransformOverrideType;
 
 	// Returns if the script wants auto drop to be ignored
-	bool Wants_DenyAutoDrop();
+	FORCEINLINE bool Wants_DenyAutoDrop()
+	{
+		return bDenyAutoDrop;
+	}
 
 	// Returns if we want to deny auto dropping
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 		bool bDenyAutoDrop;
 
 	// Returns if the script wants to force a drop
-	bool Wants_ToForceDrop();
+	FORCEINLINE bool Wants_ToForceDrop()
+	{
+		return bForceDrop;
+	}
 
 	// Returns if we want to force a drop
 	UPROPERTY(BlueprintReadWrite, Category = "DefaultSettings")
@@ -78,11 +84,38 @@ public:
 	}
 
 	// Returns if the script wants to deny late updates
-	bool Wants_DenyLateUpdates();
+	FORCEINLINE bool Wants_DenyLateUpdates()
+	{
+		return bDenyLateUpdates;
+	}
 
 	// Returns if we want to deny late updates
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 		bool bDenyLateUpdates;
+
+	// Returns if the script wants auto drop to be ignored
+	FORCEINLINE bool InjectPrePhysicsHandle()
+	{
+		return bInjectPrePhysicsHandle;
+	}
+
+	// Returns if we want to deny auto dropping
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
+		bool bInjectPrePhysicsHandle;
+
+	virtual void HandlePrePhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose);
+
+	// Returns if the script wants auto drop to be ignored
+	FORCEINLINE bool InjectPostPhysicsHandle()
+	{
+		return bInjectPostPhysicsHandle;
+	}
+
+	// Returns if we want to deny auto dropping
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
+		bool bInjectPostPhysicsHandle;
+
+	virtual void HandlePostPhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo);
 
 	// Returns if the script is currently active and should be used
 	/*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")

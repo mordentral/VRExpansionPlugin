@@ -34,10 +34,12 @@ void UVRGripScriptBase::OnSecondaryGripRelease_Implementation(UGripMotionControl
 
 EGSTransformOverrideType UVRGripScriptBase::GetWorldTransformOverrideType() { return WorldTransformOverrideType; }
 bool UVRGripScriptBase::IsScriptActive() { return bIsActive; }
-bool UVRGripScriptBase::Wants_DenyAutoDrop() { return bDenyAutoDrop; }
-bool UVRGripScriptBase::Wants_DenyLateUpdates() { return bDenyLateUpdates; }
-bool UVRGripScriptBase::Wants_ToForceDrop() { return bForceDrop; }
+//bool UVRGripScriptBase::Wants_DenyAutoDrop() { return bDenyAutoDrop; }
+//bool UVRGripScriptBase::Wants_DenyLateUpdates() { return bDenyLateUpdates; }
+//bool UVRGripScriptBase::Wants_ToForceDrop() { return bForceDrop; }
 //bool UVRGripScriptBase::Wants_DenyTeleport_Implementation() { return false; }
+void UVRGripScriptBase::HandlePrePhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose) {}
+void UVRGripScriptBase::HandlePostPhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo) {}
 
 
 void UVRGripScriptBase::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const

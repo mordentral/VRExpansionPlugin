@@ -940,7 +940,7 @@ public:
 	
 	// For physics handle operations
 	void OnGripMassUpdated(FBodyInstance* GripBodyInstance);
-	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip);
+	bool SetUpPhysicsHandle(const FBPActorGripInformation &NewGrip, TArray<UVRGripScriptBase*> * GripScripts = nullptr);
 	bool DestroyPhysicsHandle(const FBPActorGripInformation &Grip, bool bSkipUnregistering = false);
 	void UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform);
 	bool SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, bool bUseHybridMultiplier = false);	
