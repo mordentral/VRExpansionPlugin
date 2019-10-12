@@ -266,7 +266,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 
 			// Get any scaling addition from a scaling secondary grip type
 			FVector Scaler = FVector(1.0f);
-			Default_GetAnyScaling(Scaler, Grip, frontLoc, frontLocOrig, SecondaryType, SecondaryTransform);
+			GetAnyScaling(Scaler, Grip, frontLoc, frontLocOrig, SecondaryType, SecondaryTransform);
 
 			Grip.SecondaryGripInfo.SecondaryGripDistance = FVector::Dist(frontLocOrig, frontLoc);
 

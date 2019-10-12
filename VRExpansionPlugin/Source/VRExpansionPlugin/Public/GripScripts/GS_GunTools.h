@@ -147,7 +147,7 @@ public:
 // A grip script that adds useful fire-arm related features to grips
 // Just adding it to the grippable object provides the features without removing standard
 // Grip features.
-UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
+UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin), hideCategories = TickSettings)
 class VREXPANSIONPLUGIN_API UGS_GunTools : public UGS_Default
 {
 	GENERATED_BODY()

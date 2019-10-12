@@ -133,15 +133,15 @@ public:
 	
 	
 	// If true then this scrip can tick when bAllowticking is true
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Tick Settings")
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "TickSettings")
 		bool bCanEverTick;
 
 	// If true and we bCanEverTick, then will fire off the tick function
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tick Settings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "TickSettings")
 		bool bAllowTicking;
 
 	// Set whether the grip script can tick or not
-	UFUNCTION(BlueprintCallable, Category = "Tick Settings")
+	UFUNCTION(BlueprintCallable, Category = "TickSettings")
 		void SetTickEnabled(bool bTickEnabled);
 
 	/**

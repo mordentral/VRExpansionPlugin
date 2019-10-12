@@ -27,10 +27,11 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	this->BrakingDecelerationWalking = 200048.0f;
 	*/
 
-
 	AdditionalVRInputVector = FVector::ZeroVector;	
 	CustomVRInputVector = FVector::ZeroVector;
+	TrackingLossThreshold = 6000.f;
 	bApplyAdditionalVRInputVectorAsNegative = true;
+
 	VRClimbingStepHeight = 96.0f;
 	VRClimbingEdgeRejectDistance = 5.0f;
 	VRClimbingStepUpMultiplier = 1.0f;

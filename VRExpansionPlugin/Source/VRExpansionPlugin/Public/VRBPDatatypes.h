@@ -905,84 +905,6 @@ struct TStructOpsTypeTraits< FBPAdvGripPhysicsSettings > : public TStructOpsType
 	};
 };
 
-
-USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
-struct VREXPANSIONPLUGIN_API FBPAdvSecondaryGripSettings
-{
-	GENERATED_BODY()
-public:
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings")
-		bool bUseSecondaryGripSettings;
-
-	// Whether clamp the grip scaling in scaling grips
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bUseSecondaryGripSettings"))
-		bool bLimitGripScaling;
-
-	// Minimum size to allow scaling in double grip to reach
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bLimitGripScaling"))
-		FVector_NetQuantize100 MinimumGripScaling;
-
-	// Maximum size to allow scaling in double grip to reach
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bLimitGripScaling"))
-		FVector_NetQuantize100 MaximumGripScaling;
-
-	// Used to smooth filter the secondary influence
-	//FBPEuroLowPassFilter SecondarySmoothing;
-
-	void ClearNonReppedItems()
-	{
-		//SecondarySmoothing.ResetSmoothingFilter();
-	}
-
-	FBPAdvSecondaryGripSettings() :
-		bUseSecondaryGripSettings(false),
-		bLimitGripScaling(false),
-		MinimumGripScaling(FVector(0.1f)),
-		MaximumGripScaling(FVector(10.0f))
-	{}
-
-	// Skip passing euro filter in
-	FORCEINLINE FBPAdvSecondaryGripSettings& operator=(const FBPAdvSecondaryGripSettings& Other)
-	{
-		this->bUseSecondaryGripSettings = Other.bUseSecondaryGripSettings;
-		this->bLimitGripScaling = Other.bLimitGripScaling;
-		this->MinimumGripScaling = Other.MinimumGripScaling;
-		this->MaximumGripScaling = Other.MaximumGripScaling;
-		return *this;
-	}
-
-	/** Network serialization */
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
-	{
-		Ar.SerializeBits(&bUseSecondaryGripSettings, 1);
-
-		if (bUseSecondaryGripSettings)
-		{
-			bOutSuccess = true;
-
-			Ar.SerializeBits(&bLimitGripScaling, 1);
-
-			if (bLimitGripScaling)
-			{
-				MinimumGripScaling.NetSerialize(Ar, Map, bOutSuccess);
-				MaximumGripScaling.NetSerialize(Ar, Map, bOutSuccess);
-			}
-		}
-
-		return bOutSuccess;
-	}
-};
-
-template<>
-struct TStructOpsTypeTraits< FBPAdvSecondaryGripSettings > : public TStructOpsTypeTraitsBase2<FBPAdvSecondaryGripSettings>
-{
-	enum
-	{
-		WithNetSerializer = true
-	};
-};
-
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPAdvGripSettings
 {
@@ -1001,10 +923,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
 		FBPAdvGripPhysicsSettings PhysicsSettings;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
-		FBPAdvSecondaryGripSettings SecondaryGripSettings;
-
 
 	FBPAdvGripSettings() :
 		GripPriority(1),
@@ -1137,7 +1055,6 @@ public:
 	// Hashed unique ID to identify this grip instance
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		uint8 GripID;
-
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripTargetType GripTargetType;
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
@@ -1231,8 +1148,6 @@ public:
 
 		// Clear out the secondary grip
 		SecondaryGripInfo.ClearNonReppingItems();
-
-		AdvancedGripSettings.SecondaryGripSettings.ClearNonReppedItems();
 	}
 
 	// Adding this override to keep un-repped variables from repping over from Client Auth grips

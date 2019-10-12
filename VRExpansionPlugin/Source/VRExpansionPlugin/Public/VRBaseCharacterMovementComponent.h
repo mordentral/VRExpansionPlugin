@@ -657,9 +657,14 @@ public:
 		{
 			//FHitResult AHit;
 			MoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false);
+			//SafeMoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false, AHit);
 		}
-		//SafeMoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false, AHit);
 	}
+
+	// Any movement above this value we will consider as have been a tracking jump and null out the movement in the character
+	// Raise this value higher if players are noticing freezing when moving quickly.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement", meta = (ClampMin = "0.0", UIMin = "0"))
+		float TrackingLossThreshold;
 
 	// Rewind the relative movement that we had with the HMD, this is exposed to Blueprint so that custom movement modes can use it to rewind prior to movement actions.
 	// Returns the Vector required to get back to the original position (for custom movement modes)
@@ -686,14 +691,25 @@ public:
 			LastPreAdditiveVRVelocity = FVector::ZeroVector;
 			return;
 		}
-		
+	
 		LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
-		Velocity += LastPreAdditiveVRVelocity;
+		
+
+		if (LastPreAdditiveVRVelocity.SizeSquared() < FMath::Square(TrackingLossThreshold))
+		{
+			Velocity += LastPreAdditiveVRVelocity;
+		}
+		else
+		{
+			LastPreAdditiveVRVelocity = FVector::ZeroVector;
+		}
 	}
 
 	inline void RestorePreAdditiveVRMotionVelocity()
 	{
-		Velocity -= LastPreAdditiveVRVelocity;
+		if(Velocity.SizeSquared() >= LastPreAdditiveVRVelocity.SizeSquared())
+			Velocity -= LastPreAdditiveVRVelocity;
+
 		LastPreAdditiveVRVelocity = FVector::ZeroVector;
 	}
 

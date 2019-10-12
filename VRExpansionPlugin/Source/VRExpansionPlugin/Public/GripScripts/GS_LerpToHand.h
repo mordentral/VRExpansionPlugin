@@ -26,7 +26,7 @@ enum class EVRLerpInterpolationMode : uint8
 
 // A grip script that causes new grips to lerp to the hand (from their current position to where they are supposed to sit).
 // It turns off when the lerp is complete.
-UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin))
+UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin), hideCategories = TickSettings)
 class VREXPANSIONPLUGIN_API UGS_LerpToHand : public UVRGripScriptBase
 {
 	GENERATED_BODY()

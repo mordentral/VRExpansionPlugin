@@ -11,6 +11,40 @@ UGS_Default::UGS_Default(const FObjectInitializer& ObjectInitializer) :
 	WorldTransformOverrideType = EGSTransformOverrideType::OverridesWorldTransform;
 }
 
+void UGS_Default::GetAnyScaling(FVector& Scaler, FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, ESecondaryGripType SecondaryType, FTransform& SecondaryTransform)
+{
+	if (Grip.SecondaryGripInfo.GripLerpState != EGripLerpState::EndLerp)
+	{
+		//float Scaler = 1.0f;
+		if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_ScalingOnly)
+		{
+			/*Grip.SecondaryScaler*/ Scaler = FVector(frontLoc.Size() / frontLocOrig.Size());
+			//bRescalePhysicsGrips = true; // This is for the physics grips
+		}
+	}
+}
+
+void UGS_Default::ApplySmoothingAndLerp(FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, float DeltaTime)
+{
+	if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
+	{
+		/*if (Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED < 1.0f)
+		{
+			FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
+
+			frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED);
+		}*/
+
+		frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
+	}
+	/*else if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::ConstantLerp_DEPRECATED) // If there is a frame by frame lerp
+	{
+		FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
+
+		frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED);
+	}*/
+}
+
 bool UGS_Default::GetWorldTransform_Implementation
 (
 	UGripMotionControllerComponent* GrippingController, 
@@ -121,14 +155,17 @@ bool UGS_Default::GetWorldTransform_Implementation
 				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeTransform.GetLocation())) - BasePoint;
 
 				// Apply any smoothing settings and lerping in / constant lerping
-				Default_ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime);
+				ApplySmoothingAndLerp(Grip, frontLoc, frontLocOrig, DeltaTime);
 
 				Grip.SecondaryGripInfo.LastRelativeLocation = frontLoc;
 			}
 
 			// Get any scaling addition from a scaling secondary grip type
 			FVector Scaler = FVector(1.0f);
-			Default_GetAnyScaling(Scaler, Grip, frontLoc, frontLocOrig, SecondaryType, SecondaryTransform);
+			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_ScalingOnly)
+			{
+				GetAnyScaling(Scaler, Grip, frontLoc, frontLocOrig, SecondaryType, SecondaryTransform);
+			}
 
 			Grip.SecondaryGripInfo.SecondaryGripDistance = FVector::Dist(frontLocOrig, frontLoc);
 
@@ -155,4 +192,36 @@ bool UGS_Default::GetWorldTransform_Implementation
 		}
 	}
 	return true;
+}
+
+
+void UGS_ExtendedDefault::GetAnyScaling(FVector& Scaler, FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, ESecondaryGripType SecondaryType, FTransform& SecondaryTransform)
+{
+	if (Grip.SecondaryGripInfo.GripLerpState != EGripLerpState::EndLerp)
+	{
+
+		//float Scaler = 1.0f;
+		if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_ScalingOnly)
+		{
+			/*Grip.SecondaryScaler*/ Scaler = FVector(frontLoc.Size() / frontLocOrig.Size());
+			//bRescalePhysicsGrips = true; // This is for the physics grips
+
+			if (bLimitGripScaling)
+			{
+				// Get the total scale after modification
+				// #TODO: convert back to singular float version? Can get Min() & Max() to convert the float to a range...think about it
+				FVector WorldScale = /*WorldTransform*/SecondaryTransform.GetScale3D();
+				FVector CombinedScale = WorldScale * Scaler;
+
+				// Clamp to the minimum and maximum values
+				CombinedScale.X = FMath::Clamp(CombinedScale.X, MinimumGripScaling.X, MaximumGripScaling.X);
+				CombinedScale.Y = FMath::Clamp(CombinedScale.Y, MinimumGripScaling.Y, MaximumGripScaling.Y);
+				CombinedScale.Z = FMath::Clamp(CombinedScale.Z, MinimumGripScaling.Z, MaximumGripScaling.Z);
+
+				// Recreate in scaler form so that the transform chain below works as normal
+				Scaler = CombinedScale / WorldScale;
+			}
+			//Scaler = Grip.SecondaryScaler;
+		}
+	}
 }

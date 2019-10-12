@@ -1496,4 +1496,49 @@ bool UVRRootComponent::IsLocallyControlled() const
 	//return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
 }
 
+void UVRRootComponent::UpdatePhysicsVolume(bool bTriggerNotifiers)
+{
+	if (GetShouldUpdatePhysicsVolume() && !IsPendingKill())
+	{
+		//	SCOPE_CYCLE_COUNTER(STAT_UpdatePhysicsVolume);
+		if (UWorld * MyWorld = GetWorld())
+		{
+			if (MyWorld->GetNonDefaultPhysicsVolumeCount() == 0)
+			{
+				SetPhysicsVolume(MyWorld->GetDefaultPhysicsVolume(), bTriggerNotifiers);
+			}
+			else if (GetGenerateOverlapEvents() && IsQueryCollisionEnabled())
+			{
+				APhysicsVolume* BestVolume = MyWorld->GetDefaultPhysicsVolume();
+				int32 BestPriority = BestVolume->Priority;
+
+				for (auto CompIt = OverlappingComponents.CreateIterator(); CompIt; ++CompIt)
+				{
+					const FOverlapInfo& Overlap = *CompIt;
+					UPrimitiveComponent* OtherComponent = Overlap.OverlapInfo.Component.Get();
+					if (OtherComponent && OtherComponent->GetGenerateOverlapEvents())
+					{
+						APhysicsVolume* V = Cast<APhysicsVolume>(OtherComponent->GetOwner());
+						if (V && V->Priority > BestPriority)
+						{
+							//if (V->IsOverlapInVolume(*this))
+							if (AreWeOverlappingVolume(V))
+							{
+								BestPriority = V->Priority;
+								BestVolume = V;
+							}
+						}
+					}
+				}
+
+				SetPhysicsVolume(BestVolume, bTriggerNotifiers);
+			}
+			else
+			{
+				Super::UpdatePhysicsVolume(bTriggerNotifiers);
+			}
+		}
+	}
+}
+
 #undef LOCTEXT_NAMESPACE

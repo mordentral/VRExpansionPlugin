@@ -20,55 +20,28 @@ public:
 	//virtual void BeginPlay_Implementation() override;
 	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) override;
 
-	inline void Default_GetAnyScaling(FVector & Scaler, FBPActorGripInformation & Grip, FVector & frontLoc, FVector & frontLocOrig, ESecondaryGripType SecondaryType, FTransform & SecondaryTransform)
-	{
-		if (Grip.SecondaryGripInfo.GripLerpState != EGripLerpState::EndLerp)
-		{
+	virtual void GetAnyScaling(FVector& Scaler, FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, ESecondaryGripType SecondaryType, FTransform& SecondaryTransform);	
+	virtual void ApplySmoothingAndLerp(FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, float DeltaTime);
+};
 
-			//float Scaler = 1.0f;
-			if (SecondaryType == ESecondaryGripType::SG_FreeWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_SlotOnlyWithScaling_Retain || SecondaryType == ESecondaryGripType::SG_ScalingOnly)
-			{
-				/*Grip.SecondaryScaler*/ Scaler = FVector(frontLoc.Size() / frontLocOrig.Size());
-				//bRescalePhysicsGrips = true; // This is for the physics grips
+// An extended default grip script that adds less common grip features that were moved out of the default implementation
+UCLASS(BlueprintType, ClassGroup = (VRExpansionPlugin), hideCategories = TickSettings)
+class VREXPANSIONPLUGIN_API UGS_ExtendedDefault : public UGS_Default
+{
+	GENERATED_BODY()
+public:
 
-				if (Grip.AdvancedGripSettings.SecondaryGripSettings.bUseSecondaryGripSettings && Grip.AdvancedGripSettings.SecondaryGripSettings.bLimitGripScaling)
-				{
-					// Get the total scale after modification
-					// #TODO: convert back to singular float version? Can get Min() & Max() to convert the float to a range...think about it
-					FVector WorldScale = /*WorldTransform*/SecondaryTransform.GetScale3D();
-					FVector CombinedScale = WorldScale * Scaler;
+	// Whether clamp the grip scaling in scaling grips
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings")
+		bool bLimitGripScaling;
 
-					// Clamp to the minimum and maximum values
-					CombinedScale.X = FMath::Clamp(CombinedScale.X, Grip.AdvancedGripSettings.SecondaryGripSettings.MinimumGripScaling.X, Grip.AdvancedGripSettings.SecondaryGripSettings.MaximumGripScaling.X);
-					CombinedScale.Y = FMath::Clamp(CombinedScale.Y, Grip.AdvancedGripSettings.SecondaryGripSettings.MinimumGripScaling.Y, Grip.AdvancedGripSettings.SecondaryGripSettings.MaximumGripScaling.Y);
-					CombinedScale.Z = FMath::Clamp(CombinedScale.Z, Grip.AdvancedGripSettings.SecondaryGripSettings.MinimumGripScaling.Z, Grip.AdvancedGripSettings.SecondaryGripSettings.MaximumGripScaling.Z);
+	// Minimum size to allow scaling in double grip to reach
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bLimitGripScaling"))
+		FVector_NetQuantize100 MinimumGripScaling;
 
-					// Recreate in scaler form so that the transform chain below works as normal
-					Scaler = CombinedScale / WorldScale;
-				}
-				//Scaler = Grip.SecondaryScaler;
-			}
-		}
-	}
-	
-	inline void Default_ApplySmoothingAndLerp(FBPActorGripInformation & Grip, FVector &frontLoc, FVector & frontLocOrig, float DeltaTime)
-	{
-		if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp) // Lerp into the new grip to smooth the transition
-		{
-			/*if (Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED < 1.0f)
-			{
-				FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
+	// Maximum size to allow scaling in double grip to reach
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SecondaryGripSettings", meta = (editcondition = "bLimitGripScaling"))
+		FVector_NetQuantize100 MaximumGripScaling;
 
-				frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED);
-			}*/
-
-			frontLocOrig = FMath::Lerp(frontLocOrig, frontLoc, FMath::Clamp(Grip.SecondaryGripInfo.curLerp / Grip.SecondaryGripInfo.LerpToRate, 0.0f, 1.0f));
-		}
-		/*else if (Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::ConstantLerp_DEPRECATED) // If there is a frame by frame lerp
-		{
-			FVector SmoothedValue = Grip.AdvancedGripSettings.SecondaryGripSettings.SecondarySmoothing.RunFilterSmoothing(frontLoc, DeltaTime);
-
-			frontLoc = FMath::Lerp(SmoothedValue, frontLoc, Grip.AdvancedGripSettings.SecondaryGripSettings.SecondaryGripScaler_DEPRECATED);
-		}*/
-	}
+	virtual void GetAnyScaling(FVector& Scaler, FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, ESecondaryGripType SecondaryType, FTransform& SecondaryTransform) override;
 };
