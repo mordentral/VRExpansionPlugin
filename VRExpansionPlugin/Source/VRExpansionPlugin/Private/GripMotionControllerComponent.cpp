@@ -894,6 +894,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 		else
 		{
 			// No interface, no grip
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController GripObjectByInterface was called on an object that doesn't implement the interface and doesn't have a parent that implements the interface!"));
 			return false;
 		}
 	}
@@ -943,6 +944,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 		else
 		{
 			// No interface, no grip
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController GripObjectByInterface was called on an object that doesn't implement the interface and doesn't have a parent that implements the interface!"));
 			return false;
 		}
 	}
@@ -4178,16 +4180,14 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	TArray<UVRGripScriptBase*> LocalGripScripts;
 	if (GripScripts == nullptr)
 	{
-		bool bHasInterface = false;
-		UObject * InterfacedObject = nullptr;
-		if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		if (root && root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
 			if (IVRGripInterface::Execute_GetGripScripts(root, LocalGripScripts))
 			{
 				GripScripts = &LocalGripScripts;
 			}
 		}
-		else if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		else if (pActor && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
 			if (IVRGripInterface::Execute_GetGripScripts(pActor, LocalGripScripts))
 			{
