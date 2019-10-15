@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/Engine.h"
 #include "UObject/Object.h"
 #include "VRBPDatatypes.h"
 #include "Components/PrimitiveComponent.h"

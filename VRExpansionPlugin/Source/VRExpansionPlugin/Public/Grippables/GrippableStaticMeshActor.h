@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/Engine.h"
 #include "Engine/StaticMeshActor.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"

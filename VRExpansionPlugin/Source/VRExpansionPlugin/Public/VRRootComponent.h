@@ -2,6 +2,7 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#include "Engine/Engine.h"
 #include "Components/ShapeComponent.h"
 #include "VRTrackedParentInterface.h"
 #include "VRBaseCharacter.h"

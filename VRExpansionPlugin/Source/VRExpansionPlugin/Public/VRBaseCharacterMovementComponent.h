@@ -2,6 +2,7 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#include "Engine/Engine.h"
 #include "VRBPDatatypes.h"
 #include "AITypes.h"
 #include "AI/Navigation/NavigationTypes.h"

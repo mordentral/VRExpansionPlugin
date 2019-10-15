@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
+#include "Engine/Engine.h"
 #include "VRExpansionFunctionLibrary.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"

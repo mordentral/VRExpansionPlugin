@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/Engine.h"
 #include "VRGripScriptBase.h"
 #include "GripScripts/GS_Default.h"
 #include "GS_GunTools.generated.h"

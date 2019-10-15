@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/Engine.h"
 #include "VRBPDatatypes.h"
 #include "Algo/Reverse.h"
 #include "Components/SplineMeshComponent.h"
