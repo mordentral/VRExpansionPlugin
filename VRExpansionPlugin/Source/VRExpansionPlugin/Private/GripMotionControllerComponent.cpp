@@ -4011,9 +4011,9 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(uint8 GripID, bool bFul
 bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInformation& GripInfo, bool bFullyRecreate)
 {
 	int HandleIndex = 0;
-	bool bHadPhysicsHandle = GetPhysicsGripIndex(GripInfo, HandleIndex);
+	FBPActorPhysicsHandleInformation* HandleInfo = GetPhysicsGrip(GripInfo);
 
-	if (!bHadPhysicsHandle)
+	if (!HandleInfo)
 		return false;
 
 	if (bFullyRecreate)
@@ -4041,12 +4041,14 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 
 	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
 
-	FBPActorPhysicsHandleInformation* HandleInfo = &PhysicsGrips[HandleIndex];
 	FPhysicsCommand::ExecuteWrite(rBodyInstance->ActorHandle, [&](const FPhysicsActorHandle& Actor)
+	{
+		if (HandleInfo)
 		{
 			if (PxRigidDynamic * PActor = FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(Actor))
 			{
-				HandleInfo->HandleData2.ConstraintData->setActors(PActor, FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(HandleInfo->KinActorData2));
+				if(HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
+					HandleInfo->HandleData2.ConstraintData->setActors(PActor, FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(HandleInfo->KinActorData2));
 			}
 
 			if (HandleInfo->bSetCOM)
@@ -4060,8 +4062,9 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 
 				FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
 			}
+		}
 
-		});
+	});
 
 	return true;
 #endif
@@ -4154,7 +4157,7 @@ void UGripMotionControllerComponent::OnGripMassUpdated(FBodyInstance* GripBodyIn
 		if (!root || root != GripBodyInstance->OwnerComponent)
 			continue;
 
-		UpdatePhysicsHandle(NewGrip);
+		UpdatePhysicsHandle(NewGrip, false);
 		break;
 	}
 }
@@ -4372,7 +4375,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			bRecreatingConstraint = true;
 
 #if WITH_PHYSX
-			HandleInfo->HandleData2.ConstraintData->setActors(FPhysicsInterface_PhysX::GetPxRigidDynamic_AssumesLocked(Actor), FPhysicsInterface_PhysX::GetPxRigidDynamic_AssumesLocked(HandleInfo->KinActorData2));
+			if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
+				HandleInfo->HandleData2.ConstraintData->setActors(FPhysicsInterface_PhysX::GetPxRigidDynamic_AssumesLocked(Actor), FPhysicsInterface_PhysX::GetPxRigidDynamic_AssumesLocked(HandleInfo->KinActorData2));
 #endif
 			
 			FPhysicsInterface::SetLocalPose(HandleInfo->HandleData2, KinPose.GetRelativeTransform(FPhysicsInterface::GetGlobalPose_AssumesLocked(Actor)), EConstraintFrame::Frame2);
@@ -4515,7 +4519,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			// This is a temp workaround until epic fixes the drive creation to allow force constraints
 			// I wanted to use the new interface and not directly set the drive so that it is ready to delete this section
 			// When its fixed
-			if (bUseForceDrive)
+			if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
 			{
 #if WITH_PHYSX
 				PxD6JointDrive driveVal = HandleInfo->HandleData2.ConstraintData->getDrive(PxD6Drive::Enum::eX);
@@ -4598,7 +4602,7 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 
 				FPhysicsInterface::UpdateLinearDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->LinConstraint);
 
-				if (bUseForceDrive)
+				if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
 				{
 #if WITH_PHYSX
 					PxD6JointDrive driveVal = HandleInfo->HandleData2.ConstraintData->getDrive(PxD6Drive::Enum::eX);
@@ -4622,7 +4626,7 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 
 					FPhysicsInterface::UpdateAngularDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->AngConstraint);
 
-					if (bUseForceDrive)
+					if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
 					{
 #if WITH_PHYSX
 						PxD6JointDrive driveVal = HandleInfo->HandleData2.ConstraintData->getDrive(PxD6Drive::Enum::eTWIST);
@@ -4654,7 +4658,7 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 
 				FPhysicsInterface::UpdateLinearDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->LinConstraint);
 
-				if (bUseForceDrive)
+				if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
 				{
 #if WITH_PHYSX
 					PxD6JointDrive driveVal = HandleInfo->HandleData2.ConstraintData->getDrive(PxD6Drive::Enum::eX);
@@ -4676,7 +4680,7 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 				HandleInfo->AngConstraint.SlerpDrive.Stiffness = AngularStiffness;
 				FPhysicsInterface::UpdateAngularDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->AngConstraint);
 
-				if (bUseForceDrive)
+				if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
 				{
 #if WITH_PHYSX
 					PxD6JointDrive driveVal = HandleInfo->HandleData2.ConstraintData->getDrive(PxD6Drive::Enum::eTWIST);
