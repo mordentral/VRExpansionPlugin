@@ -652,6 +652,7 @@ public:
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;
 	FVector LastPreAdditiveVRVelocity;
+	bool bHadAdditiveVelocity;
 	bool bApplyAdditionalVRInputVectorAsNegative;
 	
 	// Rewind the relative movement that we had with the HMD
@@ -700,6 +701,7 @@ public:
 		if (AdditionalVRInputVector.IsNearlyZero())
 		{
 			LastPreAdditiveVRVelocity = FVector::ZeroVector;
+			bHadAdditiveVelocity = false;
 			return;
 		}
 
@@ -709,17 +711,28 @@ public:
 		if (LastPreAdditiveVRVelocity.SizeSquared() < FMath::Square(TrackingLossThreshold))
 		{
 			Velocity += LastPreAdditiveVRVelocity;
+			bHadAdditiveVelocity = true;
 		}
 		else
 		{
 			LastPreAdditiveVRVelocity = FVector::ZeroVector;
+			bHadAdditiveVelocity = false;
 		}
 	}
 
 	inline void RestorePreAdditiveVRMotionVelocity()
 	{
-		if (Velocity.SizeSquared() >= LastPreAdditiveVRVelocity.SizeSquared())
-			Velocity -= LastPreAdditiveVRVelocity;
+		if (bHadAdditiveVelocity)
+		{
+			FVector ProjectedVelocity = Velocity.ProjectOnToNormal(LastPreAdditiveVRVelocity.GetSafeNormal());
+			float VelSq = ProjectedVelocity.SizeSquared();
+			float AddSq = LastPreAdditiveVRVelocity.SizeSquared();
+
+			if (VelSq > AddSq || FMath::IsNearlyEqual(VelSq, AddSq, 0.1f))
+			{
+				Velocity -= LastPreAdditiveVRVelocity;
+			}
+		}
 
 		LastPreAdditiveVRVelocity = FVector::ZeroVector;
 	}
