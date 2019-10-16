@@ -32,6 +32,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	CustomVRInputVector = FVector::ZeroVector;
 	bApplyAdditionalVRInputVectorAsNegative = true;
 	TrackingLossThreshold = 6000.f;
+	bHadAdditiveVelocity = false;
 
 	VRClimbingStepHeight = 96.0f;
 	VRClimbingEdgeRejectDistance = 5.0f;
