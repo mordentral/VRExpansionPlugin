@@ -655,7 +655,7 @@ public:
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;
 	FVector LastPreAdditiveVRVelocity;
-	bool bHadAdditiveVelocity;
+	bool bHadExtremeInput;
 	bool bApplyAdditionalVRInputVectorAsNegative;
 	
 	// Rewind the relative movement that we had with the HMD
@@ -673,6 +673,11 @@ public:
 	// Raise this value higher if players are noticing freezing when moving quickly.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement", meta = (ClampMin = "0.0", UIMin = "0"))
 		float TrackingLossThreshold;
+
+	// If we hit the tracking loss threshold then rewind position instead of running to the new location
+	// Will force the HMD to stay in its original spot prior to the tracking jump
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
+		bool bHoldPositionOnTrackingLossThresholdHit;
 
 	// Rewind the relative movement that we had with the HMD, this is exposed to Blueprint so that custom movement modes can use it to rewind prior to movement actions.
 	// Returns the Vector required to get back to the original position (for custom movement modes)
@@ -701,39 +706,48 @@ public:
 
 	inline void ApplyVRMotionToVelocity(float deltaTime)
 	{
+		bHadExtremeInput = false;
+
 		if (AdditionalVRInputVector.IsNearlyZero())
 		{
 			LastPreAdditiveVRVelocity = FVector::ZeroVector;
-			bHadAdditiveVelocity = false;
 			return;
 		}
 
-		LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
+		LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime; // Save off pre-additive Velocity for restoration next tick	
 
+		if (LastPreAdditiveVRVelocity.SizeSquared() > FMath::Square(TrackingLossThreshold))
+		{
+			bHadExtremeInput = true;
+			if (bHoldPositionOnTrackingLossThresholdHit)
+			{
+				LastPreAdditiveVRVelocity = FVector::ZeroVector;
+			}
+		}
 
-		if (LastPreAdditiveVRVelocity.SizeSquared() < FMath::Square(TrackingLossThreshold))
-		{
-			Velocity += LastPreAdditiveVRVelocity;
-			bHadAdditiveVelocity = true;
-		}
-		else
-		{
-			LastPreAdditiveVRVelocity = FVector::ZeroVector;
-			bHadAdditiveVelocity = false;
-		}
+		Velocity += LastPreAdditiveVRVelocity;
 	}
 
 	inline void RestorePreAdditiveVRMotionVelocity()
 	{
-		if (bHadAdditiveVelocity)
+		if (!LastPreAdditiveVRVelocity.IsNearlyZero())
 		{
-			FVector ProjectedVelocity = Velocity.ProjectOnToNormal(LastPreAdditiveVRVelocity.GetSafeNormal());
-			float VelSq = ProjectedVelocity.SizeSquared();
-			float AddSq = LastPreAdditiveVRVelocity.SizeSquared();
-
-			if (VelSq > AddSq || FMath::IsNearlyEqual(VelSq, AddSq, 0.1f))
+			if (bHadExtremeInput)
 			{
-				Velocity -= LastPreAdditiveVRVelocity;
+				// Just zero out the velocity here
+				Velocity = FVector::ZeroVector;
+			}
+			else
+			{
+				FVector ProjectedVelocity = Velocity.ProjectOnToNormal(LastPreAdditiveVRVelocity.GetSafeNormal());
+				float VelSq = ProjectedVelocity.SizeSquared();
+				float AddSq = LastPreAdditiveVRVelocity.SizeSquared();
+
+				if (VelSq > AddSq || ProjectedVelocity.Equals(LastPreAdditiveVRVelocity, 0.1f))
+				{
+					// Subtract velocity if we still relatively retain it in the normalized direction
+					Velocity -= LastPreAdditiveVRVelocity;
+				}
 			}
 		}
 
