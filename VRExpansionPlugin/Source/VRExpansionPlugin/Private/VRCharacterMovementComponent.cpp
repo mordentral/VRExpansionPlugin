@@ -2870,7 +2870,17 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 	}
 
 //	ApplyRootMotionToVelocity(deltaTime);
-//	ApplyVRMotionToVelocity(deltaTime);
+	//ApplyVRMotionToVelocity(deltaTime);
+
+	// Manually handle the velocity setup
+	LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime;
+	bool bExtremeInput = false;
+	if (LastPreAdditiveVRVelocity.SizeSquared() > FMath::Square(TrackingLossThreshold))
+	{
+		// Default to always holding position during flight to avoid too much velocity injection
+		AdditionalVRInputVector = FVector::ZeroVector;
+		LastPreAdditiveVRVelocity = FVector::ZeroVector;
+	}
 
 	Iterations++;
 	bJustTeleported = false;
@@ -2907,7 +2917,8 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 
 	if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
-		Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime;
+		Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation)) / deltaTime;
+		RestorePreAdditiveVRMotionVelocity();
 	}
 }
 
