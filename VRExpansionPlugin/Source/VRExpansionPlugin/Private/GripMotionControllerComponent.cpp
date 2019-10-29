@@ -3178,14 +3178,16 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 		PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
 
+		// Zero out our scale now that we are working outside of physx
+		physicsTrans.SetScale3D(FVector(1.0f));
+		FTransform newTrans = Handle->COMPosition * (Handle->RootBoneRotation * physicsTrans);
 		FPhysicsCommand::ExecuteWrite(Handle->KinActorData2, [&](const FPhysicsActorHandle& Actor)
 		{
-			// Zero out our scale now that we are working outside of physx
-			physicsTrans.SetScale3D(FVector(1.0f));
-
-			FTransform newTrans = Handle->COMPosition * (Handle->RootBoneRotation * physicsTrans);
-			FPhysicsInterface::SetKinematicTarget_AssumesLocked(Actor, newTrans);
-			FPhysicsInterface::SetGlobalPose_AssumesLocked(Actor, newTrans);
+			if (Actor.IsValid())
+			{
+				FPhysicsInterface::SetKinematicTarget_AssumesLocked(Actor, newTrans);
+				FPhysicsInterface::SetGlobalPose_AssumesLocked(Actor, newTrans);
+			}
 		});
 	}
 
