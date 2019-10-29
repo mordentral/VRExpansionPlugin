@@ -4156,10 +4156,13 @@ void UGripMotionControllerComponent::OnGripMassUpdated(FBodyInstance* GripBodyIn
 		if (!root && pActor)
 			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
 
-		if (!root || root != GripBodyInstance->OwnerComponent || root->IsPendingKill())
+		if (!root || root != GripBodyInstance->OwnerComponent)
 			continue;
 
-		UpdatePhysicsHandle(NewGrip, false);
+		if (!root->IsPendingKill())
+		{
+			UpdatePhysicsHandle(NewGrip, false);
+		}
 		break;
 	}
 }
