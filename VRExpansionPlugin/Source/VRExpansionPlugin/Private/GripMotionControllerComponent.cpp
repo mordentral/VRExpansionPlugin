@@ -3046,7 +3046,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 	}
 
-	if (!PrimComp || !actor)
+	if (!PrimComp || !actor || actor->IsPendingKill() || PrimComp->IsPendingKill())
 		return false;
 
 	// Check if either implements the interface
@@ -3505,7 +3505,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				}
 
 				// Last check to make sure the variables are valid
-				if (!root || !actor)
+				if (!root || !actor || root->IsPendingKill() || actor->IsPendingKill())
 					continue;
 
 				// Check if either implements the interface
@@ -4156,7 +4156,7 @@ void UGripMotionControllerComponent::OnGripMassUpdated(FBodyInstance* GripBodyIn
 		if (!root && pActor)
 			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
 
-		if (!root || root != GripBodyInstance->OwnerComponent)
+		if (!root || root != GripBodyInstance->OwnerComponent || root->IsPendingKill())
 			continue;
 
 		UpdatePhysicsHandle(NewGrip, false);
