@@ -812,6 +812,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		bool bTurnOffGravityDuringGrip;
 
+	// A multiplier to add to the stiffness of a grip that is then set as the MaxForce of the grip
+	// It is clamped between 0.00 and 32.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero
+	// If you want an exact value you can figure it out as a factor of the stiffness, also Max force can be directly edited with SetAdvancedConstraintSettings
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "32.00", UIMax = "32.00"))
+		float LinearMaxForceCoefficient;
+
+	// A multiplier to add to the stiffness of a grip that is then set as the MaxForce of the grip
+	// It is clamped between 0.00 and 32.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero
+	// If you want an exact value you can figure it out as a factor of the stiffness, also Max force can be directly edited with SetAdvancedConstraintSettings
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "32.00", UIMax = "32.00"))
+		float AngularMaxForceCoefficient;
+
 	// Use the custom angular values on this grip
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		bool bUseCustomAngularValues;
@@ -822,15 +834,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUseCustomAngularValues", ClampMin = "0.000", UIMin = "0.000"))
 		float AngularDamping;
 
-	// Maximum force that this constraint can apply (default of 0 is infinite)
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings", ClampMin = "0.000", UIMin = "0.000"))
-		//float MaxForce;
-
 	FBPAdvGripPhysicsSettings():
 		bUsePhysicsSettings(false),
 		PhysicsConstraintType(EPhysicsGripConstraintType::AccelerationConstraint),
 		PhysicsGripLocationSettings(EPhysicsGripCOMType::COM_Default),
 		bTurnOffGravityDuringGrip(false),
+		LinearMaxForceCoefficient(1.f),
+		AngularMaxForceCoefficient(10.f),
 		bUseCustomAngularValues(false),
 		AngularStiffness(0.0f),
 		AngularDamping(0.0f)//,
@@ -844,6 +854,8 @@ public:
 			bTurnOffGravityDuringGrip == Other.bTurnOffGravityDuringGrip &&
 			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
 			PhysicsConstraintType == Other.PhysicsConstraintType &&
+			FMath::IsNearlyEqual(LinearMaxForceCoefficient, Other.LinearMaxForceCoefficient) &&
+			FMath::IsNearlyEqual(AngularMaxForceCoefficient, Other.AngularMaxForceCoefficient) &&
 			FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) &&
 			FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) //&&
 			//FMath::IsNearlyEqual(MaxForce, Other.MaxForce)
@@ -857,6 +869,8 @@ public:
 			bTurnOffGravityDuringGrip != Other.bTurnOffGravityDuringGrip ||
 			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
 			PhysicsConstraintType != Other.PhysicsConstraintType ||
+			!FMath::IsNearlyEqual(LinearMaxForceCoefficient, Other.LinearMaxForceCoefficient) ||
+			!FMath::IsNearlyEqual(AngularMaxForceCoefficient, Other.AngularMaxForceCoefficient) ||
 			!FMath::IsNearlyEqual(AngularStiffness, Other.AngularStiffness) ||
 			!FMath::IsNearlyEqual(AngularDamping, Other.AngularDamping) //||
 			//!FMath::IsNearlyEqual(MaxForce, Other.MaxForce)
@@ -879,6 +893,22 @@ public:
 
 			//Ar << bTurnOffGravityDuringGrip;
 			Ar.SerializeBits(&bTurnOffGravityDuringGrip, 1);
+
+
+			// This is 0.0 - 32.0, using compression to get it smaller, 5 bits = max 32 + 1 bit for sign and 7 bits precision for 128 / full 2 digit precision
+			if (Ar.IsSaving())
+			{
+				bOutSuccess &= WriteFixedCompressedFloat<32, 13>(LinearMaxForceCoefficient, Ar);
+				bOutSuccess &= WriteFixedCompressedFloat<32, 13>(AngularMaxForceCoefficient, Ar);
+			}
+			else
+			{
+				bOutSuccess &= ReadFixedCompressedFloat<32, 13>(LinearMaxForceCoefficient, Ar);
+				bOutSuccess &= ReadFixedCompressedFloat<32, 13>(AngularMaxForceCoefficient, Ar);
+			}
+
+
+
 			//Ar << bUseCustomAngularValues;
 			Ar.SerializeBits(&bUseCustomAngularValues, 1);
 
