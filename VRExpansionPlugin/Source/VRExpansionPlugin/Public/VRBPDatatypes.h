@@ -813,15 +813,15 @@ public:
 		bool bTurnOffGravityDuringGrip;
 
 	// A multiplier to add to the stiffness of a grip that is then set as the MaxForce of the grip
-	// It is clamped between 0.00 and 32.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero
+	// It is clamped between 0.00 and 256.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero (legacy behavior)
 	// If you want an exact value you can figure it out as a factor of the stiffness, also Max force can be directly edited with SetAdvancedConstraintSettings
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "32.00", UIMax = "32.00"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "256.00", UIMax = "32.00"))
 		float LinearMaxForceCoefficient;
 
 	// A multiplier to add to the stiffness of a grip that is then set as the MaxForce of the grip
-	// It is clamped between 0.00 and 32.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero
+	// It is clamped between 0.00 and 256.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero (legacy behavior)
 	// If you want an exact value you can figure it out as a factor of the stiffness, also Max force can be directly edited with SetAdvancedConstraintSettings
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "32.00", UIMax = "32.00"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "256.00", UIMax = "32.00"))
 		float AngularMaxForceCoefficient;
 
 	// Use the custom angular values on this grip
@@ -839,8 +839,8 @@ public:
 		PhysicsConstraintType(EPhysicsGripConstraintType::AccelerationConstraint),
 		PhysicsGripLocationSettings(EPhysicsGripCOMType::COM_Default),
 		bTurnOffGravityDuringGrip(false),
-		LinearMaxForceCoefficient(1.f),
-		AngularMaxForceCoefficient(10.f),
+		LinearMaxForceCoefficient(0.f),
+		AngularMaxForceCoefficient(0.f),
 		bUseCustomAngularValues(false),
 		AngularStiffness(0.0f),
 		AngularDamping(0.0f)//,
@@ -895,16 +895,16 @@ public:
 			Ar.SerializeBits(&bTurnOffGravityDuringGrip, 1);
 
 
-			// This is 0.0 - 32.0, using compression to get it smaller, 5 bits = max 32 + 1 bit for sign and 7 bits precision for 128 / full 2 digit precision
+			// This is 0.0 - 256.0, using compression to get it smaller, 8 bits = max 256 + 1 bit for sign and 7 bits precision for 128 / full 2 digit precision
 			if (Ar.IsSaving())
 			{
-				bOutSuccess &= WriteFixedCompressedFloat<32, 13>(LinearMaxForceCoefficient, Ar);
-				bOutSuccess &= WriteFixedCompressedFloat<32, 13>(AngularMaxForceCoefficient, Ar);
+				bOutSuccess &= WriteFixedCompressedFloat<256, 16>(LinearMaxForceCoefficient, Ar);
+				bOutSuccess &= WriteFixedCompressedFloat<256, 16>(AngularMaxForceCoefficient, Ar);
 			}
 			else
 			{
-				bOutSuccess &= ReadFixedCompressedFloat<32, 13>(LinearMaxForceCoefficient, Ar);
-				bOutSuccess &= ReadFixedCompressedFloat<32, 13>(AngularMaxForceCoefficient, Ar);
+				bOutSuccess &= ReadFixedCompressedFloat<256, 16>(LinearMaxForceCoefficient, Ar);
+				bOutSuccess &= ReadFixedCompressedFloat<256, 16>(AngularMaxForceCoefficient, Ar);
 			}
 
 
