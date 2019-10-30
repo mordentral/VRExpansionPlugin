@@ -4322,6 +4322,19 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		KinPose = trans;
 		bool bRecreatingConstraint = false;
 
+
+		// If using twist only, lets rotate the kinematic actor to face the controller X+
+		if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
+		{
+			FTransform PivTrans = GetPivotTransform();
+
+			FQuat DeltaQuat = (PivTrans.GetRotation().Inverse() * KinPose.GetRotation()).Inverse();
+
+			// This moves the kinematic actor to face the pivot components X+ direction
+			KinPose.SetRotation(KinPose.GetRotation() * DeltaQuat);
+			HandleInfo->COMPosition.SetRotation(HandleInfo->COMPosition.GetRotation()* DeltaQuat);
+		}
+
 		if (GripScripts)
 		{
 			// Inject any alterations that the grip scripts want to make
