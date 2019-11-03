@@ -638,10 +638,10 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
 		{
 			OwningCharacter->NotifyOfTeleport();
-			MoveAction.MoveActionRot.Roll = 0.0f;
 		}
-		
-		OwningCharacter->SetActorRotationVR(MoveAction.MoveActionRot, true, false);
+
+		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
+		OwningCharacter->SetActorRotationVR(TargetRot, true, false);
 	}
 
 	return false;
@@ -655,10 +655,10 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
 		{
 			OwningCharacter->NotifyOfTeleport();
-			MoveAction.MoveActionRot.Roll = 0.0f;
 		}
 
-		OwningCharacter->SetActorRotationVR(MoveAction.MoveActionRot, true);
+		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
+		OwningCharacter->SetActorRotationVR(TargetRot, true);
 	}
 
 	return false;
@@ -677,8 +677,8 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 		}
 
 		bool bSkipEncroachmentCheck = MoveAction.MoveActionRot.Pitch > 0.0f;
-		MoveAction.MoveActionRot.Pitch = 0.0f;
-		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, MoveAction.MoveActionRot, false, bSkipEncroachmentCheck);
+		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
+		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, TargetRot, false, bSkipEncroachmentCheck);
 
 		if (OwningCharacter->bUseControllerRotationYaw)
 			OwningController->SetControlRotation(MoveAction.MoveActionRot);
