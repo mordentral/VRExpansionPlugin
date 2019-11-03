@@ -1452,6 +1452,11 @@ public:
 		return ((GripID != INVALID_VRGRIP_ID) && (GripID == Other.GripID));
 	}
 
+	FORCEINLINE bool operator==(const uint8 & Other) const
+	{
+		return ((GripID != INVALID_VRGRIP_ID) && (GripID == Other));
+	}
+
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")

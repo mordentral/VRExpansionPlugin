@@ -4432,9 +4432,9 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier
 				AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
 			}
-
-			AngularMaxForce = FMath::Clamp(AngularStiffness * NewGrip.AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0.f, MAX_FLT);
-			MaxForce = FMath::Clamp(Stiffness * NewGrip.AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0.f, MAX_FLT);
+			
+			AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
+			MaxForce = (float)FMath::Clamp<double>((double)Stiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0, (double)MAX_FLT);
 
 			// Different settings for manip grip
 			if (NewGrip.GripCollisionType == EGripCollisionType::ManipulationGrip || NewGrip.GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
@@ -4496,8 +4496,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					// Default multiplier
 					Stiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;
 					AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;
-					AngularMaxForce = FMath::Clamp(AngularStiffness * NewGrip.AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0.f, MAX_FLT);
-					MaxForce = FMath::Clamp(Stiffness * NewGrip.AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0.f, MAX_FLT);
+					AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
+					MaxForce = (float)FMath::Clamp<double>((double)Stiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0, (double)MAX_FLT);
 				}
 
 				if (!bRecreatingConstraint)
@@ -4619,8 +4619,8 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 				AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
 			}
 
-			AngularMaxForce = FMath::Clamp(AngularStiffness * Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0.f, MAX_FLT);
-			MaxForce = FMath::Clamp(Stiffness * Grip->AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0.f, MAX_FLT);
+			AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
+			MaxForce = (float)FMath::Clamp<double>((double)Stiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0, (double)MAX_FLT);
 
 
 			// Different settings for manip grip
@@ -4685,8 +4685,8 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 					Stiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;
 					AngularStiffness *= HYBRID_PHYSICS_GRIP_MULTIPLIER;
 
-					AngularMaxForce = FMath::Clamp(AngularStiffness * Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0.f, MAX_FLT);
-					MaxForce = FMath::Clamp(Stiffness * Grip->AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0.f, MAX_FLT);
+					AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
+					MaxForce = (float)FMath::Clamp<double>((double)Stiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0, (double)MAX_FLT);
 				}
 
 				HandleInfo->LinConstraint.XDrive.Damping = Damping;
