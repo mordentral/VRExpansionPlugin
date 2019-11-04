@@ -172,7 +172,7 @@ void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * Gr
 
 void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
 {
-	if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+	if (bDialUsesAngleSnap && SnapAngleIncrement > 0.f && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 	{
 		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());		
 		CurRotBackEnd = FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement);
@@ -378,7 +378,7 @@ void UVRDialComponent::AddDialAngle(float DialAngleDelta, bool bCallEvents, bool
 	else
 		CurRotBackEnd = tempCheck;
 
-	if (bDialUsesAngleSnap && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+	if (bDialUsesAngleSnap && SnapAngleIncrement > 0.f && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 	{
 		if(!bSkipSettingRot)
 			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
