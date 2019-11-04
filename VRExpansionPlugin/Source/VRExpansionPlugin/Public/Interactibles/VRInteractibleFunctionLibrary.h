@@ -283,7 +283,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRInteractibleFunctions", meta = (bIgnoreSelf = "true"))
 		static float Interactible_GetThresholdSnappedValue(float ValueToSnap, float SnapIncrement, float SnapThreshold)
 	{
-		if (FMath::Fmod(ValueToSnap, SnapIncrement) <= FMath::Min(SnapIncrement, SnapThreshold))
+		if (SnapIncrement > 0.f && FMath::Fmod(ValueToSnap, SnapIncrement) <= FMath::Min(SnapIncrement, SnapThreshold))
 		{
 			return FMath::GridSnap(ValueToSnap, SnapIncrement);
 		}
