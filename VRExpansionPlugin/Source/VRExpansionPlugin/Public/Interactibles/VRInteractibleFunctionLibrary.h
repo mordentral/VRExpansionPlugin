@@ -86,7 +86,7 @@ public:
 
 	static float GetDeltaAngleFromTransforms(EVRInteractibleAxis RotAxis, FTransform & InitialRelativeTransform, FTransform &CurrentRelativeTransform)
 	{
-		return GetDeltaAngle(RotAxis, (InitialRelativeTransform.GetRotation().Inverse() * CurrentRelativeTransform.GetRotation()).GetNormalized());
+		return GetDeltaAngle(RotAxis, (CurrentRelativeTransform.GetRelativeTransform(InitialRelativeTransform).GetRotation()).GetNormalized());
 	}
 
 	static float GetDeltaAngle(EVRInteractibleAxis RotAxis, FQuat DeltaQuat)
