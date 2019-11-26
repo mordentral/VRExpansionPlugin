@@ -1684,23 +1684,26 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 			if(!IsTornOff())
 				Server_NotifyDropAndSocketGrip(GripInfo->GripID, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 
-			// Have to call this ourselves
-			DropAndSocket_Implementation(*GripInfo);
 			if (GrippedObject)
 				Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+
+			// Have to call this ourselves
+			DropAndSocket_Implementation(*GripInfo);
 		}
 		else // Server notifyDrop it
 		{
-			NotifyDropAndSocket(*GripInfo);
 			if (GrippedObject)
 				Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+
+			NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		}
 	}
 	else
 	{
-		NotifyDropAndSocket(*GripInfo);
 		if (GrippedObject)
 			Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+
+		NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 	}
 
 	//GrippedObjects.RemoveAt(FoundIndex);		
@@ -1765,13 +1768,14 @@ void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementati
 	int PhysicsHandleIndex = INDEX_NONE;
 	GetPhysicsGripIndex(FoundGrip, PhysicsHandleIndex);
 
+	if (FoundGrip.GrippedObject)
+		Socket_Implementation(FoundGrip.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent);
+
 	if (!DropAndSocketGrip(FoundGrip, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies))
 	{
 		DropGrip(FoundGrip, false);
 	}
-	
-	if (FoundGrip.GrippedObject)
-		Socket_Implementation(FoundGrip.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent);
+
 }
 
 void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSocket, bool bWasSimulating, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
@@ -1787,11 +1791,18 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 
 	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
 	{
+		// Stop simulation for socketing
+		root->SetSimulatePhysics(false);
 		root->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		root->SetRelativeTransform(RelativeTransformToParent);
 	}
 	else if (AActor * pActor = Cast<AActor>(ObjectToSocket))
 	{
+		if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
+		{
+			// Stop simulation for socketing
+			root->SetSimulatePhysics(false);
+		}
 		pActor->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		pActor->SetActorRelativeTransform(RelativeTransformToParent);
 
@@ -1808,7 +1819,7 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	}
 }
 
-void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FBPActorGripInformation &NewDrop)
+void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FBPActorGripInformation &NewDrop, USceneComponent* SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize& RelativeTransformToParent, bool bWeldBodies)
 {
 	// Don't do this if we are the owning player on a local grip, there is no filter for multicast to not send to owner
 	if ((NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
@@ -1818,6 +1829,12 @@ void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FB
 	{
 		return;
 	}
+
+	int PhysicsHandleIndex = INDEX_NONE;
+	GetPhysicsGripIndex(NewDrop, PhysicsHandleIndex);
+
+	if (NewDrop.GrippedObject)
+		Socket_Implementation(NewDrop.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent);
 
 	DropAndSocket_Implementation(NewDrop);
 }
