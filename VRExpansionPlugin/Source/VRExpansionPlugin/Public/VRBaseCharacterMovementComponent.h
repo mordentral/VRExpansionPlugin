@@ -726,7 +726,8 @@ public:
 			}
 			else
 			{
-				FVector ProjectedVelocity = Velocity.ProjectOnToNormal(LastPreAdditiveVRVelocity.GetSafeNormal());
+				// This doesn't work with input in the opposing direction
+				/*FVector ProjectedVelocity = Velocity.ProjectOnToNormal(LastPreAdditiveVRVelocity.GetSafeNormal());
 				float VelSq = ProjectedVelocity.SizeSquared();
 				float AddSq = LastPreAdditiveVRVelocity.SizeSquared();
 
@@ -734,7 +735,9 @@ public:
 				{
 					// Subtract velocity if we still relatively retain it in the normalized direction
 					Velocity -= LastPreAdditiveVRVelocity;
-				}
+				}*/
+
+				Velocity -= LastPreAdditiveVRVelocity;
 			}
 		}
 

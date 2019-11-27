@@ -2917,6 +2917,7 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 
 	if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
+		//Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime;
 		Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation)) / deltaTime;
 		RestorePreAdditiveVRMotionVelocity();
 	}
