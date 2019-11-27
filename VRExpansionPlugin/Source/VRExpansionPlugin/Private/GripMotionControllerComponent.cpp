@@ -1798,10 +1798,10 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	}
 	else if (AActor * pActor = Cast<AActor>(ObjectToSocket))
 	{
-		if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
+		if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
 		{
 			// Stop simulation for socketing
-			root->SetSimulatePhysics(false);
+			rootComp->SetSimulatePhysics(false);
 		}
 		pActor->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		pActor->SetActorRelativeTransform(RelativeTransformToParent);
