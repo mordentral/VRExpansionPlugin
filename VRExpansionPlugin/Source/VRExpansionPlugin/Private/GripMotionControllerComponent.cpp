@@ -3197,8 +3197,11 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 		// Zero out our scale now that we are working outside of physx
 		physicsTrans.SetScale3D(FVector(1.0f));
+
+
+		FPhysicsActorHandle ActorHandle = Handle->KinActorData2;
 		FTransform newTrans = Handle->COMPosition * (Handle->RootBoneRotation * physicsTrans);
-		FPhysicsCommand::ExecuteWrite(Handle->KinActorData2, [&](const FPhysicsActorHandle& Actor)
+		FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
 		{
 			if (Actor.IsValid())
 			{
@@ -4824,9 +4827,11 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 	{
 		HandleInfo->LastPhysicsTransform = NewTransform;
 		HandleInfo->LastPhysicsTransform.SetScale3D(FVector(1.0f));
-		FPhysicsCommand::ExecuteWrite(HandleInfo->KinActorData2, [&](const FPhysicsActorHandle & Actor)
+		FPhysicsActorHandle ActorHandle = HandleInfo->KinActorData2;
+		FTransform newTrans = HandleInfo->COMPosition * (HandleInfo->RootBoneRotation * HandleInfo->LastPhysicsTransform);
+		FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle & Actor)
 		{
-			FPhysicsInterface::SetKinematicTarget_AssumesLocked(Actor, HandleInfo->COMPosition * (HandleInfo->RootBoneRotation * HandleInfo->LastPhysicsTransform));
+			FPhysicsInterface::SetKinematicTarget_AssumesLocked(Actor, newTrans);
 		});
 	}
 
