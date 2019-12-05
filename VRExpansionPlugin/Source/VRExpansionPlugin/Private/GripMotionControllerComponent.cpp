@@ -4768,10 +4768,14 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 			{
 				continue;
 			}
-			
-			if(bIsInGameThread)
-				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
 
+			if (bIsInGameThread)
+			{
+				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
+				if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
+					continue;
+			}
+		
 			if (MotionController->GetControllerOrientationAndPosition(PlayerIndex, MotionSource, Orientation, Position, WorldToMetersScale))
 			{
 				if (bOffsetByHMD)
@@ -4914,7 +4918,7 @@ bool UGripMotionControllerComponent::FGripViewExtension::IsActiveThisFrame(class
 	check(IsInGameThread());
 
 	static const auto CVarEnableMotionControllerLateUpdate = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.EnableMotionControllerLateUpdate"));
-	return MotionControllerComponent && !MotionControllerComponent->bDisableLowLatencyUpdate && CVarEnableMotionControllerLateUpdate->GetValueOnGameThread();
+	return MotionControllerComponent && !MotionControllerComponent->bDisableLowLatencyUpdate && MotionControllerComponent->GripControllerIsTracked() && CVarEnableMotionControllerLateUpdate->GetValueOnGameThread();
 }
 
 void UGripMotionControllerComponent::GetAllGrips(TArray<FBPActorGripInformation> &GripArray)
@@ -5584,7 +5588,7 @@ bool UGripMotionControllerComponent::GetGripDistance_BP(FBPActorGripInformation 
 	return true;
 }
 
-bool UGripMotionControllerComponent::GripControllerIsTracked() const
+inline bool UGripMotionControllerComponent::GripControllerIsTracked() const
 {
 	return bTracked;
 }
