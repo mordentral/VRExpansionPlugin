@@ -80,7 +80,7 @@ void AVRPlayerController::PlayerTick(float DeltaTime)
 
 			if (IsInState(NAME_Inactive))
 			{
-				if (Role < ROLE_Authority)
+				if (GetLocalRole() < ROLE_Authority)
 				{
 					SafeServerCheckClientPossession();
 				}
@@ -89,7 +89,7 @@ void AVRPlayerController::PlayerTick(float DeltaTime)
 			}
 			else if (IsInState(NAME_Spectating))
 			{
-				if (Role < ROLE_Authority)
+				if (GetLocalRole() < ROLE_Authority)
 				{
 					SafeServerUpdateSpectatorState();
 				}

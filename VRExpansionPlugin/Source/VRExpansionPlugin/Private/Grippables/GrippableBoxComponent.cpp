@@ -37,7 +37,7 @@ void UGrippableBoxComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeP
 {
 	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	 DOREPLIFETIME/*_CONDITION*/(UGrippableBoxComponent, GripLogicScripts);// , COND_Custom);
+	DOREPLIFETIME/*_CONDITION*/(UGrippableBoxComponent, GripLogicScripts);// , COND_Custom);
 	DOREPLIFETIME(UGrippableBoxComponent, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(UGrippableBoxComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, VRGripInterfaceSettings, COND_Custom);
@@ -52,9 +52,11 @@ void UGrippableBoxComponent::PreReplication(IRepChangedPropertyTracker & Changed
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
 
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
 bool UGrippableBoxComponent::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)

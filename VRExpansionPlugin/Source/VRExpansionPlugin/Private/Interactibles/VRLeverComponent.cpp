@@ -95,9 +95,11 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRLeverComponent, GameplayTags, bRepGameplayTags);
 
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D,	bReplicateMovement);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
 void UVRLeverComponent::OnRegister()

@@ -55,7 +55,7 @@ public:
 		}
 
 		OptionalWaistTrackingParent.TrackedDevice = NewParentComponent;
-		OptionalWaistTrackingParent.RestingRotation = NewParentComponent->RelativeRotation;
+		OptionalWaistTrackingParent.RestingRotation = NewParentComponent->GetRelativeRotation();
 		OptionalWaistTrackingParent.RestingRotation.Yaw = 0.0f;
 		
 		OptionalWaistTrackingParent.TrackingMode = WaistTrackingMode;

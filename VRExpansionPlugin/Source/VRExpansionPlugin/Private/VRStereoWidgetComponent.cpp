@@ -280,89 +280,81 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	if (bIsDirty)
 	{
-		if (!bCurrVisible)
+
+		IStereoLayers::FLayerDesc LayerDsec;
+		LayerDsec.Priority = Priority;
+		LayerDsec.QuadSize = FVector2D(DrawSize);
+		LayerDsec.UVRect = UVRect;
+		LayerDsec.Transform = Transform;
+
+
+		if (RenderTarget)
 		{
-			if (LayerId)
-			{
-				StereoLayers->DestroyLayer(LayerId);
-				LayerId = 0;
-			}
+			LayerDsec.Texture = RenderTarget->Resource->TextureRHI;
+			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
+		}
+		// Forget the left texture implementation
+		//if (LeftTexture)
+		//{
+		//	LayerDsec.LeftTexture = LeftTexture->Resource->TextureRHI;
+		//}
+
+		const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
+		const float Radius = GetDrawSize().X / ArcAngleRadians;
+
+		//LayerDsec.CylinderSize = FVector2D(/*CylinderRadius*/Radius, /*CylinderOverlayArc*/CylinderArcAngle);
+		LayerDsec.CylinderRadius = Radius;
+		LayerDsec.CylinderOverlayArc = CylinderArcAngle;
+
+		// This needs to be auto set from variables, need to work on it
+		LayerDsec.CylinderHeight = GetDrawSize().Y;//CylinderHeight;
+
+		LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE;// (/*bLiveTexture*/true) ? IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE : 0;
+		LayerDsec.Flags |= (bNoAlphaChannel) ? IStereoLayers::LAYER_FLAG_TEX_NO_ALPHA_CHANNEL : 0;
+		LayerDsec.Flags |= (bQuadPreserveTextureRatio) ? IStereoLayers::LAYER_FLAG_QUAD_PRESERVE_TEX_RATIO : 0;
+		LayerDsec.Flags |= (bSupportsDepth) ? IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH : 0;
+		LayerDsec.Flags |= (!bCurrVisible) ? IStereoLayers::LAYER_FLAG_HIDDEN : 0;
+
+		// Fix this later when WorldLocked is no longer wrong.
+		switch (Space)
+		{
+		case EWidgetSpace::World:
+		{
+			if(bUseEpicsWorldLockedStereo)
+				LayerDsec.PositionType = IStereoLayers::WorldLocked;
+			else
+				LayerDsec.PositionType = IStereoLayers::TrackerLocked;
+
+			//LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH;
+		}break;
+
+		case EWidgetSpace::Screen:
+		default:
+		{
+			LayerDsec.PositionType = IStereoLayers::FaceLocked;
+		}break;
+		}
+
+		switch (GeometryMode)
+		{
+		case EWidgetGeometryMode::Cylinder:
+		{
+			LayerDsec.ShapeType = IStereoLayers::CylinderLayer;
+		}break;
+		case EWidgetGeometryMode::Plane:
+		default:
+		{
+			LayerDsec.ShapeType = IStereoLayers::QuadLayer;
+		}break;
+		}
+
+		if (LayerId)
+		{
+			StereoLayers->SetLayerDesc(LayerId, LayerDsec);
 		}
 		else
 		{
-			IStereoLayers::FLayerDesc LayerDsec;
-			LayerDsec.Priority = Priority;
-			LayerDsec.QuadSize = FVector2D(DrawSize);//StereoLayerQuadSize;
-
-			LayerDsec.UVRect = UVRect;
-			LayerDsec.Transform = Transform;
-			if (RenderTarget)
-			{
-				LayerDsec.Texture = RenderTarget->Resource->TextureRHI;
-			}
-			// Forget the left texture implementation
-			//if (LeftTexture)
-			//{
-			//	LayerDsec.LeftTexture = LeftTexture->Resource->TextureRHI;
-			//}
-
-
-			const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
-			const float Radius = GetDrawSize().X / ArcAngleRadians;
-
-			//LayerDsec.CylinderSize = FVector2D(/*CylinderRadius*/Radius, /*CylinderOverlayArc*/CylinderArcAngle);
-			LayerDsec.CylinderRadius = Radius;
-			LayerDsec.CylinderOverlayArc = CylinderArcAngle;
-
-			// This needs to be auto set from variables, need to work on it
-			LayerDsec.CylinderHeight = GetDrawSize().Y;//CylinderHeight;
-
-			LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE;// (/*bLiveTexture*/true) ? IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE : 0;
-			LayerDsec.Flags |= (bNoAlphaChannel) ? IStereoLayers::LAYER_FLAG_TEX_NO_ALPHA_CHANNEL : 0;
-			LayerDsec.Flags |= (bQuadPreserveTextureRatio) ? IStereoLayers::LAYER_FLAG_QUAD_PRESERVE_TEX_RATIO : 0;
-			LayerDsec.Flags |= (bSupportsDepth) ? IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH : 0;
-
-			// Fix this later when WorldLocked is no longer wrong.
-			switch (Space)
-			{
-			case EWidgetSpace::World:
-			{
-				if(bUseEpicsWorldLockedStereo)
-					LayerDsec.PositionType = IStereoLayers::WorldLocked;
-				else
-					LayerDsec.PositionType = IStereoLayers::TrackerLocked;
-
-				//LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH;
-			}break;
-
-			case EWidgetSpace::Screen:
-			default:
-			{
-				LayerDsec.PositionType = IStereoLayers::FaceLocked;
-			}break;
-			}
-
-			switch (GeometryMode)
-			{
-			case EWidgetGeometryMode::Cylinder:
-			{
-				LayerDsec.ShapeType = IStereoLayers::CylinderLayer;
-			}break;
-			case EWidgetGeometryMode::Plane:
-			default:
-			{
-				LayerDsec.ShapeType = IStereoLayers::QuadLayer;
-			}break;
-			}
-
-			if (LayerId)
-			{
-				StereoLayers->SetLayerDesc(LayerId, LayerDsec);
-			}
-			else
-			{
-				LayerId = StereoLayers->CreateLayer(LayerDsec);
-			}
+			LayerId = StereoLayers->CreateLayer(LayerDsec);
 		}
 
 	}

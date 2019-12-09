@@ -2,6 +2,7 @@
 
 #include "GripMotionControllerComponent.h"
 #include "IHeadMountedDisplay.h"
+#include "HeadMountedDisplayTypes.h"
 //#include "DestructibleComponent.h" 4.18 moved apex destruct to a plugin
 #include "Misc/ScopeLock.h"
 #include "Net/UnrealNetwork.h"
@@ -83,7 +84,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bAlwaysSendTickGrip = false;
 	bAutoActivate = true;
 
-	this->SetIsReplicated(true);
+	SetIsReplicatedByDefault(true);
 
 	// Default 100 htz update rate, same as the 100htz update rate of rep_notify, will be capped to 90/45 though because of vsync on HMD
 	//bReplicateControllerTransform = true;
@@ -247,7 +248,7 @@ void UGripMotionControllerComponent::BeginPlay()
 void UGripMotionControllerComponent::CreateRenderState_Concurrent()
 {	
 	// Don't bother updating this stuff if we aren't local or using them
-	if (bHasAuthority && !bDisableLowLatencyUpdate && bIsActive)
+	if (bHasAuthority && !bDisableLowLatencyUpdate && IsActive())
 	{
 		GripRenderThreadRelativeTransform = GetRelativeTransform();
 		GripRenderThreadComponentScale = GetComponentScale();
@@ -260,7 +261,7 @@ void UGripMotionControllerComponent::CreateRenderState_Concurrent()
 void UGripMotionControllerComponent::SendRenderTransform_Concurrent()
 {
 	// Don't bother updating this stuff if we aren't local or using them
-	if (bHasAuthority && !bDisableLowLatencyUpdate && bIsActive)
+	if (bHasAuthority && !bDisableLowLatencyUpdate && IsActive())
 	{
 		struct FPrimitiveUpdateRenderThreadRelativeTransformParams
 		{
@@ -325,9 +326,12 @@ void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FL
 	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	 
 	 // Don't ever replicate these, they are getting replaced by my custom send anyway
+	 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeLocation);
 	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeRotation);
 	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeScale3D);
+	 PRAGMA_ENABLE_DEPRECATION_WARNINGS
+
 
 	// Skipping the owner with this as the owner will use the controllers location directly
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, ReplicatedControllerTransform, COND_SkipOwner);
@@ -1155,7 +1159,7 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 	else
 	{
-		newActorGrip.bOriginalReplicatesMovement = ActorToGrip->bReplicateMovement;
+		newActorGrip.bOriginalReplicatesMovement = ActorToGrip->IsReplicatingMovement();
 		newActorGrip.bOriginalGravity = root->IsGravityEnabled();
 	}
 	newActorGrip.Stiffness = GripStiffness;
@@ -1182,7 +1186,7 @@ bool UGripMotionControllerComponent::GripActor(
 
 	if (GripMovementReplicationSetting == EGripMovementReplicationSettings::KeepOriginalMovement)
 	{
-		if (ActorToGrip->bReplicateMovement)
+		if (ActorToGrip->IsReplicatingMovement())
 		{
 			newActorGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceServerSideMovement;
 		}
@@ -1378,7 +1382,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	else
 	{
 		if (ComponentToGrip->GetOwner())
-			newComponentGrip.bOriginalReplicatesMovement = ComponentToGrip->GetOwner()->bReplicateMovement;
+			newComponentGrip.bOriginalReplicatesMovement = ComponentToGrip->GetOwner()->IsReplicatingMovement();
 
 		newComponentGrip.bOriginalGravity = ComponentToGrip->IsGravityEnabled();
 	}
@@ -1410,7 +1414,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	{
 		if (ComponentToGrip->GetOwner())
 		{
-			if (ComponentToGrip->GetOwner()->bReplicateMovement)
+			if (ComponentToGrip->GetOwner()->IsReplicatingMovement())
 			{
 				newComponentGrip.GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceServerSideMovement;
 			}
@@ -3227,7 +3231,7 @@ void UGripMotionControllerComponent::Deactivate()
 {
 	Super::Deactivate();
 
-	if (bIsActive == false && GripViewExtension.IsValid())
+	if (IsActive() == false && GripViewExtension.IsValid())
 	{
 		{
 			// This component could be getting accessed from the render thread so it needs to wait
@@ -3246,7 +3250,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	// Skip motion controller tick, we override a lot of things that it does and we don't want it to perform the same functions
 	Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!bIsActive)
+	if (!IsActive())
 		return;
 
 	// Moved this here instead of in the polling function, it was ticking once per frame anyway so no loss of perf
@@ -3266,8 +3270,8 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			GetCurrentProfileTransform(true);
 		}
 
-		FVector Position = FVector::ZeroVector;
-		FRotator Orientation = FRotator::ZeroRotator;
+		FVector Position = GetRelativeLocation();
+		FRotator Orientation = GetRelativeRotation();
 
 		if (!bUseWithoutTracking)
 		{
@@ -3283,7 +3287,7 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			bTracked = bNewTrackedState && CurrentTrackingStatus != ETrackingStatus::NotTracked;
 			if (bTracked)
 			{
-				SetRelativeTransform(FTransform(Orientation, Position, this->RelativeScale3D));
+				SetRelativeTransform(FTransform(Orientation, Position, this->GetRelativeScale3D()));
 			}
 
 			// if controller tracking just changed
@@ -3305,10 +3309,13 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			return; // Don't update anything including location
 
 		// Don't bother with any of this if not replicating transform
-		if (bReplicates && (bTracked || bReplicateWithoutTracking))
+		if (GetIsReplicated() && (bTracked || bReplicateWithoutTracking))
 		{
+			FVector RelLoc = GetRelativeLocation();
+			FRotator RelRot = GetRelativeRotation();
+
 			// Don't rep if no changes
-			if (!this->RelativeLocation.Equals(ReplicatedControllerTransform.Position) || !this->RelativeRotation.Equals(ReplicatedControllerTransform.Rotation))
+			if (!RelLoc.Equals(ReplicatedControllerTransform.Position) || !RelRot.Equals(ReplicatedControllerTransform.Rotation))
 			{
 				ControllerNetUpdateCount += DeltaTime;
 				if (ControllerNetUpdateCount >= (1.0f / ControllerNetUpdateRate))
@@ -3316,8 +3323,8 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 					ControllerNetUpdateCount = 0.0f;
 
 					// Tracked doesn't matter, already set the relative location above in that case
-					ReplicatedControllerTransform.Position = this->RelativeLocation;
-					ReplicatedControllerTransform.Rotation = this->RelativeRotation;
+					ReplicatedControllerTransform.Position = RelLoc;
+					ReplicatedControllerTransform.Rotation = RelRot;
 
 					// I would keep the torn off check here, except this can be checked on tick if they
 					// Set 100 htz updates, and in the TornOff case, it actually can't hurt any besides some small
@@ -3461,7 +3468,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 	// Save out the component velocity from this and last frame
 	if(!LastRelativePosition.GetTranslation().IsZero())
-		ComponentVelocity = (RelativeLocation - LastRelativePosition.GetTranslation()) / DeltaTime;
+		ComponentVelocity = (GetRelativeLocation() - LastRelativePosition.GetTranslation()) / DeltaTime;
 
 	// #TODO:
 	// Relative angular velocity too?
@@ -4056,7 +4063,7 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 		return false;
 
 	FBodyInstance* rBodyInstance = root->GetBodyInstance(GripInfo.GrippedBoneName);
-	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance())
+	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !FPhysicsInterface::IsValid(rBodyInstance->ActorHandle))
 	{
 		return false;
 	}
@@ -4238,7 +4245,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	// Get the PxRigidDynamic that we want to grab.
 	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
-	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !rBodyInstance->ActorHandle.IsValid())
+	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !FPhysicsInterface::IsValid(rBodyInstance->ActorHandle))
 	{	
 		return false;
 	}
@@ -5117,8 +5124,8 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 		}
 
 		// Poll state for the most recent controller transform
-		FVector Position = FVector::ZeroVector;
-		FRotator Orientation = FRotator::ZeroRotator;
+		FVector Position = MotionControllerComponent->GripRenderThreadRelativeTransform.GetTranslation();
+		FRotator Orientation = MotionControllerComponent->GripRenderThreadRelativeTransform.GetRotation().Rotator();
 
 		if (!MotionControllerComponent->GripPollControllerState(Position, Orientation, WorldToMetersScale))
 		{
@@ -5131,15 +5138,6 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 
 	  // Tell the late update manager to apply the offset to the scene components
 	LateUpdate.Apply_RenderThread(InViewFamily.Scene, OldTransform, NewTransform);
-}
-
-void UGripMotionControllerComponent::FGripViewExtension::PostRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
-{
-	if (!MotionControllerComponent)
-	{
-		return;
-	}
-	LateUpdate.PostRender_RenderThread();
 }
 
 bool UGripMotionControllerComponent::FGripViewExtension::IsActiveThisFrame(class FViewport* InViewport) const
@@ -5382,8 +5380,6 @@ FExpandedLateUpdateManager::FExpandedLateUpdateManager()
 	: LateUpdateGameWriteIndex(0)
 	, LateUpdateRenderReadIndex(0)
 {
-	SkipLateUpdate[0] = false;
-	SkipLateUpdate[1] = false;
 }
 
 void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component, bool bSkipLateUpdate)
@@ -5393,10 +5389,10 @@ void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMot
 
 	check(IsInGameThread());
 
-	LateUpdateParentToWorld[LateUpdateGameWriteIndex] = ParentToWorld;
-	LateUpdatePrimitives[LateUpdateGameWriteIndex].Reset();
-	SkipLateUpdate[LateUpdateGameWriteIndex] = bSkipLateUpdate;
 
+	UpdateStates[LateUpdateGameWriteIndex].Primitives.Reset();
+	UpdateStates[LateUpdateGameWriteIndex].ParentToWorld = ParentToWorld;
+	
 	TArray<USceneComponent*> ComponentsThatSkipLateUpdate;
 
 	//Add additional late updates registered to this controller that aren't children and aren't gripped
@@ -5407,44 +5403,44 @@ void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMot
 			GatherLateUpdatePrimitives(primComp);
 	}
 
-
 	ProcessGripArrayLateUpdatePrimitives(Component, Component->LocallyGrippedObjects, ComponentsThatSkipLateUpdate);
 	ProcessGripArrayLateUpdatePrimitives(Component, Component->GrippedObjects, ComponentsThatSkipLateUpdate);
 
 	GatherLateUpdatePrimitives(Component, &ComponentsThatSkipLateUpdate);
+	//GatherLateUpdatePrimitives(Component);
 
-	LateUpdateGameWriteIndex = (LateUpdateGameWriteIndex + 1) % 2;
+	UpdateStates[LateUpdateGameWriteIndex].bSkip = bSkipLateUpdate;
+	++UpdateStates[LateUpdateGameWriteIndex].TrackingNumber;
+
+	int32 NextFrameRenderReadIndex = LateUpdateGameWriteIndex;
+	LateUpdateGameWriteIndex = 1 - LateUpdateGameWriteIndex;
+
+	ENQUEUE_RENDER_COMMAND(UpdateLateUpdateRenderReadIndexCommand)(
+		[NextFrameRenderReadIndex, this](FRHICommandListImmediate& RHICmdList)
+		{
+			LateUpdateRenderReadIndex = NextFrameRenderReadIndex;
+		});
 }
-
-bool FExpandedLateUpdateManager::GetSkipLateUpdate_RenderThread() const
-{
-	return SkipLateUpdate[LateUpdateRenderReadIndex];
-}
-
 
 void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform)
 {
 	check(IsInRenderingThread());
 
-	if (!LateUpdatePrimitives[LateUpdateRenderReadIndex].Num())
+
+	if (!UpdateStates[LateUpdateRenderReadIndex].Primitives.Num() || UpdateStates[LateUpdateRenderReadIndex].bSkip)
 	{
 		return;
 	}
 
-	if (GetSkipLateUpdate_RenderThread())
-	{
-		return;
-	}
-
-	const FTransform OldCameraTransform = OldRelativeTransform * LateUpdateParentToWorld[LateUpdateRenderReadIndex];
-	const FTransform NewCameraTransform = NewRelativeTransform * LateUpdateParentToWorld[LateUpdateRenderReadIndex];
+	const FTransform OldCameraTransform = OldRelativeTransform * UpdateStates[LateUpdateRenderReadIndex].ParentToWorld;
+	const FTransform NewCameraTransform = NewRelativeTransform * UpdateStates[LateUpdateRenderReadIndex].ParentToWorld;
 	const FMatrix LateUpdateTransform = (OldCameraTransform.Inverse() * NewCameraTransform).ToMatrixWithScale();
 
 	bool bIndicesHaveChanged = false;
 
 	// Apply delta to the cached scene proxies
 	// Also check whether any primitive indices have changed, in case the scene has been modified in the meantime.
-	for (auto PrimitivePair : LateUpdatePrimitives[LateUpdateRenderReadIndex])
+	for (auto& PrimitivePair : UpdateStates[LateUpdateRenderReadIndex].Primitives)
 	{
 		FPrimitiveSceneInfo* RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(PrimitivePair.Value);
 		FPrimitiveSceneInfo* CachedSceneInfo = PrimitivePair.Key;
@@ -5470,20 +5466,13 @@ void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, cons
 		FPrimitiveSceneInfo* RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(Index++);
 		while (RetrievedSceneInfo)
 		{
-			if (RetrievedSceneInfo->Proxy && LateUpdatePrimitives[LateUpdateRenderReadIndex].Contains(RetrievedSceneInfo) && LateUpdatePrimitives[LateUpdateRenderReadIndex][RetrievedSceneInfo] >= 0)
+			if(RetrievedSceneInfo->Proxy && UpdateStates[LateUpdateRenderReadIndex].Primitives.Contains(RetrievedSceneInfo) && UpdateStates[LateUpdateRenderReadIndex].Primitives[RetrievedSceneInfo] >= 0)
 			{
 				RetrievedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
 			}
 			RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(Index++);
 		}
 	}
-}
-
-void FExpandedLateUpdateManager::PostRender_RenderThread()
-{
-	LateUpdatePrimitives[LateUpdateRenderReadIndex].Reset();
-	SkipLateUpdate[LateUpdateRenderReadIndex] = false;
-	LateUpdateRenderReadIndex = (LateUpdateRenderReadIndex + 1) % 2;
 }
 
 void FExpandedLateUpdateManager::CacheSceneInfo(USceneComponent* Component)
@@ -5495,7 +5484,7 @@ void FExpandedLateUpdateManager::CacheSceneInfo(USceneComponent* Component)
 		FPrimitiveSceneInfo* PrimitiveSceneInfo = PrimitiveComponent->SceneProxy->GetPrimitiveSceneInfo();
 		if (PrimitiveSceneInfo && PrimitiveSceneInfo->IsIndexValid())
 		{
-			LateUpdatePrimitives[LateUpdateGameWriteIndex].Emplace(PrimitiveSceneInfo, PrimitiveSceneInfo->GetIndex());
+			UpdateStates[LateUpdateGameWriteIndex].Primitives.Emplace(PrimitiveSceneInfo, PrimitiveSceneInfo->GetIndex());
 		}
 	}
 }

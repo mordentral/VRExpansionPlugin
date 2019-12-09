@@ -67,8 +67,8 @@ public:
 			{
 				bLerpingPosition = true;
 				NetUpdateCount = 0.0f;
-				LastUpdatesRelativePosition = this->RelativeLocation;
-				LastUpdatesRelativeRotation = this->RelativeRotation;
+				LastUpdatesRelativePosition = this->GetRelativeLocation();
+				LastUpdatesRelativeRotation = this->GetRelativeRotation();
 			}
 			else
 			{

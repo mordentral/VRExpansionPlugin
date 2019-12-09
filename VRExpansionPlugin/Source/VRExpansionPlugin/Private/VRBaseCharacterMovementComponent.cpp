@@ -132,13 +132,13 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 
 		// See if we fell out of the world.
 		const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
-		if (CharacterOwner->Role == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
+		if (CharacterOwner->GetLocalRole() == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
 		{
 			return;
 		}
 
 		// If we are the owning client or the server then run the re-basing
-		if (CharacterOwner->Role > ROLE_SimulatedProxy)
+		if (CharacterOwner->GetLocalRole() > ROLE_SimulatedProxy)
 		{
 			// Run offset logic here, the server will update simulated proxies with the movement replication
 			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
@@ -987,7 +987,7 @@ EVRConjoinedMovementModes UVRBaseCharacterMovementComponent::GetReplicatedMoveme
 
 void UVRBaseCharacterMovementComponent::ApplyNetworkMovementMode(const uint8 ReceivedMode)
 {
-	if (CharacterOwner->Role != ENetRole::ROLE_SimulatedProxy)
+	if (CharacterOwner->GetLocalRole() != ENetRole::ROLE_SimulatedProxy)
 	{
 		const uint8 CurrentPackedMovementMode = PackNetworkMovementMode();
 		if (CurrentPackedMovementMode != ReceivedMode)
@@ -1151,7 +1151,7 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	//CustomVRInputVector = FVector::ZeroVector;
 
 	// Only clear it here if we are the server, the client clears it later
-	if (CharacterOwner->Role == ROLE_Authority)
+	if (CharacterOwner->GetLocalRole() == ROLE_Authority)
 	{
 		MoveActionArray.Clear();
 	}
@@ -1347,7 +1347,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 	checkSlow(GetNetMode() != NM_Standalone);
 
 	// Only client proxies or remote clients on a listen server should run this code.
-	const bool bIsSimulatedProxy = (CharacterOwner->Role == ROLE_SimulatedProxy);
+	const bool bIsSimulatedProxy = (CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy);
 	const bool bIsRemoteAutoProxy = (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy);
 	ensure(bIsSimulatedProxy || bIsRemoteAutoProxy);
 
@@ -1507,7 +1507,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition(float DeltaSeconds)
 	checkSlow(GetNetMode() != NM_Standalone);
 
 	// Only client proxies or remote clients on a listen server should run this code.
-	const bool bIsSimulatedProxy = (CharacterOwner->Role == ROLE_SimulatedProxy);
+	const bool bIsSimulatedProxy = (CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy);
 	const bool bIsRemoteAutoProxy = (CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy);
 	if (!ensure(bIsSimulatedProxy || bIsRemoteAutoProxy))
 	{

@@ -36,9 +36,11 @@ void UOptionalRepStaticMeshComponent::PreReplication(IRepChangedPropertyTracker 
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Don't replicate if set to not do it
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
 void UOptionalRepStaticMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
@@ -72,7 +74,7 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 
 	// Default replication on for multiplayer
 	//this->bNetLoadOnClient = false;
-	this->bReplicateMovement = true;
+	SetReplicatingMovement(true);
 	this->bReplicates = true;
 	
 	bRepGripSettingsAndGameplayTags = true;
@@ -409,7 +411,8 @@ bool AGrippableStaticMeshActor::Server_GetClientAuthReplication_Validate(const F
 
 void AGrippableStaticMeshActor::Server_GetClientAuthReplication_Implementation(const FRepMovementVR & newMovement)
 {
-	newMovement.CopyTo(ReplicatedMovement);
+	FRepMovement& MovementRep = GetReplicatedMovement_Mutable();
+	newMovement.CopyTo(MovementRep);
 	OnRep_ReplicatedMovement();
 }
 
@@ -436,10 +439,12 @@ void AGrippableStaticMeshActor::OnRep_ReplicateMovement()
 		const FRepAttachment ReplicationAttachment = GetAttachmentReplication();
 		if (!ReplicationAttachment.AttachParent)
 		{
+			const FRepMovement& RepMove = GetReplicatedMovement();
+
 			// This "fix" corrects the simulation state not replicating over correctly
 			// If you turn off movement replication, simulate an object, turn movement replication back on and un-simulate, it never knows the difference
 			// This change ensures that it is checking against the current state
-			if (RootComponent->IsSimulatingPhysics() != ReplicatedMovement.bRepPhysics)//SavedbRepPhysics != ReplicatedMovement.bRepPhysics)
+			if (RootComponent->IsSimulatingPhysics() != RepMove.bRepPhysics)//SavedbRepPhysics != ReplicatedMovement.bRepPhysics)
 			{
 				// Turn on/off physics sim to match server.
 				SyncReplicatedPhysicsSimulation();

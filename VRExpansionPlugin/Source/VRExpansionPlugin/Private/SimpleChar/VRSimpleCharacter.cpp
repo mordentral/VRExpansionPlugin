@@ -9,7 +9,8 @@ AVRSimpleCharacter::AVRSimpleCharacter(const FObjectInitializer& ObjectInitializ
 {
 
 	// Remove the movement jitter with slow speeds
-	this->ReplicatedMovement.LocationQuantizationLevel = EVectorQuantization::RoundTwoDecimals;
+	FRepMovement& MovementRep = GetReplicatedMovement_Mutable();
+	MovementRep.LocationQuantizationLevel = EVectorQuantization::RoundTwoDecimals;
 
 	VRMovementReference = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent());
 	if (VRMovementReference)

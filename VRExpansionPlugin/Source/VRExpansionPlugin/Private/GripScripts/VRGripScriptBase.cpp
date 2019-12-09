@@ -208,7 +208,7 @@ bool UVRGripScriptBase::HasAuthority()
 {
 	if (AActor * MyOwner = GetOwner())
 	{
-		return MyOwner->Role == ROLE_Authority;
+		return MyOwner->GetLocalRole() == ROLE_Authority;
 	}
 
 	return false;

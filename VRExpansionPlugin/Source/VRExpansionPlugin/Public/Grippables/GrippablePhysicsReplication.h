@@ -54,12 +54,12 @@ public:
 		// Get the ping between this PC & the server
 		const float LocalPing = 0.0f;//GetLocalPing();
 
-		float CurrentTimeSeconds = 0.0f;
+		/*float CurrentTimeSeconds = 0.0f;
 
 		if (UWorld* OwningWorld = GetOwningWorld())
 		{
 			CurrentTimeSeconds = OwningWorld->GetTimeSeconds();
-		}
+		}*/
 
 		for (auto Itr = ComponentsToTargets.CreateIterator(); Itr; ++Itr)
 		{
@@ -67,12 +67,12 @@ public:
 			// Its been more than half a second since the last update, lets cease using the target as a failsafe
 			// Clients will never update with that much latency, and if they somehow are, then they are dropping so many
 			// packets that it will be useless to use their data anyway
-			if ((CurrentTimeSeconds - Itr.Value().ArrivedTimeSeconds) > 0.5f)
+			/*if ((CurrentTimeSeconds - Itr.Value().ArrivedTimeSeconds) > 0.5f)
 			{
 				OnTargetRestored(Itr.Key().Get(), Itr.Value());
 				Itr.RemoveCurrent();
 			}
-			else if (UPrimitiveComponent* PrimComp = Itr.Key().Get())
+			else */if (UPrimitiveComponent* PrimComp = Itr.Key().Get())
 			{
 				bool bRemoveItr = false;
 
@@ -83,6 +83,13 @@ public:
 					bool bUpdated = false;
 					if (AActor* OwningActor = PrimComp->GetOwner())
 					{
+						// Removed as this is server sided
+						/*const ENetRole OwnerRole = OwningActor->GetLocalRole();
+						const bool bIsSimulated = OwnerRole == ROLE_SimulatedProxy;
+						const bool bIsReplicatedAutonomous = OwnerRole == ROLE_AutonomousProxy && PrimComp->bReplicatePhysicsToAutonomousProxy;
+						if (bIsSimulated || bIsReplicatedAutonomous)*/
+
+
 						// Deleted everything here, we will always be the server, I already filtered out clients to default logic
 						{
 							/*const*/ float OwnerPing = 0.0f;// GetOwnerPing(OwningActor, PhysicsTarget);

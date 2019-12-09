@@ -18,8 +18,10 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 
 {
 
+	FRepMovement& MovementRep = GetReplicatedMovement_Mutable();
+	
 	// Remove the movement jitter with slow speeds
-	this->ReplicatedMovement.LocationQuantizationLevel = EVectorQuantization::RoundTwoDecimals;
+	MovementRep.LocationQuantizationLevel = EVectorQuantization::RoundTwoDecimals;
 
 	if (UCapsuleComponent * cap = GetCapsuleComponent())
 	{
@@ -93,7 +95,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	// This is for smooth turning, we have more of a use for this than FPS characters do
 	// Due to roll/pitch almost never being off 0 for VR the cost is just one byte so i'm fine defaulting it here
 	// End users can reset to byte components if they ever want too.
-	ReplicatedMovement.RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
+	MovementRep.RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
 
 	VRReplicateCapsuleHeight = false;
 
@@ -116,7 +118,10 @@ void AVRBaseCharacter::GetLifetimeReplicatedProps(TArray< class FLifetimePropert
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, VRReplicateCapsuleHeight, COND_None);
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, ReplicatedCapsuleHeight, COND_SimulatedOnly);
 
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	DISABLE_REPLICATED_PROPERTY(AActor, ReplicatedMovement);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+
 	DOREPLIFETIME_CONDITION_NOTIFY(AVRBaseCharacter, ReplicatedMovementVR, COND_SimulatedOrPhysics, REPNOTIFY_Always);
 }
 
@@ -125,8 +130,7 @@ void AVRBaseCharacter::PreReplication(IRepChangedPropertyTracker & ChangedProper
 	Super::PreReplication(ChangedPropertyTracker);
 
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedCapsuleHeight, VRReplicateCapsuleHeight);
-
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedMovementVR, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedMovementVR, IsReplicatingMovement());
 }
 
 USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const
@@ -242,12 +246,14 @@ void AVRBaseCharacter::NotifyOfTeleport()
 
 void AVRBaseCharacter::OnRep_ReplicatedMovement()
 {
-	ReplicatedMovement.AngularVelocity = ReplicatedMovementVR.AngularVelocity;
-	ReplicatedMovement.bRepPhysics = ReplicatedMovementVR.bRepPhysics;
-	ReplicatedMovement.bSimulatedPhysicSleep = ReplicatedMovementVR.bSimulatedPhysicSleep;
-	ReplicatedMovement.LinearVelocity = ReplicatedMovementVR.LinearVelocity;
-	ReplicatedMovement.Location = ReplicatedMovementVR.Location;
-	ReplicatedMovement.Rotation = ReplicatedMovementVR.Rotation;
+	FRepMovement& ReppedMovement = GetReplicatedMovement_Mutable();
+
+	ReppedMovement.AngularVelocity = ReplicatedMovementVR.AngularVelocity;
+	ReppedMovement.bRepPhysics = ReplicatedMovementVR.bRepPhysics;
+	ReppedMovement.bSimulatedPhysicSleep = ReplicatedMovementVR.bSimulatedPhysicSleep;
+	ReppedMovement.LinearVelocity = ReplicatedMovementVR.LinearVelocity;
+	ReppedMovement.Location = ReplicatedMovementVR.Location;
+	ReppedMovement.Rotation = ReplicatedMovementVR.Rotation;
 
 	if (ReplicatedMovementVR.bJustTeleported && !IsLocallyControlled())
 	{
@@ -262,12 +268,14 @@ void AVRBaseCharacter::GatherCurrentMovement()
 {
 	Super::GatherCurrentMovement();
 
-	ReplicatedMovementVR.AngularVelocity = ReplicatedMovement.AngularVelocity;
-	ReplicatedMovementVR.bRepPhysics = ReplicatedMovement.bRepPhysics;
-	ReplicatedMovementVR.bSimulatedPhysicSleep = ReplicatedMovement.bSimulatedPhysicSleep;
-	ReplicatedMovementVR.LinearVelocity = ReplicatedMovement.LinearVelocity;
-	ReplicatedMovementVR.Location = ReplicatedMovement.Location;
-	ReplicatedMovementVR.Rotation = ReplicatedMovement.Rotation;
+	FRepMovement ReppedMovement = this->GetReplicatedMovement();
+
+	ReplicatedMovementVR.AngularVelocity = ReppedMovement.AngularVelocity;
+	ReplicatedMovementVR.bRepPhysics = ReppedMovement.bRepPhysics;
+	ReplicatedMovementVR.bSimulatedPhysicSleep = ReppedMovement.bSimulatedPhysicSleep;
+	ReplicatedMovementVR.LinearVelocity = ReppedMovement.LinearVelocity;
+	ReplicatedMovementVR.Location = ReppedMovement.Location;
+	ReplicatedMovementVR.Rotation = ReppedMovement.Rotation;
 	ReplicatedMovementVR.bJustTeleported = bFlagTeleported;
 	bFlagTeleported = false;
 }
@@ -296,7 +304,7 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 			}
 			else
 			{
-				if (this->Role == ROLE_SimulatedProxy)
+				if (this->GetLocalRole() == ROLE_SimulatedProxy)
 				{
 					/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
 					{
@@ -314,7 +322,7 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 		}
 		else if (!SeatInformation.bSitting && SeatInformation.bWasSeated)
 		{
-			if (this->Role == ROLE_SimulatedProxy)
+			if (this->GetLocalRole() == ROLE_SimulatedProxy)
 			{
 
 				/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
@@ -349,7 +357,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 				AttachToComponent(SeatInformation.SeatParent, TransformRule);
 			}
 
-			if (this->Role == ROLE_SimulatedProxy)
+			if (this->GetLocalRole() == ROLE_SimulatedProxy)
 			{
 				if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
 				{
@@ -378,7 +386,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 					//charMovement->SetMovementMode(MOVE_Custom, (uint8)EVRCustomMovementMode::VRMOVE_Seated);
 					//charMovement->bIgnoreClientMovementErrorChecksAndCorrection = true;
 
-					if (this->Role == ROLE_AutonomousProxy)
+					if (this->GetLocalRole() == ROLE_AutonomousProxy)
 					{
 						FNetworkPredictionData_Client_Character* ClientData = charMovement->GetPredictionData_Client_Character();
 						check(ClientData);
@@ -409,7 +417,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 		{
 			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
-			if (this->Role == ROLE_SimulatedProxy)
+			if (this->GetLocalRole() == ROLE_SimulatedProxy)
 			{
 				root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
@@ -436,7 +444,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 					//charMovement->bIgnoreClientMovementErrorChecksAndCorrection = false;
 					//charMovement->SetComponentTickEnabled(true);
 
-					if (this->Role == ROLE_Authority)
+					if (this->GetLocalRole() == ROLE_Authority)
 					{
 						if (bUseExperimentalUnseatModeFix)
 						{
@@ -483,7 +491,7 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 	float LastThresholdScaler = SeatInformation.CurrentThresholdScaler;
 	bool bLastOverThreshold = SeatInformation.bIsOverThreshold;
 
-	FVector NewLoc = VRReplicatedCamera->RelativeLocation;
+	FVector NewLoc = VRReplicatedCamera->GetRelativeLocation();
 	FVector OrigLocation = SeatInformation.InitialRelCameraTransform.GetTranslation();
 
 	if (!SeatInformation.bZeroToHead)
@@ -595,7 +603,7 @@ void AVRBaseCharacter::SetSeatRelativeLocationAndRotationVR(FVector DeltaLoc)
 	NewLocation -= NewRotation.RotateVector(PivotPoint + (-DeltaLoc));	
 
 	// Also setting actor rot because the control rot transfers to it anyway eventually
-	SetActorRelativeTransform(FTransform(NewRotation, NewLocation, GetCapsuleComponent()->RelativeScale3D));
+	SetActorRelativeTransform(FTransform(NewRotation, NewLocation, GetCapsuleComponent()->GetRelativeScale3D()));
 }
 
 
@@ -649,7 +657,7 @@ FVector AVRBaseCharacter::SetActorRotationVR(FRotator NewRot, bool bUseYawOnly, 
 
 	if (bAccountForHMDRotation)
 	{
-		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->RelativeRotation);
+		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());
 		NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
 	}
 	else
@@ -684,7 +692,7 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 
 	if (bAccountForHMDRotation)
 	{
-		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->RelativeRotation);//bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
+		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());//bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
 		NewRotation = (NewRotation.Quaternion().Inverse() * NewRot.Quaternion()).Rotator();
 	}
 	else

@@ -17,8 +17,9 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
-	this->SetIsReplicated(true);
-	this->RelativeScale3D = FVector(1.0f, 1.0f, 1.0f);
+	SetIsReplicatedByDefault(true);
+	SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+
 	// Default 100 htz update rate, same as the 100htz update rate of rep_notify, will be capped to 90/45 though because of vsync on HMD
 	//bReplicateTransform = true;
 	NetUpdateRate = 100.0f; // 100 htz is default
@@ -50,9 +51,11 @@ void UReplicatedVRCameraComponent::GetLifetimeReplicatedProps(TArray< class FLif
 	// There isn't much in the scene component to replicate anyway
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeLocation);
 	DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeRotation);
 	DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeScale3D);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	// Skipping the owner with this as the owner will use the location directly
 	DOREPLIFETIME_CONDITION(UReplicatedVRCameraComponent, ReplicatedCameraTransform, COND_SkipOwner);
@@ -139,18 +142,21 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 		}
 
 		// Send changes
-		if (bReplicates)
+		if (this->GetIsReplicated())
 		{
+			FRotator RelativeRot = GetRelativeRotation();
+			FVector RelativeLoc = GetRelativeLocation();
+
 			// Don't rep if no changes
-			if (!this->RelativeLocation.Equals(ReplicatedCameraTransform.Position) ||  !this->RelativeRotation.Equals(ReplicatedCameraTransform.Rotation))
+			if (!RelativeLoc.Equals(ReplicatedCameraTransform.Position) ||  !RelativeRot.Equals(ReplicatedCameraTransform.Rotation))
 			{
 				NetUpdateCount += DeltaTime;
 
 				if (NetUpdateCount >= (1.0f / NetUpdateRate))
 				{
 					NetUpdateCount = 0.0f;
-					ReplicatedCameraTransform.Position = this->RelativeLocation;
-					ReplicatedCameraTransform.Rotation = this->RelativeRotation;
+					ReplicatedCameraTransform.Position = RelativeLoc;
+					ReplicatedCameraTransform.Rotation = RelativeRot;
 
 
 					if (GetNetMode() == NM_Client)

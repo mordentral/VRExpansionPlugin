@@ -51,6 +51,7 @@ public:
 	FExpandedLateUpdateManager();
 
 	virtual ~FExpandedLateUpdateManager() {}
+
 	/** Setup state for applying the render thread late update */
 	void Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component, bool bSkipLateUpdate);
 
@@ -58,10 +59,7 @@ public:
 	void Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform);
 	
 	/** Returns true if the LateUpdateSetup data is stale. */
-	bool GetSkipLateUpdate_RenderThread() const;
-
-	/** Increments the double buffered read index, etc. - in prep for the next render frame (read: MUST be called for each frame Setup() was called on). */
-	void PostRender_RenderThread();
+	bool GetSkipLateUpdate_RenderThread() const { return UpdateStates[LateUpdateRenderReadIndex].bSkip; }
 
 public:
 
@@ -72,16 +70,27 @@ public:
 	/** Generates a LateUpdatePrimitiveInfo for the given component if it has a SceneProxy and appends it to the current LateUpdatePrimitives array */
 	void CacheSceneInfo(USceneComponent* Component);
 
-	/** Parent world transform used to reconstruct new world transforms for late update scene proxies */
-	FTransform LateUpdateParentToWorld[2];
-	/** Primitives that need late update before rendering */
-	TMap<FPrimitiveSceneInfo*, int32> LateUpdatePrimitives[2];
-	/** Late Update Info Stale, if this is found true do not late update */
-	bool SkipLateUpdate[2];
+	struct FLateUpdateState
+	{
+		FLateUpdateState()
+			: ParentToWorld(FTransform::Identity)
+			, bSkip(false)
+			, TrackingNumber(-1)
+		{}
 
+		/** Parent world transform used to reconstruct new world transforms for late update scene proxies */
+		FTransform ParentToWorld;
+		/** Primitives that need late update before rendering */
+		TMap<FPrimitiveSceneInfo*, int32> Primitives;
+		/** Late Update Info Stale, if this is found true do not late update */
+		bool bSkip;
+		/** Frame tracking number - used to flag if the game and render threads get badly out of sync */
+		int64 TrackingNumber;
+	};
+
+	FLateUpdateState UpdateStates[2];
 	int32 LateUpdateGameWriteIndex;
 	int32 LateUpdateRenderReadIndex;
-
 };
 
 /**
@@ -481,8 +490,8 @@ public:
 			{
 				bLerpingPosition = true;
 				ControllerNetUpdateCount = 0.0f;
-				LastUpdatesRelativePosition = this->RelativeLocation;
-				LastUpdatesRelativeRotation = this->RelativeRotation;
+				LastUpdatesRelativePosition = this->GetRelativeLocation();
+				LastUpdatesRelativeRotation = this->GetRelativeRotation();
 			}
 			else
 			{
@@ -1028,7 +1037,6 @@ private:
 		virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
 		virtual void PreRenderView_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override {}
 		virtual void PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
-		virtual void PostRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
 
 		virtual int32 GetPriority() const override { return -10; }
 		virtual bool IsActiveThisFrame(class FViewport* InViewport) const;

@@ -62,9 +62,11 @@ void UVRMountComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UVRMountComponent, GameplayTags, bRepGameplayTags);
 
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
 void UVRMountComponent::OnRegister()
@@ -112,7 +114,8 @@ void UVRMountComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 		}
 
 		//Rotate the Initial Grip relative to the Forward Axis so it represents the current correct vector after Mount is rotated. 
-		FVector CurToForwardAxisVec = FRotator(RelativeRotation.Pitch, RelativeRotation.Yaw, TwistDiff).RotateVector(InitialGripToForwardVec);
+		FRotator RelativeRot = GetRelativeRotation();
+		FVector CurToForwardAxisVec = FRotator(RelativeRot.Pitch, RelativeRot.Yaw, TwistDiff).RotateVector(InitialGripToForwardVec);
 
 		//The Current InteractorLocation based on current interactor location to intersection point on sphere with forward axis. 
 		CurInteractorLocation = (CurInteractorLocation.GetSafeNormal() * InitialInteractorLocation.Size() + CurToForwardAxisVec).GetSafeNormal()*CurInteractorLocation.Size();
@@ -398,8 +401,8 @@ void UVRMountComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 			GrippedOnBack = false;
 		}
 
-
-		InitialGripToForwardVec = FRotator(RelativeRotation.Pitch, RelativeRotation.Yaw, TwistDiff).UnrotateVector(InitialGripToForwardVec);
+		FRotator RelativeRot = GetRelativeRotation();
+		InitialGripToForwardVec = FRotator(RelativeRot.Pitch, RelativeRot.Yaw, TwistDiff).UnrotateVector(InitialGripToForwardVec);
 
 	}break;
 	default:break;

@@ -27,8 +27,8 @@ AGrippableActor::AGrippableActor(const FObjectInitializer& ObjectInitializer)
 
 	// Default replication on for multiplayer
 	//this->bNetLoadOnClient = false;
-	this->bReplicateMovement = true;
-	this->bReplicates = true;
+	SetReplicatingMovement(true);
+	bReplicates = true;
 	
 	bRepGripSettingsAndGameplayTags = true;
 	bAllowIgnoringAttachOnOwner = true;
@@ -372,7 +372,8 @@ bool AGrippableActor::Server_GetClientAuthReplication_Validate(const FRepMovemen
 
 void AGrippableActor::Server_GetClientAuthReplication_Implementation(const FRepMovementVR & newMovement)
 {
-	newMovement.CopyTo(ReplicatedMovement);
+	FRepMovement& MovementRep = GetReplicatedMovement_Mutable();
+	newMovement.CopyTo(MovementRep);
 	OnRep_ReplicatedMovement();
 }
 
@@ -399,10 +400,12 @@ void AGrippableActor::OnRep_ReplicateMovement()
 		const FRepAttachment ReplicationAttachment = GetAttachmentReplication();
 		if (!ReplicationAttachment.AttachParent)
 		{
+			const FRepMovement& RepMove = GetReplicatedMovement();
+
 			// This "fix" corrects the simulation state not replicating over correctly
 			// If you turn off movement replication, simulate an object, turn movement replication back on and un-simulate, it never knows the difference
 			// This change ensures that it is checking against the current state
-			if (RootComponent->IsSimulatingPhysics() != ReplicatedMovement.bRepPhysics)//SavedbRepPhysics != ReplicatedMovement.bRepPhysics)
+			if (RootComponent->IsSimulatingPhysics() != RepMove.bRepPhysics)//SavedbRepPhysics != ReplicatedMovement.bRepPhysics)
 			{
 				// Turn on/off physics sim to match server.
 				SyncReplicatedPhysicsSimulation();

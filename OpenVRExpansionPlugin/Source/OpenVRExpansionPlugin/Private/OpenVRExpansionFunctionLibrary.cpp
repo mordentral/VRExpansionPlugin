@@ -399,7 +399,7 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) 
 		check(NewRenderTarget2D);
 
 		//Setting some Parameters for the Texture and finally returning it
-		NewRenderTarget2D->PlatformData->NumSlices = 1;
+		NewRenderTarget2D->PlatformData->SetNumSlices(1);
 		NewRenderTarget2D->NeverStream = true;
 		NewRenderTarget2D->UpdateResource();
 
@@ -1104,7 +1104,7 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 
 
 		//Setting some Parameters for the Texture and finally returning it
-		OutTexture->PlatformData->NumSlices = 1;
+		OutTexture->PlatformData->SetNumSlices(1);
 		OutTexture->NeverStream = true;
 		OutTexture->UpdateResource();
 

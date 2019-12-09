@@ -54,10 +54,12 @@ void UVRButtonComponent::PreReplication(IRepChangedPropertyTracker & ChangedProp
 
 	// Replicate the levers initial transform if we are replicating movement
 	//DOREPLIFETIME_ACTIVE_OVERRIDE(UVRButtonComponent, InitialRelativeTransform, bReplicateMovement);
-
+	
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
 void UVRButtonComponent::OnRegister()
@@ -132,7 +134,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 	else
 	{
 		// Std precision tolerance should be fine
-		if (this->RelativeLocation.Equals(GetTargetRelativeLocation()))
+		if (this->GetRelativeLocation().Equals(GetTargetRelativeLocation()))
 		{
 			this->SetComponentTickEnabled(false);
 
@@ -143,7 +145,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			LocalLastInteractingComponent.Reset();
 		}
 		else
-			this->SetRelativeLocation(FMath::VInterpConstantTo(this->RelativeLocation, GetTargetRelativeLocation(), DeltaTime, DepressSpeed), false);
+			this->SetRelativeLocation(FMath::VInterpConstantTo(this->GetRelativeLocation(), GetTargetRelativeLocation(), DeltaTime, DepressSpeed), false);
 	}
 
 
@@ -155,7 +157,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Owner && LocalLastInteractingActor.IsValid() && LocalLastInteractingActor->HasLocalNetOwner()))
 		{
 			// Check for if we should set the state of the button, done here as for the press button the lerp counts for input
-			bool bCheckState = (GetAxisValue(InitialRelativeTransform.InverseTransformPosition(this->RelativeLocation)) <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER);
+			bool bCheckState = (GetAxisValue(InitialRelativeTransform.InverseTransformPosition(this->GetRelativeLocation())) <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER);
 			if (bButtonState != bCheckState && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
 
 			{

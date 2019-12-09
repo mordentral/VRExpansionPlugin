@@ -32,7 +32,7 @@ struct VREXPANSIONPLUGIN_API FRepMovementVRCharacter : public FRepMovement
 
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
-		FRepMovement BaseSettings = Owner ? Owner->ReplicatedMovement : FRepMovement();
+		FRepMovement BaseSettings = Owner ? Owner->GetReplicatedMovement() : FRepMovement();
 
 		// pack bitfield with flags
 		uint8 Flags = (bSimulatedPhysicSleep << 0) | (bRepPhysics << 1) | (bJustTeleported << 2);
