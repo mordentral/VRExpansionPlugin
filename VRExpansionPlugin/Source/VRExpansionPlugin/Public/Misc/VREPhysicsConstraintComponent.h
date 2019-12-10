@@ -79,9 +79,62 @@ public:
 		RefFrame = ConstraintInstance.GetRefFrame(Frame);
 	}
 
+	UFUNCTION(BlueprintCallable, Category = "VRE Physics Constraint Component")
+	FTransform GetLocalPose(EConstraintFrame::Type ConstraintFrame)
+	{
+		if (ConstraintInstance.IsValidConstraintInstance())
+		{
+			if (ConstraintFrame == EConstraintFrame::Frame1)
+			{
+				return FTransform(ConstraintInstance.PriAxis1, ConstraintInstance.SecAxis1, ConstraintInstance.PriAxis1 ^ ConstraintInstance.SecAxis1, ConstraintInstance.Pos1);
+			}
+			else
+			{
+				return FTransform(ConstraintInstance.PriAxis2, ConstraintInstance.SecAxis2, ConstraintInstance.PriAxis2 ^ ConstraintInstance.SecAxis2, ConstraintInstance.Pos2);
+			}
+
+		}
+
+		return FTransform::Identity;
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "VRE Physics Constraint Component")
+	void GetGlobalPose(EConstraintFrame::Type ConstraintFrame, FTransform& GlobalPose)
+	{
+		if (ConstraintInstance.IsValidConstraintInstance())
+		{
+			GlobalPose = FPhysicsInterface::GetGlobalPose(ConstraintInstance.ConstraintHandle, ConstraintFrame);
+		}
+		else
+			GlobalPose = FTransform::Identity;
+	}
+
+	// Gets the current linear distance in world space on the joint in +/- from the initial reference frame
+	UFUNCTION(BlueprintPure, Category = "VRE Physics Constraint Component")
+		FVector GetCurrentLinearDistance(EConstraintFrame::Type FrameOfReference)
+	{
+		EConstraintFrame::Type Frame2 = FrameOfReference;
+		EConstraintFrame::Type Frame1 = (FrameOfReference == EConstraintFrame::Frame1) ? EConstraintFrame::Frame2 : EConstraintFrame::Frame1;
+
+		FTransform Frame1Trans = this->GetBodyTransform(Frame1);
+		FTransform Frame2Trans = this->GetBodyTransform(Frame2);
+
+		FTransform LocalPose = GetLocalPose(Frame1);		
+		FTransform LocalPose2 = GetLocalPose(Frame2);
+
+		Frame1Trans.SetScale3D(FVector(1.f));
+		Frame1Trans = LocalPose * Frame1Trans;
+
+		FVector OffsetLoc = Frame1Trans.GetRotation().UnrotateVector(Frame1Trans.GetLocation() - Frame2Trans.GetLocation());
+		FVector OffsetLoc2 = LocalPose2.GetRotation().UnrotateVector(LocalPose2.GetLocation());
+		FVector FinalVec = OffsetLoc2 - OffsetLoc;
+
+		return FinalVec;
+	}
+
 	// Gets the angular offset on the constraint
 	UFUNCTION(BlueprintPure, Category = "VRE Physics Constraint Component")
-	FRotator GetAngularOffset()
+		FRotator GetAngularOffset()
 	{
 		return ConstraintInstance.AngularRotationOffset;
 	}

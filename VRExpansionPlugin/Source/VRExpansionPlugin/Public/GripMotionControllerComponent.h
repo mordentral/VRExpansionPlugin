@@ -960,6 +960,7 @@ public:
 
 	TArray<FBPActorPhysicsHandleInformation> PhysicsGrips;
 	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const FBPActorGripInformation & GripInfo);
+	FBPActorPhysicsHandleInformation * GetPhysicsGrip(const uint8 GripID);
 	bool GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo, int & index);
 	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
 	bool DestroyPhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo);

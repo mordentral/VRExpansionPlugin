@@ -2,6 +2,7 @@
 
 #include "GripScripts/VRGripScriptBase.h"
 #include "GripMotionControllerComponent.h"
+#include "VRGripInterface.h"
 #include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/NetDriver.h"
 
@@ -38,9 +39,30 @@ bool UVRGripScriptBase::IsScriptActive() { return bIsActive; }
 //bool UVRGripScriptBase::Wants_DenyLateUpdates() { return bDenyLateUpdates; }
 //bool UVRGripScriptBase::Wants_ToForceDrop() { return bForceDrop; }
 //bool UVRGripScriptBase::Wants_DenyTeleport_Implementation() { return false; }
-void UVRGripScriptBase::HandlePrePhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose) {}
-void UVRGripScriptBase::HandlePostPhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo) {}
+void UVRGripScriptBase::HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose) {}
+void UVRGripScriptBase::HandlePostPhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo) {}
 
+UVRGripScriptBase* UVRGripScriptBase::GetGripScriptByClass(UObject* WorldContextObject, TSubclassOf<UVRGripScriptBase> GripScriptClass, EBPVRResultSwitch& Result)
+{
+	if (WorldContextObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		TArray<UVRGripScriptBase*> GripScripts;
+		if (IVRGripInterface::Execute_GetGripScripts(WorldContextObject, GripScripts))
+		{
+			for (UVRGripScriptBase* Script : GripScripts)
+			{
+				if (Script->IsA(GripScriptClass))
+				{
+					Result = EBPVRResultSwitch::OnSucceeded;
+					return Script;
+				}
+			}
+		}
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+	return nullptr;
+}
 
 void UVRGripScriptBase::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {

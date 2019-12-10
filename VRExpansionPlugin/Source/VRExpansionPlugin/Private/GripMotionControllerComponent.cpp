@@ -293,6 +293,10 @@ FBPActorPhysicsHandleInformation * UGripMotionControllerComponent::GetPhysicsGri
 	return PhysicsGrips.FindByKey(GripInfo);
 }
 
+FBPActorPhysicsHandleInformation* UGripMotionControllerComponent::GetPhysicsGrip(const uint8 GripID)
+{
+	return PhysicsGrips.FindByKey(GripID);
+}
 
 bool UGripMotionControllerComponent::GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo, int & index)
 {
@@ -4369,7 +4373,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			{
 				if (Script && Script->IsScriptActive() && Script->InjectPrePhysicsHandle())
 				{
-					Script->HandlePrePhysicsHandle(HandleInfo, KinPose);
+					Script->HandlePrePhysicsHandle(this, HandleInfo, KinPose);
 				}
 			}
 		}
@@ -4507,7 +4511,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					{
 						if (Script && Script->IsScriptActive() && Script->InjectPostPhysicsHandle())
 						{
-							Script->HandlePostPhysicsHandle(HandleInfo);
+							Script->HandlePostPhysicsHandle(this, HandleInfo);
 						}
 					}
 				}
@@ -4561,7 +4565,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					{
 						if (Script && Script->IsScriptActive() && Script->InjectPostPhysicsHandle())
 						{
-							Script->HandlePostPhysicsHandle(HandleInfo);
+							Script->HandlePostPhysicsHandle(this, HandleInfo);
 						}
 					}
 				}

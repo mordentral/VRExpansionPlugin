@@ -14,6 +14,7 @@
 #include "VRGripScriptBase.generated.h"
 
 class UGripMotionControllerComponent;
+class UVRGripInterface;
 
 UENUM(Blueprintable)
 enum class EGSTransformOverrideType : uint8
@@ -35,6 +36,10 @@ class VREXPANSIONPLUGIN_API UVRGripScriptBase : public UObject, public FTickable
 public:
 
 	UVRGripScriptBase(const FObjectInitializer& ObjectInitializer);
+
+	// Gets the first grip script of the specified type in this object, do NOT call this on tick, save out and store the reference given
+	UFUNCTION(BlueprintCallable, Category = "VRGripScript|Functions", meta = (WorldContext = "WorldContextObject", bIgnoreSelf = "true", DisplayName = "GetGripScriptByClass", ExpandEnumAsExecs = "Result"))
+		static UVRGripScriptBase* GetGripScriptByClass(UObject* WorldContextObject, TSubclassOf<UVRGripScriptBase> GripScriptClass, EBPVRResultSwitch& Result);
 
 	bool IsSupportedForNetworking() const override
 	{
@@ -104,7 +109,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 		bool bInjectPrePhysicsHandle;
 
-	virtual void HandlePrePhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose);
+	virtual void HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose);
 
 	// Returns if the script wants auto drop to be ignored
 	FORCEINLINE bool InjectPostPhysicsHandle()
@@ -116,7 +121,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 		bool bInjectPostPhysicsHandle;
 
-	virtual void HandlePostPhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo);
+	virtual void HandlePostPhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo);
 
 	// Returns if the script is currently active and should be used
 	/*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
