@@ -153,6 +153,7 @@ public:
 	virtual void OnUnregister() override;
 	//virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 	virtual void Deactivate() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void BeginDestroy() override;
 	virtual void BeginPlay() override;
 
@@ -577,8 +578,9 @@ public:
 	// This is to avoid a race condition where we need to wait for the next physics update.
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		bool DropAndSocketGrip(const FBPActorGripInformation &GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies = true);
-
-	// Notify the server about a new drop and socket
+		bool DropAndSocketGrip_Implementation(const FBPActorGripInformation& GripToDrop, USceneComponent* SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize& RelativeTransformToParent, bool bWeldBodies = true, bool bSkipServerNotify = false);
+	
+		// Notify the server about a new drop and socket
 	UFUNCTION(Reliable, Server, WithValidation, Category = "GripMotionController")
 		void Server_NotifyDropAndSocketGrip(uint8 GripID, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies = true);
 
@@ -710,6 +712,13 @@ public:
 		bool bSimulate = false, 
 		FVector OptionalAngularVelocity = FVector::ZeroVector, 
 		FVector OptionalLinearVelocity = FVector::ZeroVector);
+
+	bool DropGrip_Implementation(
+		const FBPActorGripInformation& Grip,
+		bool bSimulate = false,
+		FVector OptionalAngularVelocity = FVector::ZeroVector,
+		FVector OptionalLinearVelocity = FVector::ZeroVector,
+		bool bSkipNotify = false);
 
 	// No Longer replicated, called via on rep now instead.
 	//UFUNCTION(Reliable, NetMulticast)
