@@ -1842,9 +1842,12 @@ void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FB
 	{
 
 		// If we still have the grip then the server is asking us to drop it even though it is locally controlled
-		if (FBPActorGripInformation * GripInfo = GetGripPtrByID(NewDrop.GripID))
+		EBPVRResultSwitch Result;
+		FBPActorGripInformation GripInfo;
+		GetGripByID(GripInfo, NewDrop.GripID, Result);
+		if (Result == EBPVRResultSwitch::OnSucceeded)
 		{
-			DropAndSocketGrip_Implementation(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies, true);
+			DropAndSocketGrip_Implementation(GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies, true);
 		}
 		return;
 	}
@@ -2300,9 +2303,12 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 		GetNetMode() == ENetMode::NM_Client)
 	{
 		// If we still have the grip then the server is asking us to drop it even though it is locally controlled
-		if (FBPActorGripInformation * GripInfo = GetGripPtrByID(NewDrop.GripID))
+		EBPVRResultSwitch Result;
+		FBPActorGripInformation GripInfo;
+		GetGripByID(GripInfo, NewDrop.GripID, Result);
+		if (Result == EBPVRResultSwitch::OnSucceeded)
 		{
-			DropGrip_Implementation(*GripInfo, bSimulate, FVector::ZeroVector, FVector::ZeroVector, true);
+			DropGrip_Implementation(GripInfo, bSimulate, FVector::ZeroVector, FVector::ZeroVector, true);
 		}
 
 		return;
