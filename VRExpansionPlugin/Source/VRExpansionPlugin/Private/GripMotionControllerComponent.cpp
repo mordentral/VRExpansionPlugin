@@ -340,6 +340,7 @@ void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FL
 	
 
 	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, LocallyGrippedObjects, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(UGripMotionControllerComponent, LocalTransactionBuffer, COND_OwnerOnly);
 //	DOREPLIFETIME(UGripMotionControllerComponent, bReplicateControllerTransform);
 }
 
@@ -1233,6 +1234,11 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 	else
 	{
+		if (!IsLocallyControlled())
+		{
+			LocalTransactionBuffer.Add(newActorGrip);
+		}
+
 		int32 Index = LocallyGrippedObjects.Add(newActorGrip);
 
 		if (Index != INDEX_NONE)
@@ -1244,8 +1250,8 @@ bool UGripMotionControllerComponent::GripActor(
 			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 				Server_NotifyLocalGripAddedOrChanged(GripInfo);
 		}
-		//NotifyGrip(newActorGrip);
 	}
+	//NotifyGrip(newActorGrip);
 
 	return true;
 }
@@ -1460,6 +1466,11 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 	else
 	{
+		if (!IsLocallyControlled())
+		{
+			LocalTransactionBuffer.Add(newComponentGrip);
+		}
+
 		int32 Index = LocallyGrippedObjects.Add(newComponentGrip);
 
 		if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newComponentGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
@@ -1515,10 +1526,11 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation& Gri
 bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripInformation &Grip, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity, bool bSkipNotify)
 {
 	int FoundIndex = 0;
+	bool bIsServer = IsServer();
 	bool bWasLocalGrip = false;
 	if (!LocallyGrippedObjects.Find(Grip, FoundIndex)) // This auto checks if Actor and Component are valid in the == operator
 	{
-		if (!IsServer())
+		if (!bIsServer)
 		{
 			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was called on the client side for a replicated grip"));
 			return false;
@@ -1535,6 +1547,14 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 	else
 		bWasLocalGrip = true;
 
+	if (bWasLocalGrip && bIsServer)
+	{
+		for (int i = LocalTransactionBuffer.Num() - 1; i >= 0; i--)
+		{
+			if (LocalTransactionBuffer[i].GripID == Grip.GripID)
+				LocalTransactionBuffer.RemoveAt(i);
+		}
+	}
 
 	UPrimitiveComponent * PrimComp = nullptr;
 
@@ -3477,6 +3497,10 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 
 	FTransform ParentTransform = GetPivotTransform();
 
+	// Check for floating server sided client auth grips and handle them if we need too
+	if(!IsServer())
+		CheckTransactionBuffer();
+
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
 	HandleGripArray(GrippedObjects, ParentTransform, DeltaTime, true);
 	HandleGripArray(LocallyGrippedObjects, ParentTransform, DeltaTime);
@@ -5246,6 +5270,20 @@ void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementatio
 
 	// Drop it, server told us that it was a bad grip
 	DropObjectByInterface(FoundGrip.GrippedObject);
+}
+
+bool UGripMotionControllerComponent::Server_NotifyHandledTransaction_Validate(uint8 GripID)
+{
+	return true;
+}
+
+void UGripMotionControllerComponent::Server_NotifyHandledTransaction_Implementation(uint8 GripID)
+{
+	for (int i = LocalTransactionBuffer.Num() - 1; i >= 0; i--)
+	{
+		if(LocalTransactionBuffer[i].GripID == GripID)
+			LocalTransactionBuffer.RemoveAt(i);
+	}
 }
 
 bool UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Validate(const FBPActorGripInformation & newGrip)
