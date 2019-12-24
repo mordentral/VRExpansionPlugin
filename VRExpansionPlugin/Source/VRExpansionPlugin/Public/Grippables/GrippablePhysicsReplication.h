@@ -12,9 +12,15 @@
 #if WITH_PHYSX
 #include "Physics/PhysicsInterfaceUtils.h"
 #include "Physics/PhysScene_PhysX.h"
+#include "PhysXPublicCore.h"
+//#include "PhysXPublic.h"
+#include "PhysXIncludes.h"
+#include "PhysicsInterfaceTypesCore.h"
 //#include "Physics/Experimental/PhysScene_ImmediatePhysX.h"
 #include "PhysicsReplication.h"
 #endif
+
+#include "Misc/ScopeRWLock.h"
 
 #include "GrippablePhysicsReplication.generated.h"
 //#include "GrippablePhysicsReplication.generated.h"
@@ -31,6 +37,7 @@
 	ECVF_ReadOnly);*/
 
 #if WITH_PHYSX
+
 class FPhysicsReplicationVR : public FPhysicsReplication
 {
 public:
@@ -153,6 +160,155 @@ public:
 			delete PhysicsReplication;
 	}
 };
+
+struct FContactModBodyInstancePair
+{
+	bool bBody1IgnoreEntireActor;
+	bool bBody2IgnoreEntireActor;
+
+	FPhysicsActorHandle Actor1;
+	FPhysicsActorHandle Actor2;
+
+	FORCEINLINE bool operator==(const FContactModBodyInstancePair &Other) const
+	{
+		return (
+			(Actor1 == Other.Actor1 || Actor1 == Other.Actor2) &&
+			(Actor2 == Other.Actor2 || Actor2 == Other.Actor1)
+			);
+	}
+};
+
+class FContactModifyCallbackVR : public FContactModifyCallback
+{
+public:
+
+	TArray<FContactModBodyInstancePair> ContactsToIgnore;
+	FRWLock RWAccessLock;
+
+	void onContactModify(PxContactModifyPair* const pairs, PxU32 count) override
+	{
+		for (uint32 PairIdx = 0; PairIdx < count; PairIdx++)
+		{
+			const PxActor* PActor0 = pairs[PairIdx].actor[0];
+			const PxActor* PActor1 = pairs[PairIdx].actor[1];
+			check(PActor0 && PActor1);
+
+			const PxRigidBody* PRigidBody0 = PActor0->is<PxRigidBody>();
+			const PxRigidBody* PRigidBody1 = PActor1->is<PxRigidBody>();
+
+			//physx::PxRigidActor* SyncActor;
+
+			const FBodyInstance* BodyInst0 = FPhysxUserData::Get<FBodyInstance>(PActor0->userData);
+			const FBodyInstance* BodyInst1 = FPhysxUserData::Get<FBodyInstance>(PActor1->userData);
+			if (BodyInst0 == nullptr || BodyInst1 == nullptr)
+			{
+				continue;
+			}
+
+			if (BodyInst0->bContactModification && BodyInst1->bContactModification)
+			{
+				FRWScopeLock(RWAccessLock, FRWScopeLockType::SLT_ReadOnly);
+
+				const FContactModBodyInstancePair* prop = ContactsToIgnore.FindByPredicate([&](const FContactModBodyInstancePair& it) {return (it.Actor1.SyncActor == PRigidBody0 && it.Actor2.SyncActor == PRigidBody1) || (it.Actor2.SyncActor == PRigidBody0 && it.Actor1.SyncActor == PRigidBody1);  });
+				if (prop)
+				{
+					for (uint32 ContactPt = 0; ContactPt < pairs[PairIdx].contacts.size(); ContactPt++)
+					{
+						pairs[PairIdx].contacts.ignore(ContactPt);
+					}
+				}
+			}
+		}
+	}
+
+	virtual ~FContactModifyCallbackVR()
+	{
+
+	}
+};
+
+class FCCDContactModifyCallbackVR : public FCCDContactModifyCallback
+{
+public:
+
+	TArray<FContactModBodyInstancePair> ContactsToIgnore;
+	FRWLock RWAccessLock;
+
+	void onCCDContactModify(PxContactModifyPair* const pairs, PxU32 count) override
+	{
+		for (uint32 PairIdx = 0; PairIdx < count; PairIdx++)
+		{
+			const PxActor* PActor0 = pairs[PairIdx].actor[0];
+			const PxActor* PActor1 = pairs[PairIdx].actor[1];
+			check(PActor0 && PActor1);
+
+			const PxRigidBody* PRigidBody0 = PActor0->is<PxRigidBody>();
+			const PxRigidBody* PRigidBody1 = PActor1->is<PxRigidBody>();
+
+			//physx::PxRigidActor* SyncActor;
+
+			const FBodyInstance* BodyInst0 = FPhysxUserData::Get<FBodyInstance>(PActor0->userData);
+			const FBodyInstance* BodyInst1 = FPhysxUserData::Get<FBodyInstance>(PActor1->userData);
+
+			if (BodyInst0 == nullptr || BodyInst1 == nullptr)
+			{
+				continue;
+			}
+
+			if (BodyInst0->bContactModification && BodyInst1->bContactModification)
+			{
+				FRWScopeLock(RWAccessLock, FRWScopeLockType::SLT_ReadOnly);
+
+				const FContactModBodyInstancePair* prop = ContactsToIgnore.FindByPredicate([&](const FContactModBodyInstancePair& it) {return (it.Actor1.SyncActor == PRigidBody0 && it.Actor2.SyncActor == PRigidBody1) || (it.Actor2.SyncActor == PRigidBody0 && it.Actor1.SyncActor == PRigidBody1);  });
+				if (prop)
+				{
+					for (uint32 ContactPt = 0; ContactPt < pairs[PairIdx].contacts.size(); ContactPt++)
+					{
+						pairs[PairIdx].contacts.ignore(ContactPt);
+					}
+				}
+			}
+		}
+	}
+
+	virtual ~FCCDContactModifyCallbackVR()
+	{
+
+	}
+};
+
+class IContactModifyCallbackFactoryVR : public IContactModifyCallbackFactory
+{
+public:
+
+	virtual FContactModifyCallback* Create(FPhysScene* OwningPhysScene) override
+	{
+		return new FContactModifyCallbackVR();
+	}
+
+	virtual void Destroy(FContactModifyCallback* ContactCallback) override
+	{
+		if (ContactCallback)
+			delete ContactCallback;
+	}
+};
+
+class ICCDContactModifyCallbackFactoryVR : public ICCDContactModifyCallbackFactory
+{
+public:
+
+	virtual FCCDContactModifyCallback* Create(FPhysScene* OwningPhysScene) override
+	{
+		return new FCCDContactModifyCallbackVR();
+	}
+
+	virtual void Destroy(FCCDContactModifyCallback* ContactCallback) override
+	{
+		if (ContactCallback)
+			delete ContactCallback;
+	}
+};
+
 #endif
 
 USTRUCT()
