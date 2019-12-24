@@ -228,14 +228,27 @@ public:
 
 			return GripIDIncrementer;
 		}
-		else // And 128 - 254 for local grips client side
+		else // And 128 - 254 for local grips client side, with half for server initiated and half for client
 		{
-			if (GripIDIncrementer < 127)
-				GripIDIncrementer++;
-			else
-				GripIDIncrementer = (INVALID_VRGRIP_ID + 1);
 
-			return GripIDIncrementer + 128;
+			if (!IsServer())
+			{
+				if (GripIDIncrementer < 63)
+					GripIDIncrementer++;
+				else
+					GripIDIncrementer = (INVALID_VRGRIP_ID + 1);
+
+				return GripIDIncrementer + 128;
+			}
+			else
+			{
+				if (GripIDIncrementer < 63)
+					GripIDIncrementer++;
+				else
+					GripIDIncrementer = (INVALID_VRGRIP_ID + 1);
+
+				return GripIDIncrementer + 128 + 64;
+			}
 		}
 	}
 
@@ -246,6 +259,10 @@ public:
 	// When possible I suggest that you use GetAllGrips/GetGrippedObjects instead of directly referencing this
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "GripMotionController", ReplicatedUsing = OnRep_LocallyGrippedObjects)
 	TArray<FBPActorGripInformation> LocallyGrippedObjects;
+
+	// Local Grip TransactionalBuffer to store server sided grips that need to be emplaced into the local buffer
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "GripMotionController", ReplicatedUsing = OnRep_LocalTransaction)
+		TArray<FBPActorGripInformation> LocalTransactionBuffer;
 
 	// Locally Gripped Array functions
 
@@ -275,6 +292,9 @@ public:
 	UFUNCTION(Reliable, Server, WithValidation)
 	void Server_NotifyLocalGripRemoved(uint8 GripID, const FTransform_NetQuantize &TransformAtDrop, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity);
 	
+	// Handle a server initiated grip
+	UFUNCTION(Reliable, Server, WithValidation, Category = "GripMotionController")
+		void Server_NotifyHandledTransaction(uint8 GripID);
 
 	// Enable this to send the TickGrip event every tick even for non custom grip types - has a slight performance hit
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
@@ -441,6 +461,44 @@ public:
 		Grip.ValueCache.CachedGripID = Grip.GripID;
 
 		return true;
+	}
+
+	inline void CheckTransactionBuffer()
+	{
+		if (LocalTransactionBuffer.Num())
+		{
+			for (int i = LocalTransactionBuffer.Num() - 1; i >= 0; --i)
+			{
+				if (LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped && LocalTransactionBuffer[i].GripID != LocalTransactionBuffer[i].ValueCache.CachedGripID)
+				{
+					// There appears to be a bug with TArray replication where if you replace an index with another value of that
+					// Index, it doesn't fully re-init the object, this is a workaround to re-zero non replicated variables
+					// when that happens.
+					LocalTransactionBuffer[i].ClearNonReppingItems();
+				}
+
+				if (LocalTransactionBuffer[i].GrippedObject && !LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped)
+				{
+					LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped = true;
+					LocalTransactionBuffer[i].ValueCache.CachedGripID = LocalTransactionBuffer[i].GripID;
+
+					int32 Index = LocallyGrippedObjects.Add(LocalTransactionBuffer[i]);
+
+					if (Index != INDEX_NONE)
+					{
+						NotifyGrip(LocallyGrippedObjects[Index]);
+					}
+
+					Server_NotifyHandledTransaction(LocalTransactionBuffer[i].GripID);				
+				}
+			}
+		}
+	}
+
+	UFUNCTION()
+	virtual void OnRep_LocalTransaction(TArray<FBPActorGripInformation> OriginalArrayState) // Original array state is useless without full serialize, it just hold last delta
+	{
+		CheckTransactionBuffer();
 	}
 
 	UFUNCTION()

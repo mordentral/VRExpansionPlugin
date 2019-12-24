@@ -198,11 +198,11 @@ EBPOpenVRControllerDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRControll
 		{
 			DeviceType = EBPOpenVRControllerDeviceType::DT_IndexController;
 		}
-		else if (DeviceModelNumber.Find("VIVE Controller Pro", ESearchCase::IgnoreCase) != INDEX_NONE) // Vive Wand
+		else if (DeviceModelNumber.Find("cosmos", ESearchCase::IgnoreCase) != INDEX_NONE || DeviceModelNumber.Find("index", ESearchCase::IgnoreCase) != INDEX_NONE)
 		{
-			DeviceType = EBPOpenVRControllerDeviceType::DT_ViveController;
+			DeviceType = EBPOpenVRControllerDeviceType::DT_CosmosController;
 		}
-		else if (DeviceModelNumber.Find("VIVE Controller", ESearchCase::IgnoreCase) != INDEX_NONE) // Vive Wand
+		else if (DeviceModelNumber.Find("VIVE", ESearchCase::IgnoreCase) != INDEX_NONE) // Vive Wand
 		{
 			DeviceType = EBPOpenVRControllerDeviceType::DT_ViveController;
 		}

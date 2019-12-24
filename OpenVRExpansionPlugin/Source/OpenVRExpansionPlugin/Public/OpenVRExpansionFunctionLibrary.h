@@ -510,6 +510,7 @@ enum class EBPOpenVRControllerDeviceType : uint8
 {
 	DT_IndexController,
 	DT_ViveController,
+	DT_CosmosController,
 	DT_RiftController,
 	DT_RiftSController,
 	DT_WMRController,
