@@ -1646,7 +1646,7 @@ bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQua
 		return false;
 	}
 
-	if (!ObjectToDrop)
+	if (!ObjectToDrop && GripIDToDrop == INVALID_VRGRIP_ID)
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid object"));
 		return false;
