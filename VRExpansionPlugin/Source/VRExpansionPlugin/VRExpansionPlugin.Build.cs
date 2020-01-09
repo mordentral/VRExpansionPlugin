@@ -58,7 +58,6 @@ public class VRExpansionPlugin : ModuleRules
                     "CoreUObject",
                     "Engine",
                    // "InputCore",
-                    "PhysicsCore",
                     "PhysX",
                     //"FLEX", remove comment if building in the NVIDIA flex branch - NOTE when put in place FLEX only listed win32 and win64 at compatible platforms
                     "HeadMountedDisplay",

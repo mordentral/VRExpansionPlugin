@@ -20,8 +20,6 @@ void FVRExpansionPluginModule::StartupModule()
 
 #if WITH_PHYSX
 	FPhysScene_PhysX::PhysicsReplicationFactory = MakeShared<IPhysicsReplicationFactoryVR>();
-	FPhysScene_PhysX::ContactModifyCallbackFactory = MakeShared<IContactModifyCallbackFactoryVR>();
-	FPhysScene_PhysX::CCDContactModifyCallbackFactory = MakeShared<ICCDContactModifyCallbackFactoryVR>();
 	//FPhysScene_ImmediatePhysX::PhysicsReplicationFactory = MakeShared<IPhysicsReplicationFactoryVR>();
 #endif
 }

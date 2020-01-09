@@ -11,7 +11,6 @@
 #include "HeadMountedDisplayFunctionLibrary.h"
 //#include "HeadMountedDisplayFunctionLibrary.h"
 #include "IHeadMountedDisplay.h"
-#include "Grippables/GrippablePhysicsReplication.h"
 
 #include "VRBPDatatypes.h"
 #include "GameplayTagContainer.h"
@@ -41,10 +40,6 @@ class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UBlueprintFunct
 	GENERATED_BODY()
 	//~UVRExpansionFunctionLibrary();
 public:
-
-	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
-		static void SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1 = nullptr, FName OptionalBoneName1 = NAME_None, UPrimitiveComponent* Prim2 = nullptr, FName OptionalBoneName2 = NAME_None, bool bIgnoreCollision = true);
 
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
 	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
