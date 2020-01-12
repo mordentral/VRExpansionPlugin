@@ -202,6 +202,25 @@ FTransform UVRGripScriptBase::GetParentTransform(bool bGetWorldTransform)
 	return FTransform::Identity;
 }
 
+FBodyInstance * UVRGripScriptBase::GetParentBodyInstance(FName OptionalBoneName)
+{
+	UObject * ParentObj = this->GetParent();
+
+	if (UPrimitiveComponent * PrimParent = Cast<UPrimitiveComponent>(ParentObj))
+	{
+		return PrimParent->GetBodyInstance(OptionalBoneName);
+	}
+	else if (AActor * ParentActor = Cast<AActor>(ParentObj))
+	{
+		if (UPrimitiveComponent * Prim = Cast<UPrimitiveComponent>(ParentActor->GetRootComponent()))
+		{
+			return Prim->GetBodyInstance(OptionalBoneName);
+		}
+	}
+
+	return nullptr;
+}
+
 UObject * UVRGripScriptBase::GetParent()
 {
 	return this->GetOuter();

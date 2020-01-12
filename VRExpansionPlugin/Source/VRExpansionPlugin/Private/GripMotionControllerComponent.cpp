@@ -5459,8 +5459,6 @@ void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMot
 
 	UpdateStates[LateUpdateGameWriteIndex].Primitives.Reset();
 	UpdateStates[LateUpdateGameWriteIndex].ParentToWorld = ParentToWorld;
-	
-	TArray<USceneComponent*> ComponentsThatSkipLateUpdate;
 
 	//Add additional late updates registered to this controller that aren't children and aren't gripped
 	//This array is editable in blueprint and can be used for things like arms or the like.
@@ -5470,10 +5468,10 @@ void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMot
 			GatherLateUpdatePrimitives(primComp);
 	}
 
-	ProcessGripArrayLateUpdatePrimitives(Component, Component->LocallyGrippedObjects, ComponentsThatSkipLateUpdate);
-	ProcessGripArrayLateUpdatePrimitives(Component, Component->GrippedObjects, ComponentsThatSkipLateUpdate);
+	ProcessGripArrayLateUpdatePrimitives(Component, Component->LocallyGrippedObjects);
+	ProcessGripArrayLateUpdatePrimitives(Component, Component->GrippedObjects);
 
-	GatherLateUpdatePrimitives(Component, &ComponentsThatSkipLateUpdate);
+	GatherLateUpdatePrimitives(Component);
 	//GatherLateUpdatePrimitives(Component);
 
 	UpdateStates[LateUpdateGameWriteIndex].bSkip = bSkipLateUpdate;
@@ -5487,6 +5485,7 @@ void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMot
 		{
 			LateUpdateRenderReadIndex = NextFrameRenderReadIndex;
 		});
+
 }
 
 void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform)
@@ -5509,6 +5508,9 @@ void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, cons
 	// Also check whether any primitive indices have changed, in case the scene has been modified in the meantime.
 	for (auto& PrimitivePair : UpdateStates[LateUpdateRenderReadIndex].Primitives)
 	{
+		if (PrimitivePair.Value == -1)
+			continue;
+
 		FPrimitiveSceneInfo* RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(PrimitivePair.Value);
 		FPrimitiveSceneInfo* CachedSceneInfo = PrimitivePair.Key;
 
@@ -5556,50 +5558,23 @@ void FExpandedLateUpdateManager::CacheSceneInfo(USceneComponent* Component)
 	}
 }
 
-void FExpandedLateUpdateManager::GatherLateUpdatePrimitives(USceneComponent* ParentComponent, TArray<USceneComponent*> *SkipComponentList)
+void FExpandedLateUpdateManager::GatherLateUpdatePrimitives(USceneComponent* ParentComponent)
 {
 	CacheSceneInfo(ParentComponent);
 	TArray<USceneComponent*> DirectComponents;
 
-	if (SkipComponentList && SkipComponentList->Num())
+	// Std late updates
+	ParentComponent->GetChildrenComponents(true, DirectComponents);
+	for (USceneComponent* Component : DirectComponents)
 	{
-		// Skip attachment grips, slower logic
-		ParentComponent->GetChildrenComponents(false, DirectComponents);
-
-		TArray<USceneComponent*> SubComponents;
-		for (USceneComponent* Component : DirectComponents)
+		if (Component != nullptr)
 		{
-			if (Component != nullptr && (SkipComponentList ? !SkipComponentList->Contains(Component) : true))
-			{
-				CacheSceneInfo(Component);
-				Component->GetChildrenComponents(true, SubComponents);
-
-				for (USceneComponent* SubComponent : SubComponents)
-				{
-					if (Component != nullptr)
-					{
-						CacheSceneInfo(SubComponent);
-					}
-				}
-			}
-
-		}
-	}
-	else
-	{
-		// Std late updates
-		ParentComponent->GetChildrenComponents(true, DirectComponents);
-		for (USceneComponent* Component : DirectComponents)
-		{
-			if (Component != nullptr)
-			{
-				CacheSceneInfo(Component);
-			}
+			CacheSceneInfo(Component);
 		}
 	}
 }
 
-void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotionControllerComponent * MotionControllerComponent, TArray<FBPActorGripInformation> & GripArray, TArray<USceneComponent*> &SkipComponentList)
+void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotionControllerComponent * MotionControllerComponent, TArray<FBPActorGripInformation> & GripArray)
 {
 	for (FBPActorGripInformation actor : GripArray)
 	{
@@ -5611,24 +5586,7 @@ void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotio
 		// Handle late updates even with attachment, we need to add it to a skip list for the primary gatherer to process
 		if (actor.GripCollisionType == EGripCollisionType::AttachmentGrip)
 		{
-			switch (actor.GripTargetType)
-			{
-			case EGripTargetType::ActorGrip:
-			{
-				if (AActor * GrippedActor = actor.GetGrippedActor())
-				{
-					SkipComponentList.Add(GrippedActor->GetRootComponent());
-				}
-			}break;
-			case EGripTargetType::ComponentGrip:
-			{
-				if (UPrimitiveComponent* GrippedComponent = actor.GetGrippedComponent())
-				{
-					SkipComponentList.Add(GrippedComponent);
-				}
-			}break;
-			}
-			//continue;
+			continue;
 		}
 
 		// Don't allow late updates with server sided movement, there is no point

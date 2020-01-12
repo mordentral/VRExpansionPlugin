@@ -64,8 +64,8 @@ public:
 public:
 
 	/** A utility method that calls CacheSceneInfo on ParentComponent and all of its descendants */
-	void GatherLateUpdatePrimitives(USceneComponent* ParentComponent, TArray<USceneComponent*> *SkipComponentList = nullptr);
-	void ProcessGripArrayLateUpdatePrimitives(UGripMotionControllerComponent* MotionController, TArray<FBPActorGripInformation> & GripArray, TArray<USceneComponent*> &SkipComponentList);
+	void GatherLateUpdatePrimitives(USceneComponent* ParentComponent);
+	void ProcessGripArrayLateUpdatePrimitives(UGripMotionControllerComponent* MotionController, TArray<FBPActorGripInformation> & GripArray);
 
 	/** Generates a LateUpdatePrimitiveInfo for the given component if it has a SceneProxy and appends it to the current LateUpdatePrimitives array */
 	void CacheSceneInfo(USceneComponent* Component);

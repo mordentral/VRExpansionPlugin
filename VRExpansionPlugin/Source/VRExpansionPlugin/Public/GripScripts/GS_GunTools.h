@@ -221,6 +221,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
 		bool bHasRecoil;
 
+	// If true then the recoil will be added as a physical force instead of logical blend
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+		bool bApplyRecoilAsPhysicalForce;
+
 	// Maximum recoil addition
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (editcondition = "bHasRecoil"))
 		FVector_NetQuantize100 MaxRecoilTranslation;
@@ -247,8 +251,11 @@ public:
 
 	bool bHasActiveRecoil;
 	
+	// Adds a recoil instance to the gun tools, the option location is for if using the physical recoil mode
+	// Physical recoil is in world space and positional only, logical recoil is in relative space to the mesh itself and uses all
+	// of the transforms properties.
 	UFUNCTION(BlueprintCallable, Category = "Recoil")
-		void AddRecoilInstance(const FTransform & RecoilAddition);
+		void AddRecoilInstance(const FTransform & RecoilAddition, FVector Optional_Location = FVector::ZeroVector);
 
 	UFUNCTION(BlueprintCallable, Category = "Recoil")
 		void ResetRecoil();

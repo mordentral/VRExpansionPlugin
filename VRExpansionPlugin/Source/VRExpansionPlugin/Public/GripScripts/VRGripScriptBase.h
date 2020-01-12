@@ -175,6 +175,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 		FTransform GetParentTransform(bool bGetWorldTransform = true);
 
+	// Returns the root body instance of the parent
+	FBodyInstance * GetParentBodyInstance(FName OptionalBoneName = NAME_None);
+
 	// Returns the parent component or actor to this
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 		UObject * GetParent();
