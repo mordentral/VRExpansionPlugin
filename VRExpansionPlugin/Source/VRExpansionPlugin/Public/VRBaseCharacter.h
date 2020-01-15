@@ -18,6 +18,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);
 /** Delegate for notification when the lever state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRSeatThresholdChangedSignature, bool, bIsWithinThreshold, float, ToThresholdScaler);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRPlayerStateReplicatedSignature, const APlayerState *, NewPlayerState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRPlayerTeleportedSignature);
 
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FRepMovementVRCharacter : public FRepMovement
@@ -245,6 +246,10 @@ public:
 	// Injecting our custom teleport notification
 	virtual void OnRep_ReplicatedMovement() override;
 	virtual void GatherCurrentMovement() override;
+
+	// Give my users direct access to an event for when the player has teleported
+	UPROPERTY(BlueprintAssignable, Category = "BaseVRCharacter")
+		FVRPlayerTeleportedSignature OnCharacterTeleported_Bind;
 
 	// Give my users direct access to an event for when the player state has changed
 	UPROPERTY(BlueprintAssignable, Category = "BaseVRCharacter")

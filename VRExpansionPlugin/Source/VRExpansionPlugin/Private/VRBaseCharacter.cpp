@@ -242,6 +242,8 @@ void AVRBaseCharacter::NotifyOfTeleport()
 
 	if (RightMotionController)
 		RightMotionController->bIsPostTeleport = true;
+
+	OnCharacterTeleported_Bind.Broadcast();
 }
 
 void AVRBaseCharacter::OnRep_ReplicatedMovement()
