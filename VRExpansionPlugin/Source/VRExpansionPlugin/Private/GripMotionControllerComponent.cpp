@@ -1802,20 +1802,24 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 
 	UPrimitiveComponent * ParentPrim = Cast<UPrimitiveComponent>(SocketingParent);
 
+
 	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
 	{
 		// Stop simulation for socketing
 		root->SetSimulatePhysics(false);
+
 		root->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		root->SetRelativeTransform(RelativeTransformToParent);
 	}
 	else if (AActor * pActor = Cast<AActor>(ObjectToSocket))
 	{
+
 		if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
 		{
 			// Stop simulation for socketing
 			rootComp->SetSimulatePhysics(false);
 		}
+
 		pActor->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		pActor->SetActorRelativeTransform(RelativeTransformToParent);
 
@@ -1856,7 +1860,7 @@ void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FB
 	GetPhysicsGripIndex(NewDrop, PhysicsHandleIndex);
 
 	if (NewDrop.GrippedObject)
-		Socket_Implementation(NewDrop.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent);
+		Socket_Implementation(NewDrop.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 
 	DropAndSocket_Implementation(NewDrop);
 }
