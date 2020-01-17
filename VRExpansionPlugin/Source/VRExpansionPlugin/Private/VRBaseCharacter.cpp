@@ -233,13 +233,16 @@ void AVRBaseCharacter::NotifyOfTeleport()
 	if(GetNetMode() < ENetMode::NM_Client)
 		bFlagTeleported = true;
 
+	if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+	{
+		moveComp->bNotifyTeleported = true;
+	}
+
 	if (LeftMotionController)
 		LeftMotionController->bIsPostTeleport = true;
 
 	if (RightMotionController)
 		RightMotionController->bIsPostTeleport = true;
-
-	OnCharacterTeleported_Bind.Broadcast();
 }
 
 void AVRBaseCharacter::OnRep_ReplicatedMovement()
@@ -251,13 +254,13 @@ void AVRBaseCharacter::OnRep_ReplicatedMovement()
 	ReplicatedMovement.Location = ReplicatedMovementVR.Location;
 	ReplicatedMovement.Rotation = ReplicatedMovementVR.Rotation;
 
+	Super::OnRep_ReplicatedMovement();
+
 	if (ReplicatedMovementVR.bJustTeleported && !IsLocallyControlled())
 	{
 		// Server should never get this value so it shouldn't be double throwing for them
 		NotifyOfTeleport();
 	}
-
-	Super::OnRep_ReplicatedMovement();
 }
 
 void AVRBaseCharacter::GatherCurrentMovement()
