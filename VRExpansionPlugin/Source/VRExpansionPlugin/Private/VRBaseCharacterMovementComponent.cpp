@@ -63,6 +63,8 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 
 	// Allow merging dual movements, generally this is wanted for the perf increase
 	bEnableServerDualMoveScopedMovementUpdates = true;
+
+	bNotifyTeleported = false;
 }
 
 void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
@@ -176,6 +178,15 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 	// Make sure these are cleaned out for the next frame
 	AdditionalVRInputVector = FVector::ZeroVector;
 	CustomVRInputVector = FVector::ZeroVector;
+
+	if (bNotifyTeleported)
+	{
+		if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+		{
+			BaseChar->OnCharacterTeleported_Bind.Broadcast();
+			bNotifyTeleported = false;
+		}
+	}
 }
 
 bool UVRBaseCharacterMovementComponent::VerifyClientTimeStamp(float TimeStamp, FNetworkPredictionData_Server_Character & ServerData)
@@ -634,14 +645,14 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
+		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
+		OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
 		{
 			OwningCharacter->NotifyOfTeleport();
 		}
-
-		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
-		OwningCharacter->SetActorRotationVR(TargetRot, true, false);
 	}
 
 	return false;
@@ -651,14 +662,14 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
+		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
+		OwningCharacter->SetActorRotationVR(TargetRot, true);
+
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
 		{
 			OwningCharacter->NotifyOfTeleport();
 		}
-
-		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
-		OwningCharacter->SetActorRotationVR(TargetRot, true);
 	}
 
 	return false;
