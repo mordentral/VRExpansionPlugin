@@ -35,7 +35,65 @@ UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 	bUseGlobalVirtualStockSettings = true;
 
 	bUseHighQualityRemoteSimulation = false;
+
+	bInjectPrePhysicsHandle = true;
+	//bInjectPostPhysicsHandle = true;
+	WeaponRootOrientationComponent = NAME_None;
+	OrientationComponentRelativeFacing = FTransform::Identity;
 }
+
+void UGS_GunTools::OnBeginPlay_Implementation(UObject* CallingOwner)
+{
+	// Grip base has no super of this
+
+	if (WeaponRootOrientationComponent.IsValid())
+	{
+		if (AActor * Owner = GetOwner())
+		{
+			FName CurrentCompName = NAME_None;
+			for (UActorComponent* ChildComp : Owner->GetComponents())
+			{
+				CurrentCompName = ChildComp->GetFName();
+				if (CurrentCompName == NAME_None)
+					continue;
+
+				if (CurrentCompName == WeaponRootOrientationComponent)
+				{
+					if (USceneComponent * SceneComp = Cast<USceneComponent>(ChildComp))
+					{
+						OrientationComponentRelativeFacing = SceneComp->GetRelativeTransform();
+					}
+
+					break;
+				}
+			}
+		}
+	}
+}
+
+void UGS_GunTools::HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation* HandleInfo, FTransform& KinPose)
+{
+	if (!bIsActive)
+		return;
+
+	if (WeaponRootOrientationComponent != NAME_None)
+	{
+		// Alter to rotate to x+ if we have an orientation component
+		FQuat DeltaQuat = OrientationComponentRelativeFacing.GetRotation();
+		KinPose.SetRotation(KinPose.GetRotation() * DeltaQuat);
+		HandleInfo->COMPosition.SetRotation(HandleInfo->COMPosition.GetRotation() * DeltaQuat);
+
+		if (!PivotOffset.IsZero())
+		{
+			KinPose.SetLocation(KinPose.TransformPosition(PivotOffset));
+			HandleInfo->COMPosition.SetLocation(HandleInfo->COMPosition.TransformPosition(PivotOffset));
+		}
+	}
+}
+
+/*void UGS_GunTools::HandlePostPhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation* HandleInfo)
+{
+}*/
 
 bool UGS_GunTools::GetWorldTransform_Implementation
 (
@@ -195,7 +253,6 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 		default:break;
 		}
 	}
-
 
 	// Handle the interp and multi grip situations, re-checking the grip situation here as it may have changed in the switch above.
 	if ((Grip.SecondaryGripInfo.bHasSecondaryAttachment && Grip.SecondaryGripInfo.SecondaryAttachment) || Grip.SecondaryGripInfo.GripLerpState == EGripLerpState::EndLerp)
@@ -468,7 +525,7 @@ void UGS_GunTools::AddRecoilInstance(const FTransform & RecoilAddition, FVector 
 	{		
 		if (FBodyInstance * BodyInst = GetParentBodyInstance())
 		{
-			BodyInst->AddImpulseAtPosition(RecoilAddition.GetLocation(), Optional_Location);		
+			BodyInst->AddImpulseAtPosition(RecoilAddition.GetLocation(), Optional_Location);
 		}
 	}
 	else

@@ -4421,13 +4421,24 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 		if (GripScripts)
 		{
+			bool bResetCom = false;
+
 			// Inject any alterations that the grip scripts want to make
 			for (UVRGripScriptBase* Script : *GripScripts)
 			{
 				if (Script && Script->IsScriptActive() && Script->InjectPrePhysicsHandle())
 				{
 					Script->HandlePrePhysicsHandle(this, HandleInfo, KinPose);
+					bResetCom = true;
 				}
+			}
+
+			if (HandleInfo->bSetCOM && bResetCom)
+			{
+				FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
+				localCom.SetLocation(HandleInfo->COMPosition.GetTranslation());//Loc);
+
+				FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
 			}
 		}
 

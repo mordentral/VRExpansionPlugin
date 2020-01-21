@@ -158,6 +158,18 @@ public:
 
 	virtual void OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) override;
 	virtual void OnSecondaryGrip_Implementation(UGripMotionControllerComponent * Controller, USceneComponent * SecondaryGripComponent, const FBPActorGripInformation & GripInformation) override;
+	virtual void OnBeginPlay_Implementation(UObject* CallingOwner) override;
+	virtual void HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation* HandleInfo, FTransform& KinPose) override;
+	//virtual void HandlePostPhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation* HandleInfo) override;
+
+
+	// The name of the component that is used to orient the weapon along its primary axis
+	// If it does not exist then the weapon is assumed to be X+ facing.
+	// Also used to perform some calculations, make sure it is parented to the gripped object (root component for actors),
+	// and that the X+ vector of the orientation component is facing the forward direction of the weapon (gun tip for guns, ect).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
+		FName WeaponRootOrientationComponent;
+	FTransform OrientationComponentRelativeFacing;
 
 	// (default false) If true will run through the entire simulation that the owning client uses for the gun. If false, does a lighter and more performant approximation.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GunSettings")
@@ -167,6 +179,8 @@ public:
 	FGunTools_AdvSecondarySettings AdvSecondarySettings;
 
 	// Offset to apply to the pivot (good for centering pivot into the palm ect).
+	// For this to apply to the physical center of mass as well an OrientationComponent needs to be defined
+	// So that we have a valid directional vector to work off of
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pivot")
 		FVector_NetQuantize100 PivotOffset;
 
