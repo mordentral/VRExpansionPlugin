@@ -181,7 +181,8 @@ public:
 
 	// Offset to apply to the pivot (good for centering pivot into the palm ect).
 	// For this to apply to the physical center of mass as well an OrientationComponent needs to be defined
-	// So that we have a valid directional vector to work off of
+	// So that we have a valid directional vector to work off of, otherwise the pivot will be in component space and you 
+	// will have a harder time aligning it if the weapon is off axis (still works, just less intuitive).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pivot")
 		FVector_NetQuantize100 PivotOffset;
 

@@ -1251,12 +1251,16 @@ bool UGripMotionControllerComponent::GripActor(
 
 		if (Index != INDEX_NONE)
 		{
+			uint8 GripID = newActorGrip.GripID;
 			NotifyGrip(LocallyGrippedObjects[Index]);
 
-			FBPActorGripInformation GripInfo = LocallyGrippedObjects[Index];
+			if (FBPActorGripInformation * NewGripPtr = LocallyGrippedObjects.FindByKey(GripID))
+			{
+				FBPActorGripInformation GripInfo = *NewGripPtr;
 
-			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
-				Server_NotifyLocalGripAddedOrChanged(GripInfo);
+				if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+					Server_NotifyLocalGripAddedOrChanged(GripInfo);
+			}
 		}
 	}
 	//NotifyGrip(newActorGrip);
@@ -2175,7 +2179,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 					}
 				}
 
-				IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
+				//IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
 			}
 
 			if (root)
@@ -2221,28 +2225,28 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 					}
 				}
 				
-				IVRGripInterface::Execute_OnGrip(root, this, NewGrip);
+				//IVRGripInterface::Execute_OnGrip(root, this, NewGrip);
 			}
 
-			if (pActor)
+			/*if (pActor)
 			{
-				/*if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
-				{
-					OwningPawn->MoveIgnoreActorAdd(root->GetOwner());
-				}*/
+				//if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+				//{
+				//	OwningPawn->MoveIgnoreActorAdd(root->GetOwner());
+				//}
 
 				if (!bIsReInit && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 				{
 					IVRGripInterface::Execute_OnChildGrip(pActor, this, NewGrip);
 				}
 
-			}
+			}*/
 
 			// Call OnChildGrip for attached grip parent
-			if (!bIsReInit && root->GetAttachParent() && root->GetAttachParent()->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			/*if (!bIsReInit && root->GetAttachParent() && root->GetAttachParent()->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				IVRGripInterface::Execute_OnChildGrip(root->GetAttachParent(), this, NewGrip);
-			}
+			}*/
 
 			if (NewGrip.GripCollisionType != EGripCollisionType::EventsOnly)
 			{
@@ -2370,6 +2374,37 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 	if (!bIsReInit)
 	{
+		switch (NewGrip.GripTargetType)
+		{
+		case EGripTargetType::ActorGrip:
+		{
+			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			{
+				IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
+			}
+		}break;
+		case EGripTargetType::ComponentGrip:
+		{
+			// Call on the component
+			if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			{
+				IVRGripInterface::Execute_OnGrip(root, this, NewGrip);
+			}
+
+			// Call on its parent actor
+			if (pActor && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			{
+					IVRGripInterface::Execute_OnChildGrip(pActor, this, NewGrip);
+			}
+
+			// Call OnChildGrip for attached grip parent
+			if (root->GetAttachParent() && root->GetAttachParent()->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			{
+				IVRGripInterface::Execute_OnChildGrip(root->GetAttachParent(), this, NewGrip);
+			}
+		}break;
+		}
+
 		// Broadcast a new grip
 		OnGrippedObject.Broadcast(NewGrip);
 	}
