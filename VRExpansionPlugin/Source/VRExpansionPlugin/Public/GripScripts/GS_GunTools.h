@@ -170,6 +170,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
 		FName WeaponRootOrientationComponent;
 	FTransform OrientationComponentRelativeFacing;
+	FQuat StoredRootOffset;
 
 	// (default false) If true will run through the entire simulation that the owning client uses for the gun. If false, does a lighter and more performant approximation.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GunSettings")

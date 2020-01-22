@@ -40,6 +40,7 @@ UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :
 	//bInjectPostPhysicsHandle = true;
 	WeaponRootOrientationComponent = NAME_None;
 	OrientationComponentRelativeFacing = FTransform::Identity;
+	StoredRootOffset = FQuat::Identity;
 }
 
 void UGS_GunTools::OnBeginPlay_Implementation(UObject* CallingOwner)
@@ -78,16 +79,23 @@ void UGS_GunTools::HandlePrePhysicsHandle(UGripMotionControllerComponent* Grippi
 
 	if (WeaponRootOrientationComponent != NAME_None)
 	{
+		StoredRootOffset = HandleInfo->RootBoneRotation.GetRotation().Inverse() * OrientationComponentRelativeFacing.GetRotation();
+
 		// Alter to rotate to x+ if we have an orientation component
 		FQuat DeltaQuat = OrientationComponentRelativeFacing.GetRotation();
-		KinPose.SetRotation(KinPose.GetRotation() * DeltaQuat);
-		HandleInfo->COMPosition.SetRotation(HandleInfo->COMPosition.GetRotation() * DeltaQuat);
+		
+		KinPose.SetRotation(KinPose.GetRotation() * StoredRootOffset);
+		HandleInfo->COMPosition.SetRotation(HandleInfo->COMPosition.GetRotation() * StoredRootOffset);
+	}
+	else
+	{
+		StoredRootOffset = FQuat::Identity;
+	}
 
-		if (GripInfo.bIsSlotGrip && !PivotOffset.IsZero())
-		{
-			KinPose.SetLocation(KinPose.TransformPosition(PivotOffset));
-			HandleInfo->COMPosition.SetLocation(HandleInfo->COMPosition.TransformPosition(PivotOffset));
-		}
+	if (GripInfo.bIsSlotGrip && !PivotOffset.IsZero())
+	{
+		KinPose.SetLocation(KinPose.TransformPosition(PivotOffset));
+		HandleInfo->COMPosition.SetLocation(HandleInfo->COMPosition.TransformPosition(PivotOffset));
 	}
 }
 
@@ -273,7 +281,28 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 		{
 			// Variables needed for multi grip transform
 			FVector BasePoint = ParentTransform.GetLocation();
-			FVector Pivot = Grip.bIsSlotGrip ? SecondaryTransform.TransformPositionNoScale(SecondaryTransform.InverseTransformPositionNoScale(ParentTransform.GetLocation()) + OrientationComponentRelativeFacing.GetRotation().RotateVector(PivotOffset)) : ParentTransform.GetLocation();
+			FVector Pivot = ParentTransform.GetLocation();
+
+			if (Grip.bIsSlotGrip)
+			{			
+				if (FBPActorPhysicsHandleInformation * PhysHandle = GrippingController->GetPhysicsGrip(Grip))
+				{
+					Pivot = SecondaryTransform.TransformPositionNoScale(SecondaryTransform.InverseTransformPositionNoScale(Pivot) + (StoredRootOffset * PhysHandle->RootBoneRotation.GetRotation()).RotateVector(PivotOffset));
+				}
+				else
+				{
+					Pivot = SecondaryTransform.TransformPositionNoScale(SecondaryTransform.InverseTransformPositionNoScale(Pivot) + OrientationComponentRelativeFacing.GetRotation().RotateVector(PivotOffset));
+				}
+			}
+
+			// Debug draw for COM movement with physics grips
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+			static const auto CVarDrawCOMDebugSpheresAccess = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DrawDebugCenterOfMassForGrips"));
+			if (CVarDrawCOMDebugSpheresAccess->GetInt() > 0)
+			{
+				DrawDebugSphere(GetWorld(), Pivot, 5, 32, FColor::Orange, false);
+			}
+#endif
 
 			const FTransform PivotToWorld = FTransform(FQuat::Identity, Pivot);//BasePoint);
 			const FTransform WorldToPivot = FTransform(FQuat::Identity, -Pivot);//-BasePoint);
