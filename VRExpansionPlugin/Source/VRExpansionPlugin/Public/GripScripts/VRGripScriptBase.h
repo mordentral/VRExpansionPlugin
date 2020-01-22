@@ -109,7 +109,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "DefaultSettings")
 		bool bInjectPrePhysicsHandle;
 
-	virtual void HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose);
+	virtual void HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation &GripInfo, FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose);
 
 	// Returns if the script wants auto drop to be ignored
 	FORCEINLINE bool InjectPostPhysicsHandle()

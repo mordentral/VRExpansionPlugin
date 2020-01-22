@@ -71,7 +71,7 @@ void UGS_GunTools::OnBeginPlay_Implementation(UObject* CallingOwner)
 	}
 }
 
-void UGS_GunTools::HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation* HandleInfo, FTransform& KinPose)
+void UGS_GunTools::HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation &GripInfo, FBPActorPhysicsHandleInformation* HandleInfo, FTransform& KinPose)
 {
 	if (!bIsActive)
 		return;
@@ -83,7 +83,7 @@ void UGS_GunTools::HandlePrePhysicsHandle(UGripMotionControllerComponent* Grippi
 		KinPose.SetRotation(KinPose.GetRotation() * DeltaQuat);
 		HandleInfo->COMPosition.SetRotation(HandleInfo->COMPosition.GetRotation() * DeltaQuat);
 
-		if (!PivotOffset.IsZero())
+		if (GripInfo.bIsSlotGrip && !PivotOffset.IsZero())
 		{
 			KinPose.SetLocation(KinPose.TransformPosition(PivotOffset));
 			HandleInfo->COMPosition.SetLocation(HandleInfo->COMPosition.TransformPosition(PivotOffset));
@@ -273,7 +273,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 		{
 			// Variables needed for multi grip transform
 			FVector BasePoint = ParentTransform.GetLocation();
-			FVector Pivot = SecondaryTransform.TransformPositionNoScale(SecondaryTransform.InverseTransformPositionNoScale(ParentTransform.GetLocation()) + OrientationComponentRelativeFacing.GetRotation().RotateVector(PivotOffset));//(FTransform(PivotOffset) * ParentTransform).GetLocation();
+			FVector Pivot = Grip.bIsSlotGrip ? SecondaryTransform.TransformPositionNoScale(SecondaryTransform.InverseTransformPositionNoScale(ParentTransform.GetLocation()) + OrientationComponentRelativeFacing.GetRotation().RotateVector(PivotOffset)) : ParentTransform.GetLocation();
 
 			const FTransform PivotToWorld = FTransform(FQuat::Identity, Pivot);//BasePoint);
 			const FTransform WorldToPivot = FTransform(FQuat::Identity, -Pivot);//-BasePoint);

@@ -39,7 +39,7 @@ bool UVRGripScriptBase::IsScriptActive() { return bIsActive; }
 //bool UVRGripScriptBase::Wants_DenyLateUpdates() { return bDenyLateUpdates; }
 //bool UVRGripScriptBase::Wants_ToForceDrop() { return bForceDrop; }
 //bool UVRGripScriptBase::Wants_DenyTeleport_Implementation() { return false; }
-void UVRGripScriptBase::HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose) {}
+void UVRGripScriptBase::HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation &GripInfo, FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose) {}
 void UVRGripScriptBase::HandlePostPhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo) {}
 
 UVRGripScriptBase* UVRGripScriptBase::GetGripScriptByClass(UObject* WorldContextObject, TSubclassOf<UVRGripScriptBase> GripScriptClass, EBPVRResultSwitch& Result)

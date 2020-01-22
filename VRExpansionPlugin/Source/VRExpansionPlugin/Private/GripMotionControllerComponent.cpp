@@ -4428,7 +4428,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			{
 				if (Script && Script->IsScriptActive() && Script->InjectPrePhysicsHandle())
 				{
-					Script->HandlePrePhysicsHandle(this, HandleInfo, KinPose);
+					Script->HandlePrePhysicsHandle(this, NewGrip, HandleInfo, KinPose);
 					bResetCom = true;
 				}
 			}
