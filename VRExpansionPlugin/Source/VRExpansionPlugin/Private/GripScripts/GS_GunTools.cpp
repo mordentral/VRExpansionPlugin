@@ -273,8 +273,8 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 		{
 			// Variables needed for multi grip transform
 			FVector BasePoint = ParentTransform.GetLocation();
-			FVector Pivot = (FTransform(PivotOffset) * ParentTransform).GetLocation();
-				
+			FVector Pivot = SecondaryTransform.TransformPositionNoScale(SecondaryTransform.InverseTransformPositionNoScale(ParentTransform.GetLocation()) + OrientationComponentRelativeFacing.GetRotation().RotateVector(PivotOffset));//(FTransform(PivotOffset) * ParentTransform).GetLocation();
+
 			const FTransform PivotToWorld = FTransform(FQuat::Identity, Pivot);//BasePoint);
 			const FTransform WorldToPivot = FTransform(FQuat::Identity, -Pivot);//-BasePoint);
 
