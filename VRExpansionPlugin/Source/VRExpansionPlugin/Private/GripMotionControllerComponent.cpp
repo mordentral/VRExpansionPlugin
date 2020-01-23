@@ -4891,23 +4891,41 @@ bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInf
 
 	if (!HandleInfo->HandleData2.IsValid())
 		return false;
-	// This is supposed to be the difference between the actor and the kinactor / constraint base
-	
-	FTransform tran3 = FPhysicsInterface::GetLocalPose(HandleInfo->HandleData2, EConstraintFrame::Frame1);
 
-	FTransform rr;
+	EPhysicsGripCOMType COMType = GrippedActor.AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings;
+
+	bool bUseComLoc = 
+		(
+			HandleInfo->bSetCOM || 
+			(GrippedActor.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && GrippedActor.AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings == EPhysicsGripCOMType::COM_GripAt)
+		);
+
+	// This is supposed to be the difference between the actor and the kinactor / constraint base
+	FTransform tran3 = FTransform::Identity;
+	
 	FBodyInstance* rBodyInstance = rootComp->GetBodyInstance(GrippedActor.GrippedBoneName);
-	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance())
+
+	if (bUseComLoc && rBodyInstance && rBodyInstance->IsValidBodyInstance())
 	{
-		rr = rootComp->GetComponentTransform();
-		// Physx location throws out scale, this is where the problem was
-		rr.SetScale3D(FVector(1, 1, 1));
+		tran3 = FTransform(rBodyInstance->GetCOMPosition());
 	}
 	else
-		rr = rBodyInstance->GetUnrealWorldTransform();
+	{
+		FTransform rr;
+		tran3 = FPhysicsInterface::GetLocalPose(HandleInfo->HandleData2, EConstraintFrame::Frame1);
 
-	// Make the local pose global
-	tran3 = tran3 * rr;
+		if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance())
+		{
+			rr = rootComp->GetComponentTransform();
+			// Physx location throws out scale, this is where the problem was
+			rr.SetScale3D(FVector(1, 1, 1));
+		}
+		else
+			rr = rBodyInstance->GetUnrealWorldTransform();
+
+		// Make the local pose global
+		tran3 = tran3 * rr;
+	}
 
 	// Get the global pose for the kin actor
 	FTransform kinPose = FTransform::Identity;
