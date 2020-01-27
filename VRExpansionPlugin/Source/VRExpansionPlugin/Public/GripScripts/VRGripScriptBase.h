@@ -158,6 +158,7 @@ public:
 	virtual bool IsTickableWhenPaused() const override;
 	virtual ETickableTickType GetTickableTickType() const;
 	virtual TStatId GetStatId() const override;
+	virtual UWorld* GetWorld() const override;
 
 	// End tickable object information
 
