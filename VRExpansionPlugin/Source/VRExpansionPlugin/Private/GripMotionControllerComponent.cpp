@@ -1999,7 +1999,8 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 					root->SetEnableGravity(NewDrop.bOriginalGravity);
 				
 				// Stop Physics sim for socketing
-				root->SetSimulatePhysics(false);
+				if (NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && !NewDrop.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
+					root->SetSimulatePhysics(false);
 			}
 
 			if (IsServer()) //&& !bSkipFullDrop)
@@ -2516,13 +2517,16 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 					{
 						if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || !pActor->GetIsReplicated())
 						{
-							if (root->IsSimulatingPhysics() != bSimulate)
+							if (NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && !NewDrop.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
 							{
-								root->SetSimulatePhysics(bSimulate);
-							}
+								if (root->IsSimulatingPhysics() != bSimulate)
+								{
+									root->SetSimulatePhysics(bSimulate);
+								}
 
-							if (bSimulate)
-								root->WakeAllRigidBodies();
+								if (bSimulate)
+									root->WakeAllRigidBodies();
+							}
 						}
 
 						root->UpdateComponentToWorld(); // This fixes the late update offset
@@ -2620,13 +2624,16 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 					// Need to set simulation in all of these cases, including if it isn't the root component (simulation isn't replicated on non roots)
 					if (IsServer() || bHadGripAuthority || !NewDrop.bOriginalReplicatesMovement || (pActor && (pActor->GetRootComponent() != root || !pActor->GetIsReplicated())))
 					{
-						if (root->IsSimulatingPhysics() != bSimulate)
+						if (NewDrop.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && !NewDrop.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
 						{
-							root->SetSimulatePhysics(bSimulate);
-						}
+							if (root->IsSimulatingPhysics() != bSimulate)
+							{
+								root->SetSimulatePhysics(bSimulate);
+							}
 
-						if (bSimulate)
-							root->WakeAllRigidBodies();
+							if (bSimulate)
+								root->WakeAllRigidBodies();
+						}
 					}
 
 					root->UpdateComponentToWorld(); // This fixes the late update offset
@@ -4325,7 +4332,9 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 
 	// Needs to be simulating in order to run physics
-	root->SetSimulatePhysics(true);
+	if (NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && !NewGrip.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
+		root->SetSimulatePhysics(true);
+
 	/*if(NewGrip.GrippedBoneName == NAME_None)
 		root->SetSimulatePhysics(true);
 	else

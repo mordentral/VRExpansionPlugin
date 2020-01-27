@@ -812,6 +812,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		bool bTurnOffGravityDuringGrip;
 
+	// Don't automatically (un)simulate the component/root on grip/drop, let the end user set it up instead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
+		bool bSkipSettingSimulating;
+
 	// A multiplier to add to the stiffness of a grip that is then set as the MaxForce of the grip
 	// It is clamped between 0.00 and 256.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero (legacy behavior)
 	// If you want an exact value you can figure it out as a factor of the stiffness, also Max force can be directly edited with SetAdvancedConstraintSettings
@@ -839,6 +843,7 @@ public:
 		PhysicsConstraintType(EPhysicsGripConstraintType::AccelerationConstraint),
 		PhysicsGripLocationSettings(EPhysicsGripCOMType::COM_Default),
 		bTurnOffGravityDuringGrip(false),
+		bSkipSettingSimulating(false),
 		LinearMaxForceCoefficient(0.f),
 		AngularMaxForceCoefficient(0.f),
 		bUseCustomAngularValues(false),
@@ -852,6 +857,7 @@ public:
 		return (bUsePhysicsSettings == Other.bUsePhysicsSettings &&
 			PhysicsGripLocationSettings == Other.PhysicsGripLocationSettings &&
 			bTurnOffGravityDuringGrip == Other.bTurnOffGravityDuringGrip &&
+			bSkipSettingSimulating == Other.bSkipSettingSimulating &&
 			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
 			PhysicsConstraintType == Other.PhysicsConstraintType &&
 			FMath::IsNearlyEqual(LinearMaxForceCoefficient, Other.LinearMaxForceCoefficient) &&
@@ -867,6 +873,7 @@ public:
 		return (bUsePhysicsSettings != Other.bUsePhysicsSettings ||
 			PhysicsGripLocationSettings != Other.PhysicsGripLocationSettings ||
 			bTurnOffGravityDuringGrip != Other.bTurnOffGravityDuringGrip ||
+			bSkipSettingSimulating != Other.bSkipSettingSimulating ||
 			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
 			PhysicsConstraintType != Other.PhysicsConstraintType ||
 			!FMath::IsNearlyEqual(LinearMaxForceCoefficient, Other.LinearMaxForceCoefficient) ||
@@ -893,6 +900,7 @@ public:
 
 			//Ar << bTurnOffGravityDuringGrip;
 			Ar.SerializeBits(&bTurnOffGravityDuringGrip, 1);
+			Ar.SerializeBits(&bSkipSettingSimulating, 1);
 
 
 			// This is 0.0 - 256.0, using compression to get it smaller, 8 bits = max 256 + 1 bit for sign and 7 bits precision for 128 / full 2 digit precision
