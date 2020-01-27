@@ -222,6 +222,17 @@ bool UVRGripScriptBase::IsServer()
 	return false;
 }
 
+UWorld* UVRGripScriptBase::GetWorld() const
+{
+	if (IsTemplate())
+	{
+		return nullptr;
+	}
+
+	UObject* myOuter = this->GetOuter();
+	return myOuter->GetWorld();
+}
+
 void UVRGripScriptBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	OnEndPlay(EndPlayReason);
