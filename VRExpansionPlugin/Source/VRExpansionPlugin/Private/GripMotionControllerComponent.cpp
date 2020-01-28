@@ -1251,7 +1251,10 @@ bool UGripMotionControllerComponent::GripActor(
 
 		if (Index != INDEX_NONE)
 		{
-			NotifyGrip(LocallyGrippedObjects[Index]);
+			if (!NotifyGrip(LocallyGrippedObjects[Index]))
+			{
+				return true;
+			}
 
 			FBPActorGripInformation GripInfo = LocallyGrippedObjects[Index];
 
@@ -2176,7 +2179,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 					}
 				}
 
+				uint8 GripID = NewGrip.GripID;
 				IVRGripInterface::Execute_OnGrip(pActor, this, NewGrip);
+				if (!LocallyGrippedObjects.Contains(GripID) && !GrippedObjects.Contains(GripID))
+				{
+					return false;
+				}
 			}
 
 			if (root)
@@ -2222,7 +2230,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 					}
 				}
 				
+				uint8 GripID = NewGrip.GripID;
 				IVRGripInterface::Execute_OnGrip(root, this, NewGrip);
+				if (!LocallyGrippedObjects.Contains(GripID) && !GrippedObjects.Contains(GripID))
+				{
+					return false;
+				}
 			}
 
 			if (pActor)
@@ -2234,7 +2247,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 				if (!bIsReInit && pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 				{
+					uint8 GripID = NewGrip.GripID;
 					IVRGripInterface::Execute_OnChildGrip(pActor, this, NewGrip);
+					if (!LocallyGrippedObjects.Contains(GripID) && !GrippedObjects.Contains(GripID))
+					{
+						return false;
+					}
 				}
 
 			}
@@ -2242,7 +2260,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			// Call OnChildGrip for attached grip parent
 			if (!bIsReInit && root->GetAttachParent() && root->GetAttachParent()->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
+				uint8 GripID = NewGrip.GripID;
 				IVRGripInterface::Execute_OnChildGrip(root->GetAttachParent(), this, NewGrip);
+				if (!LocallyGrippedObjects.Contains(GripID) && !GrippedObjects.Contains(GripID))
+				{
+					return false;
+				}
 			}
 
 			if (NewGrip.GripCollisionType != EGripCollisionType::EventsOnly)
