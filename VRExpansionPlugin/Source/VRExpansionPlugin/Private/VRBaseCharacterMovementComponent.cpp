@@ -557,6 +557,21 @@ void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Move
 		CustomVRInputVector += Movement; // If not a client, don't bother to round this down.
 }
 
+void UVRBaseCharacterMovementComponent::CheckServerAuthedMoveAction()
+{
+	// If we are calling this on the server on a non owned character, there is no reason to wait around, just do the action now
+	// If we ARE locally controlled, keep the action inline with the movement component to maintain consistency
+	if (GetNetMode() < NM_Client)
+	{
+		ACharacter* OwningChar = GetCharacterOwner();
+		if (OwningChar && !OwningChar->IsLocallyControlled())
+		{
+			CheckForMoveAction();
+			MoveActionArray.Clear();
+		}
+	}
+}
+
 void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, bool bFlagGripTeleport)
 {
 	FVRMoveActionContainer MoveAction;
@@ -564,6 +579,8 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
 	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 	MoveActionArray.MoveActions.Add(MoveAction);
+
+	CheckServerAuthedMoveAction();
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, bool bFlagGripTeleport)
@@ -573,6 +590,8 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewY
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(NewYaw * 100.f) / 100.f, 0.0f);
 	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 	MoveActionArray.MoveActions.Add(MoveAction);
+
+	CheckServerAuthedMoveAction();
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation, bool bSkipEncroachmentCheck)
@@ -583,6 +602,8 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector Telep
 	MoveAction.MoveActionRot.Yaw = FMath::RoundToFloat(TeleportRotation.Yaw * 100.f) / 100.f;
 	MoveAction.MoveActionRot.Pitch = bSkipEncroachmentCheck ? 1.0f : 0.0f;
 	MoveActionArray.MoveActions.Add(MoveAction);
+
+	CheckServerAuthedMoveAction();
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_StopAllMovement()
@@ -590,6 +611,8 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_StopAllMovement()
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_StopAllMovement;
 	MoveActionArray.MoveActions.Add(MoveAction);
+
+	CheckServerAuthedMoveAction();
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator)
@@ -602,6 +625,8 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction M
 	MoveAction.MoveActionRot = MoveActionRotator;
 	MoveAction.MoveActionDataReq = DataRequirementsForMoveAction;
 	MoveActionArray.MoveActions.Add(MoveAction);
+
+	CheckServerAuthedMoveAction();
 }
 
 bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
