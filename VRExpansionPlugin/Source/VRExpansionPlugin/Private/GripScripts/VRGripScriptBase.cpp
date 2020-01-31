@@ -51,7 +51,7 @@ UVRGripScriptBase* UVRGripScriptBase::GetGripScriptByClass(UObject* WorldContext
 		{
 			for (UVRGripScriptBase* Script : GripScripts)
 			{
-				if (Script->IsA(GripScriptClass))
+				if (Script && Script->IsA(GripScriptClass))
 				{
 					Result = EBPVRResultSwitch::OnSucceeded;
 					return Script;
@@ -268,12 +268,14 @@ bool UVRGripScriptBase::IsServer()
 UWorld* UVRGripScriptBase::GetWorld() const
 {
 	if (IsTemplate())
-	{
 		return nullptr;
+
+	if (UObject * Outer = GetOuter())
+	{
+		return Outer->GetWorld();
 	}
 
-	UObject* myOuter = this->GetOuter();
-	return myOuter->GetWorld();
+	return nullptr;
 }
 
 void UVRGripScriptBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
