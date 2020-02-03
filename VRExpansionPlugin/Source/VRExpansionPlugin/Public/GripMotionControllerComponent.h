@@ -955,19 +955,19 @@ public:
 		bool HasGrippedObjects();
 
 	// Get list of all gripped objects grip info structures (local and normal both)
-	UFUNCTION(BlueprintPure, Category = "GripMotionController")
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		void GetAllGrips(TArray<FBPActorGripInformation> &GripArray);
 
 	// Get list of all gripped actors
-	UFUNCTION(BlueprintPure, Category = "GripMotionController")
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	void GetGrippedActors(TArray<AActor*> &GrippedActorArray);
 
 	// Get list of all gripped objects
-	UFUNCTION(BlueprintPure, Category = "GripMotionController")
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	void GetGrippedObjects(TArray<UObject*> &GrippedObjectsArray);
 
 	// Get list of all gripped components
-	UFUNCTION(BlueprintPure, Category = "GripMotionController")
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	void GetGrippedComponents(TArray<UPrimitiveComponent*> &GrippedComponentsArray);
 
 	// After teleporting a pawn you NEED to call this, otherwise gripped objects will travel with a sweeped move and can get caught on geometry
