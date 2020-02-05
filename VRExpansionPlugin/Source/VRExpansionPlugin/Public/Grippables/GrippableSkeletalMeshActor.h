@@ -22,7 +22,7 @@
 * A component specifically for being able to turn off movement replication in the component at will
 * Has the upside of also being a blueprintable base since UE4 doesn't allow that with std ones
 */
-UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
+UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent, ChildCanTick), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UOptionalRepSkeletalMeshComponent : public USkeletalMeshComponent
 {
 	GENERATED_BODY()
@@ -43,7 +43,7 @@ public:
 /**
 *
 */
-UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
+UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent, ChildCanTick), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshActor, public IVRGripInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
