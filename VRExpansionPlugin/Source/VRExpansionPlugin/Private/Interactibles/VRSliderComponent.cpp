@@ -585,7 +585,14 @@ float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUs
 	}
 
 	// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
-	return FMath::Clamp(FVector::Dist(-MinSlideDistance, CurLocation) / FVector::Dist(-MinSlideDistance, MaxSlideDistance), 0.0f, 1.0f);
+	float Progress = FMath::Clamp(FVector::Dist(-MinSlideDistance, CurLocation) / FVector::Dist(-MinSlideDistance, MaxSlideDistance), 0.0f, 1.0f);
+
+	if (bSliderUsesSnapPoints && SnapThreshold < SnapIncrement)
+	{
+		Progress = FMath::GridSnap(Progress, SnapIncrement);
+	}
+	
+	return Progress;
 }
 
 void UVRSliderComponent::GetLerpedKey(float &ClosestKey, float DeltaTime)
