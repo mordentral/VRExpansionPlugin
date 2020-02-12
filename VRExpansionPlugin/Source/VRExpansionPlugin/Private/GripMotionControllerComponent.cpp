@@ -4267,7 +4267,12 @@ void UGripMotionControllerComponent::OnGripMassUpdated(FBodyInstance* GripBodyIn
 		AActor * pActor = NewGrip.GetGrippedActor();
 
 		if (!root && pActor)
+		{
+			if (pActor->IsPendingKill())
+				continue;
+
 			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+		}
 
 		if (!root || root != GripBodyInstance->OwnerComponent)
 			continue;
