@@ -186,6 +186,22 @@ FTransform UVRGripScriptBase::GetGripTransform(const FBPActorGripInformation &Gr
 	return Grip.RelativeTransform * Grip.AdditionTransform * ParentTransform;
 }
 
+USceneComponent * UVRGripScriptBase::GetParentSceneComp()
+{
+	UObject* ParentObj = this->GetParent();
+
+	if (USceneComponent * PrimParent = Cast<USceneComponent>(ParentObj))
+	{
+		return PrimParent;
+	}
+	else if (AActor * ParentActor = Cast<AActor>(ParentObj))
+	{
+		return ParentActor->GetRootComponent();
+	}
+
+	return nullptr;
+}
+
 FTransform UVRGripScriptBase::GetParentTransform(bool bGetWorldTransform)
 {
 	UObject * ParentObj = this->GetParent();

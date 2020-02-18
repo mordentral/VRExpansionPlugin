@@ -4166,7 +4166,7 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 					HandleInfo->HandleData2.ConstraintData->setActors(PActor, FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(HandleInfo->KinActorData2));
 			}
 
-			if (HandleInfo->bSetCOM)
+			if (HandleInfo->bSetCOM && !HandleInfo->bSkipResettingCom)
 			{
 				/*FVector Loc = (FTransform((HandleInfo->RootBoneRotation * GripInfo.RelativeTransform).ToInverseMatrixWithScale())).GetLocation();
 				Loc *= rBodyInstance->Scale3D;*/
@@ -4174,7 +4174,6 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 				FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
 				//localCom.SetLocation(Loc);
 				localCom.SetLocation(HandleInfo->COMPosition.GetTranslation());//Loc);
-
 				FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
 			}
 		}
@@ -4301,6 +4300,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	{
 		HandleInfo = CreatePhysicsGrip(NewGrip);
 	}
+
+	HandleInfo->bSetCOM = false; // Zero this out in case it is a re-init
 
 	// Check for grip scripts if we weren't passed in any
 	TArray<UVRGripScriptBase*> LocalGripScripts;
@@ -4710,7 +4711,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	});
 
 	// Bind to further updates in order to keep it alive
-	if (!rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+	if (!HandleInfo->bSkipMassCheck && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 	{
 		rBodyInstance->OnRecalculatedMassProperties().AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
 	}

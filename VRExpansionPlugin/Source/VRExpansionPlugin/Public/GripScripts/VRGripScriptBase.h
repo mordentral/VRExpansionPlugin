@@ -176,6 +176,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
 		FTransform GetParentTransform(bool bGetWorldTransform = true);
 
+	// Returns the scene component of the parent, either being the parent itself or the root comp of it.
+	// Nullptr if there is no valid scene component
+	UFUNCTION(BlueprintCallable, Category = "VRGripScript")
+		USceneComponent* GetParentSceneComp();
+
 	// Returns the root body instance of the parent
 	FBodyInstance * GetParentBodyInstance(FName OptionalBoneName = NAME_None);
 

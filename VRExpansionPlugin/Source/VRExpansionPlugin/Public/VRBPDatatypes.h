@@ -819,13 +819,13 @@ public:
 	// A multiplier to add to the stiffness of a grip that is then set as the MaxForce of the grip
 	// It is clamped between 0.00 and 256.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero (legacy behavior)
 	// If you want an exact value you can figure it out as a factor of the stiffness, also Max force can be directly edited with SetAdvancedConstraintSettings
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "256.00", UIMax = "32.00"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "256.00", UIMax = "256.00"))
 		float LinearMaxForceCoefficient;
 
 	// A multiplier to add to the stiffness of a grip that is then set as the MaxForce of the grip
 	// It is clamped between 0.00 and 256.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero (legacy behavior)
 	// If you want an exact value you can figure it out as a factor of the stiffness, also Max force can be directly edited with SetAdvancedConstraintSettings
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "256.00", UIMax = "32.00"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"), meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "256.00", UIMax = "256.00"))
 		float AngularMaxForceCoefficient;
 
 	// Use the custom angular values on this grip
@@ -1444,6 +1444,8 @@ public:
 	FTransform RootBoneRotation;
 
 	bool bSetCOM;
+	bool bSkipResettingCom;
+	bool bSkipMassCheck;
 
 	FBPActorPhysicsHandleInformation()
 	{	
@@ -1453,6 +1455,8 @@ public:
 		GripID = INVALID_VRGRIP_ID;
 		RootBoneRotation = FTransform::Identity;
 		bSetCOM = false;
+		bSkipResettingCom = false;
+		bSkipMassCheck = false;
 	}
 
 	FORCEINLINE bool operator==(const FBPActorGripInformation & Other) const
@@ -1480,9 +1484,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Constraint, meta = (ClampMin = "0.0"))
 		float Damping;
 
-	/** The force limit of the drive. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Constraint, meta = (ClampMin = "0.0"))
-		float MaxForce;
+	// A multiplier to add to the stiffness that is then set as the MaxForce
+	// It is clamped between 0.00 and 256.00 to save in replication cost, a value of 0 will mean max force is infinite as it will multiply it to zero (legacy behavior)
+	// If you want an exact value you can figure it out as a factor of the stiffness
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (ClampMin = "0.00", UIMin = "0.00", ClampMax = "256.00", UIMax = "256.00"))
+		float MaxForceCoefficient;
 
 	/** Enables/Disables position drive (orientation if using angular drive)*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Constraint)
@@ -1496,7 +1502,7 @@ public:
 	{
 		Stiffness = 0.f;
 		Damping = 0.f;
-		MaxForce = 0.f;
+		MaxForceCoefficient = 0.f;
 		bEnablePositionDrive = false;
 		bEnableVelocityDrive = false;
 	}
@@ -1505,7 +1511,7 @@ public:
 	{
 		Damping = ConstraintDrive.Damping;
 		Stiffness = ConstraintDrive.Stiffness;
-		MaxForce = ConstraintDrive.MaxForce;
+		MaxForceCoefficient = ConstraintDrive.MaxForce / Stiffness;
 		bEnablePositionDrive = ConstraintDrive.bEnablePositionDrive;
 		bEnableVelocityDrive = ConstraintDrive.bEnableVelocityDrive;
 	}
@@ -1514,7 +1520,7 @@ public:
 	{
 		ConstraintDrive.Damping = Damping;
 		ConstraintDrive.Stiffness = Stiffness;
-		ConstraintDrive.MaxForce = MaxForce;
+		ConstraintDrive.MaxForce = MaxForceCoefficient * Stiffness;
 		ConstraintDrive.bEnablePositionDrive = bEnablePositionDrive;
 		ConstraintDrive.bEnableVelocityDrive = bEnableVelocityDrive;
 	}
