@@ -198,6 +198,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		void SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent);
 
+	// Set the custom pivot component, allows you to use remote grips easier
+	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "GetPivotTransform"))
+		FTransform GetPivotTransform_BP();
+
+	// Set the custom pivot component, allows you to use remote grips easier
+	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "GetPivotLocation"))
+		FVector GetPivotLocation_BP();
+
 	FORCEINLINE FTransform GetPivotTransform()
 	{
 		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetComponentTransform() : this->GetComponentTransform();

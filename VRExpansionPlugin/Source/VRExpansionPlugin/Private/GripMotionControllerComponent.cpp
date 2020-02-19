@@ -5761,6 +5761,16 @@ void UGripMotionControllerComponent::SetCustomPivotComponent(USceneComponent * N
 	CustomPivotComponent = NewCustomPivotComponent;
 }
 
+FTransform UGripMotionControllerComponent::GetPivotTransform_BP()
+{
+	return GetPivotTransform();
+}
+
+FVector UGripMotionControllerComponent::GetPivotLocation_BP()
+{
+	return GetPivotLocation();
+}
+
 FTransform UGripMotionControllerComponent::ConvertToControllerRelativeTransform(const FTransform & InTransform)
 {
 	return InTransform.GetRelativeTransform(this->GetComponentTransform());

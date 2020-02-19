@@ -112,6 +112,22 @@ public:
 		FName WeaponRootOrientationComponent;
 	FTransform OrientationComponentRelativeFacing;
 
+	// Start allowing slide on the shaft in the X axis
+	// If primary hand is false then it will do the secondary hand
+	//UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
+		//void StartSlidingHandPosition(bool bPrimaryHand, float LocalMinX, float LocalMaxX);
+
+	// UpdateHand location on the shaft in the X axis
+	// If primary hand is false then it will do the secondary hand
+	// World location is of the pivot generally, I have it passing in so people can snap
+	UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
+		void UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPosition);
+
+	// Stop allowing slide on the shaft in the X axis
+	// If primary hand is false then it will do the secondary hand
+	//UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
+		//void StopSlidingHandPosition(bool bPrimaryHand, bool bLockInNewPosition);
+
 	// This is a built list of components that act as penetration notifiers, they will have their OnHit bound too and we will handle penetration logic
 	// off of it.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
@@ -149,6 +165,9 @@ public:
 		bool bCOMBetweenHands;
 
 	FTransform ObjectRelativeGripCenter;
+
+	void SetComBetweenHands(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo);
+
 
 	// Grip settings to use on the primary hand when multiple grips are active
 	// Falls back to the standard grip settings when only one grip is active
