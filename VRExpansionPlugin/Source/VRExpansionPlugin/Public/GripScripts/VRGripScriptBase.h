@@ -124,9 +124,9 @@ public:
 	virtual void HandlePostPhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo);
 
 	// Returns if the script is currently active and should be used
-	/*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
-	bool Wants_DenyTeleport();
-	virtual bool Wants_DenyTeleport_Implementation();*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripScript")
+	bool Wants_DenyTeleport(UGripMotionControllerComponent * Controller);
+	virtual bool Wants_DenyTeleport_Implementation(UGripMotionControllerComponent* Controller);
 
 	virtual void GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const override;
 	

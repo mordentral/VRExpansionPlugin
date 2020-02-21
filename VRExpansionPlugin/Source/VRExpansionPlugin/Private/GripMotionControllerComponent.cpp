@@ -3691,7 +3691,20 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				// If we just teleported, skip this update and just teleport forward
 				if (bIsPostTeleport)
 				{
-					TeleportMoveGrip_Impl(*Grip, true, true, WorldTransform);
+
+					bool bSkipTeleport = false;
+					for (UVRGripScriptBase* Script : GripScripts)
+					{
+						if (Script && Script->IsScriptActive() && Script->Wants_DenyTeleport(this))
+						{
+							bSkipTeleport = true;
+							break;
+						}
+					}
+
+					if(!bSkipTeleport)
+						TeleportMoveGrip_Impl(*Grip, true, true, WorldTransform);
+
 					Grip->LastWorldTransform = WorldTransform;
 					continue;
 				}

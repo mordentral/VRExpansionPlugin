@@ -191,6 +191,8 @@ public:
 
 	virtual void OnGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed = false) override;
 
+	virtual bool Wants_DenyTeleport_Implementation(UGripMotionControllerComponent* Controller) override;
+
 	//virtual void BeginPlay_Implementation() override;
 	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * GrippingController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) override;
 

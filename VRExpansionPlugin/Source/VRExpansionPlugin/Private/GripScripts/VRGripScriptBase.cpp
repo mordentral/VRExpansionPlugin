@@ -38,7 +38,7 @@ bool UVRGripScriptBase::IsScriptActive() { return bIsActive; }
 //bool UVRGripScriptBase::Wants_DenyAutoDrop() { return bDenyAutoDrop; }
 //bool UVRGripScriptBase::Wants_DenyLateUpdates() { return bDenyLateUpdates; }
 //bool UVRGripScriptBase::Wants_ToForceDrop() { return bForceDrop; }
-//bool UVRGripScriptBase::Wants_DenyTeleport_Implementation() { return false; }
+bool UVRGripScriptBase::Wants_DenyTeleport_Implementation(UGripMotionControllerComponent * Controller) { return false; }
 void UVRGripScriptBase::HandlePrePhysicsHandle(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation &GripInfo, FBPActorPhysicsHandleInformation * HandleInfo, FTransform & KinPose) {}
 void UVRGripScriptBase::HandlePostPhysicsHandle(UGripMotionControllerComponent* GrippingController, FBPActorPhysicsHandleInformation * HandleInfo) {}
 

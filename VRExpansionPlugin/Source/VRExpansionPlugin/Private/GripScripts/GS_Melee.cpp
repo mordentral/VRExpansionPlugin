@@ -5,6 +5,8 @@
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "PhysicsEngine/PhysicsConstraintActor.h"
 #include "PhysicsEngine/PhysicsConstraintComponent.h"
+#include "VRExpansionFunctionLibrary.h"
+#include "DrawDebugHelpers.h"
 #include "GripMotionControllerComponent.h"
 
 UGS_Melee::UGS_Melee(const FObjectInitializer& ObjectInitializer) :
@@ -116,7 +118,7 @@ void UGS_Melee::UpdateDualHandInfo()
 
 					FTransform ownerTrans = GetOwner()->GetActorTransform();
 
-					DrawDebugSphere(GetWorld(), ownerTrans.TransformPosition(finalScaled), 4.0f, 32, FColor::Orange, true);
+					//DrawDebugSphere(GetWorld(), ownerTrans.TransformPosition(finalScaled), 4.0f, 32, FColor::Orange, true);
 
 
 					ObjectRelativeGripCenter.SetLocation(finalScaled);
@@ -574,6 +576,16 @@ void UGS_Melee::Tick(float DeltaTime)
 			UVRExpansionFunctionLibrary::LowPassFilter_RollingAverage(RollingAngVelocityAverage, rBodyInstance->GetUnrealWorldAngularVelocityInRadians(), RollingAngVelocityAverage, NumberOfFramesToAverageVelocity);
 		}
 	}
+}
+
+bool UGS_Melee::Wants_DenyTeleport_Implementation(UGripMotionControllerComponent* Controller)
+{
+	if (PrimaryHand.IsValid() && Controller != PrimaryHand.HoldingController)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 bool UGS_Melee::GetWorldTransform_Implementation
