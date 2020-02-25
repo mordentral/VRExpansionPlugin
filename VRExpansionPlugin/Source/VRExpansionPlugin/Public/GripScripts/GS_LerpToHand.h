@@ -59,6 +59,9 @@ public:
 	EVRLerpInterpolationMode LerpInterpolationMode;
 	
 	UPROPERTY(BlueprintAssignable, Category = "LerpEvents")
+		FVRLerpToHandFinishedSignature OnLerpToHandBegin;
+
+	UPROPERTY(BlueprintAssignable, Category = "LerpEvents")
 		FVRLerpToHandFinishedSignature OnLerpToHandFinished;
 
 	// Whether to use a curve map to map the lerp to

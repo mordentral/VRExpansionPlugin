@@ -55,6 +55,8 @@ void UGS_LerpToHand::OnGrip_Implementation(UGripMotionControllerComponent * Grip
 
 		// Get the modified lerp speed
 		LerpSpeed = ((1.f / LerpDuration) * LerpScaler);
+
+		OnLerpToHandBegin.Broadcast();
 	}
 
 
