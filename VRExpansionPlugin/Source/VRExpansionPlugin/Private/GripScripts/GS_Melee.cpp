@@ -518,7 +518,7 @@ void UGS_Melee::HandlePostPhysicsHandle(UGripMotionControllerComponent* Gripping
 	if(bSkipGripMassChecks)
 		HandleInfo->bSkipMassCheck = true;
 
-	if (SecondaryHand.IsValid())
+	if (SecondaryHand.IsValid() )// && GrippingController == PrimaryHand.HoldingController)
 	{
 		if (GrippingController == SecondaryHand.HoldingController && HandleInfo->GripID == SecondaryHand.GripID)
 		{
@@ -530,6 +530,11 @@ void UGS_Melee::HandlePostPhysicsHandle(UGripMotionControllerComponent* Gripping
 		}
 
 		SetComBetweenHands(GrippingController, HandleInfo);
+	}
+	else
+	{
+		//HandleInfo->bSetCOM = false; // Should i remove this?
+		HandleInfo->bSkipResettingCom = false;
 	}
 }
 

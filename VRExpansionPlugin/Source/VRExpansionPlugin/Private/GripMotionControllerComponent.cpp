@@ -4907,10 +4907,14 @@ bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInf
 	if (!HandleInfo->HandleData2.IsValid())
 		return false;
 
+	// Not using com with skipping mass check as the COM can change on us
+	// Also skipping it on skip resetting com as we aren't gripped to the COM then
 	bool bUseComLoc = 
 		(
-			HandleInfo->bSetCOM || 
-			(GrippedActor.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && GrippedActor.AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings == EPhysicsGripCOMType::COM_GripAt)
+			!HandleInfo->bSkipMassCheck &&
+			!HandleInfo->bSkipResettingCom &&
+			(HandleInfo->bSetCOM || 
+			(GrippedActor.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && GrippedActor.AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings == EPhysicsGripCOMType::COM_GripAt))
 		);
 
 	// This is supposed to be the difference between the actor and the kinactor / constraint base
