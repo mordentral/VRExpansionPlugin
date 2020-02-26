@@ -14,6 +14,8 @@ UGS_Melee::UGS_Melee(const FObjectInitializer& ObjectInitializer) :
 {
 	bIsActive = true;
 	WorldTransformOverrideType = EGSTransformOverrideType::ModifiesWorldTransform;
+	bDenyLateUpdates = true;
+
 
 	bInjectPrePhysicsHandle = true;
 	bInjectPostPhysicsHandle = true;
@@ -448,6 +450,10 @@ void UGS_Melee::OnEndPlay_Implementation(const EEndPlayReason::Type EndPlayReaso
 void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVector NormalImpulse, const FHitResult& Hit)
 {
 	if (!bIsActive || bIsLodged || OtherActor == SelfActor)
+		return;
+
+	// Reject bad surface types
+	if (AllowedPenetrationSurfaceTypes.Num() > 0 && (!Hit.PhysMaterial.IsValid() || !AllowedPenetrationSurfaceTypes.Contains(Hit.PhysMaterial->SurfaceType)))
 		return;
 
 	if (bOnlyPenetrateWithTwoHands && !SecondaryHand.IsValid())

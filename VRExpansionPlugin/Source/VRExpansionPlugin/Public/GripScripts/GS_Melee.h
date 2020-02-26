@@ -101,6 +101,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Melee|Lodging")
 		bool bOnlyPenetrateWithTwoHands;
 
+	// A list of surface types that allow penetration
+	// If empty then the script will not attempt to filter what was impacted
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Melee|Lodging")
+		TArray<TEnumAsByte<EPhysicalSurface>> AllowedPenetrationSurfaceTypes;
+
 	FVector RollingVelocityAverage;
 	FVector RollingAngVelocityAverage;
 	float NumberOfFramesToAverageVelocity;

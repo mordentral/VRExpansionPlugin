@@ -10,6 +10,8 @@ UGS_Physics::UGS_Physics(const FObjectInitializer& ObjectInitializer) :
 	bIsActive = true;
 	WorldTransformOverrideType = EGSTransformOverrideType::None;
 
+	bDenyLateUpdates = true;
+
 	bInjectPrePhysicsHandle = false;
 	bInjectPostPhysicsHandle = true;
 
