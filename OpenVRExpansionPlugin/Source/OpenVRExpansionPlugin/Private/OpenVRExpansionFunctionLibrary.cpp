@@ -214,6 +214,10 @@ EBPOpenVRControllerDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRControll
 		{
 			DeviceType = EBPOpenVRControllerDeviceType::DT_RiftSController;
 		}
+		else if (DeviceModelNumber.Find("windowsmr", ESearchCase::IgnoreCase) != INDEX_NONE) // Oculus Rift CV1
+		{
+			DeviceType = EBPOpenVRControllerDeviceType::DT_WMRController;
+		}
 		else
 		{
 #if WITH_EDITOR
