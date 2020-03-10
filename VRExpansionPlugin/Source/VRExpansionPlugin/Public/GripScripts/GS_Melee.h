@@ -13,6 +13,35 @@
 
 
 
+// The type of COM selection to use
+UENUM(BlueprintType)
+enum class EVRMeleeComType : uint8
+{
+	// Does not set COM
+	VRPMELEECOM_Normal UMETA(DisplayName = "Normal"),
+
+	// Sets COM to between hands
+	VRPMELEECOM_BetweenHands UMETA(DisplayName = "BetweenHands"),
+
+	// Uses the primary hand as com location
+	VRPMELEECOM_PrimaryHand  UMETA(DisplayName = "PrimaryHand")
+};
+
+// The type of primary hand selection to use
+UENUM(BlueprintType)
+enum class EVRMeleePrimaryHandType : uint8
+{
+	// Uses the rearmost hand as the primary hand
+	VRPHAND_Rear UMETA(DisplayName = "Rear"),
+
+	// Uses the foremost hand as the primary hand
+	VRPHAND_Front  UMETA(DisplayName = "Front"),
+
+	// Uses the first slotted hand as the primary hand
+	// If neither are slotted then its first come first serve and both hannds load the secondary settings
+	VRPHAND_Slotted UMETA(DisplayName = "Slotted")
+};
+
 // A Lodge component data struct
 USTRUCT(BlueprintType, Category = "Lodging")
 struct VREXPANSIONPLUGIN_API FBPLodgeComponentInfo
@@ -117,21 +146,11 @@ public:
 		FName WeaponRootOrientationComponent;
 	FTransform OrientationComponentRelativeFacing;
 
-	// Start allowing slide on the shaft in the X axis
-	// If primary hand is false then it will do the secondary hand
-	//UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
-		//void StartSlidingHandPosition(bool bPrimaryHand, float LocalMinX, float LocalMaxX);
-
 	// UpdateHand location on the shaft in the X axis
 	// If primary hand is false then it will do the secondary hand
 	// World location is of the pivot generally, I have it passing in so people can snap
 	UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
 		void UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPosition);
-
-	// Stop allowing slide on the shaft in the X axis
-	// If primary hand is false then it will do the secondary hand
-	//UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
-		//void StopSlidingHandPosition(bool bPrimaryHand, bool bLockInNewPosition);
 
 	// This is a built list of components that act as penetration notifiers, they will have their OnHit bound too and we will handle penetration logic
 	// off of it.
@@ -152,12 +171,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
 		bool bAutoSetPrimaryAndSecondaryHands;
 
+	// If we couldn't decide on a true valid primary hand then this will be false and we will load secondary settings for both
+	bool bHasValidPrimaryHand;
+
 	UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
 		void SetPrimaryAndSecondaryHands(FBPGripPair & PrimaryGrip, FBPGripPair & SecondaryGrip);
 
-	// If true then the primary hand is considered the rearmost one
-	UPROPERTY(BlueprintReadOnly, Category = "Weapon Settings")
-		bool bPrimaryHandInRear;
+	// Which method of primary hand to select
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
+		EVRMeleePrimaryHandType PrimaryHandSelectionType;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Weapon Settings")
 	FBPGripPair PrimaryHand;
@@ -165,9 +187,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Weapon Settings")
 	FBPGripPair SecondaryHand;
 
-	// If true then the COM will be between the hands
+	// To select the type of com setting to use
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
-		bool bCOMBetweenHands;
+		EVRMeleeComType COMType;
 
 	FTransform ObjectRelativeGripCenter;
 

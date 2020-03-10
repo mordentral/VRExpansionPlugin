@@ -4359,7 +4359,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
 	
-	if (!HandleInfo->KinActorData2.IsValid() && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+	if (!HandleInfo->bSkipResettingCom && !HandleInfo->KinActorData2.IsValid() && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 	{
 		// Reset the mass properties, this avoids an issue with some weird replication issues
 		// We only do this on initial grip
