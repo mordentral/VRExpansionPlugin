@@ -186,6 +186,14 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
 		FVRGripControllerOnDropSignature OnDroppedObject;
 
+	// Called when an object we hold is secondary gripped
+	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
+		FVRGripControllerOnGripSignature OnSecondaryGripAdded;
+
+	// Called when an object we hold is secondary dropped
+	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
+		FVRGripControllerOnGripSignature OnSecondaryGripRemoved;
+
 	// Gets the hand enum
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))
 		void GetHandType(EControllerHand& Hand);
@@ -420,6 +428,8 @@ public:
 							}
 						}
 					}
+
+					OnSecondaryGripRemoved.Broadcast(Grip);
 				}
 
 				if (bSendGripEvent)
@@ -440,6 +450,8 @@ public:
 							}
 						}
 					}
+
+					OnSecondaryGripAdded.Broadcast(Grip);
 				}
 			}
 
