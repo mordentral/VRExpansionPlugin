@@ -165,8 +165,10 @@ void UGS_Melee::UpdateDualHandInfo()
 	}
 }
 
-void UGS_Melee::UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPosition)
+void UGS_Melee::UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPosition, FVector& LocDifference)
 {
+	LocDifference = FVector::ZeroVector;
+
 	if (HandPair.IsValid())
 	{
 		FBPActorGripInformation* GripInfo = HandPair.HoldingController->GetGripPtrByID(HandPair.GripID);
@@ -175,6 +177,7 @@ void UGS_Melee::UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPositi
 		{
 			// Make hand relative to object transform
 			FTransform RelativeTrans = GripInfo->RelativeTransform.Inverse();
+			FVector OriginalLoc = RelativeTrans.GetLocation();
 			
 			// Get our current parent transform
 			FTransform ParentTransform = GetParentTransform();
@@ -189,6 +192,8 @@ void UGS_Melee::UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPositi
 			RelativeTrans.SetLocation(orientationRot.UnrotateVector(currentLoc));
 			GripInfo->RelativeTransform = RelativeTrans.Inverse();
 			HandPair.HoldingController->UpdatePhysicsHandle(*GripInfo, true);
+
+			LocDifference = RelativeTrans.GetLocation() - OriginalLoc;
 
 			// Instead of recreating, can directly set local pose here
 

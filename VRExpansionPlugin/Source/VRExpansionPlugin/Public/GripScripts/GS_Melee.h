@@ -149,8 +149,9 @@ public:
 	// UpdateHand location on the shaft in the X axis
 	// If primary hand is false then it will do the secondary hand
 	// World location is of the pivot generally, I have it passing in so people can snap
+	// LocDifference returns the relative distance of the change in position (or zero if there was none).
 	UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
-		void UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPosition);
+		void UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPosition, FVector & LocDifference);
 
 	// This is a built list of components that act as penetration notifiers, they will have their OnHit bound too and we will handle penetration logic
 	// off of it.
