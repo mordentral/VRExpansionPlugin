@@ -7,6 +7,7 @@
 
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDatatypes.h"
+#include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.h"
 #include "VRRootComponent.h"
 #include "VRPlayerController.h"
@@ -121,6 +122,9 @@ bool UVRBaseCharacterMovementComponent::ForcePositionUpdate(float DeltaTime)
 void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 
+	// Scope these, they nest with Outer references so it should work fine
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
+
 	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 	{
 		const FVector InputVector = ConsumeInputVector();
@@ -173,6 +177,19 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 		// We do this specifically to avoid double calling into the render / physics threads.
 		if (!VRRoot->bCalledUpdateTransform)
 			VRRoot->OnUpdateTransform_Public(EUpdateTransformFlags::None, ETeleportType::None);
+	}
+
+	// If some of our important components run inside the cmc updates then lets update them now
+	if (AVRBaseCharacter* Basechar = Cast<AVRBaseCharacter>(CharacterOwner))
+	{
+		if (Basechar->ParentRelativeAttachment && Basechar->ParentRelativeAttachment->bUpdateInCharacterMovement)
+			Basechar->ParentRelativeAttachment->UpdateTracking(DeltaTime);
+
+		if (Basechar->LeftMotionController && Basechar->LeftMotionController->bUpdateInCharacterMovement)
+			Basechar->LeftMotionController->UpdateTracking(DeltaTime);
+
+		if (Basechar->RightMotionController && Basechar->RightMotionController->bUpdateInCharacterMovement)
+			Basechar->RightMotionController->UpdateTracking(DeltaTime);
 	}
 
 	// Make sure these are cleaned out for the next frame

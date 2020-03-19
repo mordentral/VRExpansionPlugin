@@ -105,6 +105,8 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 
 	DefaultGripScript = nullptr;
 	DefaultGripScriptClass = UGS_Default::StaticClass();
+
+	bUpdateInCharacterMovement = true;
 }
 
 //=============================================================================
@@ -3334,23 +3336,22 @@ void UGripMotionControllerComponent::Deactivate()
 	}
 }
 
-
-void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+void UGripMotionControllerComponent::OnAttachmentChanged()
 {
-	// Skip motion controller tick, we override a lot of things that it does and we don't want it to perform the same functions
-	Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (AVRBaseCharacter* CharacterOwner = Cast<AVRBaseCharacter>(this->GetOwner()))
+	{
+		AttachChar = CharacterOwner;
+	}
+	else
+	{
+		AttachChar.Reset();
+	}
 
-	if (!IsActive())
-		return;
+	Super::OnAttachmentChanged();
+}
 
-	// Moved this here instead of in the polling function, it was ticking once per frame anyway so no loss of perf
-	// It doesn't need to be there and now I can pre-check
-	// Also epics implementation in the polling function didn't work anyway as it was based off of playercontroller which is not the owner of this controller
-	
-	// Cache state from the game thread for use on the render thread
-	// No need to check if in game thread here as tick always is
-	bHasAuthority = IsLocallyControlled();
-
+void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
+{
 	// Server/remote clients don't set the controller position in VR
 	// Don't call positional checks and don't create the late update scene view
 	if (bHasAuthority)
@@ -3420,8 +3421,8 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 					// Set 100 htz updates, and in the TornOff case, it actually can't hurt any besides some small
 					// Perf difference.
 					if (GetNetMode() == NM_Client/* && !IsTornOff()*/)
-					{		
-						AVRBaseCharacter * OwningChar = Cast<AVRBaseCharacter>(GetOwner());
+					{
+						AVRBaseCharacter* OwningChar = Cast<AVRBaseCharacter>(GetOwner());
 						if (OverrideSendTransform != nullptr && OwningChar != nullptr)
 						{
 							(OwningChar->* (OverrideSendTransform))(ReplicatedControllerTransform);
@@ -3469,16 +3470,46 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 			{
 				// Removed variables to speed this up a bit
 				SetRelativeLocationAndRotation(
-					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedControllerTransform.Position, LerpVal), 
+					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedControllerTransform.Position, LerpVal),
 					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedControllerTransform.Rotation, LerpVal)
 				);
 			}
 		}
 	}
+}
+
+void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+{
+	// Skip motion controller tick, we override a lot of things that it does and we don't want it to perform the same functions
+	Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (!IsActive())
+		return;
+
+	// Moved this here instead of in the polling function, it was ticking once per frame anyway so no loss of perf
+	// It doesn't need to be there and now I can pre-check
+	// Also epics implementation in the polling function didn't work anyway as it was based off of playercontroller which is not the owner of this controller
+	
+	// Cache state from the game thread for use on the render thread
+	// No need to check if in game thread here as tick always is
+	bHasAuthority = IsLocallyControlled();
+
+	if (!bUpdateInCharacterMovement)
+	{
+		UpdateTracking(DeltaTime);
+	}
+	else if (AttachChar.IsValid())
+	{
+		UCharacterMovementComponent* CharMove = AttachChar->GetCharacterMovement();
+		if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())
+		{
+			// Our character movement isn't handling our updates, lets do it ourself.
+			UpdateTracking(DeltaTime);
+		}
+	}
 
 	// Process the gripped actors
 	TickGrip(DeltaTime);
-
 }
 
 bool UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptBase*>& GripScripts, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport, bool &bForceADrop)

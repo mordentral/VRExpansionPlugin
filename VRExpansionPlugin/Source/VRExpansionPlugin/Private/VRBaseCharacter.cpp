@@ -57,6 +57,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		// Moved this to be root relative as the camera late updates were killing how it worked
 		ParentRelativeAttachment->SetupAttachment(NetSmoother);
 		ParentRelativeAttachment->bOffsetByHMD = false;
+		ParentRelativeAttachment->AddTickPrerequisiteComponent(VRReplicatedCamera);
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::LeftMotionControllerComponentName);

@@ -10,6 +10,8 @@
 #include "VRTrackedParentInterface.h"
 #include "ParentRelativeAttachmentComponent.generated.h"
 
+class AVRCharacter;
+
 /**
 * A component that will track the HMD/Cameras location and YAW rotation to allow for chest/waist attachements.
 * This is intended to be parented to the root component of a pawn, it will then either find and track the camera
@@ -51,6 +53,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	bool bIgnoreRotationFromParent;
 
+	// If true, this component will not perform logic in its tick, it will instead allow the character movement component to move it (unless the CMC is inactive, then it will go back to self managing)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		bool bUpdateInCharacterMovement;
+
 	// If valid will use this as the tracked parent instead of the HMD / Parent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRTrackedParentInterface")
 	FBPVRWaistTracking_Info OptionalWaistTrackingParent;
@@ -60,7 +66,12 @@ public:
 		IVRTrackedParentInterface::Default_SetTrackedParent_Impl(NewParentComponent, WaistRadius, WaistTrackingMode, OptionalWaistTrackingParent, this);
 	}
 
+	UPROPERTY()
+		TWeakObjectPtr<AVRCharacter> AttachChar;
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+
+	virtual void OnAttachmentChanged() override;
+	void UpdateTracking(float DeltaTime);
 
 	bool IsLocallyControlled() const
 	{
