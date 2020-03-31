@@ -134,8 +134,30 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 		else
 		{
 			MomentumAtDrop = FMath::FInterpTo(MomentumAtDrop, 0.0f, DeltaTime, SliderMomentumFriction);
+			float newProgress = 0.f;
 
-			float newProgress = CurrentSliderProgress + (MomentumAtDrop * DeltaTime);
+			if (SplineComponentToFollow != nullptr)
+			{
+				float SplineLength = SplineComponentToFollow->GetSplineLength();
+				float dist = GetDistanceAlongSplineAtSplineInputKey(LastInputKey) + ((MomentumAtDrop * DeltaTime) * SplineLength);
+				float ClosestKey = 0.f;
+
+				const int32 NumPoints = SplineComponentToFollow->SplineCurves.Position.Points.Num();
+
+				float clsKey = 0.f;
+				if (SplineComponentToFollow->SplineCurves.Position.Points.Num() > 1)
+				{
+					clsKey = SplineComponentToFollow->SplineCurves.ReparamTable.Eval(dist, 0.0f);
+				}
+
+				LastInputKey = clsKey;
+
+				newProgress = FMath::Clamp(dist / SplineLength, 0.f, 1.f);
+			}
+			else
+			{
+				newProgress = CurrentSliderProgress + (MomentumAtDrop * DeltaTime);
+			}
 
 			if (newProgress < 0.0f || FMath::IsNearlyEqual(newProgress, 0.0f, 0.00001f))
 			{
@@ -167,7 +189,28 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			}
 			else
 			{
-				this->SetSliderProgress(newProgress);
+				if (SplineComponentToFollow != nullptr)
+				{
+					FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+
+					if (bFollowSplineRotationAndScale)
+					{
+						FTransform trans = SplineComponentToFollow->GetTransformAtSplineInputKey(LastInputKey, ESplineCoordinateSpace::World, true);
+						trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
+						trans = trans * ParentTransform.Inverse();
+						this->SetRelativeTransform(trans);
+					}
+					else
+					{
+						this->SetRelativeLocation(ParentTransform.InverseTransformPosition(SplineComponentToFollow->GetLocationAtSplineInputKey(LastInputKey, ESplineCoordinateSpace::World)));
+					}
+
+					CurrentSliderProgress = newProgress;
+				}
+				else
+				{
+					this->SetSliderProgress(newProgress);
+				}
 			}
 		}
 
@@ -563,6 +606,33 @@ FVector UVRSliderComponent::ClampSlideVector(FVector ValueToClamp)
 	}
 
 	return (Progress * Dist) - (MinScale);
+}
+
+float UVRSliderComponent::GetDistanceAlongSplineAtSplineInputKey(float InKey) const
+{
+
+	const int32 NumPoints = SplineComponentToFollow->SplineCurves.Position.Points.Num();
+	const int32 NumSegments = SplineComponentToFollow->IsClosedLoop() ? NumPoints : NumPoints - 1;
+
+	if ((InKey >= 0) && (InKey < NumSegments))
+	{
+		const int32 ReparamPrevIndex = static_cast<int32>(InKey * SplineComponentToFollow->ReparamStepsPerSegment);
+		const int32 ReparamNextIndex = ReparamPrevIndex + 1;
+
+		const float Alpha = (InKey * SplineComponentToFollow->ReparamStepsPerSegment) - static_cast<float>(ReparamPrevIndex);
+
+		const float PrevDistance = SplineComponentToFollow->SplineCurves.ReparamTable.Points[ReparamPrevIndex].InVal;
+		const float NextDistance = SplineComponentToFollow->SplineCurves.ReparamTable.Points[ReparamNextIndex].InVal;
+
+		// ReparamTable assumes that distance and input keys have a linear relationship in-between entries.
+		return FMath::Lerp(PrevDistance, NextDistance, Alpha);
+	}
+	else if (InKey >= NumSegments)
+	{
+		return SplineComponentToFollow->SplineCurves.GetSplineLength();
+	}
+
+	return 0.0f;
 }
 
 float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUseKeyInstead, float CurKey)
