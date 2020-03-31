@@ -176,6 +176,16 @@ public:
 	// Checks if we should throw some events
 	void CheckSliderProgress();
 
+	/*
+	Credit to:
+	https://github.com/Seurabimn
+	
+	Who had this function in an engine pull request:
+	https://github.com/EpicGames/UnrealEngine/pull/6646
+	*/
+	float GetDistanceAlongSplineAtSplineInputKey(float InKey) const;
+
+
 	// Calculates the current slider progress
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
 		float CalculateSliderProgress();
