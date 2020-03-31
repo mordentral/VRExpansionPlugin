@@ -132,30 +132,7 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 		else
 		{
 			MomentumAtDrop = FMath::FInterpTo(MomentumAtDrop, 0.0f, DeltaTime, SliderMomentumFriction);
-			float newProgress = 0.f;
-
-			if (SplineComponentToFollow != nullptr)
-			{
-				float SplineLength = SplineComponentToFollow->GetSplineLength();
-				float dist = GetDistanceAlongSplineAtSplineInputKey(LastInputKey) + ((MomentumAtDrop * DeltaTime) * SplineLength);
-				float ClosestKey = 0.f;
-
-				const int32 NumPoints = SplineComponentToFollow->SplineCurves.Position.Points.Num();
-
-				float clsKey = 0.f;
-				if (SplineComponentToFollow->SplineCurves.Position.Points.Num() > 1)
-				{
-					clsKey = SplineComponentToFollow->SplineCurves.ReparamTable.Eval(dist, 0.0f);
-				}
-
-				LastInputKey = clsKey;
-
-				newProgress = FMath::Clamp(dist / SplineLength, 0.f, 1.f);
-			}
-			else
-			{
-				newProgress = CurrentSliderProgress + (MomentumAtDrop * DeltaTime);
-			}
+			float newProgress = CurrentSliderProgress + (MomentumAtDrop * DeltaTime);
 
 			if (newProgress < 0.0f || FMath::IsNearlyEqual(newProgress, 0.0f, 0.00001f))
 			{
@@ -187,28 +164,7 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			}
 			else
 			{
-				if (SplineComponentToFollow != nullptr)
-				{
-					FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
-
-					if (bFollowSplineRotationAndScale)
-					{
-						FTransform trans = SplineComponentToFollow->GetTransformAtSplineInputKey(LastInputKey, ESplineCoordinateSpace::World, true);
-						trans.MultiplyScale3D(InitialRelativeTransform.GetScale3D());
-						trans = trans * ParentTransform.Inverse();
-						this->SetRelativeTransform(trans);
-					}
-					else
-					{
-						this->SetRelativeLocation(ParentTransform.InverseTransformPosition(SplineComponentToFollow->GetLocationAtSplineInputKey(LastInputKey, ESplineCoordinateSpace::World)));
-					}
-
-					CurrentSliderProgress = newProgress;
-				}
-				else
-				{
-					this->SetSliderProgress(newProgress);
-				}
+				this->SetSliderProgress(newProgress);
 			}
 		}
 
@@ -643,13 +599,15 @@ float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUs
 		if (!bUseKeyInstead)
 			ClosestKey = SplineComponentToFollow->FindInputKeyClosestToWorldLocation(CurLocation);
 
-		int32 primaryKey = FMath::TruncToInt(ClosestKey);
+		/*int32 primaryKey = FMath::TruncToInt(ClosestKey);
 
 		float distance1 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey);
 		float distance2 = SplineComponentToFollow->GetDistanceAlongSplineAtSplinePoint(primaryKey + 1);
 
 		float FinalDistance = ((distance2 - distance1) * (ClosestKey - (float)primaryKey)) + distance1;
-		return FMath::Clamp(FinalDistance / SplineComponentToFollow->GetSplineLength(), 0.0f, 1.0f);
+		return FMath::Clamp(FinalDistance / SplineComponentToFollow->GetSplineLength(), 0.0f, 1.0f);*/
+		float SplineLength = SplineComponentToFollow->GetSplineLength();
+		return GetDistanceAlongSplineAtSplineInputKey(ClosestKey) / SplineLength;
 	}
 
 	// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
