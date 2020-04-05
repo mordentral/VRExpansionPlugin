@@ -94,6 +94,39 @@ public:
 };
 
 /**
+* Tick function that does post physics work. This executes in EndPhysics (after physics is done)
+**/
+USTRUCT()
+struct FGripComponentEndPhysicsTickFunction : public FTickFunction
+{
+	GENERATED_USTRUCT_BODY()
+
+		UGripMotionControllerComponent* Target;
+
+	/**
+	* Abstract function to execute the tick.
+	* @param DeltaTime - frame time to advance, in seconds.
+	* @param TickType - kind of tick for this frame.
+	* @param CurrentThread - thread we are executing on, useful to pass along as new tasks are created.
+	* @param MyCompletionGraphEvent - completion event for this task. Useful for holding the completetion of this task until certain child tasks are complete.
+	*/
+	virtual void ExecuteTick(float DeltaTime, enum ELevelTick TickType, ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent) override;
+	/** Abstract function to describe this tick. Used to print messages about illegal cycles in the dependency graph. */
+	virtual FString DiagnosticMessage() override;
+	/** Function used to describe this tick for active tick reporting. **/
+	virtual FName DiagnosticContext(bool bDetailed) override;
+};
+
+template<>
+struct TStructOpsTypeTraits<FGripComponentEndPhysicsTickFunction> : public TStructOpsTypeTraitsBase2<FGripComponentEndPhysicsTickFunction>
+{
+	enum
+	{
+		WithCopy = false
+	};
+};
+
+/**
 * An override of the MotionControllerComponent that implements position replication and Gripping with grip replication and controllable late updates per object.
 */
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = MotionController)
@@ -101,6 +134,17 @@ class VREXPANSIONPLUGIN_API UGripMotionControllerComponent : public UMotionContr
 {
 
 public:
+
+	FGripComponentEndPhysicsTickFunction EndPhysicsTickFunction;
+	friend struct FGripComponentEndPhysicsTickFunction;
+
+	/** Update systems after physics sim is done */
+	void EndPhysicsTickComponent(FGripComponentEndPhysicsTickFunction& ThisTickFunction);
+	void RegisterEndPhysicsTick(bool bRegister);
+
+
+
+
 
 	// The grip script that defines the default behaviors of grips
 	// Don't edit this unless you really know what you are doing, leave it empty
@@ -166,6 +210,10 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void BeginDestroy() override;
 	virtual void BeginPlay() override;
+
+	/** Post-physics tick function for this character */
+	UPROPERTY()
+		FTickFunction PostPhysicsTickFunction;
 
 protected:
 	//~ Begin UActorComponent Interface.

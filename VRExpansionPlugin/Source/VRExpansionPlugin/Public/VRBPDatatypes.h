@@ -1156,6 +1156,9 @@ public:
 	FTransform LastWorldTransform;
 
 	// Need to skip one frame of length check post teleport with constrained objects, the constraint may have not been updated yet.
+	bool bSkipNextTeleportCheck;
+
+	// Need to skip one frame of length check post teleport with constrained objects, the constraint may have not been updated yet.
 	bool bSkipNextConstraintLengthCheck;
 
 	// Cached values - since not using a full serialize now the old array state may not contain what i need to diff
@@ -1179,6 +1182,7 @@ public:
 		bIsLocked = false;
 		LastLockedRotation = FQuat::Identity;
 		LastWorldTransform.SetIdentity();
+		bSkipNextTeleportCheck = false;
 		bSkipNextConstraintLengthCheck = false;
 		bIsPaused = false;
 		AdditionTransform = FTransform::Identity;
@@ -1287,6 +1291,7 @@ public:
 		bIsLocked(false),
 		LastLockedRotation(FRotator::ZeroRotator),
 		LastWorldTransform(FTransform::Identity),
+		bSkipNextTeleportCheck(false),
 		bSkipNextConstraintLengthCheck(false)
 	{
 	}	
