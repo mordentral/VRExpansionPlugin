@@ -2279,7 +2279,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			{
 				bRootHasInterface = true;
 			}
-			else if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				// Actor grip interface is checked after component
 				bActorHasInterface = true;
@@ -2362,7 +2362,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			{
 				bRootHasInterface = true;
 			}
-			else if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+			if (pActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 			{
 				// Actor grip interface is checked after component
 				bActorHasInterface = true;
