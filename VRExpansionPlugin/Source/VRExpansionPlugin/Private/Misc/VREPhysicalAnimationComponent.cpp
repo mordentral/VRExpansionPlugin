@@ -3,7 +3,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysXPublic.h"
-#include "Animation/Skeleton.h"
+#include "ReferenceSkeleton.h"
 #include "DrawDebugHelpers.h"
 #include "Physics/PhysicsInterfaceCore.h"
 #include "Physics/PhysicsInterfaceTypes.h"
