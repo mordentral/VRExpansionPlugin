@@ -1714,10 +1714,11 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 	{
 
 		// Had to move in front of deletion to properly set velocity
-		if (((bWasLocalGrip && !IsLocallyControlled()) ||
+
+		/*if (((bWasLocalGrip && !IsLocallyControlled()) ||
 			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement) &&
-			(!OptionalLinearVelocity.IsNearlyZero() || !OptionalAngularVelocity.IsNearlyZero())
-		)
+			(!OptionalLinearVelocity.IsNearlyZero() || !OptionalAngularVelocity.IsNearlyZero())*/
+		if (!OptionalLinearVelocity.IsNearlyZero() || !OptionalAngularVelocity.IsNearlyZero())
 		{
 			PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
 			PrimComp->SetPhysicsAngularVelocityInDegrees(OptionalAngularVelocity);
