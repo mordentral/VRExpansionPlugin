@@ -3,6 +3,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysXPublic.h"
+#include "Animation/Skeleton.h"
 #include "DrawDebugHelpers.h"
 #include "Physics/PhysicsInterfaceCore.h"
 #include "Physics/PhysicsInterfaceTypes.h"
@@ -231,7 +232,7 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 						PhysicsInterfaceTypes::FInlineShapeArray Shapes;
 						FPhysicsInterface::GetAllShapes_AssumedLocked(Actor, Shapes);
 
-						FTransform GlobalPose = GlobalPose = FPhysicsInterface::GetGlobalPose_AssumesLocked(ActorHandle).Inverse();
+						FTransform GlobalPose = FPhysicsInterface::GetGlobalPose_AssumesLocked(ActorHandle).Inverse();
 
 						for (FPhysicsShapeHandle& Shape : Shapes)
 						{
