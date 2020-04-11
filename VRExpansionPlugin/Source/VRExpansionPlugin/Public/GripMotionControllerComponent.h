@@ -174,6 +174,22 @@ public:
 	FVector LastLocationForLateUpdate;
 	FTransform LastRelativePosition;
 
+	// Type of velocity calculation to use for the motion controller
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|ComponentVelocity")
+		EVRVelocityType VelocityCalculationType;
+
+	// If we should sample the velocity in world or local space
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|ComponentVelocity")
+		bool bSampleVelocityInWorldSpace;
+
+	// If not using velocity mode "default" this is the number of sample to keep
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|ComponentVelocity")
+		int32 VelocitySamples;
+
+	FBPLowPassPeakFilter PeakFilter;
+
+	virtual FVector GetComponentVelocity() const override;
+
 	// If true will offset the tracked location of the controller by the controller profile that is currently loaded.
 	// Thows the event OnControllerProfileTransformChanged when it happens so that you can adjust specific components
 	// Like procedural ones for the offset (procedural meshes are already correctly offset for the controller and
@@ -888,6 +904,10 @@ public:
 	// Get the physics velocities of a grip
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
 		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
+
+	// Get the root components mass of a grip
+	UFUNCTION(BlueprintPure, Category = "GripMotionController")
+		void GetGripMass(const FBPActorGripInformation& Grip, float& Mass);
 
 	// Sets whether an active grip is paused or not (is not replicated by default as it is likely you will want to pass variables with this setting).
 	// If you want it server authed you should RPC a bool down with any additional information (ie: attach location).

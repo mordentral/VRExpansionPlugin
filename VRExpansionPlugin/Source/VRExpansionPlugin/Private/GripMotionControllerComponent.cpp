@@ -108,6 +108,11 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 
 	bUpdateInCharacterMovement = true;
 
+	VelocityCalculationType = EVRVelocityType::VRLOCITY_Default;
+	LastRelativePosition = FTransform::Identity;
+	bSampleVelocityInWorldSpace = false;
+	VelocitySamples = 30.f;
+
 	EndPhysicsTickFunction.TickGroup = TG_EndPhysics;
 	EndPhysicsTickFunction.bCanEverTick = true;
 	EndPhysicsTickFunction.bStartWithTickEnabled = false;
@@ -523,10 +528,28 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 		AngularVelocity = FVector::ZeroVector;
 		LinearVelocity = FVector::ZeroVector;
 		return;
+
 	}
 
 	AngularVelocity = primComp->GetPhysicsAngularVelocityInDegrees();
 	LinearVelocity = primComp->GetPhysicsLinearVelocity();
+}
+
+void UGripMotionControllerComponent::GetGripMass(const FBPActorGripInformation& Grip, float& Mass)
+{
+	UPrimitiveComponent* primComp = Grip.GetGrippedComponent();//Grip.Component;
+	AActor* pActor = Grip.GetGrippedActor();
+
+	if (!primComp && pActor)
+		primComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+
+	if (!primComp || !primComp->IsSimulatingPhysics())
+	{
+		Mass = 0.f;
+		return;
+	}
+
+	Mass = primComp->GetMass();
 }
 
 void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, EBPVRResultSwitch &Result)
@@ -3828,14 +3851,42 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	bIsPostTeleport = false;
 
 	// Save out the component velocity from this and last frame
-	if(!LastRelativePosition.GetTranslation().IsZero())
-		ComponentVelocity = (GetRelativeLocation() - LastRelativePosition.GetTranslation()) / DeltaTime;
+
+	FVector newVelocitySample = ((bSampleVelocityInWorldSpace ? GetComponentLocation() : GetRelativeLocation()) - LastRelativePosition.GetTranslation()) / DeltaTime;
+
+	switch (VelocityCalculationType)
+	{
+	case EVRVelocityType::VRLOCITY_Default:
+	{
+		ComponentVelocity = newVelocitySample;
+	}break;
+	case EVRVelocityType::VRLOCITY_RunningAverage:
+	{
+		UVRExpansionFunctionLibrary::LowPassFilter_RollingAverage(ComponentVelocity, newVelocitySample, ComponentVelocity, VelocitySamples);
+	}break;
+	case EVRVelocityType::VRLOCITY_SamplePeak:
+	{
+		if (PeakFilter.VelocitySamples != VelocitySamples)
+			PeakFilter.VelocitySamples = VelocitySamples;
+		UVRExpansionFunctionLibrary::UpdatePeakLowPassFilter(PeakFilter, newVelocitySample);
+	}break;
+	}
 
 	// #TODO:
 	// Relative angular velocity too?
 	// Maybe add some running averaging here to make it work across frames?
 	// Or Valves 30 frame high point average buffer
-	LastRelativePosition = this->GetRelativeTransform();
+	LastRelativePosition = bSampleVelocityInWorldSpace ? this->GetComponentTransform() : this->GetRelativeTransform();
+}
+
+FVector UGripMotionControllerComponent::GetComponentVelocity() const
+{
+	if(VelocityCalculationType == EVRVelocityType::VRLOCITY_SamplePeak)
+	{ 
+		return PeakFilter.GetPeak();
+	}
+
+	return Super::GetComponentVelocity();
 }
 
 void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)

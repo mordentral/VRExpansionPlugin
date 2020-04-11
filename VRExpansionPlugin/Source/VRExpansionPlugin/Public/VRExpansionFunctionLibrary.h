@@ -225,6 +225,28 @@ public:
 		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, const FTransform & ComponentRelativeTransform);
 	
 
+	/** Resets a Filter so that the first time it is used again it is clean */
+	UFUNCTION(BlueprintCallable, Category = "LowPassFilter_Peak")
+		static void ResetPeakLowPassFilter(UPARAM(ref) FBPLowPassPeakFilter& TargetPeakFilter)
+	{
+		TargetPeakFilter.Reset();
+	}
+
+	/** Adds an entry to the Peak low pass filter */
+	UFUNCTION(BlueprintCallable, Category = "LowPassFilter_Peak")
+		static void UpdatePeakLowPassFilter(UPARAM(ref) FBPLowPassPeakFilter& TargetPeakFilter, FVector NewSample)
+	{
+		TargetPeakFilter.AddSample(NewSample);
+	}
+
+	/** Gets the peak value of the Peak Low Pass Filter */
+	UFUNCTION(BlueprintCallable, Category = "LowPassFilter_Peak")
+		static FVector GetPeak_PeakLowPassFilter(UPARAM(ref) FBPLowPassPeakFilter& TargetPeakFilter)
+	{
+		return TargetPeakFilter.GetPeak();
+	}
+
+
 	/** Resets a Euro Low Pass Filter so that the first time it is used again it is clean */
 	UFUNCTION(BlueprintCallable, Category = "EuroLowPassFilter")
 	static void ResetEuroSmoothingFilter(UPARAM(ref) FBPEuroLowPassFilter& TargetEuroFilter)
