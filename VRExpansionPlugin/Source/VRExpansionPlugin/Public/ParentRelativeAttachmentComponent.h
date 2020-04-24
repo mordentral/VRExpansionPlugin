@@ -44,6 +44,11 @@ public:
 	// If true uses feet/bottom of the capsule as the base Z position for this component instead of the HMD/Camera Z position
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	bool bUseFeetLocation;
+
+	// An additional value added to the relative position of the PRC 
+	// Can be used to offset the floor, or component heights if needed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		FVector CustomOffset;
 	
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
@@ -90,13 +95,13 @@ public:
 			if (!bIgnoreRotationFromParent)
 			{
 				SetRelativeLocationAndRotation(
-					FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f),
+					FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f) + CustomOffset,
 					GetCalculatedRotation(NewRelativeRotation, DeltaTime)
 				);
 			}
 			else
 			{
-				SetRelativeLocation(FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f));
+				SetRelativeLocation(FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f) + CustomOffset);
 			}
 		}
 		else
@@ -104,13 +109,13 @@ public:
 			if (!bIgnoreRotationFromParent)
 			{
 				SetRelativeLocationAndRotation(
-					NewRelativeLocation,
+					NewRelativeLocation + CustomOffset,
 					GetCalculatedRotation(NewRelativeRotation, DeltaTime)
 				); // Use the HMD height instead
 			}
 			else
 			{
-				SetRelativeLocation(NewRelativeLocation); // Use the HMD height instead
+				SetRelativeLocation(NewRelativeLocation + CustomOffset); // Use the HMD height instead
 			}
 		}
 	}

@@ -28,6 +28,9 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 
 	bIgnoreRotationFromParent = false;
 	bUpdateInCharacterMovement = true;
+
+	bUseFeetLocation = false;
+	CustomOffset = FVector::ZeroVector;
 }
 
 void UParentRelativeAttachmentComponent::OnAttachmentChanged()
@@ -63,6 +66,7 @@ void UParentRelativeAttachmentComponent::UpdateTracking(float DeltaTime)
 			}
 		}
 
+		TrackedParentWaist.AddToTranslation(CustomOffset);
 		SetRelativeTransform(TrackedParentWaist);
 
 	}
