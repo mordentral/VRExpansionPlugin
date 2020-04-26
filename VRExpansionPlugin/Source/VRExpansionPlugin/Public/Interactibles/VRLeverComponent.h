@@ -282,6 +282,16 @@ public:
 
 	virtual void OnUnregister() override;;
 
+	// Called when a object is gripped
+	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnGripSignature OnGripped;
+
+	// Called when a object is dropped
+	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnDropSignature OnDropped;
+
 #if WITH_PHYSX
 	physx::PxD6Joint* HandleData;
 	//int32 SceneIndex;

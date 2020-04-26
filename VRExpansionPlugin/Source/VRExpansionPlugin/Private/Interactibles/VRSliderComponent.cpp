@@ -363,6 +363,8 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 	{
 		bReplicateMovement = false;
 	}
+
+	OnGripped.Broadcast(GrippingController, GripInformation);
 }
 
 void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
@@ -382,6 +384,8 @@ void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerCompo
 		this->SetComponentTickEnabled(false);
 		bReplicateMovement = bOriginalReplicatesMovement;
 	}
+
+	OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed);
 }
 
 void UVRSliderComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}

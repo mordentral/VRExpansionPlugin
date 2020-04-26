@@ -39,6 +39,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
 		void SetDenyGripping(bool bDenyGripping);
 
+	// Called when a object is gripped
+	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnGripSignature OnGripped;
+
+	// Called when a object is dropped
+	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnDropSignature OnDropped;
+
+	// Called when an object we hold is secondary gripped
+	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnGripSignature OnSecondaryGripAdded;
+
+	// Called when an object we hold is secondary dropped
+	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnGripSignature OnSecondaryGripRemoved;
+
 	// Gameplay tag interface
 	// ------------------------------------------------
 
