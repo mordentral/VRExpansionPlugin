@@ -31,10 +31,10 @@ DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnTrackingEventSignature, const ETrackingStatus &, NewTrackingStatus);
 
 /** Delegate for notification when the controller grips a new object. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnGripSignature, const FBPActorGripInformation &, GripInformation);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnControllerGripSignature, const FBPActorGripInformation &, GripInformation);
 
 /** Delegate for notification when the controller drops a gripped object. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRGripControllerOnDropSignature, const FBPActorGripInformation &, GripInformation, bool, bWasSocketed);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVROnControllerDropSignature, const FBPActorGripInformation &, GripInformation, bool, bWasSocketed);
 
 /** Delegate for notification when an interactive grip goes out of range and isn't set to auto handle it. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRGripControllerOnGripOutOfRange, const FBPActorGripInformation &, GripInformation, float, Distance);
@@ -253,20 +253,20 @@ public:
 		FVRGripControllerOnTrackingEventSignature OnTrackingChanged;
 
 	// Called when a object is gripped
-	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
-		FVRGripControllerOnGripSignature OnGrippedObject;
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerGripSignature OnGrippedObject;
 
 	// Called when a object is dropped
-	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
-		FVRGripControllerOnDropSignature OnDroppedObject;
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerDropSignature OnDroppedObject;
 
 	// Called when an object we hold is secondary gripped
-	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
-		FVRGripControllerOnGripSignature OnSecondaryGripAdded;
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerGripSignature OnSecondaryGripAdded;
 
 	// Called when an object we hold is secondary dropped
-	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
-		FVRGripControllerOnGripSignature OnSecondaryGripRemoved;
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerGripSignature OnSecondaryGripRemoved;
 
 	// Gets the hand enum
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))

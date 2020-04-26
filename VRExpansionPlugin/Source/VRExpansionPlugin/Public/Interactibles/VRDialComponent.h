@@ -168,6 +168,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "VRGripInterface")
 		FBPGripPair HoldingGrip; // Set on grip notify, not net serializing
 	bool bOriginalReplicatesMovement;
+
+	// Called when a object is gripped
+	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnGripSignature OnGripped;
+
+	// Called when a object is dropped
+	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnDropSignature OnDropped;
 	
 															// Distance before the object will break out of the hand, 0.0f == never will
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")

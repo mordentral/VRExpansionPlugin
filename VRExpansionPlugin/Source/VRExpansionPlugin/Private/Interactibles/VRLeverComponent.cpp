@@ -370,6 +370,8 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 	MomentumAtDrop = 0.0f;
 
 	this->SetComponentTickEnabled(true);
+
+	OnGripped.Broadcast(GrippingController, GripInformation);
 }
 
 void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
@@ -393,6 +395,8 @@ void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerCompon
 		this->SetComponentTickEnabled(false);
 		bReplicateMovement = bOriginalReplicatesMovement;
 	}
+
+	OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed);
 }
 
 void UVRLeverComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}

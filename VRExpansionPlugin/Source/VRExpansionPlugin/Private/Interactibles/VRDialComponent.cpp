@@ -170,6 +170,8 @@ void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * Gr
 	}
 
 	bIsLerping = false;
+
+	OnGripped.Broadcast(GrippingController, GripInformation);
 }
 
 void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
@@ -188,6 +190,8 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 	}
 	else
 		this->SetComponentTickEnabled(false);
+
+	OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed);
 }
 
 void UVRDialComponent::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
