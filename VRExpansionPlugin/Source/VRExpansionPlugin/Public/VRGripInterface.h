@@ -12,7 +12,7 @@
 
 
 UINTERFACE(Blueprintable)
-class UVRGripInterface: public UInterface
+class VREXPANSIONPLUGIN_API UVRGripInterface: public UInterface
 {
 	GENERATED_UINTERFACE_BODY()
 };
