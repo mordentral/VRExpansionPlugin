@@ -121,80 +121,81 @@ bool UVRBaseCharacterMovementComponent::ForcePositionUpdate(float DeltaTime)
 
 void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-
-	// Scope these, they nest with Outer references so it should work fine
-	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
-
-	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 	{
-		const FVector InputVector = ConsumeInputVector();
-		if (!HasValidData() || ShouldSkipUpdate(DeltaTime))
-		{
-			return;
-		}
+		// Scope these, they nest with Outer references so it should work fine
+		FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
-		// Skip the perform movement logic, run the re-seat logic instead - running base movement component tick instead
-		Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-		// See if we fell out of the world.
-		const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
-		if (CharacterOwner->GetLocalRole() == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
+		if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 		{
-			return;
-		}
-
-		// If we are the owning client or the server then run the re-basing
-		if (CharacterOwner->GetLocalRole() > ROLE_SimulatedProxy)
-		{
-			// Run offset logic here, the server will update simulated proxies with the movement replication
-			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+			const FVector InputVector = ConsumeInputVector();
+			if (!HasValidData() || ShouldSkipUpdate(DeltaTime))
 			{
-				BaseChar->TickSeatInformation(DeltaTime);
+				return;
 			}
 
-		}
-		else
-		{
-			if (bNetworkUpdateReceived)
+			// Skip the perform movement logic, run the re-seat logic instead - running base movement component tick instead
+			Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+			// See if we fell out of the world.
+			const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
+			if (CharacterOwner->GetLocalRole() == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
 			{
-				if (bNetworkMovementModeChanged)
+				return;
+			}
+
+			// If we are the owning client or the server then run the re-basing
+			if (CharacterOwner->GetLocalRole() > ROLE_SimulatedProxy)
+			{
+				// Run offset logic here, the server will update simulated proxies with the movement replication
+				if (AVRBaseCharacter* BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
 				{
-					ApplyNetworkMovementMode(CharacterOwner->GetReplicatedMovementMode());
-					bNetworkMovementModeChanged = false;
+					BaseChar->TickSeatInformation(DeltaTime);
+				}
+
+			}
+			else
+			{
+				if (bNetworkUpdateReceived)
+				{
+					if (bNetworkMovementModeChanged)
+					{
+						ApplyNetworkMovementMode(CharacterOwner->GetReplicatedMovementMode());
+						bNetworkMovementModeChanged = false;
+					}
 				}
 			}
 		}
+		else
+			Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+
+		// This should be valid for both Simulated and owning clients as well as the server
+		// Better here than in perform movement
+		if (UVRRootComponent* VRRoot = Cast<UVRRootComponent>(CharacterOwner->GetCapsuleComponent()))
+		{
+			// If we didn't move the capsule, have it update itself here so the visual and physics representation is correct
+			// We do this specifically to avoid double calling into the render / physics threads.
+			if (!VRRoot->bCalledUpdateTransform)
+				VRRoot->OnUpdateTransform_Public(EUpdateTransformFlags::None, ETeleportType::None);
+		}
+
+		// If some of our important components run inside the cmc updates then lets update them now
+		if (AVRBaseCharacter* Basechar = Cast<AVRBaseCharacter>(CharacterOwner))
+		{
+			if (Basechar->ParentRelativeAttachment && Basechar->ParentRelativeAttachment->bUpdateInCharacterMovement)
+				Basechar->ParentRelativeAttachment->UpdateTracking(DeltaTime);
+
+			if (Basechar->LeftMotionController && Basechar->LeftMotionController->bUpdateInCharacterMovement)
+				Basechar->LeftMotionController->UpdateTracking(DeltaTime);
+
+			if (Basechar->RightMotionController && Basechar->RightMotionController->bUpdateInCharacterMovement)
+				Basechar->RightMotionController->UpdateTracking(DeltaTime);
+		}
+
+		// Make sure these are cleaned out for the next frame
+		AdditionalVRInputVector = FVector::ZeroVector;
+		CustomVRInputVector = FVector::ZeroVector;
 	}
-	else
-		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-
-	// This should be valid for both Simulated and owning clients as well as the server
-	// Better here than in perform movement
-	if (UVRRootComponent * VRRoot = Cast<UVRRootComponent>(CharacterOwner->GetCapsuleComponent()))
-	{
-		// If we didn't move the capsule, have it update itself here so the visual and physics representation is correct
-		// We do this specifically to avoid double calling into the render / physics threads.
-		if (!VRRoot->bCalledUpdateTransform)
-			VRRoot->OnUpdateTransform_Public(EUpdateTransformFlags::None, ETeleportType::None);
-	}
-
-	// If some of our important components run inside the cmc updates then lets update them now
-	if (AVRBaseCharacter* Basechar = Cast<AVRBaseCharacter>(CharacterOwner))
-	{
-		if (Basechar->ParentRelativeAttachment && Basechar->ParentRelativeAttachment->bUpdateInCharacterMovement)
-			Basechar->ParentRelativeAttachment->UpdateTracking(DeltaTime);
-
-		if (Basechar->LeftMotionController && Basechar->LeftMotionController->bUpdateInCharacterMovement)
-			Basechar->LeftMotionController->UpdateTracking(DeltaTime);
-
-		if (Basechar->RightMotionController && Basechar->RightMotionController->bUpdateInCharacterMovement)
-			Basechar->RightMotionController->UpdateTracking(DeltaTime);
-	}
-
-	// Make sure these are cleaned out for the next frame
-	AdditionalVRInputVector = FVector::ZeroVector;
-	CustomVRInputVector = FVector::ZeroVector;
 
 	if (bNotifyTeleported)
 	{
