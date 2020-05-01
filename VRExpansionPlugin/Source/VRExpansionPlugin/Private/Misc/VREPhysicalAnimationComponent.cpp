@@ -217,7 +217,6 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 
 			if (FBodyInstance* ParentBody = (ParentBodyIdx == INDEX_NONE ? nullptr : SkeleMesh->Bodies[ParentBodyIdx]))
 			{
-
 				if (!ParentBody->IsInstanceSimulatingPhysics() && !ParentBody->WeldParent)
 					return;
 
@@ -241,7 +240,9 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 								bModifiedBody = true;
 
 								FTransform Trans = SkeleMesh->GetSocketTransform(WeldedData->BoneName, ERelativeTransformSpace::RTS_World);
-								Trans.SetScale3D(FVector(1.f));
+								// This fixes a bug with simulating inverse scaled meshes
+								Trans.SetScale3D(FVector(1.f) * Trans.GetScale3D().GetSignVector());
+
 								FTransform GlobalTransform = WeldedData->RelativeTransform * Trans;
 								FTransform RelativeTM = GlobalTransform * GlobalPose;
 
