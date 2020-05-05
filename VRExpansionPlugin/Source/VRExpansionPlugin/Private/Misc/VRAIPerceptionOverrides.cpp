@@ -39,6 +39,45 @@ DECLARE_CYCLE_STAT(TEXT("Perception Sense: Sight, Remove To Target"), STAT_AI_Se
 static const int32 DefaultMaxTracesPerTick = 6;
 static const int32 DefaultMinQueriesPerTimeSliceCheck = 40;
 
+enum class EForEachResult : uint8
+{
+	Break,
+	Continue,
+};
+
+template <typename T, class PREDICATE_CLASS>
+EForEachResult ForEach(T& Array, const PREDICATE_CLASS& Predicate)
+{
+	for (typename T::ElementType& Element : Array)
+	{
+		if (Predicate(Element) == EForEachResult::Break)
+		{
+			return EForEachResult::Break;
+		}
+	}
+	return EForEachResult::Continue;
+}
+
+enum EReverseForEachResult : uint8
+{
+	UnTouched,
+	Modified,
+};
+
+template <typename T, class PREDICATE_CLASS>
+EReverseForEachResult ReverseForEach(T& Array, const PREDICATE_CLASS& Predicate)
+{
+	EReverseForEachResult RetVal = EReverseForEachResult::UnTouched;
+	for (int32 Index = Array.Num() - 1; Index >= 0; --Index)
+	{
+		if (Predicate(Array, Index) == EReverseForEachResult::Modified)
+		{
+			RetVal = EReverseForEachResult::Modified;
+		}
+	}
+	return RetVal;
+}
+
 //----------------------------------------------------------------------//
 // helpers
 //----------------------------------------------------------------------//
@@ -178,6 +217,29 @@ float UAISense_Sight_VR::Update()
 		return SuspendNextUpdate;
 	}
 
+	// sort Sight Queries
+	{
+		auto RecalcScore = [](FAISightQueryVR& SightQuery)->EForEachResult
+		{
+			SightQuery.RecalcScore();
+			return EForEachResult::Continue;
+		};
+
+		SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_UpdateSort);
+		// Sort out of range queries
+		if (bSightQueriesOutOfRangeDirty)
+		{
+			ForEach(SightQueriesOutOfRange, RecalcScore);
+			SightQueriesOutOfRange.Sort(FAISightQueryVR::FSortPredicate());
+			NextOutOfRangeIndex = 0;
+			bSightQueriesOutOfRangeDirty = false;
+		}
+
+		// Sort in range queries
+		ForEach(SightQueriesInRange, RecalcScore);
+		SightQueriesInRange.Sort(FAISightQueryVR::FSortPredicate());
+	}
+
 	int32 TracesCount = 0;
 	int32 NumQueriesProcessed = 0;
 	double TimeSliceEnd = FPlatformTime::Seconds() + MaxTimeSlicePerTick;
@@ -188,16 +250,45 @@ float UAISense_Sight_VR::Update()
 	double LastTime = FPlatformTime::Seconds();
 #endif // AISENSE_SIGHT_TIMESLICING_DEBUG
 	static const int32 InitialInvalidItemsSize = 16;
-	TArray<int32> InvalidQueries;
+	enum class EOperationType : uint8
+	{
+		Remove,
+		SwapList
+	};
+	struct FQueryOperation
+	{
+		FQueryOperation(bool bInInRange, EOperationType InOpType, int32 InIndex) : bInRange(bInInRange), OpType(InOpType), Index(InIndex) {}
+		bool bInRange;
+		EOperationType OpType;
+		int32 Index;
+	};
+	TArray<FQueryOperation> QueryOperations;
 	TArray<FAISightTargetVR::FTargetId> InvalidTargets;
-	InvalidQueries.Reserve(InitialInvalidItemsSize);
+	QueryOperations.Reserve(InitialInvalidItemsSize);
 	InvalidTargets.Reserve(InitialInvalidItemsSize);
 
 	AIPerception::FListenerMap& ListenersMap = *GetListeners();
 
-	FAISightQueryVR* SightQuery = SightQueryQueue.GetData();
-	for (int32 QueryIndex = 0; QueryIndex < SightQueryQueue.Num(); ++QueryIndex, ++SightQuery)
+	int32 InRangeItr = 0;
+	int32 OutOfRangeItr = 0;
+	for (int32 QueryIndex = 0; QueryIndex < SightQueriesInRange.Num() + SightQueriesOutOfRange.Num(); ++QueryIndex)
 	{
+		// Calculate next in range query
+		int32 InRangeIndex = SightQueriesInRange.IsValidIndex(InRangeItr) ? InRangeItr : INDEX_NONE;
+		FAISightQueryVR* InRangeQuery = InRangeIndex != INDEX_NONE ? &SightQueriesInRange[InRangeIndex] : nullptr;
+
+		// Calculate next out of range query
+		int32 OutOfRangeIndex = SightQueriesOutOfRange.IsValidIndex(OutOfRangeItr) ? (NextOutOfRangeIndex + OutOfRangeItr) % SightQueriesOutOfRange.Num() : INDEX_NONE;
+		FAISightQueryVR* OutOfRangeQuery = OutOfRangeIndex != INDEX_NONE ? &SightQueriesOutOfRange[OutOfRangeIndex] : nullptr;
+		if (OutOfRangeQuery)
+		{
+			OutOfRangeQuery->RecalcScore();
+		}
+
+		// Compare to real find next query
+		const bool bIsInRangeQuery = (InRangeQuery && OutOfRangeQuery) ? FAISightQueryVR::FSortPredicate()(*InRangeQuery, *OutOfRangeQuery) : !OutOfRangeQuery;
+		FAISightQueryVR* SightQuery = bIsInRangeQuery ? InRangeQuery : OutOfRangeQuery;
+
 		// Time slice limit check - spread out checks to every N queries so we don't spend more time checking timer than doing work
 		NumQueriesProcessed++;
 #ifdef AISENSE_SIGHT_TIMESLICING_DEBUG
@@ -212,6 +303,8 @@ float UAISense_Sight_VR::Update()
 
 		if (TracesCount < MaxTracesPerTick && bHitTimeSliceLimit == false)
 		{
+			bIsInRangeQuery ? ++InRangeItr : ++OutOfRangeItr;
+
 			FPerceptionListener& Listener = ListenersMap[SightQuery->ObserverId];
 
 			FAISightTargetVR& Target = ObservedTargets[SightQuery->TargetId];
@@ -316,14 +409,19 @@ float UAISense_Sight_VR::Update()
 				}
 
 				SightQuery->Importance = CalcQueryImportance(Listener, TargetLocation, SightRadiusSq);
+				const bool bShouldBeInRange = SightQuery->Importance > 0.0f;
+				if (bIsInRangeQuery != bShouldBeInRange)
+				{
+					QueryOperations.Add(FQueryOperation(bIsInRangeQuery, EOperationType::SwapList, bIsInRangeQuery ? InRangeIndex : OutOfRangeIndex));
+				}
 
 				// restart query
-				SightQuery->Age = 0.f;
+				SightQuery->OnProcessed();
 			}
 			else
 			{
 				// put this index to "to be removed" array
-				InvalidQueries.Add(QueryIndex);
+				QueryOperations.Add(FQueryOperation(bIsInRangeQuery, EOperationType::Remove, bIsInRangeQuery ? InRangeIndex : OutOfRangeIndex));
 				if (TargetActor == nullptr)
 				{
 					InvalidTargets.AddUnique(SightQuery->TargetId);
@@ -332,24 +430,63 @@ float UAISense_Sight_VR::Update()
 		}
 		else
 		{
-			// age unprocessed queries so that they can advance in the queue during next sort
-			SightQuery->Age += 1.f;
+			break;
 		}
-
-		SightQuery->RecalcScore();
 	}
+
+	NextOutOfRangeIndex = SightQueriesOutOfRange.Num() > 0 ? (NextOutOfRangeIndex + OutOfRangeItr) % SightQueriesOutOfRange.Num() : 0;
+
 #ifdef AISENSE_SIGHT_TIMESLICING_DEBUG
 	UE_LOG(LogAIPerceptionVR, VeryVerbose, TEXT("UAISense_Sight_VR::Update processed %d sources in %f seconds [time slice limited? %d]"), NumQueriesProcessed, TimeSpent, bHitTimeSliceLimit ? 1 : 0);
 #else
 	UE_LOG(LogAIPerceptionVR, VeryVerbose, TEXT("UAISense_Sight_VR::Update processed %d sources [time slice limited? %d]"), NumQueriesProcessed, bHitTimeSliceLimit ? 1 : 0);
 #endif // AISENSE_SIGHT_TIMESLICING_DEBUG
 
-	if (InvalidQueries.Num() > 0)
+	if (QueryOperations.Num() > 0)
 	{
-		for (int32 Index = InvalidQueries.Num() - 1; Index >= 0; --Index)
+		// Sort by InRange and by descending Index 
+		QueryOperations.Sort([](const FQueryOperation& LHS, const FQueryOperation& RHS)->bool
+			{
+				if (LHS.bInRange != RHS.bInRange)
+					return LHS.bInRange;
+				return LHS.Index > RHS.Index;
+			});
+		// Do all the removes first and save the out of range swaps because we will insert them at the right location to prevent sorting
+		TArray<FAISightQueryVR> SightQueriesOutOfRangeToInsert;
+		for (FQueryOperation& Operation : QueryOperations)
 		{
-			// removing with swapping here, since queue is going to be sorted anyway
-			SightQueryQueue.RemoveAtSwap(InvalidQueries[Index], 1, /*bAllowShrinking*/false);
+			if (Operation.OpType == EOperationType::SwapList)
+			{
+				if (Operation.bInRange)
+				{
+					SightQueriesOutOfRangeToInsert.Push(SightQueriesInRange[Operation.Index]);
+				}
+				else
+				{
+					SightQueriesInRange.Add(SightQueriesOutOfRange[Operation.Index]);
+				}
+			}
+
+			if (Operation.bInRange)
+			{
+				// In range queries are always sorted at the beginning of the update
+				SightQueriesInRange.RemoveAtSwap(Operation.Index, 1, /*bAllowShrinking*/false);
+			}
+			else
+			{
+				// Preserve the list ordered
+				SightQueriesOutOfRange.RemoveAt(Operation.Index, 1, /*bAllowShrinking*/false);
+				if (Operation.Index < NextOutOfRangeIndex)
+				{
+					NextOutOfRangeIndex--;
+				}
+			}
+		}
+		// Reinsert the saved out of range swaps
+		if (SightQueriesOutOfRangeToInsert.Num() > 0)
+		{
+			SightQueriesOutOfRange.Insert(SightQueriesOutOfRangeToInsert.GetData(), SightQueriesOutOfRangeToInsert.Num(), NextOutOfRangeIndex);
+			NextOutOfRangeIndex += SightQueriesOutOfRangeToInsert.Num();
 		}
 
 		if (InvalidTargets.Num() > 0)
@@ -360,7 +497,7 @@ float UAISense_Sight_VR::Update()
 			for (const auto& TargetId : InvalidTargets)
 			{
 				// remove affected queries
-				RemoveAllQueriesToTarget(TargetId, DontSort);
+				RemoveAllQueriesToTarget(TargetId);
 				// remove target itself
 				ObservedTargets.Remove(TargetId);
 			}
@@ -368,12 +505,6 @@ float UAISense_Sight_VR::Update()
 			// remove holes
 			ObservedTargets.Compact();
 		}
-	}
-
-	// sort Sight Queries
-	{
-		SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_UpdateSort);
-		SortQueries();
 	}
 
 	//return SightQueryQueue.Num() > 0 ? 1.f/6 : FLT_MAX;
@@ -387,7 +518,7 @@ void UAISense_Sight_VR::RegisterEvent(const FAISightEventVR& Event)
 
 void UAISense_Sight_VR::RegisterSource(AActor& SourceActor)
 {
-	RegisterTarget(SourceActor, Sort);
+	RegisterTarget(SourceActor);
 }
 
 void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
@@ -396,7 +527,7 @@ void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
 	FAISightTargetVR AsTarget;
 
 	if (ObservedTargets.RemoveAndCopyValue(AsTargetId, AsTarget)
-		&& SightQueryQueue.Num() > 0)
+		&& (SightQueriesInRange.Num() + SightQueriesOutOfRange.Num()) > 0)
 	{
 		AActor* TargetActor = AsTarget.Target.Get();
 
@@ -405,9 +536,9 @@ void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
 			// notify all interested observers that this source is no longer
 			// visible		
 			AIPerception::FListenerMap& ListenersMap = *GetListeners();
-			const FAISightQueryVR* SightQuery = &SightQueryQueue[SightQueryQueue.Num() - 1];
-			for (int32 QueryIndex = SightQueryQueue.Num() - 1; QueryIndex >= 0; --QueryIndex, --SightQuery)
+			auto RemoveQuery = [this, &ListenersMap, &AsTargetId, &TargetActor](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
 			{
+				FAISightQueryVR* SightQuery = &SightQueries[QueryIndex];
 				if (SightQuery->TargetId == AsTargetId)
 				{
 					if (SightQuery->bLastResult == true)
@@ -418,52 +549,23 @@ void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
 						Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, 0.f, SightQuery->LastSeenLocation, Listener.CachedLocation, FAIStimulus::SensingFailed));
 					}
 
-					SightQueryQueue.RemoveAt(QueryIndex, 1, /*bAllowShrinking=*/false);
+					SightQueries.RemoveAtSwap(QueryIndex, 1, /*bAllowShrinking=*/false);
+					return EReverseForEachResult::Modified;
 				}
+
+				return EReverseForEachResult::UnTouched;
+			};
+
+			ReverseForEach(SightQueriesInRange, RemoveQuery);
+			if (ReverseForEach(SightQueriesOutOfRange, RemoveQuery) == EReverseForEachResult::Modified)
+			{
+				bSightQueriesOutOfRangeDirty = true;
 			}
-			// no point in sorting, we haven't change the order of other queries
 		}
 	}
 }
 
-void UAISense_Sight_VR::CleanseInvalidSources()
-{
-	bool bInvalidSourcesFound = false;
-	int32 NumInvalidSourcesFound = 0;
-	for (FTargetsContainer::TIterator ItTarget(ObservedTargets); ItTarget; ++ItTarget)
-	{
-		if (ItTarget->Value.Target.IsValid() == false)
-		{
-			// remove affected queries
-			RemoveAllQueriesToTarget(ItTarget->Key, DontSort);
-			// remove target itself
-			ItTarget.RemoveCurrent();
-
-			bInvalidSourcesFound = true;
-			NumInvalidSourcesFound++;
-		}
-	}
-
-	UE_LOG(LogAIPerceptionVR, Verbose, TEXT("UAISense_Sight_VR::CleanseInvalidSources called and removed %d invalid sources"), NumInvalidSourcesFound);
-
-	if (bInvalidSourcesFound)
-	{
-		// remove holes
-		ObservedTargets.Compact();
-		SortQueries();
-	}
-	else
-	{
-		UE_VLOG(GetPerceptionSystem(), LogAIPerceptionVR, Error, TEXT("UAISense_Sight_VR::CleanseInvalidSources called and no invalid targets were found"));
-	}
-}
-
-bool UAISense_Sight_VR::RegisterTarget(AActor& TargetActor, FQueriesOperationPostProcess PostProcess)
-{
-	return RegisterTarget(TargetActor, PostProcess, [](FAISightQueryVR & Query) {});
-}
-
-bool UAISense_Sight_VR::RegisterTarget(AActor & TargetActor, FQueriesOperationPostProcess PostProcess, TFunctionRef<void(FAISightQueryVR&)> OnAddedFunc)
+bool UAISense_Sight_VR::RegisterTarget(AActor& TargetActor, const TFunction<void(FAISightQueryVR&)>& OnAddedFunc /*= nullptr*/)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_RegisterTarget);
 
@@ -507,21 +609,30 @@ bool UAISense_Sight_VR::RegisterTarget(AActor & TargetActor, FQueriesOperationPo
 			if (FAISenseAffiliationFilter::ShouldSenseTeam(ListenersTeamAgent, TargetActor, PropDigest.AffiliationFlags))
 			{
 				// create a sight query		
-				FAISightQueryVR& AddedQuery = SightQueryQueue.AddDefaulted_GetRef();
+				const float Importance = CalcQueryImportance(ItListener->Value, TargetLocation, PropDigest.SightRadiusSq);
+				const bool bInRange = Importance > 0.0f;
+				if (!bInRange)
+				{
+					bSightQueriesOutOfRangeDirty = true;
+				}
+				FAISightQueryVR& AddedQuery = bInRange ? SightQueriesInRange.AddDefaulted_GetRef() : SightQueriesOutOfRange.AddDefaulted_GetRef();
 				AddedQuery.ObserverId = ItListener->Key;
 				AddedQuery.TargetId = SightTarget->TargetId;
-				AddedQuery.Importance = CalcQueryImportance(ItListener->Value, TargetLocation, PropDigest.SightRadiusSq);
 
-				OnAddedFunc(AddedQuery);
+				AddedQuery.Importance = Importance;
+
+				if (OnAddedFunc)
+				{
+					OnAddedFunc(AddedQuery);
+				}
 				bNewQueriesAdded = true;
 			}
 		}
 	}
 
 	// sort Sight Queries
-	if (PostProcess == Sort && bNewQueriesAdded)
+	if (bNewQueriesAdded)
 	{
-		SortQueries();
 		RequestImmediateUpdate();
 	}
 
@@ -541,12 +652,7 @@ void UAISense_Sight_VR::OnNewListenerImpl(const FPerceptionListener& NewListener
 	GenerateQueriesForListener(NewListener, PropertyDigest);
 }
 
-void UAISense_Sight_VR::GenerateQueriesForListener(const FPerceptionListener& Listener, const FDigestedSightProperties& PropertyDigest)
-{
-	GenerateQueriesForListener(Listener, PropertyDigest, [](FAISightQueryVR & Query) {});
-}
-
-void UAISense_Sight_VR::GenerateQueriesForListener(const FPerceptionListener & Listener, const FDigestedSightProperties & PropertyDigest, TFunctionRef<void(FAISightQueryVR&)> OnAddedFunc)
+void UAISense_Sight_VR::GenerateQueriesForListener(const FPerceptionListener& Listener, const FDigestedSightProperties& PropertyDigest, const TFunction<void(FAISightQueryVR&)>& OnAddedFunc/*= nullptr */)
 {
 	bool bNewQueriesAdded = false;
 	const IGenericTeamAgentInterface* ListenersTeamAgent = Listener.GetTeamAgent();
@@ -564,12 +670,23 @@ void UAISense_Sight_VR::GenerateQueriesForListener(const FPerceptionListener & L
 		if (FAISenseAffiliationFilter::ShouldSenseTeam(ListenersTeamAgent, *TargetActor, PropertyDigest.AffiliationFlags))
 		{
 			// create a sight query		
-			FAISightQueryVR& AddedQuery = SightQueryQueue.AddDefaulted_GetRef();
+			const float Importance = CalcQueryImportance(Listener, ItTarget->Value.GetLocationSimple(), PropertyDigest.SightRadiusSq);
+			const bool bInRange = Importance > 0.0f;
+			if (!bInRange)
+			{
+				bSightQueriesOutOfRangeDirty = true;
+			}
+			FAISightQueryVR& AddedQuery = bInRange ? SightQueriesInRange.AddDefaulted_GetRef() : SightQueriesOutOfRange.AddDefaulted_GetRef();
 			AddedQuery.ObserverId = Listener.GetListenerID();
 			AddedQuery.TargetId = ItTarget->Key;
-			AddedQuery.Importance = CalcQueryImportance(Listener, ItTarget->Value.GetLocationSimple(), PropertyDigest.SightRadiusSq);
 
-			OnAddedFunc(AddedQuery);
+			AddedQuery.Importance = Importance;
+
+
+			if (OnAddedFunc)
+			{
+				OnAddedFunc(AddedQuery);
+			}
 			bNewQueriesAdded = true;
 		}
 	}
@@ -577,7 +694,6 @@ void UAISense_Sight_VR::GenerateQueriesForListener(const FPerceptionListener & L
 	// sort Sight Queries
 	if (bNewQueriesAdded)
 	{
-		SortQueries();
 		RequestImmediateUpdate();
 	}
 }
@@ -599,7 +715,7 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 		{
 			// if still a valid target then backup list of observers for which the listener was visible to restore in the newly created queries
 			TSet<FPerceptionListenerID> LastVisibleObservers;
-			RemoveAllQueriesToTarget(AsTargetId, DontSort, [&LastVisibleObservers](const FAISightQueryVR & Query)
+			RemoveAllQueriesToTarget(AsTargetId, [&LastVisibleObservers](const FAISightQueryVR& Query)
 			{
 				if (Query.bLastResult)
 				{
@@ -607,14 +723,14 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 				}
 			});
 
-			RegisterTarget(*(AsTarget->Target.Get()), DontSort, [&LastVisibleObservers](FAISightQueryVR & Query)
+			RegisterTarget(*(AsTarget->Target.Get()), [&LastVisibleObservers](FAISightQueryVR& Query)
 			{
 				Query.bLastResult = LastVisibleObservers.Contains(Query.ObserverId);
 			});
 		}
 		else
 		{
-			RemoveAllQueriesToTarget(AsTargetId, DontSort);
+			RemoveAllQueriesToTarget(AsTargetId);
 		}
 	}
 
@@ -624,7 +740,7 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 	{
 		// if still a valid sense then backup list of targets that were visible by the listener to restore in the newly created queries
 		TSet<FAISightTargetVR::FTargetId> LastVisibleTargets;
-		RemoveAllQueriesByListener(UpdatedListener, DontSort, [&LastVisibleTargets](const FAISightQueryVR & Query)
+		RemoveAllQueriesByListener(UpdatedListener, [&LastVisibleTargets](const FAISightQueryVR& Query)
 		{
 			if (Query.bLastResult)
 			{
@@ -645,104 +761,136 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 	else
 	{
 		// remove all queries
-		RemoveAllQueriesByListener(UpdatedListener, DontSort);
+		RemoveAllQueriesByListener(UpdatedListener);
 		DigestedProperties.Remove(ListenerID);
 	}
 }
 
-void UAISense_Sight_VR::OnListenerRemovedImpl(const FPerceptionListener& UpdatedListener)
+void UAISense_Sight_VR::OnListenerConfigUpdated(const FPerceptionListener& UpdatedListener)
 {
-	RemoveAllQueriesByListener(UpdatedListener, DontSort);
 
-	DigestedProperties.FindAndRemoveChecked(UpdatedListener.GetListenerID());
+	bool bSkipListenerUpdate = false;
+	const FPerceptionListenerID ListenerID = UpdatedListener.GetListenerID();
+
+
+	FDigestedSightProperties* PropertiesDigest = DigestedProperties.Find(ListenerID);
+	if (PropertiesDigest)
+	{
+		// The only parameter we need to rebuild all the queries for this listener is if the affiliation mask changed, otherwise there is nothing to update.
+		const UAISenseConfig_Sight_VR* SenseConfig = CastChecked<const UAISenseConfig_Sight_VR>(UpdatedListener.Listener->GetSenseConfig(GetSenseID()));
+		FDigestedSightProperties NewPropertiesDigest(*SenseConfig);
+		bSkipListenerUpdate = NewPropertiesDigest.AffiliationFlags == PropertiesDigest->AffiliationFlags;
+		*PropertiesDigest = NewPropertiesDigest;
+	}
+
+	if (!bSkipListenerUpdate)
+	{
+		Super::OnListenerConfigUpdated(UpdatedListener);
+	}
+}
+
+void UAISense_Sight_VR::OnListenerRemovedImpl(const FPerceptionListener& RemovedListener)
+{
+
+	RemoveAllQueriesByListener(RemovedListener);
+
+	DigestedProperties.FindAndRemoveChecked(RemovedListener.GetListenerID());
 
 	// note: there use to be code to remove all queries _to_ listener here as well
 	// but that was wrong - the fact that a listener gets unregistered doesn't have to
 	// mean it's being removed from the game altogether.
 }
 
-void UAISense_Sight_VR::RemoveAllQueriesByListener(const FPerceptionListener& Listener, FQueriesOperationPostProcess PostProcess)
-{
-	RemoveAllQueriesByListener(Listener, PostProcess, [](const FAISightQueryVR & Query) {});
-}
 
-void UAISense_Sight_VR::RemoveAllQueriesByListener(const FPerceptionListener& Listener, FQueriesOperationPostProcess PostProcess, TFunctionRef<void(const FAISightQueryVR&)> OnRemoveFunc)
+void UAISense_Sight_VR::RemoveAllQueriesByListener(const FPerceptionListener& Listener, const TFunction<void(const FAISightQueryVR&)>& OnRemoveFunc/*= nullptr */)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_RemoveByListener);
 
-	if (SightQueryQueue.Num() == 0)
+	if ((SightQueriesInRange.Num() + SightQueriesOutOfRange.Num()) == 0)
 	{
 		return;
 	}
 
 	const uint32 ListenerId = Listener.GetListenerID();
-	bool bQueriesRemoved = false;
 
-	for (int32 QueryIndex = SightQueryQueue.Num() - 1; QueryIndex >= 0; --QueryIndex)
+
+
+	auto RemoveQuery = [&ListenerId, &OnRemoveFunc](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
 	{
-		const FAISightQueryVR& SightQuery = SightQueryQueue[QueryIndex];
+		const FAISightQueryVR& SightQuery = SightQueries[QueryIndex];
 
 		if (SightQuery.ObserverId == ListenerId)
 		{
-			OnRemoveFunc(SightQuery);
-			SightQueryQueue.RemoveAt(QueryIndex, 1, /*bAllowShrinking=*/false);
-			bQueriesRemoved = true;
+			if (OnRemoveFunc)
+			{
+				OnRemoveFunc(SightQuery);
+			}
+			SightQueries.RemoveAtSwap(QueryIndex, 1, /*bAllowShrinking=*/false);
+
+			return EReverseForEachResult::Modified;
 		}
-	}
 
-	if (PostProcess == Sort && bQueriesRemoved)
+
+
+		return EReverseForEachResult::UnTouched;
+	};
+	ReverseForEach(SightQueriesInRange, RemoveQuery);
+	if (ReverseForEach(SightQueriesOutOfRange, RemoveQuery) == EReverseForEachResult::Modified)
 	{
-		SortQueries();
+
+		bSightQueriesOutOfRangeDirty = true;
 	}
 }
 
-void UAISense_Sight_VR::RemoveAllQueriesToTarget(const FAISightTargetVR::FTargetId& TargetId, FQueriesOperationPostProcess PostProcess)
-{
-	RemoveAllQueriesToTarget(TargetId, PostProcess, [](const FAISightQueryVR & Query) {});
-}
-
-void UAISense_Sight_VR::RemoveAllQueriesToTarget(const FAISightTargetVR::FTargetId& TargetId, FQueriesOperationPostProcess PostProcess, TFunctionRef<void(const FAISightQueryVR&)> OnRemoveFunc)
+void UAISense_Sight_VR::RemoveAllQueriesToTarget(const FAISightTargetVR::FTargetId& TargetId, const TFunction<void(const FAISightQueryVR&)>& OnRemoveFunc/*= nullptr */)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_RemoveToTarget);
 
-	if (SightQueryQueue.Num() == 0)
+	auto RemoveQuery = [&TargetId, &OnRemoveFunc](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
 	{
-		return;
-	}
-
-	bool bQueriesRemoved = false;
-
-	for (int32 QueryIndex = SightQueryQueue.Num() - 1; QueryIndex >= 0; --QueryIndex)
-	{
-		const FAISightQueryVR& SightQuery = SightQueryQueue[QueryIndex];
+		const FAISightQueryVR& SightQuery = SightQueries[QueryIndex];
 
 		if (SightQuery.TargetId == TargetId)
 		{
-			OnRemoveFunc(SightQuery);
-			SightQueryQueue.RemoveAt(QueryIndex, 1, /*bAllowShrinking=*/false);
-			bQueriesRemoved = true;
-		}
-	}
+			if (OnRemoveFunc)
+			{
+				OnRemoveFunc(SightQuery);
+			}
+			SightQueries.RemoveAtSwap(QueryIndex, 1, /*bAllowShrinking=*/false);
 
-	if (PostProcess == Sort && bQueriesRemoved)
+			return EReverseForEachResult::Modified;
+		}
+
+		return EReverseForEachResult::UnTouched;
+	};
+	ReverseForEach(SightQueriesInRange, RemoveQuery);
+	if (ReverseForEach(SightQueriesOutOfRange, RemoveQuery) == EReverseForEachResult::Modified)
 	{
-		SortQueries();
+
+		bSightQueriesOutOfRangeDirty = true;
 	}
 }
+
 
 void UAISense_Sight_VR::OnListenerForgetsActor(const FPerceptionListener& Listener, AActor& ActorToForget)
 {
 	const uint32 ListenerId = Listener.GetListenerID();
 	const uint32 TargetId = ActorToForget.GetUniqueID();
 
-	for (FAISightQueryVR& SightQuery : SightQueryQueue)
+	auto ForgetPreviousResult = [&ListenerId, &TargetId](FAISightQueryVR& SightQuery)->EForEachResult
 	{
 		if (SightQuery.ObserverId == ListenerId && SightQuery.TargetId == TargetId)
 		{
 			// assuming one query per observer-target pair
 			SightQuery.ForgetPreviousResult();
-			break;
+			return EForEachResult::Break;
 		}
+		return EForEachResult::Continue;
+	};
+
+	if (ForEach(SightQueriesInRange, ForgetPreviousResult) == EForEachResult::Continue)
+	{
+		ForEach(SightQueriesOutOfRange, ForgetPreviousResult);
 	}
 }
 
@@ -750,13 +898,18 @@ void UAISense_Sight_VR::OnListenerForgetsAll(const FPerceptionListener& Listener
 {
 	const uint32 ListenerId = Listener.GetListenerID();
 
-	for (FAISightQueryVR& SightQuery : SightQueryQueue)
+	auto ForgetPreviousResult = [&ListenerId](FAISightQueryVR& SightQuery)->EForEachResult
 	{
 		if (SightQuery.ObserverId == ListenerId)
 		{
 			SightQuery.ForgetPreviousResult();
 		}
-	}
+
+		return EForEachResult::Continue;
+	};
+
+	ForEach(SightQueriesInRange, ForgetPreviousResult);
+	ForEach(SightQueriesOutOfRange, ForgetPreviousResult);
 }
 
 

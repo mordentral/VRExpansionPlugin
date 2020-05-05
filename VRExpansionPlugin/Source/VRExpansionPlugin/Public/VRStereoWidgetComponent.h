@@ -8,6 +8,7 @@
 #include "VRGripInterface.h"
 #include "Components/WidgetComponent.h"
 #include "Components/StereoLayerComponent.h"
+#include "StereoLayerShapes.h"
 
 #include "VRStereoWidgetComponent.generated.h"
 
@@ -28,6 +29,11 @@ public:
 	friend class FStereoLayerComponentVisualizer;
 
 	~UVRStereoWidgetComponent();
+
+
+	/** Specifies which shape of layer it is.  Note that some shapes will be supported only on certain platforms! **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Instanced, Category = "StereoLayer", DisplayName = "Stereo Layer Shape")
+		UStereoLayerShape* Shape;
 
 	void BeginDestroy() override;
 	void OnUnregister() override;

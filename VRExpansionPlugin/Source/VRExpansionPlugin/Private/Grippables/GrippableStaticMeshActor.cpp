@@ -36,11 +36,9 @@ void UOptionalRepStaticMeshComponent::PreReplication(IRepChangedPropertyTracker 
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Don't replicate if set to not do it
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeLocation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeRotation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
 void UOptionalRepStaticMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const

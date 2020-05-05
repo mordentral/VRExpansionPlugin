@@ -23,6 +23,17 @@ class AVRBaseCharacter;
 *
 */
 
+/** Override replication control variable for inherited properties that are private. Be careful since it removes a compile-time error when the variable doesn't exist */
+// This is a temp macro until epic adds their own equivilant
+#define DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(c,v,active) \
+{ \
+	static FProperty* sp##v = GetReplicatedProperty(StaticClass(), c::StaticClass(),FName(TEXT(#v))); \
+	for (int32 i = 0; i < sp##v->ArrayDim; i++) \
+	{ \
+		ChangedPropertyTracker.SetCustomIsActiveOverride(this, sp##v->RepIndex + i, active); \
+	} \
+}
+
 DECLARE_LOG_CATEGORY_EXTERN(LogVRMotionController, Log, All);
 //For UE4 Profiler ~ Stat Group
 DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
@@ -233,7 +244,7 @@ public:
 
 protected:
 	//~ Begin UActorComponent Interface.
-	virtual void CreateRenderState_Concurrent() override;
+	virtual void CreateRenderState_Concurrent(FRegisterComponentContext* Context) override;
 	virtual void SendRenderTransform_Concurrent() override;
 	//~ End UActorComponent Interface.
 

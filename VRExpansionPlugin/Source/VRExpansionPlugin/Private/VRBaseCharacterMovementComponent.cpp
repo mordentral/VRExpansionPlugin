@@ -501,7 +501,6 @@ void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleL
 
 	// No hits were acceptable.
 	OutFloorResult.bWalkableFloor = false;
-	OutFloorResult.FloorDist = SweepDistance;
 }
 
 
@@ -1519,7 +1518,13 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 
 		// Using server timestamp lets us know how much time actually elapsed, regardless of packet lag variance.
 		double OldServerTimeStamp = ClientData->SmoothingServerTimeStamp;
-		ClientData->SmoothingServerTimeStamp = (bIsSimulatedProxy ? CharacterOwner->GetReplicatedServerLastTransformUpdateTimeStamp() : ServerLastTransformUpdateTimeStamp);
+			
+		if (bIsSimulatedProxy)
+		{
+			// This value is normally only updated on the server, however some code paths might try to read it instead of the replicated value so copy it for proxies as well.
+			ServerLastTransformUpdateTimeStamp = CharacterOwner->GetReplicatedServerLastTransformUpdateTimeStamp();
+		}
+		ClientData->SmoothingServerTimeStamp = ServerLastTransformUpdateTimeStamp;
 
 		// Initial update has no delta.
 		if (ClientData->LastCorrectionTime == 0)

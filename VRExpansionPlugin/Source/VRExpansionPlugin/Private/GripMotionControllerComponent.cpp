@@ -373,8 +373,9 @@ void UGripMotionControllerComponent::BeginPlay()
 	Super::BeginPlay();
 }
 
-void UGripMotionControllerComponent::CreateRenderState_Concurrent()
+void UGripMotionControllerComponent::CreateRenderState_Concurrent(FRegisterComponentContext* Context)
 {	
+
 	// Don't bother updating this stuff if we aren't local or using them
 	if (bHasAuthority && !bDisableLowLatencyUpdate && IsActive())
 	{
@@ -383,7 +384,7 @@ void UGripMotionControllerComponent::CreateRenderState_Concurrent()
 		GripRenderThreadProfileTransform = CurrentControllerProfileTransform;
 	}
 
-	Super::Super::CreateRenderState_Concurrent();
+	Super::Super::CreateRenderState_Concurrent(Context);
 }
 
 void UGripMotionControllerComponent::SendRenderTransform_Concurrent()
@@ -458,11 +459,9 @@ void UGripMotionControllerComponent::GetLifetimeReplicatedProps(TArray< class FL
 	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	 
 	 // Don't ever replicate these, they are getting replaced by my custom send anyway
-	 PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeLocation);
-	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeRotation);
-	 DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeScale3D);
-	 PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	 DISABLE_REPLICATED_PRIVATE_PROPERTY(USceneComponent, RelativeLocation);
+	 DISABLE_REPLICATED_PRIVATE_PROPERTY(USceneComponent, RelativeRotation);
+	 DISABLE_REPLICATED_PRIVATE_PROPERTY(USceneComponent, RelativeScale3D);
 
 
 	// Skipping the owner with this as the owner will use the controllers location directly

@@ -194,7 +194,7 @@ public:
 	// Begin UObject interface
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	void PreEditChange(UProperty* PropertyThatWillChange);
+	void PreEditChange(FProperty* PropertyThatWillChange);
 #endif // WITH_EDITOR
 	// End UObject interface
 

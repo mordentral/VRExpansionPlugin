@@ -12,25 +12,29 @@
 	static const FTransform OculusTouchStaticOffset(FRotator(-70.f, 0.f, 0.f));
 }*/
 
+// As of 4.24 these do nothing, they are left for a few versions as a reference of old bindings
+// #TODO: Delete around 4.26
 USTRUCT(BlueprintType, Category = "VRGlobalSettings")
 struct FAxisMappingDetails
 {
 	GENERATED_BODY()
 public:
 
-	/** List of all axis key mappings that correspond to the axis name in the containing map */
+	// List of all axis key mappings that correspond to the axis name in the containing map 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TArray<FInputAxisKeyMapping> AxisMappings;
 
 };
 
+// As of 4.24 these do nothing, they are left for a few versions as a reference of old bindings
+// #TODO: Delete around 4.26
 USTRUCT(BlueprintType, Category = "VRGlobalSettings")
 struct FActionMappingDetails
 {
 	GENERATED_BODY()
 public:
 
-	/** List of all axis key mappings that correspond to the axis name in the containing map */
+	// List of all axis key mappings that correspond to the axis name in the containing map 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 		TArray<FInputActionKeyMapping> ActionMappings;
 };
@@ -58,10 +62,14 @@ public:
 		FTransform_NetQuantize SocketOffsetTransformRightHand;
 
 	// Setting an axis value here with key bindings will override the equivalent bindings on profile load
+	// As of 4.24 these do nothing, they are left for a few versions as a reference of old bindings
+	// #TODO: Delete around 4.26
 	UPROPERTY(EditDefaultsOnly, NotReplicated, Category = "ControllerProfiles")
 	TMap<FName, FAxisMappingDetails> AxisOverrides;
 
 	// Setting action mappings here will override the equivalent bindings on profile load
+		// As of 4.24 these do nothing, they are left for a few versions as a reference of old bindings
+	// #TODO: Delete around 4.26
 	UPROPERTY(EditDefaultsOnly, NotReplicated, Category = "ControllerProfiles")
 	TMap<FName, FActionMappingDetails> ActionOverrides;
 
@@ -365,12 +373,13 @@ public:
 	// For when just changing the buttons isn't good enough
 	// If bSetDefaults is true, will set this as the currently loaded profile
 	// Otherwise will just load it (useful for Left/Right handed profile additions and the like to have it false)
+	// AS OF 4.25 AXIS and ACTION mappings do nothing, will be deleting around 4.26 #TODO: Delete around 4.26
 	UFUNCTION(BlueprintCallable, Category = "VRControllerProfiles")
 		static bool LoadControllerProfile(const FBPVRControllerProfile & ControllerProfile, bool bSetAsCurrentProfile = true)
 	{
 
 		UInputSettings* InputSettings = GetMutableDefault<UInputSettings>();
-		if (InputSettings != nullptr)
+		if (false)//InputSettings != nullptr)
 		{
 			if (ControllerProfile.ActionOverrides.Num() > 0)
 			{

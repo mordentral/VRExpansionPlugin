@@ -178,10 +178,11 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 	CharacterOwner->OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
 
 	// Don't smooth this change in mesh position
-	if (bClientSimulation && CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy)
+	if ((bClientSimulation && CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy) || (IsNetMode(NM_ListenServer) && CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy))
 	{
 		FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
-		if (ClientData && ClientData->MeshTranslationOffset.Z != 0.f)
+
+		if (ClientData)
 		{
 			ClientData->MeshTranslationOffset -= FVector(0.f, 0.f, MeshAdjust);
 			ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
@@ -332,10 +333,11 @@ void UVRCharacterMovementComponent::UnCrouch(bool bClientSimulation)
 	CharacterOwner->OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
 
 	// Don't smooth this change in mesh position
-	if (bClientSimulation && CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy)
+	if ((bClientSimulation && CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy) || (IsNetMode(NM_ListenServer) && CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy))
 	{
 		FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
-		if (ClientData && ClientData->MeshTranslationOffset.Z != 0.f)
+
+		if (ClientData)
 		{
 			ClientData->MeshTranslationOffset += FVector(0.f, 0.f, MeshAdjust);
 			ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
@@ -783,8 +785,9 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 		bHasRequestedVelocity = false;
 	}
 
-	UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("ServerMove Time %f Acceleration %s Position %s DeltaTime %f"),
-		TimeStamp, *Accel.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
+	UE_CLOG(CharacterOwner&& UpdatedComponent, LogVRCharacterMovement, VeryVerbose, TEXT("ServerMove Time %f Acceleration %s Velocity %s Position %s Rotation %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d)"),
+		TimeStamp, *Accel.ToString(), *Velocity.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), *UpdatedComponent->GetComponentRotation().ToCompactString(), DeltaTime, *GetMovementName(),
+		*GetNameSafe(GetMovementBase()), *CharacterOwner->GetBasedMovement().BoneName.ToString(), MovementBaseUtility::IsDynamicBase(GetMovementBase()) ? 1 : 0);
 
 	// #TODO: Handle this better at some point? Client also denies it later on during correction (ApplyNetworkMovementMode in base movement)
 	// Pre handling the errors, lets avoid rolling back to/from custom movement modes, they tend to be scripted and this can screw things up
@@ -1506,10 +1509,9 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		
 		ClientData->ClientUpdateTime = MyWorld->TimeSeconds;
 
-		UE_CLOG(CharacterOwner && UpdatedComponent, LogVRCharacterMovement, VeryVerbose, TEXT("ClientMove Time %f Acceleration %s Velocity %s Position %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d) DualMove? %d"),
-			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *Velocity.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), NewMove->DeltaTime, *GetMovementName(),
+		UE_CLOG(CharacterOwner&& UpdatedComponent, LogVRCharacterMovement, VeryVerbose, TEXT("ClientMove Time %f Acceleration %s Velocity %s Position %s Rotation %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d) DualMove? %d"),
+			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *Velocity.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), *UpdatedComponent->GetComponentRotation().ToCompactString(), NewMove->DeltaTime, *GetMovementName(),
 			*GetNameSafe(NewMove->EndBase.Get()), *NewMove->EndBoneName.ToString(), MovementBaseUtility::IsDynamicBase(NewMove->EndBase.Get()) ? 1 : 0, ClientData->PendingMove.IsValid() ? 1 : 0);
-
 
 		bool bSendServerMove = true;
 
@@ -2584,7 +2586,7 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 				// If the regular capsule is on an unwalkable surface but the perched one would allow us to stand, override the normal to be one that is walkable.
 				if (!OutFloorResult.bWalkableFloor)
 				{
-					OutFloorResult.SetFromLineTrace(PerchFloorResult.HitResult, OutFloorResult.FloorDist, FMath::Min(PerchFloorResult.FloorDist, PerchFloorResult.LineDist), true);
+					OutFloorResult.SetFromLineTrace(PerchFloorResult.HitResult, OutFloorResult.FloorDist, FMath::Max(OutFloorResult.FloorDist, MIN_FLOOR_DIST), true);
 				}
 			}
 			else
@@ -3047,7 +3049,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 				if (subTimeTickRemaining > KINDA_SMALL_NUMBER && !bJustTeleported)
 				{
 					const FVector NewVelocity = (Delta / subTimeTickRemaining);
-					Velocity = HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
+					Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
 				}
 
 				if (subTimeTickRemaining > KINDA_SMALL_NUMBER && (Delta | Adjusted) > 0.f)
@@ -3104,7 +3106,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 						if (subTimeTickRemaining > KINDA_SMALL_NUMBER && !bJustTeleported)
 						{
 							const FVector NewVelocity = (Delta / subTimeTickRemaining);
-							Velocity = HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
+							Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
 						}
 
 						// bDitch=true means that pawn is straddling two slopes, neither of which he can stand on
@@ -3705,6 +3707,8 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 			}
 		}
 
+		UpdateCharacterStateBeforeMovement(DeltaSeconds);
+
 		if (MovementMode != MOVE_None)
 		{
 			//TODO: Also ApplyAccumulatedForces()?
@@ -3803,6 +3807,8 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 		{
 			UE_LOG(LogVRCharacterMovement, Verbose, TEXT("Proxy %s SKIPPING simulate movement"), *GetNameSafe(CharacterOwner));
 		}
+
+		UpdateCharacterStateAfterMovement(DeltaSeconds);
 
 		// consume path following requested velocity
 		bHasRequestedVelocity = false;
@@ -4058,7 +4064,8 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 	{
 		if (bBaseRelativePosition)
 		{
-			UE_LOG(LogNetPlayerMovement, Warning, TEXT("ClientAdjustPosition_Implementation could not resolve the new relative movement base actor, ignoring server correction!"));
+			UE_LOG(LogNetPlayerMovement, Warning, TEXT("ClientAdjustPosition_Implementation could not resolve the new relative movement base actor, ignoring server correction! Client currently at world location %s on base %s"),
+				*UpdatedComponent->GetComponentLocation().ToString(), *GetNameSafe(GetMovementBase()));
 			return;
 		}
 		else
@@ -4122,7 +4129,10 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 	OnClientCorrectionReceived(*ClientData, TimeStamp, WorldShiftedNewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
 
 	// Trust the server's positioning.
-	UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false);
+	if (UpdatedComponent)
+	{
+		UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	}
 	Velocity = NewVelocity;
 
 	// Trust the server's movement mode
@@ -4139,9 +4149,9 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 
 		// We had an unresolved base from the server
 		// If walking, we'd like to continue walking if possible, to avoid falling for a frame, so try to find a base where we moved to.
-		if (PreviousBase)
+		if (PreviousBase && UpdatedComponent)
 		{
-			FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, false, NULL); //-V595
+			FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, false);
 			if (CurrentFloor.IsWalkableFloor())
 			{
 				FinalBase = CurrentFloor.HitResult.Component.Get();

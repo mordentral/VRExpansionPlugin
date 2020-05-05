@@ -707,7 +707,7 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 				if (subTimeTickRemaining > KINDA_SMALL_NUMBER && !bJustTeleported)
 				{
 					const FVector NewVelocity = (Delta / subTimeTickRemaining);
-					Velocity = HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
+					Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
 				}
 
 				if (subTimeTickRemaining > KINDA_SMALL_NUMBER && (Delta | Adjusted) > 0.f)
@@ -763,7 +763,7 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 						if (subTimeTickRemaining > KINDA_SMALL_NUMBER && !bJustTeleported)
 						{
 							const FVector NewVelocity = (Delta / subTimeTickRemaining);
-							Velocity = HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
+							Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
 						}
 
 						// bDitch=true means that pawn is straddling two slopes, neither of which he can stand on
@@ -1445,13 +1445,9 @@ void UVRSimpleCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime,
 		// Uncomment 4.16
 		ClientData->ClientUpdateTime = MyWorld->TimeSeconds;
 
-		/*UE_LOG(LogSimpleCharacterMovement, VeryVerbose, TEXT("Client ReplicateMove Time %f Acceleration %s Position %s DeltaTime %f"),
-			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);*/
-		UE_CLOG(CharacterOwner && UpdatedComponent, LogSimpleCharacterMovement, VeryVerbose, TEXT("ClientMove Time %f Acceleration %s Velocity %s Position %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d) DualMove? %d"),
-			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *Velocity.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), NewMove->DeltaTime, *GetMovementName(),
+		UE_CLOG(CharacterOwner&& UpdatedComponent, LogSimpleCharacterMovement, VeryVerbose, TEXT("ClientMove Time %f Acceleration %s Velocity %s Position %s Rotation %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d) DualMove? %d"),
+			NewMove->TimeStamp, *NewMove->Acceleration.ToString(), *Velocity.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), *UpdatedComponent->GetComponentRotation().ToCompactString(), NewMove->DeltaTime, *GetMovementName(),
 			*GetNameSafe(NewMove->EndBase.Get()), *NewMove->EndBoneName.ToString(), MovementBaseUtility::IsDynamicBase(NewMove->EndBase.Get()) ? 1 : 0, ClientData->PendingMove.IsValid() ? 1 : 0);
-
-
 
 		bool bSendServerMove = true;
 
@@ -1766,8 +1762,10 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 		bHasRequestedVelocity = false;
 	}
 
-	UE_LOG(LogSimpleCharacterMovement, VeryVerbose, TEXT("ServerMove Time %f Acceleration %s Position %s DeltaTime %f"),
-		TimeStamp, *Accel.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), DeltaTime);
+
+	UE_CLOG(CharacterOwner&& UpdatedComponent, LogSimpleCharacterMovement, VeryVerbose, TEXT("ServerMove Time %f Acceleration %s Velocity %s Position %s Rotation %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d)"),
+		TimeStamp, *Accel.ToString(), *Velocity.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), *UpdatedComponent->GetComponentRotation().ToCompactString(), DeltaTime, *GetMovementName(),
+		*GetNameSafe(GetMovementBase()), *CharacterOwner->GetBasedMovement().BoneName.ToString(), MovementBaseUtility::IsDynamicBase(GetMovementBase()) ? 1 : 0);
 
 	// Pre handling the errors, lets avoid rolling back to/from custom movement modes, they tend to be scripted and this can screw things up
 	const uint8 CurrentPackedMovementMode = PackNetworkMovementMode();

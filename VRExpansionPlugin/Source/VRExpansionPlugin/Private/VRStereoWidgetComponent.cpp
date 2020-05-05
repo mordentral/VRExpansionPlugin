@@ -51,7 +51,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	//, StereoLayerQuadSize(FVector2D(500.0f, 500.0f))
 	, UVRect(FBox2D(FVector2D(0.0f, 0.0f), FVector2D(1.0f, 1.0f)))
 	//, CylinderRadius(100)
-	//, CylinderOverlayArc(100)
+	//, CylinderOverlayArc(100)EWidgetGeometryMode
 	//, CylinderHeight(50)
 	//, StereoLayerType(SLT_TrackerLocked)
 	//, StereoLayerShape(SLSH_QuadLayer)
@@ -104,7 +104,6 @@ void UVRStereoWidgetComponent::OnUnregister()
 
 	Super::OnUnregister();
 }
-
 
 void UVRStereoWidgetComponent::DrawWidgetToRenderTarget(float DeltaTime)
 {
@@ -299,16 +298,6 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		//	LayerDsec.LeftTexture = LeftTexture->Resource->TextureRHI;
 		//}
 
-		const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
-		const float Radius = GetDrawSize().X / ArcAngleRadians;
-
-		//LayerDsec.CylinderSize = FVector2D(/*CylinderRadius*/Radius, /*CylinderOverlayArc*/CylinderArcAngle);
-		LayerDsec.CylinderRadius = Radius;
-		LayerDsec.CylinderOverlayArc = CylinderArcAngle;
-
-		// This needs to be auto set from variables, need to work on it
-		LayerDsec.CylinderHeight = GetDrawSize().Y;//CylinderHeight;
-
 		LayerDsec.Flags |= IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE;// (/*bLiveTexture*/true) ? IStereoLayers::LAYER_FLAG_TEX_CONTINUOUS_UPDATE : 0;
 		LayerDsec.Flags |= (bNoAlphaChannel) ? IStereoLayers::LAYER_FLAG_TEX_NO_ALPHA_CHANNEL : 0;
 		LayerDsec.Flags |= (bQuadPreserveTextureRatio) ? IStereoLayers::LAYER_FLAG_QUAD_PRESERVE_TEX_RATIO : 0;
@@ -339,14 +328,47 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		{
 		case EWidgetGeometryMode::Cylinder:
 		{
-			LayerDsec.ShapeType = IStereoLayers::CylinderLayer;
+			UStereoLayerShapeCylinder* Cylinder = Cast<UStereoLayerShapeCylinder>(Shape);
+
+			if (!Cylinder)
+			{
+				if (Shape)
+				{
+					Shape->MarkPendingKill();
+					Shape = NewObject<UStereoLayerShapeCylinder>(this);
+				}
+			}
+
+			const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
+			const float Radius = GetDrawSize().X / ArcAngleRadians;
+
+			Cylinder->Height = GetDrawSize().Y;//CylinderHeight_DEPRECATED;
+			Cylinder->OverlayArc = CylinderArcAngle;// CylinderOverlayArc_DEPRECATED;
+			Cylinder->Radius = Radius;// CylinderRadius_DEPRECATED;
+			break;
+
+			//LayerDsec.ShapeType = IStereoLayers::CylinderLayer;
+
 		}break;
 		case EWidgetGeometryMode::Plane:
 		default:
 		{
-			LayerDsec.ShapeType = IStereoLayers::QuadLayer;
+			UStereoLayerShapeQuad* Quad = Cast<UStereoLayerShapeQuad>(Shape);
+
+			if (!Quad)
+			{
+				if (Shape)
+				{
+					Shape->MarkPendingKill();
+					Shape = NewObject<UStereoLayerShapeQuad>(this);
+				}
+			}
+			//LayerDsec.ShapeType = IStereoLayers::QuadLayer;
 		}break;
 		}
+
+		if(Shape)
+			Shape->ApplyShape(LayerDsec);
 
 		if (LayerId)
 		{
@@ -642,7 +664,7 @@ public:
 		Result.bShadowRelevance = IsShadowCast(View);
 		Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 		Result.bEditorPrimitiveRelevance = false;
-		Result.bVelocityRelevance = IsMovable() && Result.bOpaqueRelevance && Result.bRenderInMainPass;
+		Result.bVelocityRelevance = IsMovable() && Result.bOpaque && Result.bRenderInMainPass;
 
 		return Result;
 	}

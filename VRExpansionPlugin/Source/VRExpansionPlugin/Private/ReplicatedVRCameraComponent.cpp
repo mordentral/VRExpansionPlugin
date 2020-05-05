@@ -51,11 +51,9 @@ void UReplicatedVRCameraComponent::GetLifetimeReplicatedProps(TArray< class FLif
 	// There isn't much in the scene component to replicate anyway
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeLocation);
-	DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeRotation);
-	DISABLE_REPLICATED_PROPERTY(USceneComponent, RelativeScale3D);
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	DISABLE_REPLICATED_PRIVATE_PROPERTY(USceneComponent, RelativeLocation);
+	DISABLE_REPLICATED_PRIVATE_PROPERTY(USceneComponent, RelativeRotation);
+	DISABLE_REPLICATED_PRIVATE_PROPERTY(USceneComponent, RelativeScale3D);
 
 	// Skipping the owner with this as the owner will use the location directly
 	DOREPLIFETIME_CONDITION(UReplicatedVRCameraComponent, ReplicatedCameraTransform, COND_SkipOwner);

@@ -120,10 +120,8 @@ void AVRBaseCharacter::GetLifetimeReplicatedProps(TArray< class FLifetimePropert
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, SeatInformation, COND_None);
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, VRReplicateCapsuleHeight, COND_None);
 	DOREPLIFETIME_CONDITION(AVRBaseCharacter, ReplicatedCapsuleHeight, COND_SimulatedOnly);
-
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	DISABLE_REPLICATED_PROPERTY(AActor, ReplicatedMovement);
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	
+	DISABLE_REPLICATED_PRIVATE_PROPERTY(AActor, ReplicatedMovement);
 
 	DOREPLIFETIME_CONDITION_NOTIFY(AVRBaseCharacter, ReplicatedMovementVR, COND_SimulatedOrPhysics, REPNOTIFY_Always);
 }

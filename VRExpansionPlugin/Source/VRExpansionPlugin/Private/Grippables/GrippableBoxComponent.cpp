@@ -52,11 +52,9 @@ void UGrippableBoxComponent::PreReplication(IRepChangedPropertyTracker & Changed
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableBoxComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
 
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeLocation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeRotation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(USceneComponent, RelativeScale3D, bReplicateMovement);
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeLocation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeRotation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
 bool UGrippableBoxComponent::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
