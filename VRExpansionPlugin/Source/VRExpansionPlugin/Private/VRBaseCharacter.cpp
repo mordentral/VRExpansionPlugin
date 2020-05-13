@@ -415,7 +415,9 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 
 				// Set it before it is set below
 				if (!SeatInformation.bWasSeated)
+				{
 					SeatInformation.bOriginalControlRotation = bUseControllerRotationYaw;
+				}
 
 				SeatInformation.bWasSeated = true;
 				bUseControllerRotationYaw = false; // This forces rotation in world space, something that we don't want
@@ -456,14 +458,17 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 					//charMovement->SetComponentTickEnabled(true);
 
 					if (this->GetLocalRole() == ROLE_Authority)
-					{
+					{				
 						if (bUseExperimentalUnseatModeFix)
 						{
+							charMovement->bJustUnseated = true;
 							FNetworkPredictionData_Server_Character * ServerData = charMovement->GetPredictionData_Server_Character();
 							check(ServerData);
-							ServerData->CurrentClientTimeStamp = 0.f;
-							ServerData->ServerAccumulatedClientTimeStamp = 0.0f;
-							ServerData->LastUpdateTime = 0.f;
+							ServerData->CurrentClientTimeStamp = 0.0f;
+							ServerData->PendingAdjustment = FClientAdjustment();
+							//ServerData->CurrentClientTimeStamp = 0.f;
+							//ServerData->ServerAccumulatedClientTimeStamp = 0.0f;
+							//ServerData->LastUpdateTime = 0.f;
 							ServerData->ServerTimeStampLastServerMove = 0.f;
 							ServerData->bForceClientUpdate = false;
 							ServerData->TimeDiscrepancy = 0.f;

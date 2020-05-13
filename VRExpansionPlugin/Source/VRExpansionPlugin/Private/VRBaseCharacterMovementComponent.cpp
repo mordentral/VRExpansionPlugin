@@ -66,6 +66,8 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bEnableServerDualMoveScopedMovementUpdates = true;
 
 	bNotifyTeleported = false;
+
+	bJustUnseated = false;
 }
 
 void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
