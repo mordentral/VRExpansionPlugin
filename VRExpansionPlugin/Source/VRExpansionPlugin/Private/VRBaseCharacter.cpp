@@ -233,14 +233,17 @@ FVector AVRBaseCharacter::GetTeleportLocation(FVector OriginalLocation)
 }
 
 
-void AVRBaseCharacter::NotifyOfTeleport()
+void AVRBaseCharacter::NotifyOfTeleport(bool bRegisterAsTeleport)
 {
-	if(GetNetMode() < ENetMode::NM_Client)
-		bFlagTeleported = true;
-
-	if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+	if (bRegisterAsTeleport)
 	{
-		moveComp->bNotifyTeleported = true;
+		if (GetNetMode() < ENetMode::NM_Client)
+			bFlagTeleported = true;
+
+		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
+		{
+			moveComp->bNotifyTeleported = true;
+		}
 	}
 
 	if (LeftMotionController)
