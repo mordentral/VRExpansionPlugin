@@ -1360,7 +1360,8 @@ void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetwor
 
 	if (Basechar)
 	{
-		Basechar->NotifyOfTeleport();
+		Basechar->OnCharacterNetworkCorrected_Bind.Broadcast();
+		Basechar->NotifyOfTeleport(false);
 	}
 }
 
