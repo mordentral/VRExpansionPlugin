@@ -1673,6 +1673,16 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
 	check(ServerData);
 
+	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+	{
+		return;
+	}
+	else if (bJustUnseated)
+	{
+		ServerData->CurrentClientTimeStamp = TimeStamp;
+		bJustUnseated = false;
+	}
+
 	if (!VerifyClientTimeStamp(TimeStamp, *ServerData))
 	{
 		const float ServerTimeStamp = ServerData->CurrentClientTimeStamp;

@@ -693,6 +693,8 @@ public:
 	void StartPushBackNotification(FHitResult HitResult);
 	void EndPushBackNotification();
 
+	bool bJustUnseated;
+
 	//virtual void SendClientAdjustment() override;
 
 	virtual bool VerifyClientTimeStamp(float TimeStamp, FNetworkPredictionData_Server_Character & ServerData) override;
