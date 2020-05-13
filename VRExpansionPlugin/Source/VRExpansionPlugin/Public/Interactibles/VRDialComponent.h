@@ -49,6 +49,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRDialComponent|Lerping")
 		bool bIsLerping;
+
 	UPROPERTY(BlueprintAssignable, Category = "VRDialComponent|Lerping")
 		FVRDialFinishedLerpingSignature OnDialFinishedLerping;
 
@@ -58,11 +59,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "VRDialComponent")
 	float CurrentDialAngle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent", meta = (ClampMin = "0.0", ClampMax = "360.0", UIMin = "0.0", UIMax = "360.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")//, meta = (ClampMin = "0.0", ClampMax = "360.0", UIMin = "0.0", UIMax = "360.0"))
 	float ClockwiseMaximumDialAngle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent", meta = (ClampMin = "0.0", ClampMax = "360.0", UIMin = "0.0", UIMax = "360.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")//, meta = (ClampMin = "0.0", ClampMax = "360.0", UIMin = "0.0", UIMax = "360.0"))
 	float CClockwiseMaximumDialAngle;
+
+	// If true then the dial can "roll over" past 360/0 degrees in a direction
+	// Allowing unlimited dial angle values
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
+		bool bUseRollover;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
 	bool bDialUsesAngleSnap;
@@ -88,6 +94,8 @@ public:
 		bool bDialUseDirectHandRotation;
 
 	float LastGripRot;
+	float InitialGripRot;
+	float InitialRotBackEnd;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent", meta = (editcondition = "bDialUseDirectHandRotation"))
 	EVRInteractibleAxis InteractorRotationAxis;
