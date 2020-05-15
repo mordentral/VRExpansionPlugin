@@ -771,7 +771,10 @@ public:
 	You could pass in a socket relative transform with this set for snapping or an empty transform to snap the object at its 0,0,0 point.
 
 	If you declare a valid OptionSnapToSocketName then it will instead snap the actor to the relative offset
-	location that the socket is to its parent actor.
+	location that the socket is to its parent actor. 
+	
+	It will only do this if the WorldOffset value is left default, if it is not, then it will treat this as the name of the slot
+	that you already have the transform for.
 
 	If you declare a valid OptionalBoneToGripName then it will grip that physics body with physics grips (It will expect a bone worldspace transform then,
 	if you pass in the normal actor/root component world space transform then the grip will not be positioned correctly).
@@ -802,7 +805,7 @@ public:
 
 	// Auto grip any uobject that is/root is a primitive component
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-		bool GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalBoneToGripName = NAME_None, bool bIsSlotGrip = false);
+		bool GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, FName OptionalBoneToGripName = NAME_None, FName OptionalSnapToSocketName = NAME_None, bool bIsSlotGrip = false);
 
 	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface
 	// If an object is passed in it will attempt to drop it, otherwise it will attempt to find and drop the given grip id
@@ -818,6 +821,9 @@ public:
 
 	   If you declare a valid OptionSnapToSocketName then it will instead snap the actor to the relative offset
 	   location that the socket is to its parent actor.
+
+		It will only do this if the WorldOffset value is left default, if it is not, then it will treat this as the name of the slot
+		that you already have the transform for.
 
 	   If you declare a valid OptionalBoneToGripName then it will grip that physics body with physics grips (It will expect a bone worldspace transform then, 
 	   if you pass in the normal actor/root component world space transform then the grip will not be positioned correctly).
@@ -850,7 +856,7 @@ public:
 	bool GripComponent(
 		UPrimitiveComponent* ComponentToGrip, 
 		const FTransform &WorldOffset, bool bWorldOffsetIsRelative = false, 
-		FName OptionalBoneToGrip_Name = NAME_None, 
+		FName OptionalsnapToSocketName = NAME_None, 
 		FName OptionalBoneToGripName = NAME_None,
 		EGripCollisionType GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics, 
 		EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
@@ -1105,11 +1111,11 @@ public:
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false);
+	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false, FName SecondarySlotName = NAME_None);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-	bool AddSecondaryAttachmentToGrip(const FBPActorGripInformation & GripToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false);
+	bool AddSecondaryAttachmentToGrip(const FBPActorGripInformation & GripToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false, FName SecondarySlotName = NAME_None);
 
 
 	// Removes a secondary attachment point from a grip

@@ -87,10 +87,11 @@ bool UVRExpansionFunctionLibrary::GetIsActorMovable(AActor * ActorToCheck)
 	return false;
 }
 
-void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform)
+void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName)
 {
 	bHadSlotInRange = false;
 	SlotWorldTransform = FTransform::Identity;
+	SlotName = NAME_None;
 
 	if (!Actor)
 		return;
@@ -127,15 +128,17 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 		if (bHadSlotInRange)
 		{
 			SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
+			SlotName = SocketNames[foundIndex];
 			SlotWorldTransform.SetScale3D(FVector(1.0f));
 		}
 	}
 }
 
-void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform)
+void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName)
 {
 	bHadSlotInRange = false;
 	SlotWorldTransform = FTransform::Identity;
+	SlotName = NAME_None;
 
 	if (!Component)
 		return;
@@ -169,6 +172,7 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 	if (bHadSlotInRange)
 	{
 		SlotWorldTransform = Component->GetSocketTransform(SocketNames[foundIndex]);
+		SlotName = SocketNames[foundIndex];
 		SlotWorldTransform.SetScale3D(FVector(1.0f));
 	}
 }
