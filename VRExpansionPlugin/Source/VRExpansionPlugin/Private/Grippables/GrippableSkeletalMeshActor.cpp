@@ -254,13 +254,17 @@ void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerCo
 	else
 	{
 		VRGripInterfaceSettings.HoldingControllers.Remove(FBPGripPair(HoldingController, GripID));
-		if (ClientAuthReplicationData.bUseClientAuthThrowing && ShouldWeSkipAttachmentReplication(false))
+		if (ClientAuthReplicationData.bUseClientAuthThrowing)
 		{
-			if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(GetRootComponent()))
+			bool bWasLocallyOwned = HoldingController ? HoldingController->IsLocallyControlled() : false;
+			if (bWasLocallyOwned && ShouldWeSkipAttachmentReplication(false))
 			{
-				if (PrimComp->IsSimulatingPhysics())
+				if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(GetRootComponent()))
 				{
-					AddToClientReplicationBucket();
+					if (PrimComp->IsSimulatingPhysics())
+					{
+						AddToClientReplicationBucket();
+					}
 				}
 			}
 		}
