@@ -298,7 +298,7 @@ bool AGrippableStaticMeshActor::GetGripScripts_Implementation(TArray<UVRGripScri
 
 bool AGrippableStaticMeshActor::PollReplicationEvent()
 {
-	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth)
+	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth || !this->HasLocalNetOwner())
 		return false; // Tell the bucket subsystem to remove us from consideration
 
 	UWorld *OurWorld = GetWorld();
