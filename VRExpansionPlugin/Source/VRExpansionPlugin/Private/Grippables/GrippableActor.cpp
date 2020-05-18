@@ -376,9 +376,12 @@ bool AGrippableActor::Server_GetClientAuthReplication_Validate(const FRepMovemen
 
 void AGrippableActor::Server_GetClientAuthReplication_Implementation(const FRepMovementVR & newMovement)
 {
-	FRepMovement& MovementRep = GetReplicatedMovement_Mutable();
-	newMovement.CopyTo(MovementRep);
-	OnRep_ReplicatedMovement();
+	if (!VRGripInterfaceSettings.bIsHeld)
+	{
+		FRepMovement& MovementRep = GetReplicatedMovement_Mutable();
+		newMovement.CopyTo(MovementRep);
+		OnRep_ReplicatedMovement();
+	}
 }
 
 void AGrippableActor::OnRep_AttachmentReplication()

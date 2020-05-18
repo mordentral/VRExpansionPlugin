@@ -369,7 +369,7 @@ public:
 
 	// Notify a client that their local grip was bad
 	UFUNCTION(Reliable, Client, WithValidation, Category = "GripMotionController")
-	void Client_NotifyInvalidLocalGrip(UObject * LocallyGrippedObject);
+	void Client_NotifyInvalidLocalGrip(UObject * LocallyGrippedObject, uint8 GripID);
 
 	// Notify the server that we locally gripped something
 	UFUNCTION(Reliable, Server, WithValidation, Category = "GripMotionController")

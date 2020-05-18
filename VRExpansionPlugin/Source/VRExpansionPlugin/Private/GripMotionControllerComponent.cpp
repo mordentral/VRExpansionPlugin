@@ -2318,8 +2318,13 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 				// Now I am setting the owner to the owning pawn if we are one
 				// This makes sure that some special replication needs are taken care of
 				// Only doing this for actor grips
-				if(NewGrip.AdvancedGripSettings.bSetOwnerOnGrip)
-					pActor->SetOwner(OwningPawn);
+				if (NewGrip.AdvancedGripSettings.bSetOwnerOnGrip)
+				{
+					if (GetNetMode() < ENetMode::NM_Client)
+					{
+						pActor->SetOwner(OwningPawn);
+					}
+				}
 			}
 
 			if (!bIsReInit && bActorHasInterface)
@@ -5671,22 +5676,32 @@ void UGripMotionControllerComponent::GetGrippedComponents(TArray<UPrimitiveCompo
 
 // Locally gripped functions
 
-bool UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Validate(UObject * LocallyGrippedObject)
+bool UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Validate(UObject * LocallyGrippedObject, uint8 GripID)
 {
 	return true;
 }
 
-void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementation(UObject * LocallyGrippedObject)
+void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementation(UObject * LocallyGrippedObject, uint8 GripID)
 {
+	if (GripID != INVALID_VRGRIP_ID)
+	{
+		if (FBPActorGripInformation* GripInfo = GetGripPtrByID(GripID))
+		{
+			DropObjectByInterface(GripInfo->GrippedObject, GripID);
+			return;
+		}		
+	}
+
 	FBPActorGripInformation FoundGrip;
 	EBPVRResultSwitch Result;
+
 	GetGripByObject(FoundGrip, LocallyGrippedObject, Result);
 
 	if (Result == EBPVRResultSwitch::OnFailed)
 		return;
 
 	// Drop it, server told us that it was a bad grip
-	DropObjectByInterface(FoundGrip.GrippedObject);
+	DropObjectByInterface(FoundGrip.GrippedObject, FoundGrip.GripID);
 }
 
 bool UGripMotionControllerComponent::Server_NotifyHandledTransaction_Validate(uint8 GripID)
@@ -5712,13 +5727,76 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 {
 	if (!newGrip.GrippedObject || newGrip.GripMovementReplicationSetting != EGripMovementReplicationSettings::ClientSide_Authoritive)
 	{
-		Client_NotifyInvalidLocalGrip(newGrip.GrippedObject);
+		Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, newGrip.GripID);
 		return;
 	}
 
 	if (!LocallyGrippedObjects.Contains(newGrip))
 	{
+		UPrimitiveComponent* PrimComp = nullptr;
+		AActor* pActor = nullptr;
+
+		PrimComp = newGrip.GetGrippedComponent();
+		pActor = newGrip.GetGrippedActor();
+
+		if (!PrimComp && pActor)
+		{
+			PrimComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+		}
+		else if (!pActor && PrimComp)
+		{
+			pActor = PrimComp->GetOwner();
+		}
+
+		if (!PrimComp || !pActor)
+		{
+			Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, newGrip.GripID);
+			return;
+		}
+
+		TArray<FBPGripPair> HoldingControllers;
+		bool bIsHeld;
+		bool bHadOriginalSettings = false;
+		bool bOriginalGravity = false;
+		bool bOriginalReplication = false;
+
+		if (newGrip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		{
+			//if (IVRGripInterface::Execute_DenyGripping(root))
+			//	return false; // Interface is saying not to grip it right now
+
+			IVRGripInterface::Execute_IsHeld(newGrip.GrippedObject, HoldingControllers, bIsHeld);
+			if (bIsHeld)
+			{
+				// If we are held by multiple controllers then lets copy our original values from the first one	
+				if (HoldingControllers[0].HoldingController != nullptr)
+				{
+					FBPActorGripInformation* gripInfo = HoldingControllers[0].HoldingController->GetGripPtrByID(HoldingControllers[0].GripID);
+
+					if (gripInfo != nullptr)
+					{
+						bHadOriginalSettings = true;
+						bOriginalGravity = gripInfo->bOriginalGravity;
+						bOriginalReplication = gripInfo->bOriginalReplicatesMovement;
+					}
+				}
+			}
+		}
+
 		int32 NewIndex = LocallyGrippedObjects.Add(newGrip);
+
+		if (bHadOriginalSettings)
+		{
+			LocallyGrippedObjects[NewIndex].bOriginalReplicatesMovement = bOriginalReplication;
+			LocallyGrippedObjects[NewIndex].bOriginalGravity = bOriginalGravity;
+		}
+		else
+		{
+			LocallyGrippedObjects[NewIndex].bOriginalReplicatesMovement = pActor->IsReplicatingMovement();
+			LocallyGrippedObjects[NewIndex].bOriginalGravity = PrimComp->IsGravityEnabled();
+		}
+
+
 		HandleGripReplication(LocallyGrippedObjects[NewIndex]);
 		// Initialize the differences, clients will do this themselves on the rep back, this sets up the cache
 		//HandleGripReplication(LocallyGrippedObjects[LocallyGrippedObjects.Num() - 1]);

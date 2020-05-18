@@ -1251,6 +1251,11 @@ public:
 	// Need to skip one frame of length check post teleport with constrained objects, the constraint may have not been updated yet.
 	bool bSkipNextConstraintLengthCheck;
 
+	bool IsLocalAuthGrip()
+	{
+		return GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep;
+	}
+
 	// Cached values - since not using a full serialize now the old array state may not contain what i need to diff
 	// I set these in On_Rep now and check against them when new replications happen to control some actions.
 	struct FGripValueCache
@@ -1295,8 +1300,8 @@ public:
 		this->GrippedBoneName = Other.GrippedBoneName;
 		this->SlotName = Other.SlotName;
 		this->GripMovementReplicationSetting = Other.GripMovementReplicationSetting;
-		this->bOriginalReplicatesMovement = Other.bOriginalReplicatesMovement;
-		this->bOriginalGravity = Other.bOriginalGravity;
+		//this->bOriginalReplicatesMovement = Other.bOriginalReplicatesMovement;
+		//this->bOriginalGravity = Other.bOriginalGravity;
 		this->Damping = Other.Damping;
 		this->Stiffness = Other.Stiffness;
 		this->AdvancedGripSettings = Other.AdvancedGripSettings;		
