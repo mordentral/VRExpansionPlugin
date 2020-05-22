@@ -2023,14 +2023,23 @@ void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementati
 void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSocket, bool bWasSimulating, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	// Check for valid objects
-	if (!ObjectToSocket || !SocketingParent)
+	if (!SocketingParent->IsValidLowLevel() || !ObjectToSocket->IsValidLowLevel())
+	{
+		if (!SocketingParent->IsValidLowLevel())
+		{
+			UE_LOG(LogVRMotionController, Error, TEXT("VRGripMotionController Socket_Implementation was called with an invalid Socketing Parent object"));
+		}
+		else
+		{
+			UE_LOG(LogVRMotionController, Error, TEXT("VRGripMotionController Socket_Implementation was called with an invalid Object to Socket"));
+		}
 		return;
+	}
 
 	FAttachmentTransformRules TransformRule = FAttachmentTransformRules::KeepWorldTransform;//KeepWorldTransform;
 	TransformRule.bWeldSimulatedBodies = bWeldBodies;
 
-	UPrimitiveComponent * ParentPrim = Cast<UPrimitiveComponent>(SocketingParent);
-
+	//UPrimitiveComponent * ParentPrim = Cast<UPrimitiveComponent>(SocketingParent);
 
 	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
 	{
@@ -2286,6 +2295,9 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 	bool bRootHasInterface = false;
 	bool bActorHasInterface = false;
+
+	if (!NewGrip.GrippedObject->IsValidLowLevelFast())
+		return false;
 
 	switch (NewGrip.GripTargetType)
 	{
