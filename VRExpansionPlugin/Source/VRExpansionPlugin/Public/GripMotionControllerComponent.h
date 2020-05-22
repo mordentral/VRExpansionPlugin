@@ -497,7 +497,7 @@ public:
 
 				if (bSendReleaseEvent)
 				{
-					if (Grip.GrippedObject && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					if (Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGripRelease(Grip.GrippedObject, this, OldGripInfo->SecondaryGripInfo.SecondaryAttachment, Grip);
 
@@ -519,7 +519,7 @@ public:
 
 				if (bSendGripEvent)
 				{
-					if (Grip.GrippedObject && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					if (Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
 
@@ -582,7 +582,7 @@ public:
 					LocalTransactionBuffer[i].ClearNonReppingItems();
 				}
 
-				if (LocalTransactionBuffer[i].GrippedObject && !LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped)
+				if (LocalTransactionBuffer[i].GrippedObject->IsValidLowLevelFast() && !LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped)
 				{
 					LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped = true;
 					LocalTransactionBuffer[i].ValueCache.CachedGripID = LocalTransactionBuffer[i].GripID;
