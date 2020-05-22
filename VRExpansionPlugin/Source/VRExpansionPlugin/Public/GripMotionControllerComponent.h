@@ -582,7 +582,7 @@ public:
 					LocalTransactionBuffer[i].ClearNonReppingItems();
 				}
 
-				if (LocalTransactionBuffer[i].GrippedObject->IsValidLowLevelFast() && !LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped)
+				if (!LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped && LocalTransactionBuffer[i].GrippedObject->IsValidLowLevelFast())
 				{
 					LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped = true;
 					LocalTransactionBuffer[i].ValueCache.CachedGripID = LocalTransactionBuffer[i].GripID;
@@ -716,15 +716,7 @@ public:
 	{
 		if (GEngine != nullptr && GWorld != nullptr)
 		{
-			switch (GEngine->GetNetMode(GWorld))
-			{
-			case NM_Client: 
-			{return false;} break;
-			case NM_DedicatedServer:
-			case NM_ListenServer:
-			default: 
-			{return true; } break;
-			}
+			return GEngine->GetNetMode(GWorld) < NM_Client;
 		}
 
 		return false;
