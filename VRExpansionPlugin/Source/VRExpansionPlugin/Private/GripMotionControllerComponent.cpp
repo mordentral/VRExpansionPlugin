@@ -2023,9 +2023,9 @@ void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementati
 void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSocket, bool bWasSimulating, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	// Check for valid objects
-	if (!SocketingParent->IsValidLowLevel() || !ObjectToSocket->IsValidLowLevel())
+	if (!SocketingParent->IsValidLowLevelFast() || !ObjectToSocket->IsValidLowLevelFast())
 	{
-		if (!SocketingParent->IsValidLowLevel())
+		if (!SocketingParent->IsValidLowLevelFast())
 		{
 			UE_LOG(LogVRMotionController, Error, TEXT("VRGripMotionController Socket_Implementation was called with an invalid Socketing Parent object"));
 		}
@@ -4438,7 +4438,7 @@ void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformati
 		}
 	}
 
-	if (HasGripAuthority(GrippedObjectsArray[GripIndex]))
+	if (IsServer() || HasGripAuthority(GrippedObjectsArray[GripIndex]))
 	{
 		DropGrip_Implementation(GrippedObjectsArray[GripIndex], false);
 		UE_LOG(LogVRMotionController, Warning, TEXT("Gripped object was null or destroying, auto dropping it"));
