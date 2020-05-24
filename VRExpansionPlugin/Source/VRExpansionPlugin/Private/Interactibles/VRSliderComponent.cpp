@@ -735,10 +735,7 @@ float UVRSliderComponent::CalculateSliderProgress()
 		FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
 		FVector CalculatedLocation = CurrentRelativeTransform.InverseTransformPosition(this->GetComponentLocation());
 
-		//if (bSlideDistanceIsInParentSpace)
-			//CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
-
-		CurrentSliderProgress = GetCurrentSliderProgress(CalculatedLocation);
+		CurrentSliderProgress = GetCurrentSliderProgress(bSlideDistanceIsInParentSpace ? CalculatedLocation * InitialRelativeTransform.GetScale3D() : CalculatedLocation);
 	}
 
 	return CurrentSliderProgress;
