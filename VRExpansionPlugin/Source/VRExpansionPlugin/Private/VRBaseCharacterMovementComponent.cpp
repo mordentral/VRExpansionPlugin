@@ -591,37 +591,60 @@ void UVRBaseCharacterMovementComponent::CheckServerAuthedMoveAction()
 	}
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, bool bFlagGripTeleport)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
 	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
-	MoveActionArray.MoveActions.Add(MoveAction);
 
+	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
+	{
+		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+	}
+
+	MoveAction.VelRetentionSetting = VelocityRetention;
+
+	MoveActionArray.MoveActions.Add(MoveAction);
 	CheckServerAuthedMoveAction();
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, bool bFlagGripTeleport)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SetRotation;
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(NewYaw * 100.f) / 100.f, 0.0f);
 	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
-	MoveActionArray.MoveActions.Add(MoveAction);
 
+	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
+	{
+		float DeltaYawAngle = FMath::FindDeltaAngleDegrees(UpdatedComponent->GetComponentRotation().Yaw, NewYaw);
+		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+	}
+
+	MoveAction.VelRetentionSetting = VelocityRetention;
+
+	MoveActionArray.MoveActions.Add(MoveAction);
 	CheckServerAuthedMoveAction();
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation, bool bSkipEncroachmentCheck)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector TeleportLocation, FRotator TeleportRotation, EVRMoveActionVelocityRetention VelocityRetention,  bool bSkipEncroachmentCheck)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_Teleport;
 	MoveAction.MoveActionLoc = RoundDirectMovement(TeleportLocation);
 	MoveAction.MoveActionRot.Yaw = FMath::RoundToFloat(TeleportRotation.Yaw * 100.f) / 100.f;
-	MoveAction.MoveActionRot.Pitch = bSkipEncroachmentCheck ? 1.0f : 0.0f;
-	MoveActionArray.MoveActions.Add(MoveAction);
+	MoveAction.MoveActionRot.Roll = bSkipEncroachmentCheck ? 1.0f : 0.0f;
 
+	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
+	{
+		float DeltaYawAngle = FMath::FindDeltaAngleDegrees(UpdatedComponent->GetComponentRotation().Yaw, TeleportRotation.Yaw);
+		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+	}
+
+	MoveAction.VelRetentionSetting = VelocityRetention;
+
+	MoveActionArray.MoveActions.Add(MoveAction);
 	CheckServerAuthedMoveAction();
 }
 
@@ -688,9 +711,27 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& MoveAction)
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
-	{
+	{	
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
+
+		FQuat OrigRot = OwningCharacter->GetActorQuat();
 		OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+
+		switch (MoveAction.VelRetentionSetting)
+		{
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None:
+		{
+
+		}break;
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Clear:
+		{
+			this->Velocity = FVector::ZeroVector;
+		}break;
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
+		{		
+			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+		}break;
+		}
 
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
@@ -708,6 +749,22 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 	{
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 		OwningCharacter->SetActorRotationVR(TargetRot, true);
+
+		switch (MoveAction.VelRetentionSetting)
+		{
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None:
+		{
+
+		}break;
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Clear:
+		{
+			this->Velocity = FVector::ZeroVector;
+		}break;
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
+		{
+			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+		}break;
+		}
 
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
@@ -731,9 +788,25 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 			return false;
 		}
 
-		bool bSkipEncroachmentCheck = MoveAction.MoveActionRot.Pitch > 0.0f;
+		bool bSkipEncroachmentCheck = MoveAction.MoveActionRot.Roll > 0.0f;
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, TargetRot, false, bSkipEncroachmentCheck);
+
+		switch (MoveAction.VelRetentionSetting)
+		{
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None:
+		{
+
+		}break;
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Clear:
+		{
+			this->Velocity = FVector::ZeroVector;
+		}break;
+		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
+		{
+			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+		}break;
+		}
 
 		if (OwningCharacter->bUseControllerRotationYaw)
 			OwningController->SetControlRotation(MoveAction.MoveActionRot);
