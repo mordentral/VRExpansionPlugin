@@ -265,11 +265,14 @@ void AGrippableStaticMeshActor::SetHeld_Implementation(UGripMotionControllerComp
 		RemoveFromClientReplicationBucket();
 
 		VRGripInterfaceSettings.bWasHeld = true;
+		VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;
 	}
 	else
 	{
 		VRGripInterfaceSettings.HoldingControllers.Remove(FBPGripPair(HoldingController, GripID));
-		if (ClientAuthReplicationData.bUseClientAuthThrowing)
+		VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;
+
+		if (ClientAuthReplicationData.bUseClientAuthThrowing && !VRGripInterfaceSettings.bIsHeld)
 		{
 			bool bWasLocallyOwned = HoldingController ? HoldingController->IsLocallyControlled() : false;
 			if (bWasLocallyOwned && ShouldWeSkipAttachmentReplication(false))
@@ -284,8 +287,6 @@ void AGrippableStaticMeshActor::SetHeld_Implementation(UGripMotionControllerComp
 			}
 		}
 	}
-
-	VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;
 }
 
 bool AGrippableStaticMeshActor::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)

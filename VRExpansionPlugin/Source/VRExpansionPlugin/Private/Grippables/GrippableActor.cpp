@@ -222,11 +222,14 @@ void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * Ho
 		RemoveFromClientReplicationBucket();
 
 		VRGripInterfaceSettings.bWasHeld = true;
+		VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;
 	}
 	else
 	{
 		VRGripInterfaceSettings.HoldingControllers.Remove(FBPGripPair(HoldingController, GripID));
-		if (ClientAuthReplicationData.bUseClientAuthThrowing)
+		VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;
+
+		if (ClientAuthReplicationData.bUseClientAuthThrowing && !VRGripInterfaceSettings.bIsHeld)
 		{
 			bool bWasLocallyOwned = HoldingController ? HoldingController->IsLocallyControlled() : false;
 			if (bWasLocallyOwned && ShouldWeSkipAttachmentReplication(false))
@@ -241,8 +244,6 @@ void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * Ho
 			}
 		}
 	}
-
-	VRGripInterfaceSettings.bIsHeld = VRGripInterfaceSettings.HoldingControllers.Num() > 0;
 }
 
 bool AGrippableActor::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
