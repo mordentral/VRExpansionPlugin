@@ -285,7 +285,7 @@ bool AGrippableSkeletalMeshActor::GetGripScripts_Implementation(TArray<UVRGripSc
 
 bool AGrippableSkeletalMeshActor::PollReplicationEvent()
 {
-	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth || !this->HasLocalNetOwner())
+	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth || !this->HasLocalNetOwner() || VRGripInterfaceSettings.bIsHeld)
 		return false;
 
 	UWorld *OurWorld = GetWorld();

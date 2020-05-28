@@ -259,7 +259,7 @@ bool AGrippableActor::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> &
 
 bool AGrippableActor::PollReplicationEvent()
 {
-	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth || !this->HasLocalNetOwner())
+	if (!ClientAuthReplicationData.bIsCurrentlyClientAuth || !this->HasLocalNetOwner() || VRGripInterfaceSettings.bIsHeld)
 		return false;
 
 	UWorld *OurWorld = GetWorld();
