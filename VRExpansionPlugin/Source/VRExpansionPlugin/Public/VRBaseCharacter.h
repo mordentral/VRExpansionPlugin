@@ -299,9 +299,9 @@ public:
 
 	// Override this in c++ or blueprints to pass in an IK mesh to be used in some optimizations
 	// May be extended in the future
-	UFUNCTION(BlueprintNativeEvent, Category = "BaseVRCharacter")
-	USkeletalMeshComponent * GetIKMesh() const;
-	virtual USkeletalMeshComponent *  GetIKMesh_Implementation() const;
+	//UFUNCTION(BlueprintNativeEvent, Category = "BaseVRCharacter")
+	//USkeletalMeshComponent * GetIKMesh() const;
+	//virtual USkeletalMeshComponent *  GetIKMesh_Implementation() const;1
 	// #TODO: Work with the above, can do multiple things with it
 
 

@@ -14,7 +14,7 @@ FName AVRBaseCharacter::ParentRelativeAttachmentComponentName(TEXT("Parent Relat
 FName AVRBaseCharacter::SmoothingSceneParentComponentName(TEXT("NetSmoother"));
 
 AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
- : Super(ObjectInitializer.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName).SetDefaultSubobjectClass<UVRBaseCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+ : Super(ObjectInitializer/*.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName)*/.SetDefaultSubobjectClass<UVRBaseCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 
 {
 
@@ -58,6 +58,11 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		ParentRelativeAttachment->SetupAttachment(NetSmoother);
 		ParentRelativeAttachment->bOffsetByHMD = false;
 		ParentRelativeAttachment->AddTickPrerequisiteComponent(VRReplicatedCamera);
+
+		if (USkeletalMeshComponent * SKMesh = GetMesh())
+		{
+			SKMesh->SetupAttachment(ParentRelativeAttachment);
+		}
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::LeftMotionControllerComponentName);
@@ -134,10 +139,11 @@ void AVRBaseCharacter::PreReplication(IRepChangedPropertyTracker & ChangedProper
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedMovementVR, IsReplicatingMovement());
 }
 
-USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const
+/*USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const
 {
-	return nullptr;
-}
+	return GetMesh();
+//	return nullptr;
+}*/
 
 bool AVRBaseCharacter::Server_SetSeatedMode_Validate(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform_NetQuantize TargetTransform, FTransform_NetQuantize InitialRelCameraTransform, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
