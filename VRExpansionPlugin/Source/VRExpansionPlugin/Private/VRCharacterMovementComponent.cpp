@@ -1105,7 +1105,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 
 		const FFindFloorResult OldFloor = CurrentFloor;
 
-		//RestorePreAdditiveRootMotionVelocity();
+		RestorePreAdditiveRootMotionVelocity();
 		//RestorePreAdditiveVRMotionVelocity();
 
 		// Ensure velocity is horizontal.
@@ -1120,7 +1120,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 		}
 
-		//ApplyRootMotionToVelocity(timeTick);
+		ApplyRootMotionToVelocity(timeTick);
 		ApplyVRMotionToVelocity(deltaTime);//timeTick);
 
 		devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
@@ -1297,10 +1297,15 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		if (IsMovingOnGround())
 		{
 			// Make velocity reflect actual move
-			if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && timeTick >= MIN_TICK_TIME)
+			
+			if (!bJustTeleported && timeTick >= MIN_TICK_TIME)
 			{
-				// TODO-RootMotionSource: Allow this to happen during partial override Velocity, but only set allowed axes?
-				Velocity =((UpdatedComponent->GetComponentLocation() - OldLocation ) / timeTick);
+				if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+				{
+					// TODO-RootMotionSource: Allow this to happen during partial override Velocity, but only set allowed axes?
+					Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) / timeTick);
+				}
+
 				RestorePreAdditiveVRMotionVelocity();
 			}
 		}
@@ -2786,7 +2791,7 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 	// Rewind the players position by the new capsule location
 	RewindVRRelativeMovement();
 
-	//RestorePreAdditiveRootMotionVelocity();
+	RestorePreAdditiveRootMotionVelocity();
 	//RestorePreAdditiveVRMotionVelocity();
 
 	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
@@ -2799,7 +2804,7 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 		CalcVelocity(deltaTime, Friction, true, GetMaxBrakingDeceleration());
 	}
 
-//	ApplyRootMotionToVelocity(deltaTime);
+	ApplyRootMotionToVelocity(deltaTime);
 	//ApplyVRMotionToVelocity(deltaTime);
 
 	// Manually handle the velocity setup
@@ -2845,10 +2850,14 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 		}
 	}
 
-	if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+	if (!bJustTeleported)
 	{
-		//Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime;
-		Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation)) / deltaTime;
+		if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+		{
+			//Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime;
+			Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation)) / deltaTime;
+		}
+
 		RestorePreAdditiveVRMotionVelocity();
 	}
 }
@@ -2882,7 +2891,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		const FQuat PawnRotation = UpdatedComponent->GetComponentQuat();
 		bJustTeleported = false;
 
-		//RestorePreAdditiveRootMotionVelocity();
+		RestorePreAdditiveRootMotionVelocity();
 
 		const FVector OldVelocity = Velocity;
 
@@ -2953,7 +2962,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 
 		//UE_LOG(LogCharacterMovement, Log, TEXT("dt=(%.6f) OldLocation=(%s) OldVelocity=(%s) NewVelocity=(%s)"), timeTick, *(UpdatedComponent->GetComponentLocation()).ToString(), *OldVelocity.ToString(), *Velocity.ToString());
 
-		//ApplyRootMotionToVelocity(timeTick);
+		ApplyRootMotionToVelocity(timeTick);
 
 		if (bNotifyApex && (Velocity.Z < 0.f))
 		{
@@ -3218,7 +3227,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 	}
 
 	// Root motion not for VR
-	if ((!CharacterOwner || !CharacterOwner->Controller) && !bRunPhysicsWithNoController /*&& !HasRootMotion()*/)
+	if ((!CharacterOwner || !CharacterOwner->Controller) && !bRunPhysicsWithNoController && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
 		Acceleration = FVector::ZeroVector;
 		Velocity = FVector::ZeroVector;
@@ -3228,7 +3237,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 	// Rewind the players position by the new capsule location
 	RewindVRRelativeMovement();
 
-	//RestorePreAdditiveRootMotionVelocity();
+	RestorePreAdditiveRootMotionVelocity();
 	//RestorePreAdditiveVRMotionVelocity();
 
 	// Ensure velocity is horizontal.
@@ -3243,7 +3252,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 		devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 	//}
 
-	//ApplyRootMotionToVelocity(deltaTime);
+	ApplyRootMotionToVelocity(deltaTime);
 	ApplyVRMotionToVelocity(deltaTime);
 
 	/*if (IsFalling())
@@ -3355,7 +3364,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 		}
 
 		// Update velocity to reflect actual move
-		if (!bJustTeleported /*&& !HasRootMotion()*/)
+		if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasVelocity())
 		{
 			Velocity = (GetActorFeetLocationVR() - OldLocation) / deltaTime;
 			MaintainHorizontalGroundVelocity();
@@ -3381,7 +3390,7 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 	// Rewind the players position by the new capsule location
 	RewindVRRelativeMovement();
 
-	//RestorePreAdditiveRootMotionVelocity();
+	RestorePreAdditiveRootMotionVelocity();
 
 	float NetFluidFriction = 0.f;
 	float Depth = ImmersionDepth();
@@ -3410,7 +3419,7 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 		Velocity.Z += GetGravityZ() * deltaTime * (1.f - NetBuoyancy);
 	}
 
-	//ApplyRootMotionToVelocity(deltaTime);
+	ApplyRootMotionToVelocity(deltaTime);
 
 	FVector Adjusted = Velocity * deltaTime;
 	FHitResult Hit(1.f);
