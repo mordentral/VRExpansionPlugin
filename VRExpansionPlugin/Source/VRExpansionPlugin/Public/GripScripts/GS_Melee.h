@@ -138,11 +138,6 @@ public:
 	FVector RollingVelocityAverage;
 	FVector RollingAngVelocityAverage;
 
-	// How many frames to average out the melee velocity for
-	// 1 will be frame to frame, anything above that will smooth out the interactions some
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Melee|Lodging", meta = (ClampMin = "1", UIMin = "1", ClampMax = "256", UIMax = "256"))
-	uint8 NumberOfFramesToAverageVelocity;
-
 	// The name of the component that is used to orient the weapon along its primary axis
 	// If it does not exist then the weapon is assumed to be X+ facing.
 	// Also used to perform some calculations, make sure it is parented to the gripped object (root component for actors).

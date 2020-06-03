@@ -27,7 +27,6 @@ UGS_Melee::UGS_Melee(const FObjectInitializer& ObjectInitializer) :
 	bHasValidPrimaryHand = false;
 
 	RollingVelocityAverage = FVector::ZeroVector;
-	NumberOfFramesToAverageVelocity = 1;
 	bIsLodged = false;
 
 	bCanEverTick = true;
@@ -475,7 +474,7 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 	{	
 		if (FBodyInstance * rBodyInstance = root->GetBodyInstance())
 		{
-			RollingVelocityAverage += FVector::CrossProduct(RollingAngVelocityAverage, Hit.ImpactPoint - rBodyInstance->GetCOMPosition());
+			RollingVelocityAverage += FVector::CrossProduct(RollingAngVelocityAverage, Hit.ImpactPoint - (rBodyInstance->GetCOMPosition()));
 		}
 	}
 
@@ -484,7 +483,6 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 	// If we hit, then regardless of penetration, end the velocity history and reset
 	RollingVelocityAverage = FVector::ZeroVector;
 	RollingAngVelocityAverage = FVector::ZeroVector;
-
 
 	for(FBPLodgeComponentInfo &LodgeData : PenetrationNotifierComponents)
 	{
@@ -603,8 +601,8 @@ void UGS_Melee::Tick(float DeltaTime)
 		FBodyInstance* rBodyInstance = root->GetBodyInstance();
 		if (rBodyInstance && rBodyInstance->IsValidBodyInstance())
 		{
-			UVRExpansionFunctionLibrary::LowPassFilter_RollingAverage(RollingVelocityAverage, rBodyInstance->GetUnrealWorldVelocity(), RollingVelocityAverage, NumberOfFramesToAverageVelocity);
-			UVRExpansionFunctionLibrary::LowPassFilter_RollingAverage(RollingAngVelocityAverage, rBodyInstance->GetUnrealWorldAngularVelocityInRadians(), RollingAngVelocityAverage, NumberOfFramesToAverageVelocity);
+			RollingVelocityAverage = rBodyInstance->GetUnrealWorldVelocity();
+			RollingAngVelocityAverage = rBodyInstance->GetUnrealWorldAngularVelocityInRadians();
 		}
 	}
 }
