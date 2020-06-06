@@ -2,7 +2,7 @@ UE4 Forums Thread
 https://forums.unrealengine.com/development-discussion/vr-ar-development/89050-vr-openvr-expansion-plugin
 
 Example Template Project
-https://bitbucket.org/mordentral/vrexppluginexample
+https://github.com/mordentral/VRExpPluginExample
 
 [Consider supporting me on patreon](https://www.patreon.com/mordentral)
 
