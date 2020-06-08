@@ -103,7 +103,10 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 			{
 				DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
 			}
-
+			else if (DeviceModelNumber.Find("oculus quest", ESearchCase::IgnoreCase) != INDEX_NONE)
+			{
+				DeviceType = EBPOpenVRHMDDeviceType::DT_OculusQuestHMD;
+			}
 			else if (DeviceModelNumber.Find("oculus", ESearchCase::IgnoreCase) != INDEX_NONE)
 			{
 				DeviceType = EBPOpenVRHMDDeviceType::DT_OculusHMD;

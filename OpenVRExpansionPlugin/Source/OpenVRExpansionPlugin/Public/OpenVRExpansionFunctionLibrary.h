@@ -498,6 +498,7 @@ enum class EBPOpenVRHMDDeviceType : uint8
 	DT_ValveIndex,
 	DT_Vive,
 	DT_ViveCosmos,
+	DT_OculusQuestHMD,
 	DT_OculusHMD,
 	DT_WindowsMR,
 	//DT_OSVR,
