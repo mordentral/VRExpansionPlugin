@@ -43,9 +43,6 @@ Install it into your Engine/Plugins directoy or ProjectName/Plugins Directory.
 You need to have visual studio installed and follow the UE4 setup guide for it: https://docs.unrealengine.com/latest/INT/Programming/Development/VisualStudioSetup/
 
 ### How do I use it? ###
-
-www.vreue4.com
-
 ### How do I VR? ###
 
 The template project contains use examples of most of the features of the plugin as well as locomotion modes, interaction methods, and basic multiplayer.
