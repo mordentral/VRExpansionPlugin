@@ -161,11 +161,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
 	bool bOffsetByHMD;
 
-	// If true, this component will not move itself in its tick, it will instead allow the character movement component to move it (unless the CMC is inactive, then it will go back to self managing)
-	// This will make it fall inside of the deferred updates of the CMC
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
-		bool bUpdateInCharacterMovement;
-
 	UPROPERTY()
 		TWeakObjectPtr<AVRBaseCharacter> AttachChar;
 	void UpdateTracking(float DeltaTime);
