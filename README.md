@@ -4,7 +4,8 @@ https://forums.unrealengine.com/development-discussion/vr-ar-development/89050-v
 Example Template Project
 https://github.com/mordentral/VRExpPluginExample
 
-[Consider supporting me on patreon](https://www.patreon.com/mordentral)
+Website:
+www.vreue4.com
 
 ***
 
