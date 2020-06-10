@@ -106,8 +106,6 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	DefaultGripScript = nullptr;
 	DefaultGripScriptClass = UGS_Default::StaticClass();
 
-	bUpdateInCharacterMovement = false;
-
 	VelocityCalculationType = EVRVelocityType::VRLOCITY_Default;
 	LastRelativePosition = FTransform::Identity;
 	bSampleVelocityInWorldSpace = false;
@@ -3776,19 +3774,22 @@ void UGripMotionControllerComponent::TickComponent(float DeltaTime, enum ELevelT
 	// No need to check if in game thread here as tick always is
 	bHasAuthority = IsLocallyControlled();
 
-	if (!bUpdateInCharacterMovement)
+	// No longer updating in character, was a waste as it wouldn't scope this component anyway
+	UpdateTracking(DeltaTime);
+
+	/*if (!bUpdateInCharacterMovement)
 	{
 		UpdateTracking(DeltaTime);
 	}
 	else if (AttachChar.IsValid())
 	{
 		UCharacterMovementComponent* CharMove = AttachChar->GetCharacterMovement();
-		if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())
+		if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive() || (GetWorld()->IsPaused() && !AttachChar->GetCharacterMovement()->PrimaryComponentTick.bTickEvenWhenPaused))
 		{
 			// Our character movement isn't handling our updates, lets do it ourself.
 			UpdateTracking(DeltaTime);
 		}
-	}
+	}*/
 
 	// Process the gripped actors
 	TickGrip(DeltaTime);
