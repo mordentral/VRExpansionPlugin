@@ -107,8 +107,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent", meta = (editcondition = "bDialUseDirectHandRotation"))
 	EVRInteractibleAxis InteractorRotationAxis;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRDialComponent")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
 		int GripPriority;
+
+	// Sets the grip priority
+	UFUNCTION(BlueprintCallable, Category = "GripSettings")
+		void SetGripPriority(int NewGripPriority);
 
 	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
 	virtual void OnRegister() override;

@@ -62,8 +62,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMountComponent")
 		float FlipReajustYawSpeed;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMountComponent")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
 		int GripPriority;
+
+	// Sets the grip priority
+	UFUNCTION(BlueprintCallable, Category = "GripSettings")
+		void SetGripPriority(int NewGripPriority);
 
 	bool GrippedOnBack;
 
