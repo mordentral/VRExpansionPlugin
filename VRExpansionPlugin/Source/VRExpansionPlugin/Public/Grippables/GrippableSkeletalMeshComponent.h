@@ -41,6 +41,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
 		void SetDenyGripping(bool bDenyGripping);
 
+	// Sets the grip priority on the FBPInterfaceSettings struct
+	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
+		void SetGripPriority(int NewGripPriority);
+
 	// Called when a object is gripped
 	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
