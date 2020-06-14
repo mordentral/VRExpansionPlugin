@@ -700,6 +700,7 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
 	bool bServerReadyForClient = true;
+	
 	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
 	if (PC)
 	{
@@ -763,12 +764,12 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 			VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(CapsuleYaw), 0.0f);
 			VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
 			AdditionalVRInputVector = VRRootCapsule->DifferenceFromLastFrame;
-		
-			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+
+			if (BaseVRCharacterOwner)
 			{
-				if (BaseChar->VRReplicateCapsuleHeight && LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+				if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 				{
-					BaseChar->SetCharacterHalfHeightVR(LFDiff.Z, false);
+					BaseVRCharacterOwner->SetCharacterHalfHeightVR(LFDiff.Z, false);
 				//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
 					//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
 				}
@@ -1449,7 +1450,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 			{
 				// Avoid updating Mesh bones to physics during the teleport back, since PerformMovement() will update it right away anyway below.
 				// Note: this must be before the FScopedMovementUpdate below, since that scope is what actually moves the character and mesh.
-				AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);		
+				//AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(CharacterOwner);		
 
 				FScopedMeshBoneUpdateOverrideVR ScopedNoMeshBoneUpdate(CharacterOwner->GetMesh(), EKinematicBonesUpdateToPhysics::SkipAllBones);
 
@@ -4113,11 +4114,11 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		// Trust the server's control yaw
 		if (ClientData->LastAckedMove.IsValid() && !FMath::IsNearlyEqual(ClientData->LastAckedMove->SavedControlRotation.Yaw, YawValue))
 		{
-			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+			if (BaseVRCharacterOwner)
 			{
-				if (BaseChar->bUseControllerRotationYaw)
+				if (BaseVRCharacterOwner->bUseControllerRotationYaw)
 				{
-					AController * myController = BaseChar->GetController();
+					AController * myController = BaseVRCharacterOwner->GetController();
 					if (myController)
 					{
 						//FRotator newRot = myController->GetControlRotation();
@@ -4125,7 +4126,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 					}
 				}
 
-				BaseChar->SetActorRotation(FRotator(0.f, YawValue, 0.f));
+				BaseVRCharacterOwner->SetActorRotation(FRotator(0.f, YawValue, 0.f));
 			}
 		}
 	}

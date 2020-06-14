@@ -923,6 +923,14 @@ public:
 			bool bNoConstraintWhenPaused = false
 		);
 
+	// Sets whether an active hybrid grip is locked to its soft setting (is not replicated by default as it is likely you will want to pass variables with this setting).
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController", meta = (ExpandEnumAsExecs = "Result"))
+		void SetGripHybridLock(
+			const FBPActorGripInformation& Grip,
+			EBPVRResultSwitch& Result,
+			bool bIsLocked = false
+		);
+
 	// Sets the transform to stay at during pause
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		void SetPausedTransform(

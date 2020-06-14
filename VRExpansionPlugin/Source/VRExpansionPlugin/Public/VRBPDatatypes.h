@@ -1206,6 +1206,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "Settings")
 		bool bIsPaused;
 
+	// When true, will lock a hybrid grip into its collision state
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "Settings")
+		bool bLockHybridGrip;
+
 	// I would have loved to have both of these not be replicated (and in normal grips they wouldn't have to be)
 	// However for serialization purposes and Client_Authority grips they need to be....
 	UPROPERTY()

@@ -12,6 +12,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
+class AVRBaseCharacter;
+
 /** Delegate for notification when to handle a climbing step up, will override default step up logic if is bound to. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnPerformClimbingStepUp, FVector, FinalStepUpLocation);
 
@@ -630,6 +632,12 @@ public:
 	UVRBaseCharacterMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	bool bNotifyTeleported;
+
+	/** BaseVR Character movement component belongs to */
+	UPROPERTY(Transient, DuplicateTransient)
+		AVRBaseCharacter* BaseVRCharacterOwner;
+
+	virtual void SetUpdatedComponent(USceneComponent* NewUpdatedComponent);
 
 	virtual void PerformMovement(float DeltaSeconds) override;
 	//virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;

@@ -54,9 +54,9 @@ FVector AVRCharacter::GetNavAgentLocation() const
 
 	if (GetCharacterMovement() != nullptr)
 	{
-		if (UVRCharacterMovementComponent * VRMove = Cast<UVRCharacterMovementComponent>(GetCharacterMovement()))
+		if (VRMovementReference)
 		{
-			AgentLocation = VRMove->GetActorFeetLocationVR();
+			AgentLocation = VRMovementReference->GetActorFeetLocationVR();
 		}
 		else
 			AgentLocation = GetCharacterMovement()->GetActorFeetLocation();

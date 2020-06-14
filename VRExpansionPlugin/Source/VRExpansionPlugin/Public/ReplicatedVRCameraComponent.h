@@ -21,6 +21,16 @@ public:
 	UReplicatedVRCameraComponent(const FObjectInitializer& ObjectInitializer);
 
 
+	// If true, this component will not perform logic in its tick, it will instead allow the character movement component to move it (unless the CMC is inactive, then it will go back to self managing)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		bool bUpdateInCharacterMovement;
+
+	UPROPERTY()
+		TWeakObjectPtr<AVRBaseCharacter> AttachChar;
+	void UpdateTracking(float DeltaTime);
+
+	virtual void OnAttachmentChanged() override;
+
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	//virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 

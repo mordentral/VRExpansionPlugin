@@ -126,84 +126,115 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 	// Scope all of the movements, including PRC
 	{
 		UParentRelativeAttachmentComponent* OuterScopePRC = nullptr;
-		if (AVRBaseCharacter * Basechar = Cast<AVRBaseCharacter>(CharacterOwner))
+		if (BaseVRCharacterOwner && BaseVRCharacterOwner->ParentRelativeAttachment && BaseVRCharacterOwner->ParentRelativeAttachment->bUpdateInCharacterMovement)
 		{
-			if (Basechar->ParentRelativeAttachment && Basechar->ParentRelativeAttachment->bUpdateInCharacterMovement)
-			{
-				OuterScopePRC = Basechar->ParentRelativeAttachment;
-			}
+			OuterScopePRC = BaseVRCharacterOwner->ParentRelativeAttachment;
 		}
 
 		FScopedMovementUpdate ScopedPRCMovementUpdate(OuterScopePRC, EScopedUpdate::DeferredUpdates);
-
-		// Scope in the character movements first
+		
 		{
-			// Scope these, they nest with Outer references so it should work fine
-			FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
-
-			if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+			UReplicatedVRCameraComponent* OuterScopeCamera = nullptr;
+			if (BaseVRCharacterOwner && BaseVRCharacterOwner->VRReplicatedCamera)
 			{
-				const FVector InputVector = ConsumeInputVector();
-				if (!HasValidData() || ShouldSkipUpdate(DeltaTime))
-				{
-					return;
-				}
+				OuterScopeCamera = BaseVRCharacterOwner->VRReplicatedCamera;
+			}
 
-				// Skip the perform movement logic, run the re-seat logic instead - running base movement component tick instead
-				Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+			FScopedMovementUpdate ScopedCameraMovementUpdate(OuterScopeCamera, EScopedUpdate::DeferredUpdates);
 
-				// See if we fell out of the world.
-				const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
-				if (CharacterOwner->GetLocalRole() == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
-				{
-					return;
-				}
+			// Scope in the character movements first
+			{
+				// Scope these, they nest with Outer references so it should work fine
+				FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
-				// If we are the owning client or the server then run the re-basing
-				if (CharacterOwner->GetLocalRole() > ROLE_SimulatedProxy)
+				if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 				{
-					// Run offset logic here, the server will update simulated proxies with the movement replication
-					if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+					const FVector InputVector = ConsumeInputVector();
+					if (!HasValidData() || ShouldSkipUpdate(DeltaTime))
 					{
-						BaseChar->TickSeatInformation(DeltaTime);
+						return;
 					}
 
+					// Skip the perform movement logic, run the re-seat logic instead - running base movement component tick instead
+					Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+					// See if we fell out of the world.
+					const bool bIsSimulatingPhysics = UpdatedComponent->IsSimulatingPhysics();
+					if (CharacterOwner->GetLocalRole() == ROLE_Authority && (!bCheatFlying || bIsSimulatingPhysics) && !CharacterOwner->CheckStillInWorld())
+					{
+						return;
+					}
+
+					// If we are the owning client or the server then run the re-basing
+					if (CharacterOwner->GetLocalRole() > ROLE_SimulatedProxy)
+					{
+						// Run offset logic here, the server will update simulated proxies with the movement replication
+						if (AVRBaseCharacter* BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+						{
+							BaseChar->TickSeatInformation(DeltaTime);
+						}
+
+					}
+					else
+					{
+						if (bNetworkUpdateReceived)
+						{
+							if (bNetworkMovementModeChanged)
+							{
+								ApplyNetworkMovementMode(CharacterOwner->GetReplicatedMovementMode());
+								bNetworkMovementModeChanged = false;
+							}
+						}
+					}
 				}
 				else
+					Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+
+				// This should be valid for both Simulated and owning clients as well as the server
+				// Better here than in perform movement
+				if (UVRRootComponent* VRRoot = Cast<UVRRootComponent>(CharacterOwner->GetCapsuleComponent()))
 				{
-					if (bNetworkUpdateReceived)
+					// If we didn't move the capsule, have it update itself here so the visual and physics representation is correct
+					// We do this specifically to avoid double calling into the render / physics threads.
+					if (!VRRoot->bCalledUpdateTransform)
+						VRRoot->OnUpdateTransform_Public(EUpdateTransformFlags::None, ETeleportType::None);
+				}
+
+				// Make sure these are cleaned out for the next frame
+				AdditionalVRInputVector = FVector::ZeroVector;
+				CustomVRInputVector = FVector::ZeroVector;
+			}
+
+			if (bRunControlRotationInMovementComponent && CharacterOwner->IsLocallyControlled())
+			{
+				if (BaseVRCharacterOwner)
+				{
+					if (BaseVRCharacterOwner->VRReplicatedCamera && BaseVRCharacterOwner->VRReplicatedCamera->bUsePawnControlRotation)
 					{
-						if (bNetworkMovementModeChanged)
+						const AController* OwningController = BaseVRCharacterOwner->GetController();
+						if (OwningController)
 						{
-							ApplyNetworkMovementMode(CharacterOwner->GetReplicatedMovementMode());
-							bNetworkMovementModeChanged = false;
+							const FRotator PawnViewRotation = BaseVRCharacterOwner->GetViewRotation();
+							if (!PawnViewRotation.Equals(BaseVRCharacterOwner->VRReplicatedCamera->GetComponentRotation()))
+							{
+								BaseVRCharacterOwner->VRReplicatedCamera->SetWorldRotation(PawnViewRotation);
+							}
 						}
 					}
 				}
 			}
-			else
-				Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-
-			// This should be valid for both Simulated and owning clients as well as the server
-			// Better here than in perform movement
-			if (UVRRootComponent * VRRoot = Cast<UVRRootComponent>(CharacterOwner->GetCapsuleComponent()))
-			{
-				// If we didn't move the capsule, have it update itself here so the visual and physics representation is correct
-				// We do this specifically to avoid double calling into the render / physics threads.
-				if (!VRRoot->bCalledUpdateTransform)
-					VRRoot->OnUpdateTransform_Public(EUpdateTransformFlags::None, ETeleportType::None);
-			}
 
 			// If some of our important components run inside the cmc updates then lets update them now
+			if (OuterScopeCamera)
+			{
+				OuterScopeCamera->UpdateTracking(DeltaTime);
+			}
+
 			if (OuterScopePRC)
 			{
 				OuterScopePRC->UpdateTracking(DeltaTime);
 			}
-
-			// Make sure these are cleaned out for the next frame
-			AdditionalVRInputVector = FVector::ZeroVector;
-			CustomVRInputVector = FVector::ZeroVector;
 		}
 	}
 
@@ -1252,6 +1283,15 @@ void UVRBaseCharacterMovementComponent::ApplyNetworkMovementMode(const uint8 Rec
 	ServerData->bForceClientUpdate = false;
 }
 */
+
+void  UVRBaseCharacterMovementComponent::SetUpdatedComponent(USceneComponent* NewUpdatedComponent)
+{
+	Super::SetUpdatedComponent(NewUpdatedComponent);
+
+	BaseVRCharacterOwner = Cast<AVRBaseCharacter>(CharacterOwner);
+}
+
+
 void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 {
 	// Scope these, they nest with Outer references so it should work fine
@@ -1260,12 +1300,12 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	// This moves it into update scope
 	if (bRunControlRotationInMovementComponent && CharacterOwner->IsLocallyControlled())
 	{
-		if (AVRPlayerController * PC = Cast<AVRPlayerController>(CharacterOwner->GetController()))
+		if (BaseVRCharacterOwner && BaseVRCharacterOwner->OwningVRPlayerController)
 		{
-			PC->RotationInput = PC->LastRotationInput;
-			PC->UpdateRotation(DeltaSeconds);
-			PC->LastRotationInput = FRotator::ZeroRotator;
-			PC->RotationInput = FRotator::ZeroRotator;
+			BaseVRCharacterOwner->OwningVRPlayerController->RotationInput = BaseVRCharacterOwner->OwningVRPlayerController->LastRotationInput;
+			BaseVRCharacterOwner->OwningVRPlayerController->UpdateRotation(DeltaSeconds);
+			BaseVRCharacterOwner->OwningVRPlayerController->LastRotationInput = FRotator::ZeroRotator;
+			BaseVRCharacterOwner->OwningVRPlayerController->RotationInput = FRotator::ZeroRotator;
 		}
 	}
 
@@ -1456,12 +1496,10 @@ void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetwor
 
 
 	// If we got corrected then lets teleport our grips, this means that we were out of sync with the server or the server moved us
-	AVRBaseCharacter* Basechar = Cast<AVRBaseCharacter>(CharacterOwner);
-
-	if (Basechar)
+	if (BaseVRCharacterOwner)
 	{
-		Basechar->OnCharacterNetworkCorrected_Bind.Broadcast();
-		Basechar->NotifyOfTeleport(false);
+		BaseVRCharacterOwner->OnCharacterNetworkCorrected_Bind.Broadcast();
+		BaseVRCharacterOwner->NotifyOfTeleport(false);
 	}
 }
 
@@ -1474,9 +1512,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		return;
 	}
 
-	AVRBaseCharacter * Basechar = Cast<AVRBaseCharacter>(CharacterOwner);
-
-	if (!Basechar)
+	if (!BaseVRCharacterOwner)
 		Super::SmoothCorrection(OldLocation, OldRotation, NewLocation, NewRotation);
 
 	// We shouldn't be running this on a server that is not a listen server.
@@ -1539,7 +1575,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			// I am currently skipping smoothing on rotation operations
 			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
 			{
-				Basechar->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 				ClientData->MeshTranslationOffset = FVector::ZeroVector;
 				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
@@ -1558,7 +1594,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 				// Note: we don't change rotation, we lerp towards it in SmoothClientPosition.
 				if (NewLocation != OldLocation)
 				{
-					const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
+					const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
 					UpdatedComponent->SetWorldLocation(NewLocation, false, nullptr, GetTeleportType());
 				}
 			}
@@ -1569,7 +1605,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			// I am currently skipping smoothing on rotation operations
 			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
 			{
-				Basechar->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 				ClientData->MeshTranslationOffset = FVector::ZeroVector;
 				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
@@ -1582,7 +1618,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 				ClientData->MeshRotationOffset = (NewRotation.Inverse() * OldRotation) * ClientData->MeshRotationOffset;
 				ClientData->MeshRotationTarget = FQuat::Identity;
 
-				const FScopedPreventAttachedComponentMove PreventMeshMove(Basechar->NetSmoother);
+				const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 			}
 		}
@@ -1668,9 +1704,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 	//SCOPE_CYCLE_COUNTER(STAT_CharacterMovementSmoothClientPosition_Visual);
 	FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
 
-	AVRBaseCharacter * Basechar = Cast<AVRBaseCharacter>(CharacterOwner);
-
-	if (!Basechar || !ClientData)
+	if (!BaseVRCharacterOwner || !ClientData)
 		return;
 
 	if (ClientData)
@@ -1679,7 +1713,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 		{
 			// Erased most of the code here, check back in later
 			const FVector NewRelLocation = ClientData->MeshRotationOffset.UnrotateVector(ClientData->MeshTranslationOffset) + CharacterOwner->GetBaseTranslationOffset();
-			Basechar->NetSmoother->SetRelativeLocation(NewRelLocation);
+			BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(NewRelLocation);
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
 		{
@@ -1688,7 +1722,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			const FQuat NewRelRotation = ClientData->MeshRotationOffset * CharacterOwner->GetBaseRotationOffset();
 			//Basechar->NetSmoother->SetRelativeLocation(NewRelTranslation);
 
-			Basechar->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
+			BaseVRCharacterOwner->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
 		{

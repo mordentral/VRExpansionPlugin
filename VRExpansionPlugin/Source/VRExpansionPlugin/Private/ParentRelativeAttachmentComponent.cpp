@@ -112,11 +112,11 @@ void UParentRelativeAttachmentComponent::UpdateTracking(float DeltaTime)
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-	if (!bUpdateInCharacterMovement)
+	if (!bUpdateInCharacterMovement || !AttachChar.IsValid())
 	{
 		UpdateTracking(DeltaTime);
 	}
-	else if (AttachChar.IsValid())
+	else
 	{
 		UCharacterMovementComponent * CharMove = AttachChar->GetCharacterMovement();
 		if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())

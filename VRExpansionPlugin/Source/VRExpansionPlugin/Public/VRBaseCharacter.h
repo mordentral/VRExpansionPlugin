@@ -13,6 +13,8 @@
 #include "Components/CapsuleComponent.h"
 #include "VRBaseCharacter.generated.h"
 
+class AVRPlayerController;
+
 DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);
 
 /** Delegate for notification when the lever state changes. */
@@ -236,6 +238,12 @@ class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ACharacter
 public:
 	AVRBaseCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	/** BaseVR Character movement component belongs to */
+	UPROPERTY(Transient, DuplicateTransient)
+		AVRPlayerController* OwningVRPlayerController;
+
+	virtual void PossessedBy(AController* NewController);
+	virtual void OnRep_Controller() override;
 	virtual void OnRep_PlayerState() override;
 
 	/** Used for replication of our RootComponent's position and velocity */

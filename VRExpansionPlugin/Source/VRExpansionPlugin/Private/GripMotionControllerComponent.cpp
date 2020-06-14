@@ -650,6 +650,36 @@ void UGripMotionControllerComponent::GetGripByID(FBPActorGripInformation &Grip, 
 	Result = EBPVRResultSwitch::OnFailed;
 }
 
+void UGripMotionControllerComponent::SetGripHybridLock(const FBPActorGripInformation& Grip, EBPVRResultSwitch& Result, bool bIsLocked)
+{
+	int fIndex = GrippedObjects.Find(Grip);
+
+	FBPActorGripInformation* GripInformation = nullptr;
+
+	if (fIndex != INDEX_NONE)
+	{
+		GripInformation = &GrippedObjects[fIndex];
+	}
+	else
+	{
+		fIndex = LocallyGrippedObjects.Find(Grip);
+
+		if (fIndex != INDEX_NONE)
+		{
+			GripInformation = &LocallyGrippedObjects[fIndex];
+		}
+	}
+
+	if (GripInformation != nullptr)
+	{
+		GripInformation->bLockHybridGrip = bIsLocked;
+		Result = EBPVRResultSwitch::OnSucceeded;
+		return;
+	}
+
+	Result = EBPVRResultSwitch::OnFailed;
+}
+
 void UGripMotionControllerComponent::SetGripPaused(const FBPActorGripInformation &Grip, EBPVRResultSwitch &Result, bool bIsPaused, bool bNoConstraintWhenPaused)
 {
 	int fIndex = GrippedObjects.Find(Grip);
@@ -4244,7 +4274,16 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						TArray<FHitResult> Hits;
 						// Checking both current and next position for overlap using this grip type
 						// Switched over to component sweep because it picks up on pivot offsets without me manually calculating it
-						if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
+						if (Grip->bLockHybridGrip)
+						{
+							if (!Grip->bColliding)
+							{
+								SetGripConstraintStiffnessAndDamping(Grip, false);
+							}
+
+							Grip->bColliding = true;
+						}
+						else if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
 						{
 							if (!Grip->bColliding)
 							{
@@ -4276,7 +4315,11 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 
-						if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
+						if (Grip->bLockHybridGrip)
+						{
+							Grip->bColliding = true;
+						}
+						else if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
 						{
 							Grip->bColliding = true;
 						}
