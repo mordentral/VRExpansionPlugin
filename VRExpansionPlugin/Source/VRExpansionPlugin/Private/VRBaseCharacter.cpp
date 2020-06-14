@@ -116,35 +116,14 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 
  void AVRBaseCharacter::PossessedBy(AController* NewController)
  {
-	 if (OwningVRPlayerController)
-	 {
-		this->RemoveTickPrerequisiteActor(Controller);
-	 }
-
 	 Super::PossessedBy(NewController);
 	 OwningVRPlayerController = Cast<AVRPlayerController>(Controller);
-
-	 if (OwningVRPlayerController)
-	 {
-		 this->AddTickPrerequisiteActor(Controller);
-	 }
  }
 
 void AVRBaseCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
-
-	if (OwningVRPlayerController)
-	{
-		this->RemoveTickPrerequisiteActor(OwningVRPlayerController);
-	}
-
 	OwningVRPlayerController = Cast<AVRPlayerController>(Controller);
-
-	if (OwningVRPlayerController)
-	{
-		this->AddTickPrerequisiteActor(Controller);
-	}
 }
 
 void AVRBaseCharacter::OnRep_PlayerState()
