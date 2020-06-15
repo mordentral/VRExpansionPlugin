@@ -132,6 +132,62 @@ void AVRBaseCharacter::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 }
 
+void AVRBaseCharacter::PostInitializeComponents()
+{
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_PostInitComponents);
+
+	Super::Super::PostInitializeComponents();
+
+	if (!IsPendingKill())
+	{
+		if (NetSmoother)
+		{
+			CacheInitialMeshOffset(NetSmoother->GetRelativeLocation(), NetSmoother->GetRelativeRotation());
+		}
+
+		if (USkeletalMeshComponent * myMesh = GetMesh())
+		{
+			// force animation tick after movement component updates
+			if (myMesh->PrimaryComponentTick.bCanEverTick && GetMovementComponent())
+			{
+				myMesh->PrimaryComponentTick.AddPrerequisite(GetMovementComponent(), GetMovementComponent()->PrimaryComponentTick);
+			}
+		}
+
+		if (GetCharacterMovement() && GetCapsuleComponent())
+		{
+			GetCharacterMovement()->UpdateNavAgent(*GetCapsuleComponent());
+		}
+
+		if (Controller == nullptr && GetNetMode() != NM_Client)
+		{
+			if (GetCharacterMovement() && GetCharacterMovement()->bRunPhysicsWithNoController)
+			{				
+				GetCharacterMovement()->SetDefaultMovementMode();
+			}
+		}
+	}
+}
+
+void AVRBaseCharacter::CacheInitialMeshOffset(FVector MeshRelativeLocation, FRotator MeshRelativeRotation)
+{
+	BaseTranslationOffset = MeshRelativeLocation;
+	BaseRotationOffset = MeshRelativeRotation.Quaternion();
+
+#if ENABLE_NAN_DIAGNOSTIC
+	if (BaseRotationOffset.ContainsNaN())
+	{
+		logOrEnsureNanError(TEXT("ACharacter::PostInitializeComponents detected NaN in BaseRotationOffset! (%s)"), *BaseRotationOffset.ToString());
+	}
+
+	const FRotator LocalRotation = Mesh->GetRelativeRotation();
+	if (LocalRotation.ContainsNaN())
+	{
+		logOrEnsureNanError(TEXT("ACharacter::PostInitializeComponents detected NaN in Mesh->RelativeRotation! (%s)"), *LocalRotation.ToString());
+	}
+#endif
+}
+
 void AVRBaseCharacter::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

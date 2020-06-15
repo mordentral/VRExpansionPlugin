@@ -13,6 +13,8 @@
 #include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
 
+DEFINE_LOG_CATEGORY(LogVRBaseCharacterMovement);
+
 UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -306,101 +308,9 @@ void UVRBaseCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, 
 	}
 }
 
-/*
-bool UVRBaseCharacterMovementComponent::FloorSweepTest(
-	FHitResult& OutHit,
-	const FVector& Start,
-	const FVector& End,
-	ECollisionChannel TraceChannel,
-	const struct FCollisionShape& CollisionShape,
-	const struct FCollisionQueryParams& Params,
-	const struct FCollisionResponseParams& ResponseParam
-) const
-{
-	bool bBlockingHit = false;
-	TArray<FHitResult> OutHits;
-
-	if (!bUseFlatBaseForFloorChecks)
-	{
-		if (bIgnoreSimulatingComponentsInFloorCheck)
-		{
-			// Testing all components in the way, skipping simulating components
-			GetWorld()->SweepMultiByChannel(OutHits, Start, End, FQuat::Identity, TraceChannel, CollisionShape, Params, ResponseParam);
-
-			for (int i = 0; i < OutHits.Num(); i++)
-			{
-				if (OutHits[i].bBlockingHit && (OutHits[i].Component.IsValid() && !OutHits[i].Component->IsSimulatingPhysics()))
-				{
-					OutHit = OutHits[i];
-					bBlockingHit = true;
-					break;
-				}
-			}
-		}
-		else
-			bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, TraceChannel, CollisionShape, Params, ResponseParam);
-	}
-	else
-	{
-		// Test with a box that is enclosed by the capsule.
-		const float CapsuleRadius = CollisionShape.GetCapsuleRadius();
-		const float CapsuleHeight = CollisionShape.GetCapsuleHalfHeight();
-		const FCollisionShape BoxShape = FCollisionShape::MakeBox(FVector(CapsuleRadius * 0.707f, CapsuleRadius * 0.707f, CapsuleHeight));
-
-		// First test with the box rotated so the corners are along the major axes (ie rotated 45 degrees).
-		//TArray<FHitResult> OutHits;
-		OutHits.Reset();
-
-		if (bIgnoreSimulatingComponentsInFloorCheck)
-		{
-			// Testing all components in the way, skipping simulating components
-			GetWorld()->SweepMultiByChannel(OutHits, Start, End, FQuat(FVector(0.f, 0.f, -1.f), PI * 0.25f), TraceChannel, BoxShape, Params, ResponseParam);
-
-			for (int i = 0; i < OutHits.Num(); i++)
-			{
-				if (OutHits[i].bBlockingHit && (OutHits[i].Component.IsValid() && !OutHits[i].Component->IsSimulatingPhysics()))
-				{
-					OutHit = OutHits[i];
-					bBlockingHit = true;
-					break;
-				}
-			}
-		}
-		else
-			bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, FQuat(FVector(0.f, 0.f, -1.f), PI * 0.25f), TraceChannel, BoxShape, Params, ResponseParam);
-
-		if (!bBlockingHit)
-		{
-			// Test again with the same box, not rotated.
-			OutHit.Reset(1.f, false);
-
-			if (bIgnoreSimulatingComponentsInFloorCheck)
-			{
-				OutHits.Reset();
-				// Testing all components in the way, skipping simulating components
-				GetWorld()->SweepMultiByChannel(OutHits, Start, End, FQuat::Identity, TraceChannel, BoxShape, Params, ResponseParam);
-
-				for (int i = 0; i < OutHits.Num(); i++)
-				{
-					if (OutHits[i].bBlockingHit && (OutHits[i].Component.IsValid() && !OutHits[i].Component->IsSimulatingPhysics()))
-					{
-						OutHit = OutHits[i];
-						bBlockingHit = true;
-						break;
-					}
-				}
-			}
-			else
-				bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, TraceChannel, BoxShape, Params, ResponseParam);
-		}
-	}
-
-	return bBlockingHit;
-}*/
-
 void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleLocation, float LineDistance, float SweepDistance, FFindFloorResult& OutFloorResult, float SweepRadius, const FHitResult* DownwardSweepResult) const
 {
-	//UE_LOG(LogCharacterMovement, VeryVerbose, TEXT("[Role:%d] ComputeFloorDist: %s at location %s"), (int32)CharacterOwner->Role, *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
+	UE_LOG(LogVRBaseCharacterMovement, VeryVerbose, TEXT("[Role:%d] ComputeFloorDist: %s at location %s"), (int32)CharacterOwner->GetLocalRole(), *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
 	OutFloorResult.Clear();
 
 	float PawnRadius, PawnHalfHeight;
@@ -1503,6 +1413,206 @@ void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetwor
 	}
 }
 
+void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
+{
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_CharacterMovementSimulated);
+	checkSlow(CharacterOwner != nullptr);
+
+	if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
+	{
+		const FVector OldLocation = UpdatedComponent ? UpdatedComponent->GetComponentLocation() : FVector::ZeroVector;
+		const FVector OldVelocity = Velocity;
+
+		// Interpolate between appropriate samples
+		{
+			QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_CharacterMovementSmoothClientPosition);
+			SmoothClientPosition(DeltaSeconds);
+		}
+
+		// Update replicated movement mode
+		ApplyNetworkMovementMode(GetCharacterOwner()->GetReplicatedMovementMode());
+
+		UpdateComponentVelocity();
+		bJustTeleported = false;
+
+		if (CharacterOwner)
+		{
+			CharacterOwner->RootMotionRepMoves.Empty();
+			CurrentRootMotion.Clear();
+			CharacterOwner->SavedRootMotion.Clear();
+		}
+
+		// Note: we do not call the Super implementation, that runs prediction.
+		// We do still need to call these though
+		OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
+		CallMovementUpdateDelegate(DeltaSeconds, OldLocation, OldVelocity);
+
+		LastUpdateLocation = UpdatedComponent ? UpdatedComponent->GetComponentLocation() : FVector::ZeroVector;
+		LastUpdateRotation = UpdatedComponent ? UpdatedComponent->GetComponentQuat() : FQuat::Identity;
+		LastUpdateVelocity = Velocity;
+
+		//TickCharacterPose( DeltaSeconds );
+		return;
+	}
+
+	// If we are playing a RootMotion AnimMontage.
+	if (CharacterOwner->IsPlayingNetworkedRootMotionMontage())
+	{
+		bWasSimulatingRootMotion = true;
+		UE_LOG(LogRootMotion, Verbose, TEXT("UCharacterMovementComponent::SimulatedTick"));
+
+		// Tick animations before physics.
+		if (CharacterOwner && CharacterOwner->GetMesh())
+		{
+			TickCharacterPose(DeltaSeconds);
+
+			// Make sure animation didn't trigger an event that destroyed us
+			if (!HasValidData())
+			{
+				return;
+			}
+		}
+
+		if (RootMotionParams.bHasRootMotion)
+		{
+			const FQuat OldRotationQuat = UpdatedComponent->GetComponentQuat();
+			const FVector OldLocation = UpdatedComponent->GetComponentLocation();
+			SimulateRootMotion(DeltaSeconds, RootMotionParams.GetRootMotionTransform());
+
+#if !(UE_BUILD_SHIPPING)
+			// debug
+			/*if (CharacterOwner && false)
+			{
+				const FRotator OldRotation = OldRotationQuat.Rotator();
+				const FRotator NewRotation = UpdatedComponent->GetComponentRotation();
+				const FVector NewLocation = UpdatedComponent->GetComponentLocation();
+				DrawDebugCoordinateSystem(GetWorld(), CharacterOwner->GetMesh()->GetComponentLocation() + FVector(0, 0, 1), NewRotation, 50.f, false);
+				DrawDebugLine(GetWorld(), OldLocation, NewLocation, FColor::Red, false, 10.f);
+
+				UE_LOG(LogRootMotion, Log, TEXT("UCharacterMovementComponent::SimulatedTick DeltaMovement Translation: %s, Rotation: %s, MovementBase: %s"),
+					*(NewLocation - OldLocation).ToCompactString(), *(NewRotation - OldRotation).GetNormalized().ToCompactString(), *GetNameSafe(CharacterOwner->GetMovementBase()));
+			}*/
+#endif // !(UE_BUILD_SHIPPING)
+		}
+
+		// then, once our position is up to date with our animation, 
+		// handle position correction if we have any pending updates received from the server.
+		if (CharacterOwner && (CharacterOwner->RootMotionRepMoves.Num() > 0))
+		{
+			CharacterOwner->SimulatedRootMotionPositionFixup(DeltaSeconds);
+		}
+	}
+	else if (CurrentRootMotion.HasActiveRootMotionSources())
+	{
+		// We have root motion sources and possibly animated root motion
+		bWasSimulatingRootMotion = true;
+		UE_LOG(LogRootMotion, Verbose, TEXT("UCharacterMovementComponent::SimulatedTick"));
+
+		// If we have RootMotionRepMoves, find the most recent important one and set position/rotation to it
+		bool bCorrectedToServer = false;
+		const FVector OldLocation = UpdatedComponent->GetComponentLocation();
+		const FQuat OldRotation = UpdatedComponent->GetComponentQuat();
+		if (CharacterOwner->RootMotionRepMoves.Num() > 0)
+		{
+			// Move Actor back to position of that buffered move. (server replicated position).
+			FSimulatedRootMotionReplicatedMove& RootMotionRepMove = CharacterOwner->RootMotionRepMoves.Last();
+			if (CharacterOwner->RestoreReplicatedMove(RootMotionRepMove))
+			{
+				bCorrectedToServer = true;
+			}
+			Acceleration = RootMotionRepMove.RootMotion.Acceleration;
+
+			CharacterOwner->PostNetReceiveVelocity(RootMotionRepMove.RootMotion.LinearVelocity);
+			LastUpdateVelocity = RootMotionRepMove.RootMotion.LinearVelocity;
+
+			// Convert RootMotionSource Server IDs -> Local IDs in AuthoritativeRootMotion and cull invalid
+			// so that when we use this root motion it has the correct IDs
+			ConvertRootMotionServerIDsToLocalIDs(CurrentRootMotion, RootMotionRepMove.RootMotion.AuthoritativeRootMotion, RootMotionRepMove.Time);
+			RootMotionRepMove.RootMotion.AuthoritativeRootMotion.CullInvalidSources();
+
+			// Set root motion states to that of repped in state
+			CurrentRootMotion.UpdateStateFrom(RootMotionRepMove.RootMotion.AuthoritativeRootMotion, true);
+
+			// Clear out existing RootMotionRepMoves since we've consumed the most recent
+			UE_LOG(LogRootMotion, Log, TEXT("\tClearing old moves in SimulatedTick (%d)"), CharacterOwner->RootMotionRepMoves.Num());
+			CharacterOwner->RootMotionRepMoves.Reset();
+		}
+
+		// Perform movement
+		PerformMovement(DeltaSeconds);
+
+		// After movement correction, smooth out error in position if any.
+		if (bCorrectedToServer)
+		{
+			SmoothCorrection(OldLocation, OldRotation, UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentQuat());
+		}
+	}
+	// Not playing RootMotion AnimMontage
+	else
+	{
+		// if we were simulating root motion, we've been ignoring regular ReplicatedMovement updates.
+		// If we're not simulating root motion anymore, force us to sync our movement properties.
+		// (Root Motion could leave Velocity out of sync w/ ReplicatedMovement)
+		if (bWasSimulatingRootMotion)
+		{
+			bWasSimulatingRootMotion = false;
+			CharacterOwner->RootMotionRepMoves.Empty();
+			CharacterOwner->OnRep_ReplicatedMovement();
+			CharacterOwner->OnRep_ReplicatedBasedMovement();
+			ApplyNetworkMovementMode(GetCharacterOwner()->GetReplicatedMovementMode());
+		}
+
+		if (CharacterOwner->IsReplicatingMovement() && UpdatedComponent)
+		{
+			//USkeletalMeshComponent* Mesh = CharacterOwner->GetMesh();
+			//const FVector SavedMeshRelativeLocation = Mesh ? Mesh->GetRelativeLocation() : FVector::ZeroVector;
+			//const FQuat SavedCapsuleRotation = UpdatedComponent->GetComponentQuat();
+			const bool bPreventMeshMovement = !bNetworkSmoothingComplete;
+
+			// Avoid moving the mesh during movement if SmoothClientPosition will take care of it.
+			{
+				const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
+				//const FScopedPreventAttachedComponentMove PreventMeshMovement(bPreventMeshMovement ? Mesh : nullptr);
+				if (CharacterOwner->IsMatineeControlled() || CharacterOwner->IsPlayingRootMotion())
+				{
+					PerformMovement(DeltaSeconds);
+				}
+				else
+				{
+					SimulateMovement(DeltaSeconds);
+				}
+			}
+
+			// With Linear smoothing we need to know if the rotation changes, since the mesh should follow along with that (if it was prevented above).
+			// This should be rare that rotation changes during simulation, but it can happen when ShouldRemainVertical() changes, or standing on a moving base.
+			/*const bool bValidateRotation = bPreventMeshMovement && (NetworkSmoothingMode == ENetworkSmoothingMode::Linear);
+			if (bValidateRotation && UpdatedComponent)
+			{
+				// Same mesh with different rotation?
+				const FQuat NewCapsuleRotation = UpdatedComponent->GetComponentQuat();
+				if (Mesh == CharacterOwner->GetMesh() && !NewCapsuleRotation.Equals(SavedCapsuleRotation, 1e-6f) && ClientPredictionData)
+				{
+					// Smoothing should lerp toward this new rotation target, otherwise it will just try to go back toward the old rotation.
+					ClientPredictionData->MeshRotationTarget = NewCapsuleRotation;
+					Mesh->SetRelativeLocationAndRotation(SavedMeshRelativeLocation, CharacterOwner->GetBaseRotationOffset());
+				}
+			}*/
+		}
+	}
+
+	// Smooth mesh location after moving the capsule above.
+	if (!bNetworkSmoothingComplete)
+	{
+		QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_CharacterMovementSmoothClientPosition);
+		SmoothClientPosition(DeltaSeconds);
+	}
+	else
+	{
+		UE_LOG(LogVRBaseCharacterMovement, Verbose, TEXT("Skipping network smoothing for %s."), *GetNameSafe(CharacterOwner));
+	}
+}
+
+
 void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocation, const FQuat& OldRotation, const FVector& NewLocation, const FQuat& NewRotation)
 {
 
@@ -1568,7 +1678,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			ClientData->MeshTranslationOffset = ClientData->MeshTranslationOffset + NewToOldVector;
 		}
 
-		//UE_LOG(LogCharacterNetSmoothing, Verbose, TEXT("Proxy %s SmoothCorrection(%.2f)"), *GetNameSafe(CharacterOwner), FMath::Sqrt(DistSq));
+		UE_LOG(LogVRBaseCharacterMovement, Verbose, TEXT("Proxy %s SmoothCorrection(%.2f)"), *GetNameSafe(CharacterOwner), FMath::Sqrt(DistSq));
 		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
 		{
 			// #TODO: Get this working in the future?
@@ -1632,8 +1742,8 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			const double OldClientTimeStamp = ClientData->SmoothingClientTimeStamp;
 			ClientData->SmoothingClientTimeStamp = FMath::LerpStable(ClientData->SmoothingServerTimeStamp, OldClientTimeStamp, 0.5);
 
-			//UE_LOG(LogCharacterNetSmoothing, VeryVerbose, TEXT("SmoothCorrection: Pull back client from ClientTimeStamp: %.6f to %.6f, ServerTimeStamp: %.6f for %s"),
-			//	OldClientTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->SmoothingServerTimeStamp, *GetNameSafe(CharacterOwner));
+			UE_LOG(LogVRBaseCharacterMovement, VeryVerbose, TEXT("SmoothCorrection: Pull back client from ClientTimeStamp: %.6f to %.6f, ServerTimeStamp: %.6f for %s"),
+				OldClientTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->SmoothingServerTimeStamp, *GetNameSafe(CharacterOwner));
 		}
 
 		// Using server timestamp lets us know how much time actually elapsed, regardless of packet lag variance.
@@ -1666,8 +1776,8 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		ClientData->LastCorrectionDelta = ClientData->SmoothingServerTimeStamp - ClientData->SmoothingClientTimeStamp;
 		ClientData->LastCorrectionTime = MyWorld->GetTimeSeconds();
 
-		//UE_LOG(LogCharacterNetSmoothing, VeryVerbose, TEXT("SmoothCorrection: WorldTime: %.6f, ServerTimeStamp: %.6f, ClientTimeStamp: %.6f, Delta: %.6f for %s"),
-		//MyWorld->GetTimeSeconds(), ClientData->SmoothingServerTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->LastCorrectionDelta, *GetNameSafe(CharacterOwner));
+		UE_LOG(LogVRBaseCharacterMovement, VeryVerbose, TEXT("SmoothCorrection: WorldTime: %.6f, ServerTimeStamp: %.6f, ClientTimeStamp: %.6f, Delta: %.6f for %s"),
+		MyWorld->GetTimeSeconds(), ClientData->SmoothingServerTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->LastCorrectionDelta, *GetNameSafe(CharacterOwner));
 		/*
 		Visualize network smoothing was here, removed it
 		*/

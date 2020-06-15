@@ -14,6 +14,8 @@
 
 class AVRBaseCharacter;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogVRBaseCharacterMovement, Log, All);
+
 /** Delegate for notification when to handle a climbing step up, will override default step up logic if is bound to. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnPerformClimbingStepUp, FVector, FinalStepUpLocation);
 
@@ -825,6 +827,9 @@ public:
 
 	// Teleport grips on correction to fixup issues
 	virtual void OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode) override;
+
+	// Fix network smoothing with our default mesh back in
+	virtual void SimulatedTick(float DeltaSeconds) override;
 
 	// Skip updates with rotational differences
 	virtual void SmoothCorrection(const FVector& OldLocation, const FQuat& OldRotation, const FVector& NewLocation, const FQuat& NewRotation) override;
