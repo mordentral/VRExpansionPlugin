@@ -1415,6 +1415,8 @@ void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetwor
 
 void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 {
+	//return Super::SimulatedTick(DeltaSeconds);
+
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_CharacterMovementSimulated);
 	checkSlow(CharacterOwner != nullptr);
 
@@ -1570,9 +1572,21 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			const bool bPreventMeshMovement = !bNetworkSmoothingComplete;
 
 			// Avoid moving the mesh during movement if SmoothClientPosition will take care of it.
+			if(NetworkSmoothingMode != ENetworkSmoothingMode::Disabled)
 			{
 				const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
 				//const FScopedPreventAttachedComponentMove PreventMeshMovement(bPreventMeshMovement ? Mesh : nullptr);
+				if (CharacterOwner->IsMatineeControlled() || CharacterOwner->IsPlayingRootMotion())
+				{
+					PerformMovement(DeltaSeconds);
+				}
+				else
+				{
+					SimulateMovement(DeltaSeconds);
+				}
+			}
+			else
+			{
 				if (CharacterOwner->IsMatineeControlled() || CharacterOwner->IsPlayingRootMotion())
 				{
 					PerformMovement(DeltaSeconds);
