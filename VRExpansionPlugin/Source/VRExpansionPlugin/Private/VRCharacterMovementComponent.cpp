@@ -589,7 +589,21 @@ void UVRCharacterMovementComponent::ServerMoveVROld_Implementation
 	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
 	check(ServerData);
 
-	if (!VerifyClientTimeStamp(OldTimeStamp, *ServerData))
+	bool bAutoAcceptPacket = false;
+
+	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+	{
+		return;
+	}
+	else if (bJustUnseated)
+	{
+		ServerData->CurrentClientTimeStamp = OldTimeStamp;
+		bAutoAcceptPacket = true;
+		bJustUnseated = false;
+	}
+
+
+	if (!bAutoAcceptPacket && !VerifyClientTimeStamp(OldTimeStamp, *ServerData))
 	{
 		UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("ServerMoveOld: TimeStamp expired. %f, CurrentTimeStamp: %f, Character: %s"), OldTimeStamp, ServerData->CurrentClientTimeStamp, *GetNameSafe(CharacterOwner));
 		return;
