@@ -1673,6 +1673,8 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
 	check(ServerData);
 
+	bool bAutoAcceptPacket = false;
+
 	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 	{
 		return;
@@ -1680,10 +1682,12 @@ void UVRSimpleCharacterMovementComponent::ServerMoveVR_Implementation(
 	else if (bJustUnseated)
 	{
 		ServerData->CurrentClientTimeStamp = TimeStamp;
+		bAutoAcceptPacket = true;
 		bJustUnseated = false;
 	}
 
-	if (!VerifyClientTimeStamp(TimeStamp, *ServerData))
+
+	if (!bAutoAcceptPacket && !VerifyClientTimeStamp(TimeStamp, *ServerData))
 	{
 		const float ServerTimeStamp = ServerData->CurrentClientTimeStamp;
 		// This is more severe if the timestamp has a large discrepancy and hasn't been recently reset.
