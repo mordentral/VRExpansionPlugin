@@ -4427,9 +4427,28 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					case EGripCollisionType::AttachmentGrip:
 					{
 						FTransform RelativeTrans = WorldTransform.GetRelativeTransform(ParentTransform);
-						if (!root->GetRelativeTransform().Equals(RelativeTrans))
+
+						if (!root->GetAttachParent())
 						{
-							root->SetRelativeTransform(RelativeTrans);
+							UE_LOG(LogVRMotionController, Warning, TEXT("Attachment Grip was missing attach parent - Attempting to Re-attach"));
+
+							if (HasGripMovementAuthority(*Grip) || IsServer())
+								root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform);
+
+							if (root->GetAttachParent())
+							{
+								if (!root->GetRelativeTransform().Equals(RelativeTrans))
+								{
+									root->SetRelativeTransform(RelativeTrans);
+								}
+							}
+						}
+						else
+						{
+							if (!root->GetRelativeTransform().Equals(RelativeTrans))
+							{
+								root->SetRelativeTransform(RelativeTrans);
+							}
 						}
 
 					}break;
