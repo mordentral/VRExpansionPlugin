@@ -2951,6 +2951,46 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 	}break;
 	}
 
+
+	switch (NewDrop.GripMovementReplicationSetting)
+	{
+	case EGripMovementReplicationSettings::ForceClientSideMovement:
+	case EGripMovementReplicationSettings::ClientSide_Authoritive:
+	case EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep:
+	{
+		if (NewDrop.GripCollisionType != EGripCollisionType::EventsOnly)
+		{
+			if (root)
+			{
+				// #TODO: This is a hack until Epic fixes their new physics replication code
+				//		  It forces the replication target to null on grip if we aren't repping movement.
+#if WITH_PHYSX
+				if (UWorld * World = GetWorld())
+				{
+					if (FPhysScene * PhysScene = World->GetPhysicsScene())
+					{
+						if (FPhysicsReplication * PhysicsReplication = PhysScene->GetPhysicsReplication())
+						{
+							FBodyInstance* BI = root->GetBodyInstance(NewDrop.GrippedBoneName);
+							if (BI && BI->IsInstanceSimulatingPhysics())
+							{
+								PhysicsReplication->RemoveReplicatedTarget(root);
+								//PhysicsReplication->SetReplicatedTarget(this, BoneName, UpdatedState);
+							}
+						}
+					}
+				}
+#endif
+			}
+		}
+
+	}break;
+
+	};
+
+
+
+
 	// Copy over the information instead of working with a reference for the OnDroppedBroadcast
 	FBPActorGripInformation DropBroadcastData = NewDrop;
 
