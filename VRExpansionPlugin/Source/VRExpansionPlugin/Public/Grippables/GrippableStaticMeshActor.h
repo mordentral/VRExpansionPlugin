@@ -159,7 +159,7 @@ public:
 	virtual void OnRep_AttachmentReplication() override;
 	virtual void OnRep_ReplicateMovement() override;
 	virtual void OnRep_ReplicatedMovement() override;
-	void PostNetReceivePhysicState() override;
+	virtual void PostNetReceivePhysicState() override;
 
 	// Debug printing of when the object is replication destroyed
 	/*virtual void OnSubobjectDestroyFromReplication(UObject *Subobject) override
