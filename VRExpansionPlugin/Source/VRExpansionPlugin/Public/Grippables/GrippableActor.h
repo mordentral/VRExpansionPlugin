@@ -89,6 +89,13 @@ public:
 	UFUNCTION(UnReliable, Server, WithValidation, Category = "Networking")
 		void Server_GetClientAuthReplication(const FRepMovementVR & newMovement);
 
+	// Returns if this object is currently client auth throwing
+	UFUNCTION(BlueprintPure, Category = "Networking")
+		FORCEINLINE bool IsCurrentlyClientAuthThrowing()
+	{
+		return ClientAuthReplicationData.bIsCurrentlyClientAuth;
+	}
+
 	// End client auth throwing data and functions //
 
 	// ------------------------------------------------
