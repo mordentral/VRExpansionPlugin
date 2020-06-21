@@ -103,12 +103,18 @@ public:
 
 	FBPOpenVRKeyboardHandle()
 	{
+#if STEAMVR_SUPPORTED_PLATFORM
 		//static const VROverlayHandle_t k_ulOverlayHandleInvalid = 0;	
 		VRKeyboardHandle = vr::k_ulOverlayHandleInvalid;
+#endif
 	}
 	const bool IsValid()
 	{
+#if STEAMVR_SUPPORTED_PLATFORM
 		return VRKeyboardHandle != vr::k_ulOverlayHandleInvalid;
+#else
+		return false;
+#endif
 	}
 
 	//This is here for the Find() and Remove() functions from TArray
@@ -133,11 +139,17 @@ public:
 
 	FBPOpenVRCameraHandle()
 	{
+#if STEAMVR_SUPPORTED_PLATFORM
 		pCameraHandle = INVALID_TRACKED_CAMERA_HANDLE;
+#endif
 	}
 	const bool IsValid()
 	{
+#if STEAMVR_SUPPORTED_PLATFORM
 		return pCameraHandle != INVALID_TRACKED_CAMERA_HANDLE;
+#else
+		return false;
+#endif
 	}
 
 	//This is here for the Find() and Remove() functions from TArray
@@ -190,7 +202,7 @@ enum class EBPSteamVRTrackedDeviceType : uint8
 	Invalid
 };
 
-
+#if STEAMVR_SUPPORTED_PLATFORM
 static vr::ETrackedDeviceProperty VREnumToString(const FString& enumName, uint8 value)
 {
 	const UEnum* EnumPtr = FindObject<UEnum>(ANY_PACKAGE, *enumName, true);
@@ -205,7 +217,7 @@ static vr::ETrackedDeviceProperty VREnumToString(const FString& enumName, uint8 
 
 	return static_cast<vr::ETrackedDeviceProperty>(FCString::Atoi(*EnumName));
 }
-
+#endif
 
 
 /*
@@ -701,6 +713,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|SteamVR|Compositor", meta = (bIgnoreSelf = "true"))
 		static bool SetSuspendRendering(bool bSuspendRendering);
 
+#if STEAMVR_SUPPORTED_PLATFORM
 	static vr::Texture_t CreateOpenVRTexture_t(UTexture * Texture)
 	{
 		vr::Texture_t VRTexture;
@@ -736,4 +749,5 @@ public:
 #endif
 		return VRTexture;
 	}
+#endif
 };	
