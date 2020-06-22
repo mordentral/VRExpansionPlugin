@@ -164,6 +164,99 @@ void UGS_Melee::UpdateDualHandInfo()
 	}
 }
 
+void UGS_Melee::UpdateHandPositionAndRotation(FBPGripPair HandPair, FTransform HandWorldTransform, FVector& LocDifference, float RotDifference, bool bUpdateLocation, bool bUpdateRotation)
+{
+	LocDifference = FVector::ZeroVector;
+
+	if (HandPair.IsValid())
+	{
+		FBPActorGripInformation* GripInfo = HandPair.HoldingController->GetGripPtrByID(HandPair.GripID);
+
+		if (GripInfo)
+		{
+			// Make hand relative to object transform
+			FTransform RelativeTrans = GripInfo->RelativeTransform.Inverse();
+			FVector OriginalLoc = RelativeTrans.GetLocation();
+			FQuat OriginalRot = RelativeTrans.GetRotation();
+
+			// Get our current parent transform
+			FTransform ParentTransform = GetParentTransform();
+
+			FQuat orientationRot = OrientationComponentRelativeFacing.GetRotation();
+			FVector currentRelVec = orientationRot.RotateVector(ParentTransform.InverseTransformPosition(HandWorldTransform.GetLocation()));
+			FRotator currentRelRot = (orientationRot * (ParentTransform.GetRotation().Inverse() * HandWorldTransform.GetRotation())).Rotator();
+
+			FVector currentLoc = orientationRot.RotateVector(RelativeTrans.GetLocation());
+			currentLoc.X = currentRelVec.X;
+
+			FRotator currentRot = (orientationRot * RelativeTrans.GetRotation()).Rotator();
+			currentRot.Roll = currentRelRot.Roll;
+
+
+			RelativeTrans.SetLocation(orientationRot.UnrotateVector(currentLoc));
+			RelativeTrans.SetRotation(orientationRot.Inverse() * currentRot.Quaternion());
+			GripInfo->RelativeTransform = RelativeTrans.Inverse();
+			HandPair.HoldingController->UpdatePhysicsHandle(*GripInfo, true);
+
+			LocDifference = RelativeTrans.GetLocation() - OriginalLoc;
+			RotDifference = RelativeTrans.GetRotation().Rotator().Roll - OriginalRot.Rotator().Roll;
+
+			// Instead of recreating, can directly set local pose here
+
+
+			FBPGripPair SecHand = SecondaryHand;
+			UpdateDualHandInfo();
+
+			if (SecondaryHand.IsValid() && !(SecHand == SecondaryHand))
+			{
+
+				GripInfo = SecondaryHand.HoldingController->GetGripPtrByID(SecondaryHand.GripID);
+				GripInfo->AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings = EPhysicsGripCOMType::COM_GripAtControllerLoc;
+
+				FBPActorPhysicsHandleInformation* HandleInfo = SecondaryHand.HoldingController->GetPhysicsGrip(SecondaryHand.GripID);
+				if (HandleInfo)
+				{
+					SecondaryHandPhysicsSettings.FillTo(HandleInfo);
+					SecondaryHand.HoldingController->UpdatePhysicsHandle(SecondaryHand.GripID, true);
+				}
+
+				GripInfo = PrimaryHand.HoldingController->GetGripPtrByID(PrimaryHand.GripID);
+
+				switch (COMType)
+				{
+				case EVRMeleeComType::VRPMELEECOM_Normal:
+				case EVRMeleeComType::VRPMELEECOM_BetweenHands:
+				{
+					GripInfo->AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings = EPhysicsGripCOMType::COM_GripAtControllerLoc;
+				}break;
+
+				case EVRMeleeComType::VRPMELEECOM_PrimaryHand:
+				{
+					GripInfo->AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings = EPhysicsGripCOMType::COM_SetAndGripAt;
+				}
+				}
+
+				HandleInfo = PrimaryHand.HoldingController->GetPhysicsGrip(PrimaryHand.GripID);
+				if (HandleInfo)
+				{
+					if (bHasValidPrimaryHand)
+					{
+						PrimaryHandPhysicsSettings.FillTo(HandleInfo);
+					}
+					else
+					{
+						SecondaryHandPhysicsSettings.FillTo(HandleInfo);
+					}
+					PrimaryHand.HoldingController->UpdatePhysicsHandle(PrimaryHand.GripID, true);
+				}
+			}
+
+			if (COMType != EVRMeleeComType::VRPMELEECOM_Normal)
+				SetComBetweenHands(HandPair.HoldingController, HandPair.HoldingController->GetPhysicsGrip(HandPair.GripID));
+		}
+	}
+}
+
 void UGS_Melee::UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPosition, FVector& LocDifference)
 {
 	LocDifference = FVector::ZeroVector;
