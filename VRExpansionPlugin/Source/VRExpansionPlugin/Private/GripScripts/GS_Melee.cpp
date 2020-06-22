@@ -166,7 +166,7 @@ void UGS_Melee::UpdateDualHandInfo()
 	}
 }
 
-void UGS_Melee::UpdateHandPositionAndRotation(FBPGripPair HandPair, FTransform HandWorldTransform, FVector& LocDifference, float RotDifference, bool bUpdateLocation, bool bUpdateRotation)
+void UGS_Melee::UpdateHandPositionAndRotation(FBPGripPair HandPair, FTransform HandWorldTransform, FVector& LocDifference, float& RotDifference, bool bUpdateLocation, bool bUpdateRotation)
 {
 	LocDifference = FVector::ZeroVector;
 
