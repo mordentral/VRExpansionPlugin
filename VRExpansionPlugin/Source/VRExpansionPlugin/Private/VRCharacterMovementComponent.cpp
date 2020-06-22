@@ -1606,7 +1606,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	// This variable is a bit of a hack, it reduces the movement of the pawn in the direction of relative movement
 	//WallRepulsionMultiplier = 0.01f;
 	bUseClientControlRotation = false;
-	bAllowMovementMerging = false;
+	bAllowMovementMerging = true;
 	bRequestedMoveUseAcceleration = false;
 }
 
