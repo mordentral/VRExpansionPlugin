@@ -185,18 +185,23 @@ void UGS_Melee::UpdateHandPositionAndRotation(FBPGripPair HandPair, FTransform H
 			FTransform ParentTransform = GetParentTransform();
 
 			FQuat orientationRot = OrientationComponentRelativeFacing.GetRotation();
-			FVector currentRelVec = orientationRot.RotateVector(ParentTransform.InverseTransformPosition(HandWorldTransform.GetLocation()));
-			FRotator currentRelRot = (orientationRot * (ParentTransform.GetRotation().Inverse() * HandWorldTransform.GetRotation())).Rotator();
 
-			FVector currentLoc = orientationRot.RotateVector(RelativeTrans.GetLocation());
-			currentLoc.X = currentRelVec.X;
+			if (bUpdateLocation)
+			{
+				FVector currentRelVec = orientationRot.RotateVector(ParentTransform.InverseTransformPosition(HandWorldTransform.GetLocation()));
+				FVector currentLoc = orientationRot.RotateVector(RelativeTrans.GetLocation());
+				currentLoc.X = currentRelVec.X;
+				RelativeTrans.SetLocation(orientationRot.UnrotateVector(currentLoc));
+			}
 
-			FRotator currentRot = (orientationRot * RelativeTrans.GetRotation()).Rotator();
-			currentRot.Roll = currentRelRot.Roll;
+			if (bUpdateRotation)
+			{
+				FRotator currentRelRot = (orientationRot * (ParentTransform.GetRotation().Inverse() * HandWorldTransform.GetRotation())).Rotator();
+				FRotator currentRot = (orientationRot * RelativeTrans.GetRotation()).Rotator();
+				currentRot.Roll = currentRelRot.Roll;
+				RelativeTrans.SetRotation(orientationRot.Inverse() * currentRot.Quaternion());
+			}
 
-
-			RelativeTrans.SetLocation(orientationRot.UnrotateVector(currentLoc));
-			RelativeTrans.SetRotation(orientationRot.Inverse() * currentRot.Quaternion());
 			GripInfo->RelativeTransform = RelativeTrans.Inverse();
 			HandPair.HoldingController->UpdatePhysicsHandle(*GripInfo, true);
 
