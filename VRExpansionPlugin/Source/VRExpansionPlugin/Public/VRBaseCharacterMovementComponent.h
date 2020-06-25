@@ -772,14 +772,14 @@ public:
 	{
 		bHadExtremeInput = false;
 
-		if (AdditionalVRInputVector.IsNearlyZero())
+		if (AdditionalVRInputVector.IsNearlyZero() && CustomVRInputVector.IsNearlyZero())
 		{
 			LastPreAdditiveVRVelocity = FVector::ZeroVector;
 			return;
 		}
 
-		LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime; // Save off pre-additive Velocity for restoration next tick	
-		
+		LastPreAdditiveVRVelocity = (AdditionalVRInputVector / deltaTime); // Save off pre-additive Velocity for restoration next tick	
+
 		if (LastPreAdditiveVRVelocity.SizeSquared() > FMath::Square(TrackingLossThreshold))
 		{
 			bHadExtremeInput = true;
@@ -788,6 +788,9 @@ public:
 				LastPreAdditiveVRVelocity = FVector::ZeroVector;
 			}
 		}
+
+		// Post the HMD velocity checks, add in our direct movement now
+		LastPreAdditiveVRVelocity += (CustomVRInputVector / deltaTime);
 
 		Velocity += LastPreAdditiveVRVelocity;
 	}

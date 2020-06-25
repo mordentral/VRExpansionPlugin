@@ -2910,6 +2910,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		bJustTeleported = false;
 
 		RestorePreAdditiveRootMotionVelocity();
+		RestorePreAdditiveVRMotionVelocity();
 
 		const FVector OldVelocity = Velocity;
 
@@ -2926,6 +2927,8 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 				Velocity.Z = OldVelocity.Z;
 			}
 		}
+
+		//Velocity += CustomVRInputVector / deltaTime;
 
 		// Compute current gravity
 		const FVector Gravity(0.f, 0.f, GetGravityZ());
@@ -2981,6 +2984,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		//UE_LOG(LogCharacterMovement, Log, TEXT("dt=(%.6f) OldLocation=(%s) OldVelocity=(%s) NewVelocity=(%s)"), timeTick, *(UpdatedComponent->GetComponentLocation()).ToString(), *OldVelocity.ToString(), *Velocity.ToString());
 
 		ApplyRootMotionToVelocity(timeTick);
+		ApplyVRMotionToVelocity(deltaTime);
 
 		if (bNotifyApex && (Velocity.Z < 0.f))
 		{
@@ -2990,7 +2994,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		}
 
 		// Compute change in position (using midpoint integration method).
-		FVector Adjusted = (0.5f * (OldVelocity + Velocity) * timeTick) + ((AdditionalVRInputVector / deltaTime) * timeTick);
+		FVector Adjusted = (0.5f * (OldVelocity + Velocity) * timeTick) /*+ ((AdditionalVRInputVector / deltaTime) * timeTick)*/;
 
 		// Special handling if ending the jump force where we didn't apply gravity during the jump.
 		if (bEndingJumpForce && !bApplyGravityWhileJumping)
@@ -2998,7 +3002,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 			// We had a portion of the time at constant speed then a portion with acceleration due to gravity.
 			// Account for that here with a more correct change in position.
 			const float NonGravityTime = FMath::Max(0.f, timeTick - GravityTime);
-			Adjusted = ((OldVelocity * NonGravityTime) + (0.5f * (OldVelocity + Velocity) * GravityTime)) + ((AdditionalVRInputVector / deltaTime) * timeTick);
+			Adjusted = ((OldVelocity * NonGravityTime) + (0.5f * (OldVelocity + Velocity) * GravityTime)) /*+ ((AdditionalVRInputVector / deltaTime) * timeTick)*/;
 		}
 
 		// Move
