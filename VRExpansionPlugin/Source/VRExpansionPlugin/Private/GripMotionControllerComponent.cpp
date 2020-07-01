@@ -768,7 +768,10 @@ void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInfo
 			LocallyGrippedObjects[fIndex].GripCollisionType = NewGripCollisionType;
 
 			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
-				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
+			{
+				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
+				Server_NotifyLocalGripAddedOrChanged(GripInfo);
+			}
 
 			ReCreateGrip(LocallyGrippedObjects[fIndex]);
 
@@ -799,7 +802,10 @@ void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGrip
 			LocallyGrippedObjects[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
 
 			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
-				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
+			{
+				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
+				Server_NotifyLocalGripAddedOrChanged(GripInfo);
+			}
 
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
@@ -841,7 +847,10 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 			}
 
 			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
-				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
+			{
+				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
+				Server_NotifyLocalGripAddedOrChanged(GripInfo);
+			}
 
 			Result = EBPVRResultSwitch::OnSucceeded;
 			return;
@@ -921,7 +930,10 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 			}
 
 			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
-				Server_NotifyLocalGripAddedOrChanged(LocallyGrippedObjects[fIndex]);
+			{
+				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
+				Server_NotifyLocalGripAddedOrChanged(GripInfo);
+			}
 
 			Result = EBPVRResultSwitch::OnSucceeded;
 			SetGripConstraintStiffnessAndDamping(&LocallyGrippedObjects[fIndex]);
@@ -1624,11 +1636,14 @@ bool UGripMotionControllerComponent::GripComponent(
 		}
 
 		int32 Index = LocallyGrippedObjects.Add(newComponentGrip);
+		
+		if (Index != INDEX_NONE)
+		{
+			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newComponentGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+				Server_NotifyLocalGripAddedOrChanged(newComponentGrip);
 
-		if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newComponentGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
-			Server_NotifyLocalGripAddedOrChanged(newComponentGrip);
-
-		NotifyGrip(newComponentGrip);
+			NotifyGrip(newComponentGrip);
+		}
 	}
 
 	return true;
@@ -5828,7 +5843,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 		}
 
 		TArray<FBPGripPair> HoldingControllers;
-		bool bIsHeld;
+		bool bIsHeld = false;
 		bool bHadOriginalSettings = false;
 		bool bOriginalGravity = false;
 		bool bOriginalReplication = false;
@@ -5842,7 +5857,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 			if (bIsHeld)
 			{
 				// If we are held by multiple controllers then lets copy our original values from the first one	
-				if (HoldingControllers[0].HoldingController != nullptr)
+				if (HoldingControllers.Num() > 0 && HoldingControllers[0].HoldingController != nullptr)
 				{
 					FBPActorGripInformation* gripInfo = HoldingControllers[0].HoldingController->GetGripPtrByID(HoldingControllers[0].GripID);
 
@@ -5858,26 +5873,29 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 
 		int32 NewIndex = LocallyGrippedObjects.Add(newGrip);
 
-		if (bHadOriginalSettings)
+		if (NewIndex != INDEX_NONE && LocallyGrippedObjects.Num() > 0)
 		{
-			LocallyGrippedObjects[NewIndex].bOriginalReplicatesMovement = bOriginalReplication;
-			LocallyGrippedObjects[NewIndex].bOriginalGravity = bOriginalGravity;
-		}
-		else
-		{
-			LocallyGrippedObjects[NewIndex].bOriginalReplicatesMovement = pActor->IsReplicatingMovement();
-			LocallyGrippedObjects[NewIndex].bOriginalGravity = PrimComp->IsGravityEnabled();
+			if (bHadOriginalSettings)
+			{
+				LocallyGrippedObjects[NewIndex].bOriginalReplicatesMovement = bOriginalReplication;
+				LocallyGrippedObjects[NewIndex].bOriginalGravity = bOriginalGravity;
+			}
+			else
+			{
+				LocallyGrippedObjects[NewIndex].bOriginalReplicatesMovement = pActor->IsReplicatingMovement();
+				LocallyGrippedObjects[NewIndex].bOriginalGravity = PrimComp->IsGravityEnabled();
+			}
+
+			HandleGripReplication(LocallyGrippedObjects[NewIndex]);
 		}
 
-
-		HandleGripReplication(LocallyGrippedObjects[NewIndex]);
 		// Initialize the differences, clients will do this themselves on the rep back, this sets up the cache
 		//HandleGripReplication(LocallyGrippedObjects[LocallyGrippedObjects.Num() - 1]);
 	}
 	else
 	{
-		int32 IndexFound;
-		if (LocallyGrippedObjects.Find(newGrip, IndexFound))
+		int32 IndexFound = INDEX_NONE;
+		if (LocallyGrippedObjects.Find(newGrip, IndexFound) && IndexFound != INDEX_NONE)
 		{
 			FBPActorGripInformation OriginalGrip = LocallyGrippedObjects[IndexFound];
 			LocallyGrippedObjects[IndexFound].RepCopy(newGrip);
