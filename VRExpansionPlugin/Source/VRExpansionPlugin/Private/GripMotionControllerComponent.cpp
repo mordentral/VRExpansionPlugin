@@ -5566,15 +5566,25 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				continue;
 			}
 
-			if (bIsInGameThread)
-			{
-				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
-				if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
-					continue;
-			}
-		
+			/*
+				if (bIsInGameThread)
+				{
+					CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
+					if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
+						continue;
+				}
+			*/
+
 			if (MotionController->GetControllerOrientationAndPosition(PlayerIndex, MotionSource, Orientation, Position, WorldToMetersScale))
 			{
+				// Moving this in here to work around a PSVR module bug
+				if (bIsInGameThread)
+				{
+					CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
+					if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
+						continue;
+				}
+
 				if (bOffsetByHMD)
 				{
 					if (bIsInGameThread)
@@ -5626,6 +5636,10 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				}
 							
 				return true;
+			}
+			else if (bIsInGameThread)
+			{
+				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
 			}
 		}
 
