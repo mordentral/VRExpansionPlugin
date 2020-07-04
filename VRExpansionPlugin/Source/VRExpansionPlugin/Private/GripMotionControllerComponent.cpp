@@ -5566,17 +5566,18 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				continue;
 			}
 
-			/*
+#if !PLATFORM_PS4	
 				if (bIsInGameThread)
 				{
 					CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
 					if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
 						continue;
-				}
-			*/
+				}			
+#endif
 
 			if (MotionController->GetControllerOrientationAndPosition(PlayerIndex, MotionSource, Orientation, Position, WorldToMetersScale))
 			{
+#if PLATFORM_PS4
 				// Moving this in here to work around a PSVR module bug
 				if (bIsInGameThread)
 				{
@@ -5584,6 +5585,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 					if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
 						continue;
 				}
+#endif
 
 				if (bOffsetByHMD)
 				{
@@ -5637,10 +5639,12 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 							
 				return true;
 			}
+#if PLATFORM_PS4
 			else if (bIsInGameThread)
 			{
 				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
 			}
+#endif
 		}
 
 		// #NOTE: This was adding in 4.20, I presume to allow for HMDs as tracking sources for mixed reality.
