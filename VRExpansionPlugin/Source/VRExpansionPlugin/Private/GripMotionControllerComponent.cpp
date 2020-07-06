@@ -2338,7 +2338,10 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 			if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
 			{
-				OwningPawn->MoveIgnoreActorAdd(pActor);
+				if (NewGrip.GripCollisionType != EGripCollisionType::EventsOnly)
+				{
+					OwningPawn->MoveIgnoreActorAdd(pActor);
+				}
 
 				// Now I am setting the owner to the owning pawn if we are one
 				// This makes sure that some special replication needs are taken care of
@@ -2699,19 +2702,23 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 			if (!bSkipFullDrop)
 			{
+
 				pActor->RemoveTickPrerequisiteComponent(this);
 				//this->IgnoreActorWhenMoving(pActor, false);
 
-				if (APawn* OwningPawn = Cast<APawn>(GetOwner()))
+				if (NewDrop.GripCollisionType != EGripCollisionType::EventsOnly)
 				{
-					OwningPawn->MoveIgnoreActorRemove(pActor);
+					if (APawn * OwningPawn = Cast<APawn>(GetOwner()))
+					{
+						OwningPawn->MoveIgnoreActorRemove(pActor);
 
-					// Clearing owner out here
-					// Now I am setting the owner to the owning pawn if we are one
-					// This makes sure that some special replication needs are taken care of
-					// Only doing this for actor grips
-					// #TODO: Add the removal back in?
-					//pActor->SetOwner(nullptr);
+						// Clearing owner out here
+						// Now I am setting the owner to the owning pawn if we are one
+						// This makes sure that some special replication needs are taken care of
+						// Only doing this for actor grips
+						// #TODO: Add the removal back in?
+						//pActor->SetOwner(nullptr);
+					}
 				}
 
 				if (root)
