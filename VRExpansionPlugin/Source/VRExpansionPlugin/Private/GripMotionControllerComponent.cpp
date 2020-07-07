@@ -2093,7 +2093,11 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
 	{
 		// Stop simulation for socketing
-		root->SetSimulatePhysics(false);
+		if (bWasSimulating || root->IsSimulatingPhysics())
+		{
+			root->SetSimulatePhysics(false);
+			bWasSimulating = true;
+		}
 
 		root->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
 		root->SetRelativeTransform(RelativeTransformToParent);
@@ -2103,8 +2107,12 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 
 		if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
 		{
-			// Stop simulation for socketing
-			rootComp->SetSimulatePhysics(false);
+			if (bWasSimulating || root->IsSimulatingPhysics())
+			{
+				// Stop simulation for socketing
+				rootComp->SetSimulatePhysics(false);
+				bWasSimulating = true;
+			}
 		}
 
 		pActor->AttachToComponent(SocketingParent, TransformRule, OptionalSocketName);
@@ -2114,7 +2122,7 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 			//pActor->SetOwner(nullptr);
 	}
 
-	// It had a physics handle, I need to delay a tick and set the transform to ensure it skips a race condition
+	// It had a physics handle or was simulating, I need to delay a tick and set the transform to ensure it skips a race condition
 	// I may need to consider running the entire attachment in here instead in the future
 	if (bWasSimulating)
 	{
