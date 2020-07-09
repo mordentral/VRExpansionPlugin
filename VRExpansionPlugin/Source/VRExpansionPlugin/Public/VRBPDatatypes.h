@@ -1284,6 +1284,7 @@ public:
 		bSkipNextTeleportCheck = false;
 		bSkipNextConstraintLengthCheck = false;
 		bIsPaused = false;
+		bLockHybridGrip = false;
 		AdditionTransform = FTransform::Identity;
 		GripDistance = 0.0f;
 
@@ -1383,6 +1384,7 @@ public:
 		SlotName(NAME_None),
 		GripMovementReplicationSetting(EGripMovementReplicationSettings::ForceClientSideMovement),
 		bIsPaused(false),
+		bLockHybridGrip(false),
 		bOriginalReplicatesMovement(false),
 		bOriginalGravity(false),
 		Damping(200.0f),
