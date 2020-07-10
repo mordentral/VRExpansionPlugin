@@ -909,6 +909,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
 		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
+	// Get the physics constraint force of a simulating grip
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		bool GetPhysicsConstraintForce(const FBPActorGripInformation& Grip, FVector& AngularForce, FVector& LinearForce);
+
 	// Get the root components mass of a grip
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
 		void GetGripMass(const FBPActorGripInformation& Grip, float& Mass);

@@ -531,6 +531,20 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 	LinearVelocity = primComp->GetPhysicsLinearVelocity();
 }
 
+bool UGripMotionControllerComponent::GetPhysicsConstraintForce(const FBPActorGripInformation& Grip, FVector& AngularForce, FVector& LinearForce)
+{
+	if (FBPActorPhysicsHandleInformation * PhysHandle = GetPhysicsGrip(Grip.GripID))
+	{
+		if (PhysHandle->HandleData2.IsValid())
+		{
+			FPhysicsInterface::GetForce(PhysHandle->HandleData2, LinearForce, AngularForce);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void UGripMotionControllerComponent::GetGripMass(const FBPActorGripInformation& Grip, float& Mass)
 {
 	UPrimitiveComponent* primComp = Grip.GetGrippedComponent();//Grip.Component;
