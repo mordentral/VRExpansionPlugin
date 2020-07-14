@@ -234,8 +234,8 @@ public:
 	virtual void BeginPlay() override;
 
 	/** Post-physics tick function for this character */
-	UPROPERTY()
-		FTickFunction PostPhysicsTickFunction;
+	//UPROPERTY()
+	//	FTickFunction PostPhysicsTickFunction;
 
 protected:
 	//~ Begin UActorComponent Interface.
