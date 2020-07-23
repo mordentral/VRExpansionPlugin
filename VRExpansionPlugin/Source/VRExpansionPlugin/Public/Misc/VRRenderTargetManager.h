@@ -7,6 +7,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/CanvasRenderTarget2D.h"
 #include "Net/Core/PushModel/PushModel.h"
+#include "TimerManager.h"
 //#include "ImageWrapper/Public/IImageWrapper.h"
 //#include "ImageWrapper/Public/IImageWrapperModule.h"
 
@@ -157,6 +158,54 @@ struct FRenderDataStore {
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnRenderTargetSaved, FBPVRReplicatedTextureStore, ColorData);
 
+
+/**
+* This class is used as a proxy to send owner only RPCs
+*/
+UCLASS(ClassGroup = (VRExpansionPlugin))
+class VREXPANSIONPLUGIN_API ARenderTargetReplicationProxy : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	ARenderTargetReplicationProxy(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+};
+
+ARenderTargetReplicationProxy::ARenderTargetReplicationProxy(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	bOnlyRelevantToOwner = true;
+	bNetUseOwnerRelevancy = true;
+	bReplicates = true;
+	PrimaryActorTick.bCanEverTick = false;
+	SetReplicateMovement(false);
+}
+
+USTRUCT()
+struct FClientRepData {
+	GENERATED_BODY()
+
+	UPROPERTY()
+		TWeakObjectPtr<APlayerController> PC;
+
+	UPROPERTY()
+		TWeakObjectPtr<ARenderTargetReplicationProxy> ReplicationProxy;
+
+	UPROPERTY()
+		bool bIsRelevant;
+
+	UPROPERTY()
+		bool bIsDirty;
+
+	FClientRepData() 
+	{
+		bIsRelevant = false;
+		bIsDirty = false;
+	}
+};
+
+
 /**
 * This class stores reading requests for rendertargets and iterates over them
 * It returns the pixel data at the end of processing
@@ -170,6 +219,9 @@ class VREXPANSIONPLUGIN_API UVRRenderTargetManager : public UActorComponent
 public:
 
     UVRRenderTargetManager(const FObjectInitializer& ObjectInitializer);
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "RenderTargetManager")
+		bool bInitiallyReplicateTexture;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "RenderTargetManager")
 		UCanvasRenderTarget2D* RenderTarget;
@@ -191,7 +243,7 @@ public:
 		bool bUseColorMap;
 
 	UPROPERTY()
-		TArray<TWeakObjectPtr<APlayerController>> NetRelevancyLog;
+		TArray<FClientRepData> NetRelevancyLog;
 
 	// Rate to poll for actor relevancy
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "RenderTargetManager")
@@ -403,22 +455,24 @@ public:
 	UFUNCTION()
 	void UpdateRelevancyMap()
 	{
-
 		AActor* myOwner = GetOwner();
 
 		for (int i = NetRelevancyLog.Num() - 1; i >= 0; i--)
 		{
-			if (!NetRelevancyLog[i].IsValid() || NetRelevancyLog[i]->IsLocalController() || !NetRelevancyLog[i]->GetPawn())
+			if (!NetRelevancyLog[i].PC.IsValid() || NetRelevancyLog[i].PC->IsLocalController() || !NetRelevancyLog[i].PC->GetPawn())
 			{
+				NetRelevancyLog[i].ReplicationProxy->Destroy();
 				NetRelevancyLog.RemoveAt(i);
 			}
 			else
 			{
-				if (APawn* pawn = NetRelevancyLog[i]->GetPawn())
+				if (APawn* pawn = NetRelevancyLog[i].PC->GetPawn())
 				{
-					if (!myOwner->IsNetRelevantFor(NetRelevancyLog[i].Get(), pawn, pawn->GetActorLocation()))
+					if (!myOwner->IsNetRelevantFor(NetRelevancyLog[i].PC.Get(), pawn, pawn->GetActorLocation()))
 					{
-						NetRelevancyLog.RemoveAt(i);
+						NetRelevancyLog[i].bIsRelevant = false;
+						NetRelevancyLog[i].bIsDirty = false;
+						//NetRelevancyLog.RemoveAt(i);
 					}
 				}
 			}
@@ -436,10 +490,41 @@ public:
 
 					if (myOwner->IsNetRelevantFor(PC, pawn, pawn->GetActorLocation()))
 					{
-						if (!NetRelevancyLog.Contains(PC))
+						FClientRepData * RepData = NetRelevancyLog.FindByPredicate([PC](const FClientRepData& Other)
+							{
+								return Other.PC == PC;
+							});
+
+						if (!RepData)
 						{
-							NetRelevancyLog.Add(PC);
+							FClientRepData ClientRepData;
+							
+							FActorSpawnParameters SpawnParams;
+							SpawnParams.Owner = PC;
+							FTransform NewTransform = this->GetOwner()->GetActorTransform();
+							ARenderTargetReplicationProxy* RenderProxy = GetWorld()->SpawnActor<ARenderTargetReplicationProxy>(ARenderTargetReplicationProxy::StaticClass(), NewTransform, SpawnParams);
+
+							if (RenderProxy)
+							{
+								RenderProxy->AttachToActor(this->GetOwner(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+							
+
+								ClientRepData.PC = PC;
+								ClientRepData.ReplicationProxy = RenderProxy;
+								ClientRepData.bIsRelevant = true;
+								ClientRepData.bIsDirty = true;
+
+								NetRelevancyLog.Add(ClientRepData);
+							}
 							// Update this client with the new data
+						}
+						else
+						{
+							if (!RepData->bIsRelevant)
+							{
+								RepData->bIsRelevant = true;
+								RepData->bIsDirty = true;
+							}
 						}
 					}
 				}
@@ -715,7 +800,7 @@ public:
 
 		InitRenderTarget();
 
-		if(GetNetMode() < ENetMode::NM_Client)
+		if(bInitiallyReplicateTexture && GetNetMode() < ENetMode::NM_Client)
 			GetWorld()->GetTimerManager().SetTimer(NetRelevancyTimer_Handle, this, &UVRRenderTargetManager::UpdateRelevancyMap, PollRelevancyTime, true);
 	}
 
@@ -743,6 +828,17 @@ public:
 			RenderTarget = nullptr;
 		}
 
+		for (FClientRepData& RepData : NetRelevancyLog)
+		{
+			RepData.PC = nullptr;
+			RepData.PC.Reset();
+			if (RepData.ReplicationProxy.IsValid() && !RepData.ReplicationProxy->IsPendingKill())
+			{
+				RepData.ReplicationProxy->Destroy();
+			}
+
+			RepData.ReplicationProxy.Reset();
+		}
 
     }
 
@@ -785,6 +881,8 @@ UVRRenderTargetManager::UVRRenderTargetManager(const FObjectInitializer& ObjectI
 	RenderTargetWidth = 100;
 	RenderTargetHeight = 100;
 	ClearColor = FColor::White;
+
+	bInitiallyReplicateTexture = false;
 }
 
 
