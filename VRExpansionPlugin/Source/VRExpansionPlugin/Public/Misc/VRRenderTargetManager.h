@@ -46,7 +46,6 @@ namespace RLE_Funcs
 	template <typename DataType>
 	static void RLEDecodeLine(const uint8* LineToDecode, uint32 Num, TArray<DataType>* DecodedLine, bool bCompressed);
 
-	template <typename DataType>
 	static inline void RLEWriteContinueFlag(uint32 Count, uint8** loc);
 
 	template <typename DataType>
@@ -1067,7 +1066,6 @@ bool RLE_Funcs::RLEEncodeLine(TArray<DataType>* LineToEncode, TArray<uint8>* Enc
 	return RLEEncodeBuffer<DataType>(LineToEncode->GetData(), LineToEncode->Num(), EncodedLine);
 }
 
-template <typename DataType>
 void RLE_Funcs::RLEWriteContinueFlag(uint32 count, uint8** loc)
 {
 	if (count <= 16)
@@ -1180,7 +1178,7 @@ bool RLE_Funcs::RLEEncodeBuffer(DataType* BufferToEncode, uint32 EncodeLength, T
 		{
 			if (bWroteStart && !bInRun)
 			{
-				RLE_Funcs::RLEWriteRunFlag<typename DataType>(TempCount, &loc, TempBuffer, false);
+				RLE_Funcs::RLEWriteRunFlag(TempCount, &loc, TempBuffer, false);
 				bWroteStart = false;
 			}
 
@@ -1193,10 +1191,10 @@ bool RLE_Funcs::RLEEncodeBuffer(DataType* BufferToEncode, uint32 EncodeLength, T
 					// Write run byte
 					if (bContinueRun)
 					{
-						RLE_Funcs::RLEWriteContinueFlag<typename DataType>(TempCount, &loc);
+						RLE_Funcs::RLEWriteContinueFlag(TempCount, &loc);
 					}
 					else
-						RLE_Funcs::RLEWriteRunFlag<typename DataType>(TempCount, &loc, TempBuffer, true);
+						RLE_Funcs::RLEWriteRunFlag(TempCount, &loc, TempBuffer, true);
 
 					bContinueRun = true;
 					TempCount = 0;
@@ -1221,12 +1219,12 @@ bool RLE_Funcs::RLEEncodeBuffer(DataType* BufferToEncode, uint32 EncodeLength, T
 			if (bContinueRun)
 			{
 				TempCount++;
-				RLE_Funcs::RLEWriteContinueFlag<typename DataType>(TempCount, &loc);
+				RLE_Funcs::RLEWriteContinueFlag(TempCount, &loc);
 			}
 			else
 			{
 				TempCount++;
-				RLE_Funcs::RLEWriteRunFlag<typename DataType>(TempCount, &loc, TempBuffer, true);
+				RLE_Funcs::RLEWriteRunFlag(TempCount, &loc, TempBuffer, true);
 			}
 
 			bContinueRun = false;
@@ -1240,7 +1238,7 @@ bool RLE_Funcs::RLEEncodeBuffer(DataType* BufferToEncode, uint32 EncodeLength, T
 			}
 			else if (bWroteStart && TempCount == MAX_COUNT)
 			{
-				RLE_Funcs::RLEWriteRunFlag<typename DataType>(TempCount, &loc, TempBuffer, false);
+				RLE_Funcs::RLEWriteRunFlag(TempCount, &loc, TempBuffer, false);
 
 				bWroteStart = true;
 				TempBuffer.Add(Last);
@@ -1267,19 +1265,19 @@ bool RLE_Funcs::RLEEncodeBuffer(DataType* BufferToEncode, uint32 EncodeLength, T
 			if (TempCount == MAX_COUNT)
 			{
 				// Write run byte
-				RLE_Funcs::RLEWriteRunFlag<typename DataType>(TempCount, &loc, TempBuffer, true);
+				RLE_Funcs::RLEWriteRunFlag(TempCount, &loc, TempBuffer, true);
 				bContinueRun = true;
 			}
 
 			if (bContinueRun)
 			{
 				TempCount++;
-				RLE_Funcs::RLEWriteContinueFlag<typename DataType>(TempCount, &loc);
+				RLE_Funcs::RLEWriteContinueFlag(TempCount, &loc);
 			}
 			else
 			{
 				TempCount++;
-				RLE_Funcs::RLEWriteRunFlag<typename DataType>(TempCount, &loc, TempBuffer, true);
+				RLE_Funcs::RLEWriteRunFlag(TempCount, &loc, TempBuffer, true);
 			}
 		}
 
@@ -1292,13 +1290,13 @@ bool RLE_Funcs::RLEEncodeBuffer(DataType* BufferToEncode, uint32 EncodeLength, T
 			if (TempCount/**countLoc*/ == MAX_COUNT)
 			{
 				// Write run byte
-				RLE_Funcs::RLEWriteRunFlag<typename DataType>(TempCount, &loc, TempBuffer, false);
+				RLE_Funcs::RLEWriteRunFlag(TempCount, &loc, TempBuffer, false);
 				TempCount = 0;
 			}
 
 			TempCount++;
 			TempBuffer.Add(Last);
-			RLE_Funcs::RLEWriteRunFlag<typename DataType>(TempCount, &loc, TempBuffer, false);
+			RLE_Funcs::RLEWriteRunFlag(TempCount, &loc, TempBuffer, false);
 		}
 	}
 
