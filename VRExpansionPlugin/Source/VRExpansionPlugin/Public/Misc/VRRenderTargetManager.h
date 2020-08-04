@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Serialization/ArchiveSaveCompressedProxy.h"
 #include "Serialization/ArchiveLoadCompressedProxy.h"
 
@@ -12,6 +14,7 @@
 #include "TimerManager.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/Canvas.h"
+#include "Materials/Material.h"
 //#include "ImageWrapper/Public/IImageWrapper.h"
 //#include "ImageWrapper/Public/IImageWrapperModule.h"
 
