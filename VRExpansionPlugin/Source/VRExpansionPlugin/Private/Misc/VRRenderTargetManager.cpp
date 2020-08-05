@@ -337,11 +337,6 @@ void ARenderTargetReplicationProxy::SendLocalDrawOperations_Implementation(const
 	}
 }
 
-bool ARenderTargetReplicationProxy::ReceiveTexture_Validate(const FBPVRReplicatedTextureStore& TextureData)
-{
-	return true;
-}
-
 void ARenderTargetReplicationProxy::ReceiveTexture_Implementation(const FBPVRReplicatedTextureStore& TextureData)
 {
 	if (OwningManager.IsValid())
@@ -350,11 +345,6 @@ void ARenderTargetReplicationProxy::ReceiveTexture_Implementation(const FBPVRRep
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, FString::Printf(TEXT("Recieved Texture, byte count: %i"), TextureData.PackedData.Num()));
 		OwningManager->DeCompressRenderTarget2D();
 	}
-}
-
-bool ARenderTargetReplicationProxy::InitTextureSend_Validate(int32 Width, int32 Height, int32 TotalDataCount, int32 BlobCount, EPixelFormat PixelFormat, bool bIsZipped)
-{
-	return true;
 }
 
 void ARenderTargetReplicationProxy::InitTextureSend_Implementation(int32 Width, int32 Height, int32 TotalDataCount, int32 BlobCount, EPixelFormat PixelFormat, bool bIsZipped)
@@ -457,11 +447,6 @@ void ARenderTargetReplicationProxy::GetLifetimeReplicatedProps(TArray< class FLi
 
 	DOREPLIFETIME(ARenderTargetReplicationProxy, OwningManager);
 	DOREPLIFETIME(ARenderTargetReplicationProxy, OwnersID);
-}
-
-bool ARenderTargetReplicationProxy::ReceiveTextureBlob_Validate(const TArray<uint8>& TextureBlob, int32 LocationInData, int32 BlobNumber)
-{
-	return true;
 }
 
 void ARenderTargetReplicationProxy::ReceiveTextureBlob_Implementation(const TArray<uint8>& TextureBlob, int32 LocationInData, int32 BlobNumber)

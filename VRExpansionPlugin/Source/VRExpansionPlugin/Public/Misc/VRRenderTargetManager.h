@@ -215,19 +215,19 @@ public:
 	UFUNCTION(Reliable, Server, WithValidation)
 		void SendLocalDrawOperations(const TArray<FRenderManagerOperation>& LocalRenderOperationStoreList);
 
-	UFUNCTION(Reliable, Client, WithValidation)
+	UFUNCTION(Reliable, Client)
 		void InitTextureSend(int32 Width, int32 Height, int32 TotalDataCount, int32 BlobCount, EPixelFormat PixelFormat, bool bIsZipped);
 
 	UFUNCTION(Reliable, Server, WithValidation)
 		void Ack_InitTextureSend(int32 TotalDataCount);
 
-	UFUNCTION(Reliable, Client, WithValidation)
+	UFUNCTION(Reliable, Client)
 		void ReceiveTextureBlob(const TArray<uint8>& TextureBlob, int32 LocationInData, int32 BlobCount);
 
 	UFUNCTION(Reliable, Server, WithValidation)
 		void Ack_ReceiveTextureBlob(int32 BlobCount);
 
-	UFUNCTION(Reliable, Client, WithValidation)
+	UFUNCTION(Reliable, Client)
 		void ReceiveTexture(const FBPVRReplicatedTextureStore&TextureData);
 
 };

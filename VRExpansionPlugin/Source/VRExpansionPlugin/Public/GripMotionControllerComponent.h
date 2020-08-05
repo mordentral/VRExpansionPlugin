@@ -363,7 +363,7 @@ public:
 	// Locally Gripped Array functions
 
 	// Notify a client that their local grip was bad
-	UFUNCTION(Reliable, Client, WithValidation, Category = "GripMotionController")
+	UFUNCTION(Reliable, Client, Category = "GripMotionController")
 	void Client_NotifyInvalidLocalGrip(UObject * LocallyGrippedObject, uint8 GripID);
 
 	// Notify the server that we locally gripped something
