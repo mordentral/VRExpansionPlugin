@@ -35,19 +35,24 @@ public:
 	// We manually copy the data into the serialization buffer during netserialize and keep
 	// a flip flop dirty flag
 
-	UPROPERTY()
+	UPROPERTY(Transient)
 		TArray<uint8> PackedData;
-	TArray<uint16> UnpackedData;
+
+	UPROPERTY(Transient)
+		TArray<uint16> UnpackedData;
+
+	UPROPERTY(Transient)
+		uint32 Width;
 
 	UPROPERTY()
-	uint32 Width;
+		uint32 Height;
 
-	UPROPERTY()
-	uint32 Height;
-
-	UPROPERTY()
+	UPROPERTY(Transient)
 		bool bIsZipped;
 
+	//UPROPERTY()
+	//	bool bJPG;
+	//UPROPERTY(Transient)
 	EPixelFormat PixelFormat;
 
 	void Reset()
@@ -58,6 +63,7 @@ public:
 		Height = 0;
 		PixelFormat = (EPixelFormat)0;
 		bIsZipped = false;
+		//bJPG = false;
 	}
 
 	void PackData();
@@ -216,7 +222,7 @@ public:
 		void SendLocalDrawOperations(const TArray<FRenderManagerOperation>& LocalRenderOperationStoreList);
 
 	UFUNCTION(Reliable, Client)
-		void InitTextureSend(int32 Width, int32 Height, int32 TotalDataCount, int32 BlobCount, EPixelFormat PixelFormat, bool bIsZipped);
+		void InitTextureSend(int32 Width, int32 Height, int32 TotalDataCount, int32 BlobCount, EPixelFormat PixelFormat, bool bIsZipped/*, bool bIsJPG*/);
 
 	UFUNCTION(Reliable, Server, WithValidation)
 		void Ack_InitTextureSend(int32 TotalDataCount);

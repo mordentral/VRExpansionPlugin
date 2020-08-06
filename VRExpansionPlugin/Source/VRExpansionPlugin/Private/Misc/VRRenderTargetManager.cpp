@@ -347,11 +347,12 @@ void ARenderTargetReplicationProxy::ReceiveTexture_Implementation(const FBPVRRep
 	}
 }
 
-void ARenderTargetReplicationProxy::InitTextureSend_Implementation(int32 Width, int32 Height, int32 TotalDataCount, int32 BlobCount, EPixelFormat PixelFormat, bool bIsZipped)
+void ARenderTargetReplicationProxy::InitTextureSend_Implementation(int32 Width, int32 Height, int32 TotalDataCount, int32 BlobCount, EPixelFormat PixelFormat, bool bIsZipped/*, bool bIsJPG*/)
 {
 	TextureStore.Reset();
 	TextureStore.PixelFormat = PixelFormat;
 	TextureStore.bIsZipped = bIsZipped;
+	//TextureStore.bJPG = bIsJPG;
 	TextureStore.Width = Width;
 	TextureStore.Height = Height;
 
@@ -392,7 +393,7 @@ void ARenderTargetReplicationProxy::SendInitMessage()
 {
 	int32 TotalBlobs = TextureStore.PackedData.Num() / TextureBlobSize + (TextureStore.PackedData.Num() % TextureBlobSize > 0 ? 1 : 0);
 
-	InitTextureSend(TextureStore.Width, TextureStore.Height, TextureStore.PackedData.Num(), TotalBlobs, TextureStore.PixelFormat, TextureStore.bIsZipped);
+	InitTextureSend(TextureStore.Width, TextureStore.Height, TextureStore.PackedData.Num(), TotalBlobs, TextureStore.PixelFormat, TextureStore.bIsZipped/*, TextureStore.bJPG*/);
 
 }
 
@@ -1047,33 +1048,38 @@ void FBPVRReplicatedTextureStore::PackData()
 {
 	if (UnpackedData.Num() > 0)
 	{
-
-		/*IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
-		TSharedPtr<IImageWrapper> imageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
-
-		imageWrapper->SetRaw(UnpackedData.GetData(), UnpackedData.Num(), Width, Height, ERGBFormat::RGBA, 8);
-		const TArray64<uint8>& ImgData = imageWrapper->GetCompressed(1);
-
-
-		PackedData.Reset(ImgData.Num());
-		PackedData.AddUninitialized(ImgData.Num());
-		FMemory::Memcpy(PackedData.GetData(), ImgData.GetData(), ImgData.Num());*/
-
 		TArray<uint8> TmpPacked;
 		RLE_Funcs::RLEEncodeBuffer<uint16>(UnpackedData.GetData(), UnpackedData.Num(), &TmpPacked);
 		UnpackedData.Reset();
 
-		if (TmpPacked.Num() > 512)
+		/*if (TmpPacked.Num() > 30000)
+		{
+			IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
+			TSharedPtr<IImageWrapper> imageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::JPEG);
+
+			imageWrapper->SetRaw(UnpackedData.GetData(), UnpackedData.Num(), Width, Height, ERGBFormat::RGBA, 8);
+			const TArray64<uint8>& ImgData = imageWrapper->GetCompressed(1);
+
+
+			PackedData.Reset(ImgData.Num());
+			PackedData.AddUninitialized(ImgData.Num());
+			FMemory::Memcpy(PackedData.GetData(), ImgData.GetData(), ImgData.Num());
+			bJPG = true;
+			bIsZipped = false;
+		}
+		else */if (TmpPacked.Num() > 512)
 		{
 			FArchiveSaveCompressedProxy Compressor(PackedData, NAME_Zlib, COMPRESS_BiasSpeed);
 			Compressor << TmpPacked;
 			Compressor.Flush();
 			bIsZipped = true;
+			//bJPG = false;
 		}
 		else
 		{
 			PackedData = TmpPacked;
 			bIsZipped = false;
+			//bJPG = false;
 		}
 	}
 }
@@ -1083,22 +1089,25 @@ void FBPVRReplicatedTextureStore::UnPackData()
 {
 	if (PackedData.Num() > 0)
 	{
-		/*IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
-		TSharedPtr<IImageWrapper> imageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
 
-
-		if (imageWrapper.IsValid() && (PackedData.Num() > 0) && imageWrapper->SetCompressed(PackedData.GetData(), PackedData.Num()))
+		/*if (bJPG)
 		{
-			Width = imageWrapper->GetWidth();
-			Height = imageWrapper->GetHeight();
+			IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
+			TSharedPtr<IImageWrapper> imageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::JPEG);
+			
 
-			if (imageWrapper->GetRaw(ERGBFormat::BGRA, 8, UnpackedData))
+			if (imageWrapper.IsValid() && (PackedData.Num() > 0) && imageWrapper->SetCompressed(PackedData.GetData(), PackedData.Num()))
 			{
-				//bSucceeded = true;
-			}
-		}*/
+				Width = imageWrapper->GetWidth();
+				Height = imageWrapper->GetHeight();
 
-		if (bIsZipped)
+				if (imageWrapper->GetRaw(ERGBFormat::BGRA, 8, UnpackedData))
+				{
+					//bSucceeded = true;
+				}
+			}
+		}
+		else */if (bIsZipped)
 		{
 			TArray<uint8> RLEEncodedData;
 			FArchiveLoadCompressedProxy DataArchive(PackedData, NAME_Zlib);
@@ -1120,6 +1129,7 @@ bool FBPVRReplicatedTextureStore::NetSerialize(FArchive& Ar, class UPackageMap* 
 {
 	bOutSuccess = true;
 
+	//Ar.SerializeBits(&bIsJPG, 1);
 	Ar.SerializeBits(&bIsZipped, 1);
 	Ar.SerializeIntPacked(Width);
 	Ar.SerializeIntPacked(Height);
