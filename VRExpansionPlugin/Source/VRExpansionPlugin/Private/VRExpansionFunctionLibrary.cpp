@@ -20,44 +20,55 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 		FBodyInstance *Inst1 = Prim1->GetBodyInstance(OptionalBoneName1);
 		FBodyInstance *Inst2 = Prim2->GetBodyInstance(OptionalBoneName2);
 
-		Inst1->SetContactModification(bIgnoreCollision);
-		Inst2->SetContactModification(bIgnoreCollision);
-
-		if (FPhysScene* PhysScene = Prim1->GetWorld()->GetPhysicsScene())
+		if (Inst1 && Inst2)
 		{
-			if (PxScene * PScene = PhysScene->GetPxScene())
+			Inst1->SetContactModification(bIgnoreCollision);
+			Inst2->SetContactModification(bIgnoreCollision);
+
+			if (FPhysScene* PhysScene = Prim1->GetWorld()->GetPhysicsScene())
 			{
-				if (FCCDContactModifyCallbackVR * ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
+				if (PxScene* PScene = PhysScene->GetPxScene())
 				{
-					FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
-					FContactModBodyInstancePair newContactPair;
-					newContactPair.Actor1 = Inst1->ActorHandle;
-					newContactPair.Actor2 = Inst2->ActorHandle;
-					newContactPair.bBody1IgnoreEntireActor = false;
-					newContactPair.bBody2IgnoreEntireActor = false;
+					if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
+					{
+						FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
+						FContactModBodyInstancePair newContactPair;
+						newContactPair.Actor1 = Inst1->ActorHandle;
+						newContactPair.Actor2 = Inst2->ActorHandle;
+						newContactPair.bBody1IgnoreEntireActor = false;
+						newContactPair.bBody2IgnoreEntireActor = false;
 
-					if (bIgnoreCollision)
-						ContactCallback->ContactsToIgnore.AddUnique(newContactPair);
-					else
-						ContactCallback->ContactsToIgnore.Remove(newContactPair);
-				}
+						if (bIgnoreCollision)
+							ContactCallback->ContactsToIgnore.AddUnique(newContactPair);
+						else
+							ContactCallback->ContactsToIgnore.Remove(newContactPair);
+					}
 
-				if (FContactModifyCallbackVR * ContactCallback = (FContactModifyCallbackVR*)PScene->getContactModifyCallback())
-				{
-					FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
-					FContactModBodyInstancePair newContactPair;
-					newContactPair.Actor1 = Inst1->ActorHandle;
-					newContactPair.Actor2 = Inst2->ActorHandle;
-					newContactPair.bBody1IgnoreEntireActor = false;
-					newContactPair.bBody2IgnoreEntireActor = false;
+					if (FContactModifyCallbackVR* ContactCallback = (FContactModifyCallbackVR*)PScene->getContactModifyCallback())
+					{
+						FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
+						FContactModBodyInstancePair newContactPair;
+						newContactPair.Actor1 = Inst1->ActorHandle;
+						newContactPair.Actor2 = Inst2->ActorHandle;
+						newContactPair.bBody1IgnoreEntireActor = false;
+						newContactPair.bBody2IgnoreEntireActor = false;
 
-					if (bIgnoreCollision)
-						ContactCallback->ContactsToIgnore.AddUnique(newContactPair);
-					else
-						ContactCallback->ContactsToIgnore.Remove(newContactPair);
+						if (bIgnoreCollision)
+							ContactCallback->ContactsToIgnore.AddUnique(newContactPair);
+						else
+							ContactCallback->ContactsToIgnore.Remove(newContactPair);
+					}
 				}
 			}
 		}
+		else
+		{
+			UE_LOG(VRExpansionFunctionLibraryLog, Error, TEXT("Set Objects Ignore Collision called with object(s) with an invalid body instance!!"));
+		}
+	}
+	else
+	{
+		UE_LOG(VRExpansionFunctionLibraryLog, Error, TEXT("Set Objects Ignore Collision called with invalid object(s)!!"));
 	}
 #endif
 }
