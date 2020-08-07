@@ -115,7 +115,7 @@ public:
 
 		// Reconstitute the controller transform relative to the object, then remove the rotation and set it back to relative to controller
 		// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
-		FTransform compTrans = this->GetParentTransform();
+		FTransform compTrans = this->GetParentTransform(true, GripInformation.GrippedBoneName);
 
 		InteractionSettings.BaseTransform = InteractionSettings.BaseTransform.Inverse() * compTrans; // Reconstitute transform
 		InteractionSettings.BaseTransform.SetRotation(FQuat::Identity); // Remove rotation

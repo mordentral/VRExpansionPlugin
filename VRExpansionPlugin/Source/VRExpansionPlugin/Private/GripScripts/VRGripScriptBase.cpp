@@ -202,15 +202,22 @@ USceneComponent * UVRGripScriptBase::GetParentSceneComp()
 	return nullptr;
 }
 
-FTransform UVRGripScriptBase::GetParentTransform(bool bGetWorldTransform)
+FTransform UVRGripScriptBase::GetParentTransform(bool bGetWorldTransform, FName BoneName)
 {
-	UObject * ParentObj = this->GetParent();
+	UObject* ParentObj = this->GetParent();
 
-	if (USceneComponent * PrimParent = Cast<USceneComponent>(ParentObj))
+	if (USceneComponent* PrimParent = Cast<USceneComponent>(ParentObj))
 	{
-		return bGetWorldTransform ? PrimParent->GetComponentTransform() : PrimParent->GetRelativeTransform();
+		if (BoneName != NAME_None)
+		{
+			return PrimParent->GetSocketTransform(BoneName);
+		}
+		else
+		{
+			return PrimParent->GetComponentTransform();
+		}
 	}
-	else if (AActor * ParentActor = Cast<AActor>(ParentObj))
+	else if (AActor* ParentActor = Cast<AActor>(ParentObj))
 	{
 		return ParentActor->GetActorTransform();
 	}
