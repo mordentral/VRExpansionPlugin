@@ -1079,6 +1079,10 @@ public:
 	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips = true, bool bIsForPostTeleport = false);
 	bool TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport, FTransform & OptionalTransform);
 
+	// Moves all grips back into position immediately
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		void TeleportMoveGrips(bool bTeleportPhysicsGrips = true, bool bIsForPostTeleport = false);
+
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	bool AddSecondaryAttachmentPoint(UObject * GrippedObjectToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false);
