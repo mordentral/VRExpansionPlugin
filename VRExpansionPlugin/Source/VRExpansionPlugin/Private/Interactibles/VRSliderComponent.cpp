@@ -37,6 +37,7 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	InitialGripLoc = FVector::ZeroVector;
 
 	bSlideDistanceIsInParentSpace = true;
+	bUseLegacyLogic = false;
 
 	SplineComponentToFollow = nullptr;
 
@@ -552,9 +553,9 @@ FVector UVRSliderComponent::ClampSlideVector(FVector ValueToClamp)
 	if (bSlideDistanceIsInParentSpace)
 		fScaleFactor = fScaleFactor / InitialRelativeTransform.GetScale3D();
 
-	FVector MinScale = MinSlideDistance.GetAbs() * fScaleFactor;
+	FVector MinScale = (bUseLegacyLogic ? MinSlideDistance : MinSlideDistance.GetAbs()) * fScaleFactor;
 
-	FVector Dist = (MinSlideDistance.GetAbs() + MaxSlideDistance.GetAbs()) * fScaleFactor;
+	FVector Dist = (bUseLegacyLogic ? (MinSlideDistance + MaxSlideDistance) : (MinSlideDistance.GetAbs() + MaxSlideDistance.GetAbs())) * fScaleFactor;
 	FVector Progress = (ValueToClamp - (-MinScale)) / Dist;
 
 	if (bSliderUsesSnapPoints)
@@ -622,7 +623,16 @@ float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUs
 	}
 
 	// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
-	float Progress = FMath::Clamp(FVector::Dist(-MinSlideDistance.GetAbs(), CurLocation) / FVector::Dist(-MinSlideDistance.GetAbs(), MaxSlideDistance.GetAbs()), 0.0f, 1.0f);
+	float Progress = 0.f;
+	
+	if (bUseLegacyLogic)
+	{
+		Progress = FMath::Clamp(FVector::Dist(-MinSlideDistance, CurLocation) / FVector::Dist(-MinSlideDistance, MaxSlideDistance), 0.0f, 1.0f);
+	}
+	else
+	{
+		Progress = FMath::Clamp(FVector::Dist(-MinSlideDistance.GetAbs(), CurLocation) / FVector::Dist(-MinSlideDistance.GetAbs(), MaxSlideDistance.GetAbs()), 0.0f, 1.0f);
+	}
 
 	if (bSliderUsesSnapPoints && SnapThreshold < SnapIncrement)
 	{
@@ -714,7 +724,7 @@ void UVRSliderComponent::SetSliderProgress(float NewSliderProgress)
 	else // Not a spline follow
 	{
 		// Doing it min+max because the clamp value subtracts the min value
-		FVector CalculatedLocation = FMath::Lerp(-MinSlideDistance.GetAbs(), MaxSlideDistance.GetAbs(), NewSliderProgress);
+		FVector CalculatedLocation = bUseLegacyLogic ? FMath::Lerp(-MinSlideDistance, MaxSlideDistance, NewSliderProgress) : FMath::Lerp(-MinSlideDistance.GetAbs(), MaxSlideDistance.GetAbs(), NewSliderProgress);
 
 		if (bSlideDistanceIsInParentSpace)
 			CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
