@@ -70,7 +70,13 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		float GripBreakDistance();
 
-	// Get closest slot in range
+	/**
+	 * Called to get the closest grip socket in range
+	 * @param WorldLocation - World Location to check near
+	 * @param bSecondarySlot - True if this is a check for a secondary slot or not
+	 * @param CallingController - Controller checking for the slot (can be used in overrides for per hand checks)
+	 * @param OverridePrefix - A different substring to check against in the socket names to find relevant ones
+	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
 		void ClosestGripSlotInRange(FVector WorldLocation, bool bSecondarySlot,  bool & bHadSlotInRange, FTransform & SlotWorldTransform, UGripMotionControllerComponent * CallingController = nullptr, FName OverridePrefix = NAME_None);
 
