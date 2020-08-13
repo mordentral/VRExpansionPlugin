@@ -686,6 +686,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
 		void AddCustomReplicatedMovement(FVector Movement);
 
+	// Clears the custom replicated movement, can be used to cancel movements if the mode changes
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
+		void ClearCustomReplicatedMovement();
+
 	// Called to check if the server is performing a move action on a non controlled character
 	// If so then we just run the logic right away as it can't be inlined and won't be replicated
 	void CheckServerAuthedMoveAction();
