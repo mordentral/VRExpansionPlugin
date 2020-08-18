@@ -404,6 +404,7 @@ public:
 		, CapsuleHalfHeight(InComponent->GetScaledCapsuleHalfHeight())
 		, ShapeColor(InComponent->ShapeColor)
 		, VRCapsuleOffset(InComponent->VRCapsuleOffset)
+		, bSimulating(false)
 		//, OffsetComponentToWorld(InComponent->OffsetComponentToWorld)
 		, LocalToWorld(InComponent->OffsetComponentToWorld.ToMatrixWithScale())
 	{
@@ -428,23 +429,29 @@ public:
 				FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
 
 				// If in editor views, lets offset the capsule upwards so that it views correctly
-				if (UseEditorCompositing(View))
+				
+				if (bSimulating)
+				{
+					DrawWireCapsule(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World);
+				}
+				else if (UseEditorCompositing(View))
 				{
 					DrawWireCapsule(PDI, LocalToWorld.GetOrigin() + FVector(0.f, 0.f, CapsuleHalfHeight), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);
 				}
 				else
-					DrawWireCapsule(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);
+					DrawWireCapsule(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);					
 			}
 		}
 	}
 
 	/** Called on render thread to assign new dynamic data */
-	void UpdateTransform_RenderThread(const FTransform &NewTransform, float NewHalfHeight)
+	void UpdateTransform_RenderThread(const FTransform &NewTransform, float NewHalfHeight, bool bIsSimulating)
 	{
 		check(IsInRenderingThread());
 		LocalToWorld = NewTransform.ToMatrixWithScale();
 		//OffsetComponentToWorld = NewTransform;
 		CapsuleHalfHeight = NewHalfHeight;
+		bSimulating = bIsSimulating;
 	}
 
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override
@@ -470,6 +477,7 @@ private:
 	float		CapsuleHalfHeight;
 	FColor	ShapeColor;
 	const FVector VRCapsuleOffset;
+	bool bSimulating;
 	//FTransform OffsetComponentToWorld;
 	FMatrix LocalToWorld;
 };
@@ -514,6 +522,12 @@ void UVRRootComponent::BeginPlay()
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+
+	if (this->IsSimulatingPhysics())
+	{
+		return Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	}
+
 	UVRBaseCharacterMovementComponent * CharMove = nullptr;
 
 	// Need these for passing physics updates to character movement
@@ -701,9 +715,49 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 	BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
 }
 
+void UVRRootComponent::SetSimulatePhysics(bool bSimulate)
+{
+	Super::SetSimulatePhysics(bSimulate);
+
+	if (bSimulate)
+	{
+		if (AVRCharacter* OwningCharacter = Cast<AVRCharacter>(GetOwner()))
+		{
+			OwningCharacter->NetSmoother->SetRelativeLocation(FVector(0.f,0.f, -this->GetUnscaledCapsuleHalfHeight()));
+		}	
+		this->AddWorldOffset(this->GetComponentRotation().RotateVector(FVector(0.f, 0.f, this->GetScaledCapsuleHalfHeight())), false, nullptr, ETeleportType::TeleportPhysics);
+	}
+	else
+	{
+		if (AVRCharacter* OwningCharacter = Cast<AVRCharacter>(GetOwner()))
+		{
+			OwningCharacter->NetSmoother->SetRelativeLocation(FVector(0.f, 0.f, 0));
+		}
+		this->AddWorldOffset(this->GetComponentRotation().RotateVector(FVector(0.f, 0.f, -this->GetScaledCapsuleHalfHeight())), false, nullptr, ETeleportType::TeleportPhysics);
+	}
+}
+
 // Override this so that the physics representation is in the correct location
 void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
 {
+	if (this->IsSimulatingPhysics())
+	{
+		if (this->ShouldRender() && this->SceneProxy)
+		{
+			FTransform lOffsetComponentToWorld = OffsetComponentToWorld;
+			float lCapsuleHalfHeight = CapsuleHalfHeight;
+			bool bIsSimulating = this->IsSimulatingPhysics();
+			FDrawVRCylinderSceneProxy* CylinderSceneProxy = (FDrawVRCylinderSceneProxy*)SceneProxy;
+			ENQUEUE_RENDER_COMMAND(VRRootComponent_SendNewDebugTransform)(
+				[CylinderSceneProxy, lOffsetComponentToWorld, lCapsuleHalfHeight, bIsSimulating](FRHICommandList& RHICmdList)
+				{
+					CylinderSceneProxy->UpdateTransform_RenderThread(lOffsetComponentToWorld, lCapsuleHalfHeight, bIsSimulating);
+				});
+		}
+
+		return Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
+	}
+
 	GenerateOffsetToWorld();
 	// Using the physics flag for all of this anyway, no reason for a custom flag, it handles it fine
 	if (!(UpdateTransformFlags & EUpdateTransformFlags::SkipPhysicsUpdate))
@@ -724,11 +778,12 @@ void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFl
 
 			FTransform lOffsetComponentToWorld = OffsetComponentToWorld;
 			float lCapsuleHalfHeight = CapsuleHalfHeight;
+			bool bIsSimulating = this->IsSimulatingPhysics();
 			FDrawVRCylinderSceneProxy* CylinderSceneProxy = (FDrawVRCylinderSceneProxy*)SceneProxy;
 			ENQUEUE_RENDER_COMMAND(VRRootComponent_SendNewDebugTransform)(
-				[CylinderSceneProxy, lOffsetComponentToWorld, lCapsuleHalfHeight](FRHICommandList& RHICmdList)
+				[CylinderSceneProxy, lOffsetComponentToWorld, lCapsuleHalfHeight, bIsSimulating](FRHICommandList& RHICmdList)
 			{
-				CylinderSceneProxy->UpdateTransform_RenderThread(lOffsetComponentToWorld, lCapsuleHalfHeight);
+				CylinderSceneProxy->UpdateTransform_RenderThread(lOffsetComponentToWorld, lCapsuleHalfHeight, bIsSimulating);
 			});
 
 		}
