@@ -131,7 +131,7 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 	if (CharacterOwner->IsLocallyControlled() && GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Climbing)
 	{
 		// Allow the player to run updates on the climb logic for CustomVRInputVector
-		if (BaseVRCharacterOwner)
+		if (AVRBaseCharacter* BaseVRCharacterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
 		{
 			BaseVRCharacterOwner->UpdateClimbingMovement(DeltaTime);
 		}
@@ -223,7 +223,7 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 
 	if (bNotifyTeleported)
 	{
-		if (BaseVRCharacterOwner)
+		if (AVRBaseCharacter* BaseVRCharacterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
 		{
 			BaseVRCharacterOwner->OnCharacterTeleported_Bind.Broadcast();
 			bNotifyTeleported = false;
