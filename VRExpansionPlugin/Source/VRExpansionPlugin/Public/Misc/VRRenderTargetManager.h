@@ -150,9 +150,6 @@ public:
 	UPROPERTY()
 		TSoftObjectPtr<UMaterial> Material;
 
-	FRenderManagerOperation() {
-	}
-
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 };
 template<>
