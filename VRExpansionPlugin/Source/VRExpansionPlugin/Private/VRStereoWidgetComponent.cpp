@@ -74,6 +74,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	bIsDirty = true;
 	bDirtyRenderTarget = false;
 	bRenderBothStereoAndWorld = false;
+	bDelayForRenderThread = false;
 	bIsSleeping = false;
 	//Texture = nullptr;
 }
@@ -282,8 +283,15 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		LayerDsec.Priority = Priority;
 		LayerDsec.QuadSize = FVector2D(DrawSize);
 		LayerDsec.UVRect = UVRect;
-		LayerDsec.Transform = Transform;
 
+		if (bDelayForRenderThread && !LastTransform.Equals(FTransform::Identity))
+		{
+			LayerDsec.Transform = LastTransform;
+		}
+		else
+		{
+			LayerDsec.Transform = Transform;
+		}
 
 		if (RenderTarget)
 		{
