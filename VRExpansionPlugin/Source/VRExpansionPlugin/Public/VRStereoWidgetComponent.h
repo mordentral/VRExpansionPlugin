@@ -55,6 +55,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		bool bUseEpicsWorldLockedStereo;
 
+	// If true, will cache and delay the transform adjustment for one frame in order to sync with the game thread better
+	// Not for use with late updated parents.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+		bool bDelayForRenderThread;
+
 	// If true will not render or update until false
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		bool bIsSleeping;
