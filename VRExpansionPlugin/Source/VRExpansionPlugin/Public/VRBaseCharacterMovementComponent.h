@@ -570,7 +570,7 @@ public:
 		if (!FMath::IsNearlyEqual(LFDiff.Z, nMove->LFDiff.Z))
 			return false;
 
-		if (!LFDiff.IsZero() && !nMove->LFDiff.IsZero() && !FVector::Coincident(LFDiff.GetSafeNormal2D(), nMove->LFDiff.GetSafeNormal2D(), AccelDotThresholdCombine))
+		if (!FVector2D(LFDiff.X, LFDiff.Y).IsZero() && !FVector2D(nMove->LFDiff.X, nMove->LFDiff.Y).IsZero() && !FVector::Coincident(LFDiff.GetSafeNormal2D(), nMove->LFDiff.GetSafeNormal2D(), AccelDotThresholdCombine))
 			return false;
 
 		return FSavedMove_Character::CanCombineWith(NewMove, Character, MaxDelta);
