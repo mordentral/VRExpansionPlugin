@@ -839,6 +839,180 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	ServerMoveHandleClientErrorVR(TimeStamp, DeltaTime, Accel, ClientLoc, ViewRot.Yaw, MoveReps.ClientMovementBase, MoveReps.ClientBaseBoneName, ClientMovementMode);
 }
 
+void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterNetworkMoveData& MoveData)
+{
+	QUICK_SCOPE_CYCLE_COUNTER(VRCharacterMovementServerMove_PerformMovement);
+	//SCOPE_CYCLE_COUNTER(STAT_VRCharacterMovementServerMove);
+	//CSV_SCOPED_TIMING_STAT(CharacterMovement, CharacterMovementServerMove);
+
+	if (!HasValidData() || !IsActive())
+	{
+		return;
+	}
+
+	bool bAutoAcceptPacket = false;
+
+	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
+	check(ServerData);
+
+	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
+	{
+		return;
+	}
+	else if (bJustUnseated)
+	{	
+		ServerData->CurrentClientTimeStamp = MoveData.TimeStamp;
+		bAutoAcceptPacket = true;
+		bJustUnseated = false;
+	}
+
+	const float ClientTimeStamp = MoveData.TimeStamp;
+	FVector_NetQuantize10 ClientAccel = MoveData.Acceleration;
+	const uint8 ClientMoveFlags = MoveData.CompressedMoveFlags;
+	const FRotator ClientControlRotation = MoveData.ControlRotation;
+
+	if (!bAutoAcceptPacket && !VerifyClientTimeStamp(ClientTimeStamp, *ServerData))
+	{
+		const float ServerTimeStamp = ServerData->CurrentClientTimeStamp;
+		// This is more severe if the timestamp has a large discrepancy and hasn't been recently reset.
+		static const auto CVarNetServerMoveTimestampExpiredWarningThreshold = IConsoleManager::Get().FindConsoleVariable(TEXT("net.NetServerMoveTimestampExpiredWarningThreshold"));
+		if (ServerTimeStamp > 1.0f && FMath::Abs(ServerTimeStamp - ClientTimeStamp) > CVarNetServerMoveTimestampExpiredWarningThreshold->GetFloat())
+		{
+			UE_LOG(LogNetPlayerMovement, Warning, TEXT("ServerMove: TimeStamp expired: %f, CurrentTimeStamp: %f, Character: %s"), ClientTimeStamp, ServerTimeStamp, *GetNameSafe(CharacterOwner));
+		}
+		else
+		{
+			UE_LOG(LogNetPlayerMovement, Log, TEXT("ServerMove: TimeStamp expired: %f, CurrentTimeStamp: %f, Character: %s"), ClientTimeStamp, ServerTimeStamp, *GetNameSafe(CharacterOwner));
+		}
+		return;
+	}
+
+
+	// Convert to our stored move data array
+	const FVRCharacterNetworkMoveData* MoveDataVR = (const FVRCharacterNetworkMoveData*)&MoveData;
+
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
+
+	bool bServerReadyForClient = true;
+	APlayerController* PC = Cast<APlayerController>(CharacterOwner->GetController());
+	if (PC)
+	{
+		bServerReadyForClient = PC->NotifyServerReceivedClientData(CharacterOwner, ClientTimeStamp);
+		if (!bServerReadyForClient)
+		{
+			ClientAccel = FVector::ZeroVector;
+		}
+	}
+
+	const UWorld* MyWorld = GetWorld();
+	const float DeltaTime = ServerData->GetServerMoveDeltaTime(ClientTimeStamp, CharacterOwner->GetActorTimeDilation(*MyWorld));
+
+	if (DeltaTime > 0.f)
+	{
+		ServerData->CurrentClientTimeStamp = ClientTimeStamp;
+		ServerData->ServerAccumulatedClientTimeStamp += DeltaTime;
+		ServerData->ServerTimeStamp = MyWorld->GetTimeSeconds();
+		ServerData->ServerTimeStampLastServerMove = ServerData->ServerTimeStamp;
+
+		if (PC && bUseClientControlRotation)
+		{
+			PC->SetControlRotation(ClientControlRotation);
+		}
+
+		if (!bServerReadyForClient)
+		{
+			return;
+		}
+
+		// Perform actual movement
+		if ((MyWorld->GetWorldSettings()->GetPauserPlayerState() == NULL))
+		{
+			if (PC)
+			{
+				PC->UpdateRotation(DeltaTime);
+			}
+
+			if (!MoveDataVR->ConditionalMoveReps.RequestedVelocity.IsZero())
+			{
+				RequestedVelocity = MoveDataVR->ConditionalMoveReps.RequestedVelocity;
+				bHasRequestedVelocity = true;
+			}
+
+			CustomVRInputVector = MoveDataVR->ConditionalMoveReps.CustomVRInputVector;
+			MoveActionArray = MoveDataVR->ConditionalMoveReps.MoveActionArray;
+
+			// Set capsule location prior to testing movement
+			// I am overriding the replicated value here when movement is made on purpose
+			if (VRRootCapsule)
+			{
+				VRRootCapsule->curCameraLoc = MoveDataVR->VRCapsuleLocation;
+				VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(MoveDataVR->VRCapsuleRotation), 0.0f);
+				VRRootCapsule->DifferenceFromLastFrame = FVector(MoveDataVR->LFDiff.X, MoveDataVR->LFDiff.Y, 0.0f);
+				AdditionalVRInputVector = VRRootCapsule->DifferenceFromLastFrame;
+
+				if (BaseVRCharacterOwner)
+				{
+					if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && MoveDataVR->LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(MoveDataVR->LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+					{
+						BaseVRCharacterOwner->SetCharacterHalfHeightVR(MoveDataVR->LFDiff.Z, false);
+						//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
+							//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
+					}
+				}
+
+				VRRootCapsule->GenerateOffsetToWorld(false, false);
+
+				// #TODO: Should I actually implement the mesh translation from "Crouch"? Generally people are going to be
+				//	IKing any mesh from the HMD instead.
+				/*
+					// Don't smooth this change in mesh position
+					if (bClientSimulation && CharacterOwner->Role == ROLE_SimulatedProxy)
+					{
+						FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
+						if (ClientData && ClientData->MeshTranslationOffset.Z != 0.f)
+						{
+							ClientData->MeshTranslationOffset += FVector(0.f, 0.f, MeshAdjust);
+							ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
+						}
+					}
+				*/
+			}
+
+			MoveAutonomous(ClientTimeStamp, DeltaTime, ClientMoveFlags, ClientAccel);
+			bHasRequestedVelocity = false;
+		}
+
+		UE_CLOG(CharacterOwner && UpdatedComponent, LogNetPlayerMovement, VeryVerbose, TEXT("ServerMove Time %f Acceleration %s Velocity %s Position %s Rotation %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d)"),
+			ClientTimeStamp, *ClientAccel.ToString(), *Velocity.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), *UpdatedComponent->GetComponentRotation().ToCompactString(), DeltaTime, *GetMovementName(),
+			*GetNameSafe(GetMovementBase()), *CharacterOwner->GetBasedMovement().BoneName.ToString(), MovementBaseUtility::IsDynamicBase(GetMovementBase()) ? 1 : 0);
+	}
+
+	// #TODO: Handle this better at some point? Client also denies it later on during correction (ApplyNetworkMovementMode in base movement)
+	// Pre handling the errors, lets avoid rolling back to/from custom movement modes, they tend to be scripted and this can screw things up
+	const uint8 CurrentPackedMovementMode = PackNetworkMovementMode();
+	if (CurrentPackedMovementMode != MoveData.MovementMode)
+	{
+		TEnumAsByte<EMovementMode> NetMovementMode(MOVE_None);
+		TEnumAsByte<EMovementMode> NetGroundMode(MOVE_None);
+		uint8 NetCustomMode(0);
+		UnpackNetworkMovementMode(MoveData.MovementMode, NetMovementMode, NetCustomMode, NetGroundMode);
+
+		// Custom movement modes aren't going to be rolled back as they are client authed for our pawns
+		if (NetMovementMode == EMovementMode::MOVE_Custom || MovementMode == EMovementMode::MOVE_Custom)
+		{
+			if (NetCustomMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing || CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing)
+				SetMovementMode(NetMovementMode, NetCustomMode);
+		}
+	}
+
+	// Validate move only after old and first dual portion, after all moves are completed.
+	if (MoveData.NetworkMoveType == FCharacterNetworkMoveData::ENetworkMoveType::NewMove)
+	{
+		ServerMoveHandleClientErrorVR(ClientTimeStamp, DeltaTime, ClientAccel, MoveData.Location, ClientControlRotation.Yaw, MoveData.MovementBase, MoveData.MovementBaseBoneName, MoveData.MovementMode);
+		//ServerMoveHandleClientError(ClientTimeStamp, DeltaTime, ClientAccel, MoveData.Location, MoveData.MovementBase, MoveData.MovementBaseBoneName, MoveData.MovementMode);
+	}
+}
 
 void UVRCharacterMovementComponent::CallServerMove
 (
@@ -1322,6 +1496,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 				{
 					// TODO-RootMotionSource: Allow this to happen during partial override Velocity, but only set allowed axes?
 					Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) / timeTick);
+					MaintainHorizontalGroundVelocity();
 				}
 
 				RestorePreAdditiveVRMotionVelocity();
@@ -1579,7 +1754,14 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		if (bSendServerMove)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCallServerMove);
-			CallServerMove(NewMove, OldMove.Get());
+			if (ShouldUsePackedMovementRPCs())
+			{
+				CallServerMovePacked(NewMove, ClientData->PendingMove.Get(), OldMove.Get());
+			}
+			else
+			{
+				CallServerMove(NewMove, OldMove.Get());
+			}
 		}
 	}
 
@@ -1853,6 +2035,7 @@ void UVRCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, fl
 			if (CanStepUp(Hit) || (CharacterOwner->GetMovementBase() != NULL && CharacterOwner->GetMovementBase()->GetOwner() == Hit.GetActor()))
 			{
 				// hit a barrier, try to step up
+				const FVector PreStepUpLocation = UpdatedComponent->GetComponentLocation();
 				const FVector GravDir(0.f, 0.f, -1.f);
 
 				// I add in the HMD difference from last frame to the step up check to enforce it stepping up
@@ -1865,9 +2048,18 @@ void UVRCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, fl
 				}
 				else
 				{
-					// Don't recalculate velocity based on this height adjustment, if considering vertical adjustments.
 					UE_LOG(LogVRCharacterMovement, Verbose, TEXT("+ StepUp (ImpactNormal %s, Normal %s"), *Hit.ImpactNormal.ToString(), *Hit.Normal.ToString());
-					bJustTeleported |= !bMaintainHorizontalGroundVelocity;
+					if (!bMaintainHorizontalGroundVelocity)
+					{
+						// Don't recalculate velocity based on this height adjustment, if considering vertical adjustments. Only consider horizontal movement.
+						bJustTeleported = true;
+						const float StepUpTimeSlice = (1.f - PercentTimeApplied) * DeltaSeconds;
+						if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && StepUpTimeSlice >= KINDA_SMALL_NUMBER)
+						{
+							Velocity = (UpdatedComponent->GetComponentLocation() - PreStepUpLocation) / StepUpTimeSlice;
+							Velocity.Z = 0;
+						}
+					}
 				}
 			}
 			else if (Hit.Component.IsValid() && !Hit.Component.Get()->CanCharacterStepUp(CharacterOwner))
@@ -3936,6 +4128,64 @@ void UVRCharacterMovementComponent::MoveSmooth(const FVector& InVelocity, const 
 	}
 }
 
+void UVRCharacterMovementComponent::ClientHandleMoveResponse(const FCharacterMoveResponseDataContainer& MoveResponse)
+{
+	if (MoveResponse.IsGoodMove())
+	{
+		ClientAckGoodMove_Implementation(MoveResponse.ClientAdjustment.TimeStamp);
+	}
+	else
+	{
+		// Wrappers to old RPC handlers, to maintain compatibility. If overrides need additional serialized data, they can access GetMoveResponseDataContainer()
+		if (MoveResponse.bRootMotionSourceCorrection)
+		{
+			if (FRootMotionSourceGroup* RootMotionSourceGroup = MoveResponse.GetRootMotionSourceGroup(*this))
+			{
+				ClientAdjustRootMotionSourcePosition_Implementation(
+					MoveResponse.ClientAdjustment.TimeStamp,
+					*RootMotionSourceGroup,
+					MoveResponse.bRootMotionMontageCorrection,
+					MoveResponse.RootMotionTrackPosition,
+					MoveResponse.ClientAdjustment.NewLoc,
+					MoveResponse.RootMotionRotation,
+					MoveResponse.ClientAdjustment.NewVel.Z,
+					MoveResponse.ClientAdjustment.NewBase,
+					MoveResponse.ClientAdjustment.NewBaseBoneName,
+					MoveResponse.bHasBase,
+					MoveResponse.ClientAdjustment.bBaseRelativePosition,
+					MoveResponse.ClientAdjustment.MovementMode);
+			}
+		}
+		else if (MoveResponse.bRootMotionMontageCorrection)
+		{
+			ClientAdjustRootMotionPosition_Implementation(
+				MoveResponse.ClientAdjustment.TimeStamp,
+				MoveResponse.RootMotionTrackPosition,
+				MoveResponse.ClientAdjustment.NewLoc,
+				MoveResponse.RootMotionRotation,
+				MoveResponse.ClientAdjustment.NewVel.Z,
+				MoveResponse.ClientAdjustment.NewBase,
+				MoveResponse.ClientAdjustment.NewBaseBoneName,
+				MoveResponse.bHasBase,
+				MoveResponse.ClientAdjustment.bBaseRelativePosition,
+				MoveResponse.ClientAdjustment.MovementMode);
+		}
+		else
+		{
+			ClientAdjustPositionVR_Implementation(
+				MoveResponse.ClientAdjustment.TimeStamp,
+				MoveResponse.ClientAdjustment.NewLoc,
+				FRotator::CompressAxisToShort(MoveResponse.ClientAdjustment.NewRot.Yaw),
+				MoveResponse.ClientAdjustment.NewVel,
+				MoveResponse.ClientAdjustment.NewBase,
+				MoveResponse.ClientAdjustment.NewBaseBoneName,
+				MoveResponse.bHasBase,
+				MoveResponse.ClientAdjustment.bBaseRelativePosition,
+				MoveResponse.ClientAdjustment.MovementMode);
+		}
+	}
+}
+
 void UVRCharacterMovementComponent::SendClientAdjustment()
 {
 	if (!HasValidData())
@@ -3958,7 +4208,14 @@ void UVRCharacterMovementComponent::SendClientAdjustment()
 		if (CurrentTime - ServerLastClientGoodMoveAckTime > NetworkMinTimeBetweenClientAckGoodMoves)
 		{
 			ServerLastClientGoodMoveAckTime = CurrentTime;
-			ClientAckGoodMove(ServerData->PendingAdjustment.TimeStamp);
+			if (ShouldUsePackedMovementRPCs())
+			{
+				ServerSendMoveResponse(ServerData->PendingAdjustment);
+			}
+			else
+			{
+				ClientAckGoodMove(ServerData->PendingAdjustment.TimeStamp);
+			}
 		}
 	}
 	else
@@ -3974,73 +4231,81 @@ void UVRCharacterMovementComponent::SendClientAdjustment()
 		{
 			ServerLastClientAdjustmentTime = CurrentTime;
 
-			const bool bIsPlayingNetworkedRootMotionMontage = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
-			if (HasRootMotionSources())
+			if (ShouldUsePackedMovementRPCs())
 			{
-				FRotator Rotation = ServerData->PendingAdjustment.NewRot.GetNormalized();
-				FVector_NetQuantizeNormal CompressedRotation(Rotation.Pitch / 180.f, Rotation.Yaw / 180.f, Rotation.Roll / 180.f);
-				ClientAdjustRootMotionSourcePosition
-				(
-					ServerData->PendingAdjustment.TimeStamp,
-					CurrentRootMotion,
-					bIsPlayingNetworkedRootMotionMontage,
-					bIsPlayingNetworkedRootMotionMontage ? CharacterOwner->GetRootMotionAnimMontageInstance()->GetPosition() : -1.f,
-					ServerData->PendingAdjustment.NewLoc,
-					CompressedRotation,
-					ServerData->PendingAdjustment.NewVel.Z,
-					ServerData->PendingAdjustment.NewBase,
-					ServerData->PendingAdjustment.NewBaseBoneName,
-					ServerData->PendingAdjustment.NewBase != NULL,
-					ServerData->PendingAdjustment.bBaseRelativePosition,
-					PackNetworkMovementMode()
-				);
-			}
-			else if (bIsPlayingNetworkedRootMotionMontage)
-			{
-				FRotator Rotation = ServerData->PendingAdjustment.NewRot.GetNormalized();
-				FVector_NetQuantizeNormal CompressedRotation(Rotation.Pitch / 180.f, Rotation.Yaw / 180.f, Rotation.Roll / 180.f);
-				ClientAdjustRootMotionPosition
-				(
-					ServerData->PendingAdjustment.TimeStamp,
-					CharacterOwner->GetRootMotionAnimMontageInstance()->GetPosition(),
-					ServerData->PendingAdjustment.NewLoc,
-					CompressedRotation,
-					ServerData->PendingAdjustment.NewVel.Z,
-					ServerData->PendingAdjustment.NewBase,
-					ServerData->PendingAdjustment.NewBaseBoneName,
-					ServerData->PendingAdjustment.NewBase != NULL,
-					ServerData->PendingAdjustment.bBaseRelativePosition,
-					PackNetworkMovementMode()
-				);
-			}
-			else if (ServerData->PendingAdjustment.NewVel.IsZero())
-			{
-				ClientVeryShortAdjustPositionVR
-				(
-					ServerData->PendingAdjustment.TimeStamp,
-					ServerData->PendingAdjustment.NewLoc,
-					FRotator::CompressAxisToShort(ServerData->PendingAdjustment.NewRot.Yaw),
-					ServerData->PendingAdjustment.NewBase,
-					ServerData->PendingAdjustment.NewBaseBoneName,
-					ServerData->PendingAdjustment.NewBase != NULL,
-					ServerData->PendingAdjustment.bBaseRelativePosition,
-					PackNetworkMovementMode()
-				);
+				ServerData->PendingAdjustment.MovementMode = PackNetworkMovementMode();
+				ServerSendMoveResponse(ServerData->PendingAdjustment);
 			}
 			else
 			{
-				ClientAdjustPositionVR
-				(
-					ServerData->PendingAdjustment.TimeStamp,
-					ServerData->PendingAdjustment.NewLoc,
-					FRotator::CompressAxisToShort(ServerData->PendingAdjustment.NewRot.Yaw),
-					ServerData->PendingAdjustment.NewVel,
-					ServerData->PendingAdjustment.NewBase,
-					ServerData->PendingAdjustment.NewBaseBoneName,
-					ServerData->PendingAdjustment.NewBase != NULL,
-					ServerData->PendingAdjustment.bBaseRelativePosition,
-					PackNetworkMovementMode()
-				);
+				const bool bIsPlayingNetworkedRootMotionMontage = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
+				if (HasRootMotionSources())
+				{
+					FRotator Rotation = ServerData->PendingAdjustment.NewRot.GetNormalized();
+					FVector_NetQuantizeNormal CompressedRotation(Rotation.Pitch / 180.f, Rotation.Yaw / 180.f, Rotation.Roll / 180.f);
+					ClientAdjustRootMotionSourcePosition
+					(
+						ServerData->PendingAdjustment.TimeStamp,
+						CurrentRootMotion,
+						bIsPlayingNetworkedRootMotionMontage,
+						bIsPlayingNetworkedRootMotionMontage ? CharacterOwner->GetRootMotionAnimMontageInstance()->GetPosition() : -1.f,
+						ServerData->PendingAdjustment.NewLoc,
+						CompressedRotation,
+						ServerData->PendingAdjustment.NewVel.Z,
+						ServerData->PendingAdjustment.NewBase,
+						ServerData->PendingAdjustment.NewBaseBoneName,
+						ServerData->PendingAdjustment.NewBase != NULL,
+						ServerData->PendingAdjustment.bBaseRelativePosition,
+						PackNetworkMovementMode()
+					);
+				}
+				else if (bIsPlayingNetworkedRootMotionMontage)
+				{
+					FRotator Rotation = ServerData->PendingAdjustment.NewRot.GetNormalized();
+					FVector_NetQuantizeNormal CompressedRotation(Rotation.Pitch / 180.f, Rotation.Yaw / 180.f, Rotation.Roll / 180.f);
+					ClientAdjustRootMotionPosition
+					(
+						ServerData->PendingAdjustment.TimeStamp,
+						CharacterOwner->GetRootMotionAnimMontageInstance()->GetPosition(),
+						ServerData->PendingAdjustment.NewLoc,
+						CompressedRotation,
+						ServerData->PendingAdjustment.NewVel.Z,
+						ServerData->PendingAdjustment.NewBase,
+						ServerData->PendingAdjustment.NewBaseBoneName,
+						ServerData->PendingAdjustment.NewBase != NULL,
+						ServerData->PendingAdjustment.bBaseRelativePosition,
+						PackNetworkMovementMode()
+					);
+				}
+				else if (ServerData->PendingAdjustment.NewVel.IsZero())
+				{
+					ClientVeryShortAdjustPositionVR
+					(
+						ServerData->PendingAdjustment.TimeStamp,
+						ServerData->PendingAdjustment.NewLoc,
+						FRotator::CompressAxisToShort(ServerData->PendingAdjustment.NewRot.Yaw),
+						ServerData->PendingAdjustment.NewBase,
+						ServerData->PendingAdjustment.NewBaseBoneName,
+						ServerData->PendingAdjustment.NewBase != NULL,
+						ServerData->PendingAdjustment.bBaseRelativePosition,
+						PackNetworkMovementMode()
+					);
+				}
+				else
+				{
+					ClientAdjustPositionVR
+					(
+						ServerData->PendingAdjustment.TimeStamp,
+						ServerData->PendingAdjustment.NewLoc,
+						FRotator::CompressAxisToShort(ServerData->PendingAdjustment.NewRot.Yaw),
+						ServerData->PendingAdjustment.NewVel,
+						ServerData->PendingAdjustment.NewBase,
+						ServerData->PendingAdjustment.NewBaseBoneName,
+						ServerData->PendingAdjustment.NewBase != NULL,
+						ServerData->PendingAdjustment.bBaseRelativePosition,
+						PackNetworkMovementMode()
+					);
+				}
 			}
 		}
 	}
@@ -4281,9 +4546,12 @@ bool UVRCharacterMovementComponent::ServerCheckClientErrorVR(float ClientTimeSta
 
 void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTimeStamp, float DeltaTime, const FVector& Accel, const FVector& RelativeClientLoc, float ClientYaw, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode)
 {
-	if (RelativeClientLoc == FVector(1.f, 2.f, 3.f)) // first part of double servermove
+	if (!ShouldUsePackedMovementRPCs())
 	{
-		return;
+		if (RelativeClientLoc == FVector(1.f, 2.f, 3.f)) // first part of double servermove
+		{
+			return;
+		}
 	}
 
 	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();

@@ -3,7 +3,9 @@
 #include "Grippables/GrippableStaticMeshActor.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
+#if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"
+#endif
 
 // #TODO: Pull request this? This macro could be very useful
 /*#define DOREPLIFETIME_CHANGE_NOTIFY(c,v,rncond) \
@@ -135,7 +137,7 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 #if WITH_PUSH_MODEL
 	if (UNLIKELY(OldAttachParent != AttachmentWeldReplication.AttachParent || OldAttachComponent != AttachmentWeldReplication.AttachComponent))
 	{
-		MARK_PROPERTY_DIRTY_FROM_NAME(AActor, AttachmentWeldReplication, this);
+		//MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, AttachmentWeldReplication, this);
 	}
 #endif
 
@@ -232,18 +234,19 @@ void AGrippableStaticMeshActor::GatherCurrentMovement()
 			bWasRepMovementModified = (bWasRepMovementModified || RepMovement.bRepPhysics);
 			RepMovement.bRepPhysics = false;
 		}
-
+#if WITH_PUSH_MODEL
 		if (bWasRepMovementModified)
 		{
-			MARK_PROPERTY_DIRTY_FROM_NAME(AActor, ReplicatedMovement, this);
+		//	MARK_PROPERTY_DIRTY_FROM_NAME(AActor, ReplicatedMovement, this);
 		}
 
 		if (bWasAttachmentModified ||
 			OldAttachParent != AttachmentWeldReplication.AttachParent ||
 			OldAttachComponent != AttachmentWeldReplication.AttachComponent)
 		{
-			MARK_PROPERTY_DIRTY_FROM_NAME(AActor, AttachmentWeldReplication, this);
+			//MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, AttachmentWeldReplication, this);
 		}
+#endif
 	}
 }
 

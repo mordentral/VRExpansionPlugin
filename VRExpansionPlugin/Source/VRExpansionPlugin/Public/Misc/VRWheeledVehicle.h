@@ -2,14 +2,20 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "WheeledVehicle.h"
+//#if WITH_CHAOS
+//#include "Plugins/Experimental/ChaosVehicles/WheeledVehiclePawn.h"
+//#include "Plugins/Experimental/ChaosVehicles/ChaosWheeledVehicleMovementComponent.h"
+//#else if PHYSICS_INTERFACE_PHYSX
+//#include "WheeledVehicle.h"
+//#include "WheeledVehicleMovementComponent.h"
+//#include "SimpleWheeledVehicleMovementComponent.h"
+//#endif
+
 #include "UObject/ObjectMacros.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/InputDelegateBinding.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerController.h"
-#include "WheeledVehicleMovementComponent.h"
-#include "SimpleWheeledVehicleMovementComponent.h"
 #include "VRWheeledVehicle.generated.h"
 
 
@@ -18,8 +24,11 @@
 * It adds two new functions: SetBindToInput to bind input locally to the pawn and ForceSecondaryPossession which fakes possession so the 
 * player can control the vehicle as if they were locally possessed into it in a multiplayer enviroment (no lag).
 */
+//UCLASS(config = Game, BlueprintType)
+//class VREXPANSIONPLUGIN_API AVRWheeledVehicle : public AWheeledVehicle
 UCLASS(config = Game, BlueprintType)
-class VREXPANSIONPLUGIN_API AVRWheeledVehicle : public AWheeledVehicle
+class VREXPANSIONPLUGIN_API AVRWheeledVehicle : public APawn//AWheeledVehiclePawn
+//#endif
 {
 	GENERATED_BODY()
 
@@ -125,11 +134,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Pawn")
 		virtual bool SetOverrideController(AController * NewController)
 	{
-		if (UWheeledVehicleMovementComponent * MoveComp = Cast<UWheeledVehicleMovementComponent>(this->GetMovementComponent()))
+#if PHYSICS_INTERFACE_PHYSX
+		/*if (UWheeledVehicleMovementComponent * MoveComp = Cast<UWheeledVehicleMovementComponent>(this->GetMovementComponent()))
 		{
 			MoveComp->SetOverrideController(NewController);
 			return true;
-		}
+		}*/
+#else
+		/*if (UChaosWheeledVehicleMovementComponent* MoveComp = Cast<UChaosWheeledVehicleMovementComponent>(this->GetMovementComponent()))
+		{
+			MoveComp->SetOverrideController(NewController);
+			return true;
+		}*/
+#endif
 		
 		return false;
 	}
@@ -174,6 +191,7 @@ public:
 
 };
 
+/*
 UCLASS(config = Game, BlueprintType)
 class VREXPANSIONPLUGIN_API AVRSimpleWheeledVehicle : public AVRWheeledVehicle
 {
@@ -186,3 +204,4 @@ public:
 	{
 	}
 };
+*/

@@ -16,7 +16,7 @@ FPhysicsReplicationVR::FPhysicsReplicationVR(FPhysScene* PhysScene) :
 {
 	VRPhysicsReplicationStatics::bHasVRPhysicsReplication = true;
 
-#if WITH_PHYSX
+#if PHYSICS_INTERFACE_PHYSX
 	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
 	if (VRSettings.MaxCCDPasses != 1)
 	{
@@ -140,6 +140,7 @@ void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrim
 	//FPhysicsReplication::OnTick(DeltaSeconds, ComponentsToTargets);
 }
 
+#if PHYSICS_INTERFACE_PHYSX
 void FContactModifyCallbackVR::onContactModify(PxContactModifyPair* const pairs, PxU32 count)
 {
 	for (uint32 PairIdx = 0; PairIdx < count; PairIdx++)
@@ -212,6 +213,7 @@ void FCCDContactModifyCallbackVR::onCCDContactModify(PxContactModifyPair* const 
 		}
 	}
 }
+#endif
 
 FRepMovementVR::FRepMovementVR() : FRepMovement()
 {

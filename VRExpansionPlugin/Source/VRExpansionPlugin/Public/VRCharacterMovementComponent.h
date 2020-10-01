@@ -17,6 +17,7 @@
 #include "WorldCollision.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "VRBaseCharacterMovementComponent.h"
+#include "GameFramework/CharacterMovementReplication.h"
 #include "VRCharacterMovementComponent.generated.h"
 
 class FDebugDisplayInfo;
@@ -27,6 +28,10 @@ DECLARE_LOG_CATEGORY_EXTERN(LogVRCharacterMovement, Log, All);
 
 /** Shared pointer for easy memory management of FSavedMove_Character, for accumulating and replaying network moves. */
 //typedef TSharedPtr<class FSavedMove_Character> FSavedMovePtr;
+
+
+
+//FCharacterMoveResponseDataContainer VRMoveResponseDataContainer;
 
 
 //=============================================================================
@@ -60,10 +65,6 @@ public:
 	virtual bool VRClimbStepUp(const FVector& GravDir, const FVector& Delta, const FHitResult &InHit, FStepDownResult* OutStepDownResult = nullptr) override;
 
 	virtual bool IsWithinEdgeTolerance(const FVector& CapsuleLocation, const FVector& TestImpactPoint, const float CapsuleRadius) const override;
-
-	// When true will use the default engines behavior of setting rotation to match the clients instead of simulating rotations, this is really only here for FPS test pawns
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
-		bool bUseClientControlRotation;
 
 	// Allow merging movement replication (may cause issues when >10 players due to capsule location
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
@@ -125,6 +126,8 @@ public:
 	// Client adjustment overrides to allow for rotation
 	///////////////////////////
 
+	virtual void ClientHandleMoveResponse(const FCharacterMoveResponseDataContainer& MoveResponse) override;
+
 	virtual void SendClientAdjustment() override;
 	/**
 	* Have the server check if the client is outside an error tolerance, and queue a client adjustment if so.
@@ -169,6 +172,9 @@ public:
 
 	// Using my own as I don't want to cast the standard fsavedmove
 	virtual void CallServerMove(const class FSavedMove_Character* NewMove, const class FSavedMove_Character* OldMove) override;
+
+	virtual void ServerMove_PerformMovement(const FCharacterNetworkMoveData& MoveData) override;
+
 
 	/* Resending an (important) old move. Process it if not already processed. */
 	virtual void ServerMoveVROld(float OldTimeStamp, FVector_NetQuantize10 OldAccel, uint8 OldMoveFlags, FVRConditionalMoveRep ConditionalReps);

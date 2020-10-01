@@ -9,16 +9,17 @@
 #include "Engine/Player.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "Components/SkeletalMeshComponent.h"
-#if WITH_PHYSX
-#include "Physics/PhysicsInterfaceUtils.h"
+
+#if PHYSICS_INTERFACE_PHYSX
 #include "Physics/PhysScene_PhysX.h"
 #include "PhysXPublicCore.h"
 //#include "PhysXPublic.h"
 #include "PhysXIncludes.h"
-#include "PhysicsInterfaceTypesCore.h"
-//#include "Physics/Experimental/PhysScene_ImmediatePhysX.h"
-#include "PhysicsReplication.h"
 #endif
+
+#include "Physics/PhysicsInterfaceUtils.h"
+#include "PhysicsInterfaceTypesCore.h"
+#include "PhysicsReplication.h"
 
 #include "Misc/ScopeRWLock.h"
 
@@ -36,7 +37,7 @@
 	TEXT(" 1: use the valve input controller. You will have to define input bindings for the controllers you want to support."),
 	ECVF_ReadOnly);*/
 
-#if WITH_PHYSX
+//#if PHYSICS_INTERFACE_PHYSX
 
 class FPhysicsReplicationVR : public FPhysicsReplication
 {
@@ -81,6 +82,7 @@ struct FContactModBodyInstancePair
 	}
 };
 
+#if PHYSICS_INTERFACE_PHYSX
 class FContactModifyCallbackVR : public FContactModifyCallback
 {
 public:
@@ -142,8 +144,9 @@ public:
 			delete ContactCallback;
 	}
 };
-
 #endif
+
+//#endif
 
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FRepMovementVR : public FRepMovement

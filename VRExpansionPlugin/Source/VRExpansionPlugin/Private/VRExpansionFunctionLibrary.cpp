@@ -5,6 +5,14 @@
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
 
+#if WITH_CHAOS
+#include "Chaos/ParticleHandle.h"
+#include "Chaos/KinematicGeometryParticles.h"
+#include "Chaos/ParticleHandle.h"
+#include "PhysicsProxy/SingleParticlePhysicsProxy.h"
+#include "PBDRigidsSolver.h"
+#endif
+
 #if WITH_EDITOR
 #include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"
 #endif
@@ -14,7 +22,6 @@ DEFINE_LOG_CATEGORY(VRExpansionFunctionLibraryLog);
 
 void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1, FName OptionalBoneName1, UPrimitiveComponent* Prim2, FName OptionalBoneName2, bool bIgnoreCollision)
 {
-#if WITH_PHYSX
 	if (Prim1 && Prim2)
 	{
 		FBodyInstance *Inst1 = Prim1->GetBodyInstance(OptionalBoneName1);
@@ -24,9 +31,69 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 		{
 			Inst1->SetContactModification(bIgnoreCollision);
 			Inst2->SetContactModification(bIgnoreCollision);
-
 			if (FPhysScene* PhysScene = Prim1->GetWorld()->GetPhysicsScene())
 			{
+#if WITH_CHAOS
+				/*FContactModBodyInstancePair newContactPair;
+				newContactPair.Actor1 = Inst1->ActorHandle;
+				newContactPair.Actor2 = Inst2->ActorHandle;
+				newContactPair.bBody1IgnoreEntireActor = false;
+				newContactPair.bBody2IgnoreEntireActor = false;
+				*/
+
+				Chaos::FUniqueIdx ID0 = Inst1->ActorHandle->UniqueIdx();
+				Chaos::FUniqueIdx ID1 = Inst2->ActorHandle->UniqueIdx();
+
+				Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
+
+				FPhysicsCommand::ExecuteWrite(PhysScene, [&]()
+					{
+						using namespace Chaos;
+
+						if (bIgnoreCollision)
+						{
+							if (!IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
+							{
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->Handle()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->Handle()->CastToRigidParticle();
+
+								if (ParticleHandle0 && ParticleHandle1)
+								{
+									ParticleHandle0->AddCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+									IgnoreCollisionManager.AddIgnoreCollisionsFor(ID0, ID1);
+
+									ParticleHandle1->AddCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+									IgnoreCollisionManager.AddIgnoreCollisionsFor(ID1, ID0);
+								}
+							}
+						}
+						else
+						{
+							if (IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
+							{
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->Handle()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->Handle()->CastToRigidParticle();
+
+								if (ParticleHandle0 && ParticleHandle1)
+								{
+									IgnoreCollisionManager.RemoveIgnoreCollisionsFor(ID0, ID1);
+									IgnoreCollisionManager.RemoveIgnoreCollisionsFor(ID1, ID0);
+
+									if (IgnoreCollisionManager.NumIgnoredCollision(ID0) < 1)
+									{
+										ParticleHandle0->RemoveCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+									}
+
+									if (IgnoreCollisionManager.NumIgnoredCollision(ID1) < 1)
+									{
+										ParticleHandle1->RemoveCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+									}
+								}
+							}
+						}
+					});
+
+#elif PHYSICS_INTERFACE_PHYSX
 				if (PxScene* PScene = PhysScene->GetPxScene())
 				{
 					if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
@@ -59,6 +126,7 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 							ContactCallback->ContactsToIgnore.Remove(newContactPair);
 					}
 				}
+#endif
 			}
 		}
 		else
@@ -70,7 +138,6 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 	{
 		UE_LOG(VRExpansionFunctionLibraryLog, Error, TEXT("Set Objects Ignore Collision called with invalid object(s)!!"));
 	}
-#endif
 }
 
 void UVRExpansionFunctionLibrary::LowPassFilter_RollingAverage(FVector lastAverage, FVector newSample, FVector & newAverage, int32 numSamples)
