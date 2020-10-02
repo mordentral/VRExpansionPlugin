@@ -13,4 +13,11 @@ class VREXPANSIONPLUGIN_API AGrippableCharacter : public ACharacter
 public:
 	AGrippableCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+
+	// A Custom bone to use on the character mesh as the originator for the perception systems sight sense
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+		FName ViewOriginationSocket;
+
+	virtual void GetActorEyesViewPoint(FVector& Location, FRotator& Rotation) const override;
+
 };
