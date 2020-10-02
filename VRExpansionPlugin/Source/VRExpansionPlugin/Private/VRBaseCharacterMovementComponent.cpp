@@ -619,12 +619,16 @@ void UVRBaseCharacterMovementComponent::CheckServerAuthedMoveAction()
 	}
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
-	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+	
+	if (bFlagCharacterTeleport)
+		MoveAction.MoveActionRot.Roll = 2.0f;
+	else
+		MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
@@ -637,12 +641,16 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	CheckServerAuthedMoveAction();
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SetRotation;
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(NewYaw * 100.f) / 100.f, 0.0f);
-	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+
+	if (bFlagCharacterTeleport)
+		MoveAction.MoveActionRot.Roll = 2.0f;
+	else
+		MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
@@ -764,7 +772,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
 		{
-			OwningCharacter->NotifyOfTeleport();
+			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionRot.Roll > 1.5f);
 		}
 	}
 
@@ -797,7 +805,7 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
 		{
-			OwningCharacter->NotifyOfTeleport();
+			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionRot.Roll > 1.5f);
 		}
 	}
 

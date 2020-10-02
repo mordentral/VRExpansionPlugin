@@ -30,6 +30,9 @@ struct VREXPANSIONPLUGIN_API FRepMovementVRCharacter : public FRepMovement
 		bool bJustTeleported;
 
 	UPROPERTY(Transient)
+		bool bJustTeleportedGrips;
+
+	UPROPERTY(Transient)
 		AActor* Owner;
 
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
@@ -37,11 +40,12 @@ struct VREXPANSIONPLUGIN_API FRepMovementVRCharacter : public FRepMovement
 		FRepMovement BaseSettings = Owner ? Owner->GetReplicatedMovement() : FRepMovement();
 
 		// pack bitfield with flags
-		uint8 Flags = (bSimulatedPhysicSleep << 0) | (bRepPhysics << 1) | (bJustTeleported << 2);
-		Ar.SerializeBits(&Flags, 3);
+		uint8 Flags = (bSimulatedPhysicSleep << 0) | (bRepPhysics << 1) | (bJustTeleported << 2) | (bJustTeleportedGrips << 3);
+		Ar.SerializeBits(&Flags, 4);
 		bSimulatedPhysicSleep = (Flags & (1 << 0)) ? 1 : 0;
 		bRepPhysics = (Flags & (1 << 1)) ? 1 : 0;
 		bJustTeleported = (Flags & (1 << 2)) ? 1 : 0;
+		bJustTeleportedGrips = (Flags & (1 << 3)) ? 1 : 0;
 
 		bOutSuccess = true;
 
@@ -243,6 +247,7 @@ public:
 		struct FRepMovementVRCharacter ReplicatedMovementVR;
 
 	bool bFlagTeleported;
+	bool bFlagTeleportedGrips;
 
 	// Injecting our custom teleport notification
 	virtual void OnRep_ReplicatedMovement() override;
