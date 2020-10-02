@@ -112,8 +112,11 @@ public:
 				Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
 				Ar << Yaw;
 
-				bool bTeleportGrips = MoveActionRot.Roll > 0.0f;
+				bool bTeleportGrips = MoveActionRot.Roll > 0.0f && MoveActionRot.Roll < 1.5f;
 				Ar.SerializeBits(&bTeleportGrips, 1);
+
+				bool bTeleportCharacter = MoveActionRot.Roll > 1.5f;
+				Ar.SerializeBits(&bTeleportCharacter, 1);
 
 				Ar.SerializeBits(&VelRetentionSetting, 2);
 
@@ -133,6 +136,14 @@ public:
 				bool bTeleportGrips = false;
 				Ar.SerializeBits(&bTeleportGrips, 1);
 				MoveActionRot.Roll = bTeleportGrips ? 1.0f : 0.0f;
+
+				bool bTeleportCharacter = false;
+				Ar.SerializeBits(&bTeleportCharacter, 1);
+
+				if (bTeleportCharacter)
+				{
+					MoveActionRot.Roll = 2.0f;
+				}
 
 				Ar.SerializeBits(&VelRetentionSetting, 2);
 

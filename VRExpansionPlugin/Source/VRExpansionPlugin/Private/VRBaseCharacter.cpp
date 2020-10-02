@@ -324,6 +324,18 @@ void AVRBaseCharacter::NotifyOfTeleport(bool bRegisterAsTeleport)
 		}
 	}
 
+	if (GetNetMode() < ENetMode::NM_Client)
+	{
+		if (bRegisterAsTeleport)
+		{
+			bFlagTeleported = true;
+		}
+		else
+		{
+			bFlagTeleportedGrips = true;
+		}
+	}
+
 	if (LeftMotionController)
 		LeftMotionController->bIsPostTeleport = true;
 
@@ -344,10 +356,17 @@ void AVRBaseCharacter::OnRep_ReplicatedMovement()
 
 	Super::OnRep_ReplicatedMovement();
 
-	if (ReplicatedMovementVR.bJustTeleported && !IsLocallyControlled())
+	if (!IsLocallyControlled())
 	{
-		// Server should never get this value so it shouldn't be double throwing for them
-		NotifyOfTeleport();
+		if (ReplicatedMovementVR.bJustTeleported)
+		{
+			// Server should never get this value so it shouldn't be double throwing for them
+			NotifyOfTeleport();
+		}
+		else if (ReplicatedMovementVR.bJustTeleportedGrips)
+		{
+			NotifyOfTeleport(false);
+		}
 	}
 }
 
@@ -364,7 +383,9 @@ void AVRBaseCharacter::GatherCurrentMovement()
 	ReplicatedMovementVR.Location = ReppedMovement.Location;
 	ReplicatedMovementVR.Rotation = ReppedMovement.Rotation;
 	ReplicatedMovementVR.bJustTeleported = bFlagTeleported;
+	ReplicatedMovementVR.bJustTeleportedGrips = bFlagTeleportedGrips;
 	bFlagTeleported = false;
+	bFlagTeleportedGrips = false;
 }
 
 
