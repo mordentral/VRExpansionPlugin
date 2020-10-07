@@ -20,5 +20,11 @@
       "Type": "RunTime",
       "LoadingPhase": "Default"
     }
-  ]
+  ],
+	"Plugins": [
+		{
+			"Name": "ChaosVehiclesPlugin",
+			"Enabled": true
+		}
+	]
 }
