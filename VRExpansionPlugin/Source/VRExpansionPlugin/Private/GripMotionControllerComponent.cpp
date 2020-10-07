@@ -1222,9 +1222,9 @@ bool UGripMotionControllerComponent::GripActor(
 		return false;
 	}
 
-	if (!ActorToGrip)
+	if (!ActorToGrip || ActorToGrip->IsPendingKill())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid actor"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or pending kill actor"));
 		return false;
 	}
 
@@ -1484,9 +1484,9 @@ bool UGripMotionControllerComponent::GripComponent(
 		return false;
 	}
 
-	if (!ComponentToGrip)
+	if (!ComponentToGrip || ComponentToGrip->IsPendingKill())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or already gripped component"));
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or pending kill component"));
 		return false;
 	}
 
@@ -1969,13 +1969,13 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 		}
 		else // Server notifyDrop it
 		{
-			Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+			//Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 			NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		}
 	}
 	else
 	{
-		Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+		//Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		NotifyDropAndSocket(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 	}
 
@@ -2054,9 +2054,9 @@ void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementati
 void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSocket, bool bWasSimulating, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies)
 {
 	// Check for valid objects
-	if (!SocketingParent->IsValidLowLevelFast() || !ObjectToSocket->IsValidLowLevelFast())
+	if (!SocketingParent || !SocketingParent->IsValidLowLevelFast() || !ObjectToSocket || !ObjectToSocket->IsValidLowLevelFast())
 	{
-		if (!SocketingParent->IsValidLowLevelFast())
+		if (!SocketingParent || !SocketingParent->IsValidLowLevelFast())
 		{
 			UE_LOG(LogVRMotionController, Error, TEXT("VRGripMotionController Socket_Implementation was called with an invalid Socketing Parent object"));
 		}
@@ -2335,7 +2335,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	bool bRootHasInterface = false;
 	bool bActorHasInterface = false;
 
-	if (!NewGrip.GrippedObject->IsValidLowLevelFast())
+	if (!NewGrip.GrippedObject || !NewGrip.GrippedObject->IsValidLowLevelFast())
 		return false;
 
 	switch (NewGrip.GripTargetType)
