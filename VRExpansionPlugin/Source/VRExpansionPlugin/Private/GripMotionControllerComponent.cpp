@@ -1419,14 +1419,24 @@ bool UGripMotionControllerComponent::GripActor(
 
 		if (Index != INDEX_NONE)
 		{
-			if (!NotifyGrip(LocallyGrippedObjects[Index]))
+			if (!IsLocallyControlled())
 			{
-				return true;
+				if (!HandleGripReplication(LocallyGrippedObjects[Index]))
+				{
+					return true;
+				}
+			}
+			else
+			{
+				if (!NotifyGrip(LocallyGrippedObjects[Index]))
+				{
+					return true;
+				}
 			}
 
 			FBPActorGripInformation GripInfo = LocallyGrippedObjects[Index];
 
-			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && GripInfo.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 				Server_NotifyLocalGripAddedOrChanged(GripInfo);
 		}
 	}
@@ -1651,13 +1661,28 @@ bool UGripMotionControllerComponent::GripComponent(
 		}
 
 		int32 Index = LocallyGrippedObjects.Add(newComponentGrip);
-		
+
 		if (Index != INDEX_NONE)
 		{
-			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newComponentGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
-				Server_NotifyLocalGripAddedOrChanged(newComponentGrip);
+			if (!IsLocallyControlled())
+			{		
+				if (!HandleGripReplication(LocallyGrippedObjects[Index]))
+				{
+					return true;
+				}
+			}
+			else
+			{
+				if (!NotifyGrip(LocallyGrippedObjects[Index]))
+				{
+					return true;
+				}
+			}
 
-			NotifyGrip(newComponentGrip);
+			FBPActorGripInformation GripInfo = LocallyGrippedObjects[Index];
+
+			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && GripInfo.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+				Server_NotifyLocalGripAddedOrChanged(GripInfo);
 		}
 	}
 
