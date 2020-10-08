@@ -261,6 +261,9 @@ void UVRRenderTargetManager::DrawOperations()
 	// Reference to the Render Target resource
 	FTextureRenderTargetResource* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
+	if (!RenderTargetResource)
+		return;
+
 	// Retrieve a UCanvas form the world to avoid creating a new one each time
 	UCanvas* CanvasToUse = World->GetCanvasForDrawMaterialToRenderTarget();
 
@@ -713,6 +716,9 @@ void UVRRenderTargetManager::QueueImageStore()
 
 	// Get RenderContext
 	FTextureRenderTargetResource* renderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
+
+	if (!renderTargetResource)
+		return;
 
 	renderData->Size2D = renderTargetResource->GetSizeXY();
 	renderData->PixelFormat = RenderTarget->GetFormat();
