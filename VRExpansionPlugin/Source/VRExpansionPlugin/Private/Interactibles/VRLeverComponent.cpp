@@ -780,7 +780,7 @@ void UVRLeverComponent::SetLeverAngle(float NewAngle, FVector DualAxisForwardVec
 	default:break;
 	}
 
-	CurrentLeverAngle = -NewAngle;
+	CurrentLeverAngle = NewAngle;
 	FQuat NewLeverRotation(ForwardVector, FMath::DegreesToRadians(FMath::Abs(NewAngle)));
 
 	this->SetRelativeTransform(FTransform(NewLeverRotation) * InitialRelativeTransform);
