@@ -21,10 +21,10 @@
       "LoadingPhase": "Default"
     }
   ],
-	"Plugins": [
-		{
-			"Name": "ChaosVehiclesPlugin",
-			"Enabled": true
-		}
+  "Plugins": [
+    {
+      "Name": "PhysXVehicles",
+      "Enabled": true
+    }
 	]
 }
