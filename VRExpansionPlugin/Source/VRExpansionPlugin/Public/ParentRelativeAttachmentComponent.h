@@ -43,8 +43,8 @@ public:
 	UParentRelativeAttachmentComponent(const FObjectInitializer& ObjectInitializer);
 
 	// Rotation method to use for facing calulations
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
-		EVR_PRC_RotationMethod YawRotationMethod;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		//EVR_PRC_RotationMethod YawRotationMethod;
 
 	// Angle tolerance before we lerp / snap to the new rotation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary", meta = (ClampMin = "0", UIMin = "0"))
@@ -197,7 +197,7 @@ public:
 
 	void RunSampling(FRotator &HMDRotation, FVector &HMDLocation)
 	{
-		switch(YawRotationMethod)
+		/*switch(YawRotationMethod)
 		{
 			case EVR_PRC_RotationMethod::PRC_ROT_HMD:
 			{
@@ -214,7 +214,7 @@ public:
 				GetEstShoulderRotation(HMDRotation, HMDLocation);
 				return;
 			}break;
-		}
+		}*/
 
 	}
 

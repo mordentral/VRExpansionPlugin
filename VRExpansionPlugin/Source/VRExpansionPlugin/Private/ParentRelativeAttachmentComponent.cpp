@@ -36,7 +36,7 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	bUseFeetLocation = false;
 	CustomOffset = FVector::ZeroVector;
 
-	YawRotationMethod = EVR_PRC_RotationMethod::PRC_ROT_HMD;
+	//YawRotationMethod = EVR_PRC_RotationMethod::PRC_ROT_HMD;
 }
 
 void UParentRelativeAttachmentComponent::OnAttachmentChanged()

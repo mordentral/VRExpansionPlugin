@@ -6,6 +6,7 @@
 #include "PhysicsEngine/PhysicsConstraintActor.h"
 #include "PhysicsEngine/PhysicsConstraintComponent.h"
 #include "VRExpansionFunctionLibrary.h"
+#include "VRGlobalSettings.h"
 #include "DrawDebugHelpers.h"
 #include "GripMotionControllerComponent.h"
 
@@ -568,12 +569,43 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 	if (!bCheckLodge || !bIsActive || bIsLodged || OtherActor == SelfActor)
 		return;
 
-	// Reject bad surface types
-	if (AllowedPenetrationSurfaceTypes.Num() > 0 && (!Hit.PhysMaterial.IsValid() || !AllowedPenetrationSurfaceTypes.Contains(Hit.PhysMaterial->SurfaceType)))
-		return;
+	TArray<FBPHitSurfaceProperties> AllowedPenetrationSurfaceTypes;
 
-	if (bOnlyPenetrateWithTwoHands && !SecondaryHand.IsValid())
-		return;
+	if (OverrideMeleeSurfaceSettings.Num() > 0)
+	{
+		// Use our local copy
+		AllowedPenetrationSurfaceTypes = OverrideMeleeSurfaceSettings;
+	}
+	else
+	{
+		// Use the global settings
+		UVRGlobalSettings::GetMeleeSurfaceGlobalSettings(AllowedPenetrationSurfaceTypes);
+	}
+	
+	FBPHitSurfaceProperties HitSurfaceProperties;
+	HitSurfaceProperties.SurfaceType = Hit.PhysMaterial->SurfaceType;
+
+	if (AllowedPenetrationSurfaceTypes.Num())
+	{
+		// Reject bad surface types
+		if (!Hit.PhysMaterial.IsValid())
+			return;
+
+		EPhysicalSurface PhysSurfaceType = Hit.PhysMaterial->SurfaceType;
+		int32 IndexOfSurface = AllowedPenetrationSurfaceTypes.IndexOfByPredicate([&PhysSurfaceType](const FBPHitSurfaceProperties& Entry) { return Entry.SurfaceType == PhysSurfaceType; });
+
+		if (IndexOfSurface != INDEX_NONE)
+		{
+			HitSurfaceProperties = AllowedPenetrationSurfaceTypes[IndexOfSurface];
+		}
+		else
+		{
+			// Surface is not part of our default list, don't allow penetration
+			HitSurfaceProperties.bSurfaceAllowsPenetration = false;
+			// Not a valid surface type to throw an event
+			//return;
+		}
+	}
 
 	/*if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(SelfActor->GetRootComponent()))
 	{	
@@ -591,6 +623,13 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 //	RollingVelocityAverage = FVector::ZeroVector;
 //	RollingAngVelocityAverage = FVector::ZeroVector;
 
+	bool bHadFirstHit = false;
+	FBPLodgeComponentInfo FirstHitComp;
+	FHitResult FirstHitResult;
+	FVector FirstHitImpulse;
+
+	float HitNormalImpulse = NormalImpulse.SizeSquared();
+
 	for(FBPLodgeComponentInfo &LodgeData : PenetrationNotifierComponents)
 	{
 		if (!LodgeData.TargetComponent.IsValid())
@@ -603,16 +642,35 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 			
 			// Using swept objects hit normal as we are looking for a facing from ourselves
 			float DotValue = FMath::Abs(FVector::DotProduct(Hit.Normal, ForwardVec));
-			FVector Velocity = NormalImpulse.ProjectOnToNormal(ForwardVec);//FrameToFrameVelocity.ProjectOnToNormal(ForwardVec);
+			float Velocity = NormalImpulse.ProjectOnToNormal(ForwardVec).SizeSquared();//FrameToFrameVelocity.ProjectOnToNormal(ForwardVec);
 			// Check if the velocity was strong enough along our axis to count as a lodge event
 			// Also that our facing was in the relatively correct direction
 
-			if(DotValue >= (1.0f - LodgeData.AcceptableForwardProductRange) && Velocity.SizeSquared() >= FMath::Square(LodgeData.PenetrationVelocity))
-			{			
-				OnShouldLodgeInObject.Broadcast(LodgeData, OtherActor, Hit.GetComponent(), Hit.GetComponent()->GetCollisionObjectType(), NormalImpulse, Hit);
-				break;
+			if (HitSurfaceProperties.bSurfaceAllowsPenetration && !bOnlyPenetrateWithTwoHands || SecondaryHand.IsValid())
+			{
+				if (LodgeData.ZoneType != EVRMeleeZoneType::VRPMELLE_ZONETYPE_Hit && DotValue >= (1.0f - LodgeData.AcceptableForwardProductRange) && (Velocity * HitSurfaceProperties.StabVelocityScaler) >= FMath::Square(LodgeData.PenetrationVelocity))
+				{
+					OnShouldLodgeInObject.Broadcast(LodgeData, OtherActor, Hit.GetComponent(), Hit.GetComponent()->GetCollisionObjectType(), HitSurfaceProperties, NormalImpulse, Hit);
+					return;
+					//break;
+				}
+			}
+
+			float HitImpulse = LodgeData.bIgnoreForwardVectorForHitImpulse ? HitNormalImpulse : Velocity;
+
+			if (!bHadFirstHit && LodgeData.ZoneType > EVRMeleeZoneType::VRPMELLE_ZONETYPE_Stab && DotValue >= (1.0f - LodgeData.AcceptableForwardProductRangeForHits) && HitImpulse >= FMath::Square(LodgeData.MinimumHitVelocity))
+			{
+				bHadFirstHit = true;
+				FirstHitComp = LodgeData;
+				FirstHitResult = Hit;
+				FirstHitImpulse = NormalImpulse;
 			}
 		}
+	}
+
+	if (bHadFirstHit)
+	{
+		OnMeleeHit.Broadcast(FirstHitComp, OtherActor, FirstHitResult.GetComponent(), FirstHitResult.GetComponent()->GetCollisionObjectType(), HitSurfaceProperties, FirstHitImpulse, FirstHitResult);
 	}
 }
 

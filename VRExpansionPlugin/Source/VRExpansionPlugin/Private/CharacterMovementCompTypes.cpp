@@ -392,6 +392,7 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 	//ControlRotation.NetSerialize(Ar, PackageMap, bLocalSuccess);
 
 	SerializeOptionalValue<uint8>(bIsSaving, Ar, CompressedMoveFlags, 0);
+	SerializeOptionalValue<uint8>(bIsSaving, Ar, MovementMode, MOVE_Walking);
 
 	if (MoveType == ENetworkMoveType::NewMove)
 	{
@@ -400,7 +401,7 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 		// Location, relative movement base, and ending movement mode is only used for error checking, so only save for the final move.
 		SerializeOptionalValue<UPrimitiveComponent*>(bIsSaving, Ar, MovementBase, nullptr);
 		SerializeOptionalValue<FName>(bIsSaving, Ar, MovementBaseBoneName, NAME_None);
-		SerializeOptionalValue<uint8>(bIsSaving, Ar, MovementMode, MOVE_Walking);
+		//SerializeOptionalValue<uint8>(bIsSaving, Ar, MovementMode, MOVE_Walking); // Epic has this like this too, but it is bugged and killing movements
 		
 		// Moved here since only used for error checks, they are right
 		VRCapsuleLocation.NetSerialize(Ar, PackageMap, bLocalSuccess);

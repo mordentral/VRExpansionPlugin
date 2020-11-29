@@ -3,6 +3,7 @@
 #include "GameFramework/PlayerInput.h"
 #include "GameFramework/InputSettings.h"
 #include "VRBPDatatypes.h"
+#include "GripScripts/GS_Melee.h"
 #include "GripScripts/GS_GunTools.h"
 #include "VRGlobalSettings.generated.h"
 
@@ -117,9 +118,15 @@ public:
 	UVRGlobalSettings(const FObjectInitializer& ObjectInitializer);
 
 	// How many passes CCD will take during simulation, larger values significantly increase the cost of CCD calculation but also prevent tunneling artifacts
+	// Physx only
 	UPROPERTY(config, EditAnywhere, Category = "Physics")
 		int MaxCCDPasses;
 
+	// List of surfaces and their properties for the melee script
+	UPROPERTY(config, EditAnywhere, Category = "MeleeSettings")
+		TArray<FBPHitSurfaceProperties> MeleeSurfaceSettings;
+
+	// Default global virtual stock settings for the gun script
 	UPROPERTY(config, EditAnywhere, Category = "GunSettings")
 		FBPVirtualStockSettings VirtualStockSettings;
 
@@ -134,6 +141,10 @@ public:
 	// Setting to use for the OneEuro smoothing low pass filter when double gripping something held with a hand
 	UPROPERTY(config, EditAnywhere, Category = "GunSettings|Secondary Grip 1Euro Settings")
 		float OneEuroDeltaCutoff;
+
+	// Get the values of the virtual stock settings
+	UFUNCTION(BlueprintCallable, Category = "MeleeSettings")
+		static void GetMeleeSurfaceGlobalSettings(TArray<FBPHitSurfaceProperties>& OutMeleeSurfaceSettings);
 
 	// Get the values of the virtual stock settings
 	UFUNCTION(BlueprintCallable, Category = "GunSettings|VirtualStock")

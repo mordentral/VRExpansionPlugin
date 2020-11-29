@@ -9,6 +9,7 @@ AGrippableCharacter::AGrippableCharacter(const FObjectInitializer& ObjectInitial
 
 {
 	ViewOriginationSocket = NAME_None;
+	GrippableMeshReference = Cast<UGrippableSkeletalMeshComponent>(GetMesh());
 }
 
 void AGrippableCharacter::GetActorEyesViewPoint(FVector& Location, FRotator& Rotation) const

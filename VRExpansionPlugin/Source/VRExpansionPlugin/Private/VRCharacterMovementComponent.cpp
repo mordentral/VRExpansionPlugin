@@ -4118,11 +4118,24 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 		ClientBaseBoneName = CharacterOwner->GetBasedMovement().BoneName;
 	}
 
+	bool bInClientAuthoritativeMovementMode = false;
+	// Custom movement modes aren't going to be rolled back as they are client authed for our pawns
+
+	TEnumAsByte<EMovementMode> NetMovementMode(MOVE_None);
+	TEnumAsByte<EMovementMode> NetGroundMode(MOVE_None);
+	uint8 NetCustomMode(0);
+	UnpackNetworkMovementMode(ClientMovementMode, NetMovementMode, NetCustomMode, NetGroundMode);
+	if (NetMovementMode == EMovementMode::MOVE_Custom)
+	{
+		if (NetCustomMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing)
+			bInClientAuthoritativeMovementMode = true;
+	}
+
 	// Compute the client error from the server's position
 	// If client has accumulated a noticeable positional error, correct them.
 	bNetworkLargeClientCorrection = ServerData->bForceClientUpdate;
 
-	if (ServerData->bForceClientUpdate || ServerCheckClientErrorVR(ClientTimeStamp, DeltaTime, Accel, ClientLoc, ClientYaw, RelativeClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode))
+	if (!bInClientAuthoritativeMovementMode && (ServerData->bForceClientUpdate || ServerCheckClientErrorVR(ClientTimeStamp, DeltaTime, Accel, ClientLoc, ClientYaw, RelativeClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode)))
 	{
 		UPrimitiveComponent* MovementBase = CharacterOwner->GetMovementBase();
 		ServerData->PendingAdjustment.NewVel = Velocity;
@@ -4166,7 +4179,7 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 	}
 	else
 	{
-		if (ServerShouldUseAuthoritativePosition(ClientTimeStamp, DeltaTime, Accel, ClientLoc, RelativeClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode))
+		if (bInClientAuthoritativeMovementMode || ServerShouldUseAuthoritativePosition(ClientTimeStamp, DeltaTime, Accel, ClientLoc, RelativeClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode))
 		{
 			const FVector LocDiff = UpdatedComponent->GetComponentLocation() - ClientLoc; //-V595
 			if (!LocDiff.IsZero() || ClientMovementMode != PackNetworkMovementMode() || GetMovementBase() != ClientMovementBase || (CharacterOwner && CharacterOwner->GetBasedMovement().BoneName != ClientBaseBoneName))
