@@ -124,7 +124,10 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	bool bIsVisible = IsVisible() && !bIsSleeping && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
+
+	//bool bIsCurVis = IsWidgetVisible();
+
+	bool bIsVisible = /*IsVisible()*/IsWidgetVisible() && !bIsSleeping;// && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
 
 	// If we are set to not use stereo layers or we don't have a valid stereo layer device
 	if (
@@ -137,6 +140,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		if (!bShouldCreateProxy)
 		{
 			bShouldCreateProxy = true;
+			//MarkRenderStateDirty(); // Recreate
+
 			if (LayerId)
 			{
 				if (GEngine->StereoRenderingDevice.IsValid())
@@ -171,7 +176,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 #if !UE_SERVER
 
 	// Same check that the widget runs prior to ticking
-	if (IsRunningDedicatedServer() || (Widget == nullptr && !SlateWidget.IsValid()))
+	if (IsRunningDedicatedServer() || !GetSlateWindow() || GetSlateWindow()->GetContent() == SNullWidget::NullWidget)
 	{
 		return;
 	}
@@ -340,7 +345,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				if (Shape)
 				{
 					Shape->MarkPendingKill();
-					Shape = NewObject<UStereoLayerShapeCylinder>(this);
+					Shape = NewObject<UStereoLayerShapeCylinder>(this, NAME_None, RF_Public);
 				}
 			}
 
@@ -365,7 +370,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				if (Shape)
 				{
 					Shape->MarkPendingKill();
-					Shape = NewObject<UStereoLayerShapeQuad>(this);
+					Shape = NewObject<UStereoLayerShapeQuad>(this, NAME_None, RF_Public);
 				}
 			}
 			//LayerDsec.ShapeType = IStereoLayers::QuadLayer;
@@ -718,7 +723,7 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 		return nullptr;
 	}
 
-	if (WidgetRenderer && CurrentSlateWidget.IsValid())
+	if (WidgetRenderer && GetSlateWindow() && GetSlateWindow()->GetContent() != SNullWidget::NullWidget)
 	{
 		RequestRedraw();
 		LastWidgetRenderTime = 0;

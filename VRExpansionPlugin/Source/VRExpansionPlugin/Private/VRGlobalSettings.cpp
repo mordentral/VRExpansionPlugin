@@ -293,6 +293,12 @@ void UVRGlobalSettings::PostInitProperties()
 	Super::PostInitProperties();
 }
 
+void UVRGlobalSettings::GetMeleeSurfaceGlobalSettings(TArray<FBPHitSurfaceProperties>& OutMeleeSurfaceSettings)
+{
+	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+	OutMeleeSurfaceSettings = VRSettings.MeleeSurfaceSettings;
+}
+
 void UVRGlobalSettings::GetVirtualStockGlobalSettings(FBPVirtualStockSettings& OutVirtualStockSettings)
 {
 	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();

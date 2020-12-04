@@ -21,7 +21,9 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	Stiffness = 1500.0f;
 	Damping = 200.0f;
 
+#if PHYSICS_INTERFACE_PHYSX
 	HandleData = nullptr;
+#endif
 	//SceneIndex = 0;
 
 	bIsPhysicsLever = false;
@@ -606,7 +608,7 @@ bool UVRLeverComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*>
 
 bool UVRLeverComponent::DestroyConstraint()
 {
-#if WITH_PHYSX
+#if PHYSICS_INTERFACE_PHYSX
 	if (HandleData)
 	{
 		// use correct scene
@@ -634,7 +636,7 @@ bool UVRLeverComponent::DestroyConstraint()
 
 bool UVRLeverComponent::SetupConstraint()
 {
-#if WITH_PHYSX
+#if PHYSICS_INTERFACE_PHYSX
 
 	if (HandleData)
 		return true;

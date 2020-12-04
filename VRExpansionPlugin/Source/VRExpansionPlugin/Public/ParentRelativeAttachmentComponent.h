@@ -10,7 +10,23 @@
 #include "VRTrackedParentInterface.h"
 #include "ParentRelativeAttachmentComponent.generated.h"
 
+class AVRBaseCharacter;
 class AVRCharacter;
+
+// Type of rotation sampling to use
+UENUM(BlueprintType)
+enum class EVR_PRC_RotationMethod : uint8
+{
+	// Rotate purely to the HMD yaw, default mode
+	PRC_ROT_HMD UMETA(DisplayName = "HMD rotation"),
+
+	// Rotate to a blend between the HMD and Controller facing
+	PRC_ROT_HMDControllerBlend UMETA(DisplayName = "ROT HMD Controller Blend"),
+
+	// Rotate to the controllers with behind the back detection, clamp within neck limit
+	PRC_ROT_ControllerHMDClamped UMETA(DisplayName = "Controller Clamped to HMD")
+};
+
 
 /**
 * A component that will track the HMD/Cameras location and YAW rotation to allow for chest/waist attachements.
@@ -26,7 +42,11 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 public:
 	UParentRelativeAttachmentComponent(const FObjectInitializer& ObjectInitializer);
 
+	// Rotation method to use for facing calulations
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		//EVR_PRC_RotationMethod YawRotationMethod;
 
+	// Angle tolerance before we lerp / snap to the new rotation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary", meta = (ClampMin = "0", UIMin = "0"))
 		float YawTolerance;
 
@@ -40,6 +60,8 @@ public:
 	float LastLerpVal;
 	float LerpTarget;
 	bool bWasSetOnce;
+	FTransform LeftControllerTrans;
+	FTransform RightControllerTrans;
 
 	// If true uses feet/bottom of the capsule as the base Z position for this component instead of the HMD/Camera Z position
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
@@ -73,6 +95,9 @@ public:
 
 	UPROPERTY()
 		TWeakObjectPtr<AVRCharacter> AttachChar;
+	UPROPERTY()
+		TWeakObjectPtr<AVRBaseCharacter> AttachBaseChar;
+
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	virtual void OnAttachmentChanged() override;
@@ -90,6 +115,9 @@ public:
 	// Sets the rotation and location depending on the control variables. Trying to remove some code duplication here
 	inline void SetRelativeRotAndLoc(FVector NewRelativeLocation, FRotator NewRelativeRotation, float DeltaTime)
 	{
+
+		RunSampling(NewRelativeRotation, NewRelativeLocation);
+
 		if (bUseFeetLocation)
 		{
 			if (!bIgnoreRotationFromParent)
@@ -163,6 +191,171 @@ public:
 		}
 
 		return FinalRot.Quaternion();
+	}
+
+
+
+	void RunSampling(FRotator &HMDRotation, FVector &HMDLocation)
+	{
+		/*switch(YawRotationMethod)
+		{
+			case EVR_PRC_RotationMethod::PRC_ROT_HMD:
+			{
+				return;
+			}break;
+
+			case EVR_PRC_RotationMethod::PRC_ROT_HMDControllerBlend:
+			{
+				return;
+			}break;
+
+			case EVR_PRC_RotationMethod::PRC_ROT_ControllerHMDClamped:
+			{
+				GetEstShoulderRotation(HMDRotation, HMDLocation);
+				return;
+			}break;
+		}*/
+
+	}
+
+	// Get combined direction angle up
+	void GetEstShoulderRotation(FRotator &InputHMDRotation, FVector &InputHMDLocation)
+	{
+		float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+
+		// Position shoulder (neck)
+		FTransform shoulder = FTransform::Identity;
+		FVector headNeckDirectionVector = FVector(-.05f, 0.f, -1.f);
+		FVector neckShoulderDistance = FVector(-0.02f, 0.f, -.15f) * WorldToMeters; // World To Meters idealy
+		float headNeckDistance = 0.03f * WorldToMeters; // World To Meters idealy
+
+		FVector headNeckOffset = InputHMDRotation.RotateVector(headNeckDirectionVector);
+		FVector targetPosition = InputHMDLocation + headNeckOffset * headNeckDistance;
+		shoulder.SetLocation(targetPosition + InputHMDRotation.RotateVector(neckShoulderDistance));
+
+		//DrawDebugSphere(GetWorld(), (shoulder * GetAttachParent()->GetComponentTransform()).GetLocation(), 4.0f, 32, FColor::White);
+		return;
+
+
+		/*if (IsLocallyControlled() && GEngine->XRSystem.IsValid())
+		{
+			FVector Position = GetRelativeLocation();
+			FRotator Orientation = GetRelativeRotation();
+
+			if (AttachBaseChar.IsValid())
+			{
+				if (AttachBaseChar->LeftMotionController)
+				{
+					const bool bNewTrackedState = AttachBaseChar->LeftMotionController->GripPollControllerState(Position, Orientation, WorldToMeters);
+					bool bTracked = bNewTrackedState && CurrentTrackingStatus != ETrackingStatus::NotTracked;
+
+					if (bTracked)
+					{
+						LeftControllerTrans = FTransform(Position, Orientation);
+					}
+				}
+
+				if (AttachBaseChar->RightMotionController)
+				{
+					const bool bNewTrackedState = AttachBaseChar->RightMotionController->GripPollControllerState(Position, Orientation, WorldToMeters);
+					bool bTracked = bNewTrackedState && CurrentTrackingStatus != ETrackingStatus::NotTracked;
+
+					if (bTracked)
+					{
+						RightControllerTrans = FTransform(Position, Orientation);
+					}
+				}
+			}
+		}
+		else if (AttachBaseChar.IsValid())
+		{
+			LeftControllerTrans = AttachBaseChar->LeftMotionController->GetRelativeTransform();
+			RightControllerTrans = AttachBaseChar->RightMotionController->GetRelativeTransform();
+		}
+
+		FVector LeftHand = LeftControllerTrans.GetLocation();
+		FVector RightHand = RightControllerTrans.GetLocation();
+
+		//FRotator LeveledRel = CurrentTransforms.PureCameraYaw;
+
+		FVector DistLeft = LeftHand - shoulder.Transform.GetLocation();
+		FVector DistRight = RightHand - shoulder.Transform.GetLocation();
+
+		if (bIgnoreZPos)
+		{
+			DistLeft.Z = 0.0f;
+			DistRight.Z = 0.0f;
+		}
+
+		FVector DirLeft = DistLeft.GetSafeNormal();
+		FVector DirRight = DistRight.GetSafeNormal();
+
+		FVector CombinedDir = DirLeft + DirRight;
+		float FinalRot = FMath::RadiansToDegrees(FMath::Atan2(CombinedDir.Y, CombinedDir.X));
+
+		DetectHandsBehindHead(FinalRot, InputHMDRotation);
+		ClampHeadRotationDelta(FinalRot, InputHMDRotation);
+
+		return FinalRot;*/
+	}
+
+	void DetectHandsBehindHead(float& TargetRot, FRotator HMDRotation)
+	{
+		/*float delta = FRotator::ClampAxis(FMath::FindDeltaAngleDegrees(TargetRot, LastTargetRot));// FRotator::ClampAxis(TargetRot - LastTargetRot);
+
+		if (delta > 150.f && delta < 210.0f && !FMath::IsNearlyZero(LastTargetRot) && !bClampingHeadRotation)
+		{
+			bHandsBehindHead = !bHandsBehindHead;
+			if (bHandsBehindHead)
+			{
+				BehindHeadAngle = TargetRot;
+			}
+			else
+			{
+				BehindHeadAngle = 0.f;
+			}
+		}
+		else if (bHandsBehindHead)
+		{
+			float delta2 = FMath::Abs(FMath::FindDeltaAngleDegrees(TargetRot, BehindHeadAngle));
+
+			if (delta2 > 90.f)
+			{
+				bHandsBehindHead = !bHandsBehindHead;
+				BehindHeadAngle = 0.f;
+			}
+		}
+
+		LastTargetRot = TargetRot;
+
+		if (bHandsBehindHead)
+		{
+			TargetRot += 180.f;
+		}*/
+	}
+
+	// Clamp head rotation delta yaw
+	void ClampHeadRotationDelta(float& TargetRotation, FRotator HMDRotation)
+	{
+		/*float HeadRotation = FRotator::ClampAxis(CurrentTransforms.PureCameraYaw.Yaw);
+		float cTargetRotation = FRotator::ClampAxis(TargetRotation);
+
+		float delta = HeadRotation - cTargetRotation;
+
+		if ((delta > 80.f && delta < 180.f) || (delta < -180.f && delta >= -360.f + 80))
+		{
+			TargetRotation = HeadRotation - 80.f;
+			bClampingHeadRotation = true;
+		}
+		else if ((delta < -80.f && delta > -180.f) || (delta > 180.f && delta < 360.f - 80.f))
+		{
+			TargetRotation = HeadRotation + 80.f;
+			bClampingHeadRotation = true;
+		}
+		else
+		{
+			bClampingHeadRotation = false;
+		}*/
 	}
 };
 

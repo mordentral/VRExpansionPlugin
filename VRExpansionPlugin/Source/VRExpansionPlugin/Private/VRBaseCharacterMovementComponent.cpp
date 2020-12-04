@@ -70,6 +70,11 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bNotifyTeleported = false;
 
 	bJustUnseated = false;
+
+	bUseClientControlRotation = true;
+
+	SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
+	SetMoveResponseDataContainer(VRMoveResponseDataContainer);
 }
 
 void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
@@ -1270,163 +1275,6 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	}
 }
 
-void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
-{
-	// See if we can get the VR capsule location
-	//if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
-	//{
-		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(C->GetMovementComponent()))
-		{
-
-			// Saving this out early because it will be wiped before the PostUpdate gets the values
-			//ConditionalValues.MoveAction.MoveAction = moveComp->MoveAction.MoveAction;
-
-			VRReplicatedMovementMode = moveComp->VRReplicatedMovementMode;
-
-			if (moveComp->HasRequestedVelocity())
-				ConditionalValues.RequestedVelocity = moveComp->RequestedVelocity;
-			else
-				ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-				
-			// Throw out the Z value of the headset, its not used anyway for movement
-			// Instead, re-purpose it to be the capsule half height
-			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(C))
-			{
-				if (BaseChar->VRReplicateCapsuleHeight)
-					LFDiff.Z = BaseChar->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
-				else
-					LFDiff.Z = 0.0f;
-			}
-			else
-				LFDiff.Z = 0.0f;
-		}
-		else
-		{
-			VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
-			ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
-			ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-		}
-	//}
-	//else
-	//{
-	//	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
-	//	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
-	//}
-
-	FSavedMove_Character::SetInitialPosition(C);
-}
-
-void FSavedMove_VRBaseCharacter::CombineWith(const FSavedMove_Character* OldMove, ACharacter* InCharacter, APlayerController* PC, const FVector& OldStartLocation)
-{
-	UCharacterMovementComponent* CharMovement = InCharacter->GetCharacterMovement();
-	
-	// to combine move, first revert pawn position to PendingMove start position, before playing combined move on client
-	CharMovement->UpdatedComponent->SetWorldLocationAndRotation(OldStartLocation, OldMove->StartRotation, false, nullptr, CharMovement->GetTeleportType());
-	CharMovement->Velocity = OldMove->StartVelocity;
-
-	CharMovement->SetBase(OldMove->StartBase.Get(), OldMove->StartBoneName);
-	CharMovement->CurrentFloor = OldMove->StartFloor;
-
-	// Now that we have reverted to the old position, prepare a new move from that position,
-	// using our current velocity, acceleration, and rotation, but applied over the combined time from the old and new move.
-
-	// Combine times for both moves
-	DeltaTime += OldMove->DeltaTime;
-
-	//FSavedMove_VRBaseCharacter * BaseSavedMove = (FSavedMove_VRBaseCharacter *)NewMove.Get();
-	FSavedMove_VRBaseCharacter * BaseSavedMovePending = (FSavedMove_VRBaseCharacter *)OldMove;
-
-	if (/*BaseSavedMove && */BaseSavedMovePending)
-	{
-		LFDiff.X += BaseSavedMovePending->LFDiff.X;
-		LFDiff.Y += BaseSavedMovePending->LFDiff.Y;
-	}
-
-	// Roll back jump force counters. SetInitialPosition() below will copy them to the saved move.
-	// Changes in certain counters like JumpCurrentCount don't allow move combining, so no need to roll those back (they are the same).
-	InCharacter->JumpForceTimeRemaining = OldMove->JumpForceTimeRemaining;
-	InCharacter->JumpKeyHoldTime = OldMove->JumpKeyHoldTime;
-}
-
-void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostUpdateMode)
-{
-	FSavedMove_Character::PostUpdate(C, PostUpdateMode);
-
-	// See if we can get the VR capsule location
-	//if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
-	//{
-	if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(C->GetMovementComponent()))
-	{
-		ConditionalValues.CustomVRInputVector = moveComp->CustomVRInputVector;
-		ConditionalValues.MoveActionArray = moveComp->MoveActionArray;
-		moveComp->MoveActionArray.Clear();
-	}
-	//}
-	/*if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
-	{
-		// See if we can get the VR capsule location
-		if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
-		{
-			if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
-			{
-				// This is cleared out in perform movement so I need to save it before applying below
-				EVRMoveAction tempAction = ConditionalValues.MoveAction.MoveAction;
-				ConditionalValues.MoveAction = moveComp->MoveAction;
-				ConditionalValues.MoveAction.MoveAction = tempAction;
-			}
-			else
-			{
-				ConditionalValues.MoveAction.Clear();
-			}
-		}
-		else
-		{
-			ConditionalValues.MoveAction.Clear();
-		}
-	}*/
-}
-
-void FSavedMove_VRBaseCharacter::Clear()
-{
-	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;// None;
-
-	VRCapsuleLocation = FVector::ZeroVector;
-	VRCapsuleRotation = FRotator::ZeroRotator;
-	LFDiff = FVector::ZeroVector;
-
-	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
-	ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-	ConditionalValues.MoveActionArray.Clear();
-	//ConditionalValues.MoveAction.Clear();
-
-	FSavedMove_Character::Clear();
-}
-
-void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
-{
-	UVRBaseCharacterMovementComponent * BaseCharMove = Cast<UVRBaseCharacterMovementComponent>(Character->GetCharacterMovement());
-
-	if (BaseCharMove)
-	{
-		BaseCharMove->MoveActionArray = ConditionalValues.MoveActionArray;
-		//BaseCharMove->MoveAction = ConditionalValues.MoveAction; 
-		BaseCharMove->CustomVRInputVector = ConditionalValues.CustomVRInputVector;//this->CustomVRInputVector;
-		BaseCharMove->VRReplicatedMovementMode = this->VRReplicatedMovementMode;
-	}
-	
-	if (!ConditionalValues.RequestedVelocity.IsZero())
-	{
-		BaseCharMove->RequestedVelocity = ConditionalValues.RequestedVelocity;
-		BaseCharMove->SetHasRequestedVelocity(true);
-	}
-	else
-	{
-		BaseCharMove->SetHasRequestedVelocity(false);
-	}
-
-	FSavedMove_Character::PrepMoveFor(Character);
-}
-
 void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
 {
 	Super::OnClientCorrectionReceived(ClientData, TimeStamp, NewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
@@ -1571,7 +1419,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 		PerformMovement(DeltaSeconds);
 
 		// After movement correction, smooth out error in position if any.
-		if (bCorrectedToServer)
+		if (bCorrectedToServer || CurrentRootMotion.NeedsSimulatedSmoothing())
 		{
 			SmoothCorrection(OldLocation, OldRotation, UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentQuat());
 		}
@@ -1887,36 +1735,6 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 		{
 			// Unhandled mode
 		}
-	}
-}
-
-FVRCharacterScopedMovementUpdate::FVRCharacterScopedMovementUpdate(USceneComponent* Component, EScopedUpdate::Type ScopeBehavior, bool bRequireOverlapsEventFlagToQueueOverlaps)
-	: FScopedMovementUpdate(Component, ScopeBehavior, bRequireOverlapsEventFlagToQueueOverlaps)
-{
-	UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
-	if (RootComponent)
-	{
-		InitialVRTransform = RootComponent->OffsetComponentToWorld;
-	}
-}
-
-void FVRCharacterScopedMovementUpdate::RevertMove()
-{
-	bool bTransformIsDirty = IsTransformDirty();
-
-	FScopedMovementUpdate::RevertMove();
-
-	UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
-	if (RootComponent)
-	{
-		// If the base class was going to miss bad overlaps, ie: the offsetcomponent to world is different but the transform isn't
-		if (!bTransformIsDirty && !IsDeferringUpdates() && !InitialVRTransform.Equals(RootComponent->OffsetComponentToWorld))
-		{
-			RootComponent->UpdateOverlaps();
-		}
-
-		// Fix offset
-		RootComponent->GenerateOffsetToWorld();
 	}
 }
 

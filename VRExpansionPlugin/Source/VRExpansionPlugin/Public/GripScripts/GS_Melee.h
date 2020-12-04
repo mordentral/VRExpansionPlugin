@@ -7,11 +7,26 @@
 #include "GripScripts/GS_Default.h"
 #include "GS_Melee.generated.h"
 
-#if WITH_PHYSX
+#if PHYSICS_INTERFACE_PHYSX
 #include "PhysXPublic.h"
 #endif // WITH_PHYSX
 
 
+
+// The type of melee hit zone we are
+UENUM(BlueprintType)
+enum class EVRMeleeZoneType : uint8
+{
+	// This zone is only valid for stabs
+	VRPMELLE_ZONETYPE_Stab UMETA(DisplayName = "Stab"),
+
+	// This zone is only valid for hits
+	VRPMELLE_ZONETYPE_Hit UMETA(DisplayName = "Hit"),
+
+	// This zone is valid for both stabs and hits
+	VRPMELLE_ZONETYPE_StabAndHit UMETA(DisplayName = "StabAndHit")
+
+};
 
 // The type of COM selection to use
 UENUM(BlueprintType)
@@ -44,6 +59,42 @@ enum class EVRMeleePrimaryHandType : uint8
 
 // A Lodge component data struct
 USTRUCT(BlueprintType, Category = "Lodging")
+struct VREXPANSIONPLUGIN_API FBPHitSurfaceProperties
+{
+	GENERATED_BODY()
+public:
+
+	// Does this surface type allow penetration
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Surface Property")
+		bool bSurfaceAllowsPenetration;
+
+	// Scaler to damage applied from hitting this surface with blunt damage
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Surface Property")
+		float BluntDamageScaler;
+
+	// Scaler to damage applied from hitting this surface with sharp damage
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Surface Property")
+		float SharpDamageScaler;
+
+	// Alters the stab velocity to let you make it harder or easier to stab this surface
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Surface Property")
+		float StabVelocityScaler;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Surface Property")
+	TEnumAsByte<EPhysicalSurface> SurfaceType;
+
+	FBPHitSurfaceProperties()
+	{
+		// Default to true on this
+		bSurfaceAllowsPenetration = true;
+		BluntDamageScaler = 1.f;
+		SharpDamageScaler = 1.f;
+		StabVelocityScaler = 1.f;
+	}
+};
+
+// A Lodge component data struct
+USTRUCT(BlueprintType, Category = "Lodging")
 struct VREXPANSIONPLUGIN_API FBPLodgeComponentInfo
 {
 	GENERATED_BODY()
@@ -51,6 +102,18 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LodgeComponentInfo")
 		FName ComponentName;
+
+	// Type of collision zone we are
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LodgeComponentInfo")
+		EVRMeleeZoneType ZoneType;
+
+	// If true than we will calculate hit impulse off of its total value and not just off of it axially aligned to the forward of this body
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LodgeComponentInfo")
+		bool bIgnoreForwardVectorForHitImpulse;
+
+	// For end users to provide a base damage per zone if they want
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LodgeComponentInfo")
+		float DamageScaler;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LodgeComponentInfo")
 		float PenetrationDepth;
@@ -62,18 +125,32 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
 		float PenetrationVelocity;
 
+	// This is the impulse velocity required to throw an OnHit event from a PenetrationNotifierComponent (If a stab didn't take place)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
+		float MinimumHitVelocity;
+
 	// The acceptable range of the dot product of the forward vector and the impact normal to define a valid facing
 	// Subtracted from the 1.0f forward facing value
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
 		float AcceptableForwardProductRange;
 
+	// The acceptable range of the dot product of the forward vector and the impact normal to define a valid facing
+	// Subtracted from the 1.0f forward facing value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
+		float AcceptableForwardProductRangeForHits;
+
 	FBPLodgeComponentInfo()
 	{
 		ComponentName = NAME_None;
+		ZoneType = EVRMeleeZoneType::VRPMELLE_ZONETYPE_StabAndHit;
+		bIgnoreForwardVectorForHitImpulse = false;
+		DamageScaler = 0.f;
 		PenetrationDepth = 100.f;
 		bAllowPenetrationInReverseAsWell = false;
 		PenetrationVelocity = 8000.f;
+		MinimumHitVelocity = 1000.f;
 		AcceptableForwardProductRange = 0.1f;
+		AcceptableForwardProductRangeForHits = 0.1f;
 	}
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "LodgeComponentInfo")
@@ -88,11 +165,12 @@ public:
 
 
 // Event thrown when we the melee weapon becomes lodged
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_SixParams(FVROnMeleeShouldLodgeSignature, FBPLodgeComponentInfo, LogComponent, AActor *, OtherActor, UPrimitiveComponent *, OtherComp, ECollisionChannel, OtherCompCollisionChannel, FVector, NormalImpulse, const FHitResult&, Hit);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_SevenParams(FVROnMeleeShouldLodgeSignature, FBPLodgeComponentInfo, LogComponent, AActor *, OtherActor, UPrimitiveComponent *, OtherComp, ECollisionChannel, OtherCompCollisionChannel, FBPHitSurfaceProperties, HitSurfaceProperties, FVector, NormalImpulse, const FHitResult&, Hit);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_SevenParams(FVROnMeleeOnHit, FBPLodgeComponentInfo, LogComponent, AActor*, OtherActor, UPrimitiveComponent*, OtherComp, ECollisionChannel, OtherCompCollisionChannel, FBPHitSurfaceProperties, HitSurfaceProperties, FVector, NormalImpulse, const FHitResult&, Hit);
 
 /**
 * A Melee grip script that hands multi hand interactions and penetration notifications*
+* The per surface damage and penetration options have been moved to the project settings unless the per script override is set
 */
 UCLASS(NotBlueprintable, ClassGroup = (VRExpansionPlugin), hideCategories = TickSettings)
 class VREXPANSIONPLUGIN_API UGS_Melee : public UGS_Default
@@ -121,6 +199,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Melee|Lodging")
 		FVROnMeleeShouldLodgeSignature OnShouldLodgeInObject;
 
+	UPROPERTY(BlueprintAssignable, Category = "Melee|Hit")
+		FVROnMeleeOnHit OnMeleeHit;
+
 	// Always tick for penetration
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Melee|Lodging")
 		bool bAlwaysTickPenetration;
@@ -130,10 +211,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Melee|Lodging")
 		bool bOnlyPenetrateWithTwoHands;
 
-	// A list of surface types that allow penetration
-	// If empty then the script will not attempt to filter what was impacted
+	// A list of surface types that allow penetration and their properties
+	// If empty then the script will use the global settings, if filled with anything then it will override the global settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Melee|Lodging")
-		TArray<TEnumAsByte<EPhysicalSurface>> AllowedPenetrationSurfaceTypes;
+		TArray<FBPHitSurfaceProperties> OverrideMeleeSurfaceSettings;
 
 //	FVector RollingVelocityAverage;
 	//FVector RollingAngVelocityAverage;

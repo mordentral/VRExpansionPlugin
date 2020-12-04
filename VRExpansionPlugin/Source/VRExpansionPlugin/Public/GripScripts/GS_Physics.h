@@ -7,7 +7,7 @@
 #include "GripScripts/GS_Default.h"
 #include "GS_Physics.generated.h"
 
-#if WITH_PHYSX
+#if PHYSICS_INTERFACE_PHYSX
 #include "PhysXPublic.h"
 #endif // WITH_PHYSX
 

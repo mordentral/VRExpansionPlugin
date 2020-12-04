@@ -8,7 +8,7 @@
 #include "PhysicsPublic.h"
 #include "PhysicsEngine/ConstraintDrives.h"
 
-#if WITH_PHYSX
+#if PHYSICS_INTERFACE_PHYSX
 //#include "PhysXPublic.h"
 //#include "PhysicsEngine/PhysXSupport.h"
 #endif // WITH_PHYSX
@@ -1567,6 +1567,9 @@ public:
 		bSetCOM = false;
 		bSkipResettingCom = false;
 		bSkipMassCheck = false;
+#if WITH_CHAOS
+		KinActorData2 = nullptr;
+#endif
 	}
 
 	FORCEINLINE bool operator==(const FBPActorGripInformation & Other) const
