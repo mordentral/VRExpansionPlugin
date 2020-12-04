@@ -90,6 +90,7 @@ public:
 		BluntDamageScaler = 1.f;
 		SharpDamageScaler = 1.f;
 		StabVelocityScaler = 1.f;
+		SurfaceType = EPhysicalSurface::SurfaceType_Default;
 	}
 };
 
