@@ -6,6 +6,7 @@
 #include "VRBPDatatypes.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/CharacterMovementReplication.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "CharacterMovementCompTypes.generated.h"
 
