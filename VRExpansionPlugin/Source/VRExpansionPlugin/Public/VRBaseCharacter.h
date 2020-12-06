@@ -457,6 +457,7 @@ public:
 
 	// Sets seated mode on the character and then fires off an event to handle any special setup
 	// Should only be called on the server / net authority
+	// If allowed radius is 0.0f then the seated mode does not check for radial distance anymore.
 	bool SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform TargetTransform, FTransform InitialRelCameraTransform, float AllowedRadius = 40.0f, float AllowedRadiusThreshold = 20.0f, bool bZeroToHead = true, EVRConjoinedMovementModes PostSeatedMovementMode = EVRConjoinedMovementModes::C_MOVE_Walking);
 
 	void SetSeatRelativeLocationAndRotationVR(FVector LocDelta);

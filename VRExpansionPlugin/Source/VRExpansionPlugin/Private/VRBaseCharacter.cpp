@@ -613,6 +613,17 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 		OrigLocation.Z = 0.0f;
 	}
 
+	if (FMath::IsNearlyZero(SeatInformation.AllowedRadius))
+	{
+		// Nothing to process here, seated mode isn't sticking to a set radius
+		if (SeatInformation.bIsOverThreshold)
+		{
+			SeatInformation.bIsOverThreshold = false;
+			bLastOverThreshold = false;
+		}
+		return;
+	}
+	
 	float AbsDistance = FMath::Abs(FVector::Dist(OrigLocation, NewLoc));
 
 	//FTransform newTrans = SeatInformation.StoredTargetTransform * SeatInformation.SeatParent->GetComponentTransform();

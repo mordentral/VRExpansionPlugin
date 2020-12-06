@@ -1,0 +1,30 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "OpenXRExpansionPlugin",
+	"Description": "An set of utility functions for OpenXR",
+	"Category": "Virtual Reality",
+	"CreatedBy": "Joshua (MordenTral) Statzer",
+	"CreatedByURL": "http://www.vreue4.com",
+	"DocsURL": "http://www.vreue4.com",
+	"MarketplaceURL": "",
+	"SupportURL": "http://www.vreue4.com",
+	"EnabledByDefault": false,
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "OpenXRExpansionPlugin",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "OpenXR",
+			"Enabled": true
+		}
+	]
+}
