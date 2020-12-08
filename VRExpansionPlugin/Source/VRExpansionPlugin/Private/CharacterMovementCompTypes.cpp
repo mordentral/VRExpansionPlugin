@@ -393,6 +393,8 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 
 	SerializeOptionalValue<uint8>(bIsSaving, Ar, CompressedMoveFlags, 0);
 	SerializeOptionalValue<uint8>(bIsSaving, Ar, MovementMode, MOVE_Walking);
+	VRCapsuleLocation.NetSerialize(Ar, PackageMap, bLocalSuccess);
+	Ar << VRCapsuleRotation;
 
 	if (MoveType == ENetworkMoveType::NewMove)
 	{
@@ -402,10 +404,6 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 		SerializeOptionalValue<UPrimitiveComponent*>(bIsSaving, Ar, MovementBase, nullptr);
 		SerializeOptionalValue<FName>(bIsSaving, Ar, MovementBaseBoneName, NAME_None);
 		//SerializeOptionalValue<uint8>(bIsSaving, Ar, MovementMode, MOVE_Walking); // Epic has this like this too, but it is bugged and killing movements
-		
-		// Moved here since only used for error checks, they are right
-		VRCapsuleLocation.NetSerialize(Ar, PackageMap, bLocalSuccess);
-		Ar << VRCapsuleRotation;
 	}
 
 	// Rep out our custom move settings
