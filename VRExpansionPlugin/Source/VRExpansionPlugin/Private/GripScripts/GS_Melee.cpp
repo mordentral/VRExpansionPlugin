@@ -646,7 +646,7 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 			// Check if the velocity was strong enough along our axis to count as a lodge event
 			// Also that our facing was in the relatively correct direction
 
-			if (HitSurfaceProperties.bSurfaceAllowsPenetration && !bOnlyPenetrateWithTwoHands || SecondaryHand.IsValid())
+			if (HitSurfaceProperties.bSurfaceAllowsPenetration && (!bOnlyPenetrateWithTwoHands || SecondaryHand.IsValid()))
 			{
 				if (LodgeData.ZoneType != EVRMeleeZoneType::VRPMELLE_ZONETYPE_Hit && DotValue >= (1.0f - LodgeData.AcceptableForwardProductRange) && (Velocity * HitSurfaceProperties.StabVelocityScaler) >= FMath::Square(LodgeData.PenetrationVelocity))
 				{

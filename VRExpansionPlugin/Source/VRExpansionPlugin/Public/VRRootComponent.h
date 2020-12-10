@@ -218,9 +218,13 @@ void inline UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGe
 		CamRotOffset = curCameraRot;
 
 	/*if(bOffsetByHMD)
+	{
 		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(0, 0, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
+	}
 	else*/
+	{
 		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(curCameraLoc.X, curCameraLoc.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
+	}
 
 	if (owningVRChar)
 	{
