@@ -1999,16 +1999,9 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 	UPrimitiveComponent * PrimComp = nullptr;
 
 	AActor * pActor = nullptr;
-	if (bWasLocalGrip)
-	{
-		PrimComp = GripInfo->GetGrippedComponent();
-		pActor = GripInfo->GetGrippedActor();
-	}
-	else
-	{
-		PrimComp = GripInfo->GetGrippedComponent();
-		pActor = GripInfo->GetGrippedActor();
-	}
+
+	PrimComp = GripInfo->GetGrippedComponent();
+	pActor = GripInfo->GetGrippedActor();
 
 	if (!PrimComp && pActor)
 		PrimComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
