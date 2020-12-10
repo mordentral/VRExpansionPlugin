@@ -746,10 +746,10 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	ViewRot.Yaw = FRotator::DecompressAxisFromShort(MoveReps.ClientYaw);
 	ViewRot.Roll = FRotator::DecompressAxisFromByte(MoveReps.ClientRoll);
 
-/*	if (PC && bUseClientControlRotation)
+	if (PC && bUseClientControlRotation)
 	{
 		PC->SetControlRotation(ViewRot);
-	}*/
+	}
 
 	if (!bServerReadyForClient)
 	{
@@ -759,6 +759,11 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 	// Perform actual movement
 	if ((MyWorld->GetWorldSettings()->GetPauserPlayerState() == NULL) && (DeltaTime > 0.f))
 	{
+		if (PC)
+		{
+			PC->UpdateRotation(DeltaTime);
+		}
+
 		if (!ConditionalReps.RequestedVelocity.IsZero())
 		{
 			RequestedVelocity = ConditionalReps.RequestedVelocity;
@@ -807,23 +812,6 @@ void UVRCharacterMovementComponent::ServerMoveVR_Implementation(
 
 		MoveAutonomous(TimeStamp, DeltaTime, MoveFlags, Accel);
 		bHasRequestedVelocity = false;
-
-		if (PC)
-		{
-			if (bUseClientControlRotation)
-			{
-				PC->SetControlRotation(ViewRot);
-			}
-
-			PC->UpdateRotation(DeltaTime);
-		}
-	}
-	else
-	{
-		if (PC && bUseClientControlRotation)
-		{
-			PC->SetControlRotation(ViewRot);
-		}
 	}
 
 	UE_CLOG(CharacterOwner&& UpdatedComponent, LogVRCharacterMovement, VeryVerbose, TEXT("ServerMove Time %f Acceleration %s Velocity %s Position %s Rotation %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d)"),
