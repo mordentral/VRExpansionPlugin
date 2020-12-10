@@ -45,20 +45,20 @@ public:
 	virtual void UpdateRenderTarget(FIntPoint DesiredRenderTargetSize) override;
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 
-	/**
-	* Change the quad size. This is the unscaled height and width, before component scale is applied.
-	* @param	InQuadSize: new quad size.
-	*/
-	//UFUNCTION(BlueprintCallable, Category = "Components|Stereo Layer")
-		//void SetQuadSize(FVector2D InQuadSize);
 
-	// Manually mark the stereo layer texture for updating
-	//UFUNCTION(BlueprintCallable, Category = "Components|Stereo Layer")
-	//	void MarkTextureForUpdate();
+	// If true forces the widget to render both stereo and world widgets
+	// Overriden by the console command vr.ForceNoStereoWithVRWidgets if it is set to 1
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+		bool bRenderBothStereoAndWorld;
 
 	// If true, use Epics world locked stereo implementation instead of my own temp solution
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		bool bUseEpicsWorldLockedStereo;
+
+	// If true, will cache and delay the transform adjustment for one frame in order to sync with the game thread better
+	// Not for use with late updated parents.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+		bool bDelayForRenderThread;
 
 	// If true will not render or update until false
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")

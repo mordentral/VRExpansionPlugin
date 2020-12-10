@@ -234,8 +234,8 @@ public:
 	virtual void BeginPlay() override;
 
 	/** Post-physics tick function for this character */
-	UPROPERTY()
-		FTickFunction PostPhysicsTickFunction;
+	//UPROPERTY()
+	//	FTickFunction PostPhysicsTickFunction;
 
 protected:
 	//~ Begin UActorComponent Interface.
@@ -363,7 +363,7 @@ public:
 	// Locally Gripped Array functions
 
 	// Notify a client that their local grip was bad
-	UFUNCTION(Reliable, Client, WithValidation, Category = "GripMotionController")
+	UFUNCTION(Reliable, Client, Category = "GripMotionController")
 	void Client_NotifyInvalidLocalGrip(UObject * LocallyGrippedObject, uint8 GripID);
 
 	// Notify the server that we locally gripped something
@@ -454,6 +454,39 @@ public:
 				//UE_LOG(LogVRMotionController, Warning, TEXT("Replicated grip Notify grip failed, was grip called before the object was replicated to the client?"));
 				return false;
 			}
+
+			if(Grip.SecondaryGripInfo.bHasSecondaryAttachment)
+			{
+				// Reset the secondary grip distance
+				Grip.SecondaryGripInfo.SecondaryGripDistance = 0.0f;
+
+				if (FMath::IsNearlyZero(Grip.SecondaryGripInfo.LerpToRate)) // Zero, could use IsNearlyZero instead
+					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::NotLerping;
+				else
+				{
+					Grip.SecondaryGripInfo.curLerp = Grip.SecondaryGripInfo.LerpToRate;
+					Grip.SecondaryGripInfo.GripLerpState = EGripLerpState::StartLerp;
+				}
+
+				if (Grip.GrippedObject && Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				{
+					IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+
+					TArray<UVRGripScriptBase*> GripScripts;
+					if (IVRGripInterface::Execute_GetGripScripts(Grip.GrippedObject, GripScripts))
+					{
+						for (UVRGripScriptBase* Script : GripScripts)
+						{
+							if (Script)
+							{
+								Script->OnSecondaryGrip(this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
+							}
+						}
+					}
+				}
+
+				OnSecondaryGripAdded.Broadcast(Grip);	
+			}
 			//Grip.ValueCache.bWasInitiallyRepped = true; // Set has been initialized
 		}
 		else if(OldGripInfo != nullptr) // Check for changes from cached information if we aren't skipping the delta check
@@ -492,7 +525,7 @@ public:
 
 				if (bSendReleaseEvent)
 				{
-					if (Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					if (Grip.GrippedObject && Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGripRelease(Grip.GrippedObject, this, OldGripInfo->SecondaryGripInfo.SecondaryAttachment, Grip);
 
@@ -514,7 +547,7 @@ public:
 
 				if (bSendGripEvent)
 				{
-					if (Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					if (Grip.GrippedObject && Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
 
@@ -909,6 +942,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
 		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
 
+	// Get the physics constraint force of a simulating grip
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		bool GetPhysicsConstraintForce(const FBPActorGripInformation& Grip, FVector& AngularForce, FVector& LinearForce);
+
 	// Get the root components mass of a grip
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
 		void GetGripMass(const FBPActorGripInformation& Grip, float& Mass);
@@ -1103,6 +1140,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	bool TeleportMoveGrip(UPARAM(ref)FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips = true, bool bIsForPostTeleport = false);
 	bool TeleportMoveGrip_Impl(FBPActorGripInformation &Grip, bool bTeleportPhysicsGrips, bool bIsForPostTeleport, FTransform & OptionalTransform);
+
+	// Moves all grips back into position immediately
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		void TeleportMoveGrips(bool bTeleportPhysicsGrips = true, bool bIsForPostTeleport = false);
 
 	// Adds a secondary attachment point to the grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")

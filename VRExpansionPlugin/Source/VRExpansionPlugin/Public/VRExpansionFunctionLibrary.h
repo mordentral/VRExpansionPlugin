@@ -118,6 +118,13 @@ public:
 		}
 	}
 
+	// Returns a delta rotation to have Vec1 point towards Vec2, assumes that the v
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "FindBetween"))
+		static FRotator BPQuat_FindBetween(FVector Vec1, FVector Vec2)
+	{
+		return FQuat::FindBetween(Vec1, Vec2).Rotator();
+	}
+
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDConnected"))
 	static bool GetIsHMDConnected();

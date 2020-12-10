@@ -136,8 +136,11 @@ public:
 				Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
 				Ar << Yaw;
 
-				bool bTeleportGrips = MoveActionRot.Roll > 0.0f;
+				bool bTeleportGrips = MoveActionRot.Roll > 0.0f && MoveActionRot.Roll < 1.5f;
 				Ar.SerializeBits(&bTeleportGrips, 1);
+
+				bool bTeleportCharacter = MoveActionRot.Roll > 1.5f;
+				Ar.SerializeBits(&bTeleportCharacter, 1);
 
 				Ar.SerializeBits(&VelRetentionSetting, 2);
 
@@ -157,6 +160,14 @@ public:
 				bool bTeleportGrips = false;
 				Ar.SerializeBits(&bTeleportGrips, 1);
 				MoveActionRot.Roll = bTeleportGrips ? 1.0f : 0.0f;
+
+				bool bTeleportCharacter = false;
+				Ar.SerializeBits(&bTeleportCharacter, 1);
+
+				if (bTeleportCharacter)
+				{
+					MoveActionRot.Roll = 2.0f;
+				}
 
 				Ar.SerializeBits(&VelRetentionSetting, 2);
 
@@ -574,7 +585,7 @@ public:
 		if (!FMath::IsNearlyEqual(LFDiff.Z, nMove->LFDiff.Z))
 			return false;
 
-		if (!LFDiff.IsZero() && !nMove->LFDiff.IsZero() && !FVector::Coincident(LFDiff.GetSafeNormal2D(), nMove->LFDiff.GetSafeNormal2D(), AccelDotThresholdCombine))
+		if (!FVector2D(LFDiff.X, LFDiff.Y).IsZero() && !FVector2D(nMove->LFDiff.X, nMove->LFDiff.Y).IsZero() && !FVector::Coincident(LFDiff.GetSafeNormal2D(), nMove->LFDiff.GetSafeNormal2D(), AccelDotThresholdCombine))
 			return false;
 
 		return FSavedMove_Character::CanCombineWith(NewMove, Character, MaxDelta);
@@ -686,18 +697,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
 		void AddCustomReplicatedMovement(FVector Movement);
 
+	// Clears the custom replicated movement, can be used to cancel movements if the mode changes
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
+		void ClearCustomReplicatedMovement();
+
 	// Called to check if the server is performing a move action on a non controlled character
 	// If so then we just run the logic right away as it can't be inlined and won't be replicated
 	void CheckServerAuthedMoveAction();
 
 	// Perform a snap turn in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false);
+		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false, bool bFlagCharacterTeleport = false);
 
 	// Perform a rotation set in line with the move actions system
 	// This node specifically sets the FACING direction to a value, where your HMD is pointed
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false);
+		void PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false, bool bFlagCharacterTeleport = false);
 
 	// Perform a teleport in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")

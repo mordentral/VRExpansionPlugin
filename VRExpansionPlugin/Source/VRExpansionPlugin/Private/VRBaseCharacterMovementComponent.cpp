@@ -79,6 +79,9 @@ void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode Prev
 		return;
 	}
 
+	// Clear out the old custom input vector, it will pollute the pool now that all modes allow it.
+	CustomVRInputVector = FVector::ZeroVector;
+
 	if (PreviousMovementMode == EMovementMode::MOVE_Custom && PreviousCustomMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 	{
 		if (MovementMode != EMovementMode::MOVE_Custom || CustomMovementMode != (uint8)EVRCustomMovementMode::VRMOVE_Seated)
@@ -125,6 +128,17 @@ bool UVRBaseCharacterMovementComponent::ForcePositionUpdate(float DeltaTime)
 
 void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
+
+	// Skip calling into BP if we aren't locally controlled
+	if (CharacterOwner->IsLocallyControlled() && GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Climbing)
+	{
+		// Allow the player to run updates on the climb logic for CustomVRInputVector
+		if (BaseVRCharacterOwner)
+		{
+			BaseVRCharacterOwner->UpdateClimbingMovement(DeltaTime);
+		}
+	}
+
 	// Scope all of the movements, including PRC
 	{
 		UParentRelativeAttachmentComponent* OuterScopePRC = nullptr;
@@ -242,9 +256,9 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 
 	if (bNotifyTeleported)
 	{
-		if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+		if (BaseVRCharacterOwner)
 		{
-			BaseChar->OnCharacterTeleported_Bind.Broadcast();
+			BaseVRCharacterOwner->OnCharacterTeleported_Bind.Broadcast();
 			bNotifyTeleported = false;
 		}
 	}
@@ -525,6 +539,11 @@ void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Move
 		CustomVRInputVector += Movement; // If not a client, don't bother to round this down.
 }
 
+void UVRBaseCharacterMovementComponent::ClearCustomReplicatedMovement()
+{
+	CustomVRInputVector = FVector::ZeroVector;
+}
+
 void UVRBaseCharacterMovementComponent::CheckServerAuthedMoveAction()
 {
 	// If we are calling this on the server on a non owned character, there is no reason to wait around, just do the action now
@@ -540,12 +559,16 @@ void UVRBaseCharacterMovementComponent::CheckServerAuthedMoveAction()
 	}
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
-	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+	
+	if (bFlagCharacterTeleport)
+		MoveAction.MoveActionRot.Roll = 2.0f;
+	else
+		MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
@@ -558,12 +581,16 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	CheckServerAuthedMoveAction();
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SetRotation;
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(NewYaw * 100.f) / 100.f, 0.0f);
-	MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+
+	if (bFlagCharacterTeleport)
+		MoveAction.MoveActionRot.Roll = 2.0f;
+	else
+		MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
@@ -685,7 +712,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
 		{
-			OwningCharacter->NotifyOfTeleport();
+			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionRot.Roll > 1.5f);
 		}
 	}
 
@@ -718,7 +745,7 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionRot.Roll > 0.0f)
 		{
-			OwningCharacter->NotifyOfTeleport();
+			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionRot.Roll > 1.5f);
 		}
 	}
 
@@ -807,15 +834,15 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 		return;
 	}
 
-	// Skip calling into BP if we aren't locally controlled
-	if (CharacterOwner->IsLocallyControlled())
+	// Skip calling into BP if we aren't locally controlled - *EDIT* MOVED TO TICKCOMPONENT to avoid batched movement issues
+	/*if (CharacterOwner->IsLocallyControlled())
 	{
 		// Allow the player to run updates on the climb logic for CustomVRInputVector
 		if (AVRBaseCharacter * characterOwner = Cast<AVRBaseCharacter>(CharacterOwner))
 		{
 			characterOwner->UpdateClimbingMovement(deltaTime);
 		}
-	}
+	}*/
 
 
 	// I am forcing this to 0 to avoid some legacy velocity coming out of other movement modes, climbing should only be direct movement anyway.

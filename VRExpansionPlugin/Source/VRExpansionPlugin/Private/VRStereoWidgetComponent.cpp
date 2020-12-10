@@ -34,8 +34,10 @@ namespace StereoWidgetCvars
 	FAutoConsoleVariableRef CVarForceNoStereoWithVRWidgets(
 		TEXT("vr.ForceNoStereoWithVRWidgets"),
 		ForceNoStereoWithVRWidgets,
-		TEXT("When on, will not allow stereo widget components to use stereo layers, will instead fall back to default widget rendering.\n")
-		TEXT("0: Disable, 1: Enable"),
+		TEXT("When set to 0, will render stereo layer widgets as stereo by default.\n")
+		TEXT("When set to 1, will not allow stereo widget components to use stereo layers, will instead fall back to default widget rendering.\n")
+		TEXT("When set to 2, will render stereo layer widgets as both stereo and in game.\n")
+		TEXT("0: Default, 1: Force no stereo, 2: Render both at once"),
 		ECVF_Default);
 }
 
@@ -71,6 +73,8 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 
 	bIsDirty = true;
 	bDirtyRenderTarget = false;
+	bRenderBothStereoAndWorld = false;
+	bDelayForRenderThread = false;
 	bIsSleeping = false;
 	//Texture = nullptr;
 }
@@ -122,12 +126,17 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	bool bIsVisible = IsVisible() && !bIsSleeping && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
 
-	if (StereoWidgetCvars::ForceNoStereoWithVRWidgets)
+	// If we are set to not use stereo layers or we don't have a valid stereo layer device
+	if (
+		StereoWidgetCvars::ForceNoStereoWithVRWidgets == 1 ||
+		!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || 
+		!GEngine->StereoRenderingDevice.IsValid() || 
+		(GEngine->StereoRenderingDevice->GetStereoLayers() == nullptr)
+		)
 	{
 		if (!bShouldCreateProxy)
 		{
 			bShouldCreateProxy = true;
-			MarkRenderStateDirty(); // Recreate
 			if (LayerId)
 			{
 				if (GEngine->StereoRenderingDevice.IsValid())
@@ -142,26 +151,15 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 		return;
 	}
-
-	if (!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || !GEngine->StereoRenderingDevice.IsValid() || (GEngine->StereoRenderingDevice->GetStereoLayers() == nullptr))
+	else if (bRenderBothStereoAndWorld || StereoWidgetCvars::ForceNoStereoWithVRWidgets == 2) // Forcing both modes at once
 	{
 		if (!bShouldCreateProxy)
 		{
 			bShouldCreateProxy = true;
 			MarkRenderStateDirty(); // Recreate
-			if (LayerId)	
-			{
-				if (GEngine->StereoRenderingDevice.IsValid())
-				{
-					IStereoLayers* StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers();
-					if (StereoLayers)
-						StereoLayers->DestroyLayer(LayerId);
-				}
-				LayerId = 0;
-			}
 		}
 	}
-	else
+	else // Stereo only
 	{
 		if (bShouldCreateProxy)
 		{
@@ -284,8 +282,15 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		LayerDsec.Priority = Priority;
 		LayerDsec.QuadSize = FVector2D(DrawSize);
 		LayerDsec.UVRect = UVRect;
-		LayerDsec.Transform = Transform;
 
+		if (bDelayForRenderThread && !LastTransform.Equals(FTransform::Identity))
+		{
+			LayerDsec.Transform = LastTransform;
+		}
+		else
+		{
+			LayerDsec.Transform = Transform;
+		}
 
 		if (RenderTarget)
 		{

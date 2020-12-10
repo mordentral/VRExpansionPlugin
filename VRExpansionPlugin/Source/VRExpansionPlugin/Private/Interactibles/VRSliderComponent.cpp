@@ -37,6 +37,9 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	InitialGripLoc = FVector::ZeroVector;
 
 	bSlideDistanceIsInParentSpace = true;
+	bUseLegacyLogic = false;
+	bIsLocked = false;
+	bAutoDropWhenLocked = true;
 
 	SplineComponentToFollow = nullptr;
 
@@ -123,6 +126,19 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 	// Call supers tick (though I don't think any of the base classes to this actually implement it)
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	// If we are locked then end the lerp, no point
+	if (bIsLocked)
+	{
+		// Notify the end user
+		OnSliderFinishedLerping.Broadcast(CurrentSliderProgress);
+		ReceiveSliderFinishedLerping(CurrentSliderProgress);
+
+		this->SetComponentTickEnabled(false);
+		bReplicateMovement = bOriginalReplicatesMovement;
+
+		return;
+	}
+
 	if (bIsLerping)
 	{
 		if (FMath::IsNearlyZero(MomentumAtDrop * DeltaTime, 0.00001f))
@@ -185,6 +201,18 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) 
 {
+	// If the sliders progress is locked then just exit early
+	if (bIsLocked)
+	{
+		if (bAutoDropWhenLocked)
+		{
+			// Check if we should auto drop
+			CheckAutoDrop(GrippingController, GripInformation);
+		}
+
+		return;
+	}
+
 	// Handle manual tracking here
 	FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
 	FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
@@ -297,12 +325,20 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 
 	CheckSliderProgress();
 
+	// Check if we should auto drop
+	CheckAutoDrop(GrippingController, GripInformation);
+}
+
+bool UVRSliderComponent::CheckAutoDrop(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation)
+{
 	// Converted to a relative value now so it should be correct
 	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
 		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
-		return;
+		return true;
 	}
+
+	return false;
 }
 
 void UVRSliderComponent::CheckSliderProgress()
@@ -386,6 +422,11 @@ void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerCompo
 	}
 
 	OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed);
+}
+
+void UVRSliderComponent::SetIsLocked(bool bNewLockedState)
+{
+	bIsLocked = bNewLockedState;
 }
 
 void UVRSliderComponent::SetGripPriority(int NewGripPriority)
@@ -550,9 +591,9 @@ FVector UVRSliderComponent::ClampSlideVector(FVector ValueToClamp)
 	if (bSlideDistanceIsInParentSpace)
 		fScaleFactor = fScaleFactor / InitialRelativeTransform.GetScale3D();
 
-	FVector MinScale = MinSlideDistance * fScaleFactor;
+	FVector MinScale = (bUseLegacyLogic ? MinSlideDistance : MinSlideDistance.GetAbs()) * fScaleFactor;
 
-	FVector Dist = (MinSlideDistance + MaxSlideDistance) * fScaleFactor;
+	FVector Dist = (bUseLegacyLogic ? (MinSlideDistance + MaxSlideDistance) : (MinSlideDistance.GetAbs() + MaxSlideDistance.GetAbs())) * fScaleFactor;
 	FVector Progress = (ValueToClamp - (-MinScale)) / Dist;
 
 	if (bSliderUsesSnapPoints)
@@ -620,7 +661,16 @@ float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUs
 	}
 
 	// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
-	float Progress = FMath::Clamp(FVector::Dist(-MinSlideDistance, CurLocation) / FVector::Dist(-MinSlideDistance, MaxSlideDistance), 0.0f, 1.0f);
+	float Progress = 0.f;
+	
+	if (bUseLegacyLogic)
+	{
+		Progress = FMath::Clamp(FVector::Dist(-MinSlideDistance, CurLocation) / FVector::Dist(-MinSlideDistance, MaxSlideDistance), 0.0f, 1.0f);
+	}
+	else
+	{
+		Progress = FMath::Clamp(FVector::Dist(-MinSlideDistance.GetAbs(), CurLocation) / FVector::Dist(-MinSlideDistance.GetAbs(), MaxSlideDistance.GetAbs()), 0.0f, 1.0f);
+	}
 
 	if (bSliderUsesSnapPoints && SnapThreshold < SnapIncrement)
 	{
@@ -712,7 +762,7 @@ void UVRSliderComponent::SetSliderProgress(float NewSliderProgress)
 	else // Not a spline follow
 	{
 		// Doing it min+max because the clamp value subtracts the min value
-		FVector CalculatedLocation = FMath::Lerp(-MinSlideDistance, MaxSlideDistance, NewSliderProgress);
+		FVector CalculatedLocation = bUseLegacyLogic ? FMath::Lerp(-MinSlideDistance, MaxSlideDistance, NewSliderProgress) : FMath::Lerp(-MinSlideDistance.GetAbs(), MaxSlideDistance.GetAbs(), NewSliderProgress);
 
 		if (bSlideDistanceIsInParentSpace)
 			CalculatedLocation *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();

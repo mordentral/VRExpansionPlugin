@@ -174,7 +174,7 @@ public:
 
 	// Returns the current world transform of the owning object (or root comp of if it is an actor)
 	UFUNCTION(BlueprintPure, Category = "VRGripScript")
-		FTransform GetParentTransform(bool bGetWorldTransform = true);
+		FTransform GetParentTransform(bool bGetWorldTransform = true, FName BoneName = NAME_None);
 
 	// Returns the scene component of the parent, either being the parent itself or the root comp of it.
 	// Nullptr if there is no valid scene component

@@ -3,6 +3,7 @@
 #include "Grippables/GrippableSkeletalMeshActor.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
+#include "Net/Core/PushModel/PushModel.h"
 
 UOptionalRepSkeletalMeshComponent::UOptionalRepSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -70,15 +71,154 @@ void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLife
 	DOREPLIFETIME(AGrippableSkeletalMeshActor, ClientAuthReplicationData);
 	DOREPLIFETIME_CONDITION(AGrippableSkeletalMeshActor, VRGripInterfaceSettings, COND_Custom);
 	DOREPLIFETIME_CONDITION(AGrippableSkeletalMeshActor, GameplayTags, COND_Custom);
+
+	DISABLE_REPLICATED_PRIVATE_PROPERTY(AActor, AttachmentReplication);
+
+	FDoRepLifetimeParams AttachmentReplicationParams{ COND_Custom, REPNOTIFY_Always, /*bIsPushBased=*/true };
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, AttachmentWeldReplication, AttachmentReplicationParams);
 }
 
 void AGrippableSkeletalMeshActor::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
 {
-	Super::PreReplication(ChangedPropertyTracker);
-
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableSkeletalMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableSkeletalMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
+
+	//Super::PreReplication(ChangedPropertyTracker);
+
+#if WITH_PUSH_MODEL
+	const AActor* const OldAttachParent = AttachmentWeldReplication.AttachParent;
+	const UActorComponent* const OldAttachComponent = AttachmentWeldReplication.AttachComponent;
+#endif
+
+	// Attachment replication gets filled in by GatherCurrentMovement(), but in the case of a detached root we need to trigger remote detachment.
+	AttachmentWeldReplication.AttachParent = nullptr;
+	AttachmentWeldReplication.AttachComponent = nullptr;
+
+	GatherCurrentMovement();
+
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(AActor, ReplicatedMovement, IsReplicatingMovement());
+
+	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableSkeletalMeshActor, AttachmentWeldReplication, RootComponent && !RootComponent->GetIsReplicated());
+
+	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(AActor, AttachmentReplication, RootComponent && !RootComponent->GetIsReplicated());
+
+
+#if WITH_PUSH_MODEL
+	if (UNLIKELY(OldAttachParent != AttachmentWeldReplication.AttachParent || OldAttachComponent != AttachmentWeldReplication.AttachComponent))
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AActor, AttachmentWeldReplication, this);
+	}
+#endif
+
+	UBlueprintGeneratedClass* BPClass = Cast<UBlueprintGeneratedClass>(GetClass());
+	if (BPClass != nullptr)
+	{
+		BPClass->InstancePreReplication(this, ChangedPropertyTracker);
+	}
+}
+
+void AGrippableSkeletalMeshActor::GatherCurrentMovement()
+{
+	if (IsReplicatingMovement() || (RootComponent && RootComponent->GetAttachParent()))
+	{
+		bool bWasAttachmentModified = false;
+		bool bWasRepMovementModified = false;
+
+		AActor* OldAttachParent = AttachmentWeldReplication.AttachParent;
+		USceneComponent* OldAttachComponent = AttachmentWeldReplication.AttachComponent;
+
+		AttachmentWeldReplication.AttachParent = nullptr;
+		AttachmentWeldReplication.AttachComponent = nullptr;
+
+		FRepMovement& RepMovement = GetReplicatedMovement_Mutable();
+
+		UPrimitiveComponent* RootPrimComp = Cast<UPrimitiveComponent>(GetRootComponent());
+		if (RootPrimComp && RootPrimComp->IsSimulatingPhysics())
+		{
+			FRigidBodyState RBState;
+			RootPrimComp->GetRigidBodyState(RBState);
+
+			RepMovement.FillFrom(RBState, this);
+			// Don't replicate movement if we're welded to another parent actor.
+			// Their replication will affect our position indirectly since we are attached.
+			RepMovement.bRepPhysics = !RootPrimComp->IsWelded();
+
+			if (!RepMovement.bRepPhysics)
+			{
+				if (RootComponent->GetAttachParent() != nullptr)
+				{
+					// Networking for attachments assumes the RootComponent of the AttachParent actor. 
+					// If that's not the case, we can't update this, as the client wouldn't be able to resolve the Component and would detach as a result.
+					AttachmentWeldReplication.AttachParent = RootComponent->GetAttachParent()->GetAttachmentRootActor();
+					if (AttachmentWeldReplication.AttachParent != nullptr)
+					{
+						AttachmentWeldReplication.LocationOffset = RootComponent->GetRelativeLocation();
+						AttachmentWeldReplication.RotationOffset = RootComponent->GetRelativeRotation();
+						AttachmentWeldReplication.RelativeScale3D = RootComponent->GetRelativeScale3D();
+						AttachmentWeldReplication.AttachComponent = RootComponent->GetAttachParent();
+						AttachmentWeldReplication.AttachSocket = RootComponent->GetAttachSocketName();
+						AttachmentWeldReplication.bIsWelded = RootPrimComp ? RootPrimComp->IsWelded() : false;
+
+						// Technically, the values might have stayed the same, but we'll just assume they've changed.
+						bWasAttachmentModified = true;
+					}
+				}
+			}
+
+			// Technically, the values might have stayed the same, but we'll just assume they've changed.
+			bWasRepMovementModified = true;
+		}
+		else if (RootComponent != nullptr)
+		{
+			// If we are attached, don't replicate absolute position, use AttachmentReplication instead.
+			if (RootComponent->GetAttachParent() != nullptr)
+			{
+				// Networking for attachments assumes the RootComponent of the AttachParent actor. 
+				// If that's not the case, we can't update this, as the client wouldn't be able to resolve the Component and would detach as a result.
+				AttachmentWeldReplication.AttachParent = RootComponent->GetAttachParent()->GetAttachmentRootActor();
+				if (AttachmentWeldReplication.AttachParent != nullptr)
+				{
+					AttachmentWeldReplication.LocationOffset = RootComponent->GetRelativeLocation();
+					AttachmentWeldReplication.RotationOffset = RootComponent->GetRelativeRotation();
+					AttachmentWeldReplication.RelativeScale3D = RootComponent->GetRelativeScale3D();
+					AttachmentWeldReplication.AttachComponent = RootComponent->GetAttachParent();
+					AttachmentWeldReplication.AttachSocket = RootComponent->GetAttachSocketName();
+					AttachmentWeldReplication.bIsWelded = RootPrimComp ? RootPrimComp->IsWelded() : false;
+
+					// Technically, the values might have stayed the same, but we'll just assume they've changed.
+					bWasAttachmentModified = true;
+				}
+			}
+			else
+			{
+				RepMovement.Location = FRepMovement::RebaseOntoZeroOrigin(RootComponent->GetComponentLocation(), this);
+				RepMovement.Rotation = RootComponent->GetComponentRotation();
+				RepMovement.LinearVelocity = GetVelocity();
+				RepMovement.AngularVelocity = FVector::ZeroVector;
+
+				// Technically, the values might have stayed the same, but we'll just assume they've changed.
+				bWasRepMovementModified = true;
+			}
+
+			bWasRepMovementModified = (bWasRepMovementModified || RepMovement.bRepPhysics);
+			RepMovement.bRepPhysics = false;
+		}
+
+		if (bWasRepMovementModified)
+		{
+			MARK_PROPERTY_DIRTY_FROM_NAME(AActor, ReplicatedMovement, this);
+		}
+
+		if (bWasAttachmentModified ||
+			OldAttachParent != AttachmentWeldReplication.AttachParent ||
+			OldAttachComponent != AttachmentWeldReplication.AttachComponent)
+		{
+			MARK_PROPERTY_DIRTY_FROM_NAME(AActor, AttachmentWeldReplication, this);
+		}
+	}
 }
 
 bool AGrippableSkeletalMeshActor::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
@@ -442,8 +582,49 @@ void AGrippableSkeletalMeshActor::OnRep_AttachmentReplication()
 		return;
 	}
 
-	// None of our overrides are required, lets just pass it on now
-	Super::OnRep_AttachmentReplication();
+	if (AttachmentWeldReplication.AttachParent)
+	{
+		if (RootComponent)
+		{
+			USceneComponent* AttachParentComponent = (AttachmentWeldReplication.AttachComponent ? AttachmentWeldReplication.AttachComponent : AttachmentWeldReplication.AttachParent->GetRootComponent());
+
+			if (AttachParentComponent)
+			{
+				RootComponent->SetRelativeLocation_Direct(AttachmentWeldReplication.LocationOffset);
+				RootComponent->SetRelativeRotation_Direct(AttachmentWeldReplication.RotationOffset);
+				RootComponent->SetRelativeScale3D_Direct(AttachmentWeldReplication.RelativeScale3D);
+
+				// If we're already attached to the correct Parent and Socket, then the update must be position only.
+				// AttachToComponent would early out in this case.
+				// Note, we ignore the special case for simulated bodies in AttachToComponent as AttachmentReplication shouldn't get updated
+				// if the body is simulated (see AActor::GatherMovement).
+				const bool bAlreadyAttached = (AttachParentComponent == RootComponent->GetAttachParent() && AttachmentWeldReplication.AttachSocket == RootComponent->GetAttachSocketName() && AttachParentComponent->GetAttachChildren().Contains(RootComponent));
+				if (bAlreadyAttached)
+				{
+					// Note, this doesn't match AttachToComponent, but we're assuming it's safe to skip physics (see comment above).
+					RootComponent->UpdateComponentToWorld(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
+				}
+				else
+				{
+					FAttachmentTransformRules attachRules = FAttachmentTransformRules::KeepRelativeTransform;
+					attachRules.bWeldSimulatedBodies = AttachmentWeldReplication.bIsWelded;
+					RootComponent->AttachToComponent(AttachParentComponent, attachRules, AttachmentWeldReplication.AttachSocket);
+				}
+			}
+		}
+	}
+	else
+	{
+		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+		// Handle the case where an object was both detached and moved on the server in the same frame.
+		// Calling this extraneously does not hurt but will properly fire events if the movement state changed while attached.
+		// This is needed because client side movement is ignored when attached
+		if (IsReplicatingMovement())
+		{
+			OnRep_ReplicatedMovement();
+		}
+	}
 }
 
 void AGrippableSkeletalMeshActor::OnRep_ReplicateMovement()

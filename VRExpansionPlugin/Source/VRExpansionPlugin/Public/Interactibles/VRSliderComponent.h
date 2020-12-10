@@ -106,6 +106,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 	bool bSlideDistanceIsInParentSpace;
 
+	// If true then this slider is locked in place until unlocked again
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bIsLocked;
+
+	// If true then this slider will auto drop even when locked
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bAutoDropWhenLocked;
+
+	// Sets if the slider is locked or not
+	UFUNCTION(BlueprintCallable, Category = "GripSettings")
+		void SetIsLocked(bool bNewLockedState);
+
+	// Uses the legacy slider logic that doesn't ABS the min and max values
+	// Retains compatibility with some older projects
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bUseLegacyLogic;
+
 	// How far away from an event state before the slider allows throwing the same state again, default of 1.0 means it takes a full toggle
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 		float EventThrowThreshold;
@@ -248,6 +265,9 @@ public:
 	// Distance before the object will break out of the hand, 0.0f == never will
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float BreakDistance;
+
+	// Checks and applies auto drop if we need too
+	bool CheckAutoDrop(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation);
 
 	// Should we deny gripping on this object
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (ScriptName = "IsDenyGripping"))

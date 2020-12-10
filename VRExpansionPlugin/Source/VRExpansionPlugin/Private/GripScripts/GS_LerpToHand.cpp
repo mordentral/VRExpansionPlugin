@@ -26,7 +26,8 @@ UGS_LerpToHand::UGS_LerpToHand(const FObjectInitializer& ObjectInitializer) :
 //void UGS_InteractibleSettings::BeginPlay_Implementation() {}
 void UGS_LerpToHand::OnGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) 
 {
-	OnGripTransform = GetParentTransform();
+	OnGripTransform = GetParentTransform(true, GripInformation.GrippedBoneName);
+	UObject* ParentObj = this->GetParent();
 
 	FTransform TargetTransform = GripInformation.RelativeTransform * GrippingController->GetPivotTransform();
 	float Distance = FVector::Dist(OnGripTransform.GetLocation(), TargetTransform.GetLocation());
