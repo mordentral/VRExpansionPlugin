@@ -506,10 +506,10 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 		ServerData->ServerTimeStamp = MyWorld->GetTimeSeconds();
 		ServerData->ServerTimeStampLastServerMove = ServerData->ServerTimeStamp;
 
-		/*if (PC && bUseClientControlRotation)
+		if (PC && bUseClientControlRotation)
 		{
 			PC->SetControlRotation(ClientControlRotation);
-		}*/
+		}
 
 		if (!bServerReadyForClient)
 		{
@@ -519,6 +519,11 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 		// Perform actual movement
 		if ((MyWorld->GetWorldSettings()->GetPauserPlayerState() == NULL))
 		{
+			if (PC)
+			{
+				PC->UpdateRotation(DeltaTime);
+			}
+
 			if (!MoveDataVR->ConditionalMoveReps.RequestedVelocity.IsZero())
 			{
 				RequestedVelocity = MoveDataVR->ConditionalMoveReps.RequestedVelocity;
@@ -567,23 +572,6 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 
 			MoveAutonomous(ClientTimeStamp, DeltaTime, ClientMoveFlags, ClientAccel);
 			bHasRequestedVelocity = false;
-
-			if (PC)
-			{
-				if (bUseClientControlRotation)
-				{
-					PC->SetControlRotation(ClientControlRotation);
-				}
-
-				PC->UpdateRotation(DeltaTime);
-			}
-		}
-		else
-		{
-			if (PC && bUseClientControlRotation)
-			{
-				PC->SetControlRotation(ClientControlRotation);
-			}
 		}
 
 		UE_CLOG(CharacterOwner && UpdatedComponent, LogNetPlayerMovement, VeryVerbose, TEXT("ServerMove Time %f Acceleration %s Velocity %s Position %s Rotation %s DeltaTime %f Mode %s MovementBase %s.%s (Dynamic:%d)"),
