@@ -785,7 +785,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 		}
 
 		if (OwningCharacter->bUseControllerRotationYaw)
-			OwningController->SetControlRotation(MoveAction.MoveActionRot);
+			OwningController->SetControlRotation(TargetRot);
 
 		return true;
 	}
