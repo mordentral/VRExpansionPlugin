@@ -696,7 +696,30 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 
 		FQuat OrigRot = OwningCharacter->GetActorQuat();
-		OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+
+		if (this->BaseVRCharacterOwner && this->BaseVRCharacterOwner->IsLocallyControlled())
+		{
+			if (this->bUseClientControlRotation)
+			{
+				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+				MoveAction.MoveActionFlags |= 0x04; // Flag that we are using loc only
+			}
+			else
+			{
+				OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+			}
+		}
+		else
+		{
+			if (MoveAction.MoveActionFlags & 0x04)
+			{
+				OwningCharacter->SetActorLocation(OwningCharacter->GetActorLocation() + MoveAction.MoveActionLoc);
+			}
+			else
+			{
+				OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+			}
+		}
 
 		switch (MoveAction.VelRetentionSetting)
 		{
@@ -715,7 +738,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		}
 
 		// If we are flagged to teleport the grips
-		if (MoveAction.MoveActionFlags > 0)
+		if (MoveAction.MoveActionFlags & 0x01 || MoveAction.MoveActionFlags & 0x02)
 		{
 			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}
@@ -729,7 +752,29 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
-		OwningCharacter->SetActorRotationVR(TargetRot, true);
+		if (this->BaseVRCharacterOwner && this->BaseVRCharacterOwner->IsLocallyControlled())
+		{
+			if (this->bUseClientControlRotation)
+			{
+				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, true);
+				MoveAction.MoveActionFlags |= 0x04; // Flag that we are using loc only
+			}
+			else
+			{
+				OwningCharacter->SetActorRotationVR(TargetRot, true);
+			}
+		}
+		else
+		{
+			if (MoveAction.MoveActionFlags & 0x04)
+			{
+				OwningCharacter->SetActorLocation(OwningCharacter->GetActorLocation() + MoveAction.MoveActionLoc);
+			}
+			else
+			{
+				OwningCharacter->SetActorRotationVR(TargetRot, true);
+			}
+		}
 
 		switch (MoveAction.VelRetentionSetting)
 		{
@@ -748,7 +793,7 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		}
 
 		// If we are flagged to teleport the grips
-		if (MoveAction.MoveActionFlags > 0)
+		if (MoveAction.MoveActionFlags & 0x01 || MoveAction.MoveActionFlags & 0x02)
 		{
 			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}

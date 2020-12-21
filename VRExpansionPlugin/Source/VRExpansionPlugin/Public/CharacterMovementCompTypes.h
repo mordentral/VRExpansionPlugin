@@ -113,8 +113,18 @@ public:
 
 			if (Ar.IsSaving())
 			{
-				Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
-				Ar << Yaw;
+				bool bUseLocOnly = MoveActionFlags & 0x04;
+				Ar.SerializeBits(&bUseLocOnly, 1);
+
+				if (!bUseLocOnly)
+				{
+					Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
+					Ar << Yaw;
+				}
+				else
+				{
+					Ar << MoveActionLoc;
+				}
 
 				bool bTeleportGrips = MoveActionFlags & 0x01;// MoveActionRot.Roll > 0.0f && MoveActionRot.Roll < 1.5f;
 				Ar.SerializeBits(&bTeleportGrips, 1);
@@ -135,8 +145,20 @@ public:
 			}
 			else
 			{
-				Ar << Yaw;
-				MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
+
+				bool bUseLocOnly = false;
+				Ar.SerializeBits(&bUseLocOnly, 1);
+				MoveActionFlags |= (bUseLocOnly << 2);
+
+				if (!bUseLocOnly)
+				{
+					Ar << Yaw;
+					MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
+				}
+				else
+				{
+					Ar << MoveActionLoc;
+				}
 
 				bool bTeleportGrips = false;
 				Ar.SerializeBits(&bTeleportGrips, 1);
