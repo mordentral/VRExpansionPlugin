@@ -571,9 +571,9 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
 	
 	if (bFlagCharacterTeleport)
-		MoveAction.MoveActionRot.Roll = 2.0f;
+		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
 	else
-		MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
@@ -593,9 +593,9 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewY
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(NewYaw * 100.f) / 100.f, 0.0f);
 
 	if (bFlagCharacterTeleport)
-		MoveAction.MoveActionRot.Roll = 2.0f;
+		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
 	else
-		MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
@@ -615,7 +615,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector Telep
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_Teleport;
 	MoveAction.MoveActionLoc = RoundDirectMovement(TeleportLocation);
 	MoveAction.MoveActionRot.Yaw = FMath::RoundToFloat(TeleportRotation.Yaw * 100.f) / 100.f;
-	MoveAction.MoveActionRot.Roll = bSkipEncroachmentCheck ? 1.0f : 0.0f;
+	MoveAction.MoveActionFlags |= (uint8)bSkipEncroachmentCheck;//.MoveActionRot.Roll = bSkipEncroachmentCheck ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
@@ -715,9 +715,9 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		}
 
 		// If we are flagged to teleport the grips
-		if (MoveAction.MoveActionRot.Roll > 0.0f)
+		if (MoveAction.MoveActionFlags > 0)
 		{
-			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionRot.Roll > 1.5f);
+			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}
 	}
 
@@ -748,9 +748,9 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		}
 
 		// If we are flagged to teleport the grips
-		if (MoveAction.MoveActionRot.Roll > 0.0f)
+		if (MoveAction.MoveActionFlags > 0)
 		{
-			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionRot.Roll > 1.5f);
+			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}
 	}
 
@@ -769,7 +769,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 			return false;
 		}
 
-		bool bSkipEncroachmentCheck = MoveAction.MoveActionRot.Roll > 0.0f;
+		bool bSkipEncroachmentCheck = MoveAction.MoveActionFlags & 0x01; //MoveAction.MoveActionRot.Roll > 0.0f;
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, TargetRot, false, bSkipEncroachmentCheck);
 

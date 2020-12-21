@@ -75,6 +75,8 @@ public:
 	UPROPERTY()
 		FRotator MoveActionRot;
 	UPROPERTY()
+		uint8 MoveActionFlags;
+	UPROPERTY()
 		EVRMoveActionVelocityRetention VelRetentionSetting;
 
 	FVRMoveActionContainer()
@@ -88,6 +90,7 @@ public:
 		MoveActionDataReq = EVRMoveActionDataReq::VRMOVEACTIONDATA_None;
 		MoveActionLoc = FVector::ZeroVector;
 		MoveActionRot = FRotator::ZeroRotator;
+		MoveActionFlags = 0;
 		VelRetentionSetting = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None;
 	}
 
@@ -113,11 +116,14 @@ public:
 				Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
 				Ar << Yaw;
 
-				bool bTeleportGrips = MoveActionRot.Roll > 0.0f && MoveActionRot.Roll < 1.5f;
+				bool bTeleportGrips = MoveActionFlags & 0x01;// MoveActionRot.Roll > 0.0f && MoveActionRot.Roll < 1.5f;
 				Ar.SerializeBits(&bTeleportGrips, 1);
 
-				bool bTeleportCharacter = MoveActionRot.Roll > 1.5f;
-				Ar.SerializeBits(&bTeleportCharacter, 1);
+				if (!bTeleportGrips)
+				{
+					bool bTeleportCharacter = MoveActionFlags & 0x02;// MoveActionRot.Roll > 1.5f;
+					Ar.SerializeBits(&bTeleportCharacter, 1);
+				}
 
 				Ar.SerializeBits(&VelRetentionSetting, 2);
 
@@ -132,18 +138,16 @@ public:
 				Ar << Yaw;
 				MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
 
-
-
 				bool bTeleportGrips = false;
 				Ar.SerializeBits(&bTeleportGrips, 1);
-				MoveActionRot.Roll = bTeleportGrips ? 1.0f : 0.0f;
+				MoveActionFlags |= (uint8)bTeleportGrips; //.Roll = bTeleportGrips ? 1.0f : 0.0f;
 
-				bool bTeleportCharacter = false;
-				Ar.SerializeBits(&bTeleportCharacter, 1);
-
-				if (bTeleportCharacter)
+				if (!bTeleportGrips)
 				{
-					MoveActionRot.Roll = 2.0f;
+					bool bTeleportCharacter = false;
+					Ar.SerializeBits(&bTeleportCharacter, 1);
+					MoveActionFlags |= ((uint8)bTeleportCharacter << 1);
+						//MoveActionRot.Roll = 2.0f;
 				}
 
 				Ar.SerializeBits(&VelRetentionSetting, 2);
@@ -167,7 +171,7 @@ public:
 				Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
 				Ar << Yaw;
 
-				bool bSkipEncroachment = MoveActionRot.Roll > 0.0f;
+				bool bSkipEncroachment = MoveActionFlags & 0x01;// MoveActionRot.Roll > 0.0f;
 				Ar.SerializeBits(&bSkipEncroachment, 1);
 				Ar.SerializeBits(&VelRetentionSetting, 2);
 
@@ -184,7 +188,8 @@ public:
 
 				bool bSkipEncroachment = false;
 				Ar.SerializeBits(&bSkipEncroachment, 1);
-				MoveActionRot.Roll = bSkipEncroachment ? 1.0f : 0.0f;
+				MoveActionFlags |= (uint8)bSkipEncroachment;
+				//MoveActionRot.Roll = bSkipEncroachment ? 1.0f : 0.0f;
 				Ar.SerializeBits(&VelRetentionSetting, 2);
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
