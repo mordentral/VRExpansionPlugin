@@ -184,9 +184,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Smoothing")
 		bool bSmoothHandTracking;
 
-	// The interp speed to use if smoothing is enabled
+	bool bWasSmoothingHand;
+
+	// If true will smooth hand tracking with the Linear and Rotational 1 Euro low pass settings instead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Smoothing")
+		bool bSmoothWithEuroLowPassFunction;
+
+	// The interp speed to use if smoothing is enabled and not using the 1 Euro smoothing
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Smoothing")
 		float SmoothingSpeed;
+
+	// Smoothing parameters when using the 1 Euro low pass option
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Smoothing")
+		FBPEuroLowPassFilterTrans EuroSmoothingParams;
 
 	FTransform LastSmoothRelativeTransform;
 

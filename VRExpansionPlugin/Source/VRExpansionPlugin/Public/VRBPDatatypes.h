@@ -117,38 +117,80 @@ public:
 
 };
 
+template<class filterType>
 class FBasicLowPassFilter
 {
 public:
 
 	/** Default constructor */
-	FBasicLowPassFilter() :
-		Previous(FVector::ZeroVector),
-		bFirstTime(true)
-	{}
+	FBasicLowPassFilter(filterType EmptyValueSet)
+	{
+		EmptyValue = EmptyValueSet;
+		Previous = EmptyValue;
+		PreviousRaw = EmptyValue;
+		bFirstTime = true;
+	}
 
 	/** Calculate */
-	FVector Filter(const FVector& InValue, const FVector& InAlpha)
+	filterType Filter(const filterType& InValue, const filterType& InAlpha)
 	{
-		FVector Result = InValue;
+
+		filterType Result = InValue;
 		if (!bFirstTime)
 		{
-			for (int i = 0; i < 3; i++)
+			// This is unsafe in non float / float array data types, but I am not going to be using any like that
+			for (int i = 0; i < sizeof(filterType)/sizeof(float); i++)
 			{
-				Result[i] = InAlpha[i] * InValue[i] + (1 - InAlpha[i]) * Previous[i];
+				((float*)&Result)[i] = ((float*)&InAlpha)[i] * ((float*)&InValue)[i] + (1.0f - ((float*)&InAlpha)[i]) * ((float*)&Previous)[i];
 			}
 		}
 
 		bFirstTime = false;
 		Previous = Result;
+		PreviousRaw = InValue;
 		return Result;
 	}
 
+	filterType EmptyValue;
+
 	/** The previous filtered value */
-	FVector Previous;
+	filterType Previous;
+
+	/** The previous raw value */
+	filterType PreviousRaw;
 
 	/** If this is the first time doing a filter */
 	bool bFirstTime;
+
+//private:
+
+	const filterType CalculateCutoff(const filterType& InValue, float& MinCutoff, float& CutoffSlope)
+	{
+		filterType Result;
+		// This is unsafe in non float / float array data types, but I am not going to be using any like that
+		for (int i = 0; i < sizeof(filterType)/sizeof(float); i++)
+		{
+			((float*)&Result)[i] = MinCutoff + CutoffSlope * FMath::Abs(((float*)&InValue)[i]);
+		}
+		return Result;
+	}
+
+	const filterType CalculateAlpha(const filterType& InCutoff, const double InDeltaTime)
+	{
+		filterType Result;
+		// This is unsafe in non float / float array data types, but I am not going to be using any like that
+		for (int i = 0; i < sizeof(filterType)/sizeof(float); i++)
+		{
+			((float*)&Result)[i] = CalculateAlphaTau(((float*)&InCutoff)[i], InDeltaTime);
+		}
+		return Result;
+	}
+
+	inline const float CalculateAlphaTau(const float InCutoff, const double InDeltaTime)
+	{
+		const float tau = 1.0 / (2.0f * PI * InCutoff);
+		return 1.0f / (1.0f + tau / InDeltaTime);
+	}
 };
 
 
@@ -167,13 +209,17 @@ public:
 	FBPEuroLowPassFilter() :
 		MinCutoff(0.9f),
 		DeltaCutoff(1.0f),
-		CutoffSlope(0.007f)
+		CutoffSlope(0.007f),
+		RawFilter(FVector::ZeroVector),
+		DeltaFilter(FVector::ZeroVector)
 	{}
 
 	FBPEuroLowPassFilter(const float InMinCutoff, const float InCutoffSlope, const float InDeltaCutoff) :
 		MinCutoff(InMinCutoff),
 		DeltaCutoff(InDeltaCutoff),
-		CutoffSlope(InCutoffSlope)
+		CutoffSlope(InCutoffSlope),
+		RawFilter(FVector::ZeroVector),
+		DeltaFilter(FVector::ZeroVector)
 	{}
 
 	// The smaller the value the less jitter and the more lag with micro movements
@@ -196,15 +242,116 @@ public:
 
 private:
 
-	const FVector CalculateCutoff(const FVector& InValue);
-	const FVector CalculateAlpha(const FVector& InCutoff, const double InDeltaTime) const;
-	const float CalculateAlpha(const float InCutoff, const double InDeltaTime) const;
-
-	FBasicLowPassFilter RawFilter;
-	FBasicLowPassFilter DeltaFilter;
+	FBasicLowPassFilter<FVector> RawFilter;
+	FBasicLowPassFilter<FVector> DeltaFilter;
 
 };
 
+/************************************************************************/
+/* 1 Euro filter smoothing algorithm									*/
+/* http://cristal.univ-lille.fr/~casiez/1euro/							*/
+/************************************************************************/
+// A re-implementation of the Euro Low Pass Filter that epic uses for the VR Editor, but for blueprints
+// This version is for Quaternions
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPEuroLowPassFilterQuat
+{
+	GENERATED_BODY()
+public:
+
+	/** Default constructor */
+	FBPEuroLowPassFilterQuat() :
+		MinCutoff(0.9f),
+		DeltaCutoff(1.0f),
+		CutoffSlope(0.007f),
+		RawFilter(FQuat::Identity),
+		DeltaFilter(FQuat::Identity)
+	{}
+
+	FBPEuroLowPassFilterQuat(const float InMinCutoff, const float InCutoffSlope, const float InDeltaCutoff) :
+		MinCutoff(InMinCutoff),
+		DeltaCutoff(InDeltaCutoff),
+		CutoffSlope(InCutoffSlope),
+		RawFilter(FQuat::Identity),
+		DeltaFilter(FQuat::Identity)
+	{}
+
+	// The smaller the value the less jitter and the more lag with micro movements
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float MinCutoff;
+
+	// If latency is too high with fast movements increase this value
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float DeltaCutoff;
+
+	// This is the magnitude of adjustment
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float CutoffSlope;
+
+	void ResetSmoothingFilter();
+
+	/** Smooth vector */
+	FQuat RunFilterSmoothing(const FQuat& InRawValue, const float& InDeltaTime);
+
+private:
+
+	FBasicLowPassFilter<FQuat> RawFilter;
+	FBasicLowPassFilter<FQuat> DeltaFilter;
+
+};
+
+/************************************************************************/
+/* 1 Euro filter smoothing algorithm									*/
+/* http://cristal.univ-lille.fr/~casiez/1euro/							*/
+/************************************************************************/
+// A re-implementation of the Euro Low Pass Filter that epic uses for the VR Editor, but for blueprints
+// This version is for Transforms
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPEuroLowPassFilterTrans
+{
+	GENERATED_BODY()
+public:
+
+	/** Default constructor */
+	FBPEuroLowPassFilterTrans() :
+		MinCutoff(0.1f),
+		DeltaCutoff(10.0f),
+		CutoffSlope(10.0f),
+		RawFilter(FTransform::Identity),
+		DeltaFilter(FTransform::Identity)
+	{}
+
+	FBPEuroLowPassFilterTrans(const float InMinCutoff, const float InCutoffSlope, const float InDeltaCutoff) :
+		MinCutoff(InMinCutoff),
+		DeltaCutoff(InDeltaCutoff),
+		CutoffSlope(InCutoffSlope),
+		RawFilter(FTransform::Identity),
+		DeltaFilter(FTransform::Identity)
+	{}
+
+	// The smaller the value the less jitter and the more lag with micro movements
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float MinCutoff;
+
+	// If latency is too high with fast movements increase this value
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float DeltaCutoff;
+
+	// This is the magnitude of adjustment
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
+		float CutoffSlope;
+
+	void ResetSmoothingFilter();
+
+	/** Smooth vector */
+	FTransform RunFilterSmoothing(const FTransform& InRawValue, const float& InDeltaTime);
+
+private:
+
+	FBasicLowPassFilter<FTransform> RawFilter;
+	FBasicLowPassFilter<FTransform> DeltaFilter;
+
+};
 
 // The type of velocity tracking to perform on the motion controllers
 UENUM(BlueprintType)

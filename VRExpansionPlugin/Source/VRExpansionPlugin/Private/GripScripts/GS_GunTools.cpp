@@ -221,13 +221,6 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 					OnVirtualStockModeChanged.Broadcast(bIsMounted);
 				}
 			}
-
-			if (bIsMounted && VirtualStockSettings.bSmoothStockHand)
-			{
-				FVector smoothedTrans = FMath::Lerp(WorldTransform.GetTranslation(), VirtualStockSettings.StockHandSmoothing.RunFilterSmoothing(WorldTransform.GetTranslation(), DeltaTime), VirtualStockSettings.SmoothingValueForStock);
-				WorldTransform.SetTranslation(smoothedTrans);
-
-			}
 		}
 	}
 	else
@@ -442,6 +435,17 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 		else
 		{
 			WorldTransform = NewWorldTransform;
+		}
+
+		if (bIsMounted && VirtualStockSettings.bSmoothStockHand)
+		{
+			if (GrippingController->GetAttachParent())
+			{
+				FTransform ParentTrans = GrippingController->GetAttachParent()->GetComponentTransform();
+				FTransform ParentRel = WorldTransform * ParentTrans.Inverse();
+				ParentRel.Blend(ParentRel, VirtualStockSettings.StockHandSmoothing.RunFilterSmoothing(ParentRel, DeltaTime), VirtualStockSettings.SmoothingValueForStock);
+				WorldTransform = ParentRel * ParentTrans;
+			}
 		}
 
 		if (Grip.SecondaryGripInfo.bHasSecondaryAttachment)

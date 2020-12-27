@@ -102,8 +102,13 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bOffsetByHMD = false;
 
 	bSmoothHandTracking = false;
+	bWasSmoothingHand = false;
+	bSmoothWithEuroLowPassFunction = false;
 	LastSmoothRelativeTransform = FTransform::Identity;
 	SmoothingSpeed = 20.0f;
+	EuroSmoothingParams.MinCutoff = 0.1f;
+	EuroSmoothingParams.DeltaCutoff = 10.f;
+	EuroSmoothingParams.CutoffSlope = 10.f;
 
 	bIsPostTeleport = false;
 
@@ -3844,22 +3849,38 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 				{
 					FTransform CalcedTransform = FTransform(Orientation, Position, this->GetRelativeScale3D());
 					
-					if (SmoothingSpeed <= 0.f || LastSmoothRelativeTransform.Equals(FTransform::Identity))
+					if (bSmoothWithEuroLowPassFunction)
 					{
-						SetRelativeTransform(CalcedTransform);
-						LastSmoothRelativeTransform = CalcedTransform;
+						SetRelativeTransform(EuroSmoothingParams.RunFilterSmoothing(CalcedTransform, DeltaTime));
 					}
 					else
 					{
-						const float Alpha = FMath::Clamp(DeltaTime * SmoothingSpeed, 0.f, 1.f);
-						LastSmoothRelativeTransform.Blend(LastSmoothRelativeTransform, CalcedTransform, Alpha);
-						SetRelativeTransform(LastSmoothRelativeTransform);
+						if (SmoothingSpeed <= 0.f || LastSmoothRelativeTransform.Equals(FTransform::Identity))
+						{
+							SetRelativeTransform(CalcedTransform);
+							LastSmoothRelativeTransform = CalcedTransform;
+						}
+						else
+						{
+							const float Alpha = FMath::Clamp(DeltaTime * SmoothingSpeed, 0.f, 1.f);
+							LastSmoothRelativeTransform.Blend(LastSmoothRelativeTransform, CalcedTransform, Alpha);
+							SetRelativeTransform(LastSmoothRelativeTransform);
+						}
 					}
+
+					bWasSmoothingHand = true;
 				}
 				else
 				{
-					// Clear the smoothing information so that we start with a fresh log when its enabled again
-					LastSmoothRelativeTransform = FTransform::Identity;
+					if (bWasSmoothingHand)
+					{
+						// Clear the smoothing information so that we start with a fresh log when its enabled again
+						LastSmoothRelativeTransform = FTransform::Identity;
+						EuroSmoothingParams.ResetSmoothingFilter();
+
+						bWasSmoothingHand = false;
+					}
+
 					SetRelativeTransform(FTransform(Orientation, Position, this->GetRelativeScale3D()));
 				}
 			}
