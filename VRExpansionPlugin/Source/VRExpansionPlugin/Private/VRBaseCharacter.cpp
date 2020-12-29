@@ -136,7 +136,7 @@ void AVRBaseCharacter::PostInitializeComponents()
 {
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_PostInitComponents);
 
-	Super::Super::PostInitializeComponents();
+	Super::PostInitializeComponents();
 
 	if (!IsPendingKill())
 	{
