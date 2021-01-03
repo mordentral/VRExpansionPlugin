@@ -73,6 +73,8 @@ public:
 	UPROPERTY()
 		FVector MoveActionLoc;
 	UPROPERTY()
+		FVector MoveActionVel;
+	UPROPERTY()
 		FRotator MoveActionRot;
 	UPROPERTY()
 		uint8 MoveActionFlags;
@@ -89,6 +91,7 @@ public:
 		MoveAction = EVRMoveAction::VRMOVEACTION_None;
 		MoveActionDataReq = EVRMoveActionDataReq::VRMOVEACTIONDATA_None;
 		MoveActionLoc = FVector::ZeroVector;
+		MoveActionVel = FVector::ZeroVector;
 		MoveActionRot = FRotator::ZeroRotator;
 		MoveActionFlags = 0;
 		VelRetentionSetting = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None;
@@ -139,8 +142,9 @@ public:
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
-					Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
-					Ar << Pitch;
+					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
+					//Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
+					//Ar << Pitch;
 				}
 			}
 			else
@@ -176,8 +180,9 @@ public:
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
-					Ar << Pitch;
-					MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
+					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
+					//Ar << Pitch;
+					//MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
 				}
 			}
 
@@ -199,8 +204,9 @@ public:
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
-					Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
-					Ar << Pitch;
+					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
+					//Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
+					//Ar << Pitch;
 				}
 			}
 			else
@@ -216,8 +222,9 @@ public:
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
-					Ar << Pitch;
-					MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
+					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
+					//Ar << Pitch;
+					//MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
 				}
 			}
 
