@@ -3413,6 +3413,7 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 	RewindVRRelativeMovement();
 
 	RestorePreAdditiveRootMotionVelocity();
+	RestorePreAdditiveVRMotionVelocity();
 
 	float NetFluidFriction = 0.f;
 	float Depth = ImmersionDepth();
@@ -3442,10 +3443,11 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 	}
 
 	ApplyRootMotionToVelocity(deltaTime);
+	ApplyVRMotionToVelocity(deltaTime);
 
 	FVector Adjusted = Velocity * deltaTime;
 	FHitResult Hit(1.f);
-	float remainingTime = deltaTime * SwimVR(Adjusted + AdditionalVRInputVector, Hit);
+	float remainingTime = deltaTime * SwimVR(Adjusted/* + AdditionalVRInputVector*/, Hit);
 
 	//may have left water - if so, script might have set new physics mode
 	if (!IsSwimming())
@@ -3480,7 +3482,7 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 			float stepZ = UpdatedComponent->GetComponentLocation().Z;
 			const FVector RealVelocity = Velocity;
 			Velocity.Z = 1.f;	// HACK: since will be moving up, in case pawn leaves the water
-			bSteppedUp = StepUp(GravDir, (Adjusted + AdditionalVRInputVector) * (1.f - Hit.Time), Hit);
+			bSteppedUp = StepUp(GravDir, (Adjusted/* + AdditionalVRInputVector*/) * (1.f - Hit.Time), Hit);
 			if (bSteppedUp)
 			{
 				//may have left water - if so, script might have set new physics mode
@@ -3506,7 +3508,7 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 	{
 		bool bWaterJump = !GetPhysicsVolume()->bWaterVolume;
 		float velZ = Velocity.Z;
-		Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / (deltaTime - remainingTime);
+		Velocity = ((UpdatedComponent->GetComponentLocation() - OldLocation)/* - AdditionalVRInputVector*/) / (deltaTime - remainingTime);
 		if (bWaterJump)
 		{
 			Velocity.Z = velZ;
