@@ -90,15 +90,17 @@ struct VREXPANSIONPLUGIN_API FVRMoveActionContainer
 	GENERATED_USTRUCT_BODY()
 public:
 	UPROPERTY()
-	EVRMoveAction MoveAction;
+		EVRMoveAction MoveAction;
 	UPROPERTY()
-	EVRMoveActionDataReq MoveActionDataReq;
+		EVRMoveActionDataReq MoveActionDataReq;
 	UPROPERTY()
-	FVector MoveActionLoc;
+		FVector MoveActionLoc;
 	UPROPERTY()
-	FRotator MoveActionRot;
+		FVector MoveActionVel;
 	UPROPERTY()
-	EVRMoveActionVelocityRetention VelRetentionSetting;
+		FRotator MoveActionRot;
+	UPROPERTY()
+		EVRMoveActionVelocityRetention VelRetentionSetting;
 
 	FVRMoveActionContainer()
 	{
@@ -110,6 +112,7 @@ public:
 		MoveAction = EVRMoveAction::VRMOVEACTION_None;
 		MoveActionDataReq = EVRMoveActionDataReq::VRMOVEACTIONDATA_None;
 		MoveActionLoc = FVector::ZeroVector;
+		MoveActionVel = FVector::ZeroVector;
 		MoveActionRot = FRotator::ZeroRotator;
 		VelRetentionSetting = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None;
 	}
@@ -146,8 +149,9 @@ public:
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
-					Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
-					Ar << Pitch;
+					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
+					//Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
+					//Ar << Pitch;
 				}
 			}
 			else
@@ -173,8 +177,9 @@ public:
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
-					Ar << Pitch;
-					MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
+					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
+					//Ar << Pitch;
+					//MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
 				}
 			}
 
@@ -196,8 +201,9 @@ public:
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
-					Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
-					Ar << Pitch;
+					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
+					//Ar << Pitch;
+					//MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
 				}
 			}
 			else
@@ -212,8 +218,9 @@ public:
 
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
-					Ar << Pitch;
-					MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
+					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
+					//Ar << Pitch;
+					//MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
 				}
 			}
 

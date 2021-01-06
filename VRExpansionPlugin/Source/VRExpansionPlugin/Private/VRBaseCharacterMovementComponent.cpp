@@ -563,8 +563,12 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
-	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
-	
+	// Removed 2 decimal precision rounding in favor of matching the actual replicated short fidelity instead.
+	// MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
+
+	// Setting to the exact same fidelity as the replicated value ends up being, losing some precision
+	MoveAction.MoveActionRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort((FRotator(0.f, DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw)), 0.0f);
+
 	if (bFlagCharacterTeleport)
 		MoveAction.MoveActionRot.Roll = 2.0f;
 	else
@@ -572,7 +576,8 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
-		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
 	}
 
 	MoveAction.VelRetentionSetting = VelocityRetention;
@@ -595,7 +600,8 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewY
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
 		float DeltaYawAngle = FMath::FindDeltaAngleDegrees(UpdatedComponent->GetComponentRotation().Yaw, NewYaw);
-		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
 	}
 
 	MoveAction.VelRetentionSetting = VelocityRetention;
@@ -615,7 +621,8 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector Telep
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
 		float DeltaYawAngle = FMath::FindDeltaAngleDegrees(UpdatedComponent->GetComponentRotation().Yaw, TeleportRotation.Yaw);
-		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
 	}
 
 	MoveAction.VelRetentionSetting = VelocityRetention;
@@ -704,8 +711,16 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 			this->Velocity = FVector::ZeroVector;
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
-		{		
-			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+		{
+			if (OwningCharacter->IsLocallyControlled())
+			{
+				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
+				this->Velocity = MoveAction.MoveActionVel;
+			}
+			else
+			{
+				this->Velocity = MoveAction.MoveActionVel;
+			}
 		}break;
 		}
 
@@ -738,7 +753,15 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
 		{
-			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+			if (OwningCharacter->IsLocallyControlled())
+			{
+				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
+				this->Velocity = MoveAction.MoveActionVel;
+			}
+			else
+			{
+				this->Velocity = MoveAction.MoveActionVel;
+			}
 		}break;
 		}
 
@@ -780,7 +803,15 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
 		{
-			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+			if (OwningCharacter->IsLocallyControlled())
+			{
+				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
+				this->Velocity = MoveAction.MoveActionVel;
+			}
+			else
+			{
+				this->Velocity = MoveAction.MoveActionVel;
+			}
 		}break;
 		}
 
