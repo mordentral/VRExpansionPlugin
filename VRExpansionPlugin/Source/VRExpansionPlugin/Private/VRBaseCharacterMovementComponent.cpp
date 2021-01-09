@@ -1093,6 +1093,10 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 	}
 
 	float Friction = 0.0f; 
+	// Rewind the players position by the new capsule location
+	RewindVRRelativeMovement();
+
+	RestorePreAdditiveVRMotionVelocity();
 
 	// If we are not in the default physics volume then accept the custom fluid friction setting
 	// I set this by default to be ignored as many will not alter the default fluid friction
@@ -1101,12 +1105,11 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 
 	CalcVelocity(deltaTime, Friction, true, 0.0f);
 
-	// Rewind the players position by the new capsule location
-	RewindVRRelativeMovement();
-
 	// Adding in custom VR input vector here, can be used for custom movement during it
 	// AddImpulse is not multiplayer compatible client side
-	Velocity += CustomVRInputVector; 
+	//Velocity += CustomVRInputVector; 
+
+	ApplyVRMotionToVelocity(deltaTime);
 
 	Iterations++;
 	bJustTeleported = false;
@@ -1114,7 +1117,7 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 	FVector OldLocation = UpdatedComponent->GetComponentLocation();
 	const FVector Adjusted = (Velocity * deltaTime);
 	FHitResult Hit(1.f);
-	SafeMoveUpdatedComponent(Adjusted + AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), true, Hit);
+	SafeMoveUpdatedComponent(Adjusted/* + AdditionalVRInputVector*/, UpdatedComponent->GetComponentQuat(), true, Hit);
 
 	if (Hit.Time < 1.f)
 	{
@@ -1143,14 +1146,14 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 
 		if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 		{
-			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime) * VRLowGravWallFrictionScaler;
+			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) /* - AdditionalVRInputVector*/) / deltaTime) * VRLowGravWallFrictionScaler;
 		}
 	}
 	else
 	{
 		if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 		{
-			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime);
+			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) /* - AdditionalVRInputVector*/) / deltaTime);
 		}
 	}
 }
