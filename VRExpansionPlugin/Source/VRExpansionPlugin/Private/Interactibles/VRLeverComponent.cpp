@@ -113,8 +113,7 @@ void UVRLeverComponent::BeginPlay()
 {
 	// Call the base class 
 	Super::BeginPlay();
-	ReCalculateCurrentAngle();
-
+	ReCalculateCurrentAngle(true);
 	bOriginalReplicatesMovement = bReplicateMovement;
 }
 
@@ -190,35 +189,44 @@ void UVRLeverComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
 		LastLeverAngle = FullCurrentAngle;
 	}
 
-	bool bNewLeverState = (!FMath::IsNearlyZero(LeverLimitNegative) && FullCurrentAngle <= -(LeverLimitNegative * LeverTogglePercentage)) || (!FMath::IsNearlyZero(LeverLimitPositive) && FullCurrentAngle >= (LeverLimitPositive * LeverTogglePercentage));
-	//if (FMath::Abs(CurrentLeverAngle) >= LeverLimit  )
-	if (bNewLeverState != bLeverState)
-	{
-		bLeverState = bNewLeverState;
-
-		if (bSendLeverEventsDuringLerp || !bWasLerping)
-		{
-			ReceiveLeverStateChanged(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, FullCurrentAngle);
-			OnLeverStateChanged.Broadcast(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, FullCurrentAngle);
-		}
-
-		if (!bWasLerping && bUngripAtTargetRotation && bLeverState && HoldingGrip.IsValid())
-		{
-			FBPActorGripInformation GripInformation;
-			EBPVRResultSwitch result;
-			HoldingGrip.HoldingController->GetGripByID(GripInformation, HoldingGrip.GripID, result);
-			if (result == EBPVRResultSwitch::OnSucceeded && HoldingGrip.HoldingController->HasGripAuthority(GripInformation))
-			{
-				HoldingGrip.HoldingController->DropObjectByInterface(this, HoldingGrip.GripID);
-			}
-		}
-	}
+	// Check for events and set current state and check for auto drop
+	ProccessCurrentState(bWasLerping, true, true);
 
 	// If the lerping state changed from the above
 	if (bWasLerping && !bIsLerping)
 	{
 		OnLeverFinishedLerping.Broadcast(CurrentLeverAngle);
 		ReceiveLeverFinishedLerping(CurrentLeverAngle);
+	}
+}
+
+void UVRLeverComponent::ProccessCurrentState(bool bWasLerping, bool bThrowEvents, bool bCheckAutoDrop)
+{
+	bool bNewLeverState = (!FMath::IsNearlyZero(LeverLimitNegative) && FullCurrentAngle <= -(LeverLimitNegative * LeverTogglePercentage)) || (!FMath::IsNearlyZero(LeverLimitPositive) && FullCurrentAngle >= (LeverLimitPositive * LeverTogglePercentage));
+	//if (FMath::Abs(CurrentLeverAngle) >= LeverLimit  )
+	if (bNewLeverState != bLeverState)
+	{
+		bLeverState = bNewLeverState;
+
+		if (bThrowEvents && (bSendLeverEventsDuringLerp || !bWasLerping))
+		{
+			ReceiveLeverStateChanged(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, CurrentLeverAngle, FullCurrentAngle);
+			OnLeverStateChanged.Broadcast(bLeverState, FullCurrentAngle >= 0.0f ? EVRInteractibleLeverEventType::LeverPositive : EVRInteractibleLeverEventType::LeverNegative, CurrentLeverAngle, FullCurrentAngle);
+		}
+
+		if (bCheckAutoDrop)
+		{
+			if (!bWasLerping && bUngripAtTargetRotation && bLeverState && HoldingGrip.IsValid())
+			{
+				FBPActorGripInformation GripInformation;
+				EBPVRResultSwitch result;
+				HoldingGrip.HoldingController->GetGripByID(GripInformation, HoldingGrip.GripID, result);
+				if (result == EBPVRResultSwitch::OnSucceeded && HoldingGrip.HoldingController->HasGripAuthority(GripInformation))
+				{
+					HoldingGrip.HoldingController->DropObjectByInterface(this, HoldingGrip.GripID);
+				}
+			}
+		}
 	}
 }
 
@@ -321,6 +329,13 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 	}break;
 	default:break;
 	}
+
+	// Recalc current angle
+	CurrentRelativeTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
+	CalculateCurrentAngle(CurrentRelativeTransform);
+
+	// Check for events and set current state and check for auto drop
+	ProccessCurrentState(bIsLerping, true, true);
 
 	// Check if we should auto drop
 	CheckAutoDrop(GrippingController, GripInformation);
@@ -755,14 +770,15 @@ bool UVRLeverComponent::SetupConstraint()
 	return false;
 }
 
-float UVRLeverComponent::ReCalculateCurrentAngle()
+float UVRLeverComponent::ReCalculateCurrentAngle(bool bAllowThrowingEvents)
 {
 	FTransform CurRelativeTransform = this->GetComponentTransform().GetRelativeTransform(UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this));
 	CalculateCurrentAngle(CurRelativeTransform);
+	ProccessCurrentState(bIsLerping, bAllowThrowingEvents, bAllowThrowingEvents);
 	return CurrentLeverAngle;
 }
 
-void UVRLeverComponent::SetLeverAngle(float NewAngle, FVector DualAxisForwardVector)
+void UVRLeverComponent::SetLeverAngle(float NewAngle, FVector DualAxisForwardVector, bool bAllowThrowingEvents)
 {
 	NewAngle = -NewAngle; // Need to inverse the sign
 
@@ -778,17 +794,18 @@ void UVRLeverComponent::SetLeverAngle(float NewAngle, FVector DualAxisForwardVec
 	default:break;
 	}
 
-	CurrentLeverAngle = NewAngle;
 	FQuat NewLeverRotation(ForwardVector, FMath::DegreesToRadians(FMath::Abs(NewAngle)));
 
 	this->SetRelativeTransform(FTransform(NewLeverRotation) * InitialRelativeTransform);
+	ReCalculateCurrentAngle(bAllowThrowingEvents);
 }
 
-void UVRLeverComponent::ResetInitialLeverLocation()
+void UVRLeverComponent::ResetInitialLeverLocation(bool bAllowThrowingEvents)
 {
 	// Get our initial relative transform to our parent (or not if un-parented).
 	InitialRelativeTransform = this->GetRelativeTransform();
 	CalculateCurrentAngle(InitialRelativeTransform);
+	ProccessCurrentState(bIsLerping, bAllowThrowingEvents, bAllowThrowingEvents);
 }
 
 void UVRLeverComponent::CalculateCurrentAngle(FTransform & CurrentTransform)
