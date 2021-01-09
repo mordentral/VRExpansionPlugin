@@ -64,7 +64,7 @@ enum class EVRInteractibleLeverReturnType : uint8
 };
 
 /** Delegate for notification when the lever state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FVRLeverStateChangedSignature, bool, LeverStatus, EVRInteractibleLeverEventType, LeverStatusType, float, LeverAngleAtTime);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FVRLeverStateChangedSignature, bool, LeverStatus, EVRInteractibleLeverEventType, LeverStatusType, float, LeverAngleAtTime, float, FullLeverAngleAtTime);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRLeverFinishedLerpingSignature, float, FinalAngle);
 
 /**
@@ -87,7 +87,7 @@ public:
 		FVRLeverStateChangedSignature OnLeverStateChanged;
 
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Lever State Changed"))
-		void ReceiveLeverStateChanged(bool LeverStatus, EVRInteractibleLeverEventType LeverStatusType, float LeverAngleAtTime);
+		void ReceiveLeverStateChanged(bool LeverStatus, EVRInteractibleLeverEventType LeverStatusType, float LeverAngleAtTime, float FullLeverAngleAttime);
 
 	UPROPERTY(BlueprintAssignable, Category = "VRLeverComponent")
 		FVRLeverFinishedLerpingSignature OnLeverFinishedLerping;
@@ -285,7 +285,7 @@ public:
 
 	// Should be called after the lever is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
-		void ResetInitialLeverLocation();
+		void ResetInitialLeverLocation(bool bAllowThrowingEvents = true);
 
 	/**
 	 *    Sets the angle of the lever forcefully
@@ -293,13 +293,16 @@ public:
 	 *    @param DualAxisForwardVector	Only used with dual axis levers, you need to define the forward axis for the angle to apply too
 	*/
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
-		void SetLeverAngle(float NewAngle, FVector DualAxisForwardVector);
+		void SetLeverAngle(float NewAngle, FVector DualAxisForwardVector, bool bAllowThrowingEvents = true);
 
 	// ReCalculates the current angle, sets it on the back end, and returns it
+	// If allow throwing events is true then it will trigger the callbacks for state changes as well
 	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
-		float ReCalculateCurrentAngle();
+		float ReCalculateCurrentAngle(bool bAllowThrowingEvents = true);
 
-	virtual void OnUnregister() override;;
+	void ProccessCurrentState(bool bWasLerping = false, bool bThrowEvents = true, bool bCheckAutoDrop = true);
+
+	virtual void OnUnregister() override;
 
 	// Called when a object is gripped
 	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
