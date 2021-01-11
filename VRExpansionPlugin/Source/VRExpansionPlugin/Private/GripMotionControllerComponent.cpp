@@ -4065,12 +4065,18 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	if(!IsServer())
 		CheckTransactionBuffer();
 
+	bool bOriginalPostTeleport = bIsPostTeleport;
+
 	// Split into separate functions so that I didn't have to combine arrays since I have some removal going on
 	HandleGripArray(GrippedObjects, ParentTransform, DeltaTime, true);
 	HandleGripArray(LocallyGrippedObjects, ParentTransform, DeltaTime);
 
-	// Empty out the teleport flag
-	bIsPostTeleport = false;
+	// Empty out the teleport flag, checking original state just in case the player changed it while processing bps
+	if (bOriginalPostTeleport && (GrippedObjects.Num() || LocallyGrippedObjects.Num()))
+	{
+		OnTeleportedGrips.Broadcast();
+		bIsPostTeleport = false;
+	}
 
 	// Save out the component velocity from this and last frame
 
