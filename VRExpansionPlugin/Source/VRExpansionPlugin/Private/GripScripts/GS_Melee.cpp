@@ -583,7 +583,10 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 	}
 	
 	FBPHitSurfaceProperties HitSurfaceProperties;
-	HitSurfaceProperties.SurfaceType = Hit.PhysMaterial->SurfaceType;
+	if (Hit.PhysMaterial.IsValid())
+	{
+		HitSurfaceProperties.SurfaceType = Hit.PhysMaterial->SurfaceType;
+	}
 
 	if (AllowedPenetrationSurfaceTypes.Num())
 	{
