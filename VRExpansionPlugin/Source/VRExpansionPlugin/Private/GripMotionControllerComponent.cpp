@@ -3211,30 +3211,55 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 	return false;
 }
 
-bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActorGripInformation & GripToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, bool bIsSlotGrip, FName SecondarySlotName)
+bool UGripMotionControllerComponent::AddSecondaryAttachmentToGripByID(const uint8 GripID, USceneComponent* SecondaryPointComponent, const FTransform& OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, bool bIsSlotGrip, FName SecondarySlotName)
 {
-	if (!GripToAddAttachment.GrippedObject || GripToAddAttachment.GripID == INVALID_VRGRIP_ID || !SecondaryPointComponent || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
-		return false;
-
-	FBPActorGripInformation * GripToUse = nullptr;
-
-	GripToUse = LocallyGrippedObjects.FindByKey(GripToAddAttachment.GripID);
-
-	// Search replicated grips if not found in local
-	if (!GripToUse)
+	FBPActorGripInformation* GripToUse = nullptr;
+	if (GripID != INVALID_VRGRIP_ID)
 	{
-		// Replicated grips need to be called from server side
-		if (!IsServer())
+		GripToUse = GrippedObjects.FindByKey(GripID);
+		if (!GripToUse)
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side with a replicated grip"));
-			return false;
+			GripToUse = LocallyGrippedObjects.FindByKey(GripID);
 		}
 
-		GripToUse = GrippedObjects.FindByKey(GripToAddAttachment.GripID);
+		if (GripToUse)
+		{
+			return AddSecondaryAttachmentToGrip(*GripToUse, SecondaryPointComponent, OriginalTransform, bTransformIsAlreadyRelative, LerpToTime, bIsSlotGrip, SecondarySlotName);
+		}
 	}
 
-	if (!GripToUse || !GripToUse->GrippedObject)
+	return false;
+}
+
+bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActorGripInformation & GripToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative, float LerpToTime, bool bIsSlotGrip, FName SecondarySlotName)
+{
+	if (!SecondaryPointComponent)
+	{
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called with a bad secondary component target!"));
 		return false;
+	}
+
+	FBPActorGripInformation* GripToUse = nullptr;
+	bool bWasLocal = false;
+	if (GripToAddAttachment.GrippedObject && GripToAddAttachment.GripID != INVALID_VRGRIP_ID)
+	{
+		GripToUse = GrippedObjects.FindByKey(GripToAddAttachment.GripID);
+		if (!GripToUse)
+		{
+			GripToUse = LocallyGrippedObjects.FindByKey(GripToAddAttachment.GripID);
+			bWasLocal = true;
+		}
+	}
+
+	if (!GripToUse || !GripToUse->GrippedObject || GripToUse->GripID == INVALID_VRGRIP_ID)
+		return false;
+
+	// Replicated grips need to be called from server side
+	if (bWasLocal && !IsServer())
+	{
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side with a replicated grip"));
+		return false;
+	}
 
 	bool bGrippedObjectIsInterfaced = GripToUse->GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass());
 
@@ -3360,31 +3385,48 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 
 	return false;
 }
+bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGripByID(const uint8 GripID, float LerpToTime)
+{
+	FBPActorGripInformation* GripToUse = nullptr;
+	if (GripID != INVALID_VRGRIP_ID)
+	{
+		GripToUse = GrippedObjects.FindByKey(GripID);
+		if (!GripToUse)
+		{
+			GripToUse = LocallyGrippedObjects.FindByKey(GripID);
+		}
+
+		if (GripToUse)
+		{
+			return RemoveSecondaryAttachmentFromGrip(*GripToUse, LerpToTime);
+		}
+	}
+
+	return false;
+}
 
 bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGrip(const FBPActorGripInformation & GripToRemoveAttachment, float LerpToTime)
 {
-	if (!GripToRemoveAttachment.GrippedObject || GripToRemoveAttachment.GripID == INVALID_VRGRIP_ID || (!GrippedObjects.Num() && !LocallyGrippedObjects.Num()))
-		return false;
-
-	FBPActorGripInformation * GripToUse = nullptr;
-
-	// Duplicating the logic for each array for now
-	GripToUse = LocallyGrippedObjects.FindByKey(GripToRemoveAttachment.GripID);
-
-	// Check replicated grips if it wasn't found in local
-	if (!GripToUse)
+	FBPActorGripInformation* GripToUse = nullptr;
+	bool bWasLocal = false;
+	if (GripToRemoveAttachment.GrippedObject && GripToRemoveAttachment.GripID != INVALID_VRGRIP_ID)
 	{
-		if (!IsServer())
-		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip"));
-			return false;
-		}
-
 		GripToUse = GrippedObjects.FindByKey(GripToRemoveAttachment.GripID);
+		if (!GripToUse)
+		{
+			GripToUse = LocallyGrippedObjects.FindByKey(GripToRemoveAttachment.GripID);
+			bWasLocal = true;
+		}
+	}
+
+	if (GripToUse && bWasLocal && !IsServer())
+	{
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip"));
+		return false;
 	}
 
 	// Handle the grip if it was found
-	if (GripToUse && GripToUse->GrippedObject)
+	if (GripToUse && GripToUse->GrippedObject && GripToUse->GripID != INVALID_VRGRIP_ID)
 	{
 		if (GripToUse->SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp)
 			LerpToTime = 0.0f;
