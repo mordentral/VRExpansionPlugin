@@ -313,28 +313,8 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 			{
 				//FVector curLocation; // Current location of the secondary grip
 
-				bool bPulledControllerLoc = false;
-				if (GrippingController->bHasAuthority && Grip.SecondaryGripInfo.SecondaryAttachment->GetOwner() == GrippingController->GetOwner())
-				{
-					if (UGripMotionControllerComponent * OtherController = Cast<UGripMotionControllerComponent>(Grip.SecondaryGripInfo.SecondaryAttachment))
-					{
-						if (!OtherController->bUseWithoutTracking)
-						{
-							FVector Position = FVector::ZeroVector;
-							FRotator Orientation = FRotator::ZeroRotator;
-							float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
-							if (OtherController->GripPollControllerState(Position, Orientation, WorldToMeters))
-							{
-								frontLoc = OtherController->CalcControllerComponentToWorld(Orientation, Position).GetLocation() - BasePoint;
-								///*curLocation*/ frontLoc = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
-								bPulledControllerLoc = true;
-							}
-						}
-					}
-				}
-
-				if (!bPulledControllerLoc)
-					/*curLocation*/ frontLoc = Grip.SecondaryGripInfo.SecondaryAttachment->GetComponentLocation() - BasePoint;
+				// Calculates the correct secondary attachment location and sets frontLoc to it
+				CalculateSecondaryLocation(frontLoc, BasePoint, Grip, GrippingController);
 
 				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeTransform.GetLocation())) - BasePoint;
 

@@ -306,12 +306,21 @@ public:
 		void GetHandType(EControllerHand& Hand);
 
 	// The component to use for basing the grip off of instead of the motion controller
-	UPROPERTY(BlueprintReadWrite, Category = "GripMotionController")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GripMotionController|CustomPivot")
 		TWeakObjectPtr<USceneComponent> CustomPivotComponent;
 
+	// The socket for the component to use for basing the grip off of instead of the motion controller
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GripMotionController|CustomPivot")
+		FName CustomPivotComponentSocketName;
+
+	// If true then we will skip the pivot transform adjustment when gripping an object with the custom pivot
+	// This is here for legacy support for anyone not using "ConvertToControllerRelativeTransform".
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GripMotionController|CustomPivot")
+		bool bSkipPivotTransformAdjustment;
+
 	// Set the custom pivot component, allows you to use remote grips easier
-	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-		void SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent);
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController|CustomPivot")
+		void SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent, FName PivotSocketName = NAME_None);
 
 	// Set the custom pivot component, allows you to use remote grips easier
 	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "GetPivotTransform"))
@@ -323,12 +332,12 @@ public:
 
 	FORCEINLINE FTransform GetPivotTransform()
 	{
-		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetComponentTransform() : this->GetComponentTransform();
+		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform();
 	}
 
 	FORCEINLINE FVector GetPivotLocation()
 	{
-		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetComponentLocation() : this->GetComponentLocation();
+		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketLocation(CustomPivotComponentSocketName) : this->GetComponentLocation();
 	}
 
 	// Increments with each grip, wraps back to 0 after max due to modulo operation

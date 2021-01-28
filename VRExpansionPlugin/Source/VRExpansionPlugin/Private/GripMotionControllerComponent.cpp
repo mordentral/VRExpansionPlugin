@@ -114,6 +114,10 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 
 	GripIDIncrementer = INVALID_VRGRIP_ID;
 
+	// Pivot Variables
+	CustomPivotComponentSocketName = NAME_None;
+	bSkipPivotTransformAdjustment = false;
+
 	bOffsetByControllerProfile = true;
 	GripRenderThreadProfileTransform = FTransform::Identity;
 	CurrentControllerProfileTransform = FTransform::Identity;
@@ -1448,7 +1452,7 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 	else if (bWorldOffsetIsRelative)
 	{
-		if (CustomPivotComponent.IsValid() && !bIsSlotGrip)
+		if (bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() && !bIsSlotGrip)
 		{
 			newActorGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
@@ -1696,7 +1700,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 	else if (bWorldOffsetIsRelative)
 	{
-		if (CustomPivotComponent.IsValid() && !bIsSlotGrip)
+		if (bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() && !bIsSlotGrip)
 		{
 			newComponentGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
@@ -6549,9 +6553,10 @@ void UGripMotionControllerComponent::GetHandType(EControllerHand& Hand)
 	}
 }
 
-void UGripMotionControllerComponent::SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent)
+void UGripMotionControllerComponent::SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent, FName PivotSocketName)
 {
 	CustomPivotComponent = NewCustomPivotComponent;
+	CustomPivotComponentSocketName = PivotSocketName;
 }
 
 FTransform UGripMotionControllerComponent::GetPivotTransform_BP()
@@ -6566,7 +6571,7 @@ FVector UGripMotionControllerComponent::GetPivotLocation_BP()
 
 FTransform UGripMotionControllerComponent::ConvertToControllerRelativeTransform(const FTransform & InTransform)
 {
-	return InTransform.GetRelativeTransform(this->GetComponentTransform());
+	return InTransform.GetRelativeTransform(!bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform());
 }
 
 FTransform UGripMotionControllerComponent::ConvertToGripRelativeTransform(const FTransform& GrippedActorTransform, const FTransform & InTransform)
