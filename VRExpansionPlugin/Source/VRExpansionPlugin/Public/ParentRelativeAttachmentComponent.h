@@ -25,6 +25,7 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 
 public:
 	UParentRelativeAttachmentComponent(const FObjectInitializer& ObjectInitializer);
+	virtual void InitializeComponent() override;
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary", meta = (ClampMin = "0", UIMin = "0"))
