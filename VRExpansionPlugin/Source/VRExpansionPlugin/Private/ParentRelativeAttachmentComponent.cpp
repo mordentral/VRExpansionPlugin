@@ -16,6 +16,8 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	// Let it sit in DuringPhysics like is the default
 	//PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
+	bWantsInitializeComponent = true;
+
 	SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	SetRelativeLocation(FVector::ZeroVector);
 	YawTolerance = 0.0f;
@@ -37,6 +39,18 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	CustomOffset = FVector::ZeroVector;
 
 	//YawRotationMethod = EVR_PRC_RotationMethod::PRC_ROT_HMD;
+}
+
+void UParentRelativeAttachmentComponent::InitializeComponent()
+{
+	Super::InitializeComponent();
+
+	// Update our tracking
+	if (AttachChar.IsValid()) // New case to early out and with less calculations
+	{
+		SetRelativeTransform(AttachChar->VRReplicatedCamera->GetComponentTransform());
+	}
+
 }
 
 void UParentRelativeAttachmentComponent::OnAttachmentChanged()

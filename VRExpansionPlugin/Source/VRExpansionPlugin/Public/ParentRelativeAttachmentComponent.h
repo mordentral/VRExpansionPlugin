@@ -41,6 +41,7 @@ class VREXPANSIONPLUGIN_API UParentRelativeAttachmentComponent : public USceneCo
 
 public:
 	UParentRelativeAttachmentComponent(const FObjectInitializer& ObjectInitializer);
+	virtual void InitializeComponent() override;
 
 	// Rotation method to use for facing calulations
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
