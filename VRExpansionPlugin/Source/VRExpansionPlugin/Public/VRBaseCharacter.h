@@ -545,7 +545,7 @@ public:
 	virtual void OnEndWallPushback_Implementation();
 
 	// Event when a navigation pathing operation has completed, auto calls stop movement for VR characters
-	UFUNCTION(BlueprintImplementableEvent, Category = "VRBaseCharacter")
+	UFUNCTION(BlueprintImplementableEvent, Category = "VRBaseCharacter|Navigation")
 		void ReceiveNavigationMoveCompleted(EPathFollowingResult::Type PathingResult);
 
 	virtual void NavigationMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
@@ -554,7 +554,7 @@ public:
 		ReceiveNavigationMoveCompleted(Result.Code);
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter")
+	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter|Navigation")
 	EPathFollowingStatus::Type GetMoveStatus() const
 	{
 		if (!Controller)
@@ -569,7 +569,7 @@ public:
 	}
 
 	/** Returns true if the current PathFollowingComponent's path is partial (does not reach desired destination). */
-	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter")
+	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter|Navigation")
 	bool HasPartialPath() const
 	{
 		if (!Controller)
@@ -584,7 +584,7 @@ public:
 	}
 
 	// Instantly stops pathing
-	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter")
+	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter|Navigation")
 	void StopNavigationMovement()
 	{
 		if (!Controller)
@@ -602,9 +602,14 @@ public:
 		TSubclassOf<UNavigationQueryFilter> DefaultNavigationFilterClass;
 
 	// An extended simple move to location with additional parameters
-	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter", Meta = (AdvancedDisplay = "bStopOnOverlap,bCanStrafe,bAllowPartialPath"))
+	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter|Navigation", Meta = (AdvancedDisplay = "bStopOnOverlap,bCanStrafe,bAllowPartialPath"))
 		virtual void ExtendedSimpleMoveToLocation(const FVector& GoalLocation, float AcceptanceRadius = -1, bool bStopOnOverlap = false,
 			bool bUsePathfinding = true, bool bProjectDestinationToNavigation = true, bool bCanStrafe = false,
 			TSubclassOf<UNavigationQueryFilter> FilterClass = NULL, bool bAllowPartialPath = true);
+
+	// Returns the current path points on the active navigation path
+	// Will return false / an empty result if the path following component is not active yet or the path is empty
+	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter|Navigation")
+		bool GetCurrentNavigationPathPoints(TArray<FVector>& NavigationPointList);
 
 };
