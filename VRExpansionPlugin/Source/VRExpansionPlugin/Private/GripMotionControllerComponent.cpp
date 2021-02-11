@@ -3259,7 +3259,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 		return false;
 
 	// Replicated grips need to be called from server side
-	if (bWasLocal && !IsServer())
+	if (!bWasLocal && !IsServer())
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side with a replicated grip"));
 		return false;
@@ -3423,7 +3423,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGrip(const FBP
 		}
 	}
 
-	if (GripToUse && bWasLocal && !IsServer())
+	if (GripToUse && !bWasLocal && !IsServer())
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip"));
 		return false;
