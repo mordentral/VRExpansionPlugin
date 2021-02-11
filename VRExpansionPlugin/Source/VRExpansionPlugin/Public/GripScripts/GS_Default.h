@@ -22,6 +22,8 @@ public:
 
 	virtual void GetAnyScaling(FVector& Scaler, FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, ESecondaryGripType SecondaryType, FTransform& SecondaryTransform);	
 	virtual void ApplySmoothingAndLerp(FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, float DeltaTime);
+
+	virtual void CalculateSecondaryLocation(FVector & frontLoc, const FVector& BasePoint, FBPActorGripInformation& Grip, UGripMotionControllerComponent * GrippingController);
 };
 
 // An extended default grip script that adds less common grip features that were moved out of the default implementation

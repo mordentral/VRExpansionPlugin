@@ -102,40 +102,99 @@ void FBPEuroLowPassFilter::ResetSmoothingFilter()
 FVector FBPEuroLowPassFilter::RunFilterSmoothing(const FVector &InRawValue, const float &InDeltaTime)
 {
 	// Calculate the delta, if this is the first time then there is no delta
-	const FVector Delta = RawFilter.bFirstTime == true ? FVector::ZeroVector : (InRawValue - RawFilter.Previous) * InDeltaTime;
+	const FVector Delta = RawFilter.bFirstTime == true ? FVector::ZeroVector : (InRawValue - RawFilter.PreviousRaw) * 1.0f / InDeltaTime;
 
 	// Filter the delta to get the estimated
-	const FVector Estimated = DeltaFilter.Filter(Delta, FVector(CalculateAlpha(DeltaCutoff, InDeltaTime)));
+	const FVector Estimated = DeltaFilter.Filter(Delta, FVector(DeltaFilter.CalculateAlphaTau(DeltaCutoff, InDeltaTime)));
 
 	// Use the estimated to calculate the cutoff
-	const FVector Cutoff = CalculateCutoff(Estimated);
+	const FVector Cutoff = DeltaFilter.CalculateCutoff(Estimated, MinCutoff, CutoffSlope);
 
 	// Filter passed value 
-	return RawFilter.Filter(InRawValue, CalculateAlpha(Cutoff, InDeltaTime));
+	return RawFilter.Filter(InRawValue, RawFilter.CalculateAlpha(Cutoff, InDeltaTime));
 }
 
-const FVector FBPEuroLowPassFilter::CalculateCutoff(const FVector& InValue)
+void FBPEuroLowPassFilterQuat::ResetSmoothingFilter()
 {
-	FVector Result;
-	for (int i = 0; i < 3; i++)
+	RawFilter.bFirstTime = true;
+	DeltaFilter.bFirstTime = true;
+}
+
+FQuat FBPEuroLowPassFilterQuat::RunFilterSmoothing(const FQuat& InRawValue, const float& InDeltaTime)
+{
+
+	FQuat NewInVal = InRawValue;
+	if (!RawFilter.bFirstTime)
 	{
-		Result[i] = MinCutoff + CutoffSlope * FMath::Abs(InValue[i]);
+		// fix axial flipping, from unity open 1 Euro implementation
+		FVector4 PrevQuatAsVector(RawFilter.Previous.X, RawFilter.Previous.Y, RawFilter.Previous.Z, RawFilter.Previous.W);
+		FVector4 CurrQuatAsVector(InRawValue.X, InRawValue.Y, InRawValue.Z, InRawValue.W);
+		if ((PrevQuatAsVector - CurrQuatAsVector).SizeSquared() > 2)
+			NewInVal = FQuat(-InRawValue.X, -InRawValue.Y, -InRawValue.Z, -InRawValue.W);
 	}
-	return Result;
-}
 
-const FVector FBPEuroLowPassFilter::CalculateAlpha(const FVector& InCutoff, const double InDeltaTime) const
-{
-	FVector Result;
-	for (int i = 0; i < 3; i++)
+	// Calculate the delta, if this is the first time then there is no delta
+	FQuat Delta = FQuat::Identity;
+
+	if (!RawFilter.bFirstTime)
 	{
-		Result[i] = CalculateAlpha(InCutoff[i], InDeltaTime);
+		Delta = (NewInVal - RawFilter.PreviousRaw) * (1.0f / InDeltaTime);
 	}
-	return Result;
+
+
+	float AlphaTau = DeltaFilter.CalculateAlphaTau(DeltaCutoff, InDeltaTime);
+	FQuat AlphaTauQ(AlphaTau, AlphaTau, AlphaTau, AlphaTau);
+	const FQuat Estimated = DeltaFilter.Filter(Delta, AlphaTauQ);
+
+	// Use the estimated to calculate the cutoff
+	const FQuat Cutoff = DeltaFilter.CalculateCutoff(Estimated, MinCutoff, CutoffSlope);
+
+	// Filter passed value 
+	return RawFilter.Filter(NewInVal, RawFilter.CalculateAlpha(Cutoff, InDeltaTime)).GetNormalized();// .GetNormalized();
 }
 
-const float FBPEuroLowPassFilter::CalculateAlpha(const float InCutoff, const double InDeltaTime) const
+void FBPEuroLowPassFilterTrans::ResetSmoothingFilter()
 {
-	const float tau = 1.0 / (2 * PI * InCutoff);
-	return 1.0 / (1.0 + tau / InDeltaTime);
+	RawFilter.bFirstTime = true;
+	DeltaFilter.bFirstTime = true;
+}
+
+FTransform FBPEuroLowPassFilterTrans::RunFilterSmoothing(const FTransform& InRawValue, const float& InDeltaTime)
+{
+
+	FTransform NewInVal = InRawValue;
+	if (!RawFilter.bFirstTime)
+	{
+		FQuat TransQ = NewInVal.GetRotation();
+		FQuat PrevQ = RawFilter.Previous.GetRotation();
+		// fix axial flipping, from unity open 1 Euro implementation
+		FVector4 PrevQuatAsVector(PrevQ.X, PrevQ.Y, PrevQ.Z, PrevQ.W);
+		FVector4 CurrQuatAsVector(TransQ.X, TransQ.Y, TransQ.Z, TransQ.W);
+		if ((PrevQuatAsVector - CurrQuatAsVector).SizeSquared() > 2)
+			NewInVal.SetRotation(FQuat(-TransQ.X, -TransQ.Y, -TransQ.Z, -TransQ.W));
+	}
+
+	// Calculate the delta, if this is the first time then there is no delta
+	FTransform Delta = FTransform::Identity;
+
+	float Frequency = 1.0f / InDeltaTime;
+	if (!RawFilter.bFirstTime)
+	{
+		Delta.SetLocation((NewInVal.GetLocation() - RawFilter.PreviousRaw.GetLocation()) * Frequency);
+		Delta.SetRotation((NewInVal.GetRotation() - RawFilter.PreviousRaw.GetRotation()) * Frequency);
+		Delta.SetScale3D((NewInVal.GetScale3D() - RawFilter.PreviousRaw.GetScale3D()) * Frequency);
+	}
+
+
+	float AlphaTau = DeltaFilter.CalculateAlphaTau(DeltaCutoff, InDeltaTime);
+	FTransform AlphaTauQ(FQuat(AlphaTau, AlphaTau, AlphaTau, AlphaTau), FVector(AlphaTau), FVector(AlphaTau));
+	const FTransform Estimated = DeltaFilter.Filter(Delta, AlphaTauQ);
+
+	// Use the estimated to calculate the cutoff
+	const FTransform Cutoff = DeltaFilter.CalculateCutoff(Estimated, MinCutoff, CutoffSlope);
+
+	FTransform NewTrans = RawFilter.Filter(NewInVal, RawFilter.CalculateAlpha(Cutoff, InDeltaTime));
+	NewTrans.NormalizeRotation();
+	// Filter passed value 
+	return NewTrans;
 }

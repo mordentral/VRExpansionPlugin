@@ -32,7 +32,6 @@ public:
 	}
 };
 
-// #TODO: Add two hand support for full body, TArray of base bones to work off of
 UCLASS(meta = (BlueprintSpawnableComponent), ClassGroup = Physics)
 class VREXPANSIONPLUGIN_API UVREPhysicalAnimationComponent : public UPhysicalAnimationComponent
 {

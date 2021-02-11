@@ -70,6 +70,11 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bNotifyTeleported = false;
 
 	bJustUnseated = false;
+
+	bUseClientControlRotation = true;
+
+	SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
+	SetMoveResponseDataContainer(VRMoveResponseDataContainer);
 }
 
 void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
@@ -563,16 +568,22 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
-	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
 	
+	// Removed 2 decimal precision rounding in favor of matching the actual replicated short fidelity instead.
+	// MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
+	
+	// Setting to the exact same fidelity as the replicated value ends up being, losing some precision
+	MoveAction.MoveActionRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort((FRotator(0.f, DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw)), 0.0f);
+
 	if (bFlagCharacterTeleport)
-		MoveAction.MoveActionRot.Roll = 2.0f;
+		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
 	else
-		MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
-		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
 	}
 
 	MoveAction.VelRetentionSetting = VelocityRetention;
@@ -588,14 +599,15 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewY
 	MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(NewYaw * 100.f) / 100.f, 0.0f);
 
 	if (bFlagCharacterTeleport)
-		MoveAction.MoveActionRot.Roll = 2.0f;
+		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
 	else
-		MoveAction.MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
 		float DeltaYawAngle = FMath::FindDeltaAngleDegrees(UpdatedComponent->GetComponentRotation().Yaw, NewYaw);
-		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
 	}
 
 	MoveAction.VelRetentionSetting = VelocityRetention;
@@ -610,12 +622,13 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Teleport(FVector Telep
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_Teleport;
 	MoveAction.MoveActionLoc = RoundDirectMovement(TeleportLocation);
 	MoveAction.MoveActionRot.Yaw = FMath::RoundToFloat(TeleportRotation.Yaw * 100.f) / 100.f;
-	MoveAction.MoveActionRot.Roll = bSkipEncroachmentCheck ? 1.0f : 0.0f;
+	MoveAction.MoveActionFlags |= (uint8)bSkipEncroachmentCheck;//.MoveActionRot.Roll = bSkipEncroachmentCheck ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
 		float DeltaYawAngle = FMath::FindDeltaAngleDegrees(UpdatedComponent->GetComponentRotation().Yaw, TeleportRotation.Yaw);
-		MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
+		MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
 	}
 
 	MoveAction.VelRetentionSetting = VelocityRetention;
@@ -688,10 +701,34 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{	
+
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 
 		FQuat OrigRot = OwningCharacter->GetActorQuat();
-		OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+
+		if (this->BaseVRCharacterOwner && this->BaseVRCharacterOwner->IsLocallyControlled())
+		{
+			if (this->bUseClientControlRotation)
+			{
+				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+				MoveAction.MoveActionFlags |= 0x04; // Flag that we are using loc only
+			}
+			else
+			{
+				OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+			}
+		}
+		else
+		{
+			if (MoveAction.MoveActionFlags & 0x04)
+			{
+				OwningCharacter->SetActorLocation(OwningCharacter->GetActorLocation() + MoveAction.MoveActionLoc);
+			}
+			else
+			{
+				OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+			}
+		}
 
 		switch (MoveAction.VelRetentionSetting)
 		{
@@ -704,15 +741,23 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 			this->Velocity = FVector::ZeroVector;
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
-		{		
-			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+		{	
+			if (OwningCharacter->IsLocallyControlled())
+			{
+				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
+				this->Velocity = MoveAction.MoveActionVel;
+			}
+			else
+			{
+				this->Velocity = MoveAction.MoveActionVel;
+			}
 		}break;
 		}
 
 		// If we are flagged to teleport the grips
-		if (MoveAction.MoveActionRot.Roll > 0.0f)
+		if (MoveAction.MoveActionFlags & 0x01 || MoveAction.MoveActionFlags & 0x02)
 		{
-			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionRot.Roll > 1.5f);
+			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}
 	}
 
@@ -724,7 +769,29 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
-		OwningCharacter->SetActorRotationVR(TargetRot, true);
+		if (this->BaseVRCharacterOwner && this->BaseVRCharacterOwner->IsLocallyControlled())
+		{
+			if (this->bUseClientControlRotation)
+			{
+				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, true);
+				MoveAction.MoveActionFlags |= 0x04; // Flag that we are using loc only
+			}
+			else
+			{
+				OwningCharacter->SetActorRotationVR(TargetRot, true);
+			}
+		}
+		else
+		{
+			if (MoveAction.MoveActionFlags & 0x04)
+			{
+				OwningCharacter->SetActorLocation(OwningCharacter->GetActorLocation() + MoveAction.MoveActionLoc);
+			}
+			else
+			{
+				OwningCharacter->SetActorRotationVR(TargetRot, true);
+			}
+		}
 
 		switch (MoveAction.VelRetentionSetting)
 		{
@@ -738,14 +805,22 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
 		{
-			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+			if (OwningCharacter->IsLocallyControlled())
+			{
+				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
+				this->Velocity = MoveAction.MoveActionVel;
+			}
+			else
+			{
+				this->Velocity = MoveAction.MoveActionVel;
+			}
 		}break;
 		}
 
 		// If we are flagged to teleport the grips
-		if (MoveAction.MoveActionRot.Roll > 0.0f)
+		if (MoveAction.MoveActionFlags & 0x01 || MoveAction.MoveActionFlags & 0x02)
 		{
-			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionRot.Roll > 1.5f);
+			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}
 	}
 
@@ -764,7 +839,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 			return false;
 		}
 
-		bool bSkipEncroachmentCheck = MoveAction.MoveActionRot.Roll > 0.0f;
+		bool bSkipEncroachmentCheck = MoveAction.MoveActionFlags & 0x01; //MoveAction.MoveActionRot.Roll > 0.0f;
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, TargetRot, false, bSkipEncroachmentCheck);
 
@@ -780,12 +855,20 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
 		{
-			this->Velocity = FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity);
+			if (OwningCharacter->IsLocallyControlled())
+			{
+				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
+				this->Velocity = MoveAction.MoveActionVel;
+			}
+			else
+			{
+				this->Velocity = MoveAction.MoveActionVel;
+			}
 		}break;
 		}
 
 		if (OwningCharacter->bUseControllerRotationYaw)
-			OwningController->SetControlRotation(MoveAction.MoveActionRot);
+			OwningController->SetControlRotation(TargetRot);
 
 		return true;
 	}
@@ -1002,6 +1085,10 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 	}
 
 	float Friction = 0.0f; 
+	// Rewind the players position by the new capsule location
+	RewindVRRelativeMovement();
+
+	RestorePreAdditiveVRMotionVelocity();
 
 	// If we are not in the default physics volume then accept the custom fluid friction setting
 	// I set this by default to be ignored as many will not alter the default fluid friction
@@ -1010,12 +1097,11 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 
 	CalcVelocity(deltaTime, Friction, true, 0.0f);
 
-	// Rewind the players position by the new capsule location
-	RewindVRRelativeMovement();
-
 	// Adding in custom VR input vector here, can be used for custom movement during it
 	// AddImpulse is not multiplayer compatible client side
-	Velocity += CustomVRInputVector; 
+	//Velocity += CustomVRInputVector; 
+
+	ApplyVRMotionToVelocity(deltaTime);
 
 	Iterations++;
 	bJustTeleported = false;
@@ -1023,7 +1109,7 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 	FVector OldLocation = UpdatedComponent->GetComponentLocation();
 	const FVector Adjusted = (Velocity * deltaTime);
 	FHitResult Hit(1.f);
-	SafeMoveUpdatedComponent(Adjusted + AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), true, Hit);
+	SafeMoveUpdatedComponent(Adjusted/* + AdditionalVRInputVector*/, UpdatedComponent->GetComponentQuat(), true, Hit);
 
 	if (Hit.Time < 1.f)
 	{
@@ -1052,14 +1138,14 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 
 		if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 		{
-			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime) * VRLowGravWallFrictionScaler;
+			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) /* - AdditionalVRInputVector*/) / deltaTime) * VRLowGravWallFrictionScaler;
 		}
 	}
 	else
 	{
 		if (!bJustTeleported && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 		{
-			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) - AdditionalVRInputVector) / deltaTime);
+			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) /* - AdditionalVRInputVector*/) / deltaTime);
 		}
 	}
 }
@@ -1270,163 +1356,6 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	}
 }
 
-void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
-{
-	// See if we can get the VR capsule location
-	//if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
-	//{
-		if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(C->GetMovementComponent()))
-		{
-
-			// Saving this out early because it will be wiped before the PostUpdate gets the values
-			//ConditionalValues.MoveAction.MoveAction = moveComp->MoveAction.MoveAction;
-
-			VRReplicatedMovementMode = moveComp->VRReplicatedMovementMode;
-
-			if (moveComp->HasRequestedVelocity())
-				ConditionalValues.RequestedVelocity = moveComp->RequestedVelocity;
-			else
-				ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-				
-			// Throw out the Z value of the headset, its not used anyway for movement
-			// Instead, re-purpose it to be the capsule half height
-			if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(C))
-			{
-				if (BaseChar->VRReplicateCapsuleHeight)
-					LFDiff.Z = BaseChar->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
-				else
-					LFDiff.Z = 0.0f;
-			}
-			else
-				LFDiff.Z = 0.0f;
-		}
-		else
-		{
-			VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
-			ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
-			ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-		}
-	//}
-	//else
-	//{
-	//	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;//None;
-	//	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
-	//}
-
-	FSavedMove_Character::SetInitialPosition(C);
-}
-
-void FSavedMove_VRBaseCharacter::CombineWith(const FSavedMove_Character* OldMove, ACharacter* InCharacter, APlayerController* PC, const FVector& OldStartLocation)
-{
-	UCharacterMovementComponent* CharMovement = InCharacter->GetCharacterMovement();
-	
-	// to combine move, first revert pawn position to PendingMove start position, before playing combined move on client
-	CharMovement->UpdatedComponent->SetWorldLocationAndRotation(OldStartLocation, OldMove->StartRotation, false, nullptr, CharMovement->GetTeleportType());
-	CharMovement->Velocity = OldMove->StartVelocity;
-
-	CharMovement->SetBase(OldMove->StartBase.Get(), OldMove->StartBoneName);
-	CharMovement->CurrentFloor = OldMove->StartFloor;
-
-	// Now that we have reverted to the old position, prepare a new move from that position,
-	// using our current velocity, acceleration, and rotation, but applied over the combined time from the old and new move.
-
-	// Combine times for both moves
-	DeltaTime += OldMove->DeltaTime;
-
-	//FSavedMove_VRBaseCharacter * BaseSavedMove = (FSavedMove_VRBaseCharacter *)NewMove.Get();
-	FSavedMove_VRBaseCharacter * BaseSavedMovePending = (FSavedMove_VRBaseCharacter *)OldMove;
-
-	if (/*BaseSavedMove && */BaseSavedMovePending)
-	{
-		LFDiff.X += BaseSavedMovePending->LFDiff.X;
-		LFDiff.Y += BaseSavedMovePending->LFDiff.Y;
-	}
-
-	// Roll back jump force counters. SetInitialPosition() below will copy them to the saved move.
-	// Changes in certain counters like JumpCurrentCount don't allow move combining, so no need to roll those back (they are the same).
-	InCharacter->JumpForceTimeRemaining = OldMove->JumpForceTimeRemaining;
-	InCharacter->JumpKeyHoldTime = OldMove->JumpKeyHoldTime;
-}
-
-void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostUpdateMode)
-{
-	FSavedMove_Character::PostUpdate(C, PostUpdateMode);
-
-	// See if we can get the VR capsule location
-	//if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
-	//{
-	if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(C->GetMovementComponent()))
-	{
-		ConditionalValues.CustomVRInputVector = moveComp->CustomVRInputVector;
-		ConditionalValues.MoveActionArray = moveComp->MoveActionArray;
-		moveComp->MoveActionArray.Clear();
-	}
-	//}
-	/*if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
-	{
-		// See if we can get the VR capsule location
-		if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(C))
-		{
-			if (UVRBaseCharacterMovementComponent * moveComp = Cast<UVRBaseCharacterMovementComponent>(VRC->GetMovementComponent()))
-			{
-				// This is cleared out in perform movement so I need to save it before applying below
-				EVRMoveAction tempAction = ConditionalValues.MoveAction.MoveAction;
-				ConditionalValues.MoveAction = moveComp->MoveAction;
-				ConditionalValues.MoveAction.MoveAction = tempAction;
-			}
-			else
-			{
-				ConditionalValues.MoveAction.Clear();
-			}
-		}
-		else
-		{
-			ConditionalValues.MoveAction.Clear();
-		}
-	}*/
-}
-
-void FSavedMove_VRBaseCharacter::Clear()
-{
-	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;// None;
-
-	VRCapsuleLocation = FVector::ZeroVector;
-	VRCapsuleRotation = FRotator::ZeroRotator;
-	LFDiff = FVector::ZeroVector;
-
-	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
-	ConditionalValues.RequestedVelocity = FVector::ZeroVector;
-	ConditionalValues.MoveActionArray.Clear();
-	//ConditionalValues.MoveAction.Clear();
-
-	FSavedMove_Character::Clear();
-}
-
-void FSavedMove_VRBaseCharacter::PrepMoveFor(ACharacter* Character)
-{
-	UVRBaseCharacterMovementComponent * BaseCharMove = Cast<UVRBaseCharacterMovementComponent>(Character->GetCharacterMovement());
-
-	if (BaseCharMove)
-	{
-		BaseCharMove->MoveActionArray = ConditionalValues.MoveActionArray;
-		//BaseCharMove->MoveAction = ConditionalValues.MoveAction; 
-		BaseCharMove->CustomVRInputVector = ConditionalValues.CustomVRInputVector;//this->CustomVRInputVector;
-		BaseCharMove->VRReplicatedMovementMode = this->VRReplicatedMovementMode;
-	}
-	
-	if (!ConditionalValues.RequestedVelocity.IsZero())
-	{
-		BaseCharMove->RequestedVelocity = ConditionalValues.RequestedVelocity;
-		BaseCharMove->SetHasRequestedVelocity(true);
-	}
-	else
-	{
-		BaseCharMove->SetHasRequestedVelocity(false);
-	}
-
-	FSavedMove_Character::PrepMoveFor(Character);
-}
-
 void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
 {
 	Super::OnClientCorrectionReceived(ClientData, TimeStamp, NewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
@@ -1571,7 +1500,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 		PerformMovement(DeltaSeconds);
 
 		// After movement correction, smooth out error in position if any.
-		if (bCorrectedToServer)
+		if (bCorrectedToServer || CurrentRootMotion.NeedsSimulatedSmoothing())
 		{
 			SmoothCorrection(OldLocation, OldRotation, UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentQuat());
 		}
@@ -1887,36 +1816,6 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 		{
 			// Unhandled mode
 		}
-	}
-}
-
-FVRCharacterScopedMovementUpdate::FVRCharacterScopedMovementUpdate(USceneComponent* Component, EScopedUpdate::Type ScopeBehavior, bool bRequireOverlapsEventFlagToQueueOverlaps)
-	: FScopedMovementUpdate(Component, ScopeBehavior, bRequireOverlapsEventFlagToQueueOverlaps)
-{
-	UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
-	if (RootComponent)
-	{
-		InitialVRTransform = RootComponent->OffsetComponentToWorld;
-	}
-}
-
-void FVRCharacterScopedMovementUpdate::RevertMove()
-{
-	bool bTransformIsDirty = IsTransformDirty();
-
-	FScopedMovementUpdate::RevertMove();
-
-	UVRRootComponent* RootComponent = Cast<UVRRootComponent>(Owner);
-	if (RootComponent)
-	{
-		// If the base class was going to miss bad overlaps, ie: the offsetcomponent to world is different but the transform isn't
-		if (!bTransformIsDirty && !IsDeferringUpdates() && !InitialVRTransform.Equals(RootComponent->OffsetComponentToWorld))
-		{
-			RootComponent->UpdateOverlaps();
-		}
-
-		// Fix offset
-		RootComponent->GenerateOffsetToWorld();
 	}
 }
 

@@ -4,9 +4,9 @@
 UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
 	MaxCCDPasses(1),
-	OneEuroMinCutoff(2.0f),
-	OneEuroCutoffSlope(0.007f),
-	OneEuroDeltaCutoff(1.0f),
+	OneEuroMinCutoff(0.1f),
+	OneEuroCutoffSlope(10.0f),
+	OneEuroDeltaCutoff(10.0f),
 	CurrentControllerProfileInUse(NAME_None),
 	CurrentControllerProfileTransform(FTransform::Identity),
 	bUseSeperateHandTransforms(false),
@@ -291,6 +291,12 @@ void UVRGlobalSettings::PostInitProperties()
 	}*/
 #endif
 	Super::PostInitProperties();
+}
+
+void UVRGlobalSettings::GetMeleeSurfaceGlobalSettings(TArray<FBPHitSurfaceProperties>& OutMeleeSurfaceSettings)
+{
+	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+	OutMeleeSurfaceSettings = VRSettings.MeleeSurfaceSettings;
 }
 
 void UVRGlobalSettings::GetVirtualStockGlobalSettings(FBPVirtualStockSettings& OutVirtualStockSettings)

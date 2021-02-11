@@ -129,28 +129,8 @@ bool UGS_Default::GetWorldTransform_Implementation
 			{
 				//FVector curLocation; // Current location of the secondary grip
 
-				bool bPulledControllerLoc = false;
-				if (GrippingController->bHasAuthority && Grip.SecondaryGripInfo.SecondaryAttachment->GetOwner() == GrippingController->GetOwner())
-				{
-					if (UGripMotionControllerComponent * OtherController = Cast<UGripMotionControllerComponent>(Grip.SecondaryGripInfo.SecondaryAttachment))
-					{
-						if (!OtherController->bUseWithoutTracking)
-						{
-							FVector Position = FVector::ZeroVector;
-							FRotator Orientation = FRotator::ZeroRotator;
-							float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
-							if (OtherController->GripPollControllerState(Position, Orientation, WorldToMeters))
-							{
-								frontLoc = OtherController->CalcControllerComponentToWorld(Orientation, Position).GetLocation() - BasePoint;
-								///*curLocation*/ frontLoc = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
-								bPulledControllerLoc = true;
-							}
-						}
-					}
-				}
-
-				if (!bPulledControllerLoc)
-					/*curLocation*/ frontLoc = Grip.SecondaryGripInfo.SecondaryAttachment->GetComponentLocation() - BasePoint;
+				// Calculates the correct secondary attachment location and sets frontLoc to it
+				CalculateSecondaryLocation(frontLoc, BasePoint, Grip, GrippingController);
 
 				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeTransform.GetLocation())) - BasePoint;
 
@@ -194,6 +174,58 @@ bool UGS_Default::GetWorldTransform_Implementation
 	return true;
 }
 
+void UGS_Default::CalculateSecondaryLocation(FVector & frontLoc, const FVector & BasePoint, FBPActorGripInformation & Grip, UGripMotionControllerComponent * GrippingController)
+{
+	bool bPulledControllerLoc = false;
+	if (UGripMotionControllerComponent* OtherController = Cast<UGripMotionControllerComponent>(Grip.SecondaryGripInfo.SecondaryAttachment))
+	{
+		bool bPulledCurrentTransform = false;
+
+		if (OtherController->CustomPivotComponent.IsValid())
+		{
+			FTransform SecondaryTrans = FTransform::Identity;
+			SecondaryTrans = OtherController->GetPivotTransform();
+			bPulledControllerLoc = true;
+
+			if (OtherController->CustomPivotComponent->GetAttachParent() == OtherController)
+			{
+				if (GrippingController->bHasAuthority && Grip.SecondaryGripInfo.SecondaryAttachment->GetOwner() == GrippingController->GetOwner() && !OtherController->bUseWithoutTracking)
+				{
+					FVector Position = FVector::ZeroVector;
+					FRotator Orientation = FRotator::ZeroRotator;
+					float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+					if (OtherController->GripPollControllerState(Position, Orientation, WorldToMeters))
+					{
+						// If we are the local player lets avoid tick ordering issues by updating the pivot
+						FTransform ControllerTrans = OtherController->GetComponentTransform();
+						SecondaryTrans = SecondaryTrans.GetRelativeTransform(ControllerTrans) * OtherController->CalcControllerComponentToWorld(Orientation, Position);
+					}
+				}
+			}
+
+			frontLoc = SecondaryTrans.GetLocation() - BasePoint;
+		}
+		else
+		{
+			if (GrippingController->bHasAuthority && Grip.SecondaryGripInfo.SecondaryAttachment->GetOwner() == GrippingController->GetOwner() && !OtherController->bUseWithoutTracking)
+			{
+				FVector Position = FVector::ZeroVector;
+				FRotator Orientation = FRotator::ZeroRotator;
+				float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
+				if (OtherController->GripPollControllerState(Position, Orientation, WorldToMeters))
+				{
+					frontLoc = OtherController->CalcControllerComponentToWorld(Orientation, Position).GetLocation() - BasePoint;
+					bPulledControllerLoc = true;
+				}
+			}
+		}
+	}
+
+	if (!bPulledControllerLoc)
+	{
+		frontLoc = Grip.SecondaryGripInfo.SecondaryAttachment->GetComponentLocation() - BasePoint;
+	}
+}
 
 void UGS_ExtendedDefault::GetAnyScaling(FVector& Scaler, FBPActorGripInformation& Grip, FVector& frontLoc, FVector& frontLocOrig, ESecondaryGripType SecondaryType, FTransform& SecondaryTransform)
 {

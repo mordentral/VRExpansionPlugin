@@ -5,7 +5,7 @@
 #include "PhysicsEngine/PhysicsConstraintComponent.h"
 
 // Delete this eventually when the physics interface is fixed
-#if WITH_PHYSX
+#if PHYSICS_INTERFACE_PHYSX
 #include "PhysXPublic.h"
 #endif // WITH_PHYSX
 
@@ -24,11 +24,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRE Physics Constraint Component")
 		void SetConstraintToForceBased(bool bUseForceConstraint)
 	{
-
+#if PHYSICS_INTERFACE_PHYSX
 		// This is a temp workaround until epic fixes the drive creation to allow force constraints
 		// I wanted to use the new interface and not directly set the drive so that it is ready to delete this section
 		// When its fixed
-		//#if WITH_PHYSX
+		//#if PHYSICS_INTERFACE_PHYSX
 
 
 		if (!ConstraintInstance.ConstraintHandle.ConstraintData)
@@ -39,36 +39,37 @@ public:
 			JointFlags = PxD6JointDriveFlag::eACCELERATION;
 
 
-			PxD6JointDrive driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eX);
+		PxD6JointDrive driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eX);
+		driveVal.flags = JointFlags;
+		ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eX, driveVal);
+
+		driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eY);
+		driveVal.flags = JointFlags;
+		ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eY, driveVal);
+
+		driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eZ);
+		driveVal.flags = JointFlags;
+		ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eZ, driveVal);
+
+		// Check if slerp
+		if (ConstraintInstance.ProfileInstance.AngularDrive.AngularDriveMode == EAngularDriveMode::SLERP)
+		{
+			driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eSLERP);
 			driveVal.flags = JointFlags;
-			ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eX, driveVal);
-
-			driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eY);
+			ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eSLERP, driveVal);
+		}
+		else
+		{
+			driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eSWING);
 			driveVal.flags = JointFlags;
-			ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eY, driveVal);
+			ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eSWING, driveVal);
 
-			driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eZ);
+			driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eTWIST);
 			driveVal.flags = JointFlags;
-			ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eZ, driveVal);
+			ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eTWIST, driveVal);
+		}
 
-			// Check if slerp
-			if (ConstraintInstance.ProfileInstance.AngularDrive.AngularDriveMode == EAngularDriveMode::SLERP)
-			{
-				driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eSLERP);
-				driveVal.flags = JointFlags;
-				ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eSLERP, driveVal);
-			}
-			else
-			{
-				driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eSWING);
-				driveVal.flags = JointFlags;
-				ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eSWING, driveVal);
-
-				driveVal = ConstraintInstance.ConstraintHandle.ConstraintData->getDrive(PxD6Drive::Enum::eTWIST);
-				driveVal.flags = JointFlags;
-				ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eTWIST, driveVal);
-			}
-
+#endif
 		//#endif
 	}
 

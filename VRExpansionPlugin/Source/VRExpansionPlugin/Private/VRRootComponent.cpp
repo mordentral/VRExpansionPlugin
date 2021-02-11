@@ -9,7 +9,7 @@
 #include "VRCharacter.h"
 #include "Algo/Copy.h"
 
-#if WITH_PHYSX
+#if PHYSICS_INTERFACE_PHYSX
 //#include "PhysXSupport.h"
 #endif // WITH_PHYSX
 
@@ -345,6 +345,8 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
+	bWantsInitializeComponent = true;
+
 	this->SetRelativeScale3D(FVector(1.f));
 	this->SetRelativeLocation(FVector::ZeroVector);
 
@@ -432,11 +434,11 @@ public:
 				
 				if (bSimulating)
 				{
-					DrawWireCapsule(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World);
+					DrawWireCapsule(PDI, LocalToWorld.GetOrigin() - FVector(0.f, 0.f, CapsuleHalfHeight), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World);
 				}
 				else if (UseEditorCompositing(View))
 				{
-					DrawWireCapsule(PDI, LocalToWorld.GetOrigin() + FVector(0.f, 0.f, CapsuleHalfHeight), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);
+					DrawWireCapsule(PDI, LocalToWorld.GetOrigin() /*+ FVector(0.f, 0.f, CapsuleHalfHeight)*/, LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);
 				}
 				else
 					DrawWireCapsule(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), DrawCapsuleColor, CapsuleRadius, CapsuleHalfHeight, CapsuleSides, SDPG_World, 1.25f);					
@@ -484,13 +486,19 @@ private:
 
 FPrimitiveSceneProxy* UVRRootComponent::CreateSceneProxy()
 {
+	//GenerateOffsetToWorld();
 	return new FDrawVRCylinderSceneProxy(this);
+}
+
+void UVRRootComponent::InitializeComponent()
+{
+	Super::InitializeComponent();
+	GenerateOffsetToWorld();
 }
 
 void UVRRootComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
 
 	if(AVRBaseCharacter * vrOwner = Cast<AVRBaseCharacter>(this->GetOwner()))
 	{ 
@@ -568,6 +576,11 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 		// Store a leveled yaw value here so it is only calculated once
 		StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
+
+		// Pre-Process this for network sends
+		curCameraLoc.X = FMath::RoundToFloat(curCameraLoc.X * 100.f) / 100.f;
+		curCameraLoc.Y = FMath::RoundToFloat(curCameraLoc.Y * 100.f) / 100.f;
+		curCameraLoc.Z = FMath::RoundToFloat(curCameraLoc.Z * 100.f) / 100.f;
 
 		// Can adjust the relative tolerances to remove jitter and some update processing
 		if (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f))
@@ -1038,7 +1051,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 					{
 						if (!ShouldIgnoreHitResult(MyWorld, bAllowSimulatingCollision, TestHit, Delta, Actor, MoveFlags))
 						{
-							if (TestHit.Time == 0.f)
+							if (TestHit.bStartPenetrating)
 							{
 								// We may have multiple initial hits, and want to choose the one with the normal most opposed to our movement.
 								const float NormalDotDelta = (TestHit.ImpactNormal | Delta);

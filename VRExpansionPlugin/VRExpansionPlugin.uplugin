@@ -1,13 +1,13 @@
 {
   "FileVersion": 3,
-  "Version": 4.25,
-  "VersionName": "4.25",
+  "Version": 4.26,
+  "VersionName": "4.26",
   "FriendlyName": "VRExpansionPlugin",
   "Description": "Adds several new VR features & components to UE4",
   "Category": "VRExpansion",
   "CreatedBy": "Joshua (MordenTral) Statzer",
-  "CreatedByURL": "",
-  "DocsURL": "",
+  "CreatedByURL": "http://www.vreue4.com",
+  "DocsURL": "http://www.vreue4.com",
   "MarketplaceURL": "",
   "SupportURL": "",
   "EnabledByDefault": true,
@@ -26,5 +26,5 @@
       "Name": "PhysXVehicles",
       "Enabled": true
     }
-  ]
+	]
 }

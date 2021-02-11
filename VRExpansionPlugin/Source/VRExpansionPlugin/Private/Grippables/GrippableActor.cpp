@@ -3,7 +3,9 @@
 #include "Grippables/GrippableActor.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
+#if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"
+#endif
 
 
   //=============================================================================
@@ -88,12 +90,12 @@ void AGrippableActor::PreReplication(IRepChangedPropertyTracker & ChangedPropert
 #if WITH_PUSH_MODEL
 	if (UNLIKELY(OldAttachParent != AttachmentWeldReplication.AttachParent || OldAttachComponent != AttachmentWeldReplication.AttachComponent))
 	{
-		MARK_PROPERTY_DIRTY_FROM_NAME(AActor, AttachmentWeldReplication, this);
+		//MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, AttachmentWeldReplication, this);
 	}
 #endif
 
 	UBlueprintGeneratedClass* BPClass = Cast<UBlueprintGeneratedClass>(GetClass());
-	if (BPClass != nullptr)
+	if (BPClass != nullptr)	
 	{
 		BPClass->InstancePreReplication(this, ChangedPropertyTracker);
 	}
@@ -189,14 +191,14 @@ void AGrippableActor::GatherCurrentMovement()
 #if WITH_PUSH_MODEL
 		if (bWasRepMovementModified)
 		{
-			MARK_PROPERTY_DIRTY_FROM_NAME(AActor, ReplicatedMovement, this);
+		//	MARK_PROPERTY_DIRTY_FROM_NAME(AActor, ReplicatedMovement, this);
 		}
 
 		if (bWasAttachmentModified ||
 			OldAttachParent != AttachmentWeldReplication.AttachParent ||
 			OldAttachComponent != AttachmentWeldReplication.AttachComponent)
 		{
-			MARK_PROPERTY_DIRTY_FROM_NAME(AActor, AttachmentWeldReplication, this);
+			//MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, AttachmentWeldReplication, this);
 		}
 #endif
 	}

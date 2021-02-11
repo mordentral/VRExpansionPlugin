@@ -47,6 +47,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnControllerGripSignature, const 
 /** Delegate for notification when the controller drops a gripped object. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVROnControllerDropSignature, const FBPActorGripInformation &, GripInformation, bool, bWasSocketed);
 
+/** Delegate for notification when the controller teleports its grips. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVROnControllerTeleportedGripsSignature);
+
 /** Delegate for notification when an interactive grip goes out of range and isn't set to auto handle it. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRGripControllerOnGripOutOfRange, const FBPActorGripInformation &, GripInformation, float, Distance);
 
@@ -180,6 +183,26 @@ public:
 	FVector LastLocationForLateUpdate;
 	FTransform LastRelativePosition;
 
+	// If true will smooth the hand tracking data with a TInterp function
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Smoothing")
+		bool bSmoothHandTracking;
+
+	bool bWasSmoothingHand;
+
+	// If true will smooth hand tracking with the Linear and Rotational 1 Euro low pass settings instead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Smoothing")
+		bool bSmoothWithEuroLowPassFunction;
+
+	// The interp speed to use if smoothing is enabled and not using the 1 Euro smoothing
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Smoothing")
+		float SmoothingSpeed;
+
+	// Smoothing parameters when using the 1 Euro low pass option
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Smoothing")
+		FBPEuroLowPassFilterTrans EuroSmoothingParams;
+
+	FTransform LastSmoothRelativeTransform;
+
 	// Type of velocity calculation to use for the motion controller
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|ComponentVelocity")
 		EVRVelocityType VelocityCalculationType;
@@ -266,6 +289,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnControllerDropSignature OnDroppedObject;
 
+	// Called when a gripped object has been teleported
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerTeleportedGripsSignature OnTeleportedGrips;
+
 	// Called when an object we hold is secondary gripped
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnControllerGripSignature OnSecondaryGripAdded;
@@ -279,12 +306,21 @@ public:
 		void GetHandType(EControllerHand& Hand);
 
 	// The component to use for basing the grip off of instead of the motion controller
-	UPROPERTY(BlueprintReadWrite, Category = "GripMotionController")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GripMotionController|CustomPivot")
 		TWeakObjectPtr<USceneComponent> CustomPivotComponent;
 
+	// The socket for the component to use for basing the grip off of instead of the motion controller
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GripMotionController|CustomPivot")
+		FName CustomPivotComponentSocketName;
+
+	// If true then we will skip the pivot transform adjustment when gripping an object with the custom pivot
+	// This is here for legacy support for anyone not using "ConvertToControllerRelativeTransform".
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GripMotionController|CustomPivot")
+		bool bSkipPivotTransformAdjustment;
+
 	// Set the custom pivot component, allows you to use remote grips easier
-	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
-		void SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent);
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController|CustomPivot")
+		void SetCustomPivotComponent(USceneComponent * NewCustomPivotComponent, FName PivotSocketName = NAME_None);
 
 	// Set the custom pivot component, allows you to use remote grips easier
 	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "GetPivotTransform"))
@@ -296,12 +332,12 @@ public:
 
 	FORCEINLINE FTransform GetPivotTransform()
 	{
-		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetComponentTransform() : this->GetComponentTransform();
+		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform();
 	}
 
 	FORCEINLINE FVector GetPivotLocation()
 	{
-		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetComponentLocation() : this->GetComponentLocation();
+		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketLocation(CustomPivotComponentSocketName) : this->GetComponentLocation();
 	}
 
 	// Increments with each grip, wraps back to 0 after max due to modulo operation
@@ -1043,7 +1079,7 @@ public:
 	// Returns if we have grip authority (can call drop / grip on this grip)
 	// Mostly for networked games as local grips are client authed and all others are server authed
 	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "HasGripAuthority"))
-		bool BP_HasGripAuthority(const FBPActorGripInformation &Grip);
+		bool BP_HasGripAuthority(const FBPActorGripInformation & Grip);
 
 	// Returns if we have grip authority (can call drop / grip on this grip)
 	// Mostly for networked games as local grips are client authed and all others are server authed
@@ -1051,12 +1087,12 @@ public:
 		bool BP_HasGripAuthorityForObject(const UObject* ObjToCheck);
 
 	// Checks if we should be handling the movement of a grip based on settings for it
-	inline bool HasGripMovementAuthority(const FBPActorGripInformation &Grip);
+	inline bool HasGripMovementAuthority(const FBPActorGripInformation & Grip);
 
 	// Returns if we have grip movement authority (we handle movement of the grip)
 	// Mostly for networked games where ClientSide will be true for all and ServerSide will be true for server only
 	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "HasGripMovementAuthority"))
-		bool BP_HasGripMovementAuthority(const FBPActorGripInformation &Grip);
+		bool BP_HasGripMovementAuthority(const FBPActorGripInformation & Grip);
 
 	// Running the gripping logic in its own function as the main tick was getting bloated
 	void TickGrip(float DeltaTime);
@@ -1153,6 +1189,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 	bool AddSecondaryAttachmentToGrip(const FBPActorGripInformation & GripToAddAttachment, USceneComponent * SecondaryPointComponent, const FTransform &OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false, FName SecondarySlotName = NAME_None);
 
+	// Adds a secondary attachment point to the grip
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		bool AddSecondaryAttachmentToGripByID(const uint8 GripID, USceneComponent* SecondaryPointComponent, const FTransform& OriginalTransform, bool bTransformIsAlreadyRelative = false, float LerpToTime = 0.25f, bool bIsSlotGrip = false, FName SecondarySlotName = NAME_None);
 
 	// Removes a secondary attachment point from a grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
@@ -1161,6 +1200,10 @@ public:
 	// Removes a secondary attachment point from a grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		bool RemoveSecondaryAttachmentFromGrip(const FBPActorGripInformation & GripToRemoveAttachment, float LerpToTime = 0.25f);
+
+	// Removes a secondary attachment point from a grip
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		bool RemoveSecondaryAttachmentFromGripByID(const uint8 GripID = 0, float LerpToTime = 0.25f);
 
 	// This is for testing, setting it to true allows you to test grip with a non VR enabled pawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")

@@ -4,6 +4,7 @@
 #include "Engine/Engine.h"
 #include "CoreMinimal.h"
 #include "Engine/Texture2D.h"
+#include "Rendering/Texture2DResource.h"
 #include "RenderUtils.h"
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
@@ -60,6 +61,7 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 	}
 
 #if !STEAMVR_SUPPORTED_PLATFORM
+	UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Get OpenVRHMDType returning default value as this is not a steamvr supported platform!!!"));
 	return DeviceType;
 #else
 
@@ -103,7 +105,8 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 			{
 				DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
 			}
-			else if (DeviceModelNumber.Find("oculus quest", ESearchCase::IgnoreCase) != INDEX_NONE)
+			else if ((DeviceModelNumber.Find("oculus quest", ESearchCase::IgnoreCase) != INDEX_NONE) ||
+					(DeviceModelNumber.Find("miramar", ESearchCase::IgnoreCase) != INDEX_NONE))
 			{
 				DeviceType = EBPOpenVRHMDDeviceType::DT_OculusQuestHMD;
 			}
@@ -138,6 +141,10 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 #endif
 				}
 			}
+		}
+		else
+		{
+			UE_LOG(OpenVRExpansionFunctionLibraryLog, Warning, TEXT("Get OpenVRHMDType failed to get the OpenVR property string!!!"));
 		}
 	}
 
@@ -209,7 +216,8 @@ EBPOpenVRControllerDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRControll
 		{
 			DeviceType = EBPOpenVRControllerDeviceType::DT_ViveController;
 		}
-		else if (DeviceModelNumber.Find("oculus quest", ESearchCase::IgnoreCase) != INDEX_NONE) // Vive Wand
+		else if ((DeviceModelNumber.Find("oculus quest", ESearchCase::IgnoreCase) != INDEX_NONE) ||
+				(DeviceModelNumber.Find("miramar", ESearchCase::IgnoreCase) != INDEX_NONE))
 		{
 			DeviceType = EBPOpenVRControllerDeviceType::DT_QuestController;
 		}

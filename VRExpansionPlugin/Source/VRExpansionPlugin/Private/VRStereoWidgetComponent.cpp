@@ -2,6 +2,7 @@
 
 #include "VRStereoWidgetComponent.h"
 #include "VRExpansionFunctionLibrary.h"
+#include "VRBaseCharacter.h"
 #include "TextureResource.h"
 #include "Engine/Texture.h"
 #include "IStereoLayers.h"
@@ -124,7 +125,10 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	bool bIsVisible = IsVisible() && !bIsSleeping && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
+
+	//bool bIsCurVis = IsWidgetVisible();
+
+	bool bIsVisible = /*IsVisible()*/IsWidgetVisible() && !bIsSleeping;// && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
 
 	// If we are set to not use stereo layers or we don't have a valid stereo layer device
 	if (
@@ -137,6 +141,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		if (!bShouldCreateProxy)
 		{
 			bShouldCreateProxy = true;
+			//MarkRenderStateDirty(); // Recreate
+
 			if (LayerId)
 			{
 				if (GEngine->StereoRenderingDevice.IsValid())
@@ -171,7 +177,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 #if !UE_SERVER
 
 	// Same check that the widget runs prior to ticking
-	if (IsRunningDedicatedServer() || (Widget == nullptr && !SlateWidget.IsValid()))
+	if (IsRunningDedicatedServer() || !GetSlateWindow() || GetSlateWindow()->GetContent() == SNullWidget::NullWidget)
 	{
 		return;
 	}
@@ -226,8 +232,23 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				{
 					// Set transform to this relative transform
 
-					Transform = GetComponentTransform().GetRelativeTransform(mpawn->GetTransform());
-					Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
+
+					bool bHandledTransform = false;
+					if (AVRBaseCharacter* BaseVRChar = Cast<AVRBaseCharacter>(mpawn))
+					{
+						if (USceneComponent* CameraParent = BaseVRChar->VRReplicatedCamera->GetAttachParent())
+						{
+							Transform = GetComponentTransform().GetRelativeTransform(CameraParent->GetComponentTransform());
+							Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
+							bHandledTransform = true;
+						}
+					}
+
+					if(!bHandledTransform) // Just use the pawn as we don't know the heirarchy
+					{
+						Transform = GetComponentTransform().GetRelativeTransform(mpawn->GetTransform());
+						Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
+					}
 					
 					// OpenVR y+ Up, +x Right, -z Going away
 					// UE4 z+ up, +y right, +x forward
@@ -340,7 +361,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				if (Shape)
 				{
 					Shape->MarkPendingKill();
-					Shape = NewObject<UStereoLayerShapeCylinder>(this);
+					Shape = NewObject<UStereoLayerShapeCylinder>(this, NAME_None, RF_Public);
 				}
 			}
 
@@ -365,7 +386,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				if (Shape)
 				{
 					Shape->MarkPendingKill();
-					Shape = NewObject<UStereoLayerShapeQuad>(this);
+					Shape = NewObject<UStereoLayerShapeQuad>(this, NAME_None, RF_Public);
 				}
 			}
 			//LayerDsec.ShapeType = IStereoLayers::QuadLayer;
@@ -718,7 +739,7 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 		return nullptr;
 	}
 
-	if (WidgetRenderer && CurrentSlateWidget.IsValid())
+	if (WidgetRenderer && GetSlateWindow() && GetSlateWindow()->GetContent() != SNullWidget::NullWidget)
 	{
 		RequestRedraw();
 		LastWidgetRenderTime = 0;

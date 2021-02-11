@@ -177,8 +177,16 @@ bool UVRGripScriptBase::CallRemoteFunction(UFunction * Function, void * Parms, F
 
 int32 UVRGripScriptBase::GetFunctionCallspace(UFunction * Function, FFrame * Stack)
 {
-	AActor* Owner = GetOwner();// Cast<AActor>(GetOuter());
-	return (Owner ? Owner->GetFunctionCallspace(Function, Stack) : FunctionCallspace::Local);
+	AActor* Owner = GetOwner();
+
+	if (HasAnyFlags(RF_ClassDefaultObject) || !IsSupportedForNetworking() || !Owner)
+	{
+		// This handles absorbing authority/cosmetic
+		return GEngine->GetGlobalFunctionCallspace(Function, this, Stack);
+	}
+
+	// Owner is certified valid now
+	return Owner->GetFunctionCallspace(Function, Stack);
 }
 
 FTransform UVRGripScriptBase::GetGripTransform(const FBPActorGripInformation &Grip, const FTransform & ParentTransform)

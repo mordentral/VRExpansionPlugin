@@ -53,7 +53,7 @@ public:
 
 	// Used to smooth filter the virtual stocks primary hand location
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Smoothing")
-		FBPEuroLowPassFilter StockHandSmoothing;
+		FBPEuroLowPassFilterTrans StockHandSmoothing;
 
 	// Draw debug elements showing the virtual stock location and angles to interacting components
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GunSettings|VirtualStock|Debug")

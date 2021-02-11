@@ -221,13 +221,6 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 					OnVirtualStockModeChanged.Broadcast(bIsMounted);
 				}
 			}
-
-			if (bIsMounted && VirtualStockSettings.bSmoothStockHand)
-			{
-				FVector smoothedTrans = FMath::Lerp(WorldTransform.GetTranslation(), VirtualStockSettings.StockHandSmoothing.RunFilterSmoothing(WorldTransform.GetTranslation(), DeltaTime), VirtualStockSettings.SmoothingValueForStock);
-				WorldTransform.SetTranslation(smoothedTrans);
-
-			}
 		}
 	}
 	else
@@ -320,28 +313,8 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 			{
 				//FVector curLocation; // Current location of the secondary grip
 
-				bool bPulledControllerLoc = false;
-				if (GrippingController->bHasAuthority && Grip.SecondaryGripInfo.SecondaryAttachment->GetOwner() == GrippingController->GetOwner())
-				{
-					if (UGripMotionControllerComponent * OtherController = Cast<UGripMotionControllerComponent>(Grip.SecondaryGripInfo.SecondaryAttachment))
-					{
-						if (!OtherController->bUseWithoutTracking)
-						{
-							FVector Position = FVector::ZeroVector;
-							FRotator Orientation = FRotator::ZeroRotator;
-							float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
-							if (OtherController->GripPollControllerState(Position, Orientation, WorldToMeters))
-							{
-								frontLoc = OtherController->CalcControllerComponentToWorld(Orientation, Position).GetLocation() - BasePoint;
-								///*curLocation*/ frontLoc = OtherController->CalcNewComponentToWorld(FTransform(Orientation, Position)).GetLocation() - BasePoint;
-								bPulledControllerLoc = true;
-							}
-						}
-					}
-				}
-
-				if (!bPulledControllerLoc)
-					/*curLocation*/ frontLoc = Grip.SecondaryGripInfo.SecondaryAttachment->GetComponentLocation() - BasePoint;
+				// Calculates the correct secondary attachment location and sets frontLoc to it
+				CalculateSecondaryLocation(frontLoc, BasePoint, Grip, GrippingController);
 
 				frontLocOrig = (/*WorldTransform*/SecondaryTransform.TransformPosition(Grip.SecondaryGripInfo.SecondaryRelativeTransform.GetLocation())) - BasePoint;
 
@@ -442,6 +415,17 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 		else
 		{
 			WorldTransform = NewWorldTransform;
+		}
+
+		if (bIsMounted && VirtualStockSettings.bSmoothStockHand)
+		{
+			if (GrippingController->GetAttachParent())
+			{
+				FTransform ParentTrans = GrippingController->GetAttachParent()->GetComponentTransform();
+				FTransform ParentRel = WorldTransform * ParentTrans.Inverse();
+				ParentRel.Blend(ParentRel, VirtualStockSettings.StockHandSmoothing.RunFilterSmoothing(ParentRel, DeltaTime), VirtualStockSettings.SmoothingValueForStock);
+				WorldTransform = ParentRel * ParentTrans;
+			}
 		}
 
 		if (Grip.SecondaryGripInfo.bHasSecondaryAttachment)
