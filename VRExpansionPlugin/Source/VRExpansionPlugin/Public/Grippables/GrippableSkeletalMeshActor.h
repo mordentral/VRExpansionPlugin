@@ -46,6 +46,30 @@ public:
 *
 */
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent, ChildCanTick), ClassGroup = (VRExpansionPlugin))
+class VREXPANSIONPLUGIN_API AOptionalRepGrippableSkeletalMeshActor : public ASkeletalMeshActor
+{
+	GENERATED_BODY()
+
+public:
+	AOptionalRepGrippableSkeletalMeshActor(const FObjectInitializer& ObjectInitializer);
+
+	// Skips the attachment replication
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
+		bool bIgnoreAttachmentReplication;
+
+	// Skips the physics replication
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
+		bool bIgnorePhysicsReplication;
+
+	// Fix bugs with replication and bReplicateMovement
+	virtual void OnRep_ReplicateMovement() override;
+	virtual void PostNetReceivePhysicState() override;
+};
+
+/**
+*
+*/
+UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent, ChildCanTick), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API AGrippableSkeletalMeshActor : public ASkeletalMeshActor, public IVRGripInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()

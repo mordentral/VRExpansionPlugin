@@ -13,7 +13,7 @@ UOptionalRepSkeletalMeshComponent::UOptionalRepSkeletalMeshComponent(const FObje
 	bReplicateMovement = true;
 }
 
-void UOptionalRepSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+void UOptionalRepSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
 {
 	Super::PreReplication(ChangedPropertyTracker);
 
@@ -28,6 +28,47 @@ void UOptionalRepSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UOptionalRepSkeletalMeshComponent, bReplicateMovement);
+}
+
+AOptionalRepGrippableSkeletalMeshActor::AOptionalRepGrippableSkeletalMeshActor(const FObjectInitializer& ObjectInitializer) :
+	Super(ObjectInitializer)
+{
+	bIgnoreAttachmentReplication = false;
+	bIgnorePhysicsReplication = false;
+}
+
+void AOptionalRepGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty >& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AOptionalRepGrippableSkeletalMeshActor, bIgnoreAttachmentReplication);
+	DOREPLIFETIME(AOptionalRepGrippableSkeletalMeshActor, bIgnorePhysicsReplication);
+
+	if (bIgnoreAttachmentReplication)
+	{
+		RESET_REPLIFETIME_CONDITION_PRIVATE_PROPERTY(AActor, AttachmentReplication, COND_InitialOnly);
+	}
+	//DISABLE_REPLICATED_PRIVATE_PROPERTY(AActor, AttachmentReplication);
+}
+
+void AOptionalRepGrippableSkeletalMeshActor::OnRep_ReplicateMovement()
+{
+	if (bIgnorePhysicsReplication)
+	{
+		return;
+	}
+
+	Super::OnRep_ReplicateMovement();
+}
+
+void AOptionalRepGrippableSkeletalMeshActor::PostNetReceivePhysicState()
+{
+	if (bIgnorePhysicsReplication)
+	{
+		return;
+	}
+
+	Super::PostNetReceivePhysicState();
 }
 
   //=============================================================================
@@ -659,6 +700,7 @@ void AGrippableSkeletalMeshActor::OnRep_ReplicateMovement()
 
 	Super::OnRep_ReplicateMovement();
 }
+
 void AGrippableSkeletalMeshActor::OnRep_ReplicatedMovement()
 {
 	if (ClientAuthReplicationData.bIsCurrentlyClientAuth && ShouldWeSkipAttachmentReplication(false))
