@@ -92,8 +92,8 @@ public:
 	virtual void ServerMove_PerformMovement(const FCharacterNetworkMoveData& MoveData) override;
 
 	/** Default client to server move RPC data container. Can be bypassed via SetNetworkMoveDataContainer(). */
-	FCharacterNetworkMoveDataContainer VRNetworkMoveDataContainer;
-	FCharacterMoveResponseDataContainer VRMoveResponseDataContainer;
+	//FCharacterNetworkMoveDataContainer VRNetworkMoveDataContainer;
+	//FCharacterMoveResponseDataContainer VRMoveResponseDataContainer;
 	
 	// Use ServerMoveVR instead
 	virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;

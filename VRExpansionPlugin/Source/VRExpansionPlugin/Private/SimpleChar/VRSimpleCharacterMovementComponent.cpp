@@ -68,8 +68,8 @@ UVRSimpleCharacterMovementComponent::UVRSimpleCharacterMovementComponent(const F
 	AdditionalVRInputVector = FVector::ZeroVector;	
 	CustomVRInputVector = FVector::ZeroVector;
 
-	SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
-	SetMoveResponseDataContainer(VRMoveResponseDataContainer);
+	//SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
+	//SetMoveResponseDataContainer(VRMoveResponseDataContainer);
 
 	//bMaintainHorizontalGroundVelocity = true;
 }
