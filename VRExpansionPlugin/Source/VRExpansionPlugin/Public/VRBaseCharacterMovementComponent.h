@@ -57,6 +57,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRBaseCharacterMovementComponent")
 		bool bUseClientControlRotation;
 
+	// When true remote proxies will no longer attempt to estimate player moves when motion smoothing is enabled.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRBaseCharacterMovementComponent|Smoothing")
+		bool bDisableSimulatedTickWhenSmoothingMovement;
+
 	// Adding seated transition
 	void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
 

@@ -57,7 +57,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 
 	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 
-	NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;//Exponential;
+	NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
 
 	bWasInPushBack = false;
 	bIsInPushBack = false;
@@ -72,6 +72,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bJustUnseated = false;
 
 	bUseClientControlRotation = true;
+	bDisableSimulatedTickWhenSmoothingMovement = true;
 
 	SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
 	SetMoveResponseDataContainer(VRMoveResponseDataContainer);
@@ -1538,7 +1539,8 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 				}
 				else
 				{
-					SimulateMovement(DeltaSeconds);
+					if(!bDisableSimulatedTickWhenSmoothingMovement)
+						SimulateMovement(DeltaSeconds);
 				}
 			}
 			else
@@ -1626,8 +1628,29 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			return;
 		}
 
+
+		// Handle my custom VR Offset
+
+		FVector OldWorldLocation = OldLocation;
+		FQuat OldWorldRotation = OldRotation;
+		FVector NewWorldLocation = NewLocation;
+		FQuat NewWorldRotation = NewRotation;
+
+		if (BaseVRCharacterOwner && NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
+		{
+			FTransform NewWorldTransform(NewRotation, NewLocation, UpdatedComponent->GetRelativeScale3D());
+			FTransform CurrentRelative = BaseVRCharacterOwner->OffsetComponentToWorld.GetRelativeTransform(UpdatedComponent->GetComponentTransform());
+			FTransform NewWorld = CurrentRelative * NewWorldTransform;
+
+
+			OldWorldLocation = BaseVRCharacterOwner->OffsetComponentToWorld.GetLocation();
+			OldWorldRotation = BaseVRCharacterOwner->OffsetComponentToWorld.GetRotation();
+			NewWorldLocation = NewWorld.GetLocation();
+			NewWorldRotation = NewWorld.GetRotation();
+		}
+
 		// The mesh doesn't move, but the capsule does so we have a new offset.
-		FVector NewToOldVector = (OldLocation - NewLocation);
+		FVector NewToOldVector = (OldWorldLocation - NewWorldLocation);
 		if (bIsNavWalkingOnServer && FMath::Abs(NewToOldVector.Z) < NavWalkingFloorDistTolerance)
 		{
 			// ignore smoothing on Z axis
@@ -1653,7 +1676,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		{
 			// #TODO: Get this working in the future?
 			// I am currently skipping smoothing on rotation operations
-			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
+			if ((!OldRotation.Equals(NewRotation, 1e-5f)))// || Velocity.IsNearlyZero()))
 			{
 				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
@@ -1683,7 +1706,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		{
 			// #TODO: Get this working in the future?
 			// I am currently skipping smoothing on rotation operations
-			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
+			/*if ((!OldRotation.Equals(NewRotation, 1e-5f)))// || Velocity.IsNearlyZero()))
 			{
 				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
@@ -1691,13 +1714,12 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
 				bNetworkSmoothingComplete = true;
 			}
-			else
-			{
+			else*/
+			{			
 				// Calc rotation needed to keep current world rotation after UpdatedComponent moves.
 				// Take difference between where we were rotated before, and where we're going
-				ClientData->MeshRotationOffset = (NewRotation.Inverse() * OldRotation) * ClientData->MeshRotationOffset;
+				ClientData->MeshRotationOffset = FQuat::Identity;// (NewRotation.Inverse() * OldRotation) * ClientData->MeshRotationOffset;
 				ClientData->MeshRotationTarget = FQuat::Identity;
-
 				const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 			}
