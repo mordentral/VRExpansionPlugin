@@ -1089,7 +1089,7 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 	// Rewind the players position by the new capsule location
 	RewindVRRelativeMovement();
 
-	RestorePreAdditiveVRMotionVelocity();
+	//RestorePreAdditiveVRMotionVelocity();
 
 	// If we are not in the default physics volume then accept the custom fluid friction setting
 	// I set this by default to be ignored as many will not alter the default fluid friction
@@ -1149,6 +1149,8 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) /* - AdditionalVRInputVector*/) / deltaTime);
 		}
 	}
+
+	RestorePreAdditiveVRMotionVelocity();
 }
 
 
