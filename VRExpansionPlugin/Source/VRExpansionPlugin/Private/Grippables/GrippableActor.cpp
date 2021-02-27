@@ -3,6 +3,7 @@
 #include "Grippables/GrippableActor.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
+#include "PhysicsReplication.h"
 #if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"
 #endif
@@ -553,8 +554,8 @@ bool AGrippableActor::PollReplicationEvent()
 		CeaseReplicationBlocking();
 	}
 
-	//ClientAuthReplicationData.LastActorTransform = FTransform::Identity;
-
+	// Tell server to kill us
+	Server_EndClientAuthReplication();
 	return false; // Tell the bucket subsystem to remove us from consideration
 }
 
@@ -591,6 +592,27 @@ void AGrippableActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
+bool AGrippableActor::Server_EndClientAuthReplication_Validate()
+{
+	return true;
+}
+
+void AGrippableActor::Server_EndClientAuthReplication_Implementation()
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (FPhysScene* PhysScene = World->GetPhysicsScene())
+		{
+			if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
+			{
+				if (UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(GetRootComponent()))
+				{
+					PhysicsReplication->RemoveReplicatedTarget(RootPrim);
+				}
+			}
+		}
+	}
+}
 
 bool AGrippableActor::Server_GetClientAuthReplication_Validate(const FRepMovementVR & newMovement)
 {
