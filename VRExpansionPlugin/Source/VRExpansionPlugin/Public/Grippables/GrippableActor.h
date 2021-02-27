@@ -92,7 +92,11 @@ public:
 	UFUNCTION(Category = "Networking")
 		void CeaseReplicationBlocking();
 
-	// Notify the server that we locally gripped something
+	// Notify the server that we are no longer trying to run the throwing auth
+	UFUNCTION(Reliable, Server, WithValidation, Category = "Networking")
+		void Server_EndClientAuthReplication();
+
+	// Notify the server about a new movement rep
 	UFUNCTION(UnReliable, Server, WithValidation, Category = "Networking")
 		void Server_GetClientAuthReplication(const FRepMovementVR & newMovement);
 

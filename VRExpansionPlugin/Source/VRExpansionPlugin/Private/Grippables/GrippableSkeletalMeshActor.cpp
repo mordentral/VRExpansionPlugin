@@ -3,6 +3,7 @@
 #include "Grippables/GrippableSkeletalMeshActor.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
+#include "PhysicsReplication.h"
 #include "Net/Core/PushModel/PushModel.h"
 
 UOptionalRepSkeletalMeshComponent::UOptionalRepSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer)
@@ -522,8 +523,8 @@ bool AGrippableSkeletalMeshActor::PollReplicationEvent()
 		CeaseReplicationBlocking();
 	}
 
-	//ClientAuthReplicationData.LastActorTransform = FTransform::Identity;
-
+	// Tell server to kill us
+	Server_EndClientAuthReplication();
 	return false; // Tell the bucket subsystem to remove us from consideration
 }
 
@@ -559,6 +560,24 @@ void AGrippableSkeletalMeshActor::EndPlay(const EEndPlayReason::Type EndPlayReas
 	Super::EndPlay(EndPlayReason);
 }
 
+bool AGrippableSkeletalMeshActor::Server_EndClientAuthReplication_Validate()
+{
+	return true;
+}
+
+void AGrippableSkeletalMeshActor::Server_EndClientAuthReplication_Implementation()
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (FPhysScene* PhysScene = World->GetPhysicsScene())
+		{
+			if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
+			{
+				PhysicsReplication->RemoveReplicatedTarget(GetSkeletalMeshComponent());
+			}
+		}
+	}
+}
 
 bool AGrippableSkeletalMeshActor::Server_GetClientAuthReplication_Validate(const FRepMovementVR & newMovement)
 {
