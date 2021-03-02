@@ -587,8 +587,10 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 		if (!LodgeData.TargetComponent.IsValid())
 			continue;
 
-		FBox LodgeBox = LodgeData.TargetComponent->Bounds.GetBox();
-		if (LodgeData.TargetComponent.IsValid() && LodgeBox.IsInsideOrOn(Hit.ImpactPoint))
+		FBox LodgeLocalBox = LodgeData.TargetComponent->CalcLocalBounds().GetBox();
+		FVector LocalHit = LodgeData.TargetComponent->GetComponentTransform().InverseTransformPosition(Hit.ImpactPoint);
+		//FBox LodgeBox = LodgeData.TargetComponent->Bounds.GetBox();
+		if (LodgeData.TargetComponent.IsValid() && LodgeLocalBox.IsInsideOrOn(LocalHit))//LodgeBox.IsInsideOrOn(Hit.ImpactPoint))
 		{
 			FVector ForwardVec = LodgeData.TargetComponent->GetForwardVector();
 
