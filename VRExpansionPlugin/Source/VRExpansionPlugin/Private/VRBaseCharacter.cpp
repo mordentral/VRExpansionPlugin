@@ -574,11 +574,14 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 
 bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform TargetTransform, FTransform InitialRelCameraTransform, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
-	if (!this->HasAuthority() || !SeatParent)
+	if (!this->HasAuthority())
 		return false;
 
 	if (bSetSeatedMode)
 	{
+		if (!SeatParent)
+			return false;
+
 		SeatInformation.SeatParent = SeatParent;
 		SeatInformation.bSitting = true;
 		SeatInformation.bZeroToHead = bZeroToHead;
