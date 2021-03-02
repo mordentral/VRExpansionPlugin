@@ -150,5 +150,5 @@ public:
 
 	// Get grip scripts
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")
-		bool GetGripScripts(TArray<UVRGripScriptBase*> & ArrayReference);
+		bool GetGripScripts(TArray<UVRGripScriptBase*>& ArrayReference);
 };

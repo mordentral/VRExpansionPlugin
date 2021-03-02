@@ -205,6 +205,7 @@ void UGS_Melee::UpdateHandPositionAndRotation(FBPGripPair HandPair, FTransform H
 
 			GripInfo->RelativeTransform = RelativeTrans.Inverse();
 			HandPair.HoldingController->UpdatePhysicsHandle(*GripInfo, true);
+			HandPair.HoldingController->NotifyGripTransformChanged(*GripInfo);
 
 			LocDifference = RelativeTrans.GetLocation() - OriginalLoc;
 			RotDifference = RelativeTrans.GetRotation().Rotator().Roll - OriginalRot.Rotator().Roll;
@@ -292,6 +293,7 @@ void UGS_Melee::UpdateHandPosition(FBPGripPair HandPair, FVector HandWorldPositi
 			RelativeTrans.SetLocation(orientationRot.UnrotateVector(currentLoc));
 			GripInfo->RelativeTransform = RelativeTrans.Inverse();
 			HandPair.HoldingController->UpdatePhysicsHandle(*GripInfo, true);
+			HandPair.HoldingController->NotifyGripTransformChanged(*GripInfo);
 
 			LocDifference = RelativeTrans.GetLocation() - OriginalLoc;
 

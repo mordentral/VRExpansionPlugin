@@ -906,6 +906,7 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 		if (FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(Grip))
 		{
 			UpdatePhysicsHandle(Grip.GripID, true);
+			NotifyGripTransformChanged(Grip);
 		}
 
 		Result = EBPVRResultSwitch::OnSucceeded;
@@ -921,6 +922,7 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 			if (FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(Grip))
 			{
 				UpdatePhysicsHandle(Grip.GripID, true);
+				NotifyGripTransformChanged(Grip);
 			}
 
 			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)

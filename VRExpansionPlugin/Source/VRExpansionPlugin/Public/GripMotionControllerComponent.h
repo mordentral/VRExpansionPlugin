@@ -40,7 +40,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogVRMotionController, Log, All);
 //For UE4 Profiler ~ Stat Group
 DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
 
-/** Delegate for notification when the controller grips a new object. */
+/** Delegate for notification when the controllers tracking changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnTrackingEventSignature, const ETrackingStatus &, NewTrackingStatus);
 
 /** Delegate for notification when the controller grips a new object. */
@@ -303,6 +303,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnControllerGripSignature OnSecondaryGripRemoved;
 
+	// Called when an object we hold has its grip transform changed
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerGripSignature OnGripTransformChanged;
+
 	// Gets the hand enum
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))
 		void GetHandType(EControllerHand& Hand);
@@ -442,6 +446,20 @@ public:
 	// If FullRecreate is false then it will only set the COM and actors, otherwise will re-init the entire grip
 	bool UpdatePhysicsHandle(uint8 GripID, bool bFullyRecreate = true);
 	bool UpdatePhysicsHandle(const FBPActorGripInformation & GripInfo, bool bFullyRecreate = true);
+
+	inline void NotifyGripTransformChanged(const FBPActorGripInformation & GripInfo)
+	{
+		if (OnGripTransformChanged.IsBound())
+		{
+			FBPActorGripInformation CurrentGrip;
+			EBPVRResultSwitch Result;
+			GetGripByID(CurrentGrip, GripInfo.GripID, Result);
+			if (Result == EBPVRResultSwitch::OnSucceeded)
+			{
+				OnGripTransformChanged.Broadcast(CurrentGrip);
+			}
+		}
+	}
 
 	// Recreates a grip in situations where the collision type or movement replication type may have been changed
 	inline void ReCreateGrip(FBPActorGripInformation & GripInfo)
@@ -616,14 +634,21 @@ public:
 			}
 			else // If re-creating the grip anyway we don't need to do the below
 			{
+				bool bTransformChanged = !OldGripInfo->RelativeTransform.Equals(Grip.RelativeTransform);
+
 				// If physics settings got changed server side
 				if (!FMath::IsNearlyEqual(OldGripInfo->Stiffness, Grip.Stiffness) ||
 					!FMath::IsNearlyEqual(OldGripInfo->Damping, Grip.Damping) ||
 					OldGripInfo->AdvancedGripSettings.PhysicsSettings != Grip.AdvancedGripSettings.PhysicsSettings ||
-					!OldGripInfo->RelativeTransform.Equals(Grip.RelativeTransform)
+					bTransformChanged
 					)
 				{
 					UpdatePhysicsHandle(Grip);
+
+					if (bTransformChanged)
+					{
+						NotifyGripTransformChanged(Grip);
+					}
 				}
 			}
 		}
