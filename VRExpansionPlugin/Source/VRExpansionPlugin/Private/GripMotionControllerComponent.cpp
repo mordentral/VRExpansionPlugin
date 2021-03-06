@@ -336,7 +336,7 @@ void UGripMotionControllerComponent::EndPlay(const EEndPlayReason::Type EndPlayR
 		DestroyPhysicsHandle(GrippedObjects[i]);
 
 		if (/*HasGripAuthority(GrippedObjects[i]) || */IsServer())
-			DropObjectByInterface(GrippedObjects[i].GrippedObject);
+			DropObjectByInterface(nullptr, GrippedObjects[i].GripID);
 	}
 	GrippedObjects.Empty();
 
@@ -345,7 +345,7 @@ void UGripMotionControllerComponent::EndPlay(const EEndPlayReason::Type EndPlayR
 		DestroyPhysicsHandle(LocallyGrippedObjects[i]);
 
 		if (/*HasGripAuthority(LocallyGrippedObjects[i]) || */IsServer())
-			DropObjectByInterface(LocallyGrippedObjects[i].GrippedObject);
+			DropObjectByInterface(nullptr, LocallyGrippedObjects[i].GripID);
 	}
 	LocallyGrippedObjects.Empty();
 
@@ -3594,7 +3594,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 				Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
 				Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
 			{
-				DropObjectByInterface(Grip.GrippedObject);
+				DropObjectByInterface(nullptr, Grip.GripID);
 			}
 			
 			return false; // Didn't teleport
@@ -4024,9 +4024,13 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	HandleGripArray(LocallyGrippedObjects, ParentTransform, DeltaTime);
 
 	// Empty out the teleport flag, checking original state just in case the player changed it while processing bps
-	if (bOriginalPostTeleport && (GrippedObjects.Num() || LocallyGrippedObjects.Num()))
+	if (bOriginalPostTeleport)
 	{
-		OnTeleportedGrips.Broadcast();
+		if ((GrippedObjects.Num() || LocallyGrippedObjects.Num()))
+		{
+			OnTeleportedGrips.Broadcast();
+		}
+
 		bIsPostTeleport = false;
 	}
 
@@ -5898,7 +5902,7 @@ void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementatio
 	{
 		if (FBPActorGripInformation* GripInfo = GetGripPtrByID(GripID))
 		{
-			DropObjectByInterface(GripInfo->GrippedObject, GripID);
+			DropObjectByInterface(nullptr, GripID);
 			return;
 		}		
 	}
@@ -5912,7 +5916,7 @@ void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementatio
 		return;
 
 	// Drop it, server told us that it was a bad grip
-	DropObjectByInterface(FoundGrip.GrippedObject, FoundGrip.GripID);
+	DropObjectByInterface(nullptr, FoundGrip.GripID);
 }
 
 bool UGripMotionControllerComponent::Server_NotifyHandledTransaction_Validate(uint8 GripID)
