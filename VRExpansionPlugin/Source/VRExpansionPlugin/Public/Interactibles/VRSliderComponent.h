@@ -165,16 +165,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0", UIMin = "0"))
 		float SplineLerpValue;
 
+	// Uses snap increments to move between, not compatible with retain momentum.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 		bool bSliderUsesSnapPoints;
 
 	// Portion of the slider that the slider snaps to on release and when within the threshold distance
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (editcondition = "bSliderUsesSnapPoints", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 		float SnapIncrement;
 
 	// Threshold distance that when within the slider will stay snapped to its current snap increment
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (editcondition = "bSliderUsesSnapPoints", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 		float SnapThreshold;
+
+	// If true then the slider progress will keep incrementing between snap points if outside of the threshold
+	// However events will not be thrown
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (editcondition = "bSliderUsesSnapPoints") )
+		bool bIncrementProgressBetweenSnapPoints;
 
 
 	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
