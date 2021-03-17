@@ -54,6 +54,7 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	bSliderUsesSnapPoints = false;
 	SnapIncrement = 0.1f;
 	SnapThreshold = 0.1f;
+	bIncrementProgressBetweenSnapPoints = false;
 	EventThrowThreshold = 1.0f;
 	bHitEventThreshold = false;
 
@@ -674,7 +675,14 @@ float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUs
 
 	if (bSliderUsesSnapPoints && SnapThreshold < SnapIncrement)
 	{
-		Progress = FMath::GridSnap(Progress, SnapIncrement);
+		if (FMath::Fmod(Progress, SnapIncrement) < SnapThreshold)
+		{
+			Progress = FMath::GridSnap(Progress, SnapIncrement);
+		}
+		else if(!bIncrementProgressBetweenSnapPoints)
+		{
+			Progress = CurrentSliderProgress;
+		}
 	}
 	
 	return Progress;
