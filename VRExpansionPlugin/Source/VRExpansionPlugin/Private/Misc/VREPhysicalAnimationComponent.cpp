@@ -128,13 +128,11 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 
 						for (FPhysicsShapeHandle& Shape : Shapes)
 						{
-
 #if WITH_CHAOS 
 							FKShapeElem* ShapeElem = FChaosUserData::Get<FKShapeElem>(FPhysicsInterface::GetUserData(Shape));
 #elif PHYSICS_INTERFACE_PHYSX
 							FKShapeElem* ShapeElem = FPhysxUserData::Get<FKShapeElem>(FPhysicsInterface::GetUserData(Shape));
 #endif
-
 							if (ShapeElem)
 							{
 								FName TargetBoneName = ShapeElem->GetName();
@@ -206,7 +204,6 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 #else
 #endif
 	*/
-
 	USkeletalMeshComponent* SkeleMesh = GetSkeletalMesh();
 
 	if (!SkeleMesh || !SkeleMesh->Bodies.Num())// || (!SkeleMesh->IsSimulatingPhysics(BaseWeldedBoneDriverNames) && !SkeleMesh->IsWelded()))
@@ -239,6 +236,14 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 						
 						for (FPhysicsShapeHandle& Shape : Shapes)
 						{
+							const FBodyInstance* OriginalBI = ParentBody->GetOriginalBodyInstance(Shape);
+
+							if (OriginalBI != ParentBody)
+							{
+								// Not originally our shape
+								continue;
+							}
+
 							if (FWeldedBoneDriverData* WeldedData = BoneDriverMap.FindByKey(Shape))
 							{
 								bModifiedBody = true;
