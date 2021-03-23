@@ -236,12 +236,16 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 						
 						for (FPhysicsShapeHandle& Shape : Shapes)
 						{
-							const FBodyInstance* OriginalBI = ParentBody->GetOriginalBodyInstance(Shape);
 
-							if (OriginalBI != ParentBody)
+							if (ParentBody->WeldParent)
 							{
-								// Not originally our shape
-								continue;
+								const FBodyInstance* OriginalBI = ParentBody->WeldParent->GetOriginalBodyInstance(Shape);
+
+								if (OriginalBI != ParentBody)
+								{
+									// Not originally our shape
+									continue;
+								}
 							}
 
 							if (FWeldedBoneDriverData* WeldedData = BoneDriverMap.FindByKey(Shape))
