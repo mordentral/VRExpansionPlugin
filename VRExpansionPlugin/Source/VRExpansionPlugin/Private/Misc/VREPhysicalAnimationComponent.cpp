@@ -128,6 +128,16 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 
 						for (FPhysicsShapeHandle& Shape : Shapes)
 						{
+							if (ParentBody->WeldParent)
+							{
+								const FBodyInstance* OriginalBI = ParentBody->WeldParent->GetOriginalBodyInstance(Shape);
+
+								if (OriginalBI != ParentBody)
+								{
+									// Not originally our shape
+									continue;
+								}
+							}
 #if WITH_CHAOS 
 							FKShapeElem* ShapeElem = FChaosUserData::Get<FKShapeElem>(FPhysicsInterface::GetUserData(Shape));
 #elif PHYSICS_INTERFACE_PHYSX
