@@ -24,55 +24,14 @@ void UOptionalRepSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracke
 	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
-void UOptionalRepSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+void UOptionalRepSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty >& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UOptionalRepSkeletalMeshComponent, bReplicateMovement);
 }
 
-AOptionalRepGrippableSkeletalMeshActor::AOptionalRepGrippableSkeletalMeshActor(const FObjectInitializer& ObjectInitializer) :
-	Super(ObjectInitializer)
-{
-	bIgnoreAttachmentReplication = false;
-	bIgnorePhysicsReplication = false;
-}
-
-void AOptionalRepGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty >& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(AOptionalRepGrippableSkeletalMeshActor, bIgnoreAttachmentReplication);
-	DOREPLIFETIME(AOptionalRepGrippableSkeletalMeshActor, bIgnorePhysicsReplication);
-
-	if (bIgnoreAttachmentReplication)
-	{
-		RESET_REPLIFETIME_CONDITION_PRIVATE_PROPERTY(AActor, AttachmentReplication, COND_InitialOnly);
-	}
-	//DISABLE_REPLICATED_PRIVATE_PROPERTY(AActor, AttachmentReplication);
-}
-
-void AOptionalRepGrippableSkeletalMeshActor::OnRep_ReplicateMovement()
-{
-	if (bIgnorePhysicsReplication)
-	{
-		return;
-	}
-
-	Super::OnRep_ReplicateMovement();
-}
-
-void AOptionalRepGrippableSkeletalMeshActor::PostNetReceivePhysicState()
-{
-	if (bIgnorePhysicsReplication)
-	{
-		return;
-	}
-
-	Super::PostNetReceivePhysicState();
-}
-
-  //=============================================================================
+//=============================================================================
 AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UOptionalRepSkeletalMeshComponent>(TEXT("SkeletalMeshComponent0")))
 {
@@ -105,10 +64,10 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 	MinNetUpdateFrequency = 30.0f;
 }
 
-void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
+void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty >& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
+
 	DOREPLIFETIME/*_CONDITION*/(AGrippableSkeletalMeshActor, GripLogicScripts);// , COND_Custom);
 	DOREPLIFETIME(AGrippableSkeletalMeshActor, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(AGrippableSkeletalMeshActor, bAllowIgnoringAttachOnOwner);
@@ -122,7 +81,7 @@ void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLife
 	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, AttachmentWeldReplication, AttachmentReplicationParams);
 }
 
-void AGrippableSkeletalMeshActor::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+void AGrippableSkeletalMeshActor::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
 {
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableSkeletalMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
@@ -266,7 +225,7 @@ void AGrippableSkeletalMeshActor::GatherCurrentMovement()
 	}
 }
 
-bool AGrippableSkeletalMeshActor::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
+bool AGrippableSkeletalMeshActor::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags)
 {
 	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 
@@ -316,7 +275,7 @@ void AGrippableSkeletalMeshActor::SetGripPriority(int NewGripPriority)
 	VRGripInterfaceSettings.AdvancedGripSettings.GripPriority = NewGripPriority;
 }
 
-void AGrippableSkeletalMeshActor::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
+void AGrippableSkeletalMeshActor::TickGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation, float DeltaTime) {}
 void AGrippableSkeletalMeshActor::OnGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) { OnGripped.Broadcast(GrippingController, GripInformation); }
 void AGrippableSkeletalMeshActor::OnGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) { OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed); }
 void AGrippableSkeletalMeshActor::OnChildGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) {}
@@ -328,7 +287,7 @@ void AGrippableSkeletalMeshActor::OnEndUsed_Implementation() {}
 void AGrippableSkeletalMeshActor::OnSecondaryUsed_Implementation() {}
 void AGrippableSkeletalMeshActor::OnEndSecondaryUsed_Implementation() {}
 void AGrippableSkeletalMeshActor::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
-bool AGrippableSkeletalMeshActor::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
+bool AGrippableSkeletalMeshActor::RequestsSocketing_Implementation(USceneComponent*& ParentToSocketTo, FName& OptionalSocketName, FTransform_NetQuantize& RelativeTransform) { return false; }
 
 bool AGrippableSkeletalMeshActor::DenyGripping_Implementation()
 {
@@ -366,7 +325,7 @@ EGripLateUpdateSettings AGrippableSkeletalMeshActor::GripLateUpdateSetting_Imple
 	return VRGripInterfaceSettings.LateUpdateSetting;
 }
 
-void AGrippableSkeletalMeshActor::GetGripStiffnessAndDamping_Implementation(float &GripStiffnessOut, float &GripDampingOut)
+void AGrippableSkeletalMeshActor::GetGripStiffnessAndDamping_Implementation(float& GripStiffnessOut, float& GripDampingOut)
 {
 	GripStiffnessOut = VRGripInterfaceSettings.ConstraintStiffness;
 	GripDampingOut = VRGripInterfaceSettings.ConstraintDamping;
@@ -382,7 +341,7 @@ float AGrippableSkeletalMeshActor::GripBreakDistance_Implementation()
 	return VRGripInterfaceSettings.ConstraintBreakDistance;
 }
 
-void AGrippableSkeletalMeshActor::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
+void AGrippableSkeletalMeshActor::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool& bHadSlotInRange, FTransform& SlotWorldTransform, FName& SlotName, UGripMotionControllerComponent* CallingController, FName OverridePrefix)
 {
 	if (OverridePrefix.IsNone())
 		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
@@ -395,7 +354,7 @@ bool AGrippableSkeletalMeshActor::AllowsMultipleGrips_Implementation()
 	return VRGripInterfaceSettings.bAllowMultipleGrips;
 }
 
-void AGrippableSkeletalMeshActor::IsHeld_Implementation(TArray<FBPGripPair> & HoldingControllers, bool & bIsHeld)
+void AGrippableSkeletalMeshActor::IsHeld_Implementation(TArray<FBPGripPair>& HoldingControllers, bool& bIsHeld)
 {
 	HoldingControllers = VRGripInterfaceSettings.HoldingControllers;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
@@ -409,7 +368,7 @@ bool AGrippableSkeletalMeshActor::AddToClientReplicationBucket()
 		GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
 		ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
 
-		if (UWorld * World = GetWorld())
+		if (UWorld* World = GetWorld())
 			ClientAuthReplicationData.TimeAtInitialThrow = World->GetTimeSeconds();
 
 		return true;
@@ -467,7 +426,7 @@ void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerCo
 	return VRGripInterfaceSettings.InteractionSettings;
 }*/
 
-bool AGrippableSkeletalMeshActor::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
+bool AGrippableSkeletalMeshActor::GetGripScripts_Implementation(TArray<UVRGripScriptBase*>& ArrayReference)
 {
 	ArrayReference = GripLogicScripts;
 	return GripLogicScripts.Num() > 0;
@@ -501,7 +460,7 @@ bool AGrippableSkeletalMeshActor::PollReplicationEvent()
 		{
 			ClientAuthReplicationData.LastActorTransform = CurTransform;
 
-			if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(RootComponent))
+			if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(RootComponent))
 			{
 				// Need to clamp to a max time since start, to handle cases with conflicting collisions
 				if (PrimComp->IsSimulatingPhysics() && ShouldWeSkipAttachmentReplication(false))
@@ -545,9 +504,9 @@ bool AGrippableSkeletalMeshActor::PollReplicationEvent()
 			tempOwner = TopOwner->GetOwner();
 		}
 
-		if (APlayerController * PlayerController = Cast<APlayerController>(TopOwner))
+		if (APlayerController* PlayerController = Cast<APlayerController>(TopOwner))
 		{
-			if (APlayerState * PlayerState = PlayerController->PlayerState)
+			if (APlayerState* PlayerState = PlayerController->PlayerState)
 			{
 				if (ClientAuthReplicationData.ResetReplicationHandle.IsValid())
 				{
@@ -581,7 +540,7 @@ void AGrippableSkeletalMeshActor::CeaseReplicationBlocking()
 
 	if (ClientAuthReplicationData.ResetReplicationHandle.IsValid())
 	{
-		if (UWorld * OurWorld = GetWorld())
+		if (UWorld* OurWorld = GetWorld())
 		{
 			OurWorld->GetTimerManager().ClearTimer(ClientAuthReplicationData.ResetReplicationHandle);
 		}
@@ -623,12 +582,12 @@ void AGrippableSkeletalMeshActor::Server_EndClientAuthReplication_Implementation
 	}
 }
 
-bool AGrippableSkeletalMeshActor::Server_GetClientAuthReplication_Validate(const FRepMovementVR & newMovement)
+bool AGrippableSkeletalMeshActor::Server_GetClientAuthReplication_Validate(const FRepMovementVR& newMovement)
 {
 	return true;
 }
 
-void AGrippableSkeletalMeshActor::Server_GetClientAuthReplication_Implementation(const FRepMovementVR & newMovement)
+void AGrippableSkeletalMeshActor::Server_GetClientAuthReplication_Implementation(const FRepMovementVR& newMovement)
 {
 	if (!VRGripInterfaceSettings.bIsHeld)
 	{
@@ -746,7 +705,7 @@ void AGrippableSkeletalMeshActor::MarkComponentsAsPendingKill()
 
 	for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
 	{
-		if (UObject *SubObject = GripLogicScripts[i])
+		if (UObject* SubObject = GripLogicScripts[i])
 		{
 			SubObject->MarkPendingKill();
 		}
@@ -762,7 +721,7 @@ void AGrippableSkeletalMeshActor::PreDestroyFromReplication()
 	// Destroy any sub-objects we created
 	for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
 	{
-		if (UObject *SubObject = GripLogicScripts[i])
+		if (UObject* SubObject = GripLogicScripts[i])
 		{
 			OnSubobjectDestroyFromReplication(SubObject); //-V595
 			SubObject->PreDestroyFromReplication();
@@ -770,7 +729,7 @@ void AGrippableSkeletalMeshActor::PreDestroyFromReplication()
 		}
 	}
 
-	for (UActorComponent * ActorComp : GetComponents())
+	for (UActorComponent* ActorComp : GetComponents())
 	{
 		// Pending kill components should have already had this called as they were network spawned and are being killed
 		if (ActorComp && !ActorComp->IsPendingKill() && ActorComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -786,7 +745,7 @@ void AGrippableSkeletalMeshActor::BeginDestroy()
 
 	for (int32 i = 0; i < GripLogicScripts.Num(); i++)
 	{
-		if (UObject *SubObject = GripLogicScripts[i])
+		if (UObject* SubObject = GripLogicScripts[i])
 		{
 			SubObject->MarkPendingKill();
 		}

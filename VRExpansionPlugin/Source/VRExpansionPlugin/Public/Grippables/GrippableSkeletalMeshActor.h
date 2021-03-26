@@ -38,32 +38,8 @@ public:
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Component Replication")
 		bool bReplicateMovement;
 
-	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 
-};
-
-/**
-*
-*/
-UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent, ChildCanTick), ClassGroup = (VRExpansionPlugin))
-class VREXPANSIONPLUGIN_API AOptionalRepGrippableSkeletalMeshActor : public ASkeletalMeshActor
-{
-	GENERATED_BODY()
-
-public:
-	AOptionalRepGrippableSkeletalMeshActor(const FObjectInitializer& ObjectInitializer);
-
-	// Skips the attachment replication
-	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
-		bool bIgnoreAttachmentReplication;
-
-	// Skips the physics replication
-	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
-		bool bIgnorePhysicsReplication;
-
-	// Fix bugs with replication and bReplicateMovement
-	virtual void OnRep_ReplicateMovement() override;
-	virtual void PostNetReceivePhysicState() override;
 };
 
 /**
@@ -88,9 +64,9 @@ public:
 	virtual void GatherCurrentMovement() override;
 
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
-		TArray<class UVRGripScriptBase *> GripLogicScripts;
+		TArray<class UVRGripScriptBase*> GripLogicScripts;
 
-	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
+	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
 	// Sets the Deny Gripping variable on the FBPInterfaceSettings struct
 	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
@@ -136,7 +112,7 @@ public:
 		bool RemoveFromClientReplicationBucket();
 
 	UFUNCTION()
-	bool PollReplicationEvent();
+		bool PollReplicationEvent();
 
 	UFUNCTION(Category = "Networking")
 		void CeaseReplicationBlocking();
@@ -174,7 +150,7 @@ public:
 
 	// End Gameplay Tag Interface
 
-	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 
 	// Skips the attachment replication if we are locally owned and our grip settings say that we are a client authed grip.
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
