@@ -15,10 +15,11 @@
 #include "HandSocketComponent.generated.h"
 
 /**
-*
+* A base class for custom hand socket objects
+* Not directly blueprint spawnable as you are supposed to subclass this to add on top your own custom data
 */
 
-UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent, ChildCanTick), ClassGroup = (VRExpansionPlugin))
+UCLASS(Blueprintable, /*meta = (BlueprintSpawnableComponent, ChildCanTick),*/ ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UHandSocketComponent : public USceneComponent, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
@@ -71,6 +72,40 @@ public:
 	// Returns the target relative transform of the hand
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
 		FTransform GetHandRelativePlacement(bool bIsRightHand);
+
+	// Returns the defined hand socket component (if it exists, you need to valid check the return!
+	// If it is a valid return you can then cast to your projects base socket class and handle whatever logic you want
+	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
+	static UHandSocketComponent *  GetHandSocketComponentFromObject(UObject * ObjectToCheck, FName SocketName)
+	{
+		if (AActor* OwningActor = Cast<AActor>(ObjectToCheck))
+		{
+			if (USceneComponent* OwningRoot = Cast<USceneComponent>(OwningActor->GetRootComponent()))
+			{
+				TArray<USceneComponent*> AttachChildren = OwningRoot->GetAttachChildren();
+				for (USceneComponent* AttachChild : AttachChildren)
+				{
+					if (AttachChild && AttachChild->IsA<UHandSocketComponent>() && AttachChild->GetFName() == SocketName)
+					{
+						return Cast<UHandSocketComponent>(AttachChild);
+					}
+				}
+			}
+		}
+		else if (USceneComponent* OwningRoot = Cast<USceneComponent>(ObjectToCheck))
+		{
+			TArray<USceneComponent*> AttachChildren = OwningRoot->GetAttachChildren();
+			for (USceneComponent* AttachChild : AttachChildren)
+			{
+				if (AttachChild && AttachChild->IsA<UHandSocketComponent>() && AttachChild->GetFName() == SocketName)
+				{
+					return Cast<UHandSocketComponent>(AttachChild);
+				}
+			}
+		}
+
+		return nullptr;
+	}
 
 	virtual FTransform GetHandSocketTransform(UGripMotionControllerComponent* QueryController);
 	virtual FTransform GetMeshRelativeTransform(UGripMotionControllerComponent* QueryController);

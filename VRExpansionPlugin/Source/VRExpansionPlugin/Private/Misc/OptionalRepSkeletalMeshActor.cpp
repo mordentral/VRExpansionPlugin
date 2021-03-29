@@ -16,7 +16,11 @@ UNoRepSphereComponent::UNoRepSphereComponent(const FObjectInitializer& ObjectIni
 	SphereRadius = 4.0f;
 	SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 	SetCollisionResponseToAllChannels(ECR_Ignore);
-	SetAllMassScale(0.0f);
+	//SetAllMassScale(0.0f); Engine hates calling this in constructor
+
+
+	BodyInstance.bOverrideMass = true; 
+	BodyInstance.SetMassOverride(0.f);
 }
 
 void UNoRepSphereComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty >& OutLifetimeProps) const
