@@ -248,6 +248,7 @@ public:
 		TArray<FBPLodgeComponentInfo> PenetrationNotifierComponents;
 
 	bool bCheckLodge;
+	bool bIsHeld;
 
 	FVector LastRelativePos;
 	FVector RelativeBetweenGripsCenterPos;

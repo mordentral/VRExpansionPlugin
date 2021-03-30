@@ -32,8 +32,9 @@ UGS_Melee::UGS_Melee(const FObjectInitializer& ObjectInitializer) :
 
 	//bCanEverTick = true;
 	bCheckLodge = false;
+	bIsHeld = false;
 	bCanEverTick = false;
-	bAlwaysTickPenetration = true;
+	bAlwaysTickPenetration = false;
 	COMType = EVRMeleeComType::VRPMELEECOM_BetweenHands;
 	bSkipGripMassChecks = true;
 	bOnlyPenetrateWithTwoHands = false;
@@ -42,8 +43,9 @@ UGS_Melee::UGS_Melee(const FObjectInitializer& ObjectInitializer) :
 void UGS_Melee::UpdateDualHandInfo()
 {
 	TArray<FBPGripPair> HoldingControllers;
-	bool bIsHeld;
-	IVRGripInterface::Execute_IsHeld(GetParent(), HoldingControllers, bIsHeld);
+
+	bool bIsHeldOther;
+	IVRGripInterface::Execute_IsHeld(GetParent(), HoldingControllers, bIsHeldOther);
 
 	float PHand = 0.0f;
 	float SHand = 0.0f;
@@ -377,7 +379,8 @@ void UGS_Melee::OnGrip_Implementation(UGripMotionControllerComponent* GrippingCo
 
 	// This lets us change the grip settings prior to actually starting the grip off
 	//SetTickEnabled(true);
-	bCheckLodge = true;
+	//bCheckLodge = true;
+	bIsHeld = true;
 
 	//if (GrippingController->HasGripAuthority(GripInformation))
 	{
@@ -435,11 +438,15 @@ void UGS_Melee::OnGripRelease_Implementation(UGripMotionControllerComponent* Rel
 	if (!bIsActive)
 		return;
 
+	// Refresh our IsHeld var
+	TArray<FBPGripPair> HoldingControllers;
+	IVRGripInterface::Execute_IsHeld(GetParent(), HoldingControllers, bIsHeld);
+
 	//if(!bAlwaysTickPenetration)
 		//SetTickEnabled(false);
 
-	if (!bAlwaysTickPenetration)
-		bCheckLodge = false;
+	//if (!bAlwaysTickPenetration)
+	//	bCheckLodge = false;
 
 	if (SecondaryHand.IsValid() && SecondaryHand.HoldingController == ReleasingController && SecondaryHand.GripID == GripInformation.GripID)
 	{
@@ -553,7 +560,7 @@ void UGS_Melee::OnBeginPlay_Implementation(UObject * CallingOwner)
 		if (RemainingCount < PenetrationNotifierComponents.Num())
 		{
 			Owner->OnActorHit.AddDynamic(this, &UGS_Melee::OnLodgeHitCallback);
-			bCheckLodge = bAlwaysTickPenetration;
+			bCheckLodge = true;
 		}
 	}
 }
@@ -569,6 +576,10 @@ void UGS_Melee::OnEndPlay_Implementation(const EEndPlayReason::Type EndPlayReaso
 void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVector NormalImpulse, const FHitResult& Hit)
 {
 	if (!bCheckLodge || !bIsActive || bIsLodged || OtherActor == SelfActor)
+		return;
+
+	// Escape out if we are not held and are not set to always tick penetration
+	if (!bAlwaysTickPenetration && !bIsHeld)
 		return;
 
 	TArray<FBPHitSurfaceProperties> AllowedPenetrationSurfaceTypes;
