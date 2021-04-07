@@ -8,9 +8,87 @@
 #include "VRGripInterface.h"
 #include "Components/WidgetComponent.h"
 #include "Components/StereoLayerComponent.h"
+#include "Slate/WidgetRenderer.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/StereoLayerComponent.h"
+#include "Engine/TextureRenderTarget2D.h"
+//#include "Animation/UMGSequencePlayer.h"
+#include "Engine/GameViewportClient.h"
 #include "StereoLayerShapes.h"
 
 #include "VRStereoWidgetComponent.generated.h"
+
+/**
+* A stereo component that displays a widget instead of a texture.
+*/
+UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin), HideCategories = ("Stereoscopic Properties", Collision))
+class VREXPANSIONPLUGIN_API UVRStereoWidgetRenderComponent : public UStereoLayerComponent
+{
+	GENERATED_BODY()
+
+public:
+	UVRStereoWidgetRenderComponent(const FObjectInitializer& ObjectInitializer);
+
+	/** The class of User Widget to create and display an instance of */
+	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+		TSubclassOf<UUserWidget> WidgetClass;
+
+	/** The User Widget object displayed and managed by this component */
+	UPROPERTY(Transient, DuplicateTransient)
+		UUserWidget* Widget;
+
+	/** If true then we sample the requested size of the widget and reset the texture to be that size */
+	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+		bool bDrawAtDesiredSize;
+
+	/** The desired render scale of the widget */
+	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+		float WidgetRenderScale;
+
+	/** The desired render gamma of the widget */
+	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+		float WidgetRenderGamma;
+
+	/** The desired clear color of the render target */
+	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+		FLinearColor RenderTargetClearColor;
+
+	/** If true we will draw to the render target even without active stereo layers and skip the stereo tick*/
+	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+		bool bDrawWithoutStereo;
+
+	/** Rate (HTZ) we should draw the texture at */
+	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+		float DrawRate;
+
+	// Counts how long until next draw
+	float DrawCounter;
+
+	/** The Slate widget to be displayed by this component.  Only one of either Widget or SlateWidget can be used */
+	TSharedPtr<SWidget> SlateWidget;
+
+	class FWidgetRenderer* WidgetRenderer;
+
+	/** The render target being display */
+	UPROPERTY(BlueprintReadOnly, Transient, DuplicateTransient, Category = "WidgetSettings")
+		UTextureRenderTarget2D* RenderTarget;
+
+	/** The slate window that contains the user widget content */
+	TSharedPtr<class SVirtualWindow> SlateWindow;
+
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void DestroyComponent(bool bPromoteChildren/*= false*/) override;
+
+	UFUNCTION(BlueprintCallable, Category = "WidgetSettings")
+	void SetWidgetAndInit(TSubclassOf<UUserWidget> NewWidgetClass);
+
+	void OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld);
+	void InitWidget();
+	void RenderWidget(float DeltaTime);
+	void ReleaseResources();
+};
 
 
 /**
