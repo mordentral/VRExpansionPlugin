@@ -62,14 +62,14 @@ void UVRStereoWidgetRenderComponent::TickComponent(float DeltaTime, enum ELevelT
 {
 
 	IStereoLayers* StereoLayers;
-	if (!bDrawWithoutStereo && (!GEngine->StereoRenderingDevice.IsValid() || (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) == nullptr))
+	if (!GetVisibleFlag() || (!bDrawWithoutStereo && (!GEngine->StereoRenderingDevice.IsValid() || (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) == nullptr)))
 	{
 	}
 	else
 	{
 		DrawCounter += DeltaTime;
 
-		if (DrawRate > 0.0f && DrawCounter >= (1.0f / DrawRate))
+		if (RenderTarget == nullptr || (DrawRate > 0.0f && DrawCounter >= (1.0f / DrawRate)))
 		{
 			if (!IsRunningDedicatedServer())
 			{
@@ -321,12 +321,13 @@ void UVRStereoWidgetRenderComponent::RenderWidget(float DeltaTime)
 		RenderTarget->ClearColor = RenderTargetClearColor;
 		RenderTarget->TargetGamma = WidgetRenderGamma;
 		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, PF_FloatRGBA, false);
-
+		MarkStereoLayerDirty();
 	}
 	else if (RenderTarget->Resource->GetSizeX() != TextureSize.X || RenderTarget->Resource->GetSizeY() != TextureSize.Y)
 	{
 		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, PF_FloatRGBA, false);
 		RenderTarget->UpdateResourceImmediate();
+		MarkStereoLayerDirty();
 	}
 
 	WidgetRenderer->DrawWidget(RenderTarget, MyWidget, WidgetRenderScale, TextureSize, DeltaTime);//DeltaTime);
