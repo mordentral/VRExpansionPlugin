@@ -291,13 +291,21 @@ void UVRStereoWidgetRenderComponent::RenderWidget(float DeltaTime)
 		FVector2D DesiredSize = SlateWindow->GetDesiredSize();
 		DesiredSize.X = FMath::RoundToInt(DesiredSize.X);
 		DesiredSize.Y = FMath::RoundToInt(DesiredSize.Y);
-		TextureSize = DesiredSize;// .IntPoint();
 
-		WidgetRenderer->SetIsPrepassNeeded(false);
-
-		if (SlateWindow->GetSizeInScreen() != DesiredSize)
+		if (!DesiredSize.IsNearlyZero())
 		{
-			SlateWindow->Resize(TextureSize);
+			TextureSize = DesiredSize;// .IntPoint();
+
+			WidgetRenderer->SetIsPrepassNeeded(false);
+
+			if (SlateWindow->GetSizeInScreen() != DesiredSize)
+			{
+				SlateWindow->Resize(TextureSize);
+			}
+		}
+		else
+		{
+			WidgetRenderer->SetIsPrepassNeeded(true);
 		}
 	}
 	else
