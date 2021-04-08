@@ -4,6 +4,8 @@
 #include "Engine/CollisionProfile.h"
 #include "Net/UnrealNetwork.h"
 
+DEFINE_LOG_CATEGORY(LogVRHandSocketComponent);
+
   //=============================================================================
 UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -49,17 +51,25 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 
 	if (bFlipForLeftHand)
 	{
-		EControllerHand HandType;
-		QueryController->GetHandType(HandType);
-		if (HandType == EControllerHand::Left)
+		if (!QueryController)
 		{
-			FTransform ReturnTrans = this->GetRelativeTransform();
-			ReturnTrans.Mirror(MirrorAxis, FlipAxis);
-			if (USceneComponent* AttParent = this->GetAttachParent())
+			// No controller input
+			UE_LOG(LogVRMotionController, Warning, TEXT("HandSocketComponent::GetHandSocketTransform was missing required motion controller for bFlipForLeftand! Check that you are passing a controller into GetClosestSocketInRange!"));
+		}
+		else
+		{
+			EControllerHand HandType;
+			QueryController->GetHandType(HandType);
+			if (HandType == EControllerHand::Left)
 			{
-				ReturnTrans = ReturnTrans * AttParent->GetComponentTransform();
+				FTransform ReturnTrans = this->GetRelativeTransform();
+				ReturnTrans.Mirror(MirrorAxis, FlipAxis);
+				if (USceneComponent* AttParent = this->GetAttachParent())
+				{
+					ReturnTrans = ReturnTrans * AttParent->GetComponentTransform();
+				}
+				return ReturnTrans;
 			}
-			return ReturnTrans;
 		}
 	}
 

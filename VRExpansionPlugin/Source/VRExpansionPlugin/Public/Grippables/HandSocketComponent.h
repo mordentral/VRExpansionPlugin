@@ -14,6 +14,8 @@
 #include "Animation/AnimSequence.h"
 #include "HandSocketComponent.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogVRHandSocketComponent, Log, All);
+
 /**
 * A base class for custom hand socket objects
 * Not directly blueprint spawnable as you are supposed to subclass this to add on top your own custom data
