@@ -346,7 +346,7 @@ void AGrippableSkeletalMeshActor::ClosestGripSlotInRange_Implementation(FVector 
 	if (OverridePrefix.IsNone())
 		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
 
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform, SlotName);
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform, SlotName, CallingController);
 }
 
 bool AGrippableSkeletalMeshActor::AllowsMultipleGrips_Implementation()
