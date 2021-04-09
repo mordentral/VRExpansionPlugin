@@ -69,7 +69,7 @@ void UVRStereoWidgetRenderComponent::TickComponent(float DeltaTime, enum ELevelT
 	{
 		DrawCounter += DeltaTime;
 
-		if (RenderTarget == nullptr || (DrawRate > 0.0f && DrawCounter >= (1.0f / DrawRate)))
+		if (DrawRate > 0.0f && DrawCounter >= (1.0f / DrawRate))
 		{
 			if (!IsRunningDedicatedServer())
 			{
@@ -103,6 +103,16 @@ void UVRStereoWidgetRenderComponent::BeginPlay()
 	if (WidgetClass.Get() != nullptr)
 	{
 		InitWidget();
+
+		IStereoLayers* StereoLayers;
+		if (!GetVisibleFlag() || (!bDrawWithoutStereo && (!GEngine->StereoRenderingDevice.IsValid() || (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) == nullptr)))
+		{
+		}
+		else
+		{
+			// Initial render
+			RenderWidget(0.0f);
+		}
 	}
 }
 
