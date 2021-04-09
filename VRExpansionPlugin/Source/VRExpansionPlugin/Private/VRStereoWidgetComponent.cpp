@@ -325,17 +325,19 @@ void UVRStereoWidgetRenderComponent::RenderWidget(float DeltaTime)
 
 	if (RenderTarget == nullptr)
 	{
+		const EPixelFormat requestedFormat = FSlateApplication::Get().GetRenderer()->GetSlateRecommendedColorFormat();
 		RenderTarget = NewObject<UTextureRenderTarget2D>();
 		check(RenderTarget);
 		RenderTarget->AddToRoot();
 		RenderTarget->ClearColor = RenderTargetClearColor;
 		RenderTarget->TargetGamma = WidgetRenderGamma;
-		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, PF_FloatRGBA, false);
+		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, requestedFormat /*PF_B8G8R8A8*/, false);
 		MarkStereoLayerDirty();
 	}
 	else if (RenderTarget->Resource->GetSizeX() != TextureSize.X || RenderTarget->Resource->GetSizeY() != TextureSize.Y)
 	{
-		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, PF_FloatRGBA, false);
+		const EPixelFormat requestedFormat = FSlateApplication::Get().GetRenderer()->GetSlateRecommendedColorFormat();
+		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, requestedFormat /*PF_B8G8R8A8*/, false);
 		RenderTarget->UpdateResourceImmediate();
 		MarkStereoLayerDirty();
 	}

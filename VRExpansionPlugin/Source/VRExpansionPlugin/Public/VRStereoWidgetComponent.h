@@ -30,7 +30,7 @@ public:
 	UVRStereoWidgetRenderComponent(const FObjectInitializer& ObjectInitializer);
 
 	/** The class of User Widget to create and display an instance of */
-	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		TSubclassOf<UUserWidget> WidgetClass;
 
 	/** The User Widget object displayed and managed by this component */
@@ -38,27 +38,27 @@ public:
 		UUserWidget* Widget;
 
 	/** If true then we sample the requested size of the widget and reset the texture to be that size */
-	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		bool bDrawAtDesiredSize;
 
 	/** The desired render scale of the widget */
-	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		float WidgetRenderScale;
 
 	/** The desired render gamma of the widget */
-	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		float WidgetRenderGamma;
 
 	/** The desired clear color of the render target */
-	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		FLinearColor RenderTargetClearColor;
 
 	/** If true we will draw to the render target even without active stereo layers and skip the stereo tick*/
-	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		bool bDrawWithoutStereo;
 
 	/** Rate (HTZ) we should draw the texture at */
-	UPROPERTY(EditAnywhere, Category = "WidgetSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		float DrawRate;
 
 	// Counts how long until next draw
