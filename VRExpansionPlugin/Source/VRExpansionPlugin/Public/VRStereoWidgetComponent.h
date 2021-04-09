@@ -49,6 +49,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		float WidgetRenderGamma;
 
+	/** Automatically correct for gamma */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
+	bool bUseGammaCorrection;
+
 	/** The desired clear color of the render target */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
 		FLinearColor RenderTargetClearColor;

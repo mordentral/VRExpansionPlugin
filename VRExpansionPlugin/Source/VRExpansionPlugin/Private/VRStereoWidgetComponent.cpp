@@ -48,6 +48,7 @@ UVRStereoWidgetRenderComponent::UVRStereoWidgetRenderComponent(const FObjectInit
 	Widget = nullptr;
 	WidgetRenderScale = 1.0f;
 	WidgetRenderGamma = 1.0f;
+	bUseGammaCorrection = false;
 	WidgetRenderer = nullptr;
 	RenderTarget = nullptr;
 	bDrawAtDesiredSize = true;
@@ -278,7 +279,6 @@ void UVRStereoWidgetRenderComponent::RenderWidget(float DeltaTime)
 
 	if (WidgetRenderer == nullptr)
 	{
-		const bool bUseGammaCorrection = true;
 		WidgetRenderer = new FWidgetRenderer(bUseGammaCorrection);
 		check(WidgetRenderer);
 	}
