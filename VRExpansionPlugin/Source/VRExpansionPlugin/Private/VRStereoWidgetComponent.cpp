@@ -238,6 +238,16 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 							bHandledTransform = true;
 						}
 					}
+					else if (UCameraComponent* Camera = mpawn->FindComponentByClass<UCameraComponent>())
+					{
+						// Look for generic camera comp and use its attach parent
+						if (USceneComponent* CameraParent = Camera->GetAttachParent())
+						{
+							Transform = GetComponentTransform().GetRelativeTransform(CameraParent->GetComponentTransform());
+							Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
+							bHandledTransform = true;							
+						}
+					}
 
 					if(!bHandledTransform) // Just use the pawn as we don't know the heirarchy
 					{
