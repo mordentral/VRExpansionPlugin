@@ -75,6 +75,7 @@ UInversePhysicsSkeletalMeshComponent::UInversePhysicsSkeletalMeshComponent(const
 {
 	bReplicateMovement = true;
 	this->EndPhysicsTickFunction.bCanEverTick = false;
+	bReplicatePhysicsToAutonomousProxy = false;
 
 	EndPhysicsTickFunctionVR.TickGroup = TG_EndPhysics;
 	EndPhysicsTickFunctionVR.bCanEverTick = true;
