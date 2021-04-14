@@ -366,21 +366,16 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				if (Shape)
 				{
 					Shape->MarkPendingKill();
+					Shape = NewObject<UStereoLayerShapeCylinder>(this);
 				}
-
-				Cylinder = NewObject<UStereoLayerShapeCylinder>(this, NAME_None, RF_Public);
-				Shape = Cylinder;
 			}
 
-			if (Cylinder)
-			{
-				const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
-				const float Radius = GetDrawSize().X / ArcAngleRadians;
+			const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
+			const float Radius = GetDrawSize().X / ArcAngleRadians;
 
-				Cylinder->Height = GetDrawSize().Y;//CylinderHeight_DEPRECATED;
-				Cylinder->OverlayArc = CylinderArcAngle;// CylinderOverlayArc_DEPRECATED;
-				Cylinder->Radius = Radius;// CylinderRadius_DEPRECATED;
-			}
+			Cylinder->Height = GetDrawSize().Y;//CylinderHeight_DEPRECATED;
+			Cylinder->OverlayArc = CylinderArcAngle;// CylinderOverlayArc_DEPRECATED;
+			Cylinder->Radius = Radius;// CylinderRadius_DEPRECATED;
 			break;
 
 			//LayerDsec.ShapeType = IStereoLayers::CylinderLayer;
@@ -396,8 +391,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				if (Shape)
 				{
 					Shape->MarkPendingKill();
+					Shape = NewObject<UStereoLayerShapeQuad>(this);
 				}
-				Shape = NewObject<UStereoLayerShapeQuad>(this);
 			}
 			//LayerDsec.ShapeType = IStereoLayers::QuadLayer;
 		}break;
