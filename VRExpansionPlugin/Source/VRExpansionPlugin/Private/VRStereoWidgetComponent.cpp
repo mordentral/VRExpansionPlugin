@@ -361,6 +361,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		{
 			UStereoLayerShapeCylinder* Cylinder = Cast<UStereoLayerShapeCylinder>(Shape);
 
+			// Skipping this for this update as there is an issue with 4.25 that is fixed in 4.26
+			/*
 			if (!Cylinder)
 			{
 				if (Shape)
@@ -369,13 +371,17 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 					Shape = NewObject<UStereoLayerShapeCylinder>(this);
 				}
 			}
+			*/
 
-			const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
-			const float Radius = GetDrawSize().X / ArcAngleRadians;
+			if (Cylinder)
+			{
+				const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
+				const float Radius = GetDrawSize().X / ArcAngleRadians;
 
-			Cylinder->Height = GetDrawSize().Y;//CylinderHeight_DEPRECATED;
-			Cylinder->OverlayArc = CylinderArcAngle;// CylinderOverlayArc_DEPRECATED;
-			Cylinder->Radius = Radius;// CylinderRadius_DEPRECATED;
+				Cylinder->Height = GetDrawSize().Y;//CylinderHeight_DEPRECATED;
+				Cylinder->OverlayArc = CylinderArcAngle;// CylinderOverlayArc_DEPRECATED;
+				Cylinder->Radius = Radius;// CylinderRadius_DEPRECATED;
+			}
 			break;
 
 			//LayerDsec.ShapeType = IStereoLayers::CylinderLayer;
@@ -384,6 +390,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		case EWidgetGeometryMode::Plane:
 		default:
 		{
+			// Skipping this for this update as there is an issue with 4.25 that is fixed in 4.26
+			/*
 			UStereoLayerShapeQuad* Quad = Cast<UStereoLayerShapeQuad>(Shape);
 
 			if (!Quad)
@@ -395,6 +403,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				}
 			}
 			//LayerDsec.ShapeType = IStereoLayers::QuadLayer;
+			*/
 		}break;
 		}
 
