@@ -11,7 +11,11 @@
 #include "GameplayTagAssetInterface.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimInstanceProxy.h"
+#include "Animation/PoseSnapshot.h"
 #include "HandSocketComponent.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRHandSocketComponent, Log, All);
@@ -21,7 +25,31 @@ DECLARE_LOG_CATEGORY_EXTERN(LogVRHandSocketComponent, Log, All);
 * Not directly blueprint spawnable as you are supposed to subclass this to add on top your own custom data
 */
 
-UCLASS(Blueprintable, /*meta = (BlueprintSpawnableComponent, ChildCanTick),*/ ClassGroup = (VRExpansionPlugin))
+USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
+struct VREXPANSIONPLUGIN_API FBPVRHandPoseBonePair
+{
+	GENERATED_BODY()
+public:
+
+	// Distance to offset to get center of waist from tracked parent location
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
+		FName BoneName;
+
+	// Initial "Resting" location of the tracker parent, assumed to be the calibration zero
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
+		FQuat DeltaPose;
+
+	FBoneReference ReferenceToConstruct;
+
+	FBPVRHandPoseBonePair()
+	{
+		BoneName = NAME_None;
+		DeltaPose = FQuat::Identity;
+	}
+};
+
+
+UCLASS(Blueprintable, ClassGroup = (VRExpansionPlugin), hideCategories = ("Component Tick", Events, Physics, Lod, "Asset User Data", Collision))
 class VREXPANSIONPLUGIN_API UHandSocketComponent : public USceneComponent, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
@@ -39,14 +67,19 @@ public:
 		TEnumAsByte<EAxis::Type> FlipAxis;
 
 	// Relative placement of the hand to this socket
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+	UPROPERTY(EditAnywhere, /*BlueprintReadWrite, */Category = "Hand Socket Data")
 		FTransform HandRelativePlacement;
 
 	// Target Slot Prefix
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		FName SlotPrefix;
 
+	// If true the hand meshes relative transform will be de-coupled from the hand socket
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+		bool bDecoupleMeshPlacement;
+
 	// If true we should only be used to snap mesh to us, not for the actual socket transform
+	// Will act like free gripping but the mesh will snap into position
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		bool bOnlySnapMesh;
 
@@ -59,21 +92,39 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		float OverrideDistance;
 
+	// If true we are expected to have a list of custom deltas for bones to overlay onto our base pose
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
+		bool bUseCustomPoseDeltas;
+
+	// Custom rotations that are added on top of an animations bone rotation to make a final transform
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
+		TArray<FBPVRHandPoseBonePair> CustomPoseDeltas;
+
 	// Primary hand animation, for both hands if they share animations, right hand if they don't
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+	// If using a custom pose delta this is expected to be the base pose
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
 		UAnimSequence* HandTargetAnimation;
 
-	// If we have a seperate left hand animation then set it here
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
-		UAnimSequence* HandTargetAnimationLeft;
+	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, bool bUseRawDataOnly);
 
-	// Returns the target animation of the hand
+	// Returns the base target animation of the hand (if there is one)
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
-		UAnimSequence* GetTargetAnimation(bool bIsRightHand);
+		UAnimSequence* GetTargetAnimation();
+
+	// Returns the target animation of the hand blended with the delta rotations if there are any
+	// If the hand has no target animation is uses the reference pose
+	// To use the reference pose the node requires a target mesh to be passed in
+	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
+		bool GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, USkeletalMeshComponent* TargetMesh = nullptr);
 
 	// Returns the target relative transform of the hand
+	//UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
+		FTransform GetHandRelativePlacement();
+
+	// Returns the target relative transform of the hand to the gripped object
+	// If you want the transform mirrored you need to pass in which hand is requesting the information
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
-		FTransform GetHandRelativePlacement(bool bIsRightHand);
+	FTransform GetMeshRelativeTransform(bool bIsRightHand);
 
 	// Returns the defined hand socket component (if it exists, you need to valid check the return!
 	// If it is a valid return you can then cast to your projects base socket class and handle whatever logic you want
@@ -110,7 +161,6 @@ public:
 	}
 
 	virtual FTransform GetHandSocketTransform(UGripMotionControllerComponent* QueryController);
-	virtual FTransform GetMeshRelativeTransform(UGripMotionControllerComponent* QueryController);
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -118,7 +168,7 @@ public:
 #if WITH_EDITORONLY_DATA
 	static void AddReferencedObjects(UObject* InThis, FReferenceCollector& Collector);
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
-
+	void PoseVisualizationToAnimation(bool bForceRefresh = false);
 	bool bTickedPose;
 #endif
 	virtual void OnRegister() override;
@@ -151,7 +201,8 @@ public:
 	/** mesh component to indicate hand placement */
 #if WITH_EDITORONLY_DATA
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Transient, Category = "Hand Visualization")
-		class USkeletalMeshComponent* HandVisualizerComponent;
+		//class USkeletalMeshComponent* HandVisualizerComponent;
+	class UPoseableMeshComponent* HandVisualizerComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		class USkeletalMesh* VisualizationMesh;
@@ -161,5 +212,24 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Visualization")
 		UMaterial* HandPreviewMaterial;
+
 #endif
+};
+
+UCLASS(transient, Blueprintable, hideCategories = AnimInstance, BlueprintType)
+class VREXPANSIONPLUGIN_API UHandSocketAnimInstance : public UAnimInstance
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, transient, Category = "Socket Data")
+		UHandSocketComponent* OwningSocket;
+
+	virtual void NativeInitializeAnimation() override
+	{
+		Super::NativeInitializeAnimation();
+
+		OwningSocket = Cast<UHandSocketComponent>(GetOwningComponent()->GetAttachParent());
+	}
 };

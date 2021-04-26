@@ -19,6 +19,11 @@
       "Name": "VRExpansionPlugin",
       "Type": "RunTime",
       "LoadingPhase": "Default"
+    },
+	{
+      "Name": "VRExpansionEditor",
+      "Type": "UnCookedOnly",
+	  "LoadingPhase": "PostEngineInit"
     }
   ],
   "Plugins": [

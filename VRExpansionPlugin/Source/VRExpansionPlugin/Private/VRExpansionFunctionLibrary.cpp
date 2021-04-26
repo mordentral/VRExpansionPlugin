@@ -213,9 +213,6 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 			{
 				if (UHandSocketComponent* SocketComp = Cast<UHandSocketComponent>(AttachChild))
 				{
-					if (SocketComp->bOnlySnapMesh)
-						continue;
-
 					if (SocketComp->SlotPrefix.ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
 					{
 						float vecLen = FVector::DistSquared(RelativeWorldLocation, SocketComp->GetRelativeLocation());
@@ -295,9 +292,6 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 		{
 			if (UHandSocketComponent* SocketComp = Cast<UHandSocketComponent>(AttachChild))
 			{
-				if (SocketComp->bOnlySnapMesh)
-					continue;
-
 				if (SocketComp->SlotPrefix.ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
 				{
 					float vecLen = FVector::DistSquared(RelativeWorldLocation, SocketComp->GetRelativeLocation());
