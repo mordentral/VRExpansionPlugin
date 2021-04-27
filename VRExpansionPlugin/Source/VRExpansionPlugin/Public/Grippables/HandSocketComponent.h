@@ -117,6 +117,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
 		bool GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, USkeletalMeshComponent* TargetMesh = nullptr);
 
+	// Converts an animation sequence into a pose snapshot
+	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data", meta = (bIgnoreSelf = "true"))
+		static bool GetAnimationSequenceAsPoseSnapShot(UAnimSequence * InAnimationSequence, FPoseSnapshot& OutPoseSnapShot, USkeletalMeshComponent* TargetMesh = nullptr);
+
 	// Returns the target relative transform of the hand
 	//UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
 		FTransform GetHandRelativePlacement();

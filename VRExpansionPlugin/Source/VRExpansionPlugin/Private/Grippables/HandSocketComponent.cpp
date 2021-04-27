@@ -41,6 +41,77 @@ UAnimSequence* UHandSocketComponent::GetTargetAnimation()
 	return HandTargetAnimation;
 }
 
+bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InAnimationSequence, FPoseSnapshot& OutPoseSnapShot, USkeletalMeshComponent* TargetMesh)
+{
+	if (InAnimationSequence)
+	{
+		OutPoseSnapShot.SkeletalMeshName = InAnimationSequence->GetSkeleton()->GetFName();
+		OutPoseSnapShot.SnapshotName = InAnimationSequence->GetFName();
+		OutPoseSnapShot.BoneNames.Empty();
+		OutPoseSnapShot.LocalTransforms.Empty();
+
+		if (TargetMesh)
+		{
+			TargetMesh->GetBoneNames(OutPoseSnapShot.BoneNames);
+		}
+		else if (USkeleton* AnimationSkele = InAnimationSequence->GetSkeleton())
+		{
+			// pre-size the array to avoid unnecessary reallocation
+			OutPoseSnapShot.BoneNames.AddUninitialized(AnimationSkele->GetReferenceSkeleton().GetNum());
+			for (int32 i = 0; i < AnimationSkele->GetReferenceSkeleton().GetNum(); i++)
+			{
+				OutPoseSnapShot.BoneNames[i] = AnimationSkele->GetReferenceSkeleton().GetBoneName(i);
+			}
+		}
+		else
+		{
+			return false;
+		}
+
+		for (int32 TrackIndex = 0; TrackIndex < InAnimationSequence->GetRawAnimationData().Num(); ++TrackIndex)
+		{
+			if (TrackIndex >= OutPoseSnapShot.BoneNames.Num())
+			{
+				break;
+			}
+
+			FRawAnimSequenceTrack& RawTrack = InAnimationSequence->GetRawAnimationTrack(TrackIndex);
+
+			bool bHadLoc = false;
+			bool bHadRot = false;
+			bool bHadScale = false;
+			FVector Loc = FVector::ZeroVector;
+			FQuat Rot = FQuat::Identity;
+			FVector Scale = FVector(1.0f, 1.0f, 1.0f);
+
+			if (RawTrack.PosKeys.Num())
+			{
+				Loc = RawTrack.PosKeys[0];
+				bHadLoc = true;
+			}
+
+			if (RawTrack.RotKeys.Num())
+			{
+				Rot = RawTrack.RotKeys[0];
+				bHadRot = true;
+			}
+
+			if (RawTrack.ScaleKeys.Num())
+			{
+				Scale = RawTrack.ScaleKeys[0];
+				bHadScale = true;
+			}
+
+			FTransform FinalTrans(Rot, Loc, Scale);
+			OutPoseSnapShot.LocalTransforms.Add(FinalTrans);
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
 bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, USkeletalMeshComponent* TargetMesh)
 {
 	if (HandTargetAnimation)// && bUseCustomPoseDeltas && CustomPoseDeltas.Num() > 0)
