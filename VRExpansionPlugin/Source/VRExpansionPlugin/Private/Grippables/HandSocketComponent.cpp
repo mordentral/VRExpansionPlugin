@@ -215,12 +215,15 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand)
 {
 	// Optionally mirror for left hand
 	FTransform ReturnTrans = (GetHandRelativePlacement() * this->GetRelativeTransform());
-	FQuat OriginalRot = ReturnTrans.GetRotation();
 	if (bFlipForLeftHand && !bIsRightHand)
 	{
-		ReturnTrans.Mirror(MirrorAxis, FlipAxis);
+		ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(FVector(1.f, 0.f, 0.f)));
+		FRotationMatrix test(ReturnTrans.GetRotation().Rotator());
+		test.Mirror(EAxis::X, EAxis::Z);
+		ReturnTrans.SetRotation(test.ToQuat());
+		//ReturnTrans.Mirror(MirrorAxis, FlipAxis);
 	}
-	ReturnTrans.SetRotation(OriginalRot);
+
 	return ReturnTrans;
 }
 
