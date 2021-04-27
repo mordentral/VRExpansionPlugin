@@ -2,13 +2,13 @@
 
 #pragma once
 #include "CoreMinimal.h"
-//#if WITH_CHAOS
-//#include "Plugins/Experimental/ChaosVehicles/WheeledVehiclePawn.h"
-//#include "Plugins/Experimental/ChaosVehicles/ChaosWheeledVehicleMovementComponent.h"
-#if PHYSICS_INTERFACE_PHYSX
-#include "WheeledVehicle.h"
-#include "WheeledVehicleMovementComponent.h"
-#include "SimpleWheeledVehicleMovementComponent.h"
+#if WITH_CHAOS
+#include "WheeledVehiclePawn.h"
+#include "ChaosWheeledVehicleMovementComponent.h"
+//#else if PHYSICS_INTERFACE_PHYSX
+//#include "WheeledVehicle.h"
+//#include "WheeledVehicleMovementComponent.h"
+//#include "SimpleWheeledVehicleMovementComponent.h"
 #endif
 
 #include "UObject/ObjectMacros.h"
@@ -25,9 +25,7 @@
 * player can control the vehicle as if they were locally possessed into it in a multiplayer enviroment (no lag).
 */
 UCLASS(config = Game, BlueprintType)
-class VREXPANSIONPLUGIN_API AVRWheeledVehicle : public AWheeledVehicle
-//UCLASS(config = Game, BlueprintType)
-//class VREXPANSIONPLUGIN_API AVRWheeledVehicle : public APawn//AWheeledVehiclePawn
+class VREXPANSIONPLUGIN_API AVRWheeledVehicle : public AWheeledVehiclePawn
 //#endif
 {
 	GENERATED_BODY()
@@ -134,19 +132,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Pawn")
 		virtual bool SetOverrideController(AController * NewController)
 	{
-#if PHYSICS_INTERFACE_PHYSX
-		if (UWheeledVehicleMovementComponent * MoveComp = Cast<UWheeledVehicleMovementComponent>(this->GetMovementComponent()))
-		{
-			MoveComp->SetOverrideController(NewController);
-			return true;
-		}
-#else
-		/*if (UChaosWheeledVehicleMovementComponent* MoveComp = Cast<UChaosWheeledVehicleMovementComponent>(this->GetMovementComponent()))
+#//if PHYSICS_INTERFACE_PHYSX
+		/*if (UWheeledVehicleMovementComponent * MoveComp = Cast<UWheeledVehicleMovementComponent>(this->GetMovementComponent()))
 		{
 			MoveComp->SetOverrideController(NewController);
 			return true;
 		}*/
-#endif
+//#else
+		if (UChaosWheeledVehicleMovementComponent* MoveComp = Cast<UChaosWheeledVehicleMovementComponent>(this->GetMovementComponent()))
+		{
+			MoveComp->SetOverrideController(NewController);
+			return true;
+		}
+//#endif
 		
 		return false;
 	}

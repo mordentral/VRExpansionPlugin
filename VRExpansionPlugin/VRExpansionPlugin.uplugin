@@ -26,10 +26,10 @@
 	  "LoadingPhase": "PostEngineInit"
     }
   ],
-  "Plugins": [
-    {
-      "Name": "PhysXVehicles",
-      "Enabled": true
-    }
+	"Plugins": [
+		{
+			"Name": "ChaosVehiclesPlugin",
+			"Enabled": true
+		}
 	]
 }
