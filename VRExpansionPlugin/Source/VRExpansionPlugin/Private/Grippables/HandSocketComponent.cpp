@@ -358,7 +358,7 @@ void UHandSocketComponent::OnRegister()
 void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
 {
 
-	if (!HandVisualizerComponent)
+	if (!HandVisualizerComponent || !HandVisualizerComponent->SkeletalMesh)
 		return;
 
 	TArray<FTransform> LocalPoses;
