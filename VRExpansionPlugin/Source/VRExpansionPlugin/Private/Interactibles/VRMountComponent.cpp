@@ -436,7 +436,7 @@ void UVRMountComponent::OnEndSecondaryUsed_Implementation() {}
 void UVRMountComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool UVRMountComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
-bool UVRMountComponent::DenyGripping_Implementation()
+bool UVRMountComponent::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return bDenyGripping;
 }

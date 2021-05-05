@@ -289,7 +289,7 @@ void AGrippableSkeletalMeshActor::OnEndSecondaryUsed_Implementation() {}
 void AGrippableSkeletalMeshActor::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool AGrippableSkeletalMeshActor::RequestsSocketing_Implementation(USceneComponent*& ParentToSocketTo, FName& OptionalSocketName, FTransform_NetQuantize& RelativeTransform) { return false; }
 
-bool AGrippableSkeletalMeshActor::DenyGripping_Implementation()
+bool AGrippableSkeletalMeshActor::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return VRGripInterfaceSettings.bDenyGripping;
 }

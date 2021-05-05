@@ -1325,7 +1325,7 @@ bool UGripMotionControllerComponent::GripActor(
 
 	if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		if(IVRGripInterface::Execute_DenyGripping(root))
+		if(IVRGripInterface::Execute_DenyGripping(root, this))
 			return false; // Interface is saying not to grip it right now
 
 		IVRGripInterface::Execute_IsHeld(root, HoldingControllers, bIsHeld);
@@ -1355,7 +1355,7 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 	else if (ActorToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		if(IVRGripInterface::Execute_DenyGripping(ActorToGrip))
+		if(IVRGripInterface::Execute_DenyGripping(ActorToGrip, this))
 			return false; // Interface is saying not to grip it right now
 
 		IVRGripInterface::Execute_IsHeld(ActorToGrip, HoldingControllers, bIsHeld);
@@ -1592,7 +1592,7 @@ bool UGripMotionControllerComponent::GripComponent(
 
 	if (ComponentToGrip->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
-		if(IVRGripInterface::Execute_DenyGripping(ComponentToGrip))
+		if(IVRGripInterface::Execute_DenyGripping(ComponentToGrip, this))
 			return false; // Interface is saying not to grip it right now
 
 		IVRGripInterface::Execute_IsHeld(ComponentToGrip, HoldingControllers, bIsHeld);

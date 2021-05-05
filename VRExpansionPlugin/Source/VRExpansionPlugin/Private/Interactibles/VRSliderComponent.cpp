@@ -449,7 +449,7 @@ void UVRSliderComponent::OnEndSecondaryUsed_Implementation() {}
 void UVRSliderComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool UVRSliderComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
-bool UVRSliderComponent::DenyGripping_Implementation()
+bool UVRSliderComponent::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return bDenyGripping;
 }
