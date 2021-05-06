@@ -43,6 +43,7 @@ public:
 
 	virtual void SetUpdatedComponent(USceneComponent* NewUpdatedComponent);
 
+	virtual void MoveAutonomous(float ClientTimeStamp, float DeltaTime, uint8 CompressedFlags, const FVector& NewAccel) override;
 	virtual void PerformMovement(float DeltaSeconds) override;
 	//virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
 
