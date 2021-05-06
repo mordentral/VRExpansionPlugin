@@ -145,18 +145,6 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 		const TArray<FTrackToSkeletonMap>& TrackMap = HandTargetAnimation->GetCompressedTrackToSkeletonMapTable();
 		int32 TrackIndex = INDEX_NONE;
 
-		// If the caller didn't request that raw animation data be used . . .
-		if (!bUseRawData && IsCompressedDataValid())
-		{
-			FAnimSequenceDecompressionContext DecompContext(SequenceLength, Interpolation, GetFName(), *CompressedData.CompressedDataStructure);
-			DecompContext.Seek(Time);
-			if (CompressedData.BoneCompressionCodec)
-			{
-				CompressedData.BoneCompressionCodec->DecompressBone(DecompContext, TrackIndex, OutAtom);
-				return;
-			}
-		}
-
 		for (int32 BoneNameIndex = 0; BoneNameIndex < PoseSnapShot.BoneNames.Num(); ++BoneNameIndex)
 		{
 			TrackIndex = INDEX_NONE;
