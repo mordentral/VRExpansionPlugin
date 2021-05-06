@@ -139,57 +139,79 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 			return false;
 		}
 
-		for (int32 TrackIndex = 0; TrackIndex < HandTargetAnimation->GetRawAnimationData().Num(); ++TrackIndex)
+		const FReferenceSkeleton& RefSkeleton = (TargetMesh) ? TargetMesh->SkeletalMesh->RefSkeleton : HandTargetAnimation->GetSkeleton()->GetReferenceSkeleton();
+		FTransform LocalTransform;
+
+		const TArray<FTrackToSkeletonMap>& TrackMap = HandTargetAnimation->GetCompressedTrackToSkeletonMapTable();
+		int32 TrackIndex = INDEX_NONE;
+
+		// If the caller didn't request that raw animation data be used . . .
+		if (!bUseRawData && IsCompressedDataValid())
 		{
-			if (TrackIndex >= PoseSnapShot.BoneNames.Num())
+			FAnimSequenceDecompressionContext DecompContext(SequenceLength, Interpolation, GetFName(), *CompressedData.CompressedDataStructure);
+			DecompContext.Seek(Time);
+			if (CompressedData.BoneCompressionCodec)
 			{
-				break;
+				CompressedData.BoneCompressionCodec->DecompressBone(DecompContext, TrackIndex, OutAtom);
+				return;
+			}
+		}
+
+		for (int32 BoneNameIndex = 0; BoneNameIndex < PoseSnapShot.BoneNames.Num(); ++BoneNameIndex)
+		{
+			TrackIndex = INDEX_NONE;
+			if (BoneNameIndex < TrackMap.Num() && TrackMap[BoneNameIndex].BoneTreeIndex == BoneNameIndex)
+			{
+				TrackIndex = BoneNameIndex;
+			}
+			else
+			{
+				// This shouldn't happen but I need a fallback
+				// Don't currently want to reconstruct the map inversely
+				for (int i = 0; i < TrackMap.Num(); ++i)
+				{
+					if (TrackMap[i].BoneTreeIndex == BoneNameIndex)
+					{
+						TrackIndex = i;
+						break;
+					}
+				}
 			}
 
-			FRawAnimSequenceTrack& RawTrack = HandTargetAnimation->GetRawAnimationTrack(TrackIndex);
+			const FName& BoneName = PoseSnapShot.BoneNames[BoneNameIndex];
 
-			bool bHadLoc = false;
-			bool bHadRot = false;
-			bool bHadScale = false;
-			FVector Loc = FVector::ZeroVector;
-			FQuat Rot = FQuat::Identity;
-			FVector Scale = FVector(1.0f, 1.0f, 1.0f);
-
-			if (RawTrack.PosKeys.Num())
+			if (TrackIndex != INDEX_NONE)
 			{
-				Loc = RawTrack.PosKeys[0];
-				bHadLoc = true;
+				HandTargetAnimation->GetBoneTransform(LocalTransform, TrackIndex, 0.f, false);
 			}
-
-			if (RawTrack.RotKeys.Num())
+			else
 			{
-				Rot = RawTrack.RotKeys[0];
-				bHadRot = true;
+				// otherwise, get ref pose if exists
+				const int32 BoneIDX = RefSkeleton.FindBoneIndex(BoneName);
+				if (BoneIDX != INDEX_NONE)
+				{
+					LocalTransform = RefSkeleton.GetRefBonePose()[BoneIDX];
+				}
+				else
+				{
+					LocalTransform = FTransform::Identity;
+				}
 			}
-
-			if (RawTrack.ScaleKeys.Num())
-			{
-				Scale = RawTrack.ScaleKeys[0];
-				bHadScale = true;
-			}
-
-			FTransform FinalTrans(Rot, Loc, Scale);
 
 			FQuat DeltaQuat = FQuat::Identity;
 			for (FBPVRHandPoseBonePair& HandPair : CustomPoseDeltas)
 			{
-				if (HandPair.BoneName == PoseSnapShot.BoneNames[TrackIndex])
+				if (HandPair.BoneName == PoseSnapShot.BoneNames[BoneNameIndex])
 				{
 					DeltaQuat = HandPair.DeltaPose;
-					bHadRot = true;
 					break;
 				}
 			}
 
-			FinalTrans.ConcatenateRotation(DeltaQuat);
-			FinalTrans.NormalizeRotation();
+			LocalTransform.ConcatenateRotation(DeltaQuat);
+			LocalTransform.NormalizeRotation();
 
-			PoseSnapShot.LocalTransforms.Add(FinalTrans);
+			PoseSnapShot.LocalTransforms.Add(LocalTransform);
 		}
 
 		return true;
