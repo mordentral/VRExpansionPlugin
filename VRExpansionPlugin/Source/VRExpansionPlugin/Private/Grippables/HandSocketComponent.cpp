@@ -68,42 +68,54 @@ bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InA
 			return false;
 		}
 
-		for (int32 TrackIndex = 0; TrackIndex < InAnimationSequence->GetRawAnimationData().Num(); ++TrackIndex)
+		const FReferenceSkeleton& RefSkeleton = (TargetMesh) ? TargetMesh->SkeletalMesh->RefSkeleton : InAnimationSequence->GetSkeleton()->GetReferenceSkeleton();
+		FTransform LocalTransform;
+
+		const TArray<FTrackToSkeletonMap>& TrackMap = InAnimationSequence->GetCompressedTrackToSkeletonMapTable();
+		int32 TrackIndex = INDEX_NONE;
+
+		for (int32 BoneNameIndex = 0; BoneNameIndex < OutPoseSnapShot.BoneNames.Num(); ++BoneNameIndex)
 		{
-			if (TrackIndex >= OutPoseSnapShot.BoneNames.Num())
+			TrackIndex = INDEX_NONE;
+			if (BoneNameIndex < TrackMap.Num() && TrackMap[BoneNameIndex].BoneTreeIndex == BoneNameIndex)
 			{
-				break;
+				TrackIndex = BoneNameIndex;
+			}
+			else
+			{
+				// This shouldn't happen but I need a fallback
+				// Don't currently want to reconstruct the map inversely
+				for (int i = 0; i < TrackMap.Num(); ++i)
+				{
+					if (TrackMap[i].BoneTreeIndex == BoneNameIndex)
+					{
+						TrackIndex = i;
+						break;
+					}
+				}
 			}
 
-			FRawAnimSequenceTrack& RawTrack = InAnimationSequence->GetRawAnimationTrack(TrackIndex);
+			const FName& BoneName = OutPoseSnapShot.BoneNames[BoneNameIndex];
 
-			bool bHadLoc = false;
-			bool bHadRot = false;
-			bool bHadScale = false;
-			FVector Loc = FVector::ZeroVector;
-			FQuat Rot = FQuat::Identity;
-			FVector Scale = FVector(1.0f, 1.0f, 1.0f);
-
-			if (RawTrack.PosKeys.Num())
+			if (TrackIndex != INDEX_NONE)
 			{
-				Loc = RawTrack.PosKeys[0];
-				bHadLoc = true;
+				InAnimationSequence->GetBoneTransform(LocalTransform, TrackIndex, 0.f, false);
+			}
+			else
+			{
+				// otherwise, get ref pose if exists
+				const int32 BoneIDX = RefSkeleton.FindBoneIndex(BoneName);
+				if (BoneIDX != INDEX_NONE)
+				{
+					LocalTransform = RefSkeleton.GetRefBonePose()[BoneIDX];
+				}
+				else
+				{
+					LocalTransform = FTransform::Identity;
+				}
 			}
 
-			if (RawTrack.RotKeys.Num())
-			{
-				Rot = RawTrack.RotKeys[0];
-				bHadRot = true;
-			}
-
-			if (RawTrack.ScaleKeys.Num())
-			{
-				Scale = RawTrack.ScaleKeys[0];
-				bHadScale = true;
-			}
-
-			FTransform FinalTrans(Rot, Loc, Scale);
-			OutPoseSnapShot.LocalTransforms.Add(FinalTrans);
+			OutPoseSnapShot.LocalTransforms.Add(LocalTransform);
 		}
 
 		return true;
