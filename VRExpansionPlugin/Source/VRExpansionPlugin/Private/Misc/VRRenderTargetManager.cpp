@@ -256,12 +256,18 @@ void UVRRenderTargetManager::DrawOperations()
 		return;
 	}
 
+	if (GetNetMode() == ENetMode::NM_DedicatedServer)
+	{
+		RenderOperationStore.Empty();
+		return;
+	}
+
 	UWorld* World = GetWorld();
 
 	// Reference to the Render Target resource
 	FTextureRenderTargetResource* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
-	if (!RenderTargetResource || GetNetMode() == ENetMode::NM_DedicatedServer)
+	if (!RenderTargetResource)
 	{
 		RenderOperationStore.Empty();
 		return;
