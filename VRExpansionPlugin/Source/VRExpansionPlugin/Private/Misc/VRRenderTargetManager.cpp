@@ -261,8 +261,11 @@ void UVRRenderTargetManager::DrawOperations()
 	// Reference to the Render Target resource
 	FTextureRenderTargetResource* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
-	if (!RenderTargetResource)
+	if (!RenderTargetResource || GetNetMode() == ENetMode::NM_DedicatedServer)
+	{
+		RenderOperationStore.Empty();
 		return;
+	}
 
 	// Retrieve a UCanvas form the world to avoid creating a new one each time
 	UCanvas* CanvasToUse = World->GetCanvasForDrawMaterialToRenderTarget();
@@ -392,6 +395,7 @@ void ARenderTargetReplicationProxy::Ack_InitTextureSend_Implementation(int32 Tot
 		//SendNextDataBlob();
 	}
 }
+
 void ARenderTargetReplicationProxy::SendInitMessage()
 {
 	int32 TotalBlobs = TextureStore.PackedData.Num() / TextureBlobSize + (TextureStore.PackedData.Num() % TextureBlobSize > 0 ? 1 : 0);
@@ -584,7 +588,7 @@ void UVRRenderTargetManager::UpdateRelevancyMap()
 		}
 	}
 
-	if (bHadDirtyActors)
+	if (bHadDirtyActors && bInitiallyReplicateTexture && GetNetMode() != ENetMode::NM_DedicatedServer)
 	{
 		QueueImageStore();
 	}
@@ -704,7 +708,7 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 void UVRRenderTargetManager::QueueImageStore()
 {
 
-	if (!RenderTarget || bIsStoringImage)
+	if (!bInitiallyReplicateTexture || !RenderTarget || bIsStoringImage || GetNetMode() == ENetMode::NM_DedicatedServer)
 	{
 		return;
 	}
@@ -763,7 +767,7 @@ void UVRRenderTargetManager::TickComponent(float DeltaTime, enum ELevelTick Tick
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	// Read pixels once RenderFence is completed
-	if (RenderDataQueue.IsEmpty())
+	if (!bInitiallyReplicateTexture || RenderDataQueue.IsEmpty() || GetNetMode() == ENetMode::NM_DedicatedServer)
 	{
 		SetComponentTickEnabled(false);
 	}
@@ -836,7 +840,7 @@ void UVRRenderTargetManager::BeginPlay()
 
 	InitRenderTarget();
 
-	if (bInitiallyReplicateTexture && GetNetMode() < ENetMode::NM_Client)
+	if (/*bInitiallyReplicateTexture && */GetNetMode() < ENetMode::NM_Client)
 		GetWorld()->GetTimerManager().SetTimer(NetRelevancyTimer_Handle, this, &UVRRenderTargetManager::UpdateRelevancyMap, PollRelevancyTime, true);
 }
 
@@ -883,6 +887,11 @@ void UVRRenderTargetManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UVRRenderTargetManager::InitRenderTarget()
 {
+	if (this->GetNetMode() == ENetMode::NM_DedicatedServer)
+	{
+		return; // Dedicated servers cannot handle render targets
+	}
+
 	UWorld* World = GetWorld();
 
 	if (RenderTargetWidth > 0 && RenderTargetHeight > 0 && World)
