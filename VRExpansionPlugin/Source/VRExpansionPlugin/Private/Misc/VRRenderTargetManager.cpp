@@ -313,6 +313,7 @@ ARenderTargetReplicationProxy::ARenderTargetReplicationProxy(const FObjectInitia
 	bReplicates = true;
 	PrimaryActorTick.bCanEverTick = false;
 	SetReplicateMovement(false);
+	bWaitingForManager = false;
 }
 
 void ARenderTargetReplicationProxy::OnRep_Manager()
@@ -321,6 +322,19 @@ void ARenderTargetReplicationProxy::OnRep_Manager()
 	if (OwningManager.IsValid())
 	{
 		OwningManager->LocalProxy = this;
+
+		// If we loaded a texture before the manager loaded
+		if (bWaitingForManager)
+		{
+			OwningManager->bIsLoadingTextureBuffer = false;
+			OwningManager->RenderTargetStore = TextureStore;
+			TextureStore.Reset();
+			TextureStore.PackedData.Empty();
+			TextureStore.UnpackedData.Empty();
+			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, FString::Printf(TEXT("Recieved Texture, total byte count: %i"), OwningManager->RenderTargetStore.PackedData.Num()));
+			OwningManager->DeCompressRenderTarget2D();
+			bWaitingForManager = false;
+		}
 	}
 }
 
@@ -488,6 +502,10 @@ void ARenderTargetReplicationProxy::ReceiveTextureBlob_Implementation(const TArr
 			TextureStore.UnpackedData.Empty();
 			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, FString::Printf(TEXT("Recieved Texture, total byte count: %i"), OwningManager->RenderTargetStore.PackedData.Num()));
 			OwningManager->DeCompressRenderTarget2D();
+		}
+		else
+		{
+			bWaitingForManager = true;
 		}
 	}
 
