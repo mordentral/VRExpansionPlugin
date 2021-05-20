@@ -31,6 +31,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 	HandTargetAnimation = nullptr;
 	bOnlySnapMesh = false;
 	bFlipForLeftHand = false;
+	bOnlyFlipRotation = false;
 
 	MirrorAxis = EAxis::X;
 	FlipAxis = EAxis::Y;
@@ -292,6 +293,11 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 			{
 				FTransform ReturnTrans = this->GetRelativeTransform();
 				ReturnTrans.Mirror(MirrorAxis, FlipAxis);
+				if (bOnlyFlipRotation)
+				{
+					ReturnTrans.SetTranslation(this->GetRelativeLocation());
+				}
+
 				if (USceneComponent* AttParent = this->GetAttachParent())
 				{
 					ReturnTrans = ReturnTrans * AttParent->GetComponentTransform();
@@ -310,7 +316,11 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand)
 	FTransform ReturnTrans = (GetHandRelativePlacement() * this->GetRelativeTransform());
 	if (bFlipForLeftHand && !bIsRightHand)
 	{
-		ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(FVector(1.f, 0.f, 0.f)));
+		if (!bOnlyFlipRotation)
+		{
+			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(FVector(1.f, 0.f, 0.f)));
+		}
+
 		FRotationMatrix test(ReturnTrans.GetRotation().Rotator());
 		test.Mirror(EAxis::X, EAxis::Z);
 		ReturnTrans.SetRotation(test.ToQuat());

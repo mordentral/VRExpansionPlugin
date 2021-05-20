@@ -62,11 +62,11 @@ public:
 	//static get socket compoonent
 
 	//Axis to mirror on for this socket
-	UPROPERTY(EditAnywhere, Category = "Hand Socket Data")
+	UPROPERTY(EditAnywhere, Category = "Hand Socket Data|Mirroring|Advanced")
 		TEnumAsByte<EAxis::Type> MirrorAxis;
 
 	// Axis to flip on when mirroring this socket
-	UPROPERTY(EditAnywhere, Category = "Hand Socket Data")
+	UPROPERTY(EditAnywhere, Category = "Hand Socket Data|Mirroring|Advanced")
 		TEnumAsByte<EAxis::Type> FlipAxis;
 
 	// Relative placement of the hand to this socket
@@ -87,8 +87,12 @@ public:
 		bool bOnlySnapMesh;
 
 	// If true we will mirror ourselves automatically for the left hand
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data|Mirroring")
 		bool bFlipForLeftHand;
+
+	// If true, when we mirror the hand socket it will only mirror rotation, not position
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data|Mirroring", meta = (editcondition = "bFlipForLeftHand"))
+		bool bOnlyFlipRotation;
 
 	// Snap distance to use if you want to override the defaults.
 	// Will be ignored if == 0.0f
