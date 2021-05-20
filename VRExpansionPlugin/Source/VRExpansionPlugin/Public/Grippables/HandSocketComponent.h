@@ -61,9 +61,12 @@ public:
 
 	//static get socket compoonent
 
-	UPROPERTY(/*Category = "Hand Socket Data"*/)
+	//Axis to mirror on for this socket
+	UPROPERTY(EditAnywhere, Category = "Hand Socket Data")
 		TEnumAsByte<EAxis::Type> MirrorAxis;
-	UPROPERTY(/*Category = "Hand Socket Data"*/)
+
+	// Axis to flip on when mirroring this socket
+	UPROPERTY(EditAnywhere, Category = "Hand Socket Data")
 		TEnumAsByte<EAxis::Type> FlipAxis;
 
 	// Relative placement of the hand to this socket
