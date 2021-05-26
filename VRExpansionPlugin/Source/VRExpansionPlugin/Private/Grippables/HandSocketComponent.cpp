@@ -313,7 +313,21 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand)
 {
 	// Optionally mirror for left hand
-	FTransform ReturnTrans = (GetHandRelativePlacement() * this->GetRelativeTransform());
+
+	FTransform relTrans = this->GetRelativeTransform();
+	FTransform HandPlacement = GetHandRelativePlacement();
+	
+	if (this->IsUsingAbsoluteScale() && !bDecoupleMeshPlacement)
+	{
+		if (this->GetAttachParent())
+		{
+			HandPlacement.ScaleTranslation(/*FVector(1.0f) / */this->GetAttachParent()->GetRelativeScale3D());
+		}
+	}
+
+
+	FTransform ReturnTrans = (HandPlacement * relTrans);
+
 	if (bFlipForLeftHand && !bIsRightHand)
 	{
 		if (!bOnlyFlipRotation)
@@ -375,7 +389,19 @@ void UHandSocketComponent::OnRegister()
 					}
 				}
 
-				HandVisualizerComponent->SetRelativeTransform(GetHandRelativePlacement());
+				if (this->IsUsingAbsoluteScale() && !bDecoupleMeshPlacement)
+				{
+					if (USceneComponent* ParentAttach = this->GetAttachParent())
+					{
+						FTransform newRel = GetHandRelativePlacement();
+						newRel.ScaleTranslation(ParentAttach->GetRelativeScale3D());
+						HandVisualizerComponent->SetRelativeTransform(newRel);
+					}
+				}
+				else
+				{
+					HandVisualizerComponent->SetRelativeTransform(GetHandRelativePlacement());
+				}
 				PoseVisualizationToAnimation();
 			}
 		}
@@ -467,7 +493,6 @@ void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
 			}
 		}
 	}
-
 }
 
 void UHandSocketComponent::AddReferencedObjects(UObject* InThis, FReferenceCollector& Collector)

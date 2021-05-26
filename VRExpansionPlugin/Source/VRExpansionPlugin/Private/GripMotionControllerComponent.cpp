@@ -4844,7 +4844,6 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 	{
 		if (HandleInfo)
 		{
-
 			if (PxRigidDynamic * PActor = FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(Actor))
 			{
 				if(HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
@@ -4919,7 +4918,10 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 				FVector aVel = rBodyInstance->GetUnrealWorldAngularVelocityInRadians();
 				FVector originalCOM = rBodyInstance->GetCOMPosition();
 
-				rBodyInstance->UpdateMassProperties();
+				if (rBodyInstance->IsValidBodyInstance() && rBodyInstance->BodySetup.IsValid())
+				{
+					rBodyInstance->UpdateMassProperties();
+				}
 
 				// Offset the linear velocity by the new COM position and set it
 				vel += FVector::CrossProduct(aVel, rBodyInstance->GetCOMPosition() - originalCOM);
@@ -5024,7 +5026,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	// Get the PxRigidDynamic that we want to grab.
 	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
-	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !FPhysicsInterface::IsValid(rBodyInstance->ActorHandle))
+	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !FPhysicsInterface::IsValid(rBodyInstance->ActorHandle) || !rBodyInstance->BodySetup.IsValid())
 	{	
 		return false;
 	}
@@ -5036,6 +5038,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		// Reset the mass properties, this avoids an issue with some weird replication issues
 		// We only do this on initial grip
 		rBodyInstance->UpdateMassProperties();
+
 	}
 
 	/*if (NewGrip.GrippedBoneName != NAME_None)
