@@ -343,7 +343,8 @@ float UAISense_Sight_VR::Update()
 					{
 						int32 NumberOfLoSChecksPerformed = 0;
 						// defaulting to 1 to have "full strength" by default instead of "no strength"
-						if (Target.SightTargetInterface->CanBeSeenFrom(Listener.CachedLocation, OutSeenLocation, NumberOfLoSChecksPerformed, StimulusStrength, ListenerPtr->GetBodyActor()) == true)
+						const bool bWasVisible = SightQuery->bLastResult;
+						if (Target.SightTargetInterface->CanBeSeenFrom(Listener.CachedLocation, OutSeenLocation, NumberOfLoSChecksPerformed, StimulusStrength, ListenerPtr->GetBodyActor(), &bWasVisible) == true)
 						{
 							Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, StimulusStrength, OutSeenLocation, Listener.CachedLocation));
 							SightQuery->bLastResult = true;
@@ -376,7 +377,7 @@ float UAISense_Sight_VR::Update()
 
 						auto HitResultActorIsOwnedByTargetActor = [&HitResult, TargetActor]()
 						{
-							AActor* HitResultActor = HitResult.Actor.Get();
+							AActor* HitResultActor = HitResult.GetActor();
 							return (HitResultActor ? HitResultActor->IsOwnedBy(TargetActor) : false);
 						};
 

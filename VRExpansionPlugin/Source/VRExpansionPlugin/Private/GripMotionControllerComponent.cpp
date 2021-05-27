@@ -35,6 +35,7 @@
 #include "Chaos/PBDJointConstraintTypes.h"
 #include "Chaos/PBDJointConstraintData.h"
 #include "Chaos/Sphere.h"
+#include "PhysicsProxy/SingleParticlePhysicsProxy.h"
 #endif
 
 #include "Features/IModularFeatures.h"
@@ -3815,8 +3816,8 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 #elif WITH_CHAOS
 		FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
 			{
-				Actor->SetX(newTrans.GetTranslation());
-				Actor->SetR(newTrans.GetRotation());
+				Actor->GetGameThreadAPI().SetX(newTrans.GetTranslation());
+				Actor->GetGameThreadAPI().SetR(newTrans.GetRotation());
 				FPhysicsInterface::SetGlobalPose_AssumesLocked(Actor, newTrans);
 			});
 #endif
@@ -5200,8 +5201,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			using namespace Chaos;
 			// Missing from physx, not sure how it is working for them currently.
 			//TArray<FPhysicsActorHandle> ActorHandles;
-			HandleInfo->KinActorData2->SetGeometry(TUniquePtr<FImplicitObject>(new TSphere<FReal, 3>(TVector<FReal, 3>(0.f), 1000.f)));
-			HandleInfo->KinActorData2->SetObjectState(EObjectStateType::Kinematic);
+			HandleInfo->KinActorData2->GetGameThreadAPI().SetGeometry(TUniquePtr<FImplicitObject>(new TSphere<FReal, 3>(TVector<FReal, 3>(0.f), 1000.f)));
+			HandleInfo->KinActorData2->GetGameThreadAPI().SetObjectState(EObjectStateType::Kinematic);
 			FPhysicsInterface::AddActorToSolver(HandleInfo->KinActorData2, ActorParams.Scene->GetSolver());
 			//ActorHandles.Add(HandleInfo->KinActorData2);
 			//ActorParams.Scene->AddActorsToScene_AssumesLocked(ActorHandles);
@@ -5674,8 +5675,8 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 #elif WITH_CHAOS
 		FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle & Actor)
 			{
-				Actor->SetX(newTrans.GetTranslation());
-				Actor->SetR(newTrans.GetRotation());
+				Actor->GetGameThreadAPI().SetX(newTrans.GetTranslation());
+				Actor->GetGameThreadAPI().SetR(newTrans.GetRotation());
 			});
 #endif
 
@@ -5761,7 +5762,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 				const FHitResult& TestHit = Hits[HitIdx];
 
 				// Ignore the owning actor to the motion controller
-				if (TestHit.Actor == this->GetOwner() || (bSkipSimulatingComponents && TestHit.Component->IsSimulatingPhysics()))
+				if (TestHit.GetActor() == this->GetOwner() || (bSkipSimulatingComponents && TestHit.Component->IsSimulatingPhysics()))
 				{
 					if (Hits.Num() == 1)
 					{

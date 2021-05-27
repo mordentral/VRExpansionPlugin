@@ -153,7 +153,7 @@ struct FPredicateOverlapHasSameActor
 	bool operator() (const FOverlapInfo& Info)
 	{
 		// MyOwnerPtr is always valid, so we don't need the IsValid() checks in the WeakObjectPtr comparison operator.
-		return MyOwnerPtr.HasSameIndexAndSerialNumber(Info.OverlapInfo.Actor);
+		return MyOwnerPtr.HasSameIndexAndSerialNumber(Info.OverlapInfo.GetActor());
 	}
 
 private:
@@ -171,7 +171,7 @@ struct FPredicateOverlapHasDifferentActor
 	bool operator() (const FOverlapInfo& Info)
 	{
 		// MyOwnerPtr is always valid, so we don't need the IsValid() checks in the WeakObjectPtr comparison operator.
-		return !MyOwnerPtr.HasSameIndexAndSerialNumber(Info.OverlapInfo.Actor);
+		return !MyOwnerPtr.HasSameIndexAndSerialNumber(Info.OverlapInfo.GetActor());
 	}
 
 private:

@@ -28,7 +28,7 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 		FBodyInstance *Inst1 = Prim1->GetBodyInstance(OptionalBoneName1);
 		FBodyInstance *Inst2 = Prim2->GetBodyInstance(OptionalBoneName2);
 
-		if (Inst1 && Inst2)
+		if (Inst1 && Inst2 && Inst1->ActorHandle && Inst2->ActorHandle)
 		{
 			Inst1->SetContactModification(bIgnoreCollision);
 			Inst2->SetContactModification(bIgnoreCollision);
@@ -41,9 +41,8 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 				newContactPair.bBody1IgnoreEntireActor = false;
 				newContactPair.bBody2IgnoreEntireActor = false;
 				*/
-
-				Chaos::FUniqueIdx ID0 = Inst1->ActorHandle->UniqueIdx();
-				Chaos::FUniqueIdx ID1 = Inst2->ActorHandle->UniqueIdx();
+				Chaos::FUniqueIdx ID0 = Inst1->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
+				Chaos::FUniqueIdx ID1 = Inst2->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
 
 				Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
 
@@ -55,8 +54,8 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 						{
 							if (!IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
 							{
-								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->Handle()->CastToRigidParticle();
-								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->Handle()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
 
 								if (ParticleHandle0 && ParticleHandle1)
 								{
@@ -72,8 +71,8 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 						{
 							if (IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
 							{
-								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->Handle()->CastToRigidParticle();
-								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->Handle()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
 
 								if (ParticleHandle0 && ParticleHandle1)
 								{
