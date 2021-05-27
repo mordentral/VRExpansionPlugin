@@ -43,20 +43,20 @@ public:
 
 	UHandSocketComponent* GetCurrentlyEditingComponent() const
 	{ 
-		return Cast<UHandSocketComponent>(HandPropertyPath.GetComponent());
+		return Cast<UHandSocketComponent>(HandPropertyPath.GetComponent());;
 	}
 
 	const UHandSocketComponent* UpdateSelectedHandComponent(HComponentVisProxy* VisProxy)
 	{
 		const UHandSocketComponent* HandComp = CastChecked<const UHandSocketComponent>(VisProxy->Component.Get());
-
+		UHandSocketComponent* OldHandComp = Cast<UHandSocketComponent>(HandPropertyPath.GetComponent());
 		AActor* OldOwningActor = HandPropertyPath.GetParentOwningActor();
 		HandPropertyPath = FComponentPropertyPath(HandComp);
 		AActor* NewOwningActor = HandPropertyPath.GetParentOwningActor();
 
 		if (HandPropertyPath.IsValid())
 		{
-			if (OldOwningActor != NewOwningActor)
+			if (OldOwningActor != NewOwningActor || OldHandComp != HandComp)
 			{
 				// Reset selection state if we are selecting a different actor to the one previously selected
 				CurrentlySelectedBoneIdx = INDEX_NONE;

@@ -298,6 +298,34 @@ TSharedRef< IDetailCustomization > FHandSocketComponentDetails::MakeInstance()
     return MakeShareable(new FHandSocketComponentDetails);
 }
 
+void FHandSocketComponentDetails::OnHandRelativeUpdated(IDetailLayoutBuilder* LayoutBuilder)
+{
+
+	if (!HandSocketComponent.IsValid())
+	{
+		return;
+	}
+
+	HandSocketComponent->Modify();
+	if (AActor* Owner = HandSocketComponent->GetOwner())
+	{
+		Owner->Modify();
+	}
+
+	TSharedPtr<FComponentVisualizer> Visualizer = GUnrealEd->FindComponentVisualizer(HandSocketComponent->GetClass());
+	FHandSocketVisualizer* HandVisualizer = (FHandSocketVisualizer*)Visualizer.Get();
+
+	if (HandVisualizer)
+	{
+		if (UHandSocketComponent* RefHand = HandVisualizer->GetCurrentlyEditingComponent())
+		{
+			RefHand->HandRelativePlacement = HandSocketComponent->HandRelativePlacement;
+		}
+	}
+
+	FComponentVisualizer::NotifyPropertyModified(HandSocketComponent.Get(), FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
+}
+
 void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* LayoutBuilder)
 {
 
@@ -308,8 +336,8 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 
 	if (HandSocketComponent->bDecoupleMeshPlacement)
 	{
-		FTransform RelTrans = HandSocketComponent->GetRelativeTransform();
-		FTransform WorldTrans = HandSocketComponent->GetComponentTransform();
+		//FTransform RelTrans = HandSocketComponent->GetRelativeTransform();
+		//FTransform WorldTrans = HandSocketComponent->GetComponentTransform();
 		//if (USceneComponent* ParentComp = HandSocketComponent->GetAttachParent())
 		{
 
@@ -318,7 +346,7 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 			{
 				Owner->Modify();
 			}
-			HandSocketComponent->HandRelativePlacement = HandSocketComponent->HandRelativePlacement * HandSocketComponent->GetComponentTransform();
+			HandSocketComponent->HandRelativePlacement = HandSocketComponent->HandRelativePlacement * HandSocketComponent->GetRelativeTransform();// HandSocketComponent->GetComponentTransform();
 			
 			TSharedPtr<FComponentVisualizer> Visualizer = GUnrealEd->FindComponentVisualizer(HandSocketComponent->GetClass());
 			FHandSocketVisualizer* HandVisualizer = (FHandSocketVisualizer*)Visualizer.Get();
@@ -370,7 +398,21 @@ void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailB
 			UHandSocketComponent* CurrentHandSocket = Cast<UHandSocketComponent>(CurrentObject.Get());
 			if (CurrentHandSocket != NULL)
 			{
-				HandSocketComponent = CurrentHandSocket;
+				if (HandSocketComponent != CurrentHandSocket)
+				{
+					TSharedPtr<FComponentVisualizer> Visualizer = GUnrealEd->FindComponentVisualizer(CurrentHandSocket->GetClass());
+					FHandSocketVisualizer* HandVisualizer = (FHandSocketVisualizer*)Visualizer.Get();
+
+					if (HandVisualizer)
+					{
+						HandVisualizer->CurrentlySelectedBoneIdx = INDEX_NONE;
+						HandVisualizer->CurrentlySelectedBone = NAME_None;
+						HandVisualizer->HandPropertyPath = FComponentPropertyPath();
+						//HandVisualizer->OldHandSocketComp = CurrentHandSocket;
+					}
+
+					HandSocketComponent = CurrentHandSocket;
+				}
 				break;
 			}
 		}
@@ -388,6 +430,10 @@ void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailB
 	DetailBuilder.HideCategory(FName("ComponentReplication"));
 
 	TSharedPtr<IPropertyHandle> LockedLocationProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bDecoupleMeshPlacement));
+	TSharedPtr<IPropertyHandle> HandRelativePlacementProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement));
+
+	FSimpleDelegate OnHandRelativeChangedDelegate = FSimpleDelegate::CreateSP(this, &FHandSocketComponentDetails::OnHandRelativeUpdated, &DetailBuilder);
+	HandRelativePlacementProperty->SetOnPropertyValueChanged(OnHandRelativeChangedDelegate);
 
 	FSimpleDelegate OnLockedStateChangedDelegate = FSimpleDelegate::CreateSP(this, &FHandSocketComponentDetails::OnLockedStateUpdated, &DetailBuilder);
 	LockedLocationProperty->SetOnPropertyValueChanged(OnLockedStateChangedDelegate);
