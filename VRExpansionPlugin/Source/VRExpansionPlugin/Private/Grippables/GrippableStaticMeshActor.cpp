@@ -624,7 +624,7 @@ void AGrippableStaticMeshActor::OnRep_AttachmentReplication()
 	{
 		if (RootComponent)
 		{
-			USceneComponent* AttachParentComponent = (AttachmentWeldReplication.AttachComponent ? AttachmentWeldReplication.AttachComponent : AttachmentWeldReplication.AttachParent->GetRootComponent());
+			USceneComponent* AttachParentComponent = (AttachmentWeldReplication.AttachComponent != nullptr) ? AttachmentWeldReplication.AttachComponent.Get() : AttachmentWeldReplication.AttachParent->GetRootComponent();
 
 			if (AttachParentComponent)
 			{
