@@ -63,7 +63,11 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Slider Finished Lerping"))
 		void ReceiveSliderFinishedLerping(float FinalProgress);
 
-	
+	// If true then this slider will only update in its tick event instead of normally using the controllers update event
+	// Keep in mind that you then must adjust the tick group in order to make sure it happens after the gripping controller
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bUpdateInTick;
+	bool bPassThrough;
 
 	float LastSliderProgressState;
 

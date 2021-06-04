@@ -23,6 +23,9 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	InitialRelativeTransform = FTransform::Identity;
 	bDenyGripping = false;
 
+	bUpdateInTick = false;
+	bPassThrough = false;
+
 	MinSlideDistance = FVector::ZeroVector;
 	MaxSlideDistance = FVector(10.0f, 0.f, 0.f);
 	SliderRestitution = 0.0f;
@@ -130,6 +133,21 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 	// Call supers tick (though I don't think any of the base classes to this actually implement it)
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (bIsHeld && bUpdateInTick && HoldingGrip.HoldingController)
+	{
+		FBPActorGripInformation GripInfo;
+		EBPVRResultSwitch Result;
+		HoldingGrip.HoldingController->GetGripByID(GripInfo, HoldingGrip.GripID, Result);
+
+		if (Result == EBPVRResultSwitch::OnSucceeded)
+		{
+			bPassThrough = true;
+			TickGrip_Implementation(HoldingGrip.HoldingController, GripInfo, DeltaTime);
+			bPassThrough = false;
+		}
+		return;
+	}
+
 	// If we are locked then end the lerp, no point
 	if (bIsLocked)
 	{
@@ -205,6 +223,11 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) 
 {
+
+	// Skip this tick if its not triggered from the pass through
+	if (bUpdateInTick && !bPassThrough)
+		return;
+
 	// If the sliders progress is locked then just exit early
 	if (bIsLocked)
 	{
@@ -404,7 +427,11 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 		bReplicateMovement = false;
 	}
 
+	if (bUpdateInTick)
+		SetComponentTickEnabled(true);
+
 	OnGripped.Broadcast(GrippingController, GripInformation);
+
 }
 
 void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
