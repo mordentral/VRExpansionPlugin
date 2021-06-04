@@ -3257,8 +3257,17 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 		}
 	}
 
-	if (!GripToUse || !GripToUse->GrippedObject || GripToUse->GripID == INVALID_VRGRIP_ID)
+	if (!GripToUse || GripToUse->GripID == INVALID_VRGRIP_ID)
+	{
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called with a bad grip! It was not valid / found."));
 		return false;
+	}
+
+	if (!GripToUse->GrippedObject)
+	{
+		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called with a bad grip (gripped object invalid)!"));
+		return false;
+	}
 
 	// Replicated grips need to be called from server side
 	if (!bWasLocal && !IsServer())
@@ -3274,7 +3283,10 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 		ESecondaryGripType SecondaryType = IVRGripInterface::Execute_SecondaryGripType(GripToUse->GrippedObject);
 
 		if (SecondaryType == ESecondaryGripType::SG_None)
+		{
+			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on an interface object set to SG_None!"));
 			return false;
+		}
 	}
 
 	UPrimitiveComponent * root = nullptr;
