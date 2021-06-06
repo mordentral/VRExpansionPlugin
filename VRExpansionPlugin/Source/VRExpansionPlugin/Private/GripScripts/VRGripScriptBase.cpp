@@ -301,7 +301,11 @@ UWorld* UVRGripScriptBase::GetWorld() const
 	if (IsTemplate())
 		return nullptr;
 
-	if (UObject * Outer = GetOuter())
+	if (GIsEditor && !GIsPlayInEditorWorld)
+	{
+		return nullptr;
+	}
+	else if (UObject * Outer = GetOuter())
 	{
 		return Outer->GetWorld();
 	}
@@ -316,8 +320,24 @@ void UVRGripScriptBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UVRGripScriptBase::BeginPlay(UObject * CallingOwner)
 {
+	if (bAlreadyNotifiedPlay)
+		return;
+
+	bAlreadyNotifiedPlay = true;
+
 	// Notify the subscripts about begin play
 	OnBeginPlay(CallingOwner);
+}
+
+void UVRGripScriptBase::PostInitProperties()
+{
+	Super::PostInitProperties();
+
+	//Called in game, when World exist . BeginPlay will not be called in editor
+	if (GetWorld())
+	{
+		BeginPlay(GetOwner());
+	}
 }
 
 void UVRGripScriptBaseBP::Tick(float DeltaTime)
