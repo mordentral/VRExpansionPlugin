@@ -210,6 +210,8 @@ public:
 	virtual void OnEndPlay_Implementation(const EEndPlayReason::Type EndPlayReason);
 
 	void BeginPlay(UObject * CallingOwner);
+	bool bAlreadyNotifiedPlay = false;
+	virtual void PostInitProperties() override;
 
 	// Not all scripts will require this function, specific ones that use things like Lever logic however will. Best to call it.
 	// Grippables will automatically call this, however if you manually spawn a grip script during play or you make your own
