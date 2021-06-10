@@ -3918,6 +3918,10 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 		MovementBaseUtility::GetMovementBaseTransform(ClientMovementBase, ClientBaseBoneName, BaseLocation, BaseRotation);
 		ClientLoc += BaseLocation;
 	}
+	else
+	{
+		ClientLoc = FRepMovement::RebaseOntoLocalOrigin(ClientLoc, this);
+	}
 
 	// Client may send a null movement base when walking on bases with no relative location (to save bandwidth).
 	// In this case don't check movement base in error conditions, use the server one (which avoids an error based on differing bases). Position will still be validated.
