@@ -6014,10 +6014,64 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 
 		OldTransform = MotionControllerComponent->GripRenderThreadRelativeTransform;
 		NewTransform = FTransform(Orientation, Position, MotionControllerComponent->GripRenderThreadComponentScale);
+		MotionControllerComponent->GripRenderThreadRelativeTransform = NewTransform;
 	} // Release lock on motion controller component
 
 	  // Tell the late update manager to apply the offset to the scene components
-	LateUpdate.Apply_RenderThread(InViewFamily.Scene, OldTransform, NewTransform);
+	LateUpdate.Apply_RenderThread(InViewFamily.Scene, InViewFamily.bLateLatchingEnabled ? InViewFamily.FrameNumber : -1, OldTransform, NewTransform);
+}
+
+void UGripMotionControllerComponent::FGripViewExtension::LateLatchingViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
+{
+	SCOPED_NAMED_EVENT(UMotionControllerComponent_Latch, FColor::Orange);
+	if (!MotionControllerComponent)
+	{
+		return;
+	}
+
+	FTransform OldTransform;
+	FTransform NewTransform;
+	{
+		FScopeLock ScopeLock(&CritSect);
+		if (!MotionControllerComponent)
+		{
+			return;
+		}
+
+		// Find a view that is associated with this player.
+		float WorldToMetersScale = -1.0f;
+		for (const FSceneView* SceneView : InViewFamily.Views)
+		{
+			if (SceneView && SceneView->PlayerIndex == MotionControllerComponent->PlayerIndex)
+			{
+				WorldToMetersScale = SceneView->WorldToMetersScale;
+				break;
+			}
+		}
+		// If there are no views associated with this player use view 0.
+		if (WorldToMetersScale < 0.0f)
+		{
+			check(InViewFamily.Views.Num() > 0);
+			WorldToMetersScale = InViewFamily.Views[0]->WorldToMetersScale;
+		}
+
+		// Poll state for the most recent controller transform
+		FVector Position;
+		FRotator Orientation;
+
+		if (!MotionControllerComponent->GripPollControllerState(Position, Orientation, WorldToMetersScale))
+		{
+			return;
+		}
+
+		OldTransform = MotionControllerComponent->GripRenderThreadRelativeTransform;
+		NewTransform = FTransform(Orientation, Position, MotionControllerComponent->RenderThreadComponentScale);
+		MotionControllerComponent->GripRenderThreadRelativeTransform = NewTransform;
+
+	} // Release the lock on the MotionControllerComponent
+
+	// Tell the late update manager to apply the offset to the scene components
+	LateUpdate.Apply_RenderThread(InViewFamily.Scene, InViewFamily.FrameNumber, OldTransform, NewTransform);
 }
 
 void UGripMotionControllerComponent::GetAllGrips(TArray<FBPActorGripInformation> &GripArray)
