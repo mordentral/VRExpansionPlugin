@@ -72,8 +72,10 @@ FPhysicsReplicationVR::FPhysicsReplicationVR(FPhysScene* PhysScene) :
 	FPhysicsReplication(PhysScene)
 {
 	PhysSceneVR = PhysScene;
+#if WITH_CHAOS
 	CurAsyncDataVR = nullptr;
 	AsyncCallbackServer = nullptr;
+#endif
 	VRPhysicsReplicationStatics::bHasVRPhysicsReplication = true;
 
 #if PHYSICS_INTERFACE_PHYSX
