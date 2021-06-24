@@ -22,6 +22,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 #if WITH_EDITORONLY_DATA
 	bTickedPose = false;
 	bShowVisualizationMesh = true;
+	bMirrorVisualizationMesh = false;
 #endif
 
 	HandRelativePlacement = FTransform::Identity;
@@ -253,8 +254,9 @@ FTransform UHandSocketComponent::GetHandRelativePlacement()
 	{
 		if (USceneComponent* ParentComp = GetAttachParent())
 		{
-			FTransform curTrans = HandRelativePlacement * ParentComp->GetComponentTransform();
-			return curTrans.GetRelativeTransform(this->GetComponentTransform());
+			return HandRelativePlacement.GetRelativeTransform(this->GetRelativeTransform());
+			//FTransform curTrans = HandRelativePlacement * ParentComp->GetComponentTransform();
+			//return curTrans.GetRelativeTransform(this->GetComponentTransform());
 		}
 	}
 
@@ -325,18 +327,18 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand)
 		}
 	}
 
-
 	FTransform ReturnTrans = (HandPlacement * relTrans);
 
-	if (bFlipForLeftHand && !bIsRightHand)
+	if ((bFlipForLeftHand && !bIsRightHand))
 	{
 		if (!bOnlyFlipRotation)
 		{
-			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(FVector(1.f, 0.f, 0.f)));
+			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(GetMirrorVector()));
 		}
 
 		FRotationMatrix test(ReturnTrans.GetRotation().Rotator());
-		test.Mirror(EAxis::X, EAxis::Z);
+		test.Mirror(MirrorAxis, EAxis::Z);
+		//test.Mirror(MirrorAxis, FlipAxis);
 		ReturnTrans.SetRotation(test.ToQuat());
 		//ReturnTrans.Mirror(MirrorAxis, FlipAxis);
 	}
@@ -389,19 +391,53 @@ void UHandSocketComponent::OnRegister()
 					}
 				}
 
-				if (this->IsUsingAbsoluteScale() && !bDecoupleMeshPlacement)
+				if (USceneComponent* ParentAttach = this->GetAttachParent())
 				{
-					if (USceneComponent* ParentAttach = this->GetAttachParent())
+					FTransform relTrans = this->GetRelativeTransform();
+					FTransform HandPlacement = GetHandRelativePlacement();
+
+					if(bMirrorVisualizationMesh)
 					{
-						FTransform newRel = GetHandRelativePlacement();
-						newRel.ScaleTranslation(ParentAttach->GetRelativeScale3D());
-						HandVisualizerComponent->SetRelativeTransform(newRel);
+						FVector ScaleVector = FVector::ZeroVector;
+						switch (MirrorAxis)
+						{
+						case EAxis::X:
+						{
+							ScaleVector = FVector(1.f, -1.f, 1.f);
+						}break;
+						case EAxis::Y:
+						default:
+						{
+							ScaleVector = FVector(-1.f, 1.f, 1.f);
+						}break;
+						}
+						HandPlacement.SetScale3D(HandPlacement.GetScale3D() * ScaleVector);
 					}
+
+					if (this->IsUsingAbsoluteScale() && !bDecoupleMeshPlacement)
+					{
+						HandPlacement.ScaleTranslation(/*FVector(1.0f) / */ParentAttach->GetRelativeScale3D());
+					}
+
+					FTransform ReturnTrans = (HandPlacement * relTrans);
+
+					if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))
+					{
+						if (!bOnlyFlipRotation)
+						{
+							ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(GetMirrorVector()));
+						}
+
+						FRotationMatrix test(ReturnTrans.GetRotation().Rotator());
+						test.Mirror(MirrorAxis, FlipAxis);
+						ReturnTrans.SetRotation(test.ToQuat());
+						//ReturnTrans.Mirror(MirrorAxis, FlipAxis);
+					}
+
+
+					HandVisualizerComponent->SetRelativeTransform(ReturnTrans.GetRelativeTransform(relTrans)/*newRel*/);
 				}
-				else
-				{
-					HandVisualizerComponent->SetRelativeTransform(GetHandRelativePlacement());
-				}
+
 				PoseVisualizationToAnimation();
 			}
 		}
