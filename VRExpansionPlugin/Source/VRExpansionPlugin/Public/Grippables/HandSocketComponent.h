@@ -130,8 +130,27 @@ public:
 
 	// Returns the target relative transform of the hand
 	//UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
-		FTransform GetHandRelativePlacement();
+	FTransform GetHandRelativePlacement();
 
+	inline FVector GetMirrorVector()
+	{
+		switch (MirrorAxis)
+		{
+		case EAxis::Y:
+		{
+			return FVector::RightVector;
+		}break;
+		case EAxis::Z:
+		{
+			return FVector::UpVector;
+		}break;
+		case EAxis::X:
+		default:
+		{
+			return FVector::ForwardVector;
+		}break;
+		}
+	}
 	// Returns the target relative transform of the hand to the gripped object
 	// If you want the transform mirrored you need to pass in which hand is requesting the information
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
@@ -220,6 +239,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		bool bShowVisualizationMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
+		bool bMirrorVisualizationMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Visualization")
 		UMaterial* HandPreviewMaterial;
