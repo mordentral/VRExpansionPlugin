@@ -130,7 +130,7 @@ void UGrippableCapsuleComponent::OnInput_Implementation(FKey Key, EInputEvent Ke
 bool UGrippableCapsuleComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
 
-bool UGrippableCapsuleComponent::DenyGripping_Implementation()
+bool UGrippableCapsuleComponent::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return VRGripInterfaceSettings.bDenyGripping;
 }

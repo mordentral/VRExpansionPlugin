@@ -36,18 +36,48 @@ bool FHandSocketVisualizer::VisProxyHandleClick(FEditorViewportClient* InViewpor
 
 bool FHandSocketVisualizer::GetCustomInputCoordinateSystem(const FEditorViewportClient* ViewportClient, FMatrix& OutMatrix) const
 {
-	if (HandPropertyPath.IsValid() && CurrentlySelectedBone != NAME_None && CurrentlySelectedBone != "HandSocket")
+	if (HandPropertyPath.IsValid() && CurrentlySelectedBone != NAME_None/* && CurrentlySelectedBone != "HandSocket"*/)
 	{
 		if (CurrentlySelectedBone == "HandSocket")
 		{
+			UHandSocketComponent* CurrentlyEditingComponent = GetCurrentlyEditingComponent();
+			if (CurrentlyEditingComponent)
+			{
+				if (CurrentlyEditingComponent->bMirrorVisualizationMesh)
+				{
+					// Doesn't work right, needs to be in relative space not world/component space !! fix it!!
+					FTransform NewTrans = CurrentlyEditingComponent->GetRelativeTransform();//GetComponentTransform();
+					NewTrans.Mirror(CurrentlyEditingComponent->GetAsEAxis(CurrentlyEditingComponent->MirrorAxis), CurrentlyEditingComponent->GetAsEAxis(CurrentlyEditingComponent->FlipAxis));
+
+					if (USceneComponent* ParentComp = CurrentlyEditingComponent->GetAttachParent())
+					{
+						NewTrans = NewTrans * ParentComp->GetComponentTransform();
+					}
+
+					OutMatrix = FRotationMatrix::Make(NewTrans.GetRotation());
+				}
+			}
+
 			return false;
 		}
 		else if (CurrentlySelectedBone == "Visualizer")
 		{
 			if (UHandSocketComponent* CurrentlyEditingComponent = GetCurrentlyEditingComponent())
 			{
-				FTransform newTrans = CurrentlyEditingComponent->HandVisualizerComponent->GetBoneTransform(0);
-				//FTransform newTrans = CurrentlyEditingComponent->GetHandRelativePlacement() * CurrentlyEditingComponent->GetComponentTransform();
+
+				FTransform newTrans = FTransform::Identity;
+				if (CurrentlyEditingComponent->bDecoupleMeshPlacement)
+				{
+					if (USceneComponent* ParentComp = CurrentlyEditingComponent->GetAttachParent())
+					{
+						newTrans = CurrentlyEditingComponent->HandRelativePlacement * ParentComp->GetComponentTransform();
+					}
+				}
+				else
+				{
+					newTrans = CurrentlyEditingComponent->GetHandRelativePlacement() * CurrentlyEditingComponent->GetComponentTransform();
+				}
+
 				OutMatrix = FRotationMatrix::Make(newTrans.GetRotation());
 			}
 		}
@@ -169,7 +199,20 @@ bool FHandSocketVisualizer::GetWidgetLocation(const FEditorViewportClient* Viewp
 		{
 			if (UHandSocketComponent* CurrentlyEditingComponent = GetCurrentlyEditingComponent())
 			{
-				OutLocation = CurrentlyEditingComponent->HandVisualizerComponent->GetBoneTransform(0).GetLocation();
+				FTransform newTrans = FTransform::Identity;
+				if (CurrentlyEditingComponent->bDecoupleMeshPlacement)
+				{
+					if (USceneComponent* ParentComp = CurrentlyEditingComponent->GetAttachParent())
+					{
+						newTrans = CurrentlyEditingComponent->HandRelativePlacement * ParentComp->GetComponentTransform();
+					}
+				}
+				else
+				{
+					newTrans = CurrentlyEditingComponent->GetHandRelativePlacement() * CurrentlyEditingComponent->GetComponentTransform();
+				}
+
+				OutLocation = newTrans.GetLocation();
 			}
 		}
 		else

@@ -68,8 +68,8 @@ UVRSimpleCharacterMovementComponent::UVRSimpleCharacterMovementComponent(const F
 	AdditionalVRInputVector = FVector::ZeroVector;	
 	CustomVRInputVector = FVector::ZeroVector;
 
-	//SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
-	//SetMoveResponseDataContainer(VRMoveResponseDataContainer);
+	SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
+	SetMoveResponseDataContainer(VRMoveResponseDataContainer);
 
 	//bMaintainHorizontalGroundVelocity = true;
 }
@@ -1258,28 +1258,17 @@ void UVRSimpleCharacterMovementComponent::ServerMove_PerformMovement(const FChar
 
 			CustomVRInputVector = MoveDataVR->ConditionalMoveReps.CustomVRInputVector;
 			MoveActionArray = MoveDataVR->ConditionalMoveReps.MoveActionArray;
+			AdditionalVRInputVector = MoveDataVR->LFDiff;
 
-			// Set capsule location prior to testing movement
-			// I am overriding the replicated value here when movement is made on purpose
-			/*if (VRRootCapsule)
+			if (BaseVRCharacterOwner)
 			{
-				VRRootCapsule->curCameraLoc = MoveDataVR->VRCapsuleLocation;
-				VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(MoveDataVR->VRCapsuleRotation), 0.0f);
-				VRRootCapsule->DifferenceFromLastFrame = FVector(MoveDataVR->LFDiff.X, MoveDataVR->LFDiff.Y, 0.0f);
-				AdditionalVRInputVector = VRRootCapsule->DifferenceFromLastFrame;
-
-				if (BaseVRCharacterOwner)
+				if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && MoveDataVR->LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(MoveDataVR->LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 				{
-					if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && MoveDataVR->LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(MoveDataVR->LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
-					{
-						BaseVRCharacterOwner->SetCharacterHalfHeightVR(MoveDataVR->LFDiff.Z, false);
-						//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
-							//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
-					}
+					BaseVRCharacterOwner->SetCharacterHalfHeightVR(MoveDataVR->LFDiff.Z, false);
+					//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
+						//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
 				}
-
-				VRRootCapsule->GenerateOffsetToWorld(false, false);
-			}*/
+			}
 
 			MoveAutonomous(ClientTimeStamp, DeltaTime, ClientMoveFlags, ClientAccel);
 			bHasRequestedVelocity = false;

@@ -285,7 +285,7 @@ void UVRDialComponent::OnEndSecondaryUsed_Implementation() {}
 void UVRDialComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool UVRDialComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
-bool UVRDialComponent::DenyGripping_Implementation()
+bool UVRDialComponent::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return bDenyGripping;
 }

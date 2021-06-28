@@ -129,7 +129,7 @@ void UGrippableStaticMeshComponent::OnEndSecondaryUsed_Implementation() {}
 void UGrippableStaticMeshComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool UGrippableStaticMeshComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
-bool UGrippableStaticMeshComponent::DenyGripping_Implementation()
+bool UGrippableStaticMeshComponent::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return VRGripInterfaceSettings.bDenyGripping;
 }

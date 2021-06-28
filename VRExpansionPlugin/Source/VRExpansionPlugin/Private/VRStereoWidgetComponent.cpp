@@ -436,7 +436,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	//bool bIsCurVis = IsWidgetVisible();
 
-	bool bIsVisible = /*IsVisible()*/IsWidgetVisible() && !bIsSleeping;// && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
+	bool bIsVisible = IsVisible() && IsWidgetVisible() && !bIsSleeping;// && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
 
 	// If we are set to not use stereo layers or we don't have a valid stereo layer device
 	if (

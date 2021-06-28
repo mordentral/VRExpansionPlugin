@@ -317,7 +317,7 @@ void AGrippableActor::OnEndSecondaryUsed_Implementation() {}
 void AGrippableActor::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool AGrippableActor::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
-bool AGrippableActor::DenyGripping_Implementation()
+bool AGrippableActor::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return VRGripInterfaceSettings.bDenyGripping;
 }

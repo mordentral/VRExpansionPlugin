@@ -10,6 +10,8 @@
 
 #include "VRGripInterface.generated.h"
 
+// Forward declare
+class UGripMotionControllerComponent;
 
 UINTERFACE(Blueprintable)
 class VREXPANSIONPLUGIN_API UVRGripInterface: public UInterface
@@ -32,7 +34,7 @@ public:
 
 	// Set up as deny instead of allow so that default allows for gripping
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface", meta = (DisplayName = "IsDenyingGrips"))
-		bool DenyGripping();
+		bool DenyGripping(UGripMotionControllerComponent * GripInitiator = nullptr);
 
 	// How an interfaced object behaves when teleporting
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "VRGripInterface")

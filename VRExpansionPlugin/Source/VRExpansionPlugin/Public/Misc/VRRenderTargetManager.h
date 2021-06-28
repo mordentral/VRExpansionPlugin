@@ -188,12 +188,15 @@ public:
 	UPROPERTY(Transient)
 		int32 BlobNum;
 
+	bool bWaitingForManager;
+
 	void SendInitMessage();
 
 	UFUNCTION()
 	void SendNextDataBlob();
 
 	FTimerHandle SendTimer_Handle;
+	FTimerHandle CheckManager_Handle;
 
 	// Maximum size of texture blobs to use for sending (size of chunks that it gets broken down into)
 	UPROPERTY()
