@@ -47,7 +47,7 @@ bool FHandSocketVisualizer::GetCustomInputCoordinateSystem(const FEditorViewport
 				{
 					// Doesn't work right, needs to be in relative space not world/component space !! fix it!!
 					FTransform NewTrans = CurrentlyEditingComponent->GetRelativeTransform();//GetComponentTransform();
-					NewTrans.Mirror(CurrentlyEditingComponent->MirrorAxis, CurrentlyEditingComponent->FlipAxis);
+					NewTrans.Mirror(CurrentlyEditingComponent->GetAsEAxis(CurrentlyEditingComponent->MirrorAxis), CurrentlyEditingComponent->GetAsEAxis(CurrentlyEditingComponent->FlipAxis));
 
 					if (USceneComponent* ParentComp = CurrentlyEditingComponent->GetAttachParent())
 					{
