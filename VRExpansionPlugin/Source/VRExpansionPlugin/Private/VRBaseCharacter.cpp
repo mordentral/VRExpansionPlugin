@@ -820,7 +820,7 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 	if (bAccountForHMDRotation)
 	{
 		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());//bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
-		NewRotation = (NewRotation.Quaternion().Inverse() * NewRot.Quaternion()).Rotator();
+		NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
 	}
 	else
 		NewRotation = NewRot;
