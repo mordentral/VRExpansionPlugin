@@ -326,6 +326,60 @@ void FHandSocketComponentDetails::OnHandRelativeUpdated(IDetailLayoutBuilder* La
 	FComponentVisualizer::NotifyPropertyModified(HandSocketComponent.Get(), FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
 }
 
+void FHandSocketComponentDetails::OnLeftDominantUpdated(IDetailLayoutBuilder* LayoutBuilder)
+{
+
+	if (!HandSocketComponent.IsValid())
+	{
+		return;
+	}
+
+	// Default to always flipping this
+	//if (HandSocketComponent->bFlipForLeftHand)
+	{
+		FTransform relTrans = HandSocketComponent->GetRelativeTransform();
+		FTransform HandPlacement = HandSocketComponent->GetHandRelativePlacement();
+
+		if (HandSocketComponent->bDecoupleMeshPlacement)
+		{
+			relTrans = FTransform::Identity;
+		}
+
+		FTransform ReturnTrans = (HandPlacement * relTrans);
+
+		if (!HandSocketComponent->bOnlyFlipRotation)
+		{
+			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(HandSocketComponent->GetMirrorVector()));
+		}
+
+		FRotationMatrix test(ReturnTrans.GetRotation().Rotator());
+		test.Mirror(HandSocketComponent->GetAsEAxis(HandSocketComponent->MirrorAxis), HandSocketComponent->GetCrossAxis());
+		ReturnTrans.SetRotation(test.ToQuat());
+
+		HandSocketComponent->Modify();
+		if (AActor* Owner = HandSocketComponent->GetOwner())
+		{
+			Owner->Modify();
+		}
+		ReturnTrans = ReturnTrans.GetRelativeTransform(relTrans);
+		HandSocketComponent->HandRelativePlacement = ReturnTrans;
+
+		TSharedPtr<FComponentVisualizer> Visualizer = GUnrealEd->FindComponentVisualizer(HandSocketComponent->GetClass());
+		FHandSocketVisualizer* HandVisualizer = (FHandSocketVisualizer*)Visualizer.Get();
+
+		if (HandVisualizer)
+		{
+			if (UHandSocketComponent* RefHand = HandVisualizer->GetCurrentlyEditingComponent())
+			{
+				RefHand->HandRelativePlacement = HandSocketComponent->HandRelativePlacement;
+				//FComponentVisualizer::NotifyPropertyModified(RefHand, FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
+			}
+		}
+
+		FComponentVisualizer::NotifyPropertyModified(HandSocketComponent.Get(), FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, CustomPoseDeltas)));
+	}
+}
+
 void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* LayoutBuilder)
 {
 
@@ -356,6 +410,7 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 				if (UHandSocketComponent* RefHand = HandVisualizer->GetCurrentlyEditingComponent())
 				{
 					RefHand->HandRelativePlacement = HandSocketComponent->HandRelativePlacement;
+					//FComponentVisualizer::NotifyPropertyModified(RefHand, FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
 				}
 			}
 		}
@@ -379,12 +434,13 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 				if (UHandSocketComponent* RefHand = HandVisualizer->GetCurrentlyEditingComponent())
 				{
 					RefHand->HandRelativePlacement = HandSocketComponent->HandRelativePlacement;
+					//FComponentVisualizer::NotifyPropertyModified(RefHand, FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
 				}
 			}
 		}
 	}
 
-	FComponentVisualizer::NotifyPropertyModified(HandSocketComponent.Get(), FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, CustomPoseDeltas)));
+	FComponentVisualizer::NotifyPropertyModified(HandSocketComponent.Get(), FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
 }
 
 void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
@@ -431,12 +487,16 @@ void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailB
 
 	TSharedPtr<IPropertyHandle> LockedLocationProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bDecoupleMeshPlacement));
 	TSharedPtr<IPropertyHandle> HandRelativePlacementProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement));
+	TSharedPtr<IPropertyHandle> LeftHandDominateProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bLeftHandDominant));
 
 	FSimpleDelegate OnHandRelativeChangedDelegate = FSimpleDelegate::CreateSP(this, &FHandSocketComponentDetails::OnHandRelativeUpdated, &DetailBuilder);
 	HandRelativePlacementProperty->SetOnPropertyValueChanged(OnHandRelativeChangedDelegate);
 
 	FSimpleDelegate OnLockedStateChangedDelegate = FSimpleDelegate::CreateSP(this, &FHandSocketComponentDetails::OnLockedStateUpdated, &DetailBuilder);
 	LockedLocationProperty->SetOnPropertyValueChanged(OnLockedStateChangedDelegate);
+
+	FSimpleDelegate OnLeftDominateChangedDelegate = FSimpleDelegate::CreateSP(this, &FHandSocketComponentDetails::OnLeftDominantUpdated, &DetailBuilder);
+	LeftHandDominateProperty->SetOnPropertyValueChanged(OnLeftDominateChangedDelegate);
 
 	TSharedPtr<IPropertyHandle> ShowVisualizationProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bShowVisualizationMesh));
 
@@ -516,6 +576,11 @@ FReply FHandSocketComponentDetails::OnUpdateSavePose()
 						RefHand->HandTargetAnimation = NewAnim.Get();
 						RefHand->CustomPoseDeltas.Empty();
 						RefHand->bUseCustomPoseDeltas = false;
+						/*TArray<FProperty*> PropertiesToModify;
+						PropertiesToModify.Add(FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandTargetAnimation)));
+						PropertiesToModify.Add(FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bUseCustomPoseDeltas)));
+						PropertiesToModify.Add(FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, CustomPoseDeltas)));
+						FComponentVisualizer::NotifyPropertiesModified(RefHand, PropertiesToModify);*/
 					}
 				}
 				

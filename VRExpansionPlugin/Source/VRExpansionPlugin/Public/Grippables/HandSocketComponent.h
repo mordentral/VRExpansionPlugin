@@ -20,6 +20,18 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRHandSocketComponent, Log, All);
 
+
+UENUM()
+namespace EVRAxis
+{
+	enum Type
+	{
+		X,
+		Y,
+		Z
+	};
+}
+
 /**
 * A base class for custom hand socket objects
 * Not directly blueprint spawnable as you are supposed to subclass this to add on top your own custom data
@@ -62,12 +74,12 @@ public:
 	//static get socket compoonent
 
 	//Axis to mirror on for this socket
-	UPROPERTY(EditAnywhere, Category = "Hand Socket Data|Mirroring|Advanced")
-		TEnumAsByte<EAxis::Type> MirrorAxis;
+	UPROPERTY(EditDefaultsOnly, Category = "Hand Socket Data|Mirroring|Advanced")
+		TEnumAsByte<EVRAxis::Type> MirrorAxis;
 
 	// Axis to flip on when mirroring this socket
-	UPROPERTY(EditAnywhere, Category = "Hand Socket Data|Mirroring|Advanced")
-		TEnumAsByte<EAxis::Type> FlipAxis;
+	UPROPERTY(EditDefaultsOnly, Category = "Hand Socket Data|Mirroring|Advanced")
+		TEnumAsByte<EVRAxis::Type> FlipAxis;
 
 	// Relative placement of the hand to this socket
 	UPROPERTY(EditAnywhere, /*BlueprintReadWrite, */Category = "Hand Socket Data")
@@ -78,7 +90,7 @@ public:
 		FName SlotPrefix;
 
 	// If true the hand meshes relative transform will be de-coupled from the hand socket
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Hand Socket Data")
 		bool bDecoupleMeshPlacement;
 
 	// If true we should only be used to snap mesh to us, not for the actual socket transform
@@ -86,8 +98,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		bool bOnlySnapMesh;
 
-	// If true we will mirror ourselves automatically for the left hand
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data|Mirroring")
+	// If true then this socket is left hand dominant and will flip for the right hand instead
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hand Socket Data")
+		bool bLeftHandDominant;
+
+	// If true we will mirror ourselves automatically for the off hand
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data|Mirroring", meta = (DisplayName = "Flip For Off Hand"))
 		bool bFlipForLeftHand;
 
 	// If true, when we mirror the hand socket it will only mirror rotation, not position
@@ -132,24 +148,84 @@ public:
 	//UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
 	FTransform GetHandRelativePlacement();
 
+	inline TEnumAsByte<EAxis::Type> GetAsEAxis(TEnumAsByte<EVRAxis::Type> InAxis)
+	{
+		switch (InAxis)
+		{
+		case EVRAxis::X:
+		{
+			return EAxis::X;
+		}break;
+		case EVRAxis::Y:
+		{
+			return EAxis::Y;
+		}break;
+		case EVRAxis::Z:
+		{
+			return EAxis::Z;
+		}break;
+		}
+
+		return EAxis::X;
+	}
+
+
 	inline FVector GetMirrorVector()
 	{
 		switch (MirrorAxis)
 		{
-		case EAxis::Y:
+		case EVRAxis::Y:
 		{
 			return FVector::RightVector;
 		}break;
-		case EAxis::Z:
+		case EVRAxis::Z:
 		{
 			return FVector::UpVector;
 		}break;
-		case EAxis::X:
+		case EVRAxis::X:
 		default:
 		{
 			return FVector::ForwardVector;
 		}break;
 		}
+	}
+
+	inline FVector GetFlipVector()
+	{
+		switch (FlipAxis)
+		{
+		case EVRAxis::Y:
+		{
+			return FVector::RightVector;
+		}break;
+		case EVRAxis::Z:
+		{
+			return FVector::UpVector;
+		}break;
+		case EVRAxis::X:
+		default:
+		{
+			return FVector::ForwardVector;
+		}break;
+		}
+	}
+
+	inline TEnumAsByte<EAxis::Type> GetCrossAxis()
+	{
+		if (FlipAxis != EVRAxis::Z && MirrorAxis != EVRAxis::Z)
+		{
+			return EAxis::Z;
+		}
+		else if (FlipAxis != EVRAxis::Y && MirrorAxis != EVRAxis::Y)
+		{
+			return EAxis::Y;
+		}
+		else if (FlipAxis != EVRAxis::X && MirrorAxis != EVRAxis::X)
+		{
+			return EAxis::X;
+		}
+
+		return EAxis::None;
 	}
 	// Returns the target relative transform of the hand to the gripped object
 	// If you want the transform mirrored you need to pass in which hand is requesting the information
@@ -237,12 +313,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		class USkeletalMesh* VisualizationMesh;
 
+	// If we should show the visualization mesh
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		bool bShowVisualizationMesh;
 
+	// Show the visualization mirrored
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		bool bMirrorVisualizationMesh;
 
+	// Scale to apply when mirroring the hand, adjust to visualize your off hand correctly
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
+		FVector MirroredScale;
+
+	// Material to apply to the hand
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Visualization")
 		UMaterial* HandPreviewMaterial;
 

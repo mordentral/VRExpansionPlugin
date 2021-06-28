@@ -27,6 +27,7 @@ public:
 	TWeakObjectPtr<UAnimSequence> SaveAnimationAsset(const FString& InAssetPath, const FString& InAssetName);
 
 	void OnLockedStateUpdated(IDetailLayoutBuilder* LayoutBuilder);
+	void OnLeftDominantUpdated(IDetailLayoutBuilder* LayoutBuilder);
 	void OnHandRelativeUpdated(IDetailLayoutBuilder* LayoutBuilder);
 	void OnUpdateShowMesh(IDetailLayoutBuilder* LayoutBuilder);
 
