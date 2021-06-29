@@ -60,7 +60,6 @@ public:
 	}
 };
 
-
 UCLASS(Blueprintable, ClassGroup = (VRExpansionPlugin), hideCategories = ("Component Tick", Events, Physics, Lod, "Asset User Data", Collision))
 class VREXPANSIONPLUGIN_API UHandSocketComponent : public USceneComponent, public IGameplayTagAssetInterface
 {
@@ -82,7 +81,7 @@ public:
 		TEnumAsByte<EVRAxis::Type> FlipAxis;
 
 	// Relative placement of the hand to this socket
-	UPROPERTY(EditAnywhere, /*BlueprintReadWrite, */Category = "Hand Socket Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, /*DuplicateTransient,*/ Category = "Hand Socket Data")
 		FTransform HandRelativePlacement;
 
 	// Target Slot Prefix

@@ -376,7 +376,7 @@ void FHandSocketComponentDetails::OnLeftDominantUpdated(IDetailLayoutBuilder* La
 			}
 		}
 
-		FComponentVisualizer::NotifyPropertyModified(HandSocketComponent.Get(), FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, CustomPoseDeltas)));
+		FComponentVisualizer::NotifyPropertyModified(HandSocketComponent.Get(), FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
 	}
 }
 
@@ -445,7 +445,38 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 
 void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
 {
-	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailBuilder.GetSelectedObjects();
+	// Hide the SplineCurves property
+	//TSharedPtr<IPropertyHandle> HandPlacementProperty = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement));
+	//HandPlacementProperty->MarkHiddenByCustomization();
+
+
+	TArray<TWeakObjectPtr<UObject>> ObjectsBeingCustomized;
+	DetailBuilder.GetObjectsBeingCustomized(ObjectsBeingCustomized);
+
+	if (ObjectsBeingCustomized.Num() == 1)
+	{
+		UHandSocketComponent* CurrentHandSocket = Cast<UHandSocketComponent>(ObjectsBeingCustomized[0]);
+		if (CurrentHandSocket != NULL)
+		{
+			if (HandSocketComponent != CurrentHandSocket)
+			{
+				TSharedPtr<FComponentVisualizer> Visualizer = GUnrealEd->FindComponentVisualizer(CurrentHandSocket->GetClass());
+				FHandSocketVisualizer* HandVisualizer = (FHandSocketVisualizer*)Visualizer.Get();
+
+				if (HandVisualizer)
+				{
+					HandVisualizer->CurrentlySelectedBoneIdx = INDEX_NONE;
+					HandVisualizer->CurrentlySelectedBone = NAME_None;
+					HandVisualizer->HandPropertyPath = FComponentPropertyPath();
+					//HandVisualizer->OldHandSocketComp = CurrentHandSocket;
+				}
+
+				HandSocketComponent = CurrentHandSocket;
+			}
+		}
+	}
+
+	/*const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailBuilder.GetSelectedObjects();
 	for (int32 ObjectIndex = 0; ObjectIndex < SelectedObjects.Num(); ++ObjectIndex)
 	{
 		const TWeakObjectPtr<UObject>& CurrentObject = SelectedObjects[ObjectIndex];
@@ -472,7 +503,7 @@ void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailB
 				break;
 			}
 		}
-	}
+	}*/
 
 	DetailBuilder.HideCategory(FName("ComponentTick"));
 	DetailBuilder.HideCategory(FName("GameplayTags"));
