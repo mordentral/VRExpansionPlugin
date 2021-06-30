@@ -3,6 +3,13 @@
 
 UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
+	bUseGlobalLerpToHand(false),
+	MinDistanceForLerp(10.0f),
+	LerpDuration(0.25f),
+	MinSpeedForLerp(100.f),
+	MaxSpeedForLerp(500.f),
+	LerpInterpolationMode(EVRLerpInterpolationMode::QuatInterp),
+	bUseCurve(false),
 	MaxCCDPasses(1),
 	OneEuroMinCutoff(0.1f),
 	OneEuroCutoffSlope(10.0f),
@@ -12,6 +19,12 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 	bUseSeperateHandTransforms(false),
 	CurrentControllerProfileTransformRight(FTransform::Identity)
 {
+}
+
+bool UVRGlobalSettings::IsGlobalLerpEnabled()
+{
+	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+	return VRSettings.bUseGlobalLerpToHand;
 }
 
 FTransform UVRGlobalSettings::AdjustTransformByControllerProfile(FName OptionalControllerProfileName, const FTransform& SocketTransform, bool bIsRightHand)
