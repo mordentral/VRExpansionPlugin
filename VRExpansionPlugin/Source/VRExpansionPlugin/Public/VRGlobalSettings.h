@@ -117,6 +117,42 @@ class VREXPANSIONPLUGIN_API UVRGlobalSettings : public UObject
 public:
 	UVRGlobalSettings(const FObjectInitializer& ObjectInitializer);
 
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
+		bool bUseGlobalLerpToHand;
+
+	// If the initial grip distance is closer than this value then the lerping will not be performed.
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
+		float MinDistanceForLerp;
+
+	// How many seconds the lerp should take
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
+		float LerpDuration;
+
+	// The minimum speed (in UU per second) that that the lerp should have across the initial grip distance
+	// Will speed the LerpSpeed up to try and maintain this initial speed if required
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
+		float MinSpeedForLerp;
+
+	// The maximum speed (in UU per second) that the lerp should have across the initial grip distance
+	// Will slow the LerpSpeed down to try and maintain this initial speed if required
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
+		float MaxSpeedForLerp;
+
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
+		EVRLerpInterpolationMode LerpInterpolationMode;
+
+	// Whether to use a curve map to map the lerp to
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand|Curve")
+		bool bUseCurve;
+
+	// The curve to follow when using a curve map, only uses from 0.0 - 1.0 of the curve timeline and maps it across the entire duration
+	UPROPERTY(config, Category = "GlobalLerpToHand|Curve", EditAnywhere, meta = (editcondition = "bUseCurve"))
+		FRuntimeFloatCurve OptionalCurveToFollow;
+
+	// Alter the values of the virtual stock settings and save them out
+	UFUNCTION(BlueprintPure, Category = "GlobalLerpToHand")
+		static bool IsGlobalLerpEnabled();
+
 	// How many passes CCD will take during simulation, larger values significantly increase the cost of CCD calculation but also prevent tunneling artifacts
 	// Physx only
 	UPROPERTY(config, EditAnywhere, Category = "Physics")
