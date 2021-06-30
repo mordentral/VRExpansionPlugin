@@ -117,6 +117,21 @@ public:
 
 };
 
+
+/** Different methods for interpolating rotation between transforms */
+UENUM(BlueprintType)
+enum class EVRLerpInterpolationMode : uint8
+{
+	/** Shortest Path or Quaternion interpolation for the rotation. */
+	QuatInterp,
+
+	/** Rotor or Euler Angle interpolation. */
+	EulerInterp,
+
+	/** Dual quaternion interpolation, follows helix or screw-motion path between keyframes.   */
+	DualQuatInterp
+};
+
 template<class filterType>
 class FBasicLowPassFilter
 {
@@ -1374,11 +1389,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		FBPAdvGripSettings AdvancedGripSettings;
 
-
-	// When true the grips movement logic will not be performed until it is false again
-	//UPROPERTY(BlueprintReadWrite)
-		//bool bPauseGrip;
-
 	// For multi grip situations
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		FBPSecondaryGripInfo SecondaryGripInfo;
@@ -1403,6 +1413,14 @@ public:
 
 	// Need to skip one frame of length check post teleport with constrained objects, the constraint may have not been updated yet.
 	bool bSkipNextConstraintLengthCheck;
+
+	// Lerp settings if we are using global lerping
+	float CurrentLerpTime;
+	float LerpSpeed;
+	FTransform OnGripTransform;
+
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "Settings")
+	bool bIsLerping;
 
 	bool IsLocalAuthGrip()
 	{
@@ -1436,6 +1454,10 @@ public:
 		bLockHybridGrip = false;
 		AdditionTransform = FTransform::Identity;
 		GripDistance = 0.0f;
+		CurrentLerpTime = 0.f;
+		LerpSpeed = 0.f;
+		OnGripTransform = FTransform::Identity;
+		bIsLerping = false;
 
 		// Clear out the secondary grip
 		SecondaryGripInfo.ClearNonReppingItems();
@@ -1544,7 +1566,11 @@ public:
 		LastLockedRotation(FRotator::ZeroRotator),
 		LastWorldTransform(FTransform::Identity),
 		bSkipNextTeleportCheck(false),
-		bSkipNextConstraintLengthCheck(false)
+		bSkipNextConstraintLengthCheck(false),
+		CurrentLerpTime(0.f),
+		LerpSpeed(0.f),
+		OnGripTransform(FTransform::Identity),
+		bIsLerping(false)
 	{
 	}	
 

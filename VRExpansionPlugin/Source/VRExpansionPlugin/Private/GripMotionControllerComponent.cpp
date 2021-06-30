@@ -2427,6 +2427,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	if (!NewGrip.GrippedObject || !NewGrip.GrippedObject->IsValidLowLevelFast())
 		return false;
 
+	if (!bIsReInit && NewGrip.GripCollisionType != EGripCollisionType::EventsOnly && NewGrip.GripCollisionType != EGripCollisionType::CustomGrip)
+	{
+		// Init lerping
+		InitializeLerpToHand(NewGrip);
+	}
+
 	switch (NewGrip.GripTargetType)
 	{
 	case EGripTargetType::ActorGrip:
@@ -2705,7 +2711,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 		// Move it to the correct location automatically
 		if (bHasMovementAuthority)
-			TeleportMoveGrip(NewGrip);
+		{
+			if (!NewGrip.bIsLerping)
+			{
+				TeleportMoveGrip(NewGrip);
+			}
+		}
 
 		if(bHasMovementAuthority || IsServer())
 			root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform);
@@ -2723,7 +2734,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 		// Move it to the correct location automatically
 		if (bHasMovementAuthority)
-			TeleportMoveGrip(NewGrip);
+		{
+			if (!NewGrip.bIsLerping)
+			{
+				TeleportMoveGrip(NewGrip);
+			}
+		}
 	} break;
 
 	}
@@ -2735,6 +2751,165 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	}
 
 	return true;
+}
+
+void UGripMotionControllerComponent::InitializeLerpToHand(FBPActorGripInformation & GripInformation)
+{
+	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
+	if (!VRSettings.bUseGlobalLerpToHand)
+		return;
+
+	if (USceneComponent* PrimParent = Cast<USceneComponent>(GripInformation.GrippedObject))
+	{
+		if (GripInformation.GrippedBoneName != NAME_None)
+		{
+			GripInformation.OnGripTransform = PrimParent->GetSocketTransform(GripInformation.GrippedBoneName);
+		}
+		else
+		{
+			GripInformation.OnGripTransform = PrimParent->GetComponentTransform();
+		}
+	}
+	else if (AActor* ParentActor = Cast<AActor>(GripInformation.GrippedObject))
+	{
+		GripInformation.OnGripTransform = ParentActor->GetActorTransform();
+	}
+
+	FTransform TargetTransform = GripInformation.RelativeTransform * this->GetPivotTransform();
+	float Distance = FVector::Dist(GripInformation.OnGripTransform.GetLocation(), TargetTransform.GetLocation());
+	if (VRSettings.MinDistanceForLerp > 0.0f && Distance < VRSettings.MinDistanceForLerp)
+	{
+		// Don't init
+		OnLerpToHandFinished.Broadcast(GripInformation);
+		GripInformation.bIsLerping = false;
+		return;
+	}
+	else
+	{
+		float LerpScaler = 1.0f;
+		float DistanceToSpeed = Distance / VRSettings.LerpDuration;
+		if (DistanceToSpeed < VRSettings.MinSpeedForLerp)
+		{
+			LerpScaler = VRSettings.MinSpeedForLerp / DistanceToSpeed;
+		}
+		else if (VRSettings.MaxSpeedForLerp > 0.f && DistanceToSpeed > VRSettings.MaxSpeedForLerp)
+		{
+			LerpScaler = VRSettings.MaxSpeedForLerp / DistanceToSpeed;
+		}
+		else
+		{
+			LerpScaler = 1.0f;
+		}
+
+		// Get the modified lerp speed
+		GripInformation.LerpSpeed = ((1.f / VRSettings.LerpDuration) * LerpScaler);
+		GripInformation.bIsLerping = true;
+		GripInformation.CurrentLerpTime = 0.0f;
+	}
+
+	GripInformation.CurrentLerpTime = 0.0f;
+}
+
+void UGripMotionControllerComponent::HandleGlobalLerpToHand(FBPActorGripInformation& GripInformation, FTransform& WorldTransform, float DeltaTime)
+{
+	if (!GripInformation.bIsLerping)
+		return;
+
+	UVRGlobalSettings* VRSettings = GetMutableDefault<UVRGlobalSettings>();
+
+	if (!VRSettings->bUseGlobalLerpToHand || VRSettings->LerpDuration <= 0.f)
+	{
+		GripInformation.bIsLerping = false;
+		GripInformation.CurrentLerpTime = 0.f;
+		OnLerpToHandFinished.Broadcast(GripInformation);
+		return;
+	}
+
+	FTransform NA = GripInformation.OnGripTransform;//root->GetComponentTransform();
+	float Alpha = 0.0f;
+
+	GripInformation.CurrentLerpTime += DeltaTime * GripInformation.LerpSpeed;
+	float OrigAlpha = FMath::Clamp(GripInformation.CurrentLerpTime, 0.f, 1.0f);
+	Alpha = OrigAlpha;
+
+	if (VRSettings->bUseCurve)
+	{
+		if (FRichCurve* richCurve = VRSettings->OptionalCurveToFollow.GetRichCurve())
+		{
+			/*if (CurrentLerpTime > richCurve->GetLastKey().Time)
+			{
+				// Stop lerping
+				OnLerpToHandFinished.Broadcast();
+				CurrentLerpTime = 0.0f;
+				bIsActive = false;
+				return true;
+			}
+			else*/
+			{
+				Alpha = FMath::Clamp(richCurve->Eval(Alpha), 0.f, 1.f);
+				//CurrentLerpTime += DeltaTime;
+			}
+		}
+	}
+
+	FTransform NB = WorldTransform;
+	NA.NormalizeRotation();
+	NB.NormalizeRotation();
+
+	// Quaternion interpolation
+	if (VRSettings->LerpInterpolationMode == EVRLerpInterpolationMode::QuatInterp)
+	{
+		WorldTransform.Blend(NA, NB, Alpha);
+	}
+
+	// Euler Angle interpolation
+	else if (VRSettings->LerpInterpolationMode == EVRLerpInterpolationMode::EulerInterp)
+	{
+		WorldTransform.SetTranslation(FMath::Lerp(NA.GetTranslation(), NB.GetTranslation(), Alpha));
+		WorldTransform.SetScale3D(FMath::Lerp(NA.GetScale3D(), NB.GetScale3D(), Alpha));
+
+		FRotator A = NA.Rotator();
+		FRotator B = NB.Rotator();
+		WorldTransform.SetRotation(FQuat(A + (Alpha * (B - A))));
+	}
+	// Dual quaternion interpolation
+	else
+	{
+		if ((NB.GetRotation() | NA.GetRotation()) < 0.0f)
+		{
+			NB.SetRotation(NB.GetRotation() * -1.0f);
+		}
+		WorldTransform = (FDualQuat(NA) * (1 - Alpha) + FDualQuat(NB) * Alpha).Normalized().AsFTransform(FMath::Lerp(NA.GetScale3D(), NB.GetScale3D(), Alpha));
+	}
+
+	// Turn it off if we need to
+	if (OrigAlpha >= 1.0f)
+	{
+		OnLerpToHandFinished.Broadcast(GripInformation);
+		GripInformation.CurrentLerpTime = 0.0f;
+		GripInformation.bIsLerping = false;
+	}
+}
+
+void UGripMotionControllerComponent::CancelGlobalLerpToHand(uint8 GripID)
+{
+	FBPActorGripInformation* GripToUse = nullptr;
+	if (GripID != INVALID_VRGRIP_ID)
+	{
+		GripToUse = GrippedObjects.FindByKey(GripID);
+		if (!GripToUse)
+		{
+			GripToUse = LocallyGrippedObjects.FindByKey(GripID);
+		}
+
+		if (GripToUse)
+		{
+			GripToUse->bIsLerping = false;
+			GripToUse->CurrentLerpTime = 0.0f;
+			OnLerpToHandFinished.Broadcast(*GripToUse);
+		}
+	}
 }
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
@@ -4129,6 +4304,8 @@ bool UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 			bForceADrop = DefaultGripScript->Wants_ToForceDrop();
 		}
 	}
+
+	HandleGlobalLerpToHand(Grip, WorldTransform, DeltaTime);
 
 	return bHasValidTransform;
 }

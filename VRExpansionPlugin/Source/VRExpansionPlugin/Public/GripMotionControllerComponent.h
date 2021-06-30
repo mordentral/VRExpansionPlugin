@@ -14,6 +14,7 @@
 #include "VRGripInterface.h"
 #include "VRGlobalSettings.h"
 #include "GripScripts/VRGripScriptBase.h"
+#include "Math/DualQuat.h"
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 #include "GripMotionControllerComponent.generated.h"
 
@@ -172,6 +173,19 @@ public:
 	// Due to a bug with instanced variables and parent classes you can't directly edit this in subclass in the details panel
 	UPROPERTY(VisibleAnywhere, Transient, BlueprintReadOnly, Category = "GripMotionController")
 	UVRGripScriptBase* DefaultGripScript;
+
+	// Lerping functions and events
+	void InitializeLerpToHand(FBPActorGripInformation& GripInfo);
+	void HandleGlobalLerpToHand(FBPActorGripInformation& GripInformation, FTransform& WorldTransform, float DeltaTime);
+
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		void CancelGlobalLerpToHand(uint8 GripID);
+
+	//UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+	//	FVROnControllerGripSignature OnLerpToHandBegin;
+
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerGripSignature OnLerpToHandFinished;
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
