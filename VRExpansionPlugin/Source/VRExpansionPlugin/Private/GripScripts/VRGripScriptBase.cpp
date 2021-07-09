@@ -336,7 +336,13 @@ void UVRGripScriptBase::PostInitProperties()
 	//Called in game, when World exist . BeginPlay will not be called in editor
 	if (GetWorld())
 	{
-		BeginPlay(GetOwner());
+		if (AActor* Owner = GetOwner())
+		{
+			if (Owner->IsActorInitialized())
+			{
+				BeginPlay(GetOwner());
+			}
+		}
 	}
 }
 
