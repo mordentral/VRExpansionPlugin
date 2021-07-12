@@ -358,7 +358,7 @@ FTransform UHandSocketComponent::GetBoneTransformAtTime(UAnimSequence* MyAnimSeq
 	FTransform BoneTransform = FTransform::Identity;
 	const TArray<FTrackToSkeletonMap>& TrackToSkeletonMap = bUseRawDataOnly ? MyAnimSequence->GetRawTrackToSkeletonMapTable() : MyAnimSequence->GetCompressedTrackToSkeletonMapTable();
 
-	if ((TrackToSkeletonMap.Num() > 0) && (TrackToSkeletonMap[0].BoneTreeIndex == 0))
+	if ((TrackToSkeletonMap.Num() > BoneIdx) && (TrackToSkeletonMap[0].BoneTreeIndex == 0))
 	{
 		MyAnimSequence->GetBoneTransform(BoneTransform, BoneIdx, /*AnimTime*/ tracklen, bUseRawDataOnly);
 		return BoneTransform;
