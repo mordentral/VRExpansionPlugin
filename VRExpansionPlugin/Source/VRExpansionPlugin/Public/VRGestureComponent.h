@@ -266,6 +266,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
 		UStaticMesh* SplineMesh;
 
+	// Scaler to apply to the spline mesh components
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
+		FVector2D SplineMeshScaler;
+
 	// Material to use when drawing splines
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
 		UMaterialInterface* SplineMaterial;

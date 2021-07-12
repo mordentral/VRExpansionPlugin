@@ -24,7 +24,7 @@ enum class EVRGameInputMethod : uint8
 UCLASS(Blueprintable)
 class VREXPANSIONPLUGIN_API UVRGameViewportClient : public UGameViewportClient
 {
-	GENERATED_BODY()
+	GENERATED_UCLASS_BODY()
 
 public:
 
@@ -32,10 +32,14 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRExpansionPlugin")
 		EVRGameInputMethod GameInputMethod;
 
+	// If true we will also shuffle gamepad input according to the GameInputMethod
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRExpansionPlugin")
+		bool bAlsoChangeGamepPadInput;
+
 	virtual bool InputKey(const FInputKeyEventArgs& EventArgs) override
 	{
 		// Early out if a gamepad event or ignoring input or is default setup / no GEngine
-		if(GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || EventArgs.IsGamepad())
+		if(GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || (EventArgs.IsGamepad() && !bAlsoChangeGamepPadInput))
 			return Super::InputKey(EventArgs);
 
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
@@ -72,7 +76,7 @@ public:
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
 
 		// Early out if a gamepad or not a mouse event (vr controller) or ignoring input or is default setup / no GEngine
-		if (!Key.IsMouseButton() || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || bGamepad)
+		if ((!Key.IsMouseButton() && (!bGamepad || !bAlsoChangeGamepPadInput)) || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || (bGamepad && !bAlsoChangeGamepPadInput))
 			return Super::InputAxis(tViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
 
 		if (GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
@@ -93,6 +97,11 @@ public:
 		}
 
 	}
-
-
 };
+
+UVRGameViewportClient::UVRGameViewportClient(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	GameInputMethod = EVRGameInputMethod::GameInput_Default;
+	bAlsoChangeGamepPadInput = false;
+}
