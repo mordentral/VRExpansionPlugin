@@ -109,8 +109,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data|Mirroring", meta = (editcondition = "bFlipForLeftHand"))
 		bool bOnlyFlipRotation;
 
+	// If true then this hand socket will always be considered "in range" and checked against others for lowest distance
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+		bool bAlwaysInRange;
+
 	// Snap distance to use if you want to override the defaults.
-	// Will be ignored if == 0.0f
+	// Will be ignored if == 0.0f or bAlwaysInRange is true
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		float OverrideDistance;
 
