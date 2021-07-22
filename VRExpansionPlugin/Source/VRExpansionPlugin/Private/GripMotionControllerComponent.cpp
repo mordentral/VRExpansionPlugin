@@ -6423,9 +6423,25 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 	switch (FoundGrip.GripTargetType)
 	{
 	case EGripTargetType::ActorGrip:
-		FoundGrip.GetGrippedActor()->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics); break;
+	{
+		if (AActor* DroppingActor = FoundGrip.GetGrippedActor())
+		{
+			if (!DroppingActor->IsPendingKill())
+			{
+				DroppingActor->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
+			}
+		}
+	}break;
 	case EGripTargetType::ComponentGrip:
-		FoundGrip.GetGrippedComponent()->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics); break;
+	{
+		if (UPrimitiveComponent* DroppingComp = FoundGrip.GetGrippedComponent())
+		{
+			if (!DroppingComp->IsPendingKill())
+			{
+				DroppingComp->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
+			}
+		}
+	}break;
 	default:break;
 	}
 
