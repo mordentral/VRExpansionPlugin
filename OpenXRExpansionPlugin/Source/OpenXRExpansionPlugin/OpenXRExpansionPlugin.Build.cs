@@ -39,20 +39,21 @@ namespace UnrealBuildTool.Rules
                     "InputCore",
 					"Slate",
 					"HeadMountedDisplay",
-					"SlateCore",
+                    //"AnimGraph",
+                    "AnimGraphRuntime",
+                    "SlateCore",
 					//"LiveLink",
 					//"LiveLinkInterface",
-					"OpenXRHMD",
-					"OpenXRInput"
+					"OpenXRHMD"
                 }
 				);
 
             AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenXR");
 
-            if (Target.bBuildEditor == true)
-            {
-                PrivateDependencyModuleNames.Add("UnrealEd");
-            }
+           // if (Target.bBuildEditor == true)
+           // {
+               // PrivateDependencyModuleNames.Add("UnrealEd");
+           // }
         }
     }
 }
