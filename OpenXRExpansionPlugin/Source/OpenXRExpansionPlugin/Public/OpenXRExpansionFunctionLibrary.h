@@ -58,9 +58,16 @@ public:
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
-	static bool GetOpenXRHandPose(FBPOpenXRActionSkeletalData& HandPoseContainer, UOpenXRHandPoseComponent * HandPoseComponent)
+	static bool GetOpenXRHandPose(FBPOpenXRActionSkeletalData& HandPoseContainer, UOpenXRHandPoseComponent * HandPoseComponent, bool bGetMockUpPose = false)
 	{
 		FXRMotionControllerData MotionControllerData;
+
+		if (bGetMockUpPose)
+		{
+			GetMockUpControllerData(MotionControllerData, HandPoseContainer);
+			return true;
+		}
+
 		UHeadMountedDisplayFunctionLibrary::GetMotionControllerData((UObject*)HandPoseComponent, HandPoseContainer.TargetHand == EVRActionHand::EActionHand_Left ? EControllerHand::Left : EControllerHand::Right, MotionControllerData);
 
 		if (MotionControllerData.bValid)
@@ -80,24 +87,6 @@ public:
 		HandPoseContainer.bHasValidData = false;
 		return false;
 	}
-
-	/*UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
-		static void ConvertControllerData(FXRMotionControllerData MotionControllerData, FBPOpenXRActionSkeletalData& SkeletalMappingData)
-	{
-		SkeletalMappingData.bAllowDeformingMesh = false;
-		SkeletalMappingData.bMirrorLeftRight = false;// true;
-		SkeletalMappingData.TargetHand = EVRActionHand::EActionHand_Right;
-		SkeletalMappingData.bHasValidData = true;
-		//SkeletalMappingData.AimPose = MotionControllerData.GripPosition;
-		//SkeletalMappingData.AimRot = MotionControllerData.GripRotation;
-
-		SkeletalMappingData.SkeletalTransforms.Empty(SkeletalMappingData.SkeletalTransforms.Num());
-		FTransform ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
-		for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); i++)
-		{
-			SkeletalMappingData.SkeletalTransforms.Add(FTransform(MotionControllerData.HandKeyRotations[i], MotionControllerData.HandKeyPositions[i], FVector(1.f)).GetRelativeTransform(ParentTrans));
-		}
-	}*/
 
 	//UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
 	static void ConvertHandTransformsSpaceAndBack(TArray<FTransform>& OutTransforms, const TArray<FTransform>& WorldTransforms)
@@ -215,32 +204,32 @@ public:
 
 		TArray<FQuat> HandRotationsClosed = {
 			// Closed palm
-	FQuat(0.419283837f,-0.547548413f,-0.704691410f,-0.166739136f),
-	FQuat(-0.494952023f,0.567746222f,0.647768855f,0.114382625f),
-	FQuat(0.105539620f,-0.079821065f,-0.934957743f,0.329157114f),
-	FQuat(0.309810340f,0.005135804f,-0.887668610f,0.340640306f),
-	FQuat(-0.292820454f,0.003018156f,0.892185807f,-0.343877673f),
-	FQuat(-0.292820454f,0.003018156f,0.892185807f,-0.343877673f),
-	FQuat(0.351302803f,-0.693441451f,-0.594165504f,-0.206626847f),
-	FQuat(0.510899961f,-0.668595433f,-0.531049490f,-0.099752367f),
-	FQuat(0.582462251f,-0.656170130f,-0.478819191f,0.030230284f),
-	FQuat(0.631917894f,-0.637212157f,-0.435243726f,0.072160020f),
-	FQuat(0.631917894f,-0.637212157f,-0.435243726f,0.072160020f),
-	FQuat(0.419282734f,-0.547549129f,-0.704691410f,-0.166739583f),
-	FQuat(0.514688492f,-0.678421855f,-0.501057625f,-0.154207960f),
-	FQuat(0.603475809f,-0.696219206f,-0.388458073f,0.014001161f),
-	FQuat(0.665590405f,-0.681470037f,-0.267755210f,0.144555300f),
-	FQuat(0.670854926f,-0.691665173f,-0.240195125f,0.117731705f),
-	FQuat(0.468501151f,-0.566464663f,-0.638139248f,-0.228914157f),
-	FQuat(0.541896224f,-0.702563524f,-0.417507589f,-0.196058303f),
-	FQuat(0.619513929f,-0.728625834f,-0.289327621f,-0.039927930f),
-	FQuat(0.676032484f,-0.712538362f,-0.151063532f,0.111561134f),
-	FQuat(0.676032484f,-0.712538362f,-0.151063532f,0.111561134f),
-	FQuat(0.541268349f,-0.622995615f,-0.511540473f,-0.239230901f),
-	FQuat(0.545463741f,-0.719190478f,-0.361613214f,-0.233387768f),
-	FQuat(0.613924086f,-0.754614115f,-0.223099023f,-0.062293097f),
-	FQuat(0.682628751f,-0.717284977f,-0.112533726f,0.082796305f),
-	FQuat(0.682628751f,-0.717284977f,-0.112533726f,0.082796305f)
+			FQuat(0.419283837f,-0.547548413f,-0.704691410f,-0.166739136f),
+			FQuat(-0.494952023f,0.567746222f,0.647768855f,0.114382625f),
+			FQuat(0.105539620f,-0.079821065f,-0.934957743f,0.329157114f),
+			FQuat(0.309810340f,0.005135804f,-0.887668610f,0.340640306f),
+			FQuat(-0.292820454f,0.003018156f,0.892185807f,-0.343877673f),
+			FQuat(-0.292820454f,0.003018156f,0.892185807f,-0.343877673f),
+			FQuat(0.351302803f,-0.693441451f,-0.594165504f,-0.206626847f),
+			FQuat(0.510899961f,-0.668595433f,-0.531049490f,-0.099752367f),
+			FQuat(0.582462251f,-0.656170130f,-0.478819191f,0.030230284f),
+			FQuat(0.631917894f,-0.637212157f,-0.435243726f,0.072160020f),
+			FQuat(0.631917894f,-0.637212157f,-0.435243726f,0.072160020f),
+			FQuat(0.419282734f,-0.547549129f,-0.704691410f,-0.166739583f),
+			FQuat(0.514688492f,-0.678421855f,-0.501057625f,-0.154207960f),
+			FQuat(0.603475809f,-0.696219206f,-0.388458073f,0.014001161f),
+			FQuat(0.665590405f,-0.681470037f,-0.267755210f,0.144555300f),
+			FQuat(0.670854926f,-0.691665173f,-0.240195125f,0.117731705f),
+			FQuat(0.468501151f,-0.566464663f,-0.638139248f,-0.228914157f),
+			FQuat(0.541896224f,-0.702563524f,-0.417507589f,-0.196058303f),
+			FQuat(0.619513929f,-0.728625834f,-0.289327621f,-0.039927930f),
+			FQuat(0.676032484f,-0.712538362f,-0.151063532f,0.111561134f),
+			FQuat(0.676032484f,-0.712538362f,-0.151063532f,0.111561134f),
+			FQuat(0.541268349f,-0.622995615f,-0.511540473f,-0.239230901f),
+			FQuat(0.545463741f,-0.719190478f,-0.361613214f,-0.233387768f),
+			FQuat(0.613924086f,-0.754614115f,-0.223099023f,-0.062293097f),
+			FQuat(0.682628751f,-0.717284977f,-0.112533726f,0.082796305f),
+			FQuat(0.682628751f,-0.717284977f,-0.112533726f,0.082796305f)
 		};
 		TArray<FQuat> HandRotationsOpen = {
 			// Open Hand
@@ -272,7 +261,7 @@ public:
 			FQuat(0.116890728f,-0.981477261f,0.138804480f,-0.061412390f)
 		};
 
-		MotionControllerData.HandKeyRotations = bOpenHand ? HandRotationsOpen : HandRotationsClosed;
+		MotionControllerData.HandKeyRotations = SkeletalMappingData.TargetHand != EVRActionHand::EActionHand_Left ? HandRotationsOpen : HandRotationsClosed;
 
 		TArray<FVector> HandPositionsClosed = {
 			// Closed palm - Left
@@ -334,9 +323,9 @@ public:
 			FVector(-1019.778f,-479.842f,203.819f)
 		};
 
-		MotionControllerData.HandKeyPositions = bOpenHand ? HandPositionsOpen : HandPositionsClosed;
+		MotionControllerData.HandKeyPositions = SkeletalMappingData.TargetHand != EVRActionHand::EActionHand_Left ? HandPositionsOpen : HandPositionsClosed;
 
-		if (bOpenHand)
+		if (SkeletalMappingData.TargetHand != EVRActionHand::EActionHand_Left)
 		{
 			MotionControllerData.GripPosition = FVector(-1018.305f, -478.019f, 209.872f);
 			MotionControllerData.GripRotation = FQuat(-0.116352126f, 0.039430488f, -0.757644236f, 0.641001403f);
@@ -349,10 +338,7 @@ public:
 
 		MotionControllerData.DeviceName = TEXT("OpenXR");
 
-		SkeletalMappingData.bAllowDeformingMesh = false;
-		SkeletalMappingData.bMirrorLeftRight = false;// true;
-		SkeletalMappingData.TargetHand = EVRActionHand::EActionHand_Right;
-
+		SkeletalMappingData.bHasValidData = true;
 		SkeletalMappingData.SkeletalTransforms.Empty(SkeletalMappingData.SkeletalTransforms.Num());
 		FTransform ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
 		for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); i++)

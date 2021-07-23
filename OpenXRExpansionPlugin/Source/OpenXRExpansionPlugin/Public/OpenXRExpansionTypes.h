@@ -83,6 +83,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		TArray<FTransform> SkeletalTransforms;
 
+	// If true we will assume that the target skeleton does not have the metacarpal bones and we will not replicate them
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		bool bEnableUE4HandRepSavings;
+
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		TArray<FTransform> OldSkeletalTransforms;
 
@@ -103,6 +107,7 @@ public:
 		WorldScaleOverride = 0.0f;
 		bAllowDeformingMesh = true;
 		bMirrorLeftRight = false;
+		bEnableUE4HandRepSavings = true;
 		TargetHand = EVRActionHand::EActionHand_Right;
 		bHasValidData = false;
 		LastHandGestureIndex = INDEX_NONE;
