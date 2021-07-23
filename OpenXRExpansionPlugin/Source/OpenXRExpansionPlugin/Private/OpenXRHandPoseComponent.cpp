@@ -160,7 +160,7 @@ void UOpenXRHandPoseComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 		for (FBPOpenXRActionSkeletalData& actionInfo : HandSkeletalActions)
 		{
-			if (UOpenXRExpansionFunctionLibrary::GetOpenXRHandPose(actionInfo, this))
+			if (UOpenXRExpansionFunctionLibrary::GetOpenXRHandPose(actionInfo, this, bGetMockUpPoseForDebugging))
 			{
 				if (bGetCompressedTransforms)
 				{
@@ -196,31 +196,30 @@ void UOpenXRHandPoseComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-void UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRActionHand HandToSave)
+bool UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRActionHand HandToSave)
 {
 
 	if (!HandSkeletalActions.Num())
-		return;
+		return false;
 
 	// Default to the first hand element so that single length arrays work as is.
-	FBPOpenXRActionSkeletalData& HandSkeletalAction = HandSkeletalActions[0];
+	FBPOpenXRActionSkeletalData* HandSkeletalAction = nullptr;
 
 	// Now check for the specific passed in hand if this is a multi hand
 	for (int i = 0; i < HandSkeletalActions.Num(); ++i)
 	{
 		if (HandSkeletalActions[i].TargetHand == HandToSave)
 		{
-			HandSkeletalAction = HandSkeletalActions[i];
+			HandSkeletalAction = &HandSkeletalActions[i];
 			break;
 		}
 	}
 
-	if (!HandSkeletalAction.bHasValidData || HandSkeletalAction.SkeletalTransforms.Num() < EHandKeypointCount)
-		return;
+	if (!HandSkeletalAction || !HandSkeletalAction->bHasValidData || HandSkeletalAction->SkeletalTransforms.Num() < EHandKeypointCount)
+		return false;
 
 	if (GesturesDB)
 	{
-
 		FOpenXRGesture NewGesture;
 
 		int32 FingerMap[5] =
@@ -236,33 +235,36 @@ void UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRActionHan
 
 		if (HandToSave == EVRActionHand::EActionHand_Left)
 		{
-			WristLoc = HandSkeletalAction.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation().MirrorByVector(FVector::RightVector);
+			WristLoc = HandSkeletalAction->SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation().MirrorByVector(FVector::RightVector);
 		}
 		else
 		{
-			WristLoc = HandSkeletalAction.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation();
+			WristLoc = HandSkeletalAction->SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation();
 		}
 
 		for (int i = 0; i < 5; ++i)
 		{
 			if (HandToSave == EVRActionHand::EActionHand_Left)
 			{				
-				NewGesture.FingerValues[i] = FOpenXRGestureFingerPosition(HandSkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation().MirrorByVector(FVector::RightVector) - WristLoc, (EXRHandJointType)FingerMap[i]);
+				NewGesture.FingerValues[i] = FOpenXRGestureFingerPosition(HandSkeletalAction->SkeletalTransforms[FingerMap[i]].GetLocation().MirrorByVector(FVector::RightVector) - WristLoc, (EXRHandJointType)FingerMap[i]);
 			}
 			else
 			{
-				NewGesture.FingerValues[i] = FOpenXRGestureFingerPosition(HandSkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation() - WristLoc, (EXRHandJointType)FingerMap[i]);
+				NewGesture.FingerValues[i] = FOpenXRGestureFingerPosition(HandSkeletalAction->SkeletalTransforms[FingerMap[i]].GetLocation() - WristLoc, (EXRHandJointType)FingerMap[i]);
 			}
 		}
 
 		NewGesture.Name = RecordingName;
 		GesturesDB->Gestures.Add(NewGesture);
+
+		return true;
 	}
-	
+
+	return false;
 }
 
 
-bool UOpenXRHandPoseComponent::K2_DetectCurrentPose(FBPOpenXRActionSkeletalData& SkeletalAction, FOpenXRGesture & GestureOut)
+bool UOpenXRHandPoseComponent::K2_DetectCurrentPose(UPARAM(ref) FBPOpenXRActionSkeletalData& SkeletalAction, FOpenXRGesture & GestureOut)
 {
 	if (!GesturesDB || GesturesDB->Gestures.Num() < 1)
 		return false;
@@ -276,6 +278,32 @@ bool UOpenXRHandPoseComponent::K2_DetectCurrentPose(FBPOpenXRActionSkeletalData&
 		(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_TIP_EXT
 	};
 
+	FVector WristLoc = FVector::ZeroVector;
+
+	if (SkeletalAction.TargetHand == EVRActionHand::EActionHand_Left)
+	{
+		WristLoc = SkeletalAction.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation().MirrorByVector(FVector::RightVector);
+	}
+	else
+	{
+		WristLoc = SkeletalAction.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation();
+	}
+
+	// Early fill in an array to keep from performing math for each gesture
+	TArray<FVector> CurrentTips;
+	CurrentTips.AddUninitialized(5);
+	for (int i = 0; i < 5; ++i)
+	{
+		if (SkeletalAction.TargetHand == EVRActionHand::EActionHand_Left)
+		{
+			CurrentTips[i] = SkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation().MirrorByVector(FVector::RightVector) - WristLoc;
+		}
+		else
+		{
+			CurrentTips[i] = SkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation() - WristLoc;
+		}
+	}
+
 	for (const FOpenXRGesture& Gesture : GesturesDB->Gestures)
 	{
 		// If not enough indexs to match curl values, or if this gesture requires finger splay and the controller can't do it
@@ -285,7 +313,11 @@ bool UOpenXRHandPoseComponent::K2_DetectCurrentPose(FBPOpenXRActionSkeletalData&
 		bool bDetectedPose = true;
 		for (int i = 0; i < 5; ++i)
 		{
-			if (!Gesture.FingerValues[i].Value.Equals(SkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation(), Gesture.FingerValues[i].Threshold))
+			FVector GestureV = Gesture.FingerValues[i].Value;
+			FVector CurrentV = CurrentTips[i];
+			FVector Difference = GestureV - CurrentV;
+
+			if (!Gesture.FingerValues[i].Value.Equals(CurrentTips[i], Gesture.FingerValues[i].Threshold))
 			{
 				bDetectedPose = false;
 				break;
@@ -318,6 +350,32 @@ bool UOpenXRHandPoseComponent::DetectCurrentPose(FBPOpenXRActionSkeletalData &Sk
 		(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_TIP_EXT
 	};
 
+	FVector WristLoc = FVector::ZeroVector;
+
+	if (SkeletalAction.TargetHand == EVRActionHand::EActionHand_Left)
+	{
+		WristLoc = SkeletalAction.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation().MirrorByVector(FVector::RightVector);
+	}
+	else
+	{
+		WristLoc = SkeletalAction.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation();
+	}
+
+	// Early fill in an array to keep from performing math for each gesture
+	TArray<FVector> CurrentTips;
+	CurrentTips.AddUninitialized(5);
+	for (int i = 0; i < 5; ++i)
+	{
+		if (SkeletalAction.TargetHand == EVRActionHand::EActionHand_Left)
+		{
+			CurrentTips[i] = SkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation().MirrorByVector(FVector::RightVector) - WristLoc;
+		}
+		else
+		{
+			CurrentTips[i] = SkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation() - WristLoc;
+		}
+	}
+
 	for (auto GestureIterator = GesturesDB->Gestures.CreateConstIterator(); GestureIterator; ++GestureIterator)
 	{
 		const FOpenXRGesture &Gesture = *GestureIterator;
@@ -329,7 +387,10 @@ bool UOpenXRHandPoseComponent::DetectCurrentPose(FBPOpenXRActionSkeletalData &Sk
 		bool bDetectedPose = true;
 		for (int i = 0; i < 5; ++i)
 		{
-			if (!Gesture.FingerValues[i].Value.Equals(SkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation(), Gesture.FingerValues[i].Threshold))
+			if (Gesture.FingerValues[i].Threshold <= 0.0f)
+				continue;
+
+			if (!Gesture.FingerValues[i].Value.Equals(CurrentTips[i], Gesture.FingerValues[i].Threshold))
 			{
 				bDetectedPose = false;
 				break;
@@ -362,4 +423,404 @@ bool UOpenXRHandPoseComponent::DetectCurrentPose(FBPOpenXRActionSkeletalData &Sk
 	}
 
 	return false;
+}
+
+UOpenXRHandPoseComponent::FTransformLerpManager::FTransformLerpManager()
+{
+	bReplicatedOnce = false;
+	bLerping = false;
+	UpdateCount = 0.0f;
+	UpdateRate = 0.0f;
+}
+
+void UOpenXRHandPoseComponent::FTransformLerpManager::NotifyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate)
+{
+	UpdateRate = (1.0f / NetUpdateRate);
+	if (bReplicatedOnce)
+	{
+		bLerping = true;
+		UpdateCount = 0.0f;
+		NewTransforms = ActionInfo.SkeletalTransforms;
+	}
+	else
+	{
+		bReplicatedOnce = true;
+	}
+}
+
+void UOpenXRHandPoseComponent::FTransformLerpManager::UpdateManager(float DeltaTime, FBPOpenXRActionSkeletalData& ActionInfo)
+{
+	if (!ActionInfo.bHasValidData)
+		return;
+
+	if (bLerping)
+	{
+		UpdateCount += DeltaTime;
+		float LerpVal = FMath::Clamp(UpdateCount / UpdateRate, 0.0f, 1.0f);
+
+		if (LerpVal >= 1.0f)
+		{
+			bLerping = false;
+			UpdateCount = 0.0f;
+			ActionInfo.SkeletalTransforms = NewTransforms;
+		}
+		else
+		{
+			int32 BoneCountAdjustment = 5 + (ActionInfo.bEnableUE4HandRepSavings ? 4 : 0);
+			if ((NewTransforms.Num() < (EHandKeypointCount - BoneCountAdjustment)) || (NewTransforms.Num() != ActionInfo.SkeletalTransforms.Num() || NewTransforms.Num() != ActionInfo.OldSkeletalTransforms.Num()))
+			{
+				return;
+			}
+
+			ActionInfo.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_PALM_EXT] = FTransform::Identity;
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT, ActionInfo, LerpVal);
+
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_METACARPAL_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_PROXIMAL_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_DISTAL_EXT, ActionInfo, LerpVal);
+			//BlendBone((uint8)EVROpenXRBones::eBone_Thumb3, ActionInfo, LerpVal); // Technically can be projected instead of blended
+
+			if (!ActionInfo.bEnableUE4HandRepSavings)
+			{
+				BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_METACARPAL_EXT, ActionInfo, LerpVal);
+			}
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_PROXIMAL_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_INTERMEDIATE_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_DISTAL_EXT, ActionInfo, LerpVal);
+			//BlendBone((uint8)EVROpenXRBones::eBone_IndexFinger4, ActionInfo, LerpVal); // Technically can be projected instead of blended
+
+			if (!ActionInfo.bEnableUE4HandRepSavings)
+			{
+				BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_METACARPAL_EXT, ActionInfo, LerpVal);
+			}
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_PROXIMAL_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_DISTAL_EXT, ActionInfo, LerpVal);
+			//BlendBone((uint8)EVROpenXRBones::eBone_IndexFinger4, ActionInfo, LerpVal); // Technically can be projected instead of blended
+
+			if (!ActionInfo.bEnableUE4HandRepSavings)
+			{
+				BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_RING_METACARPAL_EXT, ActionInfo, LerpVal);
+			}
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_RING_PROXIMAL_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_RING_INTERMEDIATE_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_RING_DISTAL_EXT, ActionInfo, LerpVal);
+			//BlendBone((uint8)EVROpenXRBones::eBone_IndexFinger4, ActionInfo, LerpVal); // Technically can be projected instead of blended
+
+			if (!ActionInfo.bEnableUE4HandRepSavings)
+			{
+				BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_METACARPAL_EXT, ActionInfo, LerpVal);
+			}
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_PROXIMAL_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_INTERMEDIATE_EXT, ActionInfo, LerpVal);
+			BlendBone((int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_DISTAL_EXT, ActionInfo, LerpVal);
+			//BlendBone((uint8)EVROpenXRBones::eBone_IndexFinger4, ActionInfo, LerpVal); // Technically can be projected instead of blended
+
+			// These are copied from the 3rd joints as they use the same transform but a different root
+			// Don't want to waste cpu time blending these
+			//ActionInfo.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_Aux_Thumb] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_Thumb2];
+			//ActionInfo.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_Aux_IndexFinger] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_IndexFinger3];
+			//ActionInfo.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_Aux_MiddleFinger] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_MiddleFinger3];
+			//ActionInfo.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_Aux_RingFinger] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_RingFinger3];
+			//ActionInfo.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_Aux_PinkyFinger] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenXRBones::eBone_PinkyFinger3];
+		}
+	}
+}
+
+void FBPSkeletalRepContainer::CopyForReplication(FBPOpenXRActionSkeletalData& Other)
+{
+	TargetHand = Other.TargetHand;
+
+	if (!Other.bHasValidData)
+		return;
+
+	bAllowDeformingMesh = Other.bAllowDeformingMesh;
+	bEnableUE4HandRepSavings = Other.bEnableUE4HandRepSavings;
+
+	// Instead of doing this, we likely need to lerp but this is for testing
+	//SkeletalTransforms = Other.SkeletalData.SkeletalTransforms;
+
+	if (Other.SkeletalTransforms.Num() < EHandKeypointCount)
+	{
+		SkeletalTransforms.Empty();
+		return;
+	}
+
+	int32 BoneCountAdjustment = 5 + (bEnableUE4HandRepSavings ? 4 : 0);
+
+	if (SkeletalTransforms.Num() != EHandKeypointCount - BoneCountAdjustment)
+	{
+		SkeletalTransforms.Reset(EHandKeypointCount - BoneCountAdjustment); // Minus bones we don't need
+		SkeletalTransforms.AddUninitialized(EHandKeypointCount - BoneCountAdjustment);
+	}
+
+	int32 idx = 0;
+	// Root is always identity
+	//SkeletalTransforms[0] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Root]; // This has no pos right? Need to skip pos on it
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_METACARPAL_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_PROXIMAL_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_DISTAL_EXT];
+
+	if (!bEnableUE4HandRepSavings)
+	{
+		SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_METACARPAL_EXT];
+	}
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_PROXIMAL_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_INTERMEDIATE_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_DISTAL_EXT];
+
+	if (!bEnableUE4HandRepSavings)
+	{
+		SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_METACARPAL_EXT];
+	}
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_PROXIMAL_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_DISTAL_EXT];
+
+	if (!bEnableUE4HandRepSavings)
+	{
+		SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_METACARPAL_EXT];
+	}
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_PROXIMAL_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_INTERMEDIATE_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_DISTAL_EXT];
+
+	if (!bEnableUE4HandRepSavings)
+	{
+		SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_METACARPAL_EXT];
+	}
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_PROXIMAL_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_INTERMEDIATE_EXT];
+	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_DISTAL_EXT];
+}
+
+void FBPSkeletalRepContainer::CopyReplicatedTo(const FBPSkeletalRepContainer& Container, FBPOpenXRActionSkeletalData& Other)
+{
+	int32 BoneCountAdjustment = 5 + (Container.bEnableUE4HandRepSavings ? 4 : 0);
+	if (Container.SkeletalTransforms.Num() < (EHandKeypointCount - BoneCountAdjustment))
+	{
+		Other.SkeletalTransforms.Empty();
+		Other.bHasValidData = false;
+		return;
+	}
+
+	Other.bAllowDeformingMesh = Container.bAllowDeformingMesh;
+	Other.bEnableUE4HandRepSavings = Container.bEnableUE4HandRepSavings;
+
+	// Instead of doing this, we likely need to lerp but this is for testing
+	//Other.SkeletalData.SkeletalTransforms = Container.SkeletalTransforms;
+
+	if (Other.SkeletalTransforms.Num() != EHandKeypointCount)
+		Other.SkeletalTransforms.Reset(EHandKeypointCount);
+	{
+		Other.SkeletalTransforms.AddUninitialized(EHandKeypointCount);
+	}
+
+	int32 idx = 0;
+
+	// Only fill in the ones that we care about
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_PALM_EXT] = FTransform::Identity; // Always identity
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT] = Container.SkeletalTransforms[idx++];
+
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_METACARPAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+
+	if (!Container.bEnableUE4HandRepSavings)
+	{
+		Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_METACARPAL_EXT] = Container.SkeletalTransforms[idx++];
+	}
+	else
+	{
+		Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_METACARPAL_EXT] = FTransform::Identity;
+	}
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_INTERMEDIATE_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+
+	if (!Container.bEnableUE4HandRepSavings)
+	{
+		Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_METACARPAL_EXT] = Container.SkeletalTransforms[idx++];
+	}
+	else
+	{
+		Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_METACARPAL_EXT] = FTransform::Identity;
+	}
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+
+	if (!Container.bEnableUE4HandRepSavings)
+	{
+		Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_METACARPAL_EXT] = Container.SkeletalTransforms[idx++];
+	}
+	else
+	{
+		Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_METACARPAL_EXT] = FTransform::Identity;
+	}
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_INTERMEDIATE_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+
+	if (!Container.bEnableUE4HandRepSavings)
+	{
+		Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_METACARPAL_EXT] = Container.SkeletalTransforms[idx++];
+	}
+	else
+	{
+		Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_METACARPAL_EXT] = FTransform::Identity;
+	}
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_INTERMEDIATE_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+
+	Other.bHasValidData = true;
+}
+
+bool FBPSkeletalRepContainer::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+{
+	bOutSuccess = true;
+
+	Ar.SerializeBits(&TargetHand, 1);
+	Ar.SerializeBits(&bAllowDeformingMesh, 1);
+	Ar.SerializeBits(&bEnableUE4HandRepSavings, 1);
+
+	int32 BoneCountAdjustment = 5 + (bEnableUE4HandRepSavings ? 4 : 0);
+	uint8 TransformCount = EHandKeypointCount - BoneCountAdjustment;
+
+	//Ar << TransformCount;
+
+	if (Ar.IsLoading())
+	{
+		SkeletalTransforms.Reset(TransformCount);
+	}
+
+	FVector Position = FVector::ZeroVector;
+	FRotator Rot = FRotator::ZeroRotator;
+
+	for (int i = 0; i < TransformCount; i++)
+	{
+		if (Ar.IsSaving())
+		{
+			if (bAllowDeformingMesh)
+				Position = SkeletalTransforms[i].GetLocation();
+
+			Rot = SkeletalTransforms[i].Rotator();
+		}
+
+		if (bAllowDeformingMesh)
+			bOutSuccess &= SerializePackedVector<10, 11>(Position, Ar);
+
+		Rot.SerializeCompressed(Ar); // Short? 10 bit?
+
+		if (Ar.IsLoading())
+		{
+			if (bAllowDeformingMesh)
+				SkeletalTransforms.Add(FTransform(Rot, Position));
+			else
+				SkeletalTransforms.Add(FTransform(Rot));
+		}
+	}
+
+	return bOutSuccess;
+}
+
+void UOpenXRAnimInstance::NativeBeginPlay()
+{
+	Super::NativeBeginPlay();
+
+	AActor* Owner = GetOwningComponent()->GetOwner();
+	UActorComponent* HandPoseComp = nullptr;
+
+	if (Owner)
+	{
+		HandPoseComp = Owner->GetComponentByClass(UOpenXRHandPoseComponent::StaticClass());
+
+		if (!HandPoseComp)
+		{
+			// We are also checking owner->owner in case hand mesh is in a sub actor
+			if (Owner->GetOwner())
+			{
+				HandPoseComp = Owner->GetOwner()->GetComponentByClass(UOpenXRHandPoseComponent::StaticClass());
+			}
+		}
+	}
+
+	if (!HandPoseComp)
+	{
+		return;
+	}
+
+	if (UOpenXRHandPoseComponent* HandComp = Cast<UOpenXRHandPoseComponent>(HandPoseComp))
+	{
+		OwningPoseComp = HandComp;
+	}
+}
+
+/*void UOpenXRAnimInstance::NativeInitializeAnimation()
+{
+	Super::NativeInitializeAnimation();
+
+	AActor* Owner = GetOwningComponent()->GetOwner();
+	UActorComponent* HandPoseComp = nullptr;
+
+	if (Owner)
+	{
+		HandPoseComp = Owner->GetComponentByClass(UOpenXRHandPoseComponent::StaticClass());
+
+		if (!HandPoseComp)
+		{
+			// We are also checking owner->owner in case hand mesh is in a sub actor
+			if (Owner->GetOwner())
+			{
+				HandPoseComp = Owner->GetOwner()->GetComponentByClass(UOpenXRHandPoseComponent::StaticClass());
+			}
+		}
+	}
+
+	if (!HandPoseComp)
+	{
+		return;
+	}
+
+	if (UOpenXRHandPoseComponent* HandComp = Cast<UOpenXRHandPoseComponent>(HandPoseComp))
+	{
+		OwningPoseComp = HandComp;
+	}
+}*/
+
+void UOpenXRAnimInstance::InitializeCustomBoneMapping(UPARAM(ref) FBPSkeletalMappingData& SkeletalMappingData)
+{
+	USkeleton* AssetSkeleton = this->CurrentSkeleton;//RequiredBones.GetSkeletonAsset();
+
+	if (AssetSkeleton)
+	{
+		FBoneContainer& RequiredBones = this->GetRequiredBones();
+		for (FBPOpenXRSkeletalPair& BonePair : SkeletalMappingData.BonePairs)
+		{
+			// Fill in the bone name for the reference
+			BonePair.ReferenceToConstruct.BoneName = BonePair.BoneToTarget;
+
+			// Init the reference
+			BonePair.ReferenceToConstruct.Initialize(AssetSkeleton);
+			BonePair.ReferenceToConstruct.CachedCompactPoseIndex = BonePair.ReferenceToConstruct.GetCompactPoseIndex(RequiredBones);
+
+			if ((BonePair.ReferenceToConstruct.CachedCompactPoseIndex != INDEX_NONE))
+			{
+				// Get our parent bones index
+				BonePair.ParentReference = RequiredBones.GetParentBoneIndex(BonePair.ReferenceToConstruct.CachedCompactPoseIndex);
+			}
+		}
+
+		if (UObject* OwningAsset = RequiredBones.GetAsset())
+		{
+			SkeletalMappingData.LastInitializedName = OwningAsset->GetFName();
+		}
+
+		SkeletalMappingData.bInitialized = true;
+		return;
+	}
+
+	SkeletalMappingData.bInitialized = false;
 }
