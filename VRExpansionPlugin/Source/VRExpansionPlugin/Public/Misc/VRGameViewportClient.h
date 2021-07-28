@@ -36,10 +36,38 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRExpansionPlugin")
 		bool bAlsoChangeGamepPadInput;
 
+	// A List of input categories to consider as valid gamepad ones if bIsGamepad is true on the input event
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRExpansionPlugin")
+		TArray<FName> GamepadInputCategories;
+
+	bool IsValidGamePadKey(const FKey & InputKey)
+	{
+		if (!bAlsoChangeGamepPadInput)
+			return false;
+
+		FName KeyCategory = InputKey.GetMenuCategory();
+		
+		return GamepadInputCategories.Contains(KeyCategory);
+	}
+
+	virtual void PostInitProperties() override
+	{
+		Super::PostInitProperties();
+
+		if (GamepadInputCategories.Num() < 1)
+		{
+			GamepadInputCategories.Add(FName(TEXT("Gamepad")));
+			GamepadInputCategories.Add(FName(TEXT("PS4")));
+			GamepadInputCategories.Add(FName(TEXT("XBox One")));
+			GamepadInputCategories.Add(FName(TEXT("Touch")));
+			GamepadInputCategories.Add(FName(TEXT("Gesture")));
+		}
+	}
+
 	virtual bool InputKey(const FInputKeyEventArgs& EventArgs) override
 	{
 		// Early out if a gamepad event or ignoring input or is default setup / no GEngine
-		if(GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || (EventArgs.IsGamepad() && !bAlsoChangeGamepPadInput))
+		if(GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || (EventArgs.IsGamepad() && !IsValidGamePadKey(EventArgs.Key)))
 			return Super::InputKey(EventArgs);
 
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
@@ -76,7 +104,7 @@ public:
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
 
 		// Early out if a gamepad or not a mouse event (vr controller) or ignoring input or is default setup / no GEngine
-		if ((!Key.IsMouseButton() && (!bGamepad || !bAlsoChangeGamepPadInput)) || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || (bGamepad && !bAlsoChangeGamepPadInput))
+		if ((!Key.IsMouseButton() || (!bGamepad || !IsValidGamePadKey(Key))) || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput())
 			return Super::InputAxis(tViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
 
 		if (GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
