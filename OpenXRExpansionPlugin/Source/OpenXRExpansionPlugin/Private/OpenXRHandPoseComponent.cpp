@@ -186,7 +186,7 @@ void UOpenXRHandPoseComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				}
 			}
 
-			if (bDetectGestures && actionInfo.bHasValidData && GesturesDB != nullptr && GesturesDB->Gestures.Num() > 0)
+			if (bDetectGestures && actionInfo.bHasValidData && actionInfo.SkeletalTransforms.Num() > 0 && GesturesDB != nullptr && GesturesDB->Gestures.Num() > 0)
 			{
 				DetectCurrentPose(actionInfo);
 			}
@@ -336,7 +336,7 @@ bool UOpenXRHandPoseComponent::K2_DetectCurrentPose(UPARAM(ref) FBPOpenXRActionS
 
 bool UOpenXRHandPoseComponent::DetectCurrentPose(FBPOpenXRActionSkeletalData &SkeletalAction)
 {
-	if (!GesturesDB || GesturesDB->Gestures.Num() < 1)
+	if (!GesturesDB || GesturesDB->Gestures.Num() < 1 || SkeletalAction.SkeletalTransforms.Num() < EHandKeypointCount)
 		return false;
 
 	FTransform BoneTransform = FTransform::Identity;
