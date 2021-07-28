@@ -104,7 +104,7 @@ public:
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
 
 		// Early out if a gamepad or not a mouse event (vr controller) or ignoring input or is default setup / no GEngine
-		if ((!Key.IsMouseButton() && !bGamepad || (bGamepad && !IsValidGamePadKey(Key))) || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput())
+		if (((!Key.IsMouseButton() && !bGamepad) || (bGamepad && !IsValidGamePadKey(Key))) || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput())
 			return Super::InputAxis(tViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
 
 		if (GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
