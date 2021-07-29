@@ -2726,8 +2726,11 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			}
 		}
 
-		if(bHasMovementAuthority || IsServer())
-			root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform);
+		if (bHasMovementAuthority || IsServer())
+		{
+			FName BoneName = CustomPivotComponent.IsValid() ? CustomPivotComponentSocketName : NAME_None;
+			root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules(EAttachmentRule::KeepWorld, true), BoneName);
+		}
 
 	}break;
 
