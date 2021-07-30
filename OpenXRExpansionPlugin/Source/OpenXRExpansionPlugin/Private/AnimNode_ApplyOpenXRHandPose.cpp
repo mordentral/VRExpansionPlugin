@@ -258,11 +258,11 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 		{
 			for (int i = 0; i <OpenXRAnimInstance->HandSkeletalActionData.Num(); ++i)
 			{
-				EVRActionHand TargetHand = OpenXRAnimInstance->HandSkeletalActionData[i].TargetHand;
+				EVRSkeletalHandIndex TargetHand = OpenXRAnimInstance->HandSkeletalActionData[i].TargetHand;
 
 				if (OpenXRAnimInstance->HandSkeletalActionData[i].bMirrorLeftRight)
 				{
-					TargetHand = (TargetHand == EVRActionHand::EActionHand_Left) ? EVRActionHand::EActionHand_Right : EVRActionHand::EActionHand_Left;
+					TargetHand = (TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left) ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
 				}
 
 				if (TargetHand == MappedBonePairs.TargetHand)

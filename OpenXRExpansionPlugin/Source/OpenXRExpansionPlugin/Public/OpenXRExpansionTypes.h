@@ -10,10 +10,10 @@
 #include "OpenXRExpansionTypes.Generated.h"
 
 UENUM(BlueprintType)
-enum class EVRActionHand : uint8
+enum class EVRSkeletalHandIndex : uint8
 {
-	EActionHand_Left = 0,
-	EActionHand_Right
+	EActionHandIndex_Left = 0,
+	EActionHandIndex_Right
 };
 
 UENUM(BlueprintType)
@@ -67,7 +67,7 @@ struct OPENXREXPANSIONPLUGIN_API FBPOpenXRActionSkeletalData
 public:
 
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
-		EVRActionHand TargetHand;
+		EVRSkeletalHandIndex TargetHand;
 
 	// A world scale override that will replace the engines current value and force into the tracked data if non zero
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
@@ -108,7 +108,7 @@ public:
 		bAllowDeformingMesh = true;
 		bMirrorLeftRight = false;
 		bEnableUE4HandRepSavings = true;
-		TargetHand = EVRActionHand::EActionHand_Right;
+		TargetHand = EVRSkeletalHandIndex::EActionHandIndex_Right;
 		bHasValidData = false;
 		LastHandGestureIndex = INDEX_NONE;
 		LastHandGesture = NAME_None;
@@ -156,7 +156,7 @@ public:
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
-struct OPENXREXPANSIONPLUGIN_API FBPSkeletalMappingData
+struct OPENXREXPANSIONPLUGIN_API FBPOpenXRSkeletalMappingData
 {
 	GENERATED_BODY()
 public:
@@ -171,7 +171,7 @@ public:
 
 	// The hand data to get, if not using a custom bone mapping then this value will be auto filled
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
-		EVRActionHand TargetHand;
+		EVRSkeletalHandIndex TargetHand;
 
 	FQuat AdjustmentQuat;
 	bool bInitialized;
@@ -208,7 +208,7 @@ public:
 		FString HandDelimiterS = !bIsRightHand ? "l" : "r";
 		const TCHAR* HandDelimiter = *HandDelimiterS;
 
-		TargetHand = bIsRightHand ? EVRActionHand::EActionHand_Right : EVRActionHand::EActionHand_Left;
+		TargetHand = bIsRightHand ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
 
 		// Default OpenVR bones mapping
 		//if (!bSkipRootBone)
@@ -273,7 +273,7 @@ public:
 		FString HandDelimiterS = !bIsRightHand ? "l" : "r";
 		const TCHAR* HandDelimiter = *HandDelimiterS;
 
-		TargetHand = bIsRightHand ? EVRActionHand::EActionHand_Right : EVRActionHand::EActionHand_Left;
+		TargetHand = bIsRightHand ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
 
 		// Default ue4 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
 		if (!bSkipRootBone)
@@ -303,12 +303,12 @@ public:
 
 	}
 
-	FBPSkeletalMappingData()
+	FBPOpenXRSkeletalMappingData()
 	{
 		AdjustmentQuat = FQuat::Identity;
 		bInitialized = false;
 		bMergeMissingBonesUE4 = false;
-		TargetHand = EVRActionHand::EActionHand_Right;
+		TargetHand = EVRSkeletalHandIndex::EActionHandIndex_Right;
 		LastInitializedName = NAME_None;
 	}
 };

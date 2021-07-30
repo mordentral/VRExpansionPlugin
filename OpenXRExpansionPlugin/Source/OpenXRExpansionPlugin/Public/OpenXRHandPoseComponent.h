@@ -21,7 +21,7 @@ struct OPENXREXPANSIONPLUGIN_API FBPSkeletalRepContainer
 public:
 
 	UPROPERTY(Transient, NotReplicated)
-		EVRActionHand TargetHand;
+		EVRSkeletalHandIndex TargetHand;
 
 	UPROPERTY(Transient, NotReplicated)
 		bool bAllowDeformingMesh;
@@ -39,7 +39,7 @@ public:
 
 	FBPSkeletalRepContainer()
 	{
-		TargetHand = EVRActionHand::EActionHand_Left;
+		TargetHand = EVRSkeletalHandIndex::EActionHandIndex_Left;
 		bAllowDeformingMesh = false;
 		bEnableUE4HandRepSavings = true;
 		BoneCount = 0;
@@ -145,8 +145,8 @@ public:
 	}
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOpenXRGestureDetected, const FName &, GestureDetected, int32, GestureIndex, EVRActionHand, ActionHandType);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOpenXRGestureEnded, const FName &, GestureEnded, int32, GestureIndex, EVRActionHand, ActionHandType);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOpenXRGestureDetected, const FName &, GestureDetected, int32, GestureIndex, EVRSkeletalHandIndex, ActionHandType);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOpenXRGestureEnded, const FName &, GestureEnded, int32, GestureIndex, EVRSkeletalHandIndex, ActionHandType);
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
 class OPENXREXPANSIONPLUGIN_API UOpenXRHandPoseComponent : public UActorComponent
@@ -177,7 +177,7 @@ public:
 		UOpenXRGestureDatabase *GesturesDB;
 	 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-		bool SaveCurrentPose(FName RecordingName, EVRActionHand HandToSave = EVRActionHand::EActionHand_Right);
+		bool SaveCurrentPose(FName RecordingName, EVRSkeletalHandIndex HandToSave = EVRSkeletalHandIndex::EActionHandIndex_Right);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures", meta = (DisplayName = "DetectCurrentPose"))
 		bool K2_DetectCurrentPose(UPARAM(ref) FBPOpenXRActionSkeletalData& SkeletalAction, FOpenXRGesture & GestureOut);
@@ -317,7 +317,7 @@ public:
 
 public:
 
-	EVRActionHand TargetHand;
+	EVRSkeletalHandIndex TargetHand;
 	TArray<FBPOpenXRActionSkeletalData> HandSkeletalActionData;
 
 };
@@ -345,7 +345,7 @@ public:
 	//virtual void NativeInitializeAnimation() override;
 
 	UFUNCTION(BlueprintCallable, Category = "BoneMappings")
-	void InitializeCustomBoneMapping(UPARAM(ref) FBPSkeletalMappingData & SkeletalMappingData);
+	void InitializeCustomBoneMapping(UPARAM(ref) FBPOpenXRSkeletalMappingData & SkeletalMappingData);
 
 
 };

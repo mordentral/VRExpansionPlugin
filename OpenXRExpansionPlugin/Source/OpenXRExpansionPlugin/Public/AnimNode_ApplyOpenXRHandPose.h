@@ -37,7 +37,7 @@ public:
 	// MappedBonePairs, if you leave it blank then they will auto generate based off of the SkeletonType
 	// Otherwise, fill out yourself.
 	UPROPERTY(EditAnywhere, Category = Skeletal, meta = (PinHiddenByDefault))
-		FBPSkeletalMappingData MappedBonePairs;
+		FBPOpenXRSkeletalMappingData MappedBonePairs;
 
 	bool bIsOpenInputAnimationInstance;
 

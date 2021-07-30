@@ -41,7 +41,7 @@ void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(cons
 
 			FBPSkeletalRepContainer::CopyReplicatedTo(SkeletalInfo, HandSkeletalActions[i]);
 
-			if (SkeletalInfo.TargetHand == EVRActionHand::EActionHand_Left)
+			if (SkeletalInfo.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left)
 			{
 				LeftHandRep = SkeletalInfo;
 				if (bSmoothReplicatedSkeletalData)
@@ -110,9 +110,9 @@ void UOpenXRHandPoseComponent::BeginPlay()
 		for (int i = 0; i < HandSkeletalActions.Num(); i++)
 		{
 			if (HandType == EControllerHand::Left || HandType == EControllerHand::AnyHand)
-				HandSkeletalActions[i].SkeletalData.TargetHand = EVRActionHand::EActionHand_Left;
+				HandSkeletalActions[i].SkeletalData.TargetHand = EVRSkeletalHandIndex::EActionHandIndex_Left;
 			else
-				HandSkeletalActions[i].SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
+				HandSkeletalActions[i].SkeletalData.TargetHand = EVRSkeletalHandIndex::EActionHandIndex_Right;
 		}
 
 	}*/
@@ -131,7 +131,7 @@ void UOpenXRHandPoseComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			{
 				if (bSmoothReplicatedSkeletalData)
 				{
-					if (actionInfo.TargetHand == EVRActionHand::EActionHand_Left)
+					if (actionInfo.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left)
 					{
 						LeftHandRepManager.UpdateManager(DeltaTime, actionInfo);
 					}
@@ -177,7 +177,7 @@ void UOpenXRHandPoseComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 					{
 						if (actionInfo.bHasValidData)
 						{
-							if (actionInfo.TargetHand == EVRActionHand::EActionHand_Left)
+							if (actionInfo.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left)
 								LeftHandRep.CopyForReplication(actionInfo);
 							else
 								RightHandRep.CopyForReplication(actionInfo);
@@ -196,7 +196,7 @@ void UOpenXRHandPoseComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-bool UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRActionHand HandToSave)
+bool UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRSkeletalHandIndex HandToSave)
 {
 
 	if (!HandSkeletalActions.Num())
@@ -233,7 +233,7 @@ bool UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRActionHan
 
 		FVector WristLoc = FVector::ZeroVector;
 
-		if (HandToSave == EVRActionHand::EActionHand_Left)
+		if (HandToSave == EVRSkeletalHandIndex::EActionHandIndex_Left)
 		{
 			WristLoc = HandSkeletalAction->SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation().MirrorByVector(FVector::RightVector);
 		}
@@ -244,7 +244,7 @@ bool UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRActionHan
 
 		for (int i = 0; i < 5; ++i)
 		{
-			if (HandToSave == EVRActionHand::EActionHand_Left)
+			if (HandToSave == EVRSkeletalHandIndex::EActionHandIndex_Left)
 			{				
 				NewGesture.FingerValues[i] = FOpenXRGestureFingerPosition(HandSkeletalAction->SkeletalTransforms[FingerMap[i]].GetLocation().MirrorByVector(FVector::RightVector) - WristLoc, (EXRHandJointType)FingerMap[i]);
 			}
@@ -280,7 +280,7 @@ bool UOpenXRHandPoseComponent::K2_DetectCurrentPose(UPARAM(ref) FBPOpenXRActionS
 
 	FVector WristLoc = FVector::ZeroVector;
 
-	if (SkeletalAction.TargetHand == EVRActionHand::EActionHand_Left)
+	if (SkeletalAction.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left)
 	{
 		WristLoc = SkeletalAction.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation().MirrorByVector(FVector::RightVector);
 	}
@@ -294,7 +294,7 @@ bool UOpenXRHandPoseComponent::K2_DetectCurrentPose(UPARAM(ref) FBPOpenXRActionS
 	CurrentTips.AddUninitialized(5);
 	for (int i = 0; i < 5; ++i)
 	{
-		if (SkeletalAction.TargetHand == EVRActionHand::EActionHand_Left)
+		if (SkeletalAction.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left)
 		{
 			CurrentTips[i] = SkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation().MirrorByVector(FVector::RightVector) - WristLoc;
 		}
@@ -352,7 +352,7 @@ bool UOpenXRHandPoseComponent::DetectCurrentPose(FBPOpenXRActionSkeletalData &Sk
 
 	FVector WristLoc = FVector::ZeroVector;
 
-	if (SkeletalAction.TargetHand == EVRActionHand::EActionHand_Left)
+	if (SkeletalAction.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left)
 	{
 		WristLoc = SkeletalAction.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT].GetLocation().MirrorByVector(FVector::RightVector);
 	}
@@ -366,7 +366,7 @@ bool UOpenXRHandPoseComponent::DetectCurrentPose(FBPOpenXRActionSkeletalData &Sk
 	CurrentTips.AddUninitialized(5);
 	for (int i = 0; i < 5; ++i)
 	{
-		if (SkeletalAction.TargetHand == EVRActionHand::EActionHand_Left)
+		if (SkeletalAction.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left)
 		{
 			CurrentTips[i] = SkeletalAction.SkeletalTransforms[FingerMap[i]].GetLocation().MirrorByVector(FVector::RightVector) - WristLoc;
 		}
@@ -790,7 +790,7 @@ void UOpenXRAnimInstance::NativeBeginPlay()
 	}
 }*/
 
-void UOpenXRAnimInstance::InitializeCustomBoneMapping(UPARAM(ref) FBPSkeletalMappingData& SkeletalMappingData)
+void UOpenXRAnimInstance::InitializeCustomBoneMapping(UPARAM(ref) FBPOpenXRSkeletalMappingData& SkeletalMappingData)
 {
 	USkeleton* AssetSkeleton = this->CurrentSkeleton;//RequiredBones.GetSkeletonAsset();
 
