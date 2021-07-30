@@ -68,7 +68,7 @@ public:
 			return true;
 		}
 
-		UHeadMountedDisplayFunctionLibrary::GetMotionControllerData((UObject*)HandPoseComponent, HandPoseContainer.TargetHand == EVRActionHand::EActionHand_Left ? EControllerHand::Left : EControllerHand::Right, MotionControllerData);
+		UHeadMountedDisplayFunctionLibrary::GetMotionControllerData((UObject*)HandPoseComponent, HandPoseContainer.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left ? EControllerHand::Left : EControllerHand::Right, MotionControllerData);
 
 		if (MotionControllerData.bValid)
 		{
@@ -261,7 +261,7 @@ public:
 			FQuat(0.116890728f,-0.981477261f,0.138804480f,-0.061412390f)
 		};
 
-		MotionControllerData.HandKeyRotations = SkeletalMappingData.TargetHand != EVRActionHand::EActionHand_Left ? HandRotationsOpen : HandRotationsClosed;
+		MotionControllerData.HandKeyRotations = SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandRotationsOpen : HandRotationsClosed;
 
 		TArray<FVector> HandPositionsClosed = {
 			// Closed palm - Left
@@ -323,9 +323,9 @@ public:
 			FVector(-1019.778f,-479.842f,203.819f)
 		};
 
-		MotionControllerData.HandKeyPositions = SkeletalMappingData.TargetHand != EVRActionHand::EActionHand_Left ? HandPositionsOpen : HandPositionsClosed;
+		MotionControllerData.HandKeyPositions = SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandPositionsOpen : HandPositionsClosed;
 
-		if (SkeletalMappingData.TargetHand != EVRActionHand::EActionHand_Left)
+		if (SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left)
 		{
 			MotionControllerData.GripPosition = FVector(-1018.305f, -478.019f, 209.872f);
 			MotionControllerData.GripRotation = FQuat(-0.116352126f, 0.039430488f, -0.757644236f, 0.641001403f);
