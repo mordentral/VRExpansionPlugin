@@ -120,6 +120,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	FVector VRCapsuleOffset;
 
+	// If true we will stop tracking the camera / hmd until enabled again
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+		bool bPauseTracking;
+
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionLibrary")
+		void SetTrackingPaused(bool bPaused);
+
 	// #TODO: Test with 100.f rounding to make sure it isn't noticable, currently that is what it is
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")

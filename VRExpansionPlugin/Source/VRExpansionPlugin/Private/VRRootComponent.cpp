@@ -355,6 +355,7 @@ UVRRootComponent::UVRRootComponent(const FObjectInitializer& ObjectInitializer)
 	VRCapsuleOffset = FVector(-8.0f, 0.0f, 2.15f /*0.0f*/);
 
 	bCenterCapsuleOnHMD = false;
+	bPauseTracking = false;
 
 
 	ShapeColor = FColor(223, 149, 157, 255);
@@ -527,6 +528,10 @@ void UVRRootComponent::BeginPlay()
 	owningVRChar = NULL;
 }
 
+void UVRRootComponent::SetTrackingPaused(bool bPaused)
+{
+	bPauseTracking = bPaused;
+}
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
@@ -535,6 +540,10 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	{
 		return Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	}
+
+	// Skip updates and stay in place if we have paused tracking to the HMD
+	if (bPauseTracking)
+		return;
 
 	UVRBaseCharacterMovementComponent * CharMove = nullptr;
 
