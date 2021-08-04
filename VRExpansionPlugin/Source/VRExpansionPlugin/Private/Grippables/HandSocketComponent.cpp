@@ -279,14 +279,49 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 		PoseSnapShot.LocalTransforms = TargetMesh->SkeletalMesh->GetSkeleton()->GetRefLocalPoses();
 
 		FQuat DeltaQuat = FQuat::Identity;
+		FName TargetBoneName = NAME_None;
+
 		for (FBPVRHandPoseBonePair& HandPair : CustomPoseDeltas)
 		{
-			int32 BoneIdx = TargetMesh->GetBoneIndex(HandPair.BoneName);
+			if (bFlipHand)
+			{
+				FString bName = HandPair.BoneName.ToString();
+
+				if (bName.Contains("_r"))
+				{
+					bName = bName.Replace(TEXT("_r"), TEXT("_l"));
+				}
+				else
+				{
+					bName = bName.Replace(TEXT("_l"), TEXT("_r"));
+				}
+
+				TargetBoneName = FName(bName);
+			}
+			else
+			{
+				TargetBoneName = HandPair.BoneName;
+			}
+
+			int32 BoneIdx = TargetMesh->GetBoneIndex(TargetBoneName);
 			if (BoneIdx != INDEX_NONE)
 			{
 				DeltaQuat = HandPair.DeltaPose;
-				PoseSnapShot.LocalTransforms[BoneIdx].ConcatenateRotation(HandPair.DeltaPose);
+
+				if (bFlipHand)
+				{
+					FTransform DeltaTrans(DeltaQuat);
+					FMatrix M = DeltaTrans.ToMatrixWithScale();
+					M.Mirror(EAxis::X, EAxis::X);
+					M.Mirror(EAxis::Y, EAxis::Y);
+					M.Mirror(EAxis::Z, EAxis::Z);
+					DeltaTrans.SetFromMatrix(M);
+					DeltaQuat = DeltaTrans.GetRotation();					
+				}
+			
+				PoseSnapShot.LocalTransforms[BoneIdx].ConcatenateRotation(DeltaQuat);
 				PoseSnapShot.LocalTransforms[BoneIdx].NormalizeRotation();
+
 			}
 		}
 
