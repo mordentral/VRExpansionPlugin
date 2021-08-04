@@ -46,26 +46,39 @@ UAnimSequence* UHandSocketComponent::GetTargetAnimation()
 	return HandTargetAnimation;
 }
 
-bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InAnimationSequence, FPoseSnapshot& OutPoseSnapShot, USkeletalMeshComponent* TargetMesh)
+bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InAnimationSequence, FPoseSnapshot& OutPoseSnapShot, USkeletalMeshComponent* TargetMesh, bool bSkipRootBone, bool bFlipHand)
 {
 	if (InAnimationSequence)
 	{
-		OutPoseSnapShot.SkeletalMeshName = InAnimationSequence->GetSkeleton()->GetFName();
+		OutPoseSnapShot.SkeletalMeshName = /*TargetMesh ? TargetMesh->SkeletalMesh->GetFName(): */InAnimationSequence->GetSkeleton()->GetFName();
 		OutPoseSnapShot.SnapshotName = InAnimationSequence->GetFName();
 		OutPoseSnapShot.BoneNames.Empty();
 		OutPoseSnapShot.LocalTransforms.Empty();
 
-		if (TargetMesh)
-		{
-			TargetMesh->GetBoneNames(OutPoseSnapShot.BoneNames);
-		}
-		else if (USkeleton* AnimationSkele = InAnimationSequence->GetSkeleton())
+		TArray<FName> AnimSeqNames;
+
+		if (USkeleton* AnimationSkele = InAnimationSequence->GetSkeleton())
 		{
 			// pre-size the array to avoid unnecessary reallocation
 			OutPoseSnapShot.BoneNames.AddUninitialized(AnimationSkele->GetReferenceSkeleton().GetNum());
 			for (int32 i = 0; i < AnimationSkele->GetReferenceSkeleton().GetNum(); i++)
 			{
 				OutPoseSnapShot.BoneNames[i] = AnimationSkele->GetReferenceSkeleton().GetBoneName(i);
+				if (bFlipHand)
+				{
+					FString bName = OutPoseSnapShot.BoneNames[i].ToString();
+
+					if (bName.Contains("_r"))
+					{
+						bName = bName.Replace(TEXT("_r"), TEXT("_l"));
+					}
+					else
+					{
+						bName = bName.Replace(TEXT("_l"), TEXT("_r"));
+					}
+
+					OutPoseSnapShot.BoneNames[i] = FName(bName);
+				}
 			}
 		}
 		else
@@ -79,10 +92,15 @@ bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InA
 		const TArray<FTrackToSkeletonMap>& TrackMap = InAnimationSequence->GetCompressedTrackToSkeletonMapTable();
 		int32 TrackIndex = INDEX_NONE;
 
+		OutPoseSnapShot.LocalTransforms.Reserve(OutPoseSnapShot.BoneNames.Num());
+
 		for (int32 BoneNameIndex = 0; BoneNameIndex < OutPoseSnapShot.BoneNames.Num(); ++BoneNameIndex)
 		{
+
+			const FName& BoneName = OutPoseSnapShot.BoneNames[BoneNameIndex];
+
 			TrackIndex = INDEX_NONE;
-			if (BoneNameIndex < TrackMap.Num() && TrackMap[BoneNameIndex].BoneTreeIndex == BoneNameIndex)
+			if (BoneNameIndex != INDEX_NONE && BoneNameIndex < TrackMap.Num() && TrackMap[BoneNameIndex].BoneTreeIndex == BoneNameIndex)
 			{
 				TrackIndex = BoneNameIndex;
 			}
@@ -100,9 +118,7 @@ bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InA
 				}
 			}
 
-			const FName& BoneName = OutPoseSnapShot.BoneNames[BoneNameIndex];
-
-			if (TrackIndex != INDEX_NONE)
+			if (TrackIndex != INDEX_NONE && (!bSkipRootBone || TrackIndex != 0))
 			{
 				InAnimationSequence->GetBoneTransform(LocalTransform, TrackIndex, 0.f, false);
 			}
@@ -120,16 +136,26 @@ bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InA
 				}
 			}
 
+			if (bFlipHand && (!bSkipRootBone || TrackIndex != 0))
+			{
+				FMatrix M = LocalTransform.ToMatrixWithScale();
+				M.Mirror(EAxis::X, EAxis::X);
+				M.Mirror(EAxis::Y, EAxis::Y);
+				M.Mirror(EAxis::Z, EAxis::Z);
+				LocalTransform.SetFromMatrix(M);
+			}
+
 			OutPoseSnapShot.LocalTransforms.Add(LocalTransform);
 		}
 
+		OutPoseSnapShot.bIsValid = true;
 		return true;
 	}
 
 	return false;
 }
 
-bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, USkeletalMeshComponent* TargetMesh)
+bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, USkeletalMeshComponent* TargetMesh, bool bSkipRootBone, bool bFlipHand)
 {
 	if (HandTargetAnimation)// && bUseCustomPoseDeltas && CustomPoseDeltas.Num() > 0)
 	{
@@ -138,17 +164,28 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 		PoseSnapShot.BoneNames.Empty();
 		PoseSnapShot.LocalTransforms.Empty();
 
-		if (TargetMesh)
-		{
-			TargetMesh->GetBoneNames(PoseSnapShot.BoneNames);
-		}
-		else if(USkeleton * AnimationSkele = HandTargetAnimation->GetSkeleton())
+		if(USkeleton * AnimationSkele = HandTargetAnimation->GetSkeleton())
 		{
 			// pre-size the array to avoid unnecessary reallocation
 			PoseSnapShot.BoneNames.AddUninitialized(AnimationSkele->GetReferenceSkeleton().GetNum());
 			for (int32 i = 0; i < AnimationSkele->GetReferenceSkeleton().GetNum(); i++)
 			{
 				PoseSnapShot.BoneNames[i] = AnimationSkele->GetReferenceSkeleton().GetBoneName(i);
+				if (bFlipHand)
+				{
+					FString bName = PoseSnapShot.BoneNames[i].ToString();
+
+					if (bName.Contains("_r"))
+					{
+						bName = bName.Replace(TEXT("_r"), TEXT("_l"));
+					}
+					else
+					{
+						bName = bName.Replace(TEXT("_l"), TEXT("_r"));
+					}
+
+					PoseSnapShot.BoneNames[i] = FName(bName);
+				}
 			}
 		}
 		else
@@ -185,7 +222,7 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 
 			const FName& BoneName = PoseSnapShot.BoneNames[BoneNameIndex];
 
-			if (TrackIndex != INDEX_NONE)
+			if (TrackIndex != INDEX_NONE && (!bSkipRootBone || TrackIndex != 0))
 			{
 				HandTargetAnimation->GetBoneTransform(LocalTransform, TrackIndex, 0.f, false);
 			}
@@ -216,9 +253,19 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 			LocalTransform.ConcatenateRotation(DeltaQuat);
 			LocalTransform.NormalizeRotation();
 
+			if (bFlipHand && (!bSkipRootBone || TrackIndex != 0))
+			{
+				FMatrix M = LocalTransform.ToMatrixWithScale();
+				M.Mirror(EAxis::X, EAxis::X);
+				M.Mirror(EAxis::Y, EAxis::Y);
+				M.Mirror(EAxis::Z, EAxis::Z);
+				LocalTransform.SetFromMatrix(M);
+			}
+
 			PoseSnapShot.LocalTransforms.Add(LocalTransform);
 		}
 
+		PoseSnapShot.bIsValid = true;
 		return true;
 	}
 	else if (CustomPoseDeltas.Num() && TargetMesh)
@@ -243,6 +290,7 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 			}
 		}
 
+		PoseSnapShot.bIsValid = true;
 		return true;
 	}
 
