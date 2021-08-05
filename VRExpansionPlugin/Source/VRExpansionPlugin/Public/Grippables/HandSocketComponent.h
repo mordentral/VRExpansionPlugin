@@ -58,6 +58,11 @@ public:
 		BoneName = NAME_None;
 		DeltaPose = FQuat::Identity;
 	}
+
+	FORCEINLINE bool operator==(const FName& Other) const
+	{
+		return (BoneName == Other);
+	}
 };
 
 UCLASS(Blueprintable, ClassGroup = (VRExpansionPlugin), hideCategories = ("Component Tick", Events, Physics, Lod, "Asset User Data", Collision))
