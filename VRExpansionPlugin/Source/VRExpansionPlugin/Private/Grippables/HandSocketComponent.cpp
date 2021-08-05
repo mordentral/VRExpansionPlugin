@@ -163,14 +163,17 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 		PoseSnapShot.SnapshotName = HandTargetAnimation->GetFName();
 		PoseSnapShot.BoneNames.Empty();
 		PoseSnapShot.LocalTransforms.Empty();
+		TArray<FName> OrigBoneNames;
 
 		if(USkeleton * AnimationSkele = HandTargetAnimation->GetSkeleton())
 		{
 			// pre-size the array to avoid unnecessary reallocation
 			PoseSnapShot.BoneNames.AddUninitialized(AnimationSkele->GetReferenceSkeleton().GetNum());
+			OrigBoneNames.AddUninitialized(AnimationSkele->GetReferenceSkeleton().GetNum());
 			for (int32 i = 0; i < AnimationSkele->GetReferenceSkeleton().GetNum(); i++)
 			{
 				PoseSnapShot.BoneNames[i] = AnimationSkele->GetReferenceSkeleton().GetBoneName(i);
+				OrigBoneNames[i] = PoseSnapShot.BoneNames[i];
 				if (bFlipHand)
 				{
 					FString bName = PoseSnapShot.BoneNames[i].ToString();
@@ -240,18 +243,17 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 				}
 			}
 
-			FQuat DeltaQuat = FQuat::Identity;
-			for (FBPVRHandPoseBonePair& HandPair : CustomPoseDeltas)
+			if (bUseCustomPoseDeltas)
 			{
-				if (HandPair.BoneName == PoseSnapShot.BoneNames[BoneNameIndex])
+				FQuat DeltaQuat = FQuat::Identity;
+				if (FBPVRHandPoseBonePair* HandPair = CustomPoseDeltas.FindByKey(OrigBoneNames[BoneNameIndex]))
 				{
-					DeltaQuat = HandPair.DeltaPose;
-					break;
+					DeltaQuat = HandPair->DeltaPose;
 				}
-			}
 
-			LocalTransform.ConcatenateRotation(DeltaQuat);
-			LocalTransform.NormalizeRotation();
+				LocalTransform.ConcatenateRotation(DeltaQuat);
+				LocalTransform.NormalizeRotation();
+			}
 
 			if (bFlipHand && (!bSkipRootBone || TrackIndex != 0))
 			{
@@ -268,7 +270,7 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 		PoseSnapShot.bIsValid = true;
 		return true;
 	}
-	else if (CustomPoseDeltas.Num() && TargetMesh)
+	else if (bUseCustomPoseDeltas && CustomPoseDeltas.Num() && TargetMesh)
 	{
 		PoseSnapShot.SkeletalMeshName = TargetMesh->SkeletalMesh->Skeleton->GetFName();
 		PoseSnapShot.SnapshotName = FName(TEXT("RawDeltaPose"));
