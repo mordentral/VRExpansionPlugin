@@ -273,7 +273,9 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 			}
 		}
 	}
-	else if (OptionalStoredActionInfo.SkeletalTransforms.Num())
+
+	// If we have an empty hand pose but have a passed in custom one then use that
+	if ((StoredActionInfoPtr == nullptr || !StoredActionInfoPtr->SkeletalTransforms.Num()) && OptionalStoredActionInfo.SkeletalTransforms.Num())
 	{
 		StoredActionInfoPtr = &OptionalStoredActionInfo;
 	}
