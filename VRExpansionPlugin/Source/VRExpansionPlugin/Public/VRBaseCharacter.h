@@ -28,6 +28,10 @@ struct VREXPANSIONPLUGIN_API FRepMovementVRCharacter : public FRepMovement
 {
 	GENERATED_BODY()
 
+public:
+	
+	FRepMovementVRCharacter();
+
 	UPROPERTY(Transient)
 		bool bJustTeleported;
 
