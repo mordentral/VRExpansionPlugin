@@ -191,6 +191,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
 	bool bOffsetByHMD;
 
+	// When true any physics constraints will be attached to the grip pivot instead of a new kinematic actor in the scene
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+		bool bConstrainToPivot;
+
 	UPROPERTY()
 		TWeakObjectPtr<AVRBaseCharacter> AttachChar;
 	void UpdateTracking(float DeltaTime);

@@ -100,6 +100,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bSmoothReplicatedMotion = false;
 	bReppedOnce = false;
 	bOffsetByHMD = false;
+	bConstrainToPivot = false;
 
 	bSmoothHandTracking = false;
 	bWasSmoothingHand = false;
@@ -2912,7 +2913,7 @@ void UGripMotionControllerComponent::HandleGlobalLerpToHand(FBPActorGripInformat
 		GripInformation.CurrentLerpTime = 0.0f;
 		GripInformation.bIsLerping = false;
 
-		if (GripInformation.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && GripInformation.AdvancedGripSettings.PhysicsSettings.bConstrainToPivot)
+		if (bConstrainToPivot)
 		{
 			DestroyPhysicsHandle(GripInformation, false);
 			SetUpPhysicsHandle(GripInformation);
@@ -2938,7 +2939,7 @@ void UGripMotionControllerComponent::CancelGlobalLerpToHand(uint8 GripID)
 		{
 			GripToUse->bIsLerping = false;
 
-			if (GripToUse->AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && GripToUse->AdvancedGripSettings.PhysicsSettings.bConstrainToPivot)
+			if (bConstrainToPivot)
 			{
 				DestroyPhysicsHandle(*GripToUse, false);
 				SetUpPhysicsHandle(*GripToUse);
@@ -4027,7 +4028,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		// Zero out our scale now that we are working outside of physx
 		physicsTrans.SetScale3D(FVector(1.0f));
 
-		if (Grip.bIsLerping || !Grip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || !Grip.AdvancedGripSettings.PhysicsSettings.bConstrainToPivot)
+		if (Grip.bIsLerping || !bConstrainToPivot)
 		{
 			FPhysicsActorHandle ActorHandle = Handle->KinActorData2;
 			FTransform newTrans = Handle->COMPosition * (Handle->RootBoneRotation * physicsTrans);
@@ -5225,7 +5226,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	}
 
 	HandleInfo->bSetCOM = false; // Zero this out in case it is a re-init
-	HandleInfo->bSkipDeletingKinematicActor = (NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && (NewGrip.AdvancedGripSettings.PhysicsSettings.bConstrainToPivot && !NewGrip.bIsLerping));
+	HandleInfo->bSkipDeletingKinematicActor = (bConstrainToPivot && !NewGrip.bIsLerping);
 
 	// Check for grip scripts if we weren't passed in any
 	TArray<UVRGripScriptBase*> LocalGripScripts;
@@ -5405,7 +5406,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 		}
 
-		if (!NewGrip.bIsLerping && NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bConstrainToPivot && CustomPivotComponent.IsValid())
+		if (!NewGrip.bIsLerping && bConstrainToPivot && CustomPivotComponent.IsValid())
 		{
 			if (UPrimitiveComponent* PivotPrim = Cast<UPrimitiveComponent>(CustomPivotComponent))
 			{
@@ -5461,7 +5462,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		{
 			// If this is true we will totally ignore the COM type, either we are gripping unstable or the com was set to our controller, we never accept
 			// Grip at COM
-			if (!NewGrip.bIsLerping && NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bConstrainToPivot)
+			if (!NewGrip.bIsLerping && bConstrainToPivot)
 			{
 				FTransform TargetTrans(FTransform(NewGrip.RelativeTransform.ToMatrixNoScale().Inverse()) * HandleInfo->RootBoneRotation.Inverse());
 				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2, Actor, FTransform::Identity, TargetTrans);
@@ -5482,7 +5483,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			// If we have physx then we can directly set the actors to ensure that they are correct
 			if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
 			{
-				if (!NewGrip.bIsLerping && NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bConstrainToPivot)
+				if (!NewGrip.bIsLerping && bConstrainToPivot)
 				{		
 					HandleInfo->HandleData2.ConstraintData->setActors(FPhysicsInterface_PhysX::GetPxRigidDynamic_AssumesLocked(Actor), FPhysicsInterface_PhysX::GetPxRigidDynamic_AssumesLocked(HandleInfo->KinActorData2));
 					
@@ -5500,7 +5501,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			// There isn't a direct set for the particles, so keep it as a recreation instead.
 			FPhysicsInterface::ReleaseConstraint(HandleInfo->HandleData2);
 
-			if (!NewGrip.bIsLerping && NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bConstrainToPivot)
+			if (!NewGrip.bIsLerping && bConstrainToPivot)
 			{
 				FTransform TargetTrans(NewGrip.RelativeTransform.ToMatrixNoScale().Inverse());
 				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2, Actor, FTransform::Identity, TargetTrans);
@@ -5947,7 +5948,7 @@ bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInf
 
 void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform)
 {
-	if (!GrippedActor.GrippedObject || (GrippedActor.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && (GrippedActor.AdvancedGripSettings.PhysicsSettings.bConstrainToPivot && !GrippedActor.bIsLerping)))
+	if (!GrippedActor.GrippedObject || (bConstrainToPivot && !GrippedActor.bIsLerping))
 		return;
 
 	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(GrippedActor);

@@ -1060,10 +1060,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		bool bTurnOffGravityDuringGrip;
 
-	// When true any physics constraints will be attached to the grip pivot instead of a new kinematic actor in the scene
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
-		bool bConstrainToPivot;
-
 	// Don't automatically (un)simulate the component/root on grip/drop, let the end user set it up instead
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		bool bSkipSettingSimulating;
@@ -1095,7 +1091,6 @@ public:
 		PhysicsConstraintType(EPhysicsGripConstraintType::AccelerationConstraint),
 		PhysicsGripLocationSettings(EPhysicsGripCOMType::COM_Default),
 		bTurnOffGravityDuringGrip(false),
-		bConstrainToPivot(false),
 		bSkipSettingSimulating(false),
 		LinearMaxForceCoefficient(0.f),
 		AngularMaxForceCoefficient(0.f),
@@ -1110,7 +1105,6 @@ public:
 		return (bUsePhysicsSettings == Other.bUsePhysicsSettings &&
 			PhysicsGripLocationSettings == Other.PhysicsGripLocationSettings &&
 			bTurnOffGravityDuringGrip == Other.bTurnOffGravityDuringGrip &&
-			bConstrainToPivot == Other.bConstrainToPivot &&
 			bSkipSettingSimulating == Other.bSkipSettingSimulating &&
 			bUseCustomAngularValues == Other.bUseCustomAngularValues &&
 			PhysicsConstraintType == Other.PhysicsConstraintType &&
@@ -1127,7 +1121,6 @@ public:
 		return (bUsePhysicsSettings != Other.bUsePhysicsSettings ||
 			PhysicsGripLocationSettings != Other.PhysicsGripLocationSettings ||
 			bTurnOffGravityDuringGrip != Other.bTurnOffGravityDuringGrip ||
-			bConstrainToPivot != Other.bConstrainToPivot ||
 			bSkipSettingSimulating != Other.bSkipSettingSimulating ||
 			bUseCustomAngularValues != Other.bUseCustomAngularValues ||
 			PhysicsConstraintType != Other.PhysicsConstraintType ||
@@ -1155,7 +1148,6 @@ public:
 
 			//Ar << bTurnOffGravityDuringGrip;
 			Ar.SerializeBits(&bTurnOffGravityDuringGrip, 1);
-			Ar.SerializeBits(&bConstrainToPivot, 1);
 			Ar.SerializeBits(&bSkipSettingSimulating, 1);
 
 
