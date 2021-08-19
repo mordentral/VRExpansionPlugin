@@ -903,7 +903,10 @@ enum class EGripCollisionType : uint8
 	CustomGrip,
 
 	/** A grip that does not tick or move, used for drop / grip events only and uses least amount of processing. */
-	EventsOnly
+	EventsOnly,
+
+	/** Uses a hard constraint with no softness to lock them together, best used with ConstrainToPivot enabled and a bone chain. */
+	LockedConstraint
 
 };
 
@@ -1729,6 +1732,7 @@ public:
 	bool bSetCOM;
 	bool bSkipResettingCom;
 	bool bSkipMassCheck;
+	bool bSkipDeletingKinematicActor;
 
 	FBPActorPhysicsHandleInformation()
 	{	
@@ -1740,6 +1744,7 @@ public:
 		bSetCOM = false;
 		bSkipResettingCom = false;
 		bSkipMassCheck = false;
+		bSkipDeletingKinematicActor = false;
 #if WITH_CHAOS
 		KinActorData2 = nullptr;
 #endif

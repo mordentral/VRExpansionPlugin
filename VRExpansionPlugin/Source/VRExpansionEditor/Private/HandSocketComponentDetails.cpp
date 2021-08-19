@@ -60,7 +60,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 		return false;
 	}*/
 
-	if (!HandSocketComponent->HandTargetAnimation && (!HandSocketComponent->VisualizationMesh || !HandSocketComponent->VisualizationMesh->Skeleton))
+	if (!HandSocketComponent->HandTargetAnimation && (!HandSocketComponent->VisualizationMesh || !HandSocketComponent->VisualizationMesh->GetSkeleton()))
 	{
 		return FinalAnimation;
 	}
@@ -104,7 +104,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 
 	if (!BaseAnimation)
 	{
-		LocalPoses = HandSocketComponent->VisualizationMesh->Skeleton->GetRefLocalPoses();
+		LocalPoses = HandSocketComponent->VisualizationMesh->GetSkeleton()->GetRefLocalPoses();
 	}
 
 	// If not, create new one now.
@@ -118,7 +118,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 		}
 		else
 		{
-			NewSeq->SetSkeleton(HandSocketComponent->VisualizationMesh->Skeleton);
+			NewSeq->SetSkeleton(HandSocketComponent->VisualizationMesh->GetSkeleton());
 		}
 
 		// Notify the asset registry
@@ -152,7 +152,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 		{				
 			for (int i = 0; i < LocalPoses.Num(); i++)
 			{
-				AnimationObject->AddNewRawTrack(HandSocketComponent->VisualizationMesh->RefSkeleton.GetBoneName(i));
+				AnimationObject->AddNewRawTrack(HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetBoneName(i));
 			}
 		}
 
@@ -162,7 +162,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 		}
 		else
 		{
-			AnimationObject->RetargetSource = HandSocketComponent->VisualizationMesh ?  HandSocketComponent->VisualizationMesh->Skeleton->GetRetargetSourceForMesh(HandSocketComponent->VisualizationMesh) : NAME_None;
+			AnimationObject->RetargetSource = HandSocketComponent->VisualizationMesh ?  HandSocketComponent->VisualizationMesh->GetSkeleton()->GetRetargetSourceForMesh(HandSocketComponent->VisualizationMesh) : NAME_None;
 		}
 
 
@@ -228,7 +228,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 		else
 		{
 			USkeletalMesh* SkeletalMesh = HandSocketComponent->VisualizationMesh;
-			USkeleton* AnimSkeleton = SkeletalMesh->Skeleton;
+			USkeleton* AnimSkeleton = SkeletalMesh->GetSkeleton();
 			for (int32 TrackIndex = 0; TrackIndex < AnimationObject->GetRawAnimationData().Num(); ++TrackIndex)
 			{
 				// verify if this bone exists in skeleton

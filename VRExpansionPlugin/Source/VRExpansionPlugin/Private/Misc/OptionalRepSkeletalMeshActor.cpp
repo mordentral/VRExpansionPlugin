@@ -259,7 +259,7 @@ void UpdateWorldBoneTMVR(TAssetWorldBoneTMArray& WorldBoneTMs, const TArray<FTra
 	else
 	{
 		// If not root, use our cached world-space bone transforms.
-		int32 ParentIndex = SkelComp->SkeletalMesh->RefSkeleton.GetParentIndex(BoneIndex);
+		int32 ParentIndex = SkelComp->SkeletalMesh->GetRefSkeleton().GetParentIndex(BoneIndex);
 		UpdateWorldBoneTMVR(WorldBoneTMs, InBoneSpaceTransforms, ParentIndex, SkelComp, LocalToWorldTM, Scale3D);
 		ParentTM = WorldBoneTMs[ParentIndex].TM;
 	}
@@ -333,7 +333,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 				int32 BoneIndex = InRequiredBones[i];
 
 				// See if this is a physics bone..
-				int32 BodyIndex = PhysicsAsset->FindBodyIndex(SkeletalMesh->RefSkeleton.GetBoneName(BoneIndex));
+				int32 BodyIndex = PhysicsAsset->FindBodyIndex(SkeletalMesh->GetRefSkeleton().GetBoneName(BoneIndex));
 				// need to update back to physX so that physX knows where it was after blending
 				FBodyInstance* PhysicsAssetBodyInstance = nullptr;
 
@@ -371,7 +371,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 							else
 							{
 								// If not root, get parent TM from cache (making sure its up-to-date).
-								int32 ParentIndex = SkeletalMesh->RefSkeleton.GetParentIndex(BoneIndex);
+								int32 ParentIndex = SkeletalMesh->GetRefSkeleton().GetParentIndex(BoneIndex);
 								UpdateWorldBoneTMVR(WorldBoneTMs, InBoneSpaceTransforms, ParentIndex, this, LocalToWorldTM, TotalScale3D);
 								ParentWorldTM = WorldBoneTMs[ParentIndex].TM;
 							}
@@ -421,7 +421,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 						{
 							continue;
 						}
-						const int32 ParentIndex = SkeletalMesh->RefSkeleton.GetParentIndex(BoneIndex);
+						const int32 ParentIndex = SkeletalMesh->GetRefSkeleton().GetParentIndex(BoneIndex);
 						EditableComponentSpaceTransforms[BoneIndex] = InBoneSpaceTransforms[BoneIndex] * EditableComponentSpaceTransforms[ParentIndex];
 
 						/**

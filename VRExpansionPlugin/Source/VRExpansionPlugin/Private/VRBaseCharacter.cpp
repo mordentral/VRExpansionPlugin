@@ -14,6 +14,14 @@ FName AVRBaseCharacter::ReplicatedCameraComponentName(TEXT("VR Replicated Camera
 FName AVRBaseCharacter::ParentRelativeAttachmentComponentName(TEXT("Parent Relative Attachment"));
 FName AVRBaseCharacter::SmoothingSceneParentComponentName(TEXT("NetSmoother"));
 
+FRepMovementVRCharacter::FRepMovementVRCharacter()
+: Super()
+{
+	bJustTeleported = false;
+	bJustTeleportedGrips = false;
+	Owner = nullptr;
+}
+
 AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
  : Super(ObjectInitializer/*.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName)*/.SetDefaultSubobjectClass<UVRBaseCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 

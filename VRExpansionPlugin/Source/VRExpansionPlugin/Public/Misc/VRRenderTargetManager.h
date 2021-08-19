@@ -55,6 +55,13 @@ public:
 	//UPROPERTY(Transient)
 	EPixelFormat PixelFormat;
 
+	FBPVRReplicatedTextureStore()
+	{
+		Width = 0;
+		Height = 0;
+		bIsZipped = false;
+	}
+
 	void Reset()
 	{
 		PackedData.Reset();
@@ -149,6 +156,16 @@ public:
 
 	UPROPERTY()
 		TSoftObjectPtr<UMaterial> Material;
+
+	FRenderManagerOperation()
+	{
+		OwnerID = 0;
+		OperationType = ERenderManagerOperationType::Op_LineDraw;
+		Color = FColor::White;
+		P1 = FVector2D::ZeroVector;
+		P2 = FVector2D::ZeroVector;
+		Thickness = 0;
+	}
 
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 };
