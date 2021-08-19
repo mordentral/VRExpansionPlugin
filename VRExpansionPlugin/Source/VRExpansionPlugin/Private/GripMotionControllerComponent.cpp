@@ -4659,7 +4659,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 						// Sweep current collision state, only used for client side late update removal
 						if (
-							(bHasAuthority &&
+							(bHasAuthority && !this->bDisableLowLatencyUpdate &&
 								((Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenColliding) ||
 									(Grip->GripLateUpdateSetting == EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping)))
 							)
@@ -4669,6 +4669,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							//Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 							Params.AddIgnoredActor(actor);
 							Params.AddIgnoredActors(root->MoveIgnoreActors);
+
+							actor->ForEachAttachedActors([&Params](AActor* Actor)
+							{
+								Params.AddIgnoredActor(Actor);
+								return true;
+							});
 
 							TArray<FHitResult> Hits;
 							
@@ -4736,6 +4742,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
 
+						actor->ForEachAttachedActors([&Params](AActor* Actor)
+						{
+							Params.AddIgnoredActor(Actor);
+							return true;
+						});
+
 						TArray<FHitResult> Hits;
 						// Checking both current and next position for overlap using this grip type
 						// Switched over to component sweep because it picks up on pivot offsets without me manually calculating it
@@ -4779,6 +4791,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						//Params.bTraceAsyncScene = root->bCheckAsyncSceneOnMove;
 						Params.AddIgnoredActor(actor);
 						Params.AddIgnoredActors(root->MoveIgnoreActors);
+
+						actor->ForEachAttachedActors([&Params](AActor* Actor)
+						{
+							Params.AddIgnoredActor(Actor);
+							return true;
+						});
 
 						if (Grip->bLockHybridGrip)
 						{
