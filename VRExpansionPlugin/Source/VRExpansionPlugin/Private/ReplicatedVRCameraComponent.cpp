@@ -132,7 +132,7 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 	if (bHasAuthority)
 	{
 		// For non view target positional updates (third party and the like)
-		if (bSetPositionDuringTick && bLockToHmd && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
+		if (bSetPositionDuringTick && bLockToHmd && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowedForWorld(*GetWorld()))
 		{
 			//ResetRelativeTransform();
 			FQuat Orientation;
