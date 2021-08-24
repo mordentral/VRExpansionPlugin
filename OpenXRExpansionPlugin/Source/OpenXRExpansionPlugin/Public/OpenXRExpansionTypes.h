@@ -9,6 +9,16 @@
 
 #include "OpenXRExpansionTypes.Generated.h"
 
+// This makes a lot of the blueprint functions cleaner
+UENUM()
+enum class EBPXRResultSwitch : uint8
+{
+	// On Success
+	OnSucceeded,
+	// On Failure
+	OnFailed
+};
+
 UENUM(BlueprintType)
 enum class EVRSkeletalHandIndex : uint8
 {

@@ -20,9 +20,10 @@ UOpenXRExpansionFunctionLibrary::~UOpenXRExpansionFunctionLibrary()
 
 }
 
-bool UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& TrackingSystemName, EBPOpenXRControllerDeviceType& DeviceType)
+void UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& TrackingSystemName, EBPOpenXRControllerDeviceType& DeviceType, EBPXRResultSwitch& Result)
 {
 	DeviceType = EBPOpenXRControllerDeviceType::DT_UnknownController;
+	Result = EBPXRResultSwitch::OnFailed;
 
 	if (FOpenXRHMD* pOpenXRHMD = GetOpenXRHMD())
 	{
@@ -44,16 +45,20 @@ bool UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& Trackin
 					XrResult PathResult = xrStringToPath(XRInstance, "/user/hand/left", &myPath);
 					XrInteractionProfileState interactionProfile{ XR_TYPE_INTERACTION_PROFILE_STATE };
 					interactionProfile.next = nullptr;
-					if (xrGetCurrentInteractionProfile(XRSesh, myPath, &interactionProfile) == XR_SUCCESS)
+
+					XrResult QueryResult = xrGetCurrentInteractionProfile(XRSesh, myPath, &interactionProfile);
+					if (QueryResult == XR_SUCCESS)
 					{
 						char myPathy[XR_MAX_SYSTEM_NAME_SIZE];
 						uint32_t outputsize;
 						xrPathToString(XRInstance, interactionProfile.interactionProfile, XR_MAX_SYSTEM_NAME_SIZE, &outputsize, myPathy);
 
 						if (outputsize < 1)
-							return false;
+							return;
 
 						FString InteractionName(ANSI_TO_TCHAR(myPathy));
+						if (InteractionName.Len() < 1)
+							return;
 
 						/*
 						* Interaction profile paths [6.4]
@@ -128,16 +133,18 @@ bool UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& Trackin
 							UE_LOG(OpenXRExpansionFunctionLibraryLog, Warning, TEXT("UNKNOWN OpenXR Interaction profile detected!!!: %s"), *InteractionName);
 							DeviceType = EBPOpenXRControllerDeviceType::DT_UnknownController;
 						}
+
+						Result = EBPXRResultSwitch::OnSucceeded;
 					}
 
 					TrackingSystemName = FString(ANSI_TO_TCHAR(systemProperties.systemName));// , XR_MAX_SYSTEM_NAME_SIZE);
 					//VendorID = systemProperties.vendorId;
-					return true;
+					return;
 				}
 			}
 		}
 	}
 
 	TrackingSystemName.Empty();
-	return false;
+	return;
 }

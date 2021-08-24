@@ -351,6 +351,7 @@ public:
 	}
 
 	// Get a list of all currently tracked devices and their types, index in the array is their device index
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
-		static bool GetXRMotionControllerType(FString& TrackingSystemName, EBPOpenXRControllerDeviceType& DeviceType);
+	// Returns failed if the openXR query failed (no interaction profile yet or openXR is not running)
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true", ExpandEnumAsExecs = "Result"))
+		static void GetXRMotionControllerType(FString& TrackingSystemName, EBPOpenXRControllerDeviceType& DeviceType, EBPXRResultSwitch &Result);
 };
