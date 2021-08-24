@@ -185,7 +185,9 @@ bool UVRGlobalSettings::LoadControllerProfileByName(FName ControllerProfileName,
 	{
 		return LoadControllerProfile(*FoundProfile, bSetAsCurrentProfile);
 	}
+	
 
+	UE_LOG(LogTemp, Warning, TEXT("Could not find controller profile!: %s"), *ControllerProfileName.ToString());
 	return false;
 }
 
