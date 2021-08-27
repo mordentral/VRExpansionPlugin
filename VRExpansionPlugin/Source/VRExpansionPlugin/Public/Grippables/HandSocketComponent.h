@@ -118,6 +118,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		bool bAlwaysInRange;
 
+	// If true and there are multiple hand socket components in range with this setting
+	// Then the default behavior will compare closest rotation on them all to pick one
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+		bool bMatchRotation;
+
 	// Snap distance to use if you want to override the defaults.
 	// Will be ignored if == 0.0f or bAlwaysInRange is true
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
