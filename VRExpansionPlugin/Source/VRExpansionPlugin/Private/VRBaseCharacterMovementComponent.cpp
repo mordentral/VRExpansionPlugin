@@ -578,7 +578,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 
 	if (bFlagCharacterTeleport)
 		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
-	else
+	else if(bFlagGripTeleport)
 		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
@@ -601,7 +601,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewY
 
 	if (bFlagCharacterTeleport)
 		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
-	else
+	else if (bFlagGripTeleport)
 		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
