@@ -213,14 +213,14 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			{
 				MomentumAtDrop = FMath::VInterpTo(MomentumAtDrop, FVector::ZeroVector, DeltaTime, SliderMomentumFriction);
 
-				FVector ClampedLocation = ClampSlideVector(this->GetRelativeLocation() + (MomentumAtDrop * DeltaTime));
+				FVector ClampedLocation = ClampSlideVector(InitialRelativeTransform.InverseTransformPosition(this->GetRelativeLocation()) + (MomentumAtDrop * DeltaTime));
 				this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
 				CurrentSliderProgress = GetCurrentSliderProgress(bSlideDistanceIsInParentSpace ? ClampedLocation * InitialRelativeTransform.GetScale3D() : ClampedLocation);
 				float newProgress = CurrentSliderProgress;
 				if (SliderRestitution > 0.0f)
 				{
 					// Implement bounce
-					FVector CurLoc = InitialRelativeTransform.InverseTransformPosition(this->GetRelativeLocation());
+					FVector CurLoc = ClampedLocation;
 					
 					if (
 						(FMath::Abs(MinSlideDistance.X) > 0.0f && CurLoc.X <= -FMath::Abs(this->MinSlideDistance.X)) ||
@@ -399,11 +399,15 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 		{
 			// Rolling average across num samples
 			MomentumAtDrop -= MomentumAtDrop / FramesToAverage;
-			MomentumAtDrop += ((/*CurrentSliderProgress*/this->GetRelativeLocation() - LastSliderProgress) / DeltaTime) / FramesToAverage;
+			FVector CurProgress = InitialRelativeTransform.InverseTransformPosition(this->GetRelativeLocation());
+			if (bSlideDistanceIsInParentSpace)
+				CurProgress *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
+
+			MomentumAtDrop += ((/*CurrentSliderProgress*/CurProgress - LastSliderProgress) / DeltaTime) / FramesToAverage;
 
 			//MomentumAtDrop = FMath::Min(MaxSliderMomentum, MomentumAtDrop);
 
-			LastSliderProgress = this->GetRelativeLocation();//CurrentSliderProgress;
+			LastSliderProgress = CurProgress;//CurrentSliderProgress;
 		}
 	}
 
@@ -474,7 +478,7 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 	LerpedKey = 0.0f;
 	bHitEventThreshold = false;
 	LastSliderProgressState = -1.0f;
-	LastSliderProgress = this->GetRelativeLocation();//CurrentSliderProgress;
+	LastSliderProgress = InitialGripLoc;//CurrentSliderProgress;
 	SplineLastSliderProgress = CurrentSliderProgress;
 
 	bIsLerping = false;
@@ -501,8 +505,13 @@ void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerCompo
 	{
 		bIsLerping = true;
 		this->SetComponentTickEnabled(true);
-		float TotalDistance = (MinSlideDistance.GetAbs() + MaxSlideDistance.GetAbs()).Size();
-		
+
+		FVector Len = (MinSlideDistance.GetAbs() + MaxSlideDistance.GetAbs());
+		if(bSlideDistanceIsInParentSpace)
+			Len *= (FVector(1.0f) / InitialRelativeTransform.GetScale3D());
+
+		float TotalDistance = Len.Size();		
+
 		if (!SplineComponentToFollow)
 		{
 			if (MaxSliderMomentum * TotalDistance < MomentumAtDrop.Size())
