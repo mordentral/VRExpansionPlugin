@@ -100,8 +100,10 @@ public:
 		bool bIsLerping;
 
 	// For momentum retention
-	float MomentumAtDrop;
-	float LastSliderProgress;
+	FVector MomentumAtDrop;
+	FVector LastSliderProgress;
+	float SplineMomentumAtDrop;
+	float SplineLastSliderProgress;
 
 	// Gets filled in with the current slider location progress
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRSliderComponent")
