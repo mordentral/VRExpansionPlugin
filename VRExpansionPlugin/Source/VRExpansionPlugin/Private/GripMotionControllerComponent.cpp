@@ -21,6 +21,7 @@
 #include "VRBaseCharacter.h"
 
 #include "GripScripts/GS_Default.h"
+#include "GripScripts/GS_LerpToHand.h"
 
 #include "PhysicsPublic.h"
 #include "PhysicsEngine/BodySetup.h"
@@ -2782,6 +2783,14 @@ void UGripMotionControllerComponent::InitializeLerpToHand(FBPActorGripInformatio
 	if (!VRSettings.bUseGlobalLerpToHand)
 		return;
 
+	EBPVRResultSwitch Result;
+	TSubclassOf<class UVRGripScriptBase> Class = UGS_LerpToHand::StaticClass();
+	UVRGripScriptBase::GetGripScriptByClass(GripInformation.GrippedObject, Class, Result);
+	if (Result == EBPVRResultSwitch::OnSucceeded)
+	{
+		return;
+	}
+
 	if (USceneComponent* PrimParent = Cast<USceneComponent>(GripInformation.GrippedObject))
 	{
 		if (GripInformation.GrippedBoneName != NAME_None)
@@ -2835,12 +2844,20 @@ void UGripMotionControllerComponent::InitializeLerpToHand(FBPActorGripInformatio
 
 void UGripMotionControllerComponent::HandleGlobalLerpToHand(FBPActorGripInformation& GripInformation, FTransform& WorldTransform, float DeltaTime)
 {
-	if (!GripInformation.bIsLerping)
-		return;
-
 	UVRGlobalSettings* VRSettings = GetMutableDefault<UVRGlobalSettings>();
 
-	if (!VRSettings->bUseGlobalLerpToHand || VRSettings->LerpDuration <= 0.f)
+	if (!VRSettings->bUseGlobalLerpToHand || !GripInformation.bIsLerping)
+		return;
+
+	EBPVRResultSwitch Result;
+	TSubclassOf<class UVRGripScriptBase> Class = UGS_LerpToHand::StaticClass();
+	UVRGripScriptBase * LerpScript = UVRGripScriptBase::GetGripScriptByClass(GripInformation.GrippedObject, Class, Result);
+	if (Result == EBPVRResultSwitch::OnSucceeded && LerpScript && LerpScript->IsScriptActive())
+	{
+		return;
+	}
+
+	if (VRSettings->LerpDuration <= 0.f)
 	{
 		GripInformation.bIsLerping = false;
 		GripInformation.CurrentLerpTime = 0.f;
