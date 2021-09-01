@@ -435,12 +435,15 @@ void UVRSliderComponent::CheckSliderProgress()
 	if (LastSliderProgressState < 0.0f)
 	{
 		// Skip first tick, this is our resting position
-		LastSliderProgressState = CurrentSliderProgress;
+		if (!bSliderUsesSnapPoints)
+			LastSliderProgressState = FMath::RoundToFloat(CurrentSliderProgress); // Ensure it is rounded to 0 or 1
+		else
+			LastSliderProgressState = CurrentSliderProgress;
 	}
 	else if ((LastSliderProgressState != CurrentSliderProgress) || bHitEventThreshold)
 	{
 		if ((!bSliderUsesSnapPoints && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f)) ||
-			(bSliderUsesSnapPoints && SnapIncrement > 0.f && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f))
+			(bSliderUsesSnapPoints && SnapIncrement > 0.f && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f, 0.001f))
 			)
 		{
 			// I am working with exacts here because of the clamping, it should actually work with no precision issues
@@ -457,7 +460,7 @@ void UVRSliderComponent::CheckSliderProgress()
 		}
 	}
 
-	if (FMath::Abs(LastSliderProgressState - CurrentSliderProgress) >= EventThrowThreshold)
+	if (FMath::Abs(LastSliderProgressState - CurrentSliderProgress) >= (bSliderUsesSnapPoints ? FMath::Min(EventThrowThreshold, SnapIncrement / 2.0f) : EventThrowThreshold))
 	{
 		bHitEventThreshold = true;
 	}
@@ -477,7 +480,7 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 	LastInputKey = -1.0f;
 	LerpedKey = 0.0f;
 	bHitEventThreshold = false;
-	LastSliderProgressState = -1.0f;
+	//LastSliderProgressState = -1.0f;
 	LastSliderProgress = InitialGripLoc;//CurrentSliderProgress;
 	SplineLastSliderProgress = CurrentSliderProgress;
 
