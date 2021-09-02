@@ -391,7 +391,8 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 			SplineMomentumAtDrop -= SplineMomentumAtDrop / FramesToAverage;
 			SplineMomentumAtDrop += ((CurrentSliderProgress - SplineLastSliderProgress) / DeltaTime) / FramesToAverage;
 
-			SplineMomentumAtDrop = FMath::Min(MaxSliderMomentum, SplineMomentumAtDrop);
+			float momentumSign = FMath::Sign(SplineMomentumAtDrop);
+			SplineMomentumAtDrop = momentumSign * FMath::Min(MaxSliderMomentum, FMath::Abs(SplineMomentumAtDrop));
 
 			SplineLastSliderProgress = CurrentSliderProgress;
 		}
