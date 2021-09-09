@@ -36,6 +36,8 @@
 #include "Chaos/PBDJointConstraintTypes.h"
 #include "Chaos/PBDJointConstraintData.h"
 #include "Chaos/Sphere.h"
+#include "PhysicsProxy/SingleParticlePhysicsProxy.h"
+#include "Chaos/ChaosConstraintSettings.h"
 #endif
 
 #include "Features/IModularFeatures.h"
@@ -4059,8 +4061,8 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 #elif WITH_CHAOS
 			FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
 				{
-					Actor->SetX(newTrans.GetTranslation());
-					Actor->SetR(newTrans.GetRotation());
+					Actor->GetGameThreadAPI().SetX(newTrans.GetTranslation());
+					Actor->GetGameThreadAPI().SetR(newTrans.GetRotation());
 					FPhysicsInterface::SetGlobalPose_AssumesLocked(Actor, newTrans);
 				});
 #endif
@@ -5484,8 +5486,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			using namespace Chaos;
 			// Missing from physx, not sure how it is working for them currently.
 			//TArray<FPhysicsActorHandle> ActorHandles;
-			HandleInfo->KinActorData2->SetGeometry(TUniquePtr<FImplicitObject>(new TSphere<FReal, 3>(TVector<FReal, 3>(0.f), 1000.f)));
-			HandleInfo->KinActorData2->SetObjectState(EObjectStateType::Kinematic);
+			HandleInfo->KinActorData2->GetGameThreadAPI().SetGeometry(TUniquePtr<FImplicitObject>(new TSphere<FReal, 3>(TVector<FReal, 3>(0.f), 1000.f)));
+			HandleInfo->KinActorData2->GetGameThreadAPI().SetObjectState(EObjectStateType::Kinematic);
 			FPhysicsInterface::AddActorToSolver(HandleInfo->KinActorData2, ActorParams.Scene->GetSolver());
 			//ActorHandles.Add(HandleInfo->KinActorData2);
 			//ActorParams.Scene->AddActorsToScene_AssumesLocked(ActorHandles);
@@ -5597,6 +5599,13 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
 			}
 			
+#if WITH_CHAOS
+			Stiffness *= Chaos::ConstraintSettings::LinearDriveStiffnessScale();
+			Damping *= Chaos::ConstraintSettings::LinearDriveDampingScale();
+			AngularStiffness *= Chaos::ConstraintSettings::AngularDriveStiffnessScale();
+			AngularDamping *= Chaos::ConstraintSettings::AngularDriveDampingScale();
+#endif
+
 			AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
 			MaxForce = (float)FMath::Clamp<double>((double)Stiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0, (double)MAX_FLT);
 
@@ -5744,6 +5753,18 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					HandleInfo->HandleData2.ConstraintData->setDrive(PxD6Drive::Enum::eSLERP, driveVal);
 				}
 			}
+#elif WITH_CHAOS
+			if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint)
+			{
+				if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint->IsType(Chaos::EConstraintType::JointConstraintType))
+				{
+					if (Chaos::FJointConstraint* Constraint = static_cast<Chaos::FJointConstraint*>(HandleInfo->HandleData2.Constraint))
+					{
+						Constraint->SetLinearDriveForceMode(Chaos::EJointForceMode::Force);
+						Constraint->SetAngularDriveForceMode(Chaos::EJointForceMode::Force);
+					}
+				}
+			}
 #endif
 		}
 	});
@@ -5757,12 +5778,12 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	return true;
 }
 
-bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation *Grip, bool bUseHybridMultiplier)
+bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const FBPActorGripInformation* Grip, bool bUseHybridMultiplier)
 {
 	if (!Grip)
 		return false;
 
-	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(*Grip);
+	FBPActorPhysicsHandleInformation* HandleInfo = GetPhysicsGrip(*Grip);
 
 	if (HandleInfo)
 	{
@@ -5789,6 +5810,13 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 						AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier
 						AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
 					}
+
+#if WITH_CHAOS
+					Stiffness *= Chaos::ConstraintSettings::LinearDriveStiffnessScale();
+					Damping *= Chaos::ConstraintSettings::LinearDriveDampingScale();
+					AngularStiffness *= Chaos::ConstraintSettings::AngularDriveStiffnessScale();
+					AngularDamping *= Chaos::ConstraintSettings::AngularDriveDampingScale();
+#endif
 
 					AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
 					MaxForce = (float)FMath::Clamp<double>((double)Stiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0, (double)MAX_FLT);
@@ -5822,6 +5850,18 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 							driveVal = HandleInfo->HandleData2.ConstraintData->getDrive(PxD6Drive::Enum::eZ);
 							driveVal.flags &= ~PxD6JointDriveFlag::eACCELERATION;
 							HandleInfo->HandleData2.ConstraintData->setDrive(PxD6Drive::Enum::eZ, driveVal);
+						}
+#elif WITH_CHAOS
+						if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint)
+						{
+							if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint->IsType(Chaos::EConstraintType::JointConstraintType))
+							{
+								if (Chaos::FJointConstraint* Constraint = static_cast<Chaos::FJointConstraint*>(HandleInfo->HandleData2.Constraint))
+								{
+									Constraint->SetLinearDriveForceMode(Chaos::EJointForceMode::Force);
+									Constraint->SetAngularDriveForceMode(Chaos::EJointForceMode::Force);
+								}
+							}
 						}
 #endif
 
@@ -5886,6 +5926,17 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 							driveVal.flags &= ~PxD6JointDriveFlag::eACCELERATION;
 							HandleInfo->HandleData2.ConstraintData->setDrive(PxD6Drive::Enum::eZ, driveVal);
 						}
+#elif WITH_CHAOS
+						if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint)
+						{
+							if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint->IsType(Chaos::EConstraintType::JointConstraintType))
+							{
+								if (Chaos::FJointConstraint* Constraint = static_cast<Chaos::FJointConstraint*>(HandleInfo->HandleData2.Constraint))
+								{
+									Constraint->SetLinearDriveForceMode(Chaos::EJointForceMode::Force);
+								}
+							}
+						}
 #endif
 
 
@@ -5909,10 +5960,22 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 							driveVal.flags &= ~PxD6JointDriveFlag::eACCELERATION;
 							HandleInfo->HandleData2.ConstraintData->setDrive(PxD6Drive::Enum::eSLERP, driveVal);
 						}
+#elif WITH_CHAOS
+						if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint)
+						{
+							if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint->IsType(Chaos::EConstraintType::JointConstraintType))
+							{
+								if (Chaos::FJointConstraint* Constraint = static_cast<Chaos::FJointConstraint*>(HandleInfo->HandleData2.Constraint))
+								{
+									Constraint->SetAngularDriveForceMode(Chaos::EJointForceMode::Force);
+								}
+							}
+						}
 #endif
 					}
 
 				});
+
 		}
 		return true;
 	}
@@ -6011,8 +6074,8 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 #elif WITH_CHAOS
 		FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle & Actor)
 			{
-				Actor->SetX(newTrans.GetTranslation());
-				Actor->SetR(newTrans.GetRotation());
+				Actor->GetGameThreadAPI().SetX(newTrans.GetTranslation());
+				Actor->GetGameThreadAPI().SetR(newTrans.GetRotation());
 			});
 #endif
 

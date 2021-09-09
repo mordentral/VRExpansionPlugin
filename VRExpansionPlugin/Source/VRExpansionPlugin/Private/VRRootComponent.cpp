@@ -947,6 +947,14 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 		return false;
 	}
 
+	const bool bSkipPhysicsMove = ((MoveFlags & MOVECOMP_SkipPhysicsMove) != MOVECOMP_NoFlags);
+
+	if (!this->IsSimulatingPhysics() && bSkipPhysicsMove)
+	{
+		// Phys thread is updating this when we don't want it to, stop it chaos!
+		return false;
+	}
+
 	ConditionalUpdateComponentToWorld();
 
 	// Init HitResult
@@ -978,7 +986,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 		DeltaSizeSq = 0.f;
 	}
 
-	const bool bSkipPhysicsMove = ((MoveFlags & MOVECOMP_SkipPhysicsMove) != MOVECOMP_NoFlags);
+	//const bool bSkipPhysicsMove = ((MoveFlags & MOVECOMP_SkipPhysicsMove) != MOVECOMP_NoFlags);
 
 	// WARNING: HitResult is only partially initialized in some paths. All data is valid only if bFilledHitResult is true.
 	FHitResult BlockingHit(NoInit);
