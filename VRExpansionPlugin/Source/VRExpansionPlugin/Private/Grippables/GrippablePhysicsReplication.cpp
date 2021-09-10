@@ -465,9 +465,8 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 #if WITH_CHAOS
 	if (bShouldSleep)
 	{
-
 		// In the async case, we apply sleep state in ApplyAsyncDesiredState
-		if (AsyncCallback == nullptr)
+		if (AsyncCallbackServer == nullptr)
 		{
 			BI->PutInstanceToSleep();
 		}

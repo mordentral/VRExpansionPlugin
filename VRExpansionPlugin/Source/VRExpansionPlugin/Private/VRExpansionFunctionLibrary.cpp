@@ -42,8 +42,8 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 				newContactPair.bBody2IgnoreEntireActor = false;
 				*/
 
-				Chaos::FUniqueIdx ID0 = Inst1->ActorHandle->UniqueIdx();
-				Chaos::FUniqueIdx ID1 = Inst2->ActorHandle->UniqueIdx();
+				Chaos::FUniqueIdx ID0 = Inst1->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
+				Chaos::FUniqueIdx ID1 = Inst2->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
 
 				Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
 
@@ -55,8 +55,8 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 						{
 							if (!IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
 							{
-								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->Handle()->CastToRigidParticle();
-								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->Handle()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
 
 								if (ParticleHandle0 && ParticleHandle1)
 								{
@@ -72,8 +72,8 @@ void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent*
 						{
 							if (IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
 							{
-								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->Handle()->CastToRigidParticle();
-								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->Handle()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
+								TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
 
 								if (ParticleHandle0 && ParticleHandle1)
 								{
