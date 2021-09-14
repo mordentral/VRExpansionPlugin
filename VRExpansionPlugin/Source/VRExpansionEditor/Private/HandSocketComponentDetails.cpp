@@ -561,6 +561,9 @@ void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailB
 
 void FHandSocketComponentDetails::OnUpdateShowMesh(IDetailLayoutBuilder* LayoutBuilder)
 {
+	if (!HandSocketComponent.IsValid())
+		return;
+
 	TSharedPtr<FComponentVisualizer> Visualizer = GUnrealEd->FindComponentVisualizer(HandSocketComponent->GetClass());
 	FHandSocketVisualizer* HandVisualizer = (FHandSocketVisualizer*)Visualizer.Get();
 
