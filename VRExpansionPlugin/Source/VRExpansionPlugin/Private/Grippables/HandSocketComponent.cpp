@@ -550,6 +550,12 @@ void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
 
 	for (int32 i = 0; i < Bones; i++)
 	{
+		if (!HandTargetAnimation && !bUseCustomPoseDeltas)
+		{
+			HandVisualizerComponent->ResetBoneTransformByName(BonesNames[i]);
+			continue;
+		}
+
 		FName ParentBone = HandVisualizerComponent->GetParentBone(BonesNames[i]);
 		FTransform ParentTrans = FTransform::Identity;
 		if (ParentBone != NAME_None)
@@ -674,10 +680,11 @@ void UHandSocketComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, VisualizationMesh)
 			)
 		{
+			PoseVisualizationToAnimation(true);
 		}
 		else if (PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, CustomPoseDeltas))
 		{
-			//PoseVisualizationToAnimation(true);
+			PoseVisualizationToAnimation(true);
 		}
 #endif
 	}
