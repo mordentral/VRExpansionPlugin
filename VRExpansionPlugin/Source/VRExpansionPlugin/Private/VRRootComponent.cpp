@@ -21,7 +21,6 @@ DEFINE_LOG_CATEGORY(LogVRRootComponent);
 
 DECLARE_CYCLE_STAT(TEXT("VRRootMovement"), STAT_VRRootMovement, STATGROUP_VRRootComponent);
 DECLARE_CYCLE_STAT(TEXT("PerformOverlapQueryVR Time"), STAT_PerformOverlapQueryVR, STATGROUP_VRRootComponent);
-DECLARE_CYCLE_STAT(TEXT("UpdateOverlapsVRRoot Time"), STAT_UpdateOverlapsVRRoot, STATGROUP_VRRootComponent);
 
 typedef TArray<const FOverlapInfo*, TInlineAllocator<8>> TInlineOverlapPointerArray;
 
@@ -1238,7 +1237,6 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 bool UVRRootComponent::UpdateOverlapsImpl(const TOverlapArrayView* NewPendingOverlaps, bool bDoNotifies, const TOverlapArrayView* OverlapsAtEndLocation)
 {
 	//SCOPE_CYCLE_COUNTER(STAT_UpdateOverlaps);
-	SCOPE_CYCLE_COUNTER(STAT_UpdateOverlapsVRRoot);
 	SCOPE_CYCLE_UOBJECT(ComponentScope, this);
 
 	// if we haven't begun play, we're still setting things up (e.g. we might be inside one of the construction scripts)
@@ -1479,7 +1477,7 @@ bool UVRRootComponent::ConvertSweptOverlapsToCurrentOverlaps(
 	checkSlow(SweptOverlapsIndex >= 0);
 
 	// Override location check with our own
-	GenerateOffsetToWorld();
+	//GenerateOffsetToWorld();
 	FVector EndLocationVR = OffsetComponentToWorld.GetLocation();
 
 
