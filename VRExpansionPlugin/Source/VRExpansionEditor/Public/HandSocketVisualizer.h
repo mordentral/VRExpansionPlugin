@@ -28,6 +28,7 @@ public:
 		CurrentlySelectedBone = NAME_None;
 		CurrentlySelectedBoneIdx = INDEX_NONE;
 		HandPropertyPath = FComponentPropertyPath();
+		TargetViewport = nullptr;
 	}
 
 	virtual ~FHandSocketVisualizer()
@@ -40,6 +41,9 @@ public:
 
 	FName CurrentlySelectedBone;
 	uint32 CurrentlySelectedBoneIdx;
+
+	UPROPERTY()
+	FViewport* TargetViewport;
 
 	UHandSocketComponent* GetCurrentlyEditingComponent() const
 	{ 
