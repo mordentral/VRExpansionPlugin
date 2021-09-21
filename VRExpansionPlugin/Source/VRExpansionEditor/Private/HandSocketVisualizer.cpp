@@ -25,6 +25,7 @@ bool FHandSocketVisualizer::VisProxyHandleClick(FEditorViewportClient* InViewpor
 				{
 					CurrentlySelectedBone = Proxy->TargetBoneName;
 					CurrentlySelectedBoneIdx = Proxy->BoneIdx;
+					TargetViewport = InViewportClient->Viewport;
 				}
 			}
 		}
@@ -36,6 +37,11 @@ bool FHandSocketVisualizer::VisProxyHandleClick(FEditorViewportClient* InViewpor
 
 bool FHandSocketVisualizer::GetCustomInputCoordinateSystem(const FEditorViewportClient* ViewportClient, FMatrix& OutMatrix) const
 {
+	if (TargetViewport == nullptr || TargetViewport != ViewportClient->Viewport)
+	{
+		return false;
+	}
+
 	if (HandPropertyPath.IsValid() && CurrentlySelectedBone != NAME_None/* && CurrentlySelectedBone != "HandSocket"*/)
 	{
 		if (CurrentlySelectedBone == "HandSocket")
@@ -103,6 +109,11 @@ bool FHandSocketVisualizer::IsVisualizingArchetype() const
 
 void FHandSocketVisualizer::DrawVisualizationHUD(const UActorComponent* Component, const FViewport* Viewport, const FSceneView* View, FCanvas* Canvas)
 {
+	if (TargetViewport == nullptr || TargetViewport != Viewport)
+	{
+		return;
+	}
+
 	if (const UHandSocketComponent* HandComp = Cast<const UHandSocketComponent>(Component))
 	{
 		if (CurrentlySelectedBone != NAME_None)
@@ -189,6 +200,11 @@ void FHandSocketVisualizer::DrawVisualization(const UActorComponent* Component, 
 
 bool FHandSocketVisualizer::GetWidgetLocation(const FEditorViewportClient* ViewportClient, FVector& OutLocation) const
 {
+	if (TargetViewport == nullptr || TargetViewport != ViewportClient->Viewport)
+	{
+		return false;
+	}
+
 	if (HandPropertyPath.IsValid() && CurrentlySelectedBone != NAME_None && CurrentlySelectedBone != "HandSocket")
 	{
 		if (CurrentlySelectedBone == "HandSocket")
@@ -231,6 +247,12 @@ bool FHandSocketVisualizer::GetWidgetLocation(const FEditorViewportClient* Viewp
 
 bool FHandSocketVisualizer::HandleInputDelta(FEditorViewportClient* ViewportClient, FViewport* Viewport, FVector& DeltaTranslate, FRotator& DeltaRotate, FVector& DeltaScale)
 {
+
+	if (TargetViewport == nullptr || TargetViewport != Viewport)
+	{
+		return false;
+	}
+
 	bool bHandled = false;
 
 	if (HandPropertyPath.IsValid())
@@ -362,6 +384,7 @@ void FHandSocketVisualizer::EndEditing()
 	HandPropertyPath = FComponentPropertyPath();
 	CurrentlySelectedBone = NAME_None;
 	CurrentlySelectedBoneIdx = INDEX_NONE;
+	TargetViewport = nullptr;
 }
 
 #undef LOCTEXT_NAMESPACE
