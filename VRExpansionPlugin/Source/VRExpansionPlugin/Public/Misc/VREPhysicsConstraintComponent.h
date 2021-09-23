@@ -69,6 +69,20 @@ public:
 			ConstraintInstance.ConstraintHandle.ConstraintData->setDrive(PxD6Drive::Enum::eTWIST, driveVal);
 		}
 
+#elif WITH_CHAOS
+
+		if (!ConstraintInstance.ConstraintHandle.IsValid())
+			return;
+
+		if (ConstraintInstance.ConstraintHandle->IsType(Chaos::EConstraintType::JointConstraintType))
+		{
+			if (Chaos::FJointConstraint* Constraint = static_cast<Chaos::FJointConstraint*>(ConstraintInstance.ConstraintHandle.Constraint))
+			{
+				Constraint->SetLinearDriveForceMode(bUseForceConstraint ? Chaos::EJointForceMode::Force : Chaos::EJointForceMode::Acceleration);
+				Constraint->SetAngularDriveForceMode(bUseForceConstraint ? Chaos::EJointForceMode::Force : Chaos::EJointForceMode::Acceleration);
+			}
+		}
+
 #endif
 		//#endif
 	}
