@@ -5600,10 +5600,12 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 			
 #if WITH_CHAOS
-			Stiffness *= Chaos::ConstraintSettings::LinearDriveStiffnessScale();
-			Damping *= Chaos::ConstraintSettings::LinearDriveDampingScale();
-			AngularStiffness *= Chaos::ConstraintSettings::AngularDriveStiffnessScale();
-			AngularDamping *= Chaos::ConstraintSettings::AngularDriveDampingScale();
+			const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
+			Stiffness *= VRSettings.LinearDriveStiffnessScale;
+			Damping *= VRSettings.LinearDriveDampingScale;
+			AngularStiffness *= VRSettings.AngularDriveStiffnessScale;
+			AngularDamping *= VRSettings.AngularDriveDampingScale;
 #endif
 
 			AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
@@ -5812,10 +5814,12 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 					}
 
 #if WITH_CHAOS
-					Stiffness *= Chaos::ConstraintSettings::LinearDriveStiffnessScale();
-					Damping *= Chaos::ConstraintSettings::LinearDriveDampingScale();
-					AngularStiffness *= Chaos::ConstraintSettings::AngularDriveStiffnessScale();
-					AngularDamping *= Chaos::ConstraintSettings::AngularDriveDampingScale();
+					const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
+					Stiffness *= VRSettings.LinearDriveStiffnessScale;
+					Damping *= VRSettings.LinearDriveDampingScale;
+					AngularStiffness *= VRSettings.AngularDriveStiffnessScale;
+					AngularDamping *= VRSettings.AngularDriveDampingScale;
 #endif
 
 					AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
