@@ -117,6 +117,23 @@ class VREXPANSIONPLUGIN_API UVRGlobalSettings : public UObject
 public:
 	UVRGlobalSettings(const FObjectInitializer& ObjectInitializer);
 
+	// A scaler to apply to constraint drives when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
+		float LinearDriveStiffnessScale;
+
+	// A scaler to apply to constraint drives when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
+		float LinearDriveDampingScale;
+
+	// A scaler to apply to constraint drives when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
+		float AngularDriveStiffnessScale;
+
+	// A scaler to apply to constraint drives when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
+		float AngularDriveDampingScale;
+
+
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
 		bool bUseGlobalLerpToHand;
 

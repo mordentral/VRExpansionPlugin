@@ -1,6 +1,10 @@
 
 #include "VRGlobalSettings.h"
 
+#if WITH_CHAOS
+#include "Chaos/ChaosConstraintSettings.h"
+#endif
+
 UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
 	bUseGlobalLerpToHand(false),
@@ -19,6 +23,12 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 	bUseSeperateHandTransforms(false),
 	CurrentControllerProfileTransformRight(FTransform::Identity)
 {
+#if WITH_CHAOS
+		LinearDriveStiffnessScale = Chaos::ConstraintSettings::LinearDriveStiffnessScale();
+		LinearDriveDampingScale = Chaos::ConstraintSettings::LinearDriveDampingScale();
+		AngularDriveStiffnessScale = Chaos::ConstraintSettings::AngularDriveStiffnessScale();
+		AngularDriveDampingScale = Chaos::ConstraintSettings::AngularDriveDampingScale();
+#endif
 }
 
 bool UVRGlobalSettings::IsGlobalLerpEnabled()
