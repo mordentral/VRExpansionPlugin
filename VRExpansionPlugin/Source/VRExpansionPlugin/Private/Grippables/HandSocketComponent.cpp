@@ -28,6 +28,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 
 	HandRelativePlacement = FTransform::Identity;
 	bAlwaysInRange = false;
+	bDisabled = false;
 	bMatchRotation = false;
 	OverrideDistance = 0.0f;
 	SlotPrefix = FName("VRGripP");
