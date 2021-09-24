@@ -245,7 +245,16 @@ bool UVRLeverComponent::CheckAutoDrop(UGripMotionControllerComponent* GrippingCo
 	// Converted to a relative value now so it should be correct
 	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialInteractorDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
-		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
+		if (GrippingController->OnGripOutOfRange.IsBound())
+		{
+			uint8 GripID = GripInformation.GripID;
+			GrippingController->OnGripOutOfRange.Broadcast(GripInformation, GripInformation.GripDistance);
+		}
+		else
+		{
+			GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
+		}
+
 		return true;
 	}
 
