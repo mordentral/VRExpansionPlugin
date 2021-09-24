@@ -123,6 +123,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		bool bMatchRotation;
 
+	// If true then the hand socket will not be considered for search operations
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+		bool bDisabled;
+
 	// Snap distance to use if you want to override the defaults.
 	// Will be ignored if == 0.0f or bAlwaysInRange is true
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
