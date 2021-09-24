@@ -1125,7 +1125,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 			float Damping;
 			IVRGripInterface::Execute_GetGripStiffnessAndDamping(Owner, Stiffness, Damping);
 
-			return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName,
+			return GripActor(Owner, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName,
 				OptionalBoneToGripName,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(Owner),
@@ -1133,7 +1133,16 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 				Stiffness,
 				Damping,
 				bIsSlotGrip
-				);
+			);
+			/*return GripComponent(PrimComp, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName,
+				OptionalBoneToGripName,
+				CollisionType,
+				IVRGripInterface::Execute_GripLateUpdateSetting(Owner),
+				IVRGripInterface::Execute_GripMovementReplicationType(Owner),
+				Stiffness,
+				Damping,
+				bIsSlotGrip
+				);*/
 		}
 		else
 		{
@@ -1157,7 +1166,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 			float Damping;
 			IVRGripInterface::Execute_GetGripStiffnessAndDamping(root, Stiffness, Damping);
 
-			return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName,
+			return GripComponent(root, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName,
 				OptionalBoneToGripName,
 				CollisionType,
 				IVRGripInterface::Execute_GripLateUpdateSetting(root),
@@ -1166,6 +1175,15 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 				Damping,
 				bIsSlotGrip
 				);
+			/*return GripActor(Actor, WorldOffset, bWorldOffsetIsRelative, OptionalSnapToSocketName,
+				OptionalBoneToGripName,
+				CollisionType,
+				IVRGripInterface::Execute_GripLateUpdateSetting(root),
+				IVRGripInterface::Execute_GripMovementReplicationType(root),
+				Stiffness,
+				Damping,
+				bIsSlotGrip
+				);*/
 		}
 		else if (Actor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
