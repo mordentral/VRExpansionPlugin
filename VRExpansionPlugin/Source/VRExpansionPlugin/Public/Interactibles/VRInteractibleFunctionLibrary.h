@@ -53,6 +53,13 @@ public:
 	// The initial transform in relative space of the grip to us - Set in OnGripInit
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "InteractibleData")
 	FTransform ReversedRelativeTransform;
+
+	FBPVRInteractibleBaseData()
+	{
+		InitialInteractorLocation = FVector::ZeroVector;
+		InitialGripLoc = FVector::ZeroVector;
+		InitialDropLocation = FVector::ZeroVector;
+	}
 };
 
 UCLASS()

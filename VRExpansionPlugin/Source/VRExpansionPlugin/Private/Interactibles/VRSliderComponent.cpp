@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Interactibles/VRSliderComponent.h"
+#include "VRExpansionFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
 
   //=============================================================================
@@ -22,13 +23,18 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	InitialRelativeTransform = FTransform::Identity;
 	bDenyGripping = false;
 
+	bUpdateInTick = false;
+	bPassThrough = false;
+
 	MinSlideDistance = FVector::ZeroVector;
 	MaxSlideDistance = FVector(10.0f, 0.f, 0.f);
 	SliderRestitution = 0.0f;
 	CurrentSliderProgress = 0.0f;
-	LastSliderProgress = 0.0f;
+	LastSliderProgress = FVector::ZeroVector;//0.0f;
+	SplineLastSliderProgress = 0.0f;
 	
-	MomentumAtDrop = 0.0f;
+	MomentumAtDrop = FVector::ZeroVector;// 0.0f;
+	SplineMomentumAtDrop = 0.0f;
 	SliderMomentumFriction = 3.0f;
 	MaxSliderMomentum = 1.0f;
 	FramesToAverage = 3;
@@ -47,6 +53,8 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	SplineLerpType = EVRInteractibleSliderLerpType::Lerp_None;
 	SplineLerpValue = 8.f;
 
+	PrimarySlotRange = 100.f;
+	SecondarySlotRange = 100.f;
 	GripPriority = 1;
 	LastSliderProgressState = -1.0f;
 	LastInputKey = 0.0f;
@@ -54,6 +62,7 @@ UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializ
 	bSliderUsesSnapPoints = false;
 	SnapIncrement = 0.1f;
 	SnapThreshold = 0.1f;
+	bIncrementProgressBetweenSnapPoints = false;
 	EventThrowThreshold = 1.0f;
 	bHitEventThreshold = false;
 
@@ -126,6 +135,21 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 	// Call supers tick (though I don't think any of the base classes to this actually implement it)
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (bIsHeld && bUpdateInTick && HoldingGrip.HoldingController)
+	{
+		FBPActorGripInformation GripInfo;
+		EBPVRResultSwitch Result;
+		HoldingGrip.HoldingController->GetGripByID(GripInfo, HoldingGrip.GripID, Result);
+
+		if (Result == EBPVRResultSwitch::OnSucceeded)
+		{
+			bPassThrough = true;
+			TickGrip_Implementation(HoldingGrip.HoldingController, GripInfo, DeltaTime);
+			bPassThrough = false;
+		}
+		return;
+	}
+
 	// If we are locked then end the lerp, no point
 	if (bIsLocked)
 	{
@@ -141,46 +165,88 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 	if (bIsLerping)
 	{
-		if (FMath::IsNearlyZero(MomentumAtDrop * DeltaTime, 0.00001f))
+		if ((SplineComponentToFollow && FMath::IsNearlyZero((SplineMomentumAtDrop * DeltaTime), 0.00001f)) || (!SplineComponentToFollow && (MomentumAtDrop * DeltaTime).IsNearlyZero(0.00001f)))
 		{
 			bIsLerping = false;
 		}
 		else
 		{
-			MomentumAtDrop = FMath::FInterpTo(MomentumAtDrop, 0.0f, DeltaTime, SliderMomentumFriction);
-			float newProgress = CurrentSliderProgress + (MomentumAtDrop * DeltaTime);
+			if (this->SplineComponentToFollow)
+			{
+				SplineMomentumAtDrop = FMath::FInterpTo(SplineMomentumAtDrop, 0.0f, DeltaTime, SliderMomentumFriction);
+				float newProgress = CurrentSliderProgress + (SplineMomentumAtDrop * DeltaTime);
 
-			if (newProgress < 0.0f || FMath::IsNearlyEqual(newProgress, 0.0f, 0.00001f))
-			{
-				if (SliderRestitution > 0.0f)
+				if (newProgress < 0.0f || FMath::IsNearlyEqual(newProgress, 0.0f, 0.00001f))
 				{
-					// Reverse the momentum
-					MomentumAtDrop = -(MomentumAtDrop * SliderRestitution);
-					this->SetSliderProgress(0.0f);
+					if (SliderRestitution > 0.0f)
+					{
+						// Reverse the momentum
+						SplineMomentumAtDrop = -(SplineMomentumAtDrop * SliderRestitution);
+						this->SetSliderProgress(0.0f);
+					}
+					else
+					{
+						bIsLerping = false;
+						this->SetSliderProgress(0.0f);
+					}
+				}
+				else if (newProgress > 1.0f || FMath::IsNearlyEqual(newProgress, 1.0f, 0.00001f))
+				{
+					if (SliderRestitution > 0.0f)
+					{
+						// Reverse the momentum
+						SplineMomentumAtDrop = -(SplineMomentumAtDrop * SliderRestitution);
+						this->SetSliderProgress(1.0f);
+					}
+					else
+					{
+						bIsLerping = false;
+						this->SetSliderProgress(1.0f);
+					}
 				}
 				else
 				{
-					bIsLerping = false;
-					this->SetSliderProgress(0.0f);
-				}
-			}
-			else if (newProgress > 1.0f || FMath::IsNearlyEqual(newProgress, 1.0f, 0.00001f))
-			{
-				if (SliderRestitution > 0.0f)
-				{
-					// Reverse the momentum
-					MomentumAtDrop = -(MomentumAtDrop * SliderRestitution);
-					this->SetSliderProgress(1.0f);
-				}
-				else
-				{
-					bIsLerping = false;
-					this->SetSliderProgress(1.0f);
+					this->SetSliderProgress(newProgress);
 				}
 			}
 			else
 			{
-				this->SetSliderProgress(newProgress);
+				MomentumAtDrop = FMath::VInterpTo(MomentumAtDrop, FVector::ZeroVector, DeltaTime, SliderMomentumFriction);
+
+				FVector ClampedLocation = ClampSlideVector(InitialRelativeTransform.InverseTransformPosition(this->GetRelativeLocation()) + (MomentumAtDrop * DeltaTime));
+				this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(ClampedLocation));
+				CurrentSliderProgress = GetCurrentSliderProgress(bSlideDistanceIsInParentSpace ? ClampedLocation * InitialRelativeTransform.GetScale3D() : ClampedLocation);
+				float newProgress = CurrentSliderProgress;
+				if (SliderRestitution > 0.0f)
+				{
+					// Implement bounce
+					FVector CurLoc = ClampedLocation;
+					
+					if (
+						(FMath::Abs(MinSlideDistance.X) > 0.0f && CurLoc.X <= -FMath::Abs(this->MinSlideDistance.X)) ||
+						(FMath::Abs(MinSlideDistance.Y) > 0.0f && CurLoc.Y <= -FMath::Abs(this->MinSlideDistance.Y)) ||
+						(FMath::Abs(MinSlideDistance.Z) > 0.0f && CurLoc.Z <= -FMath::Abs(this->MinSlideDistance.Z)) ||
+						(FMath::Abs(MaxSlideDistance.X) > 0.0f && CurLoc.X >= FMath::Abs(this->MaxSlideDistance.X)) ||
+						(FMath::Abs(MaxSlideDistance.Y) > 0.0f && CurLoc.Y >= FMath::Abs(this->MaxSlideDistance.Y)) ||
+						(FMath::Abs(MaxSlideDistance.Z) > 0.0f && CurLoc.Z >= FMath::Abs(this->MaxSlideDistance.Z))
+						)
+					{
+						MomentumAtDrop = (-MomentumAtDrop * SliderRestitution);
+					}
+				}
+				else
+				{
+					if (newProgress < 0.0f || FMath::IsNearlyEqual(newProgress, 0.0f, 0.00001f))
+					{
+						bIsLerping = false;
+						this->SetSliderProgress(0.0f);
+					}
+					else if (newProgress > 1.0f || FMath::IsNearlyEqual(newProgress, 1.0f, 0.00001f))
+					{
+						bIsLerping = false;
+						this->SetSliderProgress(1.0f);
+					}
+				}			
 			}
 		}
 
@@ -201,6 +267,11 @@ void UVRSliderComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 
 void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) 
 {
+
+	// Skip this tick if its not triggered from the pass through
+	if (bUpdateInTick && !bPassThrough)
+		return;
+
 	// If the sliders progress is locked then just exit early
 	if (bIsLocked)
 	{
@@ -314,13 +385,31 @@ void UVRSliderComponent::TickGrip_Implementation(UGripMotionControllerComponent 
 
 	if (SliderBehaviorWhenReleased == EVRInteractibleSliderDropBehavior::RetainMomentum)
 	{
-		// Rolling average across num samples
-		MomentumAtDrop -= MomentumAtDrop / FramesToAverage;
-		MomentumAtDrop += ((CurrentSliderProgress - LastSliderProgress) / DeltaTime) / FramesToAverage;
+		if (SplineComponentToFollow)
+		{
+			// Rolling average across num samples
+			SplineMomentumAtDrop -= SplineMomentumAtDrop / FramesToAverage;
+			SplineMomentumAtDrop += ((CurrentSliderProgress - SplineLastSliderProgress) / DeltaTime) / FramesToAverage;
 
-		MomentumAtDrop = FMath::Min(MaxSliderMomentum, MomentumAtDrop);
+			float momentumSign = FMath::Sign(SplineMomentumAtDrop);
+			SplineMomentumAtDrop = momentumSign * FMath::Min(MaxSliderMomentum, FMath::Abs(SplineMomentumAtDrop));
 
-		LastSliderProgress = CurrentSliderProgress;
+			SplineLastSliderProgress = CurrentSliderProgress;
+		}
+		else
+		{
+			// Rolling average across num samples
+			MomentumAtDrop -= MomentumAtDrop / FramesToAverage;
+			FVector CurProgress = InitialRelativeTransform.InverseTransformPosition(this->GetRelativeLocation());
+			if (bSlideDistanceIsInParentSpace)
+				CurProgress *= FVector(1.0f) / InitialRelativeTransform.GetScale3D();
+
+			MomentumAtDrop += ((/*CurrentSliderProgress*/CurProgress - LastSliderProgress) / DeltaTime) / FramesToAverage;
+
+			//MomentumAtDrop = FMath::Min(MaxSliderMomentum, MomentumAtDrop);
+
+			LastSliderProgress = CurProgress;//CurrentSliderProgress;
+		}
 	}
 
 	CheckSliderProgress();
@@ -334,7 +423,15 @@ bool UVRSliderComponent::CheckAutoDrop(UGripMotionControllerComponent * Gripping
 	// Converted to a relative value now so it should be correct
 	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
-		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
+		if (GrippingController->OnGripOutOfRange.IsBound())
+		{
+			uint8 GripID = GripInformation.GripID;
+			GrippingController->OnGripOutOfRange.Broadcast(GripInformation, GripInformation.GripDistance);
+		}
+		else
+		{
+			GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
+		}
 		return true;
 	}
 
@@ -347,12 +444,15 @@ void UVRSliderComponent::CheckSliderProgress()
 	if (LastSliderProgressState < 0.0f)
 	{
 		// Skip first tick, this is our resting position
-		LastSliderProgressState = CurrentSliderProgress;
+		if (!bSliderUsesSnapPoints)
+			LastSliderProgressState = FMath::RoundToFloat(CurrentSliderProgress); // Ensure it is rounded to 0 or 1
+		else
+			LastSliderProgressState = CurrentSliderProgress;
 	}
 	else if ((LastSliderProgressState != CurrentSliderProgress) || bHitEventThreshold)
 	{
 		if ((!bSliderUsesSnapPoints && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f)) ||
-			(bSliderUsesSnapPoints && SnapIncrement > 0.f && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f))
+			(bSliderUsesSnapPoints && SnapIncrement > 0.f && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f, 0.001f))
 			)
 		{
 			// I am working with exacts here because of the clamping, it should actually work with no precision issues
@@ -369,7 +469,7 @@ void UVRSliderComponent::CheckSliderProgress()
 		}
 	}
 
-	if (FMath::Abs(LastSliderProgressState - CurrentSliderProgress) >= EventThrowThreshold)
+	if (FMath::Abs(LastSliderProgressState - CurrentSliderProgress) >= (bSliderUsesSnapPoints ? FMath::Min(EventThrowThreshold, SnapIncrement / 2.0f) : EventThrowThreshold))
 	{
 		bHitEventThreshold = true;
 	}
@@ -389,18 +489,24 @@ void UVRSliderComponent::OnGrip_Implementation(UGripMotionControllerComponent * 
 	LastInputKey = -1.0f;
 	LerpedKey = 0.0f;
 	bHitEventThreshold = false;
-	LastSliderProgressState = -1.0f;
-	LastSliderProgress = CurrentSliderProgress;
+	//LastSliderProgressState = -1.0f;
+	LastSliderProgress = InitialGripLoc;//CurrentSliderProgress;
+	SplineLastSliderProgress = CurrentSliderProgress;
 
 	bIsLerping = false;
-	MomentumAtDrop = 0.0f;
+	MomentumAtDrop = FVector::ZeroVector;//0.0f;
+	SplineMomentumAtDrop = 0.0f;
 
 	if (GripInformation.GripMovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 	{
 		bReplicateMovement = false;
 	}
 
+	if (bUpdateInTick)
+		SetComponentTickEnabled(true);
+
 	OnGripped.Broadcast(GrippingController, GripInformation);
+
 }
 
 void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
@@ -411,6 +517,20 @@ void UVRSliderComponent::OnGripRelease_Implementation(UGripMotionControllerCompo
 	{
 		bIsLerping = true;
 		this->SetComponentTickEnabled(true);
+
+		FVector Len = (MinSlideDistance.GetAbs() + MaxSlideDistance.GetAbs());
+		if(bSlideDistanceIsInParentSpace)
+			Len *= (FVector(1.0f) / InitialRelativeTransform.GetScale3D());
+
+		float TotalDistance = Len.Size();		
+
+		if (!SplineComponentToFollow)
+		{
+			if (MaxSliderMomentum * TotalDistance < MomentumAtDrop.Size())
+			{
+				MomentumAtDrop = MomentumAtDrop.GetSafeNormal() * (TotalDistance * MaxSliderMomentum);
+			}
+		}
 
 		if(MovementReplicationSetting != EGripMovementReplicationSettings::ForceServerSideMovement)
 			bReplicateMovement = false;
@@ -445,7 +565,7 @@ void UVRSliderComponent::OnEndSecondaryUsed_Implementation() {}
 void UVRSliderComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool UVRSliderComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
-bool UVRSliderComponent::DenyGripping_Implementation()
+bool UVRSliderComponent::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return bDenyGripping;
 }
@@ -528,7 +648,10 @@ void UVRSliderComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldL
 
 void UVRSliderComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
-	bHadSlotInRange = false;
+	if (OverridePrefix.IsNone())
+		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
+
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, bSecondarySlot ? SecondarySlotRange : PrimarySlotRange, bHadSlotInRange, SlotWorldTransform, SlotName, CallingController);
 }
 
 bool UVRSliderComponent::AllowsMultipleGrips_Implementation()
@@ -674,7 +797,14 @@ float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUs
 
 	if (bSliderUsesSnapPoints && SnapThreshold < SnapIncrement)
 	{
-		Progress = FMath::GridSnap(Progress, SnapIncrement);
+		if (FMath::Fmod(Progress, SnapIncrement) < SnapThreshold)
+		{
+			Progress = FMath::GridSnap(Progress, SnapIncrement);
+		}
+		else if(!bIncrementProgressBetweenSnapPoints)
+		{
+			Progress = CurrentSliderProgress;
+		}
 	}
 	
 	return Progress;

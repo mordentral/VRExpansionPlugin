@@ -18,6 +18,7 @@ UVRGestureComponent::UVRGestureComponent(const FObjectInitializer& ObjectInitial
 	MirroringHand = EVRGestureMirrorMode::GES_NoMirror;
 	bDrawSplinesCurved = true;
 	bGetGestureInWorldSpace = true;
+	SplineMeshScaler = FVector2D(1.f);
 }
 
 void UGesturesDatabase::FillSplineWithGesture(FVRGesture &Gesture, USplineComponent * SplineComponent, bool bCenterPointsOnSpline, bool bScaleToBounds, float OptionalBounds, bool bUseCurvedPoints, bool bFillInSplineMeshComponents, UStaticMesh * Mesh, UMaterial * MeshMat)
@@ -259,6 +260,9 @@ void UVRGestureComponent::CaptureGestureFrame()
 					RecordingGestureDraw.SplineMeshes[RecordingGestureDraw.LastIndexSet]->SetEndPosition(NewSample, false);
 					RecordingGestureDraw.SplineMeshes[RecordingGestureDraw.LastIndexSet]->SetEndTangent(RecordingGestureDraw.SplineComponent->GetTangentAtSplinePoint(SplineIndex, ESplineCoordinateSpace::Local), true);
 				}
+
+				MeshComp->SetStartScale(SplineMeshScaler);
+				MeshComp->SetEndScale(SplineMeshScaler);
 
 				MeshComp->SetStartAndEnd(NewSample,
 					RecordingGestureDraw.SplineComponent->GetTangentAtSplinePoint(SplineIndex, ESplineCoordinateSpace::Local),

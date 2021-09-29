@@ -28,6 +28,11 @@ public:
 		Ar << AttachComponent;
 		return true;
 	}
+
+	FRepAttachmentWithWeld()
+	{
+		bIsWelded = false;
+	}
 };
 
 template<>

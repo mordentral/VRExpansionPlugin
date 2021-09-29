@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Interactibles/VRDialComponent.h"
+#include "VRExpansionFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
 
   //=============================================================================
@@ -30,6 +31,8 @@ UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	CClockwiseMaximumDialAngle = 180.0f;
 	bDenyGripping = false;
 
+	PrimarySlotRange = 100.f;
+	SecondarySlotRange = 100.f;
 	GripPriority = 1;
 
 	MovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement;
@@ -175,7 +178,15 @@ void UVRDialComponent::TickGrip_Implementation(UGripMotionControllerComponent * 
 	// Handle the auto drop
 	if (BreakDistance > 0.f && GrippingController->HasGripAuthority(GripInformation) && FVector::DistSquared(InitialDropLocation, this->GetComponentTransform().InverseTransformPosition(GrippingController->GetPivotLocation())) >= FMath::Square(BreakDistance))
 	{
-		GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
+		if (GrippingController->OnGripOutOfRange.IsBound())
+		{
+			uint8 GripID = GripInformation.GripID;
+			GrippingController->OnGripOutOfRange.Broadcast(GripInformation, GripInformation.GripDistance);
+		}
+		else
+		{
+			GrippingController->DropObjectByInterface(this, HoldingGrip.GripID);
+		}
 		return;
 	}
 }
@@ -282,7 +293,7 @@ void UVRDialComponent::OnEndSecondaryUsed_Implementation() {}
 void UVRDialComponent::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool UVRDialComponent::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
-bool UVRDialComponent::DenyGripping_Implementation()
+bool UVRDialComponent::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return bDenyGripping;
 }
@@ -366,7 +377,10 @@ void UVRDialComponent::ClosestPrimarySlotInRange_Implementation(FVector WorldLoc
 
 void UVRDialComponent::ClosestGripSlotInRange_Implementation(FVector WorldLocation, bool bSecondarySlot, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent * CallingController, FName OverridePrefix)
 {
-	bHadSlotInRange = false;
+	if (OverridePrefix.IsNone())
+		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
+
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(OverridePrefix, this, WorldLocation, bSecondarySlot ? SecondarySlotRange : PrimarySlotRange, bHadSlotInRange, SlotWorldTransform, SlotName, CallingController);
 }
 
 bool UVRDialComponent::AllowsMultipleGrips_Implementation()

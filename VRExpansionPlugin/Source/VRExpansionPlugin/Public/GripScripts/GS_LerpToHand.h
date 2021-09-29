@@ -4,24 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "VRGripScriptBase.h"
+#include "VRBPDatatypes.h"
 #include "Curves/CurveFloat.h"
 #include "GS_LerpToHand.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRLerpToHandFinishedSignature);
-
-/** Different methods for interpolating rotation between transforms */
-UENUM(BlueprintType)
-enum class EVRLerpInterpolationMode : uint8
-{
-	/** Shortest Path or Quaternion interpolation for the rotation. */
-	QuatInterp,
-
-	/** Rotor or Euler Angle interpolation. */
-	EulerInterp,
-
-	/** Dual quaternion interpolation, follows helix or screw-motion path between keyframes.   */
-	DualQuatInterp
-};
 
 
 // A grip script that causes new grips to lerp to the hand (from their current position to where they are supposed to sit).

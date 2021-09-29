@@ -14,6 +14,14 @@ FName AVRBaseCharacter::ReplicatedCameraComponentName(TEXT("VR Replicated Camera
 FName AVRBaseCharacter::ParentRelativeAttachmentComponentName(TEXT("Parent Relative Attachment"));
 FName AVRBaseCharacter::SmoothingSceneParentComponentName(TEXT("NetSmoother"));
 
+FRepMovementVRCharacter::FRepMovementVRCharacter()
+: Super()
+{
+	bJustTeleported = false;
+	bJustTeleportedGrips = false;
+	Owner = nullptr;
+}
+
 AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
  : Super(ObjectInitializer/*.DoNotCreateDefaultSubobject(ACharacter::MeshComponentName)*/.SetDefaultSubobjectClass<UVRBaseCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 
@@ -661,11 +669,14 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 
 bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeatedMode, FTransform TargetTransform, FTransform InitialRelCameraTransform, float AllowedRadius, float AllowedRadiusThreshold, bool bZeroToHead, EVRConjoinedMovementModes PostSeatedMovementMode)
 {
-	if (!this->HasAuthority() || !SeatParent)
+	if (!this->HasAuthority())
 		return false;
 
 	if (bSetSeatedMode)
 	{
+		if (!SeatParent)
+			return false;
+
 		SeatInformation.SeatParent = SeatParent;
 		SeatInformation.bSitting = true;
 		SeatInformation.bZeroToHead = bZeroToHead;
@@ -817,7 +828,7 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 	if (bAccountForHMDRotation)
 	{
 		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());//bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
-		NewRotation = (NewRotation.Quaternion().Inverse() * NewRot.Quaternion()).Rotator();
+		NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
 	}
 	else
 		NewRotation = NewRot;

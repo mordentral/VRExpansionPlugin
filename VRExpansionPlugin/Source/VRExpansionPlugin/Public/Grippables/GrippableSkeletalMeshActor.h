@@ -38,7 +38,7 @@ public:
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Component Replication")
 		bool bReplicateMovement;
 
-	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 
 };
 
@@ -64,9 +64,9 @@ public:
 	virtual void GatherCurrentMovement() override;
 
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
-		TArray<class UVRGripScriptBase *> GripLogicScripts;
+		TArray<class UVRGripScriptBase*> GripLogicScripts;
 
-	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
+	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
 	// Sets the Deny Gripping variable on the FBPInterfaceSettings struct
 	UFUNCTION(BlueprintCallable, Category = "VRGripInterface")
@@ -112,14 +112,18 @@ public:
 		bool RemoveFromClientReplicationBucket();
 
 	UFUNCTION()
-	bool PollReplicationEvent();
+		bool PollReplicationEvent();
 
 	UFUNCTION(Category = "Networking")
 		void CeaseReplicationBlocking();
 
-	// Notify the server that we locally gripped something
+	// Notify the server that we are no longer trying to run the throwing auth
+	UFUNCTION(Reliable, Server, WithValidation, Category = "Networking")
+		void Server_EndClientAuthReplication();
+
+	// Notify the server about a new movement rep
 	UFUNCTION(UnReliable, Server, WithValidation, Category = "Networking")
-		void Server_GetClientAuthReplication(const FRepMovementVR & newMovement);
+		void Server_GetClientAuthReplication(const FRepMovementVR& newMovement);
 
 	// Returns if this object is currently client auth throwing
 	UFUNCTION(BlueprintPure, Category = "Networking")
@@ -146,7 +150,7 @@ public:
 
 	// End Gameplay Tag Interface
 
-	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
+	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 
 	// Skips the attachment replication if we are locally owned and our grip settings say that we are a client authed grip.
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
@@ -198,7 +202,8 @@ public:
 		FBPInterfaceProperties VRGripInterfaceSettings;
 
 	// Set up as deny instead of allow so that default allows for gripping
-	virtual bool DenyGripping_Implementation() override;
+	// The GripInitiator is not guaranteed to be valid, check it for validity
+	virtual bool DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator = nullptr) override;
 
 	// How an interfaced object behaves when teleporting
 	virtual EGripInterfaceTeleportBehavior TeleportBehavior_Implementation() override;

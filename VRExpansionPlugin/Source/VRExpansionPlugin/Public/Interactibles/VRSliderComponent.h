@@ -63,7 +63,11 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Slider Finished Lerping"))
 		void ReceiveSliderFinishedLerping(float FinalProgress);
 
-	
+	// If true then this slider will only update in its tick event instead of normally using the controllers update event
+	// Keep in mind that you then must adjust the tick group in order to make sure it happens after the gripping controller
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
+		bool bUpdateInTick;
+	bool bPassThrough;
 
 	float LastSliderProgressState;
 
@@ -96,8 +100,10 @@ public:
 		bool bIsLerping;
 
 	// For momentum retention
-	float MomentumAtDrop;
-	float LastSliderProgress;
+	FVector MomentumAtDrop;
+	FVector LastSliderProgress;
+	float SplineMomentumAtDrop;
+	float SplineLastSliderProgress;
 
 	// Gets filled in with the current slider location progress
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRSliderComponent")
@@ -124,9 +130,15 @@ public:
 		bool bUseLegacyLogic;
 
 	// How far away from an event state before the slider allows throwing the same state again, default of 1.0 means it takes a full toggle
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 		float EventThrowThreshold;
 	bool bHitEventThreshold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
+		float PrimarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
+		float SecondarySlotRange;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
 	int GripPriority;
@@ -165,16 +177,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0", UIMin = "0"))
 		float SplineLerpValue;
 
+	// Uses snap increments to move between, not compatible with retain momentum.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent")
 		bool bSliderUsesSnapPoints;
 
 	// Portion of the slider that the slider snaps to on release and when within the threshold distance
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (editcondition = "bSliderUsesSnapPoints", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 		float SnapIncrement;
 
 	// Threshold distance that when within the slider will stay snapped to its current snap increment
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (editcondition = "bSliderUsesSnapPoints", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 		float SnapThreshold;
+
+	// If true then the slider progress will keep incrementing between snap points if outside of the threshold
+	// However events will not be thrown
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRSliderComponent", meta = (editcondition = "bSliderUsesSnapPoints") )
+		bool bIncrementProgressBetweenSnapPoints;
 
 
 	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
@@ -293,7 +311,8 @@ public:
 	// Grip interface setup
 
 	// Set up as deny instead of allow so that default allows for gripping
-	bool DenyGripping_Implementation() override;
+	// The GripInitiator is not guaranteed to be valid, check it for validity
+	bool DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator = nullptr) override;
 
 	// How an interfaced object behaves when teleporting
 	EGripInterfaceTeleportBehavior TeleportBehavior_Implementation() override;

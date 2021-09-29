@@ -57,7 +57,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 
 	VRReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 
-	NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;//Exponential;
+	NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
 
 	bWasInPushBack = false;
 	bIsInPushBack = false;
@@ -72,6 +72,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	bJustUnseated = false;
 
 	bUseClientControlRotation = true;
+	bDisableSimulatedTickWhenSmoothingMovement = true;
 
 	SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
 	SetMoveResponseDataContainer(VRMoveResponseDataContainer);
@@ -577,7 +578,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 
 	if (bFlagCharacterTeleport)
 		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
-	else
+	else if(bFlagGripTeleport)
 		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
@@ -600,7 +601,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewY
 
 	if (bFlagCharacterTeleport)
 		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
-	else
+	else if (bFlagGripTeleport)
 		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
@@ -1088,7 +1089,7 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 	// Rewind the players position by the new capsule location
 	RewindVRRelativeMovement();
 
-	RestorePreAdditiveVRMotionVelocity();
+	//RestorePreAdditiveVRMotionVelocity();
 
 	// If we are not in the default physics volume then accept the custom fluid friction setting
 	// I set this by default to be ignored as many will not alter the default fluid friction
@@ -1148,6 +1149,8 @@ void UVRBaseCharacterMovementComponent::PhysCustom_LowGrav(float deltaTime, int3
 			Velocity = (((UpdatedComponent->GetComponentLocation() - OldLocation) /* - AdditionalVRInputVector*/) / deltaTime);
 		}
 	}
+
+	RestorePreAdditiveVRMotionVelocity();
 }
 
 
@@ -1538,7 +1541,8 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 				}
 				else
 				{
-					SimulateMovement(DeltaSeconds);
+					if(!bDisableSimulatedTickWhenSmoothingMovement)
+						SimulateMovement(DeltaSeconds);
 				}
 			}
 			else
@@ -1582,6 +1586,69 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 	}
 }
 
+void UVRBaseCharacterMovementComponent::MoveAutonomous(
+	float ClientTimeStamp,
+	float DeltaTime,
+	uint8 CompressedFlags,
+	const FVector& NewAccel
+)
+{
+	if (!HasValidData())
+	{
+		return;
+	}
+
+	UpdateFromCompressedFlags(CompressedFlags);
+	CharacterOwner->CheckJumpInput(DeltaTime);
+
+	Acceleration = ConstrainInputAcceleration(NewAccel);
+	Acceleration = Acceleration.GetClampedToMaxSize(GetMaxAcceleration());
+	AnalogInputModifier = ComputeAnalogInputModifier();
+
+	FVector OldLocation = UpdatedComponent->GetComponentLocation();
+	FQuat OldRotation = UpdatedComponent->GetComponentQuat();
+
+	if (BaseVRCharacterOwner && NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
+	{
+		OldLocation = BaseVRCharacterOwner->OffsetComponentToWorld.GetTranslation();
+		OldRotation = BaseVRCharacterOwner->OffsetComponentToWorld.GetRotation();
+	}
+
+	const bool bWasPlayingRootMotion = CharacterOwner->IsPlayingRootMotion();
+
+	PerformMovement(DeltaTime);
+
+	// Check if data is valid as PerformMovement can mark character for pending kill
+	if (!HasValidData())
+	{
+		return;
+	}
+
+	// If not playing root motion, tick animations after physics. We do this here to keep events, notifies, states and transitions in sync with client updates.
+	if (CharacterOwner && !CharacterOwner->bClientUpdating && !CharacterOwner->IsPlayingRootMotion() && CharacterOwner->GetMesh())
+	{
+		if (!bWasPlayingRootMotion) // If we were playing root motion before PerformMovement but aren't anymore, we're on the last frame of anim root motion and have already ticked character
+		{
+			TickCharacterPose(DeltaTime);
+		}
+		// TODO: SaveBaseLocation() in case tick moves us?
+
+		// Trigger Events right away, as we could be receiving multiple ServerMoves per frame.
+		CharacterOwner->GetMesh()->ConditionallyDispatchQueuedAnimEvents();
+	}
+
+	if (CharacterOwner && UpdatedComponent)
+	{
+		// Smooth local view of remote clients on listen servers
+		static const auto CVarNetEnableListenServerSmoothing = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetEnableListenServerSmoothing"));
+		if (CVarNetEnableListenServerSmoothing->GetInt() &&
+			CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy &&
+			IsNetMode(NM_ListenServer))
+		{
+			SmoothCorrection(OldLocation, OldRotation, UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentQuat());
+		}
+	}
+}
 
 void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocation, const FQuat& OldRotation, const FVector& NewLocation, const FQuat& NewRotation)
 {
@@ -1626,8 +1693,33 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			return;
 		}
 
+		// Handle my custom VR Offset
+		FVector OldWorldLocation = OldLocation;
+		FQuat OldWorldRotation = OldRotation;
+		FVector NewWorldLocation = NewLocation;
+		FQuat NewWorldRotation = NewRotation;
+
+		if (BaseVRCharacterOwner && NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
+		{
+			if (GetNetMode() < ENetMode::NM_Client)
+			{
+				NewWorldLocation = BaseVRCharacterOwner->OffsetComponentToWorld.GetTranslation();
+				NewWorldRotation = BaseVRCharacterOwner->OffsetComponentToWorld.GetRotation();
+			}
+			else
+			{
+				FTransform NewWorldTransform(NewRotation, NewLocation, UpdatedComponent->GetRelativeScale3D());
+				FTransform CurrentRelative = BaseVRCharacterOwner->OffsetComponentToWorld.GetRelativeTransform(UpdatedComponent->GetComponentTransform());
+				FTransform NewWorld = CurrentRelative * NewWorldTransform;
+				OldWorldLocation = BaseVRCharacterOwner->OffsetComponentToWorld.GetLocation();
+				OldWorldRotation = BaseVRCharacterOwner->OffsetComponentToWorld.GetRotation();
+				NewWorldLocation = NewWorld.GetLocation();
+				NewWorldRotation = NewWorld.GetRotation();
+			}
+		}
+
 		// The mesh doesn't move, but the capsule does so we have a new offset.
-		FVector NewToOldVector = (OldLocation - NewLocation);
+		FVector NewToOldVector = (OldWorldLocation - NewWorldLocation);
 		if (bIsNavWalkingOnServer && FMath::Abs(NewToOldVector.Z) < NavWalkingFloorDistTolerance)
 		{
 			// ignore smoothing on Z axis
@@ -1653,7 +1745,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		{
 			// #TODO: Get this working in the future?
 			// I am currently skipping smoothing on rotation operations
-			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
+			if ((!OldRotation.Equals(NewRotation, 1e-5f)))// || Velocity.IsNearlyZero()))
 			{
 				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
@@ -1683,7 +1775,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		{
 			// #TODO: Get this working in the future?
 			// I am currently skipping smoothing on rotation operations
-			if ((!OldRotation.Equals(NewRotation, 1e-5f)/* || Velocity.IsNearlyZero()*/))
+			/*if ((!OldRotation.Equals(NewRotation, 1e-5f)))// || Velocity.IsNearlyZero()))
 			{
 				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
@@ -1691,13 +1783,12 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
 				bNetworkSmoothingComplete = true;
 			}
-			else
-			{
+			else*/
+			{			
 				// Calc rotation needed to keep current world rotation after UpdatedComponent moves.
 				// Take difference between where we were rotated before, and where we're going
-				ClientData->MeshRotationOffset = (NewRotation.Inverse() * OldRotation) * ClientData->MeshRotationOffset;
+				ClientData->MeshRotationOffset = FQuat::Identity;// (NewRotation.Inverse() * OldRotation) * ClientData->MeshRotationOffset;
 				ClientData->MeshRotationTarget = FQuat::Identity;
-
 				const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 			}

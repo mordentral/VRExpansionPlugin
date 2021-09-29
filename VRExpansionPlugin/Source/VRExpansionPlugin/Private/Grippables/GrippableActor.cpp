@@ -3,6 +3,7 @@
 #include "Grippables/GrippableActor.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
+#include "PhysicsReplication.h"
 #if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"
 #endif
@@ -316,7 +317,7 @@ void AGrippableActor::OnEndSecondaryUsed_Implementation() {}
 void AGrippableActor::OnInput_Implementation(FKey Key, EInputEvent KeyEvent) {}
 bool AGrippableActor::RequestsSocketing_Implementation(USceneComponent *& ParentToSocketTo, FName & OptionalSocketName, FTransform_NetQuantize & RelativeTransform) { return false; }
 
-bool AGrippableActor::DenyGripping_Implementation()
+bool AGrippableActor::DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator)
 {
 	return VRGripInterfaceSettings.bDenyGripping;
 }
@@ -373,7 +374,7 @@ void AGrippableActor::ClosestGripSlotInRange_Implementation(FVector WorldLocatio
 	if (OverridePrefix.IsNone())
 		bSecondarySlot ? OverridePrefix = "VRGripS" : OverridePrefix = "VRGripP";
 
-	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform, SlotName);
+	UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(OverridePrefix, this, WorldLocation, bSecondarySlot ? VRGripInterfaceSettings.SecondarySlotRange : VRGripInterfaceSettings.PrimarySlotRange, bHadSlotInRange, SlotWorldTransform, SlotName, CallingController);
 }
 
 bool AGrippableActor::AllowsMultipleGrips_Implementation()
@@ -553,8 +554,8 @@ bool AGrippableActor::PollReplicationEvent()
 		CeaseReplicationBlocking();
 	}
 
-	//ClientAuthReplicationData.LastActorTransform = FTransform::Identity;
-
+	// Tell server to kill us
+	Server_EndClientAuthReplication();
 	return false; // Tell the bucket subsystem to remove us from consideration
 }
 
@@ -591,6 +592,27 @@ void AGrippableActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
+bool AGrippableActor::Server_EndClientAuthReplication_Validate()
+{
+	return true;
+}
+
+void AGrippableActor::Server_EndClientAuthReplication_Implementation()
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (FPhysScene* PhysScene = World->GetPhysicsScene())
+		{
+			if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
+			{
+				if (UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(GetRootComponent()))
+				{
+					PhysicsReplication->RemoveReplicatedTarget(RootPrim);
+				}
+			}
+		}
+	}
+}
 
 bool AGrippableActor::Server_GetClientAuthReplication_Validate(const FRepMovementVR & newMovement)
 {

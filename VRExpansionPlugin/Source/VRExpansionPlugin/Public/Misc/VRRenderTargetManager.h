@@ -55,6 +55,13 @@ public:
 	//UPROPERTY(Transient)
 	EPixelFormat PixelFormat;
 
+	FBPVRReplicatedTextureStore()
+	{
+		Width = 0;
+		Height = 0;
+		bIsZipped = false;
+	}
+
 	void Reset()
 	{
 		PackedData.Reset();
@@ -150,6 +157,16 @@ public:
 	UPROPERTY()
 		TSoftObjectPtr<UMaterial> Material;
 
+	FRenderManagerOperation()
+	{
+		OwnerID = 0;
+		OperationType = ERenderManagerOperationType::Op_LineDraw;
+		Color = FColor::White;
+		P1 = FVector2D::ZeroVector;
+		P2 = FVector2D::ZeroVector;
+		Thickness = 0;
+	}
+
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 };
 template<>
@@ -188,12 +205,15 @@ public:
 	UPROPERTY(Transient)
 		int32 BlobNum;
 
+	bool bWaitingForManager;
+
 	void SendInitMessage();
 
 	UFUNCTION()
 	void SendNextDataBlob();
 
 	FTimerHandle SendTimer_Handle;
+	FTimerHandle CheckManager_Handle;
 
 	// Maximum size of texture blobs to use for sending (size of chunks that it gets broken down into)
 	UPROPERTY()

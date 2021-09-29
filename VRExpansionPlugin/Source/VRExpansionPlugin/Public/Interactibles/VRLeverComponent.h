@@ -182,6 +182,12 @@ public:
 		bool bIsLerping;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
+		float PrimarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
+		float SecondarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
 		int GripPriority;
 
 	// Sets the grip priority
@@ -326,7 +332,8 @@ public:
 	// Grip interface setup
 
 	// Set up as deny instead of allow so that default allows for gripping
-	bool DenyGripping_Implementation() override;
+	// The GripInitiator is not guaranteed to be valid, check it for validity
+	bool DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator = nullptr) override;
 
 	// How an interfaced object behaves when teleporting
 	EGripInterfaceTeleportBehavior TeleportBehavior_Implementation() override;

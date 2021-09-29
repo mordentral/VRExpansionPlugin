@@ -14,6 +14,7 @@
 #include "VRGripInterface.h"
 #include "VRGlobalSettings.h"
 #include "GripScripts/VRGripScriptBase.h"
+#include "Math/DualQuat.h"
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 #include "GripMotionControllerComponent.generated.h"
 
@@ -34,11 +35,13 @@ class AVRBaseCharacter;
 	} \
 }
 
+#define RESET_REPLIFETIME_CONDITION_PRIVATE_PROPERTY(c,v,cond)  ResetReplicatedLifetimeProperty(StaticClass(), c::StaticClass(), FName(TEXT(#v)), cond, OutLifetimeProps);
+
 DECLARE_LOG_CATEGORY_EXTERN(LogVRMotionController, Log, All);
 //For UE4 Profiler ~ Stat Group
 DECLARE_STATS_GROUP(TEXT("TICKGrip"), STATGROUP_TickGrip, STATCAT_Advanced);
 
-/** Delegate for notification when the controller grips a new object. */
+/** Delegate for notification when the controllers tracking changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRGripControllerOnTrackingEventSignature, const ETrackingStatus &, NewTrackingStatus);
 
 /** Delegate for notification when the controller grips a new object. */
@@ -70,7 +73,7 @@ public:
 	void Setup(const FTransform& ParentToWorld, UGripMotionControllerComponent* Component, bool bSkipLateUpdate);
 
 	/** Apply the late update delta to the cached components */
-	void Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform);
+	void Apply_RenderThread(FSceneInterface* Scene, const int32 FrameNumber, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform);
 	
 	/** Returns true if the LateUpdateSetup data is stale. */
 	bool GetSkipLateUpdate_RenderThread() const { return UpdateStates[LateUpdateRenderReadIndex].bSkip; }
@@ -171,9 +174,26 @@ public:
 	UPROPERTY(VisibleAnywhere, Transient, BlueprintReadOnly, Category = "GripMotionController")
 	UVRGripScriptBase* DefaultGripScript;
 
+	// Lerping functions and events
+	void InitializeLerpToHand(FBPActorGripInformation& GripInfo);
+	void HandleGlobalLerpToHand(FBPActorGripInformation& GripInformation, FTransform& WorldTransform, float DeltaTime);
+
+	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
+		void CancelGlobalLerpToHand(uint8 GripID);
+
+	//UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+	//	FVROnControllerGripSignature OnLerpToHandBegin;
+
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerGripSignature OnLerpToHandFinished;
+
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
 	bool bOffsetByHMD;
+
+	// When true any physics constraints will be attached to the grip pivot instead of a new kinematic actor in the scene
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+		bool bConstrainToPivot;
 
 	UPROPERTY()
 		TWeakObjectPtr<AVRBaseCharacter> AttachChar;
@@ -300,6 +320,10 @@ public:
 	// Called when an object we hold is secondary dropped
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnControllerGripSignature OnSecondaryGripRemoved;
+
+	// Called when an object we hold has its grip transform changed
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerGripSignature OnGripTransformChanged;
 
 	// Gets the hand enum
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "HandType", CompactNodeTitle = "HandType"))
@@ -440,6 +464,20 @@ public:
 	// If FullRecreate is false then it will only set the COM and actors, otherwise will re-init the entire grip
 	bool UpdatePhysicsHandle(uint8 GripID, bool bFullyRecreate = true);
 	bool UpdatePhysicsHandle(const FBPActorGripInformation & GripInfo, bool bFullyRecreate = true);
+
+	inline void NotifyGripTransformChanged(const FBPActorGripInformation & GripInfo)
+	{
+		if (OnGripTransformChanged.IsBound())
+		{
+			FBPActorGripInformation CurrentGrip;
+			EBPVRResultSwitch Result;
+			GetGripByID(CurrentGrip, GripInfo.GripID, Result);
+			if (Result == EBPVRResultSwitch::OnSucceeded)
+			{
+				OnGripTransformChanged.Broadcast(CurrentGrip);
+			}
+		}
+	}
 
 	// Recreates a grip in situations where the collision type or movement replication type may have been changed
 	inline void ReCreateGrip(FBPActorGripInformation & GripInfo)
@@ -614,14 +652,21 @@ public:
 			}
 			else // If re-creating the grip anyway we don't need to do the below
 			{
+				bool bTransformChanged = !OldGripInfo->RelativeTransform.Equals(Grip.RelativeTransform);
+
 				// If physics settings got changed server side
 				if (!FMath::IsNearlyEqual(OldGripInfo->Stiffness, Grip.Stiffness) ||
 					!FMath::IsNearlyEqual(OldGripInfo->Damping, Grip.Damping) ||
 					OldGripInfo->AdvancedGripSettings.PhysicsSettings != Grip.AdvancedGripSettings.PhysicsSettings ||
-					!OldGripInfo->RelativeTransform.Equals(Grip.RelativeTransform)
+					bTransformChanged
 					)
 				{
 					UpdatePhysicsHandle(Grip);
+
+					if (bTransformChanged)
+					{
+						NotifyGripTransformChanged(Grip);
+					}
 				}
 			}
 		}
@@ -1299,9 +1344,9 @@ private:
 		virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
 		virtual void PreRenderView_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override {}
 		virtual void PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
+		virtual void LateLatchingViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
 
 		virtual int32 GetPriority() const override { return -10; }
-		virtual bool IsActiveThisFrame(class FViewport* InViewport) const;
 
 	private:
 		friend class UGripMotionControllerComponent;

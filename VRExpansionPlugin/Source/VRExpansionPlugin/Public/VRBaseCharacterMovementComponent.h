@@ -43,6 +43,7 @@ public:
 
 	virtual void SetUpdatedComponent(USceneComponent* NewUpdatedComponent);
 
+	virtual void MoveAutonomous(float ClientTimeStamp, float DeltaTime, uint8 CompressedFlags, const FVector& NewAccel) override;
 	virtual void PerformMovement(float DeltaSeconds) override;
 	//virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
 
@@ -56,6 +57,10 @@ public:
 	// And non VRCharacter classes (simple character will use this)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRBaseCharacterMovementComponent")
 		bool bUseClientControlRotation;
+
+	// When true remote proxies will no longer attempt to estimate player moves when motion smoothing is enabled.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRBaseCharacterMovementComponent|Smoothing")
+		bool bDisableSimulatedTickWhenSmoothingMovement;
 
 	// Adding seated transition
 	void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;

@@ -256,13 +256,22 @@ void UVRRenderTargetManager::DrawOperations()
 		return;
 	}
 
+	if (GetNetMode() == ENetMode::NM_DedicatedServer)
+	{
+		RenderOperationStore.Empty();
+		return;
+	}
+
 	UWorld* World = GetWorld();
 
 	// Reference to the Render Target resource
 	FTextureRenderTargetResource* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
 	if (!RenderTargetResource)
+	{
+		RenderOperationStore.Empty();
 		return;
+	}
 
 	// Retrieve a UCanvas form the world to avoid creating a new one each time
 	UCanvas* CanvasToUse = World->GetCanvasForDrawMaterialToRenderTarget();
@@ -304,6 +313,7 @@ ARenderTargetReplicationProxy::ARenderTargetReplicationProxy(const FObjectInitia
 	bReplicates = true;
 	PrimaryActorTick.bCanEverTick = false;
 	SetReplicateMovement(false);
+	bWaitingForManager = false;
 }
 
 void ARenderTargetReplicationProxy::OnRep_Manager()
@@ -312,6 +322,19 @@ void ARenderTargetReplicationProxy::OnRep_Manager()
 	if (OwningManager.IsValid())
 	{
 		OwningManager->LocalProxy = this;
+
+		// If we loaded a texture before the manager loaded
+		if (bWaitingForManager)
+		{
+			OwningManager->bIsLoadingTextureBuffer = false;
+			OwningManager->RenderTargetStore = TextureStore;
+			TextureStore.Reset();
+			TextureStore.PackedData.Empty();
+			TextureStore.UnpackedData.Empty();
+			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, FString::Printf(TEXT("Recieved Texture, total byte count: %i"), OwningManager->RenderTargetStore.PackedData.Num()));
+			OwningManager->DeCompressRenderTarget2D();
+			bWaitingForManager = false;
+		}
 	}
 }
 
@@ -392,6 +415,7 @@ void ARenderTargetReplicationProxy::Ack_InitTextureSend_Implementation(int32 Tot
 		//SendNextDataBlob();
 	}
 }
+
 void ARenderTargetReplicationProxy::SendInitMessage()
 {
 	int32 TotalBlobs = TextureStore.PackedData.Num() / TextureBlobSize + (TextureStore.PackedData.Num() % TextureBlobSize > 0 ? 1 : 0);
@@ -478,6 +502,10 @@ void ARenderTargetReplicationProxy::ReceiveTextureBlob_Implementation(const TArr
 			TextureStore.UnpackedData.Empty();
 			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, FString::Printf(TEXT("Recieved Texture, total byte count: %i"), OwningManager->RenderTargetStore.PackedData.Num()));
 			OwningManager->DeCompressRenderTarget2D();
+		}
+		else
+		{
+			bWaitingForManager = true;
 		}
 	}
 
@@ -584,7 +612,7 @@ void UVRRenderTargetManager::UpdateRelevancyMap()
 		}
 	}
 
-	if (bHadDirtyActors)
+	if (bHadDirtyActors && bInitiallyReplicateTexture && GetNetMode() != ENetMode::NM_DedicatedServer)
 	{
 		QueueImageStore();
 	}
@@ -704,7 +732,7 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 void UVRRenderTargetManager::QueueImageStore()
 {
 
-	if (!RenderTarget || bIsStoringImage)
+	if (!bInitiallyReplicateTexture || !RenderTarget || bIsStoringImage || GetNetMode() == ENetMode::NM_DedicatedServer)
 	{
 		return;
 	}
@@ -763,7 +791,7 @@ void UVRRenderTargetManager::TickComponent(float DeltaTime, enum ELevelTick Tick
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	// Read pixels once RenderFence is completed
-	if (RenderDataQueue.IsEmpty())
+	if (!bInitiallyReplicateTexture || RenderDataQueue.IsEmpty() || GetNetMode() == ENetMode::NM_DedicatedServer)
 	{
 		SetComponentTickEnabled(false);
 	}
@@ -836,7 +864,7 @@ void UVRRenderTargetManager::BeginPlay()
 
 	InitRenderTarget();
 
-	if (bInitiallyReplicateTexture && GetNetMode() < ENetMode::NM_Client)
+	if (/*bInitiallyReplicateTexture && */GetNetMode() < ENetMode::NM_Client)
 		GetWorld()->GetTimerManager().SetTimer(NetRelevancyTimer_Handle, this, &UVRRenderTargetManager::UpdateRelevancyMap, PollRelevancyTime, true);
 }
 
@@ -883,6 +911,11 @@ void UVRRenderTargetManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UVRRenderTargetManager::InitRenderTarget()
 {
+	if (this->GetNetMode() == ENetMode::NM_DedicatedServer)
+	{
+		return; // Dedicated servers cannot handle render targets
+	}
+
 	UWorld* World = GetWorld();
 
 	if (RenderTargetWidth > 0 && RenderTargetHeight > 0 && World)

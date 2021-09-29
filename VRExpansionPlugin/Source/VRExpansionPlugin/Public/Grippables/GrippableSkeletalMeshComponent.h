@@ -106,7 +106,8 @@ public:
 		FBPInterfaceProperties VRGripInterfaceSettings;
 
 	// Set up as deny instead of allow so that default allows for gripping
-	virtual bool DenyGripping_Implementation() override;
+	// The GripInitiator is not guaranteed to be valid, check it for validity
+	virtual bool DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator = nullptr) override;
 
 	// How an interfaced object behaves when teleporting
 	virtual EGripInterfaceTeleportBehavior TeleportBehavior_Implementation() override;

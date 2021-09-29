@@ -108,6 +108,12 @@ public:
 	EVRInteractibleAxis InteractorRotationAxis;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
+		float PrimarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
+		float SecondarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
 		int GripPriority;
 
 	// Sets the grip priority
@@ -198,7 +204,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnDropSignature OnDropped;
 	
-															// Distance before the object will break out of the hand, 0.0f == never will
+	// Distance before the object will break out of the hand, 0.0f == never will
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float BreakDistance;
 
@@ -209,16 +215,17 @@ public:
 	// Grip interface setup
 
 	// Set up as deny instead of allow so that default allows for gripping
-		bool DenyGripping_Implementation() override;
+	// The GripInitiator is not guaranteed to be valid, check it for validity
+	bool DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator = nullptr) override;
 
 	// How an interfaced object behaves when teleporting
-		EGripInterfaceTeleportBehavior TeleportBehavior_Implementation() override;
+	EGripInterfaceTeleportBehavior TeleportBehavior_Implementation() override;
 
 	// Should this object simulate on drop
-		bool SimulateOnDrop_Implementation() override;
+	bool SimulateOnDrop_Implementation() override;
 
 		// Grip type to use
-		EGripCollisionType GetPrimaryGripType_Implementation(bool bIsSlot) override;
+	EGripCollisionType GetPrimaryGripType_Implementation(bool bIsSlot) override;
 
 	// Secondary grip type
 		ESecondaryGripType SecondaryGripType_Implementation() override;

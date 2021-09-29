@@ -136,6 +136,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface")
 		float BreakDistance;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
+		float PrimarySlotRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
+		float SecondarySlotRange;
+
 	// Should we deny gripping on this object
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRGripInterface", meta = (ScriptName = "IsDenyGripping"))
 		bool bDenyGripping;
@@ -160,7 +166,8 @@ public:
 	// Grip interface setup
 
 	// Set up as deny instead of allow so that default allows for gripping
-	bool DenyGripping_Implementation() override;
+	// The GripInitiator is not guaranteed to be valid, check it for validity
+	bool DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator = nullptr) override;
 
 	// How an interfaced object behaves when teleporting
 	EGripInterfaceTeleportBehavior TeleportBehavior_Implementation() override;

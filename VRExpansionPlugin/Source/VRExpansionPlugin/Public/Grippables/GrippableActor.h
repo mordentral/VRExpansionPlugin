@@ -92,7 +92,11 @@ public:
 	UFUNCTION(Category = "Networking")
 		void CeaseReplicationBlocking();
 
-	// Notify the server that we locally gripped something
+	// Notify the server that we are no longer trying to run the throwing auth
+	UFUNCTION(Reliable, Server, WithValidation, Category = "Networking")
+		void Server_EndClientAuthReplication();
+
+	// Notify the server about a new movement rep
 	UFUNCTION(UnReliable, Server, WithValidation, Category = "Networking")
 		void Server_GetClientAuthReplication(const FRepMovementVR & newMovement);
 
@@ -173,7 +177,8 @@ public:
 		FBPInterfaceProperties VRGripInterfaceSettings;
 
 	// Set up as deny instead of allow so that default allows for gripping
-	virtual bool DenyGripping_Implementation() override;
+	// The GripInitiator is not guaranteed to be valid, check it for validity
+	virtual bool DenyGripping_Implementation(UGripMotionControllerComponent * GripInitiator = nullptr) override;
 
 	// How an interfaced object behaves when teleporting
 	virtual EGripInterfaceTeleportBehavior TeleportBehavior_Implementation() override;

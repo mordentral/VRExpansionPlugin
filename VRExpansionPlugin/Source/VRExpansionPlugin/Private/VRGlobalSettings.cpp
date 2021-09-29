@@ -1,8 +1,19 @@
 
 #include "VRGlobalSettings.h"
 
+#if WITH_CHAOS
+#include "Chaos/ChaosConstraintSettings.h"
+#endif
+
 UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
+	bUseGlobalLerpToHand(false),
+	MinDistanceForLerp(10.0f),
+	LerpDuration(0.25f),
+	MinSpeedForLerp(100.f),
+	MaxSpeedForLerp(500.f),
+	LerpInterpolationMode(EVRLerpInterpolationMode::QuatInterp),
+	bUseCurve(false),
 	MaxCCDPasses(1),
 	OneEuroMinCutoff(0.1f),
 	OneEuroCutoffSlope(10.0f),
@@ -12,6 +23,18 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 	bUseSeperateHandTransforms(false),
 	CurrentControllerProfileTransformRight(FTransform::Identity)
 {
+#if WITH_CHAOS
+		LinearDriveStiffnessScale = Chaos::ConstraintSettings::LinearDriveStiffnessScale();
+		LinearDriveDampingScale = Chaos::ConstraintSettings::LinearDriveDampingScale();
+		AngularDriveStiffnessScale = Chaos::ConstraintSettings::AngularDriveStiffnessScale();
+		AngularDriveDampingScale = Chaos::ConstraintSettings::AngularDriveDampingScale();
+#endif
+}
+
+bool UVRGlobalSettings::IsGlobalLerpEnabled()
+{
+	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+	return VRSettings.bUseGlobalLerpToHand;
 }
 
 FTransform UVRGlobalSettings::AdjustTransformByControllerProfile(FName OptionalControllerProfileName, const FTransform& SocketTransform, bool bIsRightHand)
@@ -172,7 +195,9 @@ bool UVRGlobalSettings::LoadControllerProfileByName(FName ControllerProfileName,
 	{
 		return LoadControllerProfile(*FoundProfile, bSetAsCurrentProfile);
 	}
+	
 
+	UE_LOG(LogTemp, Warning, TEXT("Could not find controller profile!: %s"), *ControllerProfileName.ToString());
 	return false;
 }
 

@@ -99,7 +99,7 @@ public:
 		void ReceiveButtonBeginInteraction(AActor * InteractingActor, UPrimitiveComponent * InteractingComponent);
 
 	// On Button ending interaction (may spam a bit depending on if overlap is jittering)
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button Started Interaction"))
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "Button Ended Interaction"))
 		void ReceiveButtonEndInteraction(AActor * LastInteractingActor, UPrimitiveComponent * LastInteractingComponent);
 
 	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state

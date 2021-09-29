@@ -69,6 +69,7 @@ public class VRExpansionPlugin : ModuleRules
                     "UMG",
                     "NavigationSystem",
                     "AIModule",
+                    "AnimGraphRuntime"
 
                     //"Renderer",
                     //"UtilityShaders"
@@ -82,6 +83,7 @@ public class VRExpansionPlugin : ModuleRules
         if(Target.bUseChaos)
         {
             PublicDependencyModuleNames.Add("Chaos");
+            PublicDependencyModuleNames.Add("ChaosVehicles");
         }
 
 

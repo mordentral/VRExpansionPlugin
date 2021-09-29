@@ -82,7 +82,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 	// Call supers tick (though I don't think any of the base classes to this actually implement it)
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	const float WorldTime = GetWorld()->GetTimeSeconds();
+	const float WorldTime = GetWorld()->GetRealTimeSeconds();
 
 	if (LocalInteractingComponent.IsValid())
 	{
@@ -116,7 +116,6 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 					(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Server && GetNetMode() < ENetMode::NM_Client) ||
 					(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Owner && LocalLastInteractingActor.IsValid() && LocalLastInteractingActor->HasLocalNetOwner()))
 				{
-
 					if (!bToggledThisTouch && NewDepth <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
 					{
 						LastToggleTime = WorldTime;
@@ -360,7 +359,7 @@ void UVRButtonComponent::SetButtonState(bool bNewButtonState, bool bCallButtonCh
 
 	bButtonState = bNewButtonState;
 	SetButtonToRestingPosition(!bSnapIntoPosition);
-	LastToggleTime = GetWorld()->GetTimeSeconds();
+	LastToggleTime = GetWorld()->GetRealTimeSeconds();
 
 	if (bCallButtonChangedEvent)
 	{

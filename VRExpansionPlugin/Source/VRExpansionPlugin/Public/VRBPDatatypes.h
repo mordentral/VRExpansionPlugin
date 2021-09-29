@@ -117,6 +117,21 @@ public:
 
 };
 
+
+/** Different methods for interpolating rotation between transforms */
+UENUM(BlueprintType)
+enum class EVRLerpInterpolationMode : uint8
+{
+	/** Shortest Path or Quaternion interpolation for the rotation. */
+	QuatInterp,
+
+	/** Rotor or Euler Angle interpolation. */
+	EulerInterp,
+
+	/** Dual quaternion interpolation, follows helix or screw-motion path between keyframes.   */
+	DualQuatInterp
+};
+
 template<class filterType>
 class FBasicLowPassFilter
 {
@@ -888,7 +903,10 @@ enum class EGripCollisionType : uint8
 	CustomGrip,
 
 	/** A grip that does not tick or move, used for drop / grip events only and uses least amount of processing. */
-	EventsOnly
+	EventsOnly,
+
+	/** Uses a hard constraint with no softness to lock them together, best used with ConstrainToPivot enabled and a bone chain. */
+	LockedConstraint
 
 };
 
@@ -1374,11 +1392,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		FBPAdvGripSettings AdvancedGripSettings;
 
-
-	// When true the grips movement logic will not be performed until it is false again
-	//UPROPERTY(BlueprintReadWrite)
-		//bool bPauseGrip;
-
 	// For multi grip situations
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		FBPSecondaryGripInfo SecondaryGripInfo;
@@ -1403,6 +1416,14 @@ public:
 
 	// Need to skip one frame of length check post teleport with constrained objects, the constraint may have not been updated yet.
 	bool bSkipNextConstraintLengthCheck;
+
+	// Lerp settings if we are using global lerping
+	float CurrentLerpTime;
+	float LerpSpeed;
+	FTransform OnGripTransform;
+
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = "Settings")
+	bool bIsLerping;
 
 	bool IsLocalAuthGrip()
 	{
@@ -1436,6 +1457,10 @@ public:
 		bLockHybridGrip = false;
 		AdditionTransform = FTransform::Identity;
 		GripDistance = 0.0f;
+		CurrentLerpTime = 0.f;
+		LerpSpeed = 0.f;
+		OnGripTransform = FTransform::Identity;
+		bIsLerping = false;
 
 		// Clear out the secondary grip
 		SecondaryGripInfo.ClearNonReppingItems();
@@ -1544,7 +1569,11 @@ public:
 		LastLockedRotation(FRotator::ZeroRotator),
 		LastWorldTransform(FTransform::Identity),
 		bSkipNextTeleportCheck(false),
-		bSkipNextConstraintLengthCheck(false)
+		bSkipNextConstraintLengthCheck(false),
+		CurrentLerpTime(0.f),
+		LerpSpeed(0.f),
+		OnGripTransform(FTransform::Identity),
+		bIsLerping(false)
 	{
 	}	
 
@@ -1703,6 +1732,7 @@ public:
 	bool bSetCOM;
 	bool bSkipResettingCom;
 	bool bSkipMassCheck;
+	bool bSkipDeletingKinematicActor;
 
 	FBPActorPhysicsHandleInformation()
 	{	
@@ -1714,6 +1744,7 @@ public:
 		bSetCOM = false;
 		bSkipResettingCom = false;
 		bSkipMassCheck = false;
+		bSkipDeletingKinematicActor = false;
 #if WITH_CHAOS
 		KinActorData2 = nullptr;
 #endif

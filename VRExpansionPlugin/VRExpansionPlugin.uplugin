@@ -1,7 +1,7 @@
 {
   "FileVersion": 3,
-  "Version": 4.26,
-  "VersionName": "4.26",
+  "Version": 4.27,
+  "VersionName": "4.27",
   "FriendlyName": "VRExpansionPlugin",
   "Description": "Adds several new VR features & components to UE4",
   "Category": "VRExpansion",
@@ -19,6 +19,11 @@
       "Name": "VRExpansionPlugin",
       "Type": "RunTime",
       "LoadingPhase": "Default"
+    },
+	{
+      "Name": "VRExpansionEditor",
+      "Type": "UnCookedOnly",
+	  "LoadingPhase": "PostEngineInit"
     }
   ],
   "Plugins": [

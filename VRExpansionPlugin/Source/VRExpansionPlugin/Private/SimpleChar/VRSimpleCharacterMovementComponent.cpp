@@ -1065,7 +1065,7 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 			FQuat curRot;
 			bool bWasHeadset = false;
 
-			if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowed())
+			if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowedForWorld(*GetWorld()))
 			{
 				bWasHeadset = true;
 
@@ -1195,11 +1195,11 @@ void UVRSimpleCharacterMovementComponent::ServerMove_PerformMovement(const FChar
 		static const auto CVarNetServerMoveTimestampExpiredWarningThreshold = IConsoleManager::Get().FindConsoleVariable(TEXT("net.NetServerMoveTimestampExpiredWarningThreshold"));
 		if (ServerTimeStamp > 1.0f && FMath::Abs(ServerTimeStamp - ClientTimeStamp) > CVarNetServerMoveTimestampExpiredWarningThreshold->GetFloat())
 		{
-			UE_LOG(LogSimpleCharacterMovement, Warning, TEXT("ServerMove: TimeStamp expired: %f, CurrentTimeStamp: %f, Character: %s"), ClientTimeStamp, ServerTimeStamp, *GetNameSafe(CharacterOwner));
+			UE_LOG(LogNetPlayerMovement, Warning, TEXT("ServerMove: TimeStamp expired: %f, CurrentTimeStamp: %f, Character: %s"), ClientTimeStamp, ServerTimeStamp, *GetNameSafe(CharacterOwner));
 		}
 		else
 		{
-			UE_LOG(LogSimpleCharacterMovement, Log, TEXT("ServerMove: TimeStamp expired: %f, CurrentTimeStamp: %f, Character: %s"), ClientTimeStamp, ServerTimeStamp, *GetNameSafe(CharacterOwner));
+			UE_LOG(LogNetPlayerMovement, Log, TEXT("ServerMove: TimeStamp expired: %f, CurrentTimeStamp: %f, Character: %s"), ClientTimeStamp, ServerTimeStamp, *GetNameSafe(CharacterOwner));
 		}
 		return;
 	}
@@ -1258,28 +1258,17 @@ void UVRSimpleCharacterMovementComponent::ServerMove_PerformMovement(const FChar
 
 			CustomVRInputVector = MoveDataVR->ConditionalMoveReps.CustomVRInputVector;
 			MoveActionArray = MoveDataVR->ConditionalMoveReps.MoveActionArray;
+			AdditionalVRInputVector = MoveDataVR->LFDiff;
 
-			// Set capsule location prior to testing movement
-			// I am overriding the replicated value here when movement is made on purpose
-			/*if (VRRootCapsule)
+			if (BaseVRCharacterOwner)
 			{
-				VRRootCapsule->curCameraLoc = MoveDataVR->VRCapsuleLocation;
-				VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(MoveDataVR->VRCapsuleRotation), 0.0f);
-				VRRootCapsule->DifferenceFromLastFrame = FVector(MoveDataVR->LFDiff.X, MoveDataVR->LFDiff.Y, 0.0f);
-				AdditionalVRInputVector = VRRootCapsule->DifferenceFromLastFrame;
-
-				if (BaseVRCharacterOwner)
+				if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && MoveDataVR->LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(MoveDataVR->LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 				{
-					if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && MoveDataVR->LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(MoveDataVR->LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
-					{
-						BaseVRCharacterOwner->SetCharacterHalfHeightVR(MoveDataVR->LFDiff.Z, false);
-						//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
-							//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
-					}
+					BaseVRCharacterOwner->SetCharacterHalfHeightVR(MoveDataVR->LFDiff.Z, false);
+					//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
+						//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
 				}
-
-				VRRootCapsule->GenerateOffsetToWorld(false, false);
-			}*/
+			}
 
 			MoveAutonomous(ClientTimeStamp, DeltaTime, ClientMoveFlags, ClientAccel);
 			bHasRequestedVelocity = false;
