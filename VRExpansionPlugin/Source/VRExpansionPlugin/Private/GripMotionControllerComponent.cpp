@@ -104,7 +104,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 
 	bSmoothHandTracking = false;
 	bWasSmoothingHand = false;
-	bSmoothWithEuroLowPassFunction = false;
+	bSmoothWithEuroLowPassFunction = true;
 	LastSmoothRelativeTransform = FTransform::Identity;
 	SmoothingSpeed = 20.0f;
 	EuroSmoothingParams.MinCutoff = 0.1f;
