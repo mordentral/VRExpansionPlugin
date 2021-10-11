@@ -304,8 +304,8 @@ void AGrippableActor::SetGripPriority(int NewGripPriority)
 }
 
 void AGrippableActor::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
-void AGrippableActor::OnGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) { OnGripped.Broadcast(GrippingController, GripInformation); }
-void AGrippableActor::OnGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) { OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed); }
+void AGrippableActor::OnGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) {}
+void AGrippableActor::OnGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) { }
 void AGrippableActor::OnChildGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation) {}
 void AGrippableActor::OnChildGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) {}
 void AGrippableActor::OnSecondaryGrip_Implementation(UGripMotionControllerComponent* GripOwningController, USceneComponent* SecondaryGripComponent, const FBPActorGripInformation& GripInformation) { OnSecondaryGripAdded.Broadcast(GripOwningController, GripInformation); }
@@ -415,6 +415,18 @@ bool AGrippableActor::RemoveFromClientReplicationBucket()
 	}
 
 	return false;
+}
+
+void AGrippableActor::Native_NotifyThrowGripDelegates(UGripMotionControllerComponent* Controller, bool bGripped, const FBPActorGripInformation& GripInformation, bool bWasSocketed)
+{
+	if (bGripped)
+	{
+		OnGripped.Broadcast(Controller, GripInformation);
+	}
+	else
+	{
+		OnDropped.Broadcast(Controller, GripInformation, bWasSocketed);
+	}
 }
 
 void AGrippableActor::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, uint8 GripID, bool bIsHeld)

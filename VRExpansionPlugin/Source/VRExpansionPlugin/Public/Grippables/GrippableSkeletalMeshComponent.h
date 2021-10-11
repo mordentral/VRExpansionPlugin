@@ -148,6 +148,9 @@ public:
 	// Sets is held, used by the plugin
 	virtual void SetHeld_Implementation(UGripMotionControllerComponent* HoldingController, uint8 GripID, bool bIsHeld) override;
 
+	// Interface function used to throw the delegates that is invisible to blueprints so that it can't be overridden
+	virtual void Native_NotifyThrowGripDelegates(UGripMotionControllerComponent* Controller, bool bGripped, const FBPActorGripInformation& GripInformation, bool bWasSocketed = false) override;
+
 	// Returns if the object wants to be socketed
 	virtual bool RequestsSocketing_Implementation(USceneComponent*& ParentToSocketTo, FName& OptionalSocketName, FTransform_NetQuantize& RelativeTransform) override;
 

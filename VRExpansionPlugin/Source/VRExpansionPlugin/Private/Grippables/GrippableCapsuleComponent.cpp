@@ -116,8 +116,8 @@ void UGrippableCapsuleComponent::SetGripPriority(int NewGripPriority)
 }
 
 void UGrippableCapsuleComponent::TickGrip_Implementation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation, float DeltaTime) {}
-void UGrippableCapsuleComponent::OnGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) { OnGripped.Broadcast(GrippingController, GripInformation); }
-void UGrippableCapsuleComponent::OnGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) { OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed); }
+void UGrippableCapsuleComponent::OnGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) {}
+void UGrippableCapsuleComponent::OnGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) { }
 void UGrippableCapsuleComponent::OnChildGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) {}
 void UGrippableCapsuleComponent::OnChildGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) {}
 void UGrippableCapsuleComponent::OnSecondaryGrip_Implementation(UGripMotionControllerComponent* GripOwningController, USceneComponent* SecondaryGripComponent, const FBPActorGripInformation& GripInformation) { OnSecondaryGripAdded.Broadcast(GripOwningController, GripInformation); }
@@ -198,6 +198,18 @@ void UGrippableCapsuleComponent::IsHeld_Implementation(TArray<FBPGripPair> & Hol
 {
 	HoldingControllers = VRGripInterfaceSettings.HoldingControllers;
 	bIsHeld = VRGripInterfaceSettings.bIsHeld;
+}
+
+void UGrippableCapsuleComponent::Native_NotifyThrowGripDelegates(UGripMotionControllerComponent* Controller, bool bGripped, const FBPActorGripInformation& GripInformation, bool bWasSocketed)
+{
+	if (bGripped)
+	{
+		OnGripped.Broadcast(Controller, GripInformation);
+	}
+	else
+	{
+		OnDropped.Broadcast(Controller, GripInformation, bWasSocketed);
+	}
 }
 
 void UGrippableCapsuleComponent::SetHeld_Implementation(UGripMotionControllerComponent * HoldingController, uint8 GripID, bool bIsHeld)

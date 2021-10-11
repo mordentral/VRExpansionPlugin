@@ -276,8 +276,8 @@ void AGrippableSkeletalMeshActor::SetGripPriority(int NewGripPriority)
 }
 
 void AGrippableSkeletalMeshActor::TickGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation, float DeltaTime) {}
-void AGrippableSkeletalMeshActor::OnGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) { OnGripped.Broadcast(GrippingController, GripInformation); }
-void AGrippableSkeletalMeshActor::OnGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) { OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed); }
+void AGrippableSkeletalMeshActor::OnGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) { }
+void AGrippableSkeletalMeshActor::OnGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) { }
 void AGrippableSkeletalMeshActor::OnChildGrip_Implementation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation) {}
 void AGrippableSkeletalMeshActor::OnChildGripRelease_Implementation(UGripMotionControllerComponent* ReleasingController, const FBPActorGripInformation& GripInformation, bool bWasSocketed) {}
 void AGrippableSkeletalMeshActor::OnSecondaryGrip_Implementation(UGripMotionControllerComponent* GripOwningController, USceneComponent* SecondaryGripComponent, const FBPActorGripInformation& GripInformation) { OnSecondaryGripAdded.Broadcast(GripOwningController, GripInformation); }
@@ -387,6 +387,18 @@ bool AGrippableSkeletalMeshActor::RemoveFromClientReplicationBucket()
 	}
 
 	return false;
+}
+
+void AGrippableSkeletalMeshActor::Native_NotifyThrowGripDelegates(UGripMotionControllerComponent* Controller, bool bGripped, const FBPActorGripInformation& GripInformation, bool bWasSocketed)
+{
+	if (bGripped)
+	{
+		OnGripped.Broadcast(Controller, GripInformation);
+	}
+	else
+	{
+		OnDropped.Broadcast(Controller, GripInformation, bWasSocketed);
+	}
 }
 
 void AGrippableSkeletalMeshActor::SetHeld_Implementation(UGripMotionControllerComponent* HoldingController, uint8 GripID, bool bIsHeld)

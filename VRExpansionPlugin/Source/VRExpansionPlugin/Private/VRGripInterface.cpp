@@ -9,3 +9,9 @@ UVRGripInterface::UVRGripInterface(const class FObjectInitializer& ObjectInitial
 {
  
 }
+
+
+void IVRGripInterface::Native_NotifyThrowGripDelegates(UGripMotionControllerComponent* Controller, bool bGripped, const FBPActorGripInformation& GripInformation, bool bWasSocketed)
+{
+
+}
