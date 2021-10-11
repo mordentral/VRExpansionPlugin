@@ -218,7 +218,7 @@ void UVRDialComponent::OnGrip_Implementation(UGripMotionControllerComponent * Gr
 
 	bIsLerping = false;
 
-	OnGripped.Broadcast(GrippingController, GripInformation);
+	//OnGripped.Broadcast(GrippingController, GripInformation);
 }
 
 void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
@@ -274,7 +274,7 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 	else
 		this->SetComponentTickEnabled(false);
 
-	OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed);
+	//OnDropped.Broadcast(ReleasingController, GripInformation, bWasSocketed);
 }
 
 void UVRDialComponent::SetGripPriority(int NewGripPriority)
@@ -399,6 +399,18 @@ void UVRDialComponent::IsHeld_Implementation(TArray<FBPGripPair> & CurHoldingCon
 	else
 	{
 		bCurIsHeld = false;
+	}
+}
+
+void UVRDialComponent::Native_NotifyThrowGripDelegates(UGripMotionControllerComponent* Controller, bool bGripped, const FBPActorGripInformation& GripInformation, bool bWasSocketed)
+{
+	if (bGripped)
+	{
+		OnGripped.Broadcast(Controller, GripInformation);
+	}
+	else
+	{
+		OnDropped.Broadcast(Controller, GripInformation, bWasSocketed);
 	}
 }
 
