@@ -8,6 +8,7 @@
 #include "IXRTrackingSystem.h"
 #include "Components/ShapeComponent.h"
 #include "VRTrackedParentInterface.h"
+#include "GameFramework/WorldSettings.h"
 #include "ParentRelativeAttachmentComponent.generated.h"
 
 class AVRBaseCharacter;

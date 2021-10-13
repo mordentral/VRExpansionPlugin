@@ -11,10 +11,8 @@
 #include "HeadMountedDisplayFunctionLibrary.h"
 //#include "HeadMountedDisplayFunctionLibrary.h"
 #include "IHeadMountedDisplay.h"
-#include "Grippables/GrippablePhysicsReplication.h"
 
 #include "VRBPDatatypes.h"
-#include "GameplayTagContainer.h"
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 
 #include "VRExpansionFunctionLibrary.generated.h"
@@ -41,10 +39,6 @@ class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UBlueprintFunct
 	GENERATED_BODY()
 	//~UVRExpansionFunctionLibrary();
 public:
-
-	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
-		static void SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1 = nullptr, FName OptionalBoneName1 = NAME_None, UPrimitiveComponent* Prim2 = nullptr, FName OptionalBoneName2 = NAME_None, bool bIgnoreCollision = true);
 
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
 	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
@@ -133,10 +127,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsHMDWorn"))
 	static EBPHMDWornState GetIsHMDWorn();
 
-	// Gets whether an HMD device is connected
-	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDType"))
-	static EBPHMDDeviceType GetHMDType();
-
 	// Gets whether the game is running in VRPreview or is a non editor build game (returns true for either).
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "IsInVREditorPreviewOrGame"))
 	static bool IsInVREditorPreviewOrGame();
@@ -169,19 +159,6 @@ public:
 	// Gets whether an HMD device is connected
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetIsActorMovable"))
 	static bool GetIsActorMovable(AActor * ActorToCheck);
-
-	// Gets if an actors root component contains a grip slot within range
-	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bIgnoreSelf = "true", DisplayName = "GetGripSlotInRangeByTypeName"))
-	static void GetGripSlotInRangeByTypeName(FName SlotType, AActor * Actor, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent* QueryController = nullptr);
-
-	// Gets if an actors root component contains a grip slot within range
-	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bIgnoreSelf = "true", DisplayName = "GetGripSlotInRangeByTypeName_Component"))
-	static void GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent* QueryController = nullptr);
-
-	/* Returns true if the values are equal (A == B) */
-	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal VR Grip", CompactNodeTitle = "==", Keywords = "== equal"), Category = "VRExpansionFunctions")
-	static bool EqualEqual_FBPActorGripInformation(const FBPActorGripInformation &A, const FBPActorGripInformation &B);
-
 
 	/** Make a transform net quantize from location, rotation and scale */
 	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|TransformNetQuantize")
@@ -219,19 +196,10 @@ public:
 	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|FVectorNetQuantize")
 		static FVector_NetQuantize100 MakeVector_NetQuantize100(FVector InVector);
 
-	/** Converts a FBPGripPair into a MotionController */
-	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToController (FBPGripPair)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary")
-		static UGripMotionControllerComponent * Conv_GripPairToMotionController(const FBPGripPair &GripPair);
-
-	/** Converts a FBPGripPair into a GripID */
-	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToGripID (FBPGripPair)", CompactNodeTitle = "->", BlueprintAutocast), Category = "VRExpansionLibrary")
-		static uint8 Conv_GripPairToGripID(const FBPGripPair &GripPair);
-
 	// Adds a USceneComponent Subclass, that is based on the passed in Class, and added to the Outer(Actor) object
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Add Scene Component By Class"), Category = "VRExpansionLibrary")
 		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, const FTransform & ComponentRelativeTransform);
 	
-
 	/** Resets a Filter so that the first time it is used again it is clean */
 	UFUNCTION(BlueprintCallable, Category = "LowPassFilter_Peak")
 		static void ResetPeakLowPassFilter(UPARAM(ref) FBPLowPassPeakFilter& TargetPeakFilter)
@@ -325,115 +293,6 @@ public:
 
 	}
 
-	/**
-	* Determine if any tag in the BaseContainer matches against any tag in OtherContainer with a required direct parent for both
-	*
-	* @param TagParent		Required direct parent tag
-	* @param BaseContainer	Container containing values to check
-	* @param OtherContainer	Container to check against.
-	*
-	* @return True if any tag was found that matches any tags explicitly present in OtherContainer with the same DirectParent
-	*/
-	UFUNCTION(BlueprintPure, Category = "GameplayTags")
-	static bool MatchesAnyTagsWithDirectParentTag(FGameplayTag DirectParentTag,const FGameplayTagContainer& BaseContainer, const FGameplayTagContainer& OtherContainer)
-	{
-		TArray<FGameplayTag> BaseContainerTags;
-		BaseContainer.GetGameplayTagArray(BaseContainerTags);
-
-		for (const FGameplayTag& OtherTag : BaseContainerTags)
-		{
-			if (OtherTag.RequestDirectParent().MatchesTagExact(DirectParentTag))
-			{
-				if (OtherContainer.HasTagExact(OtherTag))
-					return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	* Determine if any tag in the BaseContainer has the exact same direct parent tag and returns the first one
-	* @param TagParent		Required direct parent tag
-	* @param BaseContainer	Container containing values to check
-
-	* @return True if any tag was found and also returns the tag
-	*/
-	UFUNCTION(BlueprintPure, Category = "GameplayTags")
-	static bool GetFirstGameplayTagWithExactParent(FGameplayTag DirectParentTag, const FGameplayTagContainer& BaseContainer, FGameplayTag& FoundTag)
-	{
-		TArray<FGameplayTag> BaseContainerTags;
-		BaseContainer.GetGameplayTagArray(BaseContainerTags);
-
-		for (const FGameplayTag& OtherTag : BaseContainerTags)
-		{
-			if (OtherTag.RequestDirectParent().MatchesTagExact(DirectParentTag))
-			{
-				FoundTag = OtherTag;
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	// #TODO: probably need to implement this some day
-	// This doesn't work for the web browser widget but it does for the normal widgets like text boxes
-	// Just have to SetKeyboardFocus or SetUserFocus for the input widget first
-	// Main problem is it takes focus from the player then....
-	/*UFUNCTION(BlueprintCallable, Category = "KeyboardSimulation")
-	static void SimulateCharacterEntry(UPARAM(ref) const FString& InChar)
-	{
-
-		for (int32 CharIndex = 0; CharIndex < InChar.Len(); CharIndex++)
-		{
-			TCHAR CharKey = InChar[CharIndex];
-			const bool bRepeat = false;
-			FCharacterEvent CharacterEvent(CharKey, FModifierKeysState(), 0, bRepeat);
-			FSlateApplication::Get().ProcessKeyCharEvent(CharacterEvent);
-		}
-
-	}*/
-	/*
-	void FVREditorActionCallbacks::SimulateBackspace()
-	{
-		// Slate editable text fields handle backspace as a character entry
-		FString BackspaceString = FString(TEXT("\b"));
-		bool bRepeat = false;
-		SimulateCharacterEntry(BackspaceString);
-	}
-
-	void FVREditorActionCallbacks::SimulateKeyDown(const FKey Key, const bool bRepeat)
-	{
-		const uint32* KeyCodePtr;
-		const uint32* CharCodePtr;
-		FInputKeyManager::Get().GetCodesFromKey(Key, KeyCodePtr, CharCodePtr);
-
-		uint32 KeyCode = KeyCodePtr ? *KeyCodePtr : 0;
-		uint32 CharCode = CharCodePtr ? *CharCodePtr : 0;
-
-		FKeyEvent KeyEvent(Key, FModifierKeysState(), 0, bRepeat, KeyCode, CharCode);
-		bool DownResult = FSlateApplication::Get().ProcessKeyDownEvent(KeyEvent);
-
-		if (CharCodePtr)
-		{
-			FCharacterEvent CharacterEvent(CharCode, FModifierKeysState(), 0, bRepeat);
-			FSlateApplication::Get().ProcessKeyCharEvent(CharacterEvent);
-		}
-	}
-
-	void FVREditorActionCallbacks::SimulateKeyUp(const FKey Key)
-	{
-		const uint32* KeyCodePtr;
-		const uint32* CharCodePtr;
-		FInputKeyManager::Get().GetCodesFromKey(Key, KeyCodePtr, CharCodePtr);
-
-		uint32 KeyCode = KeyCodePtr ? *KeyCodePtr : 0;
-		uint32 CharCode = CharCodePtr ? *CharCodePtr : 0;
-
-		FKeyEvent KeyEvent(Key, FModifierKeysState(), 0, false, KeyCode, CharCode);
-		FSlateApplication::Get().ProcessKeyUpEvent(KeyEvent);
-	}*/
 };	
 
 

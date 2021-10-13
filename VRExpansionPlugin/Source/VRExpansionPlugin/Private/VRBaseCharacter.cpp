@@ -8,8 +8,6 @@
 
 DEFINE_LOG_CATEGORY(LogBaseVRCharacter);
 
-FName AVRBaseCharacter::LeftMotionControllerComponentName(TEXT("Left Grip Motion Controller"));
-FName AVRBaseCharacter::RightMotionControllerComponentName(TEXT("Right Grip Motion Controller"));
 FName AVRBaseCharacter::ReplicatedCameraComponentName(TEXT("VR Replicated Camera"));
 FName AVRBaseCharacter::ParentRelativeAttachmentComponentName(TEXT("Parent Relative Attachment"));
 FName AVRBaseCharacter::SmoothingSceneParentComponentName(TEXT("NetSmoother"));
@@ -72,34 +70,6 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		{
 			SKMesh->SetupAttachment(ParentRelativeAttachment);
 		}
-	}
-
-	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::LeftMotionControllerComponentName);
-	if (LeftMotionController)
-	{
-		LeftMotionController->SetupAttachment(NetSmoother);
-		//LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
-		LeftMotionController->SetTrackingMotionSource(FXRMotionControllerBase::LeftHandSourceId);
-		//LeftMotionController->Hand = EControllerHand::Left;
-		LeftMotionController->bOffsetByHMD = false;
-		//LeftMotionController->bUpdateInCharacterMovement = true;
-		// Keep the controllers ticking after movement
-		LeftMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
-		LeftMotionController->OverrideSendTransform = &AVRBaseCharacter::Server_SendTransformLeftController;
-	}
-
-	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::RightMotionControllerComponentName);
-	if (RightMotionController)
-	{
-		RightMotionController->SetupAttachment(NetSmoother);
-		//RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
-		RightMotionController->SetTrackingMotionSource(FXRMotionControllerBase::RightHandSourceId);
-		//RightMotionController->Hand = EControllerHand::Right;
-		RightMotionController->bOffsetByHMD = false;
-		//RightMotionController->bUpdateInCharacterMovement = true;
-		// Keep the controllers ticking after movement
-		RightMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
-		RightMotionController->OverrideSendTransform = &AVRBaseCharacter::Server_SendTransformRightController;
 	}
 
 	OffsetComponentToWorld = FTransform(FQuat(0.0f, 0.0f, 0.0f, 1.0f), FVector::ZeroVector, FVector(1.0f));
@@ -290,29 +260,6 @@ bool AVRBaseCharacter::Server_SendTransformCamera_Validate(FBPVRComponentPosRep 
 	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
 }
 
-void AVRBaseCharacter::Server_SendTransformLeftController_Implementation(FBPVRComponentPosRep NewTransform)
-{
-	if (LeftMotionController)
-		LeftMotionController->Server_SendControllerTransform_Implementation(NewTransform);
-}
-
-bool AVRBaseCharacter::Server_SendTransformLeftController_Validate(FBPVRComponentPosRep NewTransform)
-{
-	return true;
-	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
-}
-
-void AVRBaseCharacter::Server_SendTransformRightController_Implementation(FBPVRComponentPosRep NewTransform)
-{
-	if(RightMotionController)
-		RightMotionController->Server_SendControllerTransform_Implementation(NewTransform);
-}
-
-bool AVRBaseCharacter::Server_SendTransformRightController_Validate(FBPVRComponentPosRep NewTransform)
-{
-	return true;
-	// Optionally check to make sure that player is inside of their bounds and deny it if they aren't?
-}
 FVector AVRBaseCharacter::GetTeleportLocation(FVector OriginalLocation)
 {	
 	return OriginalLocation;
@@ -343,12 +290,6 @@ void AVRBaseCharacter::NotifyOfTeleport(bool bRegisterAsTeleport)
 			bFlagTeleportedGrips = true;
 		}
 	}
-
-	if (LeftMotionController)
-		LeftMotionController->bIsPostTeleport = true;
-
-	if (RightMotionController)
-		RightMotionController->bIsPostTeleport = true;
 }
 
 void AVRBaseCharacter::OnRep_ReplicatedMovement()
@@ -543,8 +484,6 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
 				SetActorLocationAndRotationVR(SeatInformation.StoredTargetTransform.GetTranslation(), SeatInformation.StoredTargetTransform.Rotator(), true, true, true);
-				LeftMotionController->PostTeleportMoveGrippedObjects();
-				RightMotionController->PostTeleportMoveGrippedObjects();
 
 				/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
 				{
@@ -594,8 +533,6 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 
 				// Re-purposing them for the new location and rotations
 				SetActorLocationAndRotationVR(SeatInformation.StoredTargetTransform.GetTranslation(), SeatInformation.StoredTargetTransform.Rotator(), true, true, true);
-				LeftMotionController->PostTeleportMoveGrippedObjects();
-				RightMotionController->PostTeleportMoveGrippedObjects();
 
 				// Enable collision now
 				root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);

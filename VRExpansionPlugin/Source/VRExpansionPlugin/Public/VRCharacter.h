@@ -4,7 +4,6 @@
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
 #include "VRBaseCharacter.h"
-#include "GripMotionControllerComponent.h"
 #include "VRExpansionFunctionLibrary.h"
 #include "ReplicatedVRCameraComponent.h"
 #include "ParentRelativeAttachmentComponent.h"

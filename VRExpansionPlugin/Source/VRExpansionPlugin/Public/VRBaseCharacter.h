@@ -7,7 +7,6 @@
 #include "VRBaseCharacterMovementComponent.h"
 #include "ReplicatedVRCameraComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
-#include "GripMotionControllerComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/Controller.h"
 #include "Components/CapsuleComponent.h"
@@ -286,12 +285,6 @@ public:
 	UFUNCTION(Unreliable, Server, WithValidation)
 		void Server_SendTransformCamera(FBPVRComponentPosRep NewTransform);
 
-	UFUNCTION(Unreliable, Server, WithValidation)
-		void Server_SendTransformLeftController(FBPVRComponentPosRep NewTransform);
-
-	UFUNCTION(Unreliable, Server, WithValidation)
-		void Server_SendTransformRightController(FBPVRComponentPosRep NewTransform);
-
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
 	// If true will replicate the capsule height on to clients, allows for dynamic capsule height changes in multiplayer
@@ -507,18 +500,6 @@ public:
 
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		UParentRelativeAttachmentComponent * ParentRelativeAttachment;
-
-	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-		UGripMotionControllerComponent * LeftMotionController;
-
-	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-		UGripMotionControllerComponent * RightMotionController;
-
-	/** Name of the LeftMotionController component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
-	static FName LeftMotionControllerComponentName;
-
-	/** Name of the RightMotionController component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
-	static FName RightMotionControllerComponentName;
 
 	/** Name of the VRReplicatedCamera component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
 	static FName ReplicatedCameraComponentName;

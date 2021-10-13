@@ -7,14 +7,6 @@
 
 UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
-	bUseGlobalLerpToHand(false),
-	MinDistanceForLerp(10.0f),
-	LerpDuration(0.25f),
-	MinSpeedForLerp(100.f),
-	MaxSpeedForLerp(500.f),
-	LerpInterpolationMode(EVRLerpInterpolationMode::QuatInterp),
-	bUseCurve(false),
-	MaxCCDPasses(1),
 	OneEuroMinCutoff(0.1f),
 	OneEuroCutoffSlope(10.0f),
 	OneEuroDeltaCutoff(10.0f),
@@ -23,18 +15,7 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 	bUseSeperateHandTransforms(false),
 	CurrentControllerProfileTransformRight(FTransform::Identity)
 {
-#if WITH_CHAOS
-		LinearDriveStiffnessScale = Chaos::ConstraintSettings::LinearDriveStiffnessScale();
-		LinearDriveDampingScale = Chaos::ConstraintSettings::LinearDriveDampingScale();
-		AngularDriveStiffnessScale = Chaos::ConstraintSettings::AngularDriveStiffnessScale();
-		AngularDriveDampingScale = Chaos::ConstraintSettings::AngularDriveDampingScale();
-#endif
-}
 
-bool UVRGlobalSettings::IsGlobalLerpEnabled()
-{
-	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-	return VRSettings.bUseGlobalLerpToHand;
 }
 
 FTransform UVRGlobalSettings::AdjustTransformByControllerProfile(FName OptionalControllerProfileName, const FTransform& SocketTransform, bool bIsRightHand)
@@ -316,29 +297,4 @@ void UVRGlobalSettings::PostInitProperties()
 	}*/
 #endif
 	Super::PostInitProperties();
-}
-
-void UVRGlobalSettings::GetMeleeSurfaceGlobalSettings(TArray<FBPHitSurfaceProperties>& OutMeleeSurfaceSettings)
-{
-	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-	OutMeleeSurfaceSettings = VRSettings.MeleeSurfaceSettings;
-}
-
-void UVRGlobalSettings::GetVirtualStockGlobalSettings(FBPVirtualStockSettings& OutVirtualStockSettings)
-{
-	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-
-	OutVirtualStockSettings.bUseDistanceBasedStockSnapping = VRSettings.VirtualStockSettings.bUseDistanceBasedStockSnapping;
-	OutVirtualStockSettings.StockSnapDistance = VRSettings.VirtualStockSettings.StockSnapDistance;
-	OutVirtualStockSettings.StockSnapOffset = VRSettings.VirtualStockSettings.StockSnapOffset;
-	OutVirtualStockSettings.bSmoothStockHand = VRSettings.VirtualStockSettings.bSmoothStockHand;
-	OutVirtualStockSettings.SmoothingValueForStock = VRSettings.VirtualStockSettings.SmoothingValueForStock;
-}
-
-void UVRGlobalSettings::SaveVirtualStockGlobalSettings(FBPVirtualStockSettings NewVirtualStockSettings)
-{
-	UVRGlobalSettings& VRSettings = *GetMutableDefault<UVRGlobalSettings>();
-	VRSettings.VirtualStockSettings = NewVirtualStockSettings;
-
-	VRSettings.SaveConfig();
 }

@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Engine/Engine.h"
 #include "VRBPDatatypes.h"
-#include "VRGripInterface.h"
 #include "Components/WidgetComponent.h"
 #include "Components/StereoLayerComponent.h"
 #include "Slate/WidgetRenderer.h"
