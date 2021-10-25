@@ -250,7 +250,7 @@ public:
 	UPROPERTY(Transient, DuplicateTransient)
 		AVRPlayerController* OwningVRPlayerController;
 
-	virtual void CacheInitialMeshOffset(FVector MeshRelativeLocation, FRotator MeshRelativeRotation) override;
+	//virtual void CacheInitialMeshOffset(FVector MeshRelativeLocation, FRotator MeshRelativeRotation) override;
 	virtual void PostInitializeComponents() override;
 
 	virtual void PossessedBy(AController* NewController);
