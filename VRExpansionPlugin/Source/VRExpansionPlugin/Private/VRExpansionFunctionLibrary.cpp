@@ -21,6 +21,16 @@
 //General Log
 DEFINE_LOG_CATEGORY(VRExpansionFunctionLibraryLog);
 
+UGameViewportClient * UVRExpansionFunctionLibrary::GetGameViewportClient(UObject* WorldContextObject)
+{
+	if (WorldContextObject)
+	{
+		return WorldContextObject->GetWorld()->GetGameViewport();
+	}
+
+	return nullptr;
+}
+
 void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1, FName OptionalBoneName1, UPrimitiveComponent* Prim2, FName OptionalBoneName2, bool bIgnoreCollision)
 {
 	if (Prim1 && Prim2)
