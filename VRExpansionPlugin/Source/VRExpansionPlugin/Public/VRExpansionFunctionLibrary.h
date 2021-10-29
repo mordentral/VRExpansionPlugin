@@ -7,7 +7,7 @@
 #include "Components/SplineComponent.h"
 #include "Components/SplineMeshComponent.h"
 
-//#include "HeadMountedDisplay.h" 
+//#include "HeadMountedDisplay.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
 //#include "HeadMountedDisplayFunctionLibrary.h"
 #include "IHeadMountedDisplay.h"
@@ -82,7 +82,7 @@ public:
 	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "RotateAroundPivot"))
 	static void RotateAroundPivot(FRotator RotationDelta, FVector OriginalLocation, FRotator OriginalRotation, FVector PivotPoint, FVector & NewLocation, FRotator & NewRotation,bool bUseOriginalYawOnly = true)
-	{		
+	{
 		if (bUseOriginalYawOnly)
 		{
 			// Keep original pitch/roll
@@ -199,7 +199,7 @@ public:
 	// Adds a USceneComponent Subclass, that is based on the passed in Class, and added to the Outer(Actor) object
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Add Scene Component By Class"), Category = "VRExpansionLibrary")
 		static USceneComponent* AddSceneComponentByClass(UObject* Outer, TSubclassOf<USceneComponent> Class, const FTransform & ComponentRelativeTransform);
-	
+
 	/** Resets a Filter so that the first time it is used again it is clean */
 	UFUNCTION(BlueprintCallable, Category = "LowPassFilter_Peak")
 		static void ResetPeakLowPassFilter(UPARAM(ref) FBPLowPassPeakFilter& TargetPeakFilter)
@@ -261,7 +261,7 @@ public:
 			LaserSplineComponent->AddSplinePoint(PointBetweenLasers, ESplineCoordinateSpace::World, false);
 		}
 		LaserSplineComponent->AddSplinePoint(InEndLocation, ESplineCoordinateSpace::World, false);
-		
+
 		// Update all the segments of the spline
 		LaserSplineComponent->UpdateSpline();
 
@@ -293,6 +293,4 @@ public:
 
 	}
 
-};	
-
-
+};

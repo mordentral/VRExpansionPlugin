@@ -75,7 +75,7 @@ bool UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame()
 		{
 			TOptional<FPlayInEditorSessionInfo> PlayInfo = EdEngine->GetPlayInEditorSessionInfo();
 			if (PlayInfo.IsSet())
-			{				
+			{
 				return PlayInfo->OriginalRequestParams.SessionPreviewTypeOverride == EPlaySessionPreviewType::VRPreview;
 			}
 			else
@@ -280,7 +280,7 @@ USceneComponent* UVRExpansionFunctionLibrary::AddSceneComponentByClass(UObject* 
 
 			Component->RegisterComponent();
 			Component->SetRelativeTransform(ComponentRelativeTransform);
-			
+
 			return Component;
 		}
 		else
