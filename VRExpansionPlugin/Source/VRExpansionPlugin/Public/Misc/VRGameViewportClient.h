@@ -16,6 +16,8 @@ enum class EVRGameInputMethod : uint8
 	GameInput_KeyboardAndMouseToPlayer2,
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVROnWindowCloseRequested);
+
 
 /**
 * Subclass this in a blueprint to overwrite how default input is passed around in engine between local characters.
@@ -27,6 +29,14 @@ class VREXPANSIONPLUGIN_API UVRGameViewportClient : public UGameViewportClient
 	GENERATED_UCLASS_BODY()
 
 public:
+
+	// Event thrown when the window is closed
+	UPROPERTY(BlueprintAssignable, Category = "VRExpansionPlugin")
+		FVROnWindowCloseRequested BPOnWindowCloseRequested;
+
+	// If true then forced window closing will be canceled (alt-f4, ect)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRExpansionPlugin")
+		bool bIgnoreWindowCloseCommands;
 
 	// Input Method for the viewport
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRExpansionPlugin")
@@ -50,6 +60,22 @@ public:
 		return GamepadInputCategories.Contains(KeyCategory);
 	}
 
+	UFUNCTION()
+	bool EventWindowClosing()
+	{
+		if (BPOnWindowCloseRequested.IsBound())
+		{
+			BPOnWindowCloseRequested.Broadcast();
+		}
+
+		if (bIgnoreWindowCloseCommands)
+		{
+			return false;
+		}
+		
+		return true;
+	}
+
 	virtual void PostInitProperties() override
 	{
 		Super::PostInitProperties();
@@ -62,7 +88,10 @@ public:
 			GamepadInputCategories.Add(FName(TEXT("Touch")));
 			GamepadInputCategories.Add(FName(TEXT("Gesture")));
 		}
+
+		OnWindowCloseRequested().BindUObject(this, &UVRGameViewportClient::EventWindowClosing);
 	}
+
 
 	virtual bool InputKey(const FInputKeyEventArgs& EventArgs) override
 	{
