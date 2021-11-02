@@ -1533,7 +1533,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			// Avoid moving the mesh during movement if SmoothClientPosition will take care of it.
 			if(NetworkSmoothingMode != ENetworkSmoothingMode::Disabled)
 			{
-				const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
+				const FScopedPreventAttachedComponentMove PreventMeshMove(bPreventMeshMovement ? BaseVRCharacterOwner->NetSmoother : nullptr);
 				//const FScopedPreventAttachedComponentMove PreventMeshMovement(bPreventMeshMovement ? Mesh : nullptr);
 				if (CharacterOwner->IsMatineeControlled() || CharacterOwner->IsPlayingRootMotion())
 				{
@@ -1541,7 +1541,8 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 				}
 				else
 				{
-					if(!bDisableSimulatedTickWhenSmoothingMovement)
+					// Moved this var into the VRChar to control smoothing
+					//if(!bDisableSimulatedTickWhenSmoothingMovement)
 						SimulateMovement(DeltaSeconds);
 				}
 			}
@@ -1894,6 +1895,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			//Basechar->NetSmoother->SetRelativeLocation(NewRelTranslation);
 
 			BaseVRCharacterOwner->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
+
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
 		{
