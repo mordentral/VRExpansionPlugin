@@ -60,6 +60,7 @@ public:
 		FRuntimeFloatCurve OptionalCurveToFollow;
 
 	FTransform OnGripTransform;
+	uint8 TargetGrip;
 
 	//virtual void BeginPlay_Implementation() override;
 	virtual bool GetWorldTransform_Implementation(UGripMotionControllerComponent * OwningController, float DeltaTime, FTransform & WorldTransform, const FTransform &ParentTransform, FBPActorGripInformation &Grip, AActor * actor, UPrimitiveComponent * root, bool bRootHasInterface, bool bActorHasInterface, bool bIsForTeleport) override;
