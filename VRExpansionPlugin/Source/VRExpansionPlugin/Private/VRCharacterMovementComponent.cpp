@@ -3461,7 +3461,7 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 
 		// bSimGravityDisabled means velocity was zero when replicated and we were stuck in something. Avoid external changes in velocity as well.
 		// Being in ground movement with zero velocity, we cannot simulate proxy velocities safely because we might not get any further updates from the server.
-		if (bDisableSimulatedTickWhenSmoothingMovement || bSimGravityDisabled || bZeroReplicatedGroundVelocity)
+		if (bSimGravityDisabled || bZeroReplicatedGroundVelocity)
 		{
 			Velocity = FVector::ZeroVector;
 		}
@@ -3481,7 +3481,12 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 		{
 			UE_LOG(LogVRCharacterMovement, Verbose, TEXT("Proxy %s simulating movement"), *GetNameSafe(CharacterOwner));
 			FStepDownResult StepDownResult;
-			MoveSmooth(Velocity, DeltaSeconds, &StepDownResult);
+
+			// Skip the estimated movement when movement simulation is off, but keep the floor find
+			if(!bDisableSimulatedTickWhenSmoothingMovement)
+			{ 
+				MoveSmooth(Velocity, DeltaSeconds, &StepDownResult);
+			}
 
 			// find floor and check if falling
 			if (IsMovingOnGround() || MovementMode == MOVE_Falling)
@@ -3490,7 +3495,7 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 				{
 					CurrentFloor = StepDownResult.FloorResult;
 				}
-				else if (Velocity.Z <= 0.f)
+				else if (bDisableSimulatedTickWhenSmoothingMovement || Velocity.Z <= 0.f)
 				{
 					FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, Velocity.IsZero(), NULL);
 				}
