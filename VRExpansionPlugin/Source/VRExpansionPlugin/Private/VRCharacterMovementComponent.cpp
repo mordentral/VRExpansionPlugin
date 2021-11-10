@@ -3461,7 +3461,7 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 
 		// bSimGravityDisabled means velocity was zero when replicated and we were stuck in something. Avoid external changes in velocity as well.
 		// Being in ground movement with zero velocity, we cannot simulate proxy velocities safely because we might not get any further updates from the server.
-		if (bDisableSimulatedTickWhenSmoothingMovement || bSimGravityDisabled || bZeroReplicatedGroundVelocity)
+		if (bSimGravityDisabled || bZeroReplicatedGroundVelocity)
 		{
 			Velocity = FVector::ZeroVector;
 		}
