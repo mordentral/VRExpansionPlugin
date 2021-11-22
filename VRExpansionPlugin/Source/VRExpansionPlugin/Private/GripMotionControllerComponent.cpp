@@ -4093,6 +4093,16 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 	}
 	else if (Handle && FPhysicsInterface::IsValid(Handle->KinActorData2) && bTeleportPhysicsGrips)
 	{
+
+#if PHYSICS_INTERFACE_PHYSX
+		// Early out check for this
+		// Think this may be an engine issue where I have to call this directly in physx only
+		if (!Handle->KinActorData2.IsValid())
+		{
+			return true;
+		}
+#endif
+
 		// Don't try to autodrop on next tick, let the physx constraint update its local frame first
 		if (HasGripAuthority(Grip))
 			Grip.bSkipNextConstraintLengthCheck = true;
@@ -4113,21 +4123,11 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		{
 			FPhysicsActorHandle ActorHandle = Handle->KinActorData2;
 			FTransform newTrans = Handle->COMPosition * (Handle->RootBoneRotation * physicsTrans);
-#if PHYSICS_INTERFACE_PHYSX
 			FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
 				{
-					// Not currently implemented in the chaos interface #TODO: Check back on this later
 					FPhysicsInterface::SetKinematicTarget_AssumesLocked(Actor, newTrans);
 					FPhysicsInterface::SetGlobalPose_AssumesLocked(Actor, newTrans);
 				});
-#elif WITH_CHAOS
-			FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
-				{
-					Actor->GetGameThreadAPI().SetX(newTrans.GetTranslation());
-					Actor->GetGameThreadAPI().SetR(newTrans.GetRotation());
-					FPhysicsInterface::SetGlobalPose_AssumesLocked(Actor, newTrans);
-				});
-#endif
 		}
 	}
 
@@ -6131,20 +6131,10 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 		HandleInfo->LastPhysicsTransform.SetScale3D(FVector(1.0f));
 		FPhysicsActorHandle ActorHandle = HandleInfo->KinActorData2;
 		FTransform newTrans = HandleInfo->COMPosition * (HandleInfo->RootBoneRotation * HandleInfo->LastPhysicsTransform);
-#if PHYSICS_INTERFACE_PHYSX
 		FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle & Actor)
 		{
 			FPhysicsInterface::SetKinematicTarget_AssumesLocked(Actor, newTrans);
-			// Not currently implemented in the chaos interface #TODO: Check back on this later
 		});
-#elif WITH_CHAOS
-		FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle & Actor)
-			{
-				Actor->GetGameThreadAPI().SetX(newTrans.GetTranslation());
-				Actor->GetGameThreadAPI().SetR(newTrans.GetRotation());
-			});
-#endif
-
 	}
 
 	// Debug draw for COM movement with physics grips
