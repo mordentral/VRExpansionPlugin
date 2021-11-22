@@ -67,6 +67,9 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 
 	OverrideSendTransform = nullptr;
 
+	LastRelativePosition = FTransform::Identity;
+	bSampleVelocityInWorldSpace = false;
+
 	//bUseVRNeckOffset = true;
 	//VRNeckOffset = FTransform(FRotator::ZeroRotator, FVector(15.0f,0,0), FVector(1.0f));
 
@@ -208,7 +211,12 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 			}
 		}
 	}
+
+	// Save out the component velocity from this and last frame
+	ComponentVelocity = ((bSampleVelocityInWorldSpace ? GetComponentLocation() : GetRelativeLocation()) - LastRelativePosition.GetTranslation()) / DeltaTime;
+	LastRelativePosition = bSampleVelocityInWorldSpace ? this->GetComponentTransform() : this->GetRelativeTransform();
 }
+
 
 void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
