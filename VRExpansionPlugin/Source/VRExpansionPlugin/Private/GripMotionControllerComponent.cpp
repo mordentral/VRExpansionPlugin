@@ -4074,6 +4074,16 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 	}
 	else if (Handle && FPhysicsInterface::IsValid(Handle->KinActorData2) && bTeleportPhysicsGrips)
 	{
+
+#if PHYSICS_INTERFACE_PHYSX
+		// Early out check for this
+		// Think this may be an engine issue where I have to call this directly in physx only
+		if (!Handle->KinActorData2.IsValid())
+		{
+			return true;
+		}
+#endif
+
 		// Don't try to autodrop on next tick, let the physx constraint update its local frame first
 		if (HasGripAuthority(Grip))
 			Grip.bSkipNextConstraintLengthCheck = true;
