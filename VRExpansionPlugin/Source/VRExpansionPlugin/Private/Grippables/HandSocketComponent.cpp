@@ -410,11 +410,12 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 	FTransform relTrans = this->GetRelativeTransform();
 	FTransform HandPlacement = GetHandRelativePlacement();
 
-	if (bUseParentScale && this->IsUsingAbsoluteScale() && !bDecoupleMeshPlacement)
+	if (this->IsUsingAbsoluteScale() /*&& !bDecoupleMeshPlacement*/)
 	{
 		if (this->GetAttachParent())
 		{
-			HandPlacement.ScaleTranslation(this->GetAttachParent()->GetRelativeScale3D());
+			relTrans.SetScale3D(FVector(1.0f) / this->GetAttachParent()->GetRelativeScale3D());
+			//HandPlacement.ScaleTranslation(this->GetAttachParent()->GetRelativeScale3D());
 		}
 	}
 
@@ -435,7 +436,10 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 		//ReturnTrans.Mirror(MirrorAxis, FlipAxis);
 	}
 
-	FTransform CorrectTrans = ReturnTrans.GetRelativeTransform(relTrans);
+	if(!bUseParentScale /*&& !bDecoupleMeshPlacement*/)
+	{ 
+		ReturnTrans.SetScale3D(FVector(1.0f));
+	}
 
 	return ReturnTrans;
 }
@@ -475,6 +479,7 @@ void UHandSocketComponent::OnRegister()
 				HandVisualizerComponent->SetComponentTickEnabled(false);
 				HandVisualizerComponent->SetHiddenInGame(true);
 				HandVisualizerComponent->RegisterComponentWithWorld(GetWorld());
+				//HandVisualizerComponent->SetUsingAbsoluteScale(this->IsUsingAbsoluteScale());
 
 				if (VisualizationMesh)
 				{
@@ -490,9 +495,10 @@ void UHandSocketComponent::OnRegister()
 					FTransform relTrans = this->GetRelativeTransform();
 					FTransform HandPlacement = GetHandRelativePlacement();
 
-					if (this->IsUsingAbsoluteScale() && !bDecoupleMeshPlacement)
+					if (this->IsUsingAbsoluteScale())// && !bDecoupleMeshPlacement)
 					{
-						HandPlacement.ScaleTranslation(/*FVector(1.0f) / */ParentAttach->GetRelativeScale3D());
+						relTrans.SetScale3D(FVector(1.0f) / ParentAttach->GetRelativeScale3D());
+						//HandPlacement.ScaleTranslation(ParentAttach->GetRelativeScale3D());
 					}
 
 					if ((bLeftHandDominant && !bMirrorVisualizationMesh) || (!bLeftHandDominant && bMirrorVisualizationMesh))
