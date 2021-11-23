@@ -39,6 +39,7 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 
 	LastRelativePosition = FTransform::Identity;
 	bSampleVelocityInWorldSpace = false;
+	bHadValidFirstVelocity = false;
 
 	//bUseVRNeckOffset = true;
 	//VRNeckOffset = FTransform(FRotator::ZeroRotator, FVector(15.0f,0,0), FVector(1.0f));
@@ -183,7 +184,12 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 	}
 
 	// Save out the component velocity from this and last frame
-	ComponentVelocity = ((bSampleVelocityInWorldSpace ? GetComponentLocation() : GetRelativeLocation()) - LastRelativePosition.GetTranslation()) / DeltaTime;
+	if(bHadValidFirstVelocity || !LastRelativePosition.Equals(FTransform::Identity))
+	{ 
+		bHadValidFirstVelocity = true;
+		ComponentVelocity = ((bSampleVelocityInWorldSpace ? GetComponentLocation() : GetRelativeLocation()) - LastRelativePosition.GetTranslation()) / DeltaTime;
+	}
+
 	LastRelativePosition = bSampleVelocityInWorldSpace ? this->GetComponentTransform() : this->GetRelativeTransform();
 }
 

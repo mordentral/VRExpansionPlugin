@@ -403,18 +403,18 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 	return this->GetComponentTransform();
 }
 
-FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand)
+FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, bool bUseParentScale)
 {
 	// Optionally mirror for left hand
 
 	FTransform relTrans = this->GetRelativeTransform();
 	FTransform HandPlacement = GetHandRelativePlacement();
 
-	if (this->IsUsingAbsoluteScale() && !bDecoupleMeshPlacement)
+	if (bUseParentScale && this->IsUsingAbsoluteScale() && !bDecoupleMeshPlacement)
 	{
 		if (this->GetAttachParent())
 		{
-			HandPlacement.ScaleTranslation(/*FVector(1.0f) / */this->GetAttachParent()->GetRelativeScale3D());
+			HandPlacement.ScaleTranslation(this->GetAttachParent()->GetRelativeScale3D());
 		}
 	}
 

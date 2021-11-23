@@ -41,6 +41,7 @@ public:
 	bool bIsServer;
 
 	FTransform LastRelativePosition;
+	bool bHadValidFirstVelocity;
 
 	// If we should sample the velocity in world or local space
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|ComponentVelocity")
