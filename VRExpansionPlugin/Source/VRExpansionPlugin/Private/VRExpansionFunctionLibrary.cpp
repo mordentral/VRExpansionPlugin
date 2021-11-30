@@ -31,6 +31,26 @@ UGameViewportClient * UVRExpansionFunctionLibrary::GetGameViewportClient(UObject
 	return nullptr;
 }
 
+/*void UVRExpansionFunctionLibrary::SetActorsIgnoreAllCollision(UPrimitiveComponent* Prim1, FName OptionalBoneName1, UPrimitiveComponent* Prim2, FName OptionalBoneName2, bool bIgnoreCollision)
+{
+
+}
+
+void UVRExpansionFunctionLibrary::SetComponentsIgnoreAllCollision(UPrimitiveComponent* Prim1, FName OptionalBoneName1, UPrimitiveComponent* Prim2, FName OptionalBoneName2, bool bIgnoreCollision)
+{
+	// If we don't have bone names then we just continue on
+	if (OptionalBoneName1 == NAME_None && OptionalBoneName2 == NAME_None)
+	{
+		SetObjectsIgnoreCollision(Prim1, OptionalBoneName1, Prim2, OptionalBoneName2);
+	}
+
+	USkeletalMeshComponent * SkeleMesh = Cast<USkeletalMeshComponent>(Prim1);
+	USkeletalMeshComponent * SkeleMesh2 = Cast<USkeletalMeshComponent>(Prim2);
+
+	SkeleMesh->BoneIsChildOf()
+
+}*/
+
 void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1, FName OptionalBoneName1, UPrimitiveComponent* Prim2, FName OptionalBoneName2, bool bIgnoreCollision)
 {
 	if (Prim1 && Prim2)
