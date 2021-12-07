@@ -4553,6 +4553,13 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				if (!root || !actor || root->IsPendingKill() || actor->IsPendingKill())
 					continue;
 
+				// Keep checking for pending kill on gripped objects, and ptr removals, but don't run grip logic when seamless
+				// traveling, to avoid physx scene issues.
+				if (GetWorld()->IsInSeamlessTravel())
+				{
+					continue;
+				}
+
 				// Check if either implements the interface
 				bool bRootHasInterface = false;
 				bool bActorHasInterface = false;
@@ -5968,13 +5975,23 @@ bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInf
 
 void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActorGripInformation &GrippedActor, const FTransform& NewTransform)
 {
-	if (!GrippedActor.GrippedObject)
+
+	if (!GrippedActor.GrippedObject || GetWorld()->IsInSeamlessTravel())
 		return;
 
 	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(GrippedActor);
 
-	if (!HandleInfo || !FPhysicsInterface::IsValid(HandleInfo->KinActorData2))
+	if (!HandleInfo || !FPhysicsInterface::IsValid(HandleInfo->KinActorData2) || !HandleInfo->HandleData2.IsValid())
 		return;
+
+#if PHYSICS_INTERFACE_PHYSX
+	// Early out check for this
+	// Think this may be an engine issue where I have to call this directly in physx only
+	if (!HandleInfo->KinActorData2.IsValid())
+	{
+		return;
+	}
+#endif
 
 	// Don't call moveKinematic if it hasn't changed - that will stop bodies from going to sleep.
 //#if PHYSICS_INTERFACE_PHYSX
