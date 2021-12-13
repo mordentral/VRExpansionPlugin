@@ -83,9 +83,6 @@ public:
 
 struct FContactModBodyInstancePair
 {
-	bool bBody1IgnoreEntireActor;
-	bool bBody2IgnoreEntireActor;
-
 	FPhysicsActorHandle Actor1;
 	FPhysicsActorHandle Actor2;
 
