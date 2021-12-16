@@ -196,6 +196,19 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 							BaseChar->TickSeatInformation(DeltaTime);
 						}
 
+						if (CharacterOwner && !CharacterOwner->IsLocallyControlled() && DeltaTime > 0.0f)
+						{
+							// If not playing root motion, tick animations after physics. We do this here to keep events, notifies, states and transitions in sync with client updates.
+							if (!CharacterOwner->bClientUpdating && !CharacterOwner->IsPlayingRootMotion() && CharacterOwner->GetMesh())
+							{
+								TickCharacterPose(DeltaTime);
+								// TODO: SaveBaseLocation() in case tick moves us?
+
+								// Trigger Events right away, as we could be receiving multiple ServerMoves per frame.
+								CharacterOwner->GetMesh()->ConditionallyDispatchQueuedAnimEvents();
+							}
+						}
+
 					}
 					else
 					{

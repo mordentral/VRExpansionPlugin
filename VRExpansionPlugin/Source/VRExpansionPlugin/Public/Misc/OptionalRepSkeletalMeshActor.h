@@ -54,7 +54,8 @@ struct TStructOpsTypeTraits<FSkeletalMeshComponentEndPhysicsTickFunctionVR> : pu
 	};
 };
 
-UCLASS(meta = (ChildCanTick), ClassGroup = (VRExpansionPlugin))
+// A base skeletal mesh component that has been added to temp correct an engine bug with inversed scale and physics
+UCLASS(Blueprintable, meta = (ChildCanTick, BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
 class VREXPANSIONPLUGIN_API UInversePhysicsSkeletalMeshComponent : public USkeletalMeshComponent
 {
 	GENERATED_BODY()
