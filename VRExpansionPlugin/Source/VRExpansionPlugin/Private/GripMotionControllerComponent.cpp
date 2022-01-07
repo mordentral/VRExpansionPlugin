@@ -1741,7 +1741,10 @@ bool UGripMotionControllerComponent::GripComponent(
 	if (!bIsLocalGrip)
 	{
 		int32 Index = GrippedObjects.Add(newComponentGrip);
-		NotifyGrip(newComponentGrip);
+		if (Index != INDEX_NONE)
+			NotifyGrip(GrippedObjects[Index]);
+
+		//NotifyGrip(newComponentGrip);
 	}
 	else
 	{
@@ -3215,7 +3218,6 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 					//GripInterface->Execute_OnGripRelease(pActor, this, NewDrop, false);
 					GripInterface->Native_NotifyThrowGripDelegates(this, false, NewDrop, false);
 				}
-
 			}
 		}
 	}break;
