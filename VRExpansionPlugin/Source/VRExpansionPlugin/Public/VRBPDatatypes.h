@@ -1204,17 +1204,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
 		bool bSetOwnerOnGrip;
 
+	// If true, we will be bypassed on global lerp operations
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
+		bool bDisallowLerping;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
 		FBPAdvGripPhysicsSettings PhysicsSettings;
 
 	FBPAdvGripSettings() :
 		GripPriority(1),
-		bSetOwnerOnGrip(1)
+		bSetOwnerOnGrip(1),
+		bDisallowLerping(0)
 	{}
 
 	FBPAdvGripSettings(int GripPrio) :
 		GripPriority(GripPrio),
-		bSetOwnerOnGrip(1)
+		bSetOwnerOnGrip(1),
+		bDisallowLerping(0)
 	{}
 };
 
