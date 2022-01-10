@@ -2461,7 +2461,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	if (!NewGrip.GrippedObject || !NewGrip.GrippedObject->IsValidLowLevelFast())
 		return false;
 
-	if (!bIsReInit && NewGrip.GripCollisionType != EGripCollisionType::EventsOnly && NewGrip.GripCollisionType != EGripCollisionType::CustomGrip)
+	if (!NewGrip.AdvancedGripSettings.bDisallowLerping && !bIsReInit && NewGrip.GripCollisionType != EGripCollisionType::EventsOnly && NewGrip.GripCollisionType != EGripCollisionType::CustomGrip)
 	{
 		// Init lerping
 		InitializeLerpToHand(NewGrip);
@@ -2872,8 +2872,8 @@ void UGripMotionControllerComponent::InitializeLerpToHand(FBPActorGripInformatio
 	if (VRSettings.MinDistanceForLerp > 0.0f && Distance < VRSettings.MinDistanceForLerp)
 	{
 		// Don't init
-		OnLerpToHandFinished.Broadcast(GripInformation);
 		GripInformation.bIsLerping = false;
+		//OnLerpToHandFinished.Broadcast(GripInformation);
 		return;
 	}
 	else
