@@ -176,6 +176,30 @@ public:
 	//UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
 	FTransform GetHandRelativePlacement();
 
+	inline void MirrorHandTransform(FTransform& ReturnTrans, FTransform& relTrans, FTransform& HandPlacement)
+	{
+		FVector RightVector = ReturnTrans.GetRotation().GetRightVector();
+		FVector ForwardVector = ReturnTrans.GetRotation().GetForwardVector();
+
+		if (!bOnlyFlipRotation)
+		{
+			FVector Loc = ReturnTrans.GetLocation();
+			FTransform LocTrans(relTrans.GetRotation(), Loc, FVector(1.0f));
+			LocTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
+			ReturnTrans.SetLocation(LocTrans.GetTranslation());
+		}
+
+		FTransform RightTrans(relTrans.GetRotation(), RightVector, FVector(1.0f));
+		RightTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
+
+		FTransform ForTrans(relTrans.GetRotation(), ForwardVector, FVector(1.0f));
+		ForTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
+
+		// Create a new rotation off of the corrected right vector and forward vector
+		FQuat newQuat = FTransform(FRotationMatrix::MakeFromXY(ForTrans.GetTranslation(), RightTrans.GetTranslation())).GetRotation();
+		ReturnTrans.SetRotation(newQuat);
+	}
+
 	inline TEnumAsByte<EAxis::Type> GetAsEAxis(TEnumAsByte<EVRAxis::Type> InAxis)
 	{
 		switch (InAxis)
