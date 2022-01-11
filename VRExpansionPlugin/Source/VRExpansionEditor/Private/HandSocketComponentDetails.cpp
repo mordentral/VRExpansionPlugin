@@ -347,15 +347,8 @@ void FHandSocketComponentDetails::OnLeftDominantUpdated(IDetailLayoutBuilder* La
 
 		FTransform ReturnTrans = (HandPlacement * relTrans);
 
-		if (!HandSocketComponent->bOnlyFlipRotation)
-		{
-			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(HandSocketComponent->GetMirrorVector()));
-		}
-
-		FRotationMatrix test(ReturnTrans.GetRotation().Rotator());
-		test.Mirror(HandSocketComponent->GetAsEAxis(HandSocketComponent->MirrorAxis), HandSocketComponent->GetCrossAxis());
-		ReturnTrans.SetRotation(test.ToQuat());
-
+		HandSocketComponent->MirrorHandTransform(ReturnTrans, relTrans, HandPlacement);
+	
 		HandSocketComponent->Modify();
 		if (AActor* Owner = HandSocketComponent->GetOwner())
 		{
