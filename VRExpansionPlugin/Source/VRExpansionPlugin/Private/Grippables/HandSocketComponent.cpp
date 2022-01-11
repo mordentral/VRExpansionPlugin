@@ -424,7 +424,7 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 	if ((bFlipForLeftHand && (bLeftHandDominant == bIsRightHand)))
 	{
 
-		MirrorHandTransform(ReturnTrans, relTrans, HandPlacement);
+		MirrorHandTransform(ReturnTrans, relTrans);
 		/*if (!bOnlyFlipRotation)
 		{
 			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(GetMirrorVector()));
@@ -511,7 +511,7 @@ void UHandSocketComponent::OnRegister()
 					if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))
 					{
 
-						MirrorHandTransform(ReturnTrans, relTrans, HandPlacement);
+						MirrorHandTransform(ReturnTrans, relTrans);
 
 
 						/*if (!bOnlyFlipRotation)

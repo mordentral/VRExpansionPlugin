@@ -176,7 +176,7 @@ public:
 	//UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
 	FTransform GetHandRelativePlacement();
 
-	inline void MirrorHandTransform(FTransform& ReturnTrans, FTransform& relTrans, FTransform& HandPlacement)
+	inline void MirrorHandTransform(FTransform& ReturnTrans, FTransform& relTrans)
 	{
 		FVector RightVector = ReturnTrans.GetRotation().GetRightVector();
 		FVector ForwardVector = ReturnTrans.GetRotation().GetForwardVector();
