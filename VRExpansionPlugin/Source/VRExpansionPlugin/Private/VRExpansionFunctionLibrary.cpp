@@ -186,116 +186,13 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName(FName SlotType, A
 	if (!Actor)
 		return;
 
-	MaxRange = FMath::Square(MaxRange);
-
 	if (USceneComponent *rootComp = Actor->GetRootComponent())
 	{
-		FVector RelativeWorldLocation = rootComp->GetComponentTransform().InverseTransformPosition(WorldLocation);
-		float ClosestSlotDistance = -0.1f;
-
-		TArray<FName> SocketNames = rootComp->GetAllSocketNames();
-
-		FString GripIdentifier = SlotType.ToString();
-
-		int foundIndex = 0;
-
-		for (int i = 0; i < SocketNames.Num(); ++i)
-		{
-			if (SocketNames[i].ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
-			{
-			
-				float vecLen = FVector::DistSquared(RelativeWorldLocation, rootComp->GetSocketTransform(SocketNames[i], ERelativeTransformSpace::RTS_Component).GetLocation());
-
-				if (MaxRange >= vecLen && (ClosestSlotDistance < 0.0f || vecLen < ClosestSlotDistance))
-				{
-					ClosestSlotDistance = vecLen;
-					bHadSlotInRange = true;
-					foundIndex = i;
-				}
-			}
-		}
-
-		TArray<USceneComponent*> AttachChildren = rootComp->GetAttachChildren();
-
-		TArray<UHandSocketComponent*> RotationallyMatchingHandSockets;
-		for (USceneComponent * AttachChild : AttachChildren)
-		{
-			if (AttachChild && AttachChild->IsA<UHandSocketComponent>())
-			{
-				if (UHandSocketComponent* SocketComp = Cast<UHandSocketComponent>(AttachChild))
-				{
-					if (!SocketComp->bDisabled && SocketComp->SlotPrefix.ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
-					{
-						float vecLen = FVector::DistSquared(RelativeWorldLocation, SocketComp->GetRelativeLocation());
-
-						if (SocketComp->bAlwaysInRange)
-						{
-							TargetHandSocket = SocketComp;
-							ClosestSlotDistance = vecLen;
-							bHadSlotInRange = true;
-						}
-						else
-						{
-							float RangeVal = (SocketComp->OverrideDistance > 0.0f ? FMath::Square(SocketComp->OverrideDistance) : MaxRange);
-							if (RangeVal >= vecLen && (ClosestSlotDistance < 0.0f || vecLen < ClosestSlotDistance))
-							{
-								if (SocketComp->bMatchRotation)
-								{
-									RotationallyMatchingHandSockets.Add(SocketComp);
-								}
-								else
-								{
-									TargetHandSocket = SocketComp;
-									ClosestSlotDistance = vecLen;
-									bHadSlotInRange = true;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// Try and sort through any hand sockets flagged as rotationally matched
-		if (RotationallyMatchingHandSockets.Num() > 0)
-		{
-			FQuat ControllerRot = QueryController->GetPivotTransform().GetRotation();
-			FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetComponentTransform().GetRotation();
-
-			TargetHandSocket = RotationallyMatchingHandSockets[0];
-			bHadSlotInRange = true;
-			ClosestSlotDistance = ControllerRot.AngularDistance(ClosestQuat);
-			for (int i= 1; i<RotationallyMatchingHandSockets.Num(); i++)
-			{
-				float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetComponentTransform().GetRotation());
-				if (CheckDistance < ClosestSlotDistance)
-				{
-					TargetHandSocket = RotationallyMatchingHandSockets[i];
-					ClosestSlotDistance = CheckDistance;
-				}
-			}
-		}
-
-
-		if (bHadSlotInRange)
-		{
-			if (TargetHandSocket)
-			{
-				SlotWorldTransform = TargetHandSocket->GetHandSocketTransform(QueryController);
-				SlotName = TargetHandSocket->GetFName();
-				SlotWorldTransform.SetScale3D(FVector(1.0f));
-			}
-			else
-			{
-				SlotWorldTransform = rootComp->GetSocketTransform(SocketNames[foundIndex]);
-				SlotName = SocketNames[foundIndex];
-				SlotWorldTransform.SetScale3D(FVector(1.0f));
-			}
-		}
+		GetGripSlotInRangeByTypeName_Component(SlotType, rootComp, WorldLocation, MaxRange, bHadSlotInRange, SlotWorldTransform, SlotName, QueryController);
 	}
 }
 
-void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent* QueryController)
+void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName SlotType, USceneComponent* Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent* QueryController)
 {
 	bHadSlotInRange = false;
 	SlotWorldTransform = FTransform::Identity;
@@ -345,9 +242,16 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 					float vecLen = FVector::DistSquared(RelativeWorldLocation, SocketComp->GetRelativeLocation());
 					if (SocketComp->bAlwaysInRange)
 					{
-						TargetHandSocket = SocketComp;
-						ClosestSlotDistance = vecLen;
-						bHadSlotInRange = true;
+						if (SocketComp->bMatchRotation)
+						{
+							RotationallyMatchingHandSockets.Add(SocketComp);
+						}
+						else
+						{
+							TargetHandSocket = SocketComp;
+							ClosestSlotDistance = vecLen;
+							bHadSlotInRange = true;
+						}
 					}
 					else
 					{
@@ -375,14 +279,16 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 	if (RotationallyMatchingHandSockets.Num() > 0)
 	{
 		FQuat ControllerRot = QueryController->GetPivotTransform().GetRotation();
-		FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetComponentTransform().GetRotation();
+		FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetHandSocketTransform(QueryController).GetRotation();
 
 		TargetHandSocket = RotationallyMatchingHandSockets[0];
 		bHadSlotInRange = true;
 		ClosestSlotDistance = ControllerRot.AngularDistance(ClosestQuat);
 		for (int i = 1; i < RotationallyMatchingHandSockets.Num(); i++)
 		{
-			float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetComponentTransform().GetRotation());
+			float CheckDistance = ControllerRot.AngularDistance(
+				RotationallyMatchingHandSockets[i]->GetHandSocketTransform(QueryController).GetRotation()
+			);
 			if (CheckDistance < ClosestSlotDistance)
 			{
 				TargetHandSocket = RotationallyMatchingHandSockets[i];
