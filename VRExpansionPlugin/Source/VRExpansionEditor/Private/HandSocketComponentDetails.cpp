@@ -347,7 +347,7 @@ void FHandSocketComponentDetails::OnLeftDominantUpdated(IDetailLayoutBuilder* La
 
 		FTransform ReturnTrans = (HandPlacement * relTrans);
 
-		HandSocketComponent->MirrorHandTransform(ReturnTrans, relTrans, HandPlacement);
+		HandSocketComponent->MirrorHandTransform(ReturnTrans, relTrans);
 	
 		HandSocketComponent->Modify();
 		if (AActor* Owner = HandSocketComponent->GetOwner())
