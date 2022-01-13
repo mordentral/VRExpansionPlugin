@@ -501,27 +501,15 @@ void UHandSocketComponent::OnRegister()
 						//HandPlacement.ScaleTranslation(ParentAttach->GetRelativeScale3D());
 					}
 
-					if ((bLeftHandDominant && !bMirrorVisualizationMesh) || (!bLeftHandDominant && bMirrorVisualizationMesh))
-					{
-						HandPlacement.SetScale3D(HandPlacement.GetScale3D() * MirroredScale);
-					}
-
-
 					FTransform ReturnTrans = (HandPlacement * relTrans);
 					if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))
-					{
-
+					{					
 						MirrorHandTransform(ReturnTrans, relTrans);
+					}
 
-
-						/*if (!bOnlyFlipRotation)
-						{
-							ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(GetMirrorVector()));
-						}
-
-						FRotationMatrix test(ReturnTrans.GetRotation().Rotator());
-						test.Mirror(GetAsEAxis(MirrorAxis), GetCrossAxis());
-						ReturnTrans.SetRotation(test.ToQuat());*/
+					if ((bLeftHandDominant && !bMirrorVisualizationMesh) || (!bLeftHandDominant && bMirrorVisualizationMesh))
+					{
+						ReturnTrans.SetScale3D(ReturnTrans.GetScale3D() * MirroredScale);
 					}
 
 					HandVisualizerComponent->SetRelativeTransform(ReturnTrans.GetRelativeTransform(relTrans)/*newRel*/);

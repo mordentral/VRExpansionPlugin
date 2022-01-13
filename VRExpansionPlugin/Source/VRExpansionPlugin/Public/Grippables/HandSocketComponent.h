@@ -178,26 +178,8 @@ public:
 
 	inline void MirrorHandTransform(FTransform& ReturnTrans, FTransform& relTrans)
 	{
-		FVector RightVector = ReturnTrans.GetRotation().GetRightVector();
-		FVector ForwardVector = ReturnTrans.GetRotation().GetForwardVector();
-
-		if (!bOnlyFlipRotation)
-		{
-			FVector Loc = ReturnTrans.GetLocation();
-			FTransform LocTrans(relTrans.GetRotation(), Loc, FVector(1.0f));
-			LocTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
-			ReturnTrans.SetLocation(LocTrans.GetTranslation());
-		}
-
-		FTransform RightTrans(relTrans.GetRotation(), RightVector, FVector(1.0f));
-		RightTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
-
-		FTransform ForTrans(relTrans.GetRotation(), ForwardVector, FVector(1.0f));
-		ForTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
-
-		// Create a new rotation off of the corrected right vector and forward vector
-		FQuat newQuat = FTransform(FRotationMatrix::MakeFromXY(ForTrans.GetTranslation(), RightTrans.GetTranslation())).GetRotation();
-		ReturnTrans.SetRotation(newQuat);
+		ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetCrossAxis());
+		return;
 	}
 
 	inline TEnumAsByte<EAxis::Type> GetAsEAxis(TEnumAsByte<EVRAxis::Type> InAxis)
@@ -264,17 +246,17 @@ public:
 
 	inline TEnumAsByte<EAxis::Type> GetCrossAxis()
 	{
-		if (FlipAxis != EVRAxis::Z && MirrorAxis != EVRAxis::Z)
+		if (FlipAxis == EVRAxis::Y)
 		{
 			return EAxis::Z;
 		}
-		else if (FlipAxis != EVRAxis::Y && MirrorAxis != EVRAxis::Y)
-		{
-			return EAxis::Y;
-		}
-		else if (FlipAxis != EVRAxis::X && MirrorAxis != EVRAxis::X)
+		else if (FlipAxis == EVRAxis::Z)
 		{
 			return EAxis::X;
+		}
+		else if (FlipAxis == EVRAxis::X)
+		{
+			return EAxis::Y;
 		}
 
 		return EAxis::None;
