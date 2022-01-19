@@ -4638,7 +4638,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					continue;
 				}
 			
-				if (!root->GetSocketTransform(Grip->GrippedBoneName).GetScale3D().Equals(WorldTransform.GetScale3D()))
+				if (Grip->GrippedBoneName == NAME_None && !root->GetComponentTransform().GetScale3D().Equals(WorldTransform.GetScale3D()))
 					bRescalePhysicsGrips = true;
 
 				// If we just teleported, skip this update and just teleport forward
