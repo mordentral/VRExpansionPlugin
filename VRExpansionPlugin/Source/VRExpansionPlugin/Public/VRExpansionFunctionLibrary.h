@@ -64,7 +64,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
 		static void RemoveActorCollisionIgnore(UObject* WorldContextObject, AActor* Actor1);
 
-	// Removes all collision ignore matches for the given actor
+	// Returns if the component is ignoring any collisions
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
 		static bool IsComponentIgnoringCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
 
