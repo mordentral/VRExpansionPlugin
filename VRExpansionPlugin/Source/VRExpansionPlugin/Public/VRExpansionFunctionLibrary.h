@@ -58,15 +58,15 @@ public:
 
 	// Removes all collision ignore matches for the given primitive object
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		void RemoveObjectCollisionIgnore(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
+		static void RemoveObjectCollisionIgnore(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
 
 	// Removes all collision ignore matches for the given actor
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		void RemoveActorCollisionIgnore(UObject* WorldContextObject, AActor* Actor1);
+		static void RemoveActorCollisionIgnore(UObject* WorldContextObject, AActor* Actor1);
 
 	// Removes all collision ignore matches for the given actor
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		bool IsComponentIgnoringCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
+		static bool IsComponentIgnoringCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
 
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
 	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
