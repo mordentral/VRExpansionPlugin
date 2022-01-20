@@ -386,7 +386,7 @@ bool AGrippableStaticMeshActor::AddToClientReplicationBucket()
 	if (ShouldWeSkipAttachmentReplication(false))
 	{
 		// The subsystem automatically removes entries with the same function signature so its safe to just always add here
-		GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
+		GetWorld()->GetSubsystem<UBucketUpdateSubsystem>()->AddObjectToBucket(ClientAuthReplicationData.UpdateRate, this, FName(TEXT("PollReplicationEvent")));
 		ClientAuthReplicationData.bIsCurrentlyClientAuth = true;
 
 		if (UWorld * World = GetWorld())
@@ -402,7 +402,7 @@ bool AGrippableStaticMeshActor::RemoveFromClientReplicationBucket()
 {
 	if (ClientAuthReplicationData.bIsCurrentlyClientAuth)
 	{
-		GEngine->GetEngineSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
+		GetWorld()->GetSubsystem<UBucketUpdateSubsystem>()->RemoveObjectFromBucketByFunctionName(this, FName(TEXT("PollReplicationEvent")));
 		CeaseReplicationBlocking();
 		return true;
 	}
