@@ -29,7 +29,8 @@ bool TMP_IsHeadTrackingAllowedForWorld(IXRTrackingSystem* XRSystem, UWorld* Worl
 		check(PlaySettings);
 
 		// Not loading under a single process, we'll depend on the end user to handle it here to initialize the correct HMD setup
-		if (!PlaySettings->IsRunUnderOneProcessActive())
+		const bool bRunUnderOneProcess = [&PlaySettings] { bool RunUnderOneProcess(false); return (PlaySettings->GetRunUnderOneProcess(RunUnderOneProcess) && RunUnderOneProcess); }();
+		if (!bRunUnderOneProcess)
 		{
 			return XRSystem->IsHeadTrackingAllowedForWorld(*World);
 		}
