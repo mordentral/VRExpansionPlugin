@@ -178,8 +178,16 @@ public:
 
 	inline void MirrorHandTransform(FTransform& ReturnTrans, FTransform& relTrans)
 	{
-		ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetCrossAxis());
-		return;
+		if (bOnlyFlipRotation)
+		{
+			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation() - relTrans.GetTranslation());
+			ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetCrossAxis());
+			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation() + relTrans.GetTranslation());
+		}
+		else
+		{
+			ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetCrossAxis());
+		}
 	}
 
 	inline TEnumAsByte<EAxis::Type> GetAsEAxis(TEnumAsByte<EVRAxis::Type> InAxis)
