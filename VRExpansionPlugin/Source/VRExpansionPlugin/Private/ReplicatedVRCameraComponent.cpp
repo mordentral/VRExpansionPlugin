@@ -22,10 +22,17 @@ bool TMP_IsHeadTrackingAllowedForWorld(IXRTrackingSystem* XRSystem, UWorld* Worl
 	{
 		UEditorEngine* EdEngine = Cast<UEditorEngine>(GEngine);
 		TOptional<FPlayInEditorSessionInfo> PlayInEditorSessionInfo = EdEngine->GetPlayInEditorSessionInfo();
+		
 		check(PlayInEditorSessionInfo.IsSet())
 			FRequestPlaySessionParams RequestPlaySessionParams = PlayInEditorSessionInfo.GetValue().OriginalRequestParams;
 		ULevelEditorPlaySettings* PlaySettings = RequestPlaySessionParams.EditorPlaySettings;
 		check(PlaySettings);
+
+		// Not loading under a single process, we'll depend on the end user to handle it here to initialize the correct HMD setup
+		if (!PlaySettings->IsRunUnderOneProcessActive())
+		{
+			return XRSystem->IsHeadTrackingAllowedForWorld(*World);
+		}
 
 		int32 NumClients = 0;
 		PlaySettings->GetPlayNumberOfClients(NumClients);
