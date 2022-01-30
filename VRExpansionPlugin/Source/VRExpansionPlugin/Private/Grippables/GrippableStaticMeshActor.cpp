@@ -82,6 +82,7 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	this->bReplicates = true;
 	
 	bRepGripSettingsAndGameplayTags = true;
+	bReplicateGripScripts = false;
 	bAllowIgnoringAttachOnOwner = true;
 
 	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration
@@ -93,7 +94,8 @@ void AGrippableStaticMeshActor::GetLifetimeReplicatedProps(TArray< class FLifeti
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME(AGrippableStaticMeshActor, GripLogicScripts);
+	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, GripLogicScripts, COND_Custom);
+	DOREPLIFETIME(AGrippableStaticMeshActor, bReplicateGripScripts);
 	DOREPLIFETIME(AGrippableStaticMeshActor, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(AGrippableStaticMeshActor, bAllowIgnoringAttachOnOwner);
 	DOREPLIFETIME(AGrippableStaticMeshActor, ClientAuthReplicationData);
@@ -112,7 +114,8 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 	
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
-
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, GripLogicScripts, bReplicateGripScripts);
+	
 	//Super::PreReplication(ChangedPropertyTracker);
 
 #if WITH_PUSH_MODEL
@@ -255,11 +258,14 @@ bool AGrippableStaticMeshActor::ReplicateSubobjects(UActorChannel* Channel, clas
 {
 	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 
-	for (UVRGripScriptBase* Script : GripLogicScripts)
+	if (bReplicateGripScripts)
 	{
-		if (Script && !Script->IsPendingKill())
+		for (UVRGripScriptBase* Script : GripLogicScripts)
 		{
-			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+			if (Script && !Script->IsPendingKill())
+			{
+				WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+			}
 		}
 	}
 
@@ -781,4 +787,20 @@ void AGrippableStaticMeshActor::BeginDestroy()
 	}
 
 	GripLogicScripts.Empty();
+}
+
+void AGrippableStaticMeshActor::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>& ObjList)
+{
+	Super::GetSubobjectsWithStableNamesForNetworking(ObjList);
+
+	if (bReplicateGripScripts)
+	{
+		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+		{
+			if (UObject* SubObject = GripLogicScripts[i])
+			{
+				ObjList.Add(SubObject);
+			}
+		}
+	}
 }
