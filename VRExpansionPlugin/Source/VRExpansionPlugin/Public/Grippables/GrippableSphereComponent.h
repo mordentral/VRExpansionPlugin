@@ -34,6 +34,12 @@ public:
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
 		TArray<class UVRGripScriptBase *> GripLogicScripts;
 
+	// If true then the grip script array will be considered for replication, if false then it will not
+	// This is an optimization for when you have a lot of grip scripts in use, you can toggle this off in cases
+	// where the object will never have a replicating script
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
+		bool bReplicateGripScripts;
+
 	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
 
 

@@ -27,13 +27,15 @@ UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectIn
 	//this->bReplicates = true;
 
 	bRepGripSettingsAndGameplayTags = true;
+	bReplicateGripScripts = false;
 }
 
 void UGrippableSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME/*_CONDITION*/(UGrippableSkeletalMeshComponent, GripLogicScripts);// , COND_Custom);
+	DOREPLIFETIME_CONDITION(UGrippableSkeletalMeshComponent, GripLogicScripts, COND_Custom);
+	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bReplicateGripScripts);
 	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bReplicateMovement);
 	DOREPLIFETIME_CONDITION(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, COND_Custom);
@@ -47,6 +49,7 @@ void UGrippableSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker 
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSkeletalMeshComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE(UGrippableSkeletalMeshComponent, GripLogicScripts, bReplicateGripScripts);
 
 	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeRotation, bReplicateMovement);
@@ -57,11 +60,14 @@ bool UGrippableSkeletalMeshComponent::ReplicateSubobjects(UActorChannel* Channel
 {
 	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 
-	for (UVRGripScriptBase* Script : GripLogicScripts)
+	if (bReplicateGripScripts)
 	{
-		if (Script && !Script->IsPendingKill())
+		for (UVRGripScriptBase* Script : GripLogicScripts)
 		{
-			WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+			if (Script && !Script->IsPendingKill())
+			{
+				WroteSomething |= Channel->ReplicateSubobject(Script, *Bunch, *RepFlags);
+			}
 		}
 	}
 
@@ -268,11 +274,14 @@ void UGrippableSkeletalMeshComponent::PreDestroyFromReplication()
 
 void UGrippableSkeletalMeshComponent::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*> &ObjList)
 {
-	for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
+	if (bReplicateGripScripts)
 	{
-		if (UObject *SubObject = GripLogicScripts[i])
+		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
 		{
-			ObjList.Add(SubObject);
+			if (UObject* SubObject = GripLogicScripts[i])
+			{
+				ObjList.Add(SubObject);
+			}
 		}
 	}
 }
