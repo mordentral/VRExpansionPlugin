@@ -42,6 +42,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
 		FVector_NetQuantize100 StockSnapOffset;
 
+	// *Global Value* If we want to have the stock location adjust to follow the primary hands Z value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
+		bool bAdjustZOfStockToPrimaryHand;
+
 	// *Global Value* Whether we should lerp the location of the rearmost (stock side) hand, mostly used for snipers.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock|Smoothing")
 		bool bSmoothStockHand;
@@ -65,6 +69,7 @@ public:
 		StockSnapDistance = B.StockSnapDistance;
 		StockSnapLerpThreshold = B.StockSnapLerpThreshold;
 		StockSnapOffset = B.StockSnapOffset;
+		bAdjustZOfStockToPrimaryHand = B.bAdjustZOfStockToPrimaryHand;
 		bSmoothStockHand = B.bSmoothStockHand;
 		SmoothingValueForStock = B.SmoothingValueForStock;
 		StockHandSmoothing = B.StockHandSmoothing;
@@ -73,6 +78,7 @@ public:
 	FBPVirtualStockSettings()
 	{
 		StockSnapOffset = FVector(0.f, 0.f, 0.f);
+		bAdjustZOfStockToPrimaryHand = true;
 		StockSnapDistance = 35.f;
 		StockSnapLerpThreshold = 20.0f;
 		StockLerpValue = 0.0f;

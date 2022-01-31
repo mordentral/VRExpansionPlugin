@@ -199,9 +199,16 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				}
 
 				// Adjust the mount location to follow the Z of the primary hand
-				FVector WorldTransVec = MountWorldTransform.GetTranslation();
-				WorldTransVec.Z = ParentTransform.GetTranslation().Z;
-				MountWorldTransform.SetLocation(WorldTransVec);
+				if (VirtualStockSettings.bAdjustZOfStockToPrimaryHand)
+				{
+					FVector WorldTransVec = MountWorldTransform.GetTranslation();
+
+					if (WorldTransVec.Z >= ParentTransform.GetTranslation().Z)
+					{
+						WorldTransVec.Z = ParentTransform.GetTranslation().Z;
+						MountWorldTransform.SetLocation(WorldTransVec);
+					}
+				}
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 				if (VirtualStockSettings.bDebugDrawVirtualStock)
