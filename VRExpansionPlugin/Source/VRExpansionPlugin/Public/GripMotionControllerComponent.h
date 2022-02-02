@@ -50,6 +50,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnControllerGripSignature, const 
 /** Delegate for notification when the controller drops a gripped object. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVROnControllerDropSignature, const FBPActorGripInformation &, GripInformation, bool, bWasSocketed);
 
+/** Delegate for notification when the controller sockets a gripped object. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FVROnControllerSocketSignature, const FBPActorGripInformation&, GripInformation, const USceneComponent*, NewParentComp, FName, OptionalSocketName, FTransform, RelativeTransformToParent, bool, bWeldingBodies);
+
 /** Delegate for notification when the controller teleports its grips. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVROnControllerTeleportedGripsSignature);
 
@@ -308,6 +311,11 @@ public:
 	// Called when a object is dropped
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnControllerDropSignature OnDroppedObject;
+
+	// Called when a object is being socketed, prior to OnDrop being called and prior to the actual socketing being performed
+	// Generally an early entry to detach hands and handle pre-socketing logic
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnControllerSocketSignature OnSocketingObject;
 
 	// Called when a gripped object has been teleported
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
