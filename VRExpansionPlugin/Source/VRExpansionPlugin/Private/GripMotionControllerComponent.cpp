@@ -2070,6 +2070,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 				Server_NotifyDropAndSocketGrip(GripInfo->GripID, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 			}
 
+			OnSocketingObject.Broadcast(*GripInfo, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 			Socket_Implementation(GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 
 			// Have to call this ourselves
@@ -2150,7 +2151,10 @@ void UGripMotionControllerComponent::Server_NotifyDropAndSocketGrip_Implementati
 	GetPhysicsGripIndex(FoundGrip, PhysicsHandleIndex);
 
 	if (FoundGrip.GrippedObject)
-		Socket_Implementation(FoundGrip.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent);
+	{
+		OnSocketingObject.Broadcast(FoundGrip, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+		Socket_Implementation(FoundGrip.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+	}
 
 	if (!DropAndSocketGrip_Implementation(FoundGrip, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies))
 	{
@@ -2242,7 +2246,10 @@ void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FB
 	GetPhysicsGripIndex(NewDrop, PhysicsHandleIndex);
 
 	if (NewDrop.GrippedObject)
+	{
+		OnSocketingObject.Broadcast(NewDrop, SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
 		Socket_Implementation(NewDrop.GrippedObject, (PhysicsHandleIndex != INDEX_NONE), SocketingParent, OptionalSocketName, RelativeTransformToParent, bWeldBodies);
+	}
 
 	DropAndSocket_Implementation(NewDrop);
 }
