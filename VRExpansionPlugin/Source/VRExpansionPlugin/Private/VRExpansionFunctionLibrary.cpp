@@ -237,16 +237,16 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 	if (RotationallyMatchingHandSockets.Num() > 0)
 	{
 		FQuat ControllerRot = QueryController->GetPivotTransform().GetRotation();
-		FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetComponentTransform().GetRotation();
-		//FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetHandSocketTransform(QueryController).GetRotation();
+		//FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetComponentTransform().GetRotation();
+		FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetHandSocketTransform(QueryController).GetRotation();
 
 		TargetHandSocket = RotationallyMatchingHandSockets[0];
 		bHadSlotInRange = true;
 		ClosestSlotDistance = ControllerRot.AngularDistance(ClosestQuat);
 		for (int i = 1; i < RotationallyMatchingHandSockets.Num(); i++)
 		{
-			float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetComponentTransform().GetRotation());
-			//float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetHandSocketTransform(QueryController).GetRotation());
+			//float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetComponentTransform().GetRotation());
+			float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetHandSocketTransform(QueryController).GetRotation());
 			if (CheckDistance < ClosestSlotDistance)
 			{
 				TargetHandSocket = RotationallyMatchingHandSockets[i];
