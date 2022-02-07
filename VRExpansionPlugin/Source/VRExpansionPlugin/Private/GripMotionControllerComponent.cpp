@@ -4975,6 +4975,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 					case EGripCollisionType::SweepWithPhysics:
 					{
+						// Ensure physics simulation is off in case something sneaked it on
+						if (root->IsSimulatingPhysics())
+						{
+							root->SetSimulatePhysics(false);
+						}
+
 						FVector OriginalPosition(root->GetComponentLocation());
 						FRotator OriginalOrientation(root->GetComponentRotation());
 
@@ -5021,6 +5027,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 					case EGripCollisionType::PhysicsOnly:
 					{
+						// Ensure physics simulation is off in case something sneaked it on
+						if (root->IsSimulatingPhysics())
+						{
+							root->SetSimulatePhysics(false);
+						}
+
 						// Move the actor, we are not offsetting by the hit result anyway
 						root->SetWorldTransform(WorldTransform, false);
 					}break;
