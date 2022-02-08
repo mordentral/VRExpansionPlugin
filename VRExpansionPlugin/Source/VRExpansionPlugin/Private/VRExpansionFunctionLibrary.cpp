@@ -195,7 +195,7 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 			{
 				if (!SocketComp->bDisabled && SocketComp->SlotPrefix.ToString().Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
 				{
-					FVector SocketRelativeLocation = Component->GetComponentTransform().InverseTransformPosition(SocketComp->GetHandSocketTransform(QueryController).GetLocation());
+					FVector SocketRelativeLocation = Component->GetComponentTransform().InverseTransformPosition(SocketComp->GetHandSocketTransform(QueryController, true).GetLocation());
 					float vecLen = FVector::DistSquared(RelativeWorldLocation, SocketRelativeLocation);
 					//float vecLen = FVector::DistSquared(RelativeWorldLocation, SocketComp->GetRelativeLocation());
 					if (SocketComp->bAlwaysInRange)
@@ -238,7 +238,7 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 	{
 		FQuat ControllerRot = QueryController->GetPivotTransform().GetRotation();
 		//FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetComponentTransform().GetRotation();
-		FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetHandSocketTransform(QueryController).GetRotation();
+		FQuat ClosestQuat = RotationallyMatchingHandSockets[0]->GetHandSocketTransform(QueryController, true).GetRotation();
 
 		TargetHandSocket = RotationallyMatchingHandSockets[0];
 		bHadSlotInRange = true;
@@ -246,7 +246,7 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 		for (int i = 1; i < RotationallyMatchingHandSockets.Num(); i++)
 		{
 			//float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetComponentTransform().GetRotation());
-			float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetHandSocketTransform(QueryController).GetRotation());
+			float CheckDistance = ControllerRot.AngularDistance(RotationallyMatchingHandSockets[i]->GetHandSocketTransform(QueryController, true).GetRotation());
 			if (CheckDistance < ClosestSlotDistance)
 			{
 				TargetHandSocket = RotationallyMatchingHandSockets[i];

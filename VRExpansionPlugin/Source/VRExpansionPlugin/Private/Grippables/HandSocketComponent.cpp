@@ -353,11 +353,11 @@ FTransform UHandSocketComponent::GetHandRelativePlacement()
 	return HandRelativePlacement;
 }
 
-FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerComponent* QueryController)
+FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerComponent* QueryController, bool bIgnoreOnlySnapMesh)
 {
 	// Optionally mirror for left hand
 
-	if (bOnlySnapMesh)
+	if (!bIgnoreOnlySnapMesh && bOnlySnapMesh)
 	{
 		if (!QueryController)
 		{

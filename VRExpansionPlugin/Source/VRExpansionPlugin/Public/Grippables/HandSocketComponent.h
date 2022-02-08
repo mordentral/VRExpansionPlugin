@@ -309,7 +309,7 @@ public:
 		return nullptr;
 	}
 
-	virtual FTransform GetHandSocketTransform(UGripMotionControllerComponent* QueryController);
+	virtual FTransform GetHandSocketTransform(UGripMotionControllerComponent* QueryController, bool bIgnoreOnlySnapMesh = false);
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
