@@ -13,6 +13,8 @@ FName AVRBaseCharacter::RightMotionControllerComponentName(TEXT("Right Grip Moti
 FName AVRBaseCharacter::ReplicatedCameraComponentName(TEXT("VR Replicated Camera"));
 FName AVRBaseCharacter::ParentRelativeAttachmentComponentName(TEXT("Parent Relative Attachment"));
 FName AVRBaseCharacter::SmoothingSceneParentComponentName(TEXT("NetSmoother"));
+FName AVRBaseCharacter::VRProxyComponentName(TEXT("VRProxy"));
+
 
 FRepMovementVRCharacter::FRepMovementVRCharacter()
 : Super()
@@ -45,11 +47,17 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		NetSmoother->SetupAttachment(RootComponent);
 	}
 
+	VRProxyComponent = CreateDefaultSubobject<USceneComponent>(AVRBaseCharacter::VRProxyComponentName);
+	if (NetSmoother && VRProxyComponent)
+	{
+		VRProxyComponent->SetupAttachment(NetSmoother);
+	}
+
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(AVRBaseCharacter::ReplicatedCameraComponentName);
 	if (VRReplicatedCamera)
 	{
 		VRReplicatedCamera->bOffsetByHMD = false;
-		VRReplicatedCamera->SetupAttachment(NetSmoother);
+		VRReplicatedCamera->SetupAttachment(VRProxyComponent);
 		VRReplicatedCamera->OverrideSendTransform = &AVRBaseCharacter::Server_SendTransformCamera;
 	}
 
@@ -64,7 +72,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (ParentRelativeAttachment && VRReplicatedCamera)
 	{
 		// Moved this to be root relative as the camera late updates were killing how it worked
-		ParentRelativeAttachment->SetupAttachment(NetSmoother);
+		ParentRelativeAttachment->SetupAttachment(VRProxyComponent);
 		ParentRelativeAttachment->bOffsetByHMD = false;
 		ParentRelativeAttachment->AddTickPrerequisiteComponent(VRReplicatedCamera);
 
@@ -77,7 +85,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::LeftMotionControllerComponentName);
 	if (LeftMotionController)
 	{
-		LeftMotionController->SetupAttachment(NetSmoother);
+		LeftMotionController->SetupAttachment(VRProxyComponent);
 		//LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
 		LeftMotionController->SetTrackingMotionSource(FXRMotionControllerBase::LeftHandSourceId);
 		//LeftMotionController->Hand = EControllerHand::Left;
@@ -91,7 +99,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::RightMotionControllerComponentName);
 	if (RightMotionController)
 	{
-		RightMotionController->SetupAttachment(NetSmoother);
+		RightMotionController->SetupAttachment(VRProxyComponent);
 		//RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
 		RightMotionController->SetTrackingMotionSource(FXRMotionControllerBase::RightHandSourceId);
 		//RightMotionController->Hand = EControllerHand::Right;

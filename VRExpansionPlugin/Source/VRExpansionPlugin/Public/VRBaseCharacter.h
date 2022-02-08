@@ -499,6 +499,11 @@ public:
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		USceneComponent * NetSmoother;
 
+	// This is just a helper proxy component after the net smoother to make it easier to move tracking around for people
+	// but still maintain the netsmoothers functionality
+	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* VRProxyComponent;
+
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		UVRBaseCharacterMovementComponent * VRMovementReference;
 
@@ -526,8 +531,11 @@ public:
 	/** Name of the ParentRelativeAttachment component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
 	static FName ParentRelativeAttachmentComponentName;
 	
-	/** Name of the ParentRelativeAttachment component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
+	/** Name of the net smoother component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
 	static FName SmoothingSceneParentComponentName;
+
+	/** Name of the vr proxy component. Use this name if you want to use a different class (with ObjectInitializer.SetDefaultSubobjectClass). */
+	static FName VRProxyComponentName;
 
 	/*
 	A helper function that offsets a given vector by the roots collision location
