@@ -5,7 +5,6 @@
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
 #include "Grippables/HandSocketComponent.h"
-#include "Misc/CollisionIgnoreSubsystem.h"
 
 #if WITH_CHAOS
 #include "Chaos/ParticleHandle.h"
@@ -32,78 +31,123 @@ UGameViewportClient* UVRExpansionFunctionLibrary::GetGameViewportClient(UObject*
 	return nullptr;
 }
 
-void UVRExpansionFunctionLibrary::SetActorsIgnoreAllCollision(UObject* WorldContextObject, AActor* Actor1, AActor* Actor2, bool bIgnoreCollision)
+void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1, FName OptionalBoneName1, UPrimitiveComponent* Prim2, FName OptionalBoneName2, bool bIgnoreCollision)
 {
-	TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents1;
-	Actor1->GetComponents<UPrimitiveComponent>(PrimitiveComponents1);
-
-	TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents2;
-	Actor2->GetComponents<UPrimitiveComponent>(PrimitiveComponents2);
-
-	UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = WorldContextObject->GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
-
-	if (CollisionIgnoreSubsystem)
+	if (Prim1 && Prim2)
 	{
-		// Just a temp flag to only check state on the first component pair
-		bool bIgnorefirst = true;
-		for (int i = 0; i < PrimitiveComponents1.Num(); ++i)
+		FBodyInstance* Inst1 = Prim1->GetBodyInstance(OptionalBoneName1);
+		FBodyInstance* Inst2 = Prim2->GetBodyInstance(OptionalBoneName2);
+
+		if (Inst1 && Inst2)
 		{
-			for (int j = 0; j < PrimitiveComponents2.Num(); ++j)
+			Inst1->SetContactModification(bIgnoreCollision);
+			Inst2->SetContactModification(bIgnoreCollision);
+			if (FPhysScene* PhysScene = Prim1->GetWorld()->GetPhysicsScene())
 			{
-				CollisionIgnoreSubsystem->SetComponentCollisionIgnoreState(true, true, PrimitiveComponents1[i], NAME_None, PrimitiveComponents2[j], NAME_None, bIgnoreCollision, bIgnorefirst);
-				bIgnorefirst = false;
+#if WITH_CHAOS
+				/*FContactModBodyInstancePair newContactPair;
+				newContactPair.Actor1 = Inst1->ActorHandle;
+				newContactPair.Actor2 = Inst2->ActorHandle;
+				newContactPair.bBody1IgnoreEntireActor = false;
+				newContactPair.bBody2IgnoreEntireActor = false;
+				*/
+
+				Chaos::FUniqueIdx ID0 = Inst1->ActorHandle->UniqueIdx();
+				Chaos::FUniqueIdx ID1 = Inst2->ActorHandle->UniqueIdx();
+
+				Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
+
+				FPhysicsCommand::ExecuteWrite(PhysScene, [&]()
+				{
+					using namespace Chaos;
+
+					if (bIgnoreCollision)
+					{
+						if (!IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
+						{
+							TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->Handle()->CastToRigidParticle();
+							TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->Handle()->CastToRigidParticle();
+
+							if (ParticleHandle0 && ParticleHandle1)
+							{
+								ParticleHandle0->AddCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+								IgnoreCollisionManager.AddIgnoreCollisionsFor(ID0, ID1);
+
+								ParticleHandle1->AddCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+								IgnoreCollisionManager.AddIgnoreCollisionsFor(ID1, ID0);
+							}
+						}
+					}
+					else
+					{
+						if (IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
+						{
+							TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = Inst1->ActorHandle->Handle()->CastToRigidParticle();
+							TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = Inst2->ActorHandle->Handle()->CastToRigidParticle();
+
+							if (ParticleHandle0 && ParticleHandle1)
+							{
+								IgnoreCollisionManager.RemoveIgnoreCollisionsFor(ID0, ID1);
+								IgnoreCollisionManager.RemoveIgnoreCollisionsFor(ID1, ID0);
+
+								if (IgnoreCollisionManager.NumIgnoredCollision(ID0) < 1)
+								{
+									ParticleHandle0->RemoveCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+								}
+
+								if (IgnoreCollisionManager.NumIgnoredCollision(ID1) < 1)
+								{
+									ParticleHandle1->RemoveCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+								}
+							}
+						}
+					}
+				});
+
+#elif PHYSICS_INTERFACE_PHYSX
+				if (PxScene* PScene = PhysScene->GetPxScene())
+				{
+					if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
+					{
+						FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
+						FContactModBodyInstancePair newContactPair;
+						newContactPair.Actor1 = Inst1->ActorHandle;
+						newContactPair.Actor2 = Inst2->ActorHandle;
+						newContactPair.bBody1IgnoreEntireActor = false;
+						newContactPair.bBody2IgnoreEntireActor = false;
+
+						if (bIgnoreCollision)
+							ContactCallback->ContactsToIgnore.AddUnique(newContactPair);
+						else
+							ContactCallback->ContactsToIgnore.Remove(newContactPair);
+					}
+
+					if (FContactModifyCallbackVR* ContactCallback = (FContactModifyCallbackVR*)PScene->getContactModifyCallback())
+					{
+						FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
+						FContactModBodyInstancePair newContactPair;
+						newContactPair.Actor1 = Inst1->ActorHandle;
+						newContactPair.Actor2 = Inst2->ActorHandle;
+						newContactPair.bBody1IgnoreEntireActor = false;
+						newContactPair.bBody2IgnoreEntireActor = false;
+
+						if (bIgnoreCollision)
+							ContactCallback->ContactsToIgnore.AddUnique(newContactPair);
+						else
+							ContactCallback->ContactsToIgnore.Remove(newContactPair);
+					}
+				}
+#endif
 			}
 		}
-	}
-}
-
-void UVRExpansionFunctionLibrary::SetObjectsIgnoreCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1, FName OptionalBoneName1, bool bAddChildBones1, UPrimitiveComponent* Prim2, FName OptionalBoneName2, bool bAddChildBones2, bool bIgnoreCollision)
-{
-	UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = WorldContextObject->GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
-
-	if (CollisionIgnoreSubsystem)
-	{
-		CollisionIgnoreSubsystem->SetComponentCollisionIgnoreState(bAddChildBones1, bAddChildBones2, Prim1, OptionalBoneName1, Prim2, OptionalBoneName2, bIgnoreCollision, true);
-	}
-}
-
-
-
-bool UVRExpansionFunctionLibrary::IsComponentIgnoringCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1)
-{
-	UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = WorldContextObject->GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
-
-	if (CollisionIgnoreSubsystem)
-	{
-		return CollisionIgnoreSubsystem->IsComponentIgnoringCollision(Prim1);
-	}
-
-	return false;
-}
-
-void UVRExpansionFunctionLibrary::RemoveObjectCollisionIgnore(UObject* WorldContextObject, UPrimitiveComponent* Prim1)
-{
-	UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = WorldContextObject->GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
-
-	if (CollisionIgnoreSubsystem)
-	{
-		CollisionIgnoreSubsystem->RemoveComponentCollisionIgnoreState(Prim1);
-	}
-}
-
-void UVRExpansionFunctionLibrary::RemoveActorCollisionIgnore(UObject* WorldContextObject, AActor* Actor1)
-{
-	TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents1;
-	Actor1->GetComponents<UPrimitiveComponent>(PrimitiveComponents1);
-
-	UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = WorldContextObject->GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
-
-	if (CollisionIgnoreSubsystem)
-	{
-		for (int i = 0; i < PrimitiveComponents1.Num(); ++i)
+		else
 		{
-			CollisionIgnoreSubsystem->RemoveComponentCollisionIgnoreState(PrimitiveComponents1[i]);
+			UE_LOG(VRExpansionFunctionLibraryLog, Error, TEXT("Set Objects Ignore Collision called with object(s) with an invalid body instance!!"));
 		}
+	}
+	else
+	{
+		UE_LOG(VRExpansionFunctionLibraryLog, Error, TEXT("Set Objects Ignore Collision called with invalid object(s)!!"));
 	}
 }
 

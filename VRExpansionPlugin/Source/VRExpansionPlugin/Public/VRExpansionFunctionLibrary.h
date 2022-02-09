@@ -47,26 +47,9 @@ public:
 		static UGameViewportClient * GetGameViewportClient(UObject* WorldContextObject);
 
 
-	// Sets two primitive components to ignore collision between two specific bodies
-	// If bAddChildBones is true then it will also add all child bones of the given bone (or the entire skeleton if no name is given)
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static void SetObjectsIgnoreCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1 = nullptr, FName OptionalBoneName1 = NAME_None, bool bAddChildBones1 = false, UPrimitiveComponent* Prim2 = nullptr, FName OptionalBoneName2 = NAME_None, bool bAddChildBones2 = false, bool bIgnoreCollision = true);
-
-	// Sets two actors to entirely ignore collision between them
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static void SetActorsIgnoreAllCollision(UObject* WorldContextObject, AActor* Actor1 = nullptr, AActor* Actor2 = nullptr, bool bIgnoreCollision = true);
-
-	// Removes all collision ignore matches for the given primitive object
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static void RemoveObjectCollisionIgnore(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
-
-	// Removes all collision ignore matches for the given actor
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static void RemoveActorCollisionIgnore(UObject* WorldContextObject, AActor* Actor1);
-
-	// Returns if the component is ignoring any collisions
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static bool IsComponentIgnoringCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
+	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
+		static void SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1 = nullptr, FName OptionalBoneName1 = NAME_None, UPrimitiveComponent* Prim2 = nullptr, FName OptionalBoneName2 = NAME_None, bool bIgnoreCollision = true);
 
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
 	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
