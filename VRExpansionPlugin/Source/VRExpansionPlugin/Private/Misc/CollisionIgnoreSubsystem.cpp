@@ -4,6 +4,14 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 
+#if WITH_CHAOS
+#include "Chaos/ParticleHandle.h"
+#include "Chaos/KinematicGeometryParticles.h"
+#include "Chaos/ParticleHandle.h"
+#include "PhysicsProxy/SingleParticlePhysicsProxy.h"
+#include "PBDRigidsSolver.h"
+#endif
+
 DEFINE_LOG_CATEGORY(VRE_CollisionIgnoreLog);
 
 
@@ -408,7 +416,7 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 									// If we don't have a map element for this pair, then add it now
 									if (!RemovedPairs.Contains(newPrimPair))
 									{
-										RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray >());
+										RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
 									}
 									RemovedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
 								}

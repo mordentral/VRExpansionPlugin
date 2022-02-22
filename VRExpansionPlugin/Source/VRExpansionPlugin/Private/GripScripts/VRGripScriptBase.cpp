@@ -135,7 +135,7 @@ void UVRGripScriptBase::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 		{
 			for (UVRGripScriptBase* Script : GripLogicScripts)
 			{
-				if (Script && !Script->IsPendingKill())
+				if (Script && IsValid(Script))
 				{
 					Script->PreReplication(*((IRepChangedPropertyTracker *)NetDriver->FindOrCreateRepChangedPropertyTracker(Script).Get()));
 				}

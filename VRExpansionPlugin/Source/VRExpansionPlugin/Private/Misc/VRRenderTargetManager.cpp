@@ -177,10 +177,10 @@ void UVRRenderTargetManager::DrawOperation(UCanvas* Canvas, const FRenderManager
 	}break;
 	case ERenderManagerOperationType::Op_TexDraw:
 	{
-		if (Operation.Texture && Operation.Texture->Resource)
+		if (Operation.Texture && Operation.Texture->GetResource())
 		{
 			//FTexture* RenderTextureResource = (RenderBase) ? RenderBase->Resource : GWhiteTexture;
-			FCanvasTileItem TileItem(Operation.P1, Operation.Texture->Resource, FVector2D(Operation.Texture->GetSizeX(), Operation.Texture->GetSizeY()), FVector2D(0, 0), FVector2D(1.f, 1.f), ClearColor);
+			FCanvasTileItem TileItem(Operation.P1, Operation.Texture->GetResource(), FVector2D(Operation.Texture->GetSizeX(), Operation.Texture->GetSizeY()), FVector2D(0, 0), FVector2D(1.f, 1.f), ClearColor);
 			TileItem.BlendMode = FCanvas::BlendToSimpleElementBlend(EBlendMode::BLEND_Translucent);
 			Canvas->DrawItem(TileItem);
 		}
@@ -426,7 +426,7 @@ void ARenderTargetReplicationProxy::SendInitMessage()
 
 void ARenderTargetReplicationProxy::SendNextDataBlob()
 {
-	if (this->IsPendingKill() || !this->GetOwner() || this->GetOwner()->IsPendingKill())
+	if (!IsValid(this) || !this->GetOwner() || !IsValid(this->GetOwner()))
 	{	
 		TextureStore.Reset();
 		TextureStore.PackedData.Empty();
@@ -651,12 +651,12 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 	UTexture2D* RenderBase = UTexture2D::CreateTransient(Width, Height, PF_R8G8B8A8);// RenderTargetStore.PixelFormat);
 
 	// Switched to a Memcpy instead of byte by byte transer
-	uint8* MipData = (uint8*)RenderBase->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+	uint8* MipData = (uint8*)RenderBase->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
 	FMemory::Memcpy(MipData, (void*)FinalColorData.GetData(), FinalColorData.Num() * sizeof(FColor));
-	RenderBase->PlatformData->Mips[0].BulkData.Unlock();
+	RenderBase->GetPlatformData()->Mips[0].BulkData.Unlock();
 
 	//Setting some Parameters for the Texture and finally returning it
-	RenderBase->PlatformData->SetNumSlices(1);
+	RenderBase->GetPlatformData()->SetNumSlices(1);
 	RenderBase->NeverStream = true;
 	RenderBase->SRGB = true;
 	//Avatar->CompressionSettings = TC_EditorIcon;
@@ -710,7 +710,7 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 
 	if (CanvasToUse)
 	{
-		FTexture* RenderTextureResource = (RenderBase) ? RenderBase->Resource : GWhiteTexture;
+		FTexture* RenderTextureResource = (RenderBase) ? RenderBase->GetResource() : GWhiteTexture;
 		FCanvasTileItem TileItem(FVector2D(0, 0), RenderTextureResource, FVector2D(RenderTarget->SizeX, RenderTarget->SizeY), FVector2D(0, 0), FVector2D(1.f, 1.f), FLinearColor::White);
 		TileItem.BlendMode = FCanvas::BlendToSimpleElementBlend(EBlendMode::BLEND_Opaque);
 		CanvasToUse->DrawItem(TileItem);
@@ -724,7 +724,7 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 	}
 
 	RenderBase->ReleaseResource();
-	RenderBase->MarkPendingKill();
+	RenderBase->MarkAsGarbage();
 
 	return true;
 }
@@ -899,7 +899,7 @@ void UVRRenderTargetManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	{
 		RepData.PC = nullptr;
 		RepData.PC.Reset();
-		if (RepData.ReplicationProxy.IsValid() && !RepData.ReplicationProxy->IsPendingKill())
+		if (IsValid(RepData.ReplicationProxy.Get()))
 		{
 			RepData.ReplicationProxy->Destroy();
 		}

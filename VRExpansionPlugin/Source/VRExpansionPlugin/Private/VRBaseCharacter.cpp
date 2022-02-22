@@ -154,7 +154,7 @@ void AVRBaseCharacter::PostInitializeComponents()
 
 	Super::PostInitializeComponents();
 
-	if (!IsPendingKill())
+	if (IsValid(this))
 	{
 		if (NetSmoother)
 		{

@@ -19,7 +19,7 @@ class VREXPANSIONPLUGIN_API UVRPathFollowingComponent : public UPathFollowingCom
 
 public:
 	UPROPERTY(transient)
-	UVRBaseCharacterMovementComponent* VRMovementComp;
+		UVRBaseCharacterMovementComponent* VRMovementComp;
 
 	// Add link to VRMovementComp
 	void SetMovementComponent(UNavMovementComponent* MoveComp) override;

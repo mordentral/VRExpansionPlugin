@@ -184,10 +184,10 @@ struct VREXPANSIONPLUGIN_API FVRGestureSplineDraw
 public:
 
 	UPROPERTY()
-	USplineComponent* SplineComponent;
+		TObjectPtr<USplineComponent> SplineComponent;
 
 	UPROPERTY()
-	TArray<USplineMeshComponent*> SplineMeshes;
+	TArray<TObjectPtr<USplineMeshComponent>> SplineMeshes;
 
 	int LastIndexSet;
 	int NextIndexCleared;
@@ -238,7 +238,7 @@ public:
 
 	// Known sequences
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-	UGesturesDatabase *GesturesDB;
+		TObjectPtr<UGesturesDatabase> GesturesDB;
 
 	// Tolerance within we throw out duplicate samples
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
@@ -250,7 +250,7 @@ public:
 
 	// Tolerance within we throw out duplicate samples
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-		AVRBaseCharacter * TargetCharacter;
+		TObjectPtr<AVRBaseCharacter> TargetCharacter;
 
 	FVRGestureSplineDraw RecordingGestureDraw;
 
@@ -264,7 +264,7 @@ public:
 
 	// Mesh to use when drawing splines
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-		UStaticMesh* SplineMesh;
+		TObjectPtr<UStaticMesh> SplineMesh;
 
 	// Scaler to apply to the spline mesh components
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
@@ -272,7 +272,7 @@ public:
 
 	// Material to use when drawing splines
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-		UMaterialInterface* SplineMaterial;
+		TObjectPtr<UMaterialInterface> SplineMaterial;
 
 	// HTZ to run recording at for detection and saving - now being used as a frame time instead of a HTZ
 	float RecordingDelta;

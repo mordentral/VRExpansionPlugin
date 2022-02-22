@@ -195,7 +195,7 @@ public:
 		// I like epics new authority check more than mine
 		const AActor* MyOwner = GetOwner();
 		const APawn* MyPawn = Cast<APawn>(MyOwner);
-		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
+		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->GetLocalRole() == ENetRole::ROLE_Authority);
 #endif
 	}
 

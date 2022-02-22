@@ -544,10 +544,10 @@ float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta,
 
 }
 
-void UVRBaseCharacterMovementComponent::SetCrouchedHalfHeight(float NewCrouchedHalfHeight)
+/*void UVRBaseCharacterMovementComponent::SetCrouchedHalfHeight(float NewCrouchedHalfHeight)
 {
 	this->CrouchedHalfHeight = NewCrouchedHalfHeight;
-}
+}*/
 
 void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
 {
@@ -1548,7 +1548,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			{
 				const FScopedPreventAttachedComponentMove PreventMeshMove(bPreventMeshMovement ? BaseVRCharacterOwner->NetSmoother : nullptr);
 				//const FScopedPreventAttachedComponentMove PreventMeshMovement(bPreventMeshMovement ? Mesh : nullptr);
-				if (CharacterOwner->IsMatineeControlled() || CharacterOwner->IsPlayingRootMotion())
+				if (CharacterOwner->IsPlayingRootMotion())
 				{
 					PerformMovement(DeltaSeconds);
 				}
@@ -1561,7 +1561,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			}
 			else
 			{
-				if (CharacterOwner->IsMatineeControlled() || CharacterOwner->IsPlayingRootMotion())
+				if (CharacterOwner->IsPlayingRootMotion())
 				{
 					PerformMovement(DeltaSeconds);
 				}

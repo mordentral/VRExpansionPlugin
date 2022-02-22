@@ -1,7 +1,8 @@
 // Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
 #include "HandSocketVisualizer.h"
-
+#include "CanvasItem.h"
+#include "CanvasTypes.h"
 #include "Modules/ModuleManager.h"
 #include "Misc/PackageName.h"
 //#include "Persona.h"

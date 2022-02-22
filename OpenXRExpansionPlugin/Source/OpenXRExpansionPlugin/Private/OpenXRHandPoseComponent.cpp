@@ -3,6 +3,7 @@
 #include "Net/UnrealNetwork.h"
 #include "MotionControllerComponent.h"
 #include "OpenXRExpansionFunctionLibrary.h"
+#include "Engine/NetSerialization.h"
 
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 //#include "EngineMinimal.h"

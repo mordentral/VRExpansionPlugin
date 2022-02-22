@@ -188,7 +188,10 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 
 				if (RawTrack.RotKeys.Num())
 				{
-					Rot = RawTrack.RotKeys[0];
+					Rot.X = RawTrack.RotKeys[0].X;
+					Rot.Y = RawTrack.RotKeys[0].Y;
+					Rot.Z = RawTrack.RotKeys[0].Z;
+					Rot.W = RawTrack.RotKeys[0].W;
 					bHadRot = true;
 				}
 
@@ -220,7 +223,15 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 				if (bHadLoc)
 					RawNewTrack.PosKeys.Add(FinalTrans.GetTranslation());
 				if (bHadRot)
-					RawNewTrack.RotKeys.Add(FinalTrans.GetRotation());
+				{
+					FQuat TargetQuat = FinalTrans.GetRotation();
+					FQuat4f NewQuat;
+					NewQuat.X = TargetQuat.X;
+					NewQuat.Y = TargetQuat.Y;
+					NewQuat.Z = TargetQuat.Z;
+					NewQuat.W = TargetQuat.W;
+					RawNewTrack.RotKeys.Add(NewQuat);
+				}
 				if (bHadScale)
 					RawNewTrack.ScaleKeys.Add(FinalTrans.GetScale3D());
 			}
@@ -256,7 +267,15 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 
 					FRawAnimSequenceTrack& RawTrack = AnimationObject->GetRawAnimationTrack(TrackIndex);
 					RawTrack.PosKeys.Add(LocalTransform.GetTranslation());
-					RawTrack.RotKeys.Add(LocalTransform.GetRotation());
+
+					FQuat TargetQuat = LocalTransform.GetRotation();
+					FQuat4f NewQuat;
+					NewQuat.X = TargetQuat.X;
+					NewQuat.Y = TargetQuat.Y;
+					NewQuat.Z = TargetQuat.Z;
+					NewQuat.W = TargetQuat.W;
+
+					RawTrack.RotKeys.Add(NewQuat);
 					RawTrack.ScaleKeys.Add(LocalTransform.GetScale3D());
 				}
 			}

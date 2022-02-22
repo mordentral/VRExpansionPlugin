@@ -36,7 +36,7 @@ public:
 
 	/** Overridden to return requirements tags */
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
-		TArray<class UVRGripScriptBase *> GripLogicScripts;
+		TArray<TObjectPtr<UVRGripScriptBase>> GripLogicScripts;
 
 	// If true then the grip script array will be considered for replication, if false then it will not
 	// This is an optimization for when you have a lot of grip scripts in use, you can toggle this off in cases

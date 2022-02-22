@@ -65,7 +65,7 @@ void UGesturesDatabase::FillSplineWithGesture(FVRGesture &Gesture, USplineCompon
 		for (auto Child : Children)
 		{
 			USplineMeshComponent* SplineMesh = Cast<USplineMeshComponent>(Child);
-			if (SplineMesh != nullptr && !SplineMesh->IsPendingKill())
+			if (SplineMesh != nullptr && IsValid(SplineMesh))
 			{
 				CurrentSplineChildren.Add(SplineMesh);
 			}

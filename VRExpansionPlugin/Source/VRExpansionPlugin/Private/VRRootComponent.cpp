@@ -154,7 +154,7 @@ struct FPredicateOverlapHasSameActor
 	bool operator() (const FOverlapInfo& Info)
 	{
 		// MyOwnerPtr is always valid, so we don't need the IsValid() checks in the WeakObjectPtr comparison operator.
-		return MyOwnerPtr.HasSameIndexAndSerialNumber(Info.OverlapInfo.Actor);
+		return MyOwnerPtr.HasSameIndexAndSerialNumber(Info.OverlapInfo.GetActor());
 	}
 
 private:
@@ -172,7 +172,7 @@ struct FPredicateOverlapHasDifferentActor
 	bool operator() (const FOverlapInfo& Info)
 	{
 		// MyOwnerPtr is always valid, so we don't need the IsValid() checks in the WeakObjectPtr comparison operator.
-		return !MyOwnerPtr.HasSameIndexAndSerialNumber(Info.OverlapInfo.Actor);
+		return !MyOwnerPtr.HasSameIndexAndSerialNumber(Info.OverlapInfo.GetActor());
 	}
 
 private:
@@ -183,9 +183,9 @@ private:
 * Predicate for comparing FOverlapInfos when exact weak object pointer index/serial numbers should match, assuming one is not null and not invalid.
 * Compare to operator== for WeakObjectPtr which does both HasSameIndexAndSerialNumber *and* IsValid() checks on both pointers.
 */
-struct FFastOverlapInfoCompare
+struct FFastOverlapInfoCompareVR
 {
-	FFastOverlapInfoCompare(const FOverlapInfo& BaseInfo)
+	FFastOverlapInfoCompareVR(const FOverlapInfo& BaseInfo)
 		: MyBaseInfo(BaseInfo)
 	{
 	}
@@ -212,14 +212,14 @@ private:
 template<class AllocatorType>
 FORCEINLINE_DEBUGGABLE int32 IndexOfOverlapFast(const TArray<FOverlapInfo, AllocatorType>& OverlapArray, const FOverlapInfo& SearchItem)
 {
-	return OverlapArray.IndexOfByPredicate(FFastOverlapInfoCompare(SearchItem));
+	return OverlapArray.IndexOfByPredicate(FFastOverlapInfoCompareVR(SearchItem));
 }
 
 // Version that works with arrays of pointers and pointers to search items.
 template<class AllocatorType>
 FORCEINLINE_DEBUGGABLE int32 IndexOfOverlapFast(const TArray<const FOverlapInfo*, AllocatorType>& OverlapPtrArray, const FOverlapInfo* SearchItem)
 {
-	return OverlapPtrArray.IndexOfByPredicate(FFastOverlapInfoCompare(*SearchItem));
+	return OverlapPtrArray.IndexOfByPredicate(FFastOverlapInfoCompareVR(*SearchItem));
 }
 
 // Helper for adding an FOverlapInfo uniquely to an Array, using IndexOfOverlapFast and knowing that at least one overlap is valid (non-null).
@@ -939,7 +939,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	//CSV_SCOPED_TIMING_STAT(PrimitiveComponent, MoveComponentTime);
 
 	// static things can move before they are registered (e.g. immediately after streaming), but not after.
-	if (IsPendingKill() || (this->Mobility == EComponentMobility::Static && IsRegistered()))//|| CheckStaticMobilityAndWarn(PrimitiveComponentStatics::MobilityWarnText))
+	if (!IsValid(this) || (this->Mobility == EComponentMobility::Static && IsRegistered()))//|| CheckStaticMobilityAndWarn(PrimitiveComponentStatics::MobilityWarnText))
 	{
 		if (OutHit)
 		{
@@ -1022,7 +1022,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			{
 				if (Actor)
 				{
-					ensureMsgf(IsRegistered(), TEXT("%s MovedComponent %s not initialized deleteme %d"),*Actor->GetName(), *GetName(), Actor->IsPendingKill());
+					ensureMsgf(IsRegistered(), TEXT("%s MovedComponent %s not initialized deleteme %d"),*Actor->GetName(), *GetName(), !IsValid(Actor));
 				}
 				else
 				{ //-V523
@@ -1212,7 +1212,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 	// Handle blocking hit notifications. Avoid if pending kill (which could happen after overlaps).
 	const bool bAllowHitDispatch = !BlockingHit.bStartPenetrating || !(MoveFlags & MOVECOMP_DisableBlockingOverlapDispatch);
-	if (BlockingHit.bBlockingHit && bAllowHitDispatch && !IsPendingKill())
+	if (BlockingHit.bBlockingHit && bAllowHitDispatch && IsValid(this))
 	{
 		check(bFilledHitResult);
 		if (IsDeferringMovementUpdates())
@@ -1303,7 +1303,7 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TOverlapArrayView* NewPendingOve
 			TInlineOverlapPointerArray NewOverlappingComponentPtrs;
 
 			// If pending kill, we should not generate any new overlaps. Also not if overlaps were just disabled during BeginComponentOverlap.
-			if (!IsPendingKill() && GetGenerateOverlapEvents())
+			if (IsValid(this) && GetGenerateOverlapEvents())
 			{
 				// 4.17 converted to auto cvar
 				static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
@@ -1611,7 +1611,7 @@ bool UVRRootComponent::IsLocallyControlled() const
 
 void UVRRootComponent::UpdatePhysicsVolume(bool bTriggerNotifiers)
 {
-	if (GetShouldUpdatePhysicsVolume() && !IsPendingKill())
+	if (GetShouldUpdatePhysicsVolume() && IsValid(this))
 	{
 		//	SCOPE_CYCLE_COUNTER(STAT_UpdatePhysicsVolume);
 		if (UWorld * MyWorld = GetWorld())

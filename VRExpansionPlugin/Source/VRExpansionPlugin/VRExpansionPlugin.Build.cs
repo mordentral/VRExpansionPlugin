@@ -55,6 +55,7 @@ public class VRExpansionPlugin : ModuleRules
         new string[]
         {
                     "Core",
+                    "NetCore",
                     "CoreUObject",
                     "Engine",
                    // "InputCore",
@@ -110,14 +111,8 @@ public class VRExpansionPlugin : ModuleRules
 
         if (Target.bCompilePhysX)
         {
-            PublicDependencyModuleNames.Add("PhysXVehicles");
+            // PublicDependencyModuleNames.Add("PhysXVehicles");
         }
-
-        if (Target.bUseChaos)
-        {
-            //PublicDependencyModuleNames.Add("ChaosVehiclesPlugin");
-        }
-
 
         PrivateDependencyModuleNames.AddRange(
 			new string[]

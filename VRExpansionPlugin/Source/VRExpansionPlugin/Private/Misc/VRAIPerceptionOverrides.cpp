@@ -377,7 +377,7 @@ float UAISense_Sight_VR::Update()
 
 						auto HitResultActorIsOwnedByTargetActor = [&HitResult, TargetActor]()
 						{
-							AActor* HitResultActor = HitResult.Actor.Get();
+							AActor* HitResultActor = HitResult.GetActor();
 							return (HitResultActor ? HitResultActor->IsOwnedBy(TargetActor) : false);
 						};
 

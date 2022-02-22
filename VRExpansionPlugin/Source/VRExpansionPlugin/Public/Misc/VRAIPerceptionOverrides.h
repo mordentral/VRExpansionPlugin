@@ -82,10 +82,10 @@ struct VREXPANSIONPLUGIN_API FAISightEventVR
 	ESightPerceptionEventNameVR::Type EventType;
 
 	UPROPERTY()
-		AActor* SeenActor;
+		TObjectPtr<AActor> SeenActor;
 
 	UPROPERTY()
-		AActor* Observer;
+		TObjectPtr<AActor> Observer;
 
 	FAISightEventVR() : SeenActor(nullptr), Observer(nullptr) {}
 

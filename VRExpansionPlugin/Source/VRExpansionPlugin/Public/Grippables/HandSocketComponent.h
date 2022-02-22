@@ -143,7 +143,7 @@ public:
 	// Primary hand animation, for both hands if they share animations, right hand if they don't
 	// If using a custom pose delta this is expected to be the base pose
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
-		UAnimSequence* HandTargetAnimation;
+		TObjectPtr<UAnimSequence> HandTargetAnimation;
 
 	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, bool bUseRawDataOnly);
 
@@ -278,7 +278,7 @@ public:
 	// Returns the defined hand socket component (if it exists, you need to valid check the return!
 	// If it is a valid return you can then cast to your projects base socket class and handle whatever logic you want
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
-	static UHandSocketComponent *  GetHandSocketComponentFromObject(UObject * ObjectToCheck, FName SocketName)
+	static UHandSocketComponent* GetHandSocketComponentFromObject(UObject* ObjectToCheck, FName SocketName)
 	{
 		if (AActor* OwningActor = Cast<AActor>(ObjectToCheck))
 		{
@@ -354,7 +354,7 @@ public:
 	class UPoseableMeshComponent* HandVisualizerComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
-		class USkeletalMesh* VisualizationMesh;
+		TObjectPtr<USkeletalMesh> VisualizationMesh;
 
 	// If we should show the visualization mesh
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
@@ -370,7 +370,7 @@ public:
 
 	// Material to apply to the hand
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Visualization")
-		UMaterial* HandPreviewMaterial;
+		TObjectPtr<UMaterial> HandPreviewMaterial;
 
 #endif
 };
@@ -383,7 +383,7 @@ class VREXPANSIONPLUGIN_API UHandSocketAnimInstance : public UAnimInstance
 public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, transient, Category = "Socket Data")
-		UHandSocketComponent* OwningSocket;
+		TObjectPtr<UHandSocketComponent> OwningSocket;
 
 	virtual void NativeInitializeAnimation() override
 	{
