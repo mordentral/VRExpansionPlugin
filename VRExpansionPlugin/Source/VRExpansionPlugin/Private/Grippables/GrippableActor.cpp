@@ -221,7 +221,7 @@ void AGrippableActor::OnRep_AttachmentReplication()
 	{
 		if (RootComponent)
 		{
-			USceneComponent* AttachParentComponent = (AttachmentWeldReplication.AttachComponent ? AttachmentWeldReplication.AttachComponent : AttachmentWeldReplication.AttachParent->GetRootComponent());
+			USceneComponent* AttachParentComponent = (AttachmentWeldReplication.AttachComponent ? ToRawPtr(AttachmentWeldReplication.AttachComponent) : AttachmentWeldReplication.AttachParent->GetRootComponent());
 
 			if (AttachParentComponent)
 			{

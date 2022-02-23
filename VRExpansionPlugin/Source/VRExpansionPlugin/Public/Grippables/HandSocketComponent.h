@@ -145,7 +145,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
 		TObjectPtr<UAnimSequence> HandTargetAnimation;
 
-	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, bool bUseRawDataOnly);
+#if WITH_EDITORONLY_DATA
+	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, FName BoneName, bool bUseRawDataOnly);
+#endif
 
 	// Returns the base target animation of the hand (if there is one)
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
