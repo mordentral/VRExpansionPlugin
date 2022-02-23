@@ -120,7 +120,7 @@ void AGrippableSkeletalMeshActor::PreReplication(IRepChangedPropertyTracker& Cha
 #endif
 
 	PRAGMA_DISABLE_DEPRECATION_WARNINGS
-		UBlueprintGeneratedClass* BPClass = Cast<UBlueprintGeneratedClass>(GetClass());
+	UBlueprintGeneratedClass* BPClass = Cast<UBlueprintGeneratedClass>(GetClass());
 	if (BPClass != nullptr)
 	{
 		BPClass->InstancePreReplication(this, ChangedPropertyTracker);

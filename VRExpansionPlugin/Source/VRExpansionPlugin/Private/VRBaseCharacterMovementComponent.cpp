@@ -171,6 +171,17 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 
 				if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 				{
+
+					//#TODO 5.0: Handle this?
+					/*FVector InputVector = FVector::ZeroVector;
+					bool bUsingAsyncTick = (CharacterMovementCVars::AsyncCharacterMovement == 1) && IsAsyncCallbackRegistered();
+					if (!bUsingAsyncTick)
+					{
+						// Do not consume input if simulating asynchronously, we will consume input when filling out async inputs.
+						InputVector = ConsumeInputVector();
+					}*/
+
+
 					const FVector InputVector = ConsumeInputVector();
 					if (!HasValidData() || ShouldSkipUpdate(DeltaTime))
 					{

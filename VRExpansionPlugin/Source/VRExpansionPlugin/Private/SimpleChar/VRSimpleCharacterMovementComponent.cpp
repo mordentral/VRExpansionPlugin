@@ -40,12 +40,12 @@ DECLARE_CYCLE_STAT(TEXT("Char CallServerMoveVRSimple"), STAT_CharacterMovementCa
 #define devCode(...)
 #endif
 
-//#include "PerfCountersHelpers.h"
-//DECLARE_CYCLE_STAT(TEXT("Char PhysWalking"), STAT_CharPhysWalking, STATGROUP_Character);
-//DECLARE_CYCLE_STAT(TEXT("Char PhysFalling"), STAT_CharPhysFalling, STATGROUP_Character);
-//DECLARE_CYCLE_STAT(TEXT("Char PhysNavWalking"), STAT_CharPhysNavWalking, STATGROUP_Character);
-const float MAX_STEP_SIDE_ZZ = 0.08f;	// maximum z value for the normal on the vertical side of steps
-const float VERTICAL_SLOPE_NORMAL_ZZ = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
+namespace CharacterMovementConstants
+{
+	// MAGIC NUMBERS
+	const float MAX_STEP_SIDE_ZZ = 0.08f;	// maximum z value for the normal on the vertical side of steps
+	const float VERTICAL_SLOPE_NORMAL_ZZ = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
+}
 
 UVRSimpleCharacterMovementComponent::UVRSimpleCharacterMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -271,7 +271,7 @@ bool UVRSimpleCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, 
 			{
 				// We should reject the floor result if we are trying to step up an actual step where we are not able to perch (this is rare).
 				// In those cases we should instead abort the step up and try to slide along the stair.
-				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < MAX_STEP_SIDE_ZZ)
+				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < CharacterMovementConstants::MAX_STEP_SIDE_ZZ)
 				{
 					ScopedStepUpMovement.RevertMove();
 					return false;
@@ -740,7 +740,7 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 						}
 
 						// Act as if there was no air control on the last move when computing new deflection.
-						if (bHasLimitedAirControl && Hit.Normal.Z > VERTICAL_SLOPE_NORMAL_ZZ)
+						if (bHasLimitedAirControl && Hit.Normal.Z > CharacterMovementConstants::VERTICAL_SLOPE_NORMAL_ZZ)
 						{
 							const FVector LastMoveNoAirControl = VelocityNoAirControl * LastMoveTimeSlice;
 							Delta = ComputeSlideVector(LastMoveNoAirControl, 1.f, OldHitNormal, Hit);
