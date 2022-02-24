@@ -126,6 +126,9 @@ public:
 	// Client adjustment overrides to allow for rotation
 	///////////////////////////
 
+	// Engines version of this is private for some reason, making it impossible to override the function that uses it.
+	TWeakObjectPtr<UPrimitiveComponent> LastServerMovementBaseVR = nullptr;
+
 	virtual void ClientHandleMoveResponse(const FCharacterMoveResponseDataContainer& MoveResponse) override;
 
 	//virtual void SendClientAdjustment() override;

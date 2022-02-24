@@ -24,54 +24,6 @@ void UVRPathFollowingComponent::SetMovementComponent(UNavMovementComponent* Move
 	}
 }
 
-bool UVRPathFollowingComponent::HasReached(const FVector& TestPoint, EPathFollowingReachMode ReachMode, float InAcceptanceRadius) const
-{
-	// simple test for stationary agent, used as early finish condition
-	const FVector CurrentLocation = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
-	const float GoalRadius = 0.0f;
-	const float GoalHalfHeight = 0.0f;
-	if (InAcceptanceRadius == UPathFollowingComponent::DefaultAcceptanceRadius)
-	{
-		InAcceptanceRadius = MyDefaultAcceptanceRadius;
-	}
-
-	const float AgentRadiusMod = (ReachMode == EPathFollowingReachMode::ExactLocation) || (ReachMode == EPathFollowingReachMode::OverlapGoal) ? 0.0f : MinAgentRadiusPct;
-	return HasReachedInternal(TestPoint, GoalRadius, GoalHalfHeight, CurrentLocation, InAcceptanceRadius, AgentRadiusMod);
-}
-
-bool UVRPathFollowingComponent::HasReached(const AActor& TestGoal, EPathFollowingReachMode ReachMode, float InAcceptanceRadius, bool bUseNavAgentGoalLocation) const
-{
-	// simple test for stationary agent, used as early finish condition
-	float GoalRadius = 0.0f;
-	float GoalHalfHeight = 0.0f;
-	FVector GoalOffset = FVector::ZeroVector;
-	FVector TestPoint = TestGoal.GetActorLocation();
-	if (InAcceptanceRadius == UPathFollowingComponent::DefaultAcceptanceRadius)
-	{
-		InAcceptanceRadius = MyDefaultAcceptanceRadius;
-	}
-
-	if (bUseNavAgentGoalLocation)
-	{
-		const INavAgentInterface* NavAgent = Cast<const INavAgentInterface>(&TestGoal);
-		if (NavAgent)
-		{
-			const AActor* OwnerActor = GetOwner();
-			const FVector GoalMoveOffset = NavAgent->GetMoveGoalOffset(OwnerActor);
-			NavAgent->GetMoveGoalReachTest(OwnerActor, GoalMoveOffset, GoalOffset, GoalRadius, GoalHalfHeight);
-			TestPoint = FQuatRotationTranslationMatrix(TestGoal.GetActorQuat(), NavAgent->GetNavAgentLocation()).TransformPosition(GoalOffset);
-
-			if ((ReachMode == EPathFollowingReachMode::ExactLocation) || (ReachMode == EPathFollowingReachMode::OverlapAgent))
-			{
-				GoalRadius = 0.0f;
-			}
-		}
-	}
-
-	const FVector CurrentLocation = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
-	const float AgentRadiusMod = (ReachMode == EPathFollowingReachMode::ExactLocation) || (ReachMode == EPathFollowingReachMode::OverlapGoal) ? 0.0f : MinAgentRadiusPct;
-	return HasReachedInternal(TestPoint, GoalRadius, GoalHalfHeight, CurrentLocation, InAcceptanceRadius, AgentRadiusMod);
-}
 
 void UVRPathFollowingComponent::GetDebugStringTokens(TArray<FString>& Tokens, TArray<EPathFollowingDebugTokens::Type>& Flags) const
 {
@@ -371,7 +323,7 @@ void UVRPathFollowingComponent::FollowPathSegment(float DeltaTime)
 	{
 		CurrentMoveInput = (CurrentTarget - CurrentLocation).GetSafeNormal();
 
-		if (MoveSegmentStartIndex >= DecelerationSegmentIndex)
+		if (bStopMovementOnFinish && (MoveSegmentStartIndex >= DecelerationSegmentIndex))
 		{
 			const FVector PathEnd = Path->GetEndLocation();
 			const float DistToEndSq = FVector::DistSquared(CurrentLocation, PathEnd);

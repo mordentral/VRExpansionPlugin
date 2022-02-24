@@ -4261,6 +4261,7 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 				{
 					// Handle the display component
 					// #TODO: Don't run if already has a display model, can't access yet
+					// || !DisplayComponent is private
 					if (bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
 						RefreshDisplayComponent();
 				}
