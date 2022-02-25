@@ -50,9 +50,9 @@ DECLARE_CYCLE_STAT(TEXT("Char ProcessLanded"), STAT_CharProcessLanded, STATGROUP
 namespace CharacterMovementConstants
 {
 	// MAGIC NUMBERS
-	const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
-	const float SWIMBOBSPEED = -80.f;
-	const float VERTICAL_SLOPE_NORMAL_Z = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
+	const float MAX_STEP_SIDE_ZVR = 0.08f;	// maximum z value for the normal on the vertical side of steps
+	const float SWIMBOBSPEEDVR = -80.f;
+	const float VERTICAL_SLOPE_NORMAL_ZVR = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
 }
 
 // Defines for build configs
@@ -1836,7 +1836,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			{
 				// We should reject the floor result if we are trying to step up an actual step where we are not able to perch (this is rare).
 				// In those cases we should instead abort the step up and try to slide along the stair.
-				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < CharacterMovementConstants::MAX_STEP_SIDE_Z)
+				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < CharacterMovementConstants::MAX_STEP_SIDE_ZVR)
 				{
 					ScopedStepUpMovement.RevertMove();
 					return false;
@@ -2069,7 +2069,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 			{
 				// We should reject the floor result if we are trying to step up an actual step where we are not able to perch (this is rare).
 				// In those cases we should instead abort the step up and try to slide along the stair.
-				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < CharacterMovementConstants::MAX_STEP_SIDE_Z)
+				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < CharacterMovementConstants::MAX_STEP_SIDE_ZVR)
 				{
 					ScopedStepUpMovement.RevertMove();
 					return false;
@@ -2821,7 +2821,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 						}
 
 						// Act as if there was no air control on the last move when computing new deflection.
-						if (bHasLimitedAirControl && Hit.Normal.Z > CharacterMovementConstants::VERTICAL_SLOPE_NORMAL_Z)
+						if (bHasLimitedAirControl && Hit.Normal.Z > CharacterMovementConstants::VERTICAL_SLOPE_NORMAL_ZVR)
 						{
 							const FVector LastMoveNoAirControl = VelocityNoAirControl * LastMoveTimeSlice;
 							Delta = ComputeSlideVector(LastMoveNoAirControl, 1.f, OldHitNormal, Hit);
@@ -3260,9 +3260,9 @@ void UVRCharacterMovementComponent::StartSwimmingVR(FVector OldLocation, FVector
 		}
 		MoveUpdatedComponent(End - NewLocation, UpdatedComponent->GetComponentQuat(), true);
 	}
-	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (Velocity.Z > 2.f* CharacterMovementConstants::SWIMBOBSPEED) && (Velocity.Z < 0.f)) //allow for falling out of water
+	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (Velocity.Z > 2.f* CharacterMovementConstants::SWIMBOBSPEEDVR) && (Velocity.Z < 0.f)) //allow for falling out of water
 	{
-		Velocity.Z = CharacterMovementConstants::SWIMBOBSPEED - Velocity.Size2D() * 0.7f; //smooth bobbing
+		Velocity.Z = CharacterMovementConstants::SWIMBOBSPEEDVR - Velocity.Size2D() * 0.7f; //smooth bobbing
 	}
 	if ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations))
 	{
