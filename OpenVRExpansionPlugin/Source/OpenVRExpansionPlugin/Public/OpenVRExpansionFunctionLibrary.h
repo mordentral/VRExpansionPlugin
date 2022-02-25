@@ -719,7 +719,7 @@ public:
 		vr::Texture_t VRTexture;
 
 		if (Texture)
-			VRTexture.handle = Texture->Resource->TextureRHI->GetNativeResource();
+			VRTexture.handle = Texture->GetResource()->TextureRHI->GetNativeResource();
 		else
 			VRTexture.handle = NULL;
 
