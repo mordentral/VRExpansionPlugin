@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VRGripScriptBase.h"
+#include "GripMotionControllerComponent.h"
 #include "GS_InteractibleSettings.generated.h"
 
 
@@ -117,7 +118,8 @@ public:
 		// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
 		FTransform compTrans = this->GetParentTransform(true, GripInformation.GrippedBoneName);
 
-		InteractionSettings.BaseTransform = InteractionSettings.BaseTransform.Inverse() * compTrans; // Reconstitute transform
+		InteractionSettings.BaseTransform = FTransform(InteractionSettings.BaseTransform.ToInverseMatrixWithScale()) * compTrans; // Reconstitute transform
+		InteractionSettings.BaseTransform.SetScale3D(GrippingController->GetPivotTransform().GetScale3D());
 		InteractionSettings.BaseTransform.SetRotation(FQuat::Identity); // Remove rotation
 
 		InteractionSettings.BaseTransform = compTrans.GetRelativeTransform(InteractionSettings.BaseTransform); // Set back to relative
