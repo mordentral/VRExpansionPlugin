@@ -538,15 +538,21 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				//bTextureNeedsUpdate = true;
 				if (mpawn)
 				{
-					// Set transform to this relative transform
 
+					// Offset the transform by the widget pivot.
+					float DeltaY = (Pivot.X - 0.5f) * DrawSize.X;
+					float DeltaZ = (Pivot.Y - 0.5f) * DrawSize.Y;
+					FTransform OffsetTransform = FTransform(FVector(0.f, DeltaY, DeltaZ));
+					OffsetTransform = OffsetTransform * GetComponentTransform();
+
+					// Set transform to this relative transform
 
 					bool bHandledTransform = false;
 					if (AVRBaseCharacter* BaseVRChar = Cast<AVRBaseCharacter>(mpawn))
 					{
 						if (USceneComponent* CameraParent = BaseVRChar->VRReplicatedCamera->GetAttachParent())
 						{
-							Transform = GetComponentTransform().GetRelativeTransform(CameraParent->GetComponentTransform());
+							Transform = OffsetTransform.GetRelativeTransform(CameraParent->GetComponentTransform());
 							Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
 							bHandledTransform = true;
 						}
@@ -556,7 +562,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 						// Look for generic camera comp and use its attach parent
 						if (USceneComponent* CameraParent = Camera->GetAttachParent())
 						{
-							Transform = GetComponentTransform().GetRelativeTransform(CameraParent->GetComponentTransform());
+							Transform = OffsetTransform.GetRelativeTransform(CameraParent->GetComponentTransform());
 							Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
 							bHandledTransform = true;							
 						}
@@ -564,7 +570,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 					if(!bHandledTransform) // Just use the pawn as we don't know the heirarchy
 					{
-						Transform = GetComponentTransform().GetRelativeTransform(mpawn->GetTransform());
+						Transform = OffsetTransform.GetRelativeTransform(mpawn->GetTransform());
 						Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
 					}
 					
