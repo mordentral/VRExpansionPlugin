@@ -1006,7 +1006,7 @@ bool UVRRenderTargetManager::GenerateTrisFromBoxPlaneIntersection(UPrimitiveComp
 			//DrawDebugSphere(GetWorld(), WorldTransformOfPlane.TransformPosition(Intersection), 2.f, 32.f, FColor::Black);
 			PlanePoint = Intersection;
 
-			if (RenderTarget)
+			if (IsValid(RenderTarget))
 			{
 				NewPt.X = ((PlanePoint.X + HalfPlane.X) / PlaneSize.X) * RenderTarget->SizeX;
 				NewPt.Y = ((PlanePoint.Y + HalfPlane.Y) / PlaneSize.Y) * RenderTarget->SizeY;
