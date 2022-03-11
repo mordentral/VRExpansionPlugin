@@ -231,11 +231,16 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 	if (!Prim1 || !Prim2)
 	{
 		UE_LOG(VRE_CollisionIgnoreLog, Error, TEXT("Set Objects Ignore Collision called with invalid object(s)!!"));
+		return;
 	}
 
 	if (Prim1->Mobility == EComponentMobility::Static || Prim2->Mobility == EComponentMobility::Static)
 	{
 		UE_LOG(VRE_CollisionIgnoreLog, Error, TEXT("Set Objects Ignore Collision called with at least one static mobility object (cannot ignore collision with it)!!"));
+		if (bIgnoreCollision)
+		{
+			return;
+		}
 	}
 
 	USkeletalMeshComponent* SkeleMesh = nullptr;
@@ -324,6 +329,11 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 	if (bIgnoreCollision && !CollisionTrackedPairs.Contains(newPrimPair))
 	{
 		CollisionTrackedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
+	}
+	else if (!bIgnoreCollision && !CollisionTrackedPairs.Contains(newPrimPair))
+	{
+		// Early out, we don't even have this pair to remove it
+		return;
 	}
 
 	for (int i = 0; i < ApplicableBodies.Num(); ++i)
@@ -432,7 +442,6 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 
 							if (bIgnoreCollision)
 							{
-
 								if (CollisionTrackedPairs.Contains(newPrimPair))
 								{
 									CollisionTrackedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
@@ -448,20 +457,32 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 							}
 							else
 							{
-								ContactCallback->ContactsToIgnore.Remove(newContactPair);
+								bool bHadPrimPair = false;
 
-								CollisionTrackedPairs[newPrimPair].PairArray.Remove(newIgnorePair);
-								if (CollisionTrackedPairs[newPrimPair].PairArray.Num() < 1)
+								ContactCallback->ContactsToIgnore.Remove(newContactPair);
+								if (CollisionTrackedPairs.Contains(newPrimPair))
 								{
-									CollisionTrackedPairs.Remove(newPrimPair);
+									if (CollisionTrackedPairs[newPrimPair].PairArray.Contains(newIgnorePair))
+									{
+										bHadPrimPair = true;
+										CollisionTrackedPairs[newPrimPair].PairArray.Remove(newIgnorePair);
+									}
+
+									if (CollisionTrackedPairs[newPrimPair].PairArray.Num() < 1)
+									{
+										CollisionTrackedPairs.Remove(newPrimPair);
+									}
 								}
 
 								// If we don't have a map element for this pair, then add it now
-								if (!RemovedPairs.Contains(newPrimPair))
+								if (bHadPrimPair)
 								{
-									RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
+									if (!RemovedPairs.Contains(newPrimPair))
+									{
+										RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
+									}
+									RemovedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
 								}
-								RemovedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
 							}
 						}
 
@@ -486,20 +507,33 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 							}
 							else
 							{
-								ContactCallback->ContactsToIgnore.Remove(newContactPair);
 
-								CollisionTrackedPairs[newPrimPair].PairArray.Remove(newIgnorePair);
-								if (CollisionTrackedPairs[newPrimPair].PairArray.Num() < 1)
+								bool bHadPrimPair = false;
+
+								ContactCallback->ContactsToIgnore.Remove(newContactPair);
+								if (CollisionTrackedPairs.Contains(newPrimPair))
 								{
-									CollisionTrackedPairs.Remove(newPrimPair);
+									if (CollisionTrackedPairs[newPrimPair].PairArray.Contains(newIgnorePair))
+									{
+										bHadPrimPair = true;
+										CollisionTrackedPairs[newPrimPair].PairArray.Remove(newIgnorePair);
+									}
+
+									if (CollisionTrackedPairs[newPrimPair].PairArray.Num() < 1)
+									{
+										CollisionTrackedPairs.Remove(newPrimPair);
+									}
 								}
 
 								// If we don't have a map element for this pair, then add it now
-								if (!RemovedPairs.Contains(newPrimPair))
+								if (bHadPrimPair)
 								{
-									RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
+									if (!RemovedPairs.Contains(newPrimPair))
+									{
+										RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
+									}
+									RemovedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
 								}
-								RemovedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
 							}
 						}
 					}
