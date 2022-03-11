@@ -56,15 +56,19 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 		}*/
 	}
 
-/*#if WITH_CHAOS
-	if (FPhysScene* PhysScene2 = GetWorld()->GetPhysicsScene())
+#if WITH_CHAOS
+	/*if (FPhysScene* PhysScene2 = GetWorld()->GetPhysicsScene())
 	{
 		Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene2->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
 		int32 ExternalTimestamp = PhysScene2->GetSolver()->GetMarshallingManager().GetExternalTimestamp_External();
-		Chaos::FIgnoreCollisionManager::FPendingMap& ActivationMap = IgnoreCollisionManager.GetPendingDeactivationsForGameThread(ExternalTimestamp)
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Pending deactivation Chaos: %i"), ActivationMap.Num()));
-	}
-#endif*/
+
+		Chaos::FIgnoreCollisionManager::FDeactivationSet IgnoreSet = IgnoreCollisionManager.GetPendingActivationsForGameThread(ExternalTimestamp);
+
+		// Prints out the list of items currently being re-activated after one of their pairs died.
+		// Chaos automatically cleans up here, I don't need to do anything.
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Pending activation Chaos: %i"), IgnoreCollisionManager.FActiveMap.Num()));
+	}*/
+#endif
 
 	if (RemovedPairs.Num() > 0 || bDoubleCheckPairs == true)
 	{
