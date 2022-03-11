@@ -38,8 +38,8 @@ public:
 			return false;*/
 		
 		return(
-			(Prim1 == Other.Prim1 || Prim1 == Other.Prim2) &&
-			(Prim2 == Other.Prim1 || Prim2 == Other.Prim2)
+			(Prim1.Get() == Other.Prim1.Get() || Prim1.Get() == Other.Prim2.Get()) &&
+			(Prim2.Get() == Other.Prim1.Get() || Prim2.Get() == Other.Prim2.Get())
 			);
 	}
 
