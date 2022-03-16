@@ -22,7 +22,7 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 	for (const TPair<FCollisionPrimPair, FCollisionIgnorePairArray>& KeyPair : CollisionTrackedPairs)
 	{
 		// First check for invalid primitives
-		if (!KeyPair.Key.Prim1.IsValid() || !KeyPair.Key.Prim2.IsValid() /*|| KeyPair.Key.Prim1->IsPendingKill() || KeyPair.Key.Prim2->IsPendingKill()*/)
+		if (!IsValid(KeyPair.Key.Prim1) || !IsValid(KeyPair.Key.Prim2) /*|| KeyPair.Key.Prim1->IsPendingKill() || KeyPair.Key.Prim2->IsPendingKill()*/)
 		{
 			// If we don't have a map element for this pair, then add it now
 			if (!RemovedPairs.Contains(KeyPair.Key))

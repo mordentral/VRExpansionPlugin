@@ -160,7 +160,7 @@ void UReplicatedVRCameraComponent::OnAttachmentChanged()
 	}
 	else
 	{
-		AttachChar.Reset();
+		AttachChar = nullptr;
 	}
 
 	Super::OnAttachmentChanged();
@@ -237,7 +237,7 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 
-	if (!bUpdateInCharacterMovement || !AttachChar.IsValid())
+	if (!bUpdateInCharacterMovement || !IsValid(AttachChar))
 	{
 		UpdateTracking(DeltaTime);
 	}

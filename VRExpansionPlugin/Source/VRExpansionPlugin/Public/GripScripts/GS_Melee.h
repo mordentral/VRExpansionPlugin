@@ -155,7 +155,7 @@ public:
 	}
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "LodgeComponentInfo")
-	TWeakObjectPtr<UPrimitiveComponent> TargetComponent;
+	TObjectPtr<UPrimitiveComponent> TargetComponent;
 
 	FORCEINLINE bool operator==(const FName& Other) const
 	{

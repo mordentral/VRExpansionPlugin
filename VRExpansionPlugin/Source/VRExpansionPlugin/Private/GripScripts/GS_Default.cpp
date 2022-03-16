@@ -181,7 +181,7 @@ void UGS_Default::CalculateSecondaryLocation(FVector& frontLoc, const FVector& B
 	{
 		bool bPulledCurrentTransform = false;
 
-		if (OtherController->CustomPivotComponent.IsValid())
+		if (IsValid(OtherController->CustomPivotComponent))
 		{
 			FTransform SecondaryTrans = FTransform::Identity;
 			SecondaryTrans = OtherController->GetPivotTransform();

@@ -95,9 +95,9 @@ public:
 	}
 
 	UPROPERTY()
-		TWeakObjectPtr<AVRCharacter> AttachChar;
+		TObjectPtr<AVRCharacter> AttachChar;
 	UPROPERTY()
-		TWeakObjectPtr<AVRBaseCharacter> AttachBaseChar;
+		TObjectPtr<AVRBaseCharacter> AttachBaseChar;
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 

@@ -159,7 +159,7 @@ void UVRRenderTargetManager::AddMaterialTrianglesDrawOperation(TArray<FCanvasUVT
 
 void UVRRenderTargetManager::DrawOperation(UCanvas* Canvas, const FRenderManagerOperation& Operation)
 {
-	if (LocalProxy.IsValid() && LocalProxy->OwnersID == Operation.OwnerID)
+	if (IsValid(LocalProxy) && LocalProxy->OwnersID == Operation.OwnerID)
 	{
 		return;
 	}
@@ -232,7 +232,7 @@ void UVRRenderTargetManager::DrawPoll()
 		if (LocalRenderOperationStore.Num())
 		{
 			// Send operations to server
-			if (LocalProxy.IsValid())
+			if (IsValid(LocalProxy))
 			{
 				LocalProxy->SendLocalDrawOperations(LocalRenderOperationStore);
 			}
@@ -319,7 +319,7 @@ ARenderTargetReplicationProxy::ARenderTargetReplicationProxy(const FObjectInitia
 void ARenderTargetReplicationProxy::OnRep_Manager()
 {
 	// If our manager is valid, save off a reference to ourselves to the local copy.
-	if (OwningManager.IsValid())
+	if (IsValid(OwningManager))
 	{
 		OwningManager->LocalProxy = this;
 
@@ -345,7 +345,7 @@ bool ARenderTargetReplicationProxy::SendLocalDrawOperations_Validate(const TArra
 
 void ARenderTargetReplicationProxy::SendLocalDrawOperations_Implementation(const TArray<FRenderManagerOperation>& LocalRenderOperationStoreList)
 {
-	if (OwningManager.IsValid())
+	if (IsValid(OwningManager))
 	{
 		OwningManager->RenderOperationStore.Append(LocalRenderOperationStoreList);
 
@@ -365,7 +365,7 @@ void ARenderTargetReplicationProxy::SendLocalDrawOperations_Implementation(const
 
 void ARenderTargetReplicationProxy::ReceiveTexture_Implementation(const FBPVRReplicatedTextureStore& TextureData)
 {
-	if (OwningManager.IsValid())
+	if (IsValid(OwningManager))
 	{
 		OwningManager->RenderTargetStore = TextureData;
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, FString::Printf(TEXT("Recieved Texture, byte count: %i"), TextureData.PackedData.Num()));
@@ -387,7 +387,7 @@ void ARenderTargetReplicationProxy::InitTextureSend_Implementation(int32 Width, 
 
 	BlobNum = BlobCount;
 
-	if (OwningManager.IsValid())
+	if (IsValid(OwningManager))
 	{
 		OwningManager->bIsLoadingTextureBuffer = true;
 	}
@@ -493,7 +493,7 @@ void ARenderTargetReplicationProxy::ReceiveTextureBlob_Implementation(const TArr
 		Ack_ReceiveTextureBlob(BlobNum);
 
 		// We finished, unpack and display
-		if (OwningManager.IsValid())
+		if (IsValid(OwningManager))
 		{
 			OwningManager->bIsLoadingTextureBuffer = false;
 			OwningManager->RenderTargetStore = TextureStore;
@@ -529,7 +529,7 @@ void UVRRenderTargetManager::UpdateRelevancyMap()
 
 	for (int i = NetRelevancyLog.Num() - 1; i >= 0; i--)
 	{
-		if (!NetRelevancyLog[i].PC.IsValid() || NetRelevancyLog[i].PC->IsLocalController() || !NetRelevancyLog[i].PC->GetPawn())
+		if (!IsValid(NetRelevancyLog[i].PC) || NetRelevancyLog[i].PC->IsLocalController() || !NetRelevancyLog[i].PC->GetPawn())
 		{
 			NetRelevancyLog[i].ReplicationProxy->Destroy();
 			NetRelevancyLog.RemoveAt(i);
@@ -840,9 +840,9 @@ void UVRRenderTargetManager::TickComponent(float DeltaTime, enum ELevelTick Tick
 
 				for (int i = NetRelevancyLog.Num() - 1; i >= 0; i--)
 				{
-					if (NetRelevancyLog[i].bIsDirty && NetRelevancyLog[i].PC.IsValid() && !NetRelevancyLog[i].PC->IsLocalController())
+					if (NetRelevancyLog[i].bIsDirty && IsValid(NetRelevancyLog[i].PC) && !NetRelevancyLog[i].PC->IsLocalController())
 					{
-						if (NetRelevancyLog[i].ReplicationProxy.IsValid())
+						if (IsValid(NetRelevancyLog[i].ReplicationProxy))
 						{
 							NetRelevancyLog[i].ReplicationProxy->TextureStore = RenderTargetStore;
 							NetRelevancyLog[i].ReplicationProxy->SendInitMessage();
@@ -898,13 +898,12 @@ void UVRRenderTargetManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	for (FClientRepData& RepData : NetRelevancyLog)
 	{
 		RepData.PC = nullptr;
-		RepData.PC.Reset();
 		if (IsValid(RepData.ReplicationProxy.Get()))
 		{
 			RepData.ReplicationProxy->Destroy();
 		}
 
-		RepData.ReplicationProxy.Reset();
+		RepData.ReplicationProxy = nullptr;
 	}
 
 }

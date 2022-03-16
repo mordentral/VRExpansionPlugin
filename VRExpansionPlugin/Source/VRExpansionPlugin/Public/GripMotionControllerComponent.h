@@ -201,7 +201,7 @@ public:
 		bool bConstrainToPivot;
 
 	UPROPERTY()
-		TWeakObjectPtr<AVRBaseCharacter> AttachChar;
+		TObjectPtr<AVRBaseCharacter> AttachChar;
 	void UpdateTracking(float DeltaTime);
 	virtual void OnAttachmentChanged() override;
 
@@ -341,7 +341,7 @@ public:
 
 	// The component to use for basing the grip off of instead of the motion controller
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GripMotionController|CustomPivot")
-		TWeakObjectPtr<USceneComponent> CustomPivotComponent;
+		TObjectPtr<USceneComponent> CustomPivotComponent;
 
 	// The socket for the component to use for basing the grip off of instead of the motion controller
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GripMotionController|CustomPivot")
@@ -366,12 +366,12 @@ public:
 
 	FORCEINLINE FTransform GetPivotTransform()
 	{
-		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform();
+		return IsValid(CustomPivotComponent) ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform();
 	}
 
 	FORCEINLINE FVector GetPivotLocation()
 	{
-		return CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketLocation(CustomPivotComponentSocketName) : this->GetComponentLocation();
+		return IsValid(CustomPivotComponent) ? CustomPivotComponent->GetSocketLocation(CustomPivotComponentSocketName) : this->GetComponentLocation();
 	}
 
 	// Increments with each grip, wraps back to 0 after max due to modulo operation

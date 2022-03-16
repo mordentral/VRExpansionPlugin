@@ -26,7 +26,7 @@ public:
 		bool bUpdateInCharacterMovement;
 
 	UPROPERTY()
-		TWeakObjectPtr<AVRBaseCharacter> AttachChar;
+		TObjectPtr<AVRBaseCharacter> AttachChar;
 	void UpdateTracking(float DeltaTime);
 
 	virtual void OnAttachmentChanged() override;

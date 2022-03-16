@@ -104,13 +104,13 @@ public:
 
 	// On the button state changing, keep in mind that InteractingActor can be invalid if manually setting the state
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
-		TWeakObjectPtr<UPrimitiveComponent> LocalInteractingComponent;
+		TObjectPtr<UPrimitiveComponent> LocalInteractingComponent;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
-		TWeakObjectPtr<AActor> LocalLastInteractingActor;
+		TObjectPtr<AActor> LocalLastInteractingActor;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRButtonComponent")
-		TWeakObjectPtr<UPrimitiveComponent> LocalLastInteractingComponent;
+		TObjectPtr<UPrimitiveComponent> LocalLastInteractingComponent;
 
 	// Whether the button is enabled or not (can be interacted with)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")

@@ -1476,7 +1476,7 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 	else if (bWorldOffsetIsRelative)
 	{
-		if (bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() && !bIsSlotGrip)
+		if (bSkipPivotTransformAdjustment && IsValid(CustomPivotComponent) && !bIsSlotGrip)
 		{
 			newActorGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
@@ -1724,7 +1724,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 	else if (bWorldOffsetIsRelative)
 	{
-		if (bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() && !bIsSlotGrip)
+		if (bSkipPivotTransformAdjustment && IsValid(CustomPivotComponent) && !bIsSlotGrip)
 		{
 			newComponentGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
@@ -2796,8 +2796,8 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 		if (bHasMovementAuthority || IsServer())
 		{
-			FName BoneName = CustomPivotComponent.IsValid() ? CustomPivotComponentSocketName : NAME_None;
-			root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules(EAttachmentRule::KeepWorld, true), BoneName);
+			FName BoneName = IsValid(CustomPivotComponent) ? CustomPivotComponentSocketName : NAME_None;
+			root->AttachToComponent(IsValid(CustomPivotComponent) ? CustomPivotComponent.Get() : this, FAttachmentTransformRules(EAttachmentRule::KeepWorld, true), BoneName);
 		}
 
 	}break;
@@ -4178,7 +4178,7 @@ void UGripMotionControllerComponent::OnAttachmentChanged()
 	}
 	else
 	{
-		AttachChar.Reset();
+		AttachChar = nullptr;
 	}
 
 	Super::OnAttachmentChanged();
@@ -5049,7 +5049,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							if (HasGripMovementAuthority(*Grip) || IsServer())
 							{
 								root->SetSimulatePhysics(false);
-								if (root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform))
+								if (root->AttachToComponent(IsValid(CustomPivotComponent) ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform))
 								{
 									UE_LOG(LogVRMotionController, Warning, TEXT("Re-attached"));
 									if (!root->GetRelativeTransform().Equals(RelativeTrans))
@@ -5535,7 +5535,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 		}
 
-		if (!NewGrip.bIsLerping && bConstrainToPivot && CustomPivotComponent.IsValid())
+		if (!NewGrip.bIsLerping && bConstrainToPivot && IsValid(CustomPivotComponent))
 		{
 			if (UPrimitiveComponent* PivotPrim = Cast<UPrimitiveComponent>(CustomPivotComponent))
 			{
@@ -7167,7 +7167,7 @@ FVector UGripMotionControllerComponent::GetPivotLocation_BP()
 
 FTransform UGripMotionControllerComponent::ConvertToControllerRelativeTransform(const FTransform & InTransform)
 {
-	return InTransform.GetRelativeTransform(!bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform());
+	return InTransform.GetRelativeTransform(!bSkipPivotTransformAdjustment && IsValid(CustomPivotComponent) ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform());
 }
 
 FTransform UGripMotionControllerComponent::ConvertToGripRelativeTransform(const FTransform& GrippedActorTransform, const FTransform & InTransform)

@@ -225,11 +225,11 @@ public:
 	FTransform MountWorldTransform;
 	bool bIsMounted;
 	FTransform RelativeTransOnSecondaryRelease;
-	TWeakObjectPtr<USceneComponent> CameraComponent;
+	TObjectPtr<USceneComponent> CameraComponent;
 
 	// Overrides the default behavior of using the HMD location for the stock and uses this component instead
 	UPROPERTY(BlueprintReadWrite, Category = "VirtualStock")
-		TWeakObjectPtr<USceneComponent> VirtualStockComponent;
+		TObjectPtr<USceneComponent> VirtualStockComponent;
 
 	// Loads the global virtual stock settings on grip (only if locally controlled, you need to manually replicate and store the global settings
 	// In the character if networked).
