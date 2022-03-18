@@ -202,7 +202,10 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 
 					if (RawTrack.PosKeys.Num())
 					{
-						Loc = RawTrack.PosKeys[0];
+						Loc.X = RawTrack.PosKeys[0].X;
+						Loc.Y = RawTrack.PosKeys[0].Y;
+						Loc.Z = RawTrack.PosKeys[0].Z;
+						//Loc = RawTrack.PosKeys[0];
 						bHadLoc = true;
 					}
 
@@ -218,7 +221,10 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 
 					if (RawTrack.ScaleKeys.Num())
 					{
-						Scale = RawTrack.ScaleKeys[0];
+						Scale.X = RawTrack.ScaleKeys[0].X;
+						Scale.Y = RawTrack.ScaleKeys[0].Y;
+						Scale.Z = RawTrack.ScaleKeys[0].Z;
+						//Scale = RawTrack.ScaleKeys[0];
 						bHadScale = true;
 					}
 
