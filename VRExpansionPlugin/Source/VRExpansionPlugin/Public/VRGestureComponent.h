@@ -206,7 +206,7 @@ public:
 };
 
 /** Delegate for notification when the lever state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FVRGestureDetectedSignature, uint8, GestureType, FString, DetectedGestureName, int, DetectedGestureIndex, UGesturesDatabase *, GestureDataBase);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FVRGestureDetectedSignature, uint8, GestureType, FString, DetectedGestureName, int, DetectedGestureIndex, UGesturesDatabase *, GestureDataBase, FVector, OriginalUnscaledGestureSize);
 
 /**
 * A scene component that can sample its positions to record / track VR gestures
@@ -230,7 +230,7 @@ public:
 	// if I decide to support three point tracked gestures or something at some point, but its a waste for single point.
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "BaseVRCharacter")
-		void OnGestureDetected(uint8 GestureType, FString &DetectedGestureName, int & DetectedGestureIndex, UGesturesDatabase * GestureDatabase);
+		void OnGestureDetected(uint8 GestureType, FString &DetectedGestureName, int & DetectedGestureIndex, UGesturesDatabase * GestureDatabase, FVector OriginalUnscaledGestureSize);
 
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "VRGestures")
