@@ -14,6 +14,12 @@
   "CanContainContent": false,
   "IsBetaVersion": false,
   "Installed": true,
+  "SupportedTargetPlatforms": [
+		"Win64",
+		"Linux",
+		"Android",
+		"HoloLens"
+	],
   "Modules": [
     {
       "Name": "VRExpansionPlugin",
