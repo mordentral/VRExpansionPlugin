@@ -32,7 +32,7 @@ void UOpenXRHandPoseComponent::GetLifetimeReplicatedProps(TArray< class FLifetim
 	DOREPLIFETIME_CONDITION(UOpenXRHandPoseComponent, RightHandRep, COND_SkipOwner);
 }
 
-void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(const FBPSkeletalRepContainer& SkeletalInfo)
+void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(const FBPXRSkeletalRepContainer& SkeletalInfo)
 {
 	for (int i = 0; i < HandSkeletalActions.Num(); i++)
 	{
@@ -40,7 +40,7 @@ void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(cons
 		{
 			HandSkeletalActions[i].OldSkeletalTransforms = HandSkeletalActions[i].SkeletalTransforms;
 
-			FBPSkeletalRepContainer::CopyReplicatedTo(SkeletalInfo, HandSkeletalActions[i]);
+			FBPXRSkeletalRepContainer::CopyReplicatedTo(SkeletalInfo, HandSkeletalActions[i]);
 
 			if (SkeletalInfo.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left)
 			{
@@ -60,7 +60,7 @@ void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(cons
 	}
 }
 
-bool UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Validate(const FBPSkeletalRepContainer& SkeletalInfo)
+bool UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Validate(const FBPXRSkeletalRepContainer& SkeletalInfo)
 {
 	return true;
 }
@@ -169,7 +169,7 @@ void UOpenXRHandPoseComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 					{
 						if (actionInfo.bHasValidData)
 						{
-							FBPSkeletalRepContainer ContainerSend;
+							FBPXRSkeletalRepContainer ContainerSend;
 							ContainerSend.CopyForReplication(actionInfo);
 							Server_SendSkeletalTransforms(ContainerSend);
 						}
@@ -528,7 +528,7 @@ void UOpenXRHandPoseComponent::FTransformLerpManager::UpdateManager(float DeltaT
 	}
 }
 
-void FBPSkeletalRepContainer::CopyForReplication(FBPOpenXRActionSkeletalData& Other)
+void FBPXRSkeletalRepContainer::CopyForReplication(FBPOpenXRActionSkeletalData& Other)
 {
 	TargetHand = Other.TargetHand;
 
@@ -596,7 +596,7 @@ void FBPSkeletalRepContainer::CopyForReplication(FBPOpenXRActionSkeletalData& Ot
 	SkeletalTransforms[idx++] = Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_DISTAL_EXT];
 }
 
-void FBPSkeletalRepContainer::CopyReplicatedTo(const FBPSkeletalRepContainer& Container, FBPOpenXRActionSkeletalData& Other)
+void FBPXRSkeletalRepContainer::CopyReplicatedTo(const FBPXRSkeletalRepContainer& Container, FBPOpenXRActionSkeletalData& Other)
 {
 	int32 BoneCountAdjustment = 5 + (Container.bEnableUE4HandRepSavings ? 4 : 0);
 	if (Container.SkeletalTransforms.Num() < (EHandKeypointCount - BoneCountAdjustment))
@@ -679,7 +679,7 @@ void FBPSkeletalRepContainer::CopyReplicatedTo(const FBPSkeletalRepContainer& Co
 	Other.bHasValidData = true;
 }
 
-bool FBPSkeletalRepContainer::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+bool FBPXRSkeletalRepContainer::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 {
 	bOutSuccess = true;
 
