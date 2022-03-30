@@ -4,6 +4,7 @@
 #include "AI/NavigationSystemBase.h"
 #include "VRBaseCharacterMovementComponent.h"
 #include "Engine/Player.h"
+#include "VRCameraManager.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 
@@ -11,6 +12,15 @@ AVRPlayerController::AVRPlayerController(const FObjectInitializer& ObjectInitial
 	: Super(ObjectInitializer)
 {
 	bDisableServerUpdateCamera = true;
+	//now constructing VRCameraManager (fix to 0,0,0 and flicker)
+	PlayerCameraManagerClass = AVRCameraManager::StaticClass();
+}
+
+//calls super and fades back in on controller begin play (Fix to 0,0,0 and flicker)
+void AVRPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+	PlayerCameraManager->StartCameraFade(1, 0, 2.0, FColor(0), false);
 }
 
 void AVRPlayerController::SpawnPlayerCameraManager()
