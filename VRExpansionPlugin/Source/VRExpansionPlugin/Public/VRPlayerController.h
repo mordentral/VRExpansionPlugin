@@ -26,6 +26,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRPlayerController")
 		bool bDisableServerUpdateCamera;
 
+	
+	//Add begin play so we can call super and fade in using VRCameraManager (fix to 0,0,0 & Flicker)
+	void BeginPlay();
+
 	/** spawn cameras for servers and owning players */
 	virtual void SpawnPlayerCameraManager() override;
 
