@@ -5,11 +5,37 @@
 #include "VRBPDatatypes.h"
 #include "VRPathFollowingComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Engine/LocalPlayer.h"
 #include "VRPlayerController.generated.h"
+
+// A base player controller specifically for handling OnCameraManagerCreated.
+// Used in case you don't want the VRPlayerCharacter changes in a PendingPlayerController
+UCLASS()
+class VREXPANSIONPLUGIN_API AVRBasePlayerController : public APlayerController
+{
+	GENERATED_BODY()
+
+public:
+
+	// Event called in BPs when the camera manager is created (only fired on locally controlled player controllers)
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "OnCameraManagerCreated"), Category = Actor)
+		void OnCameraManagerCreated(APlayerCameraManager* CameraManager);
+
+	virtual void SpawnPlayerCameraManager() override
+	{
+		Super::SpawnPlayerCameraManager();
+
+		if (PlayerCameraManager != NULL && IsLocalController())
+		{
+			OnCameraManagerCreated(PlayerCameraManager);
+		}
+	}
+
+};
 
 
 UCLASS()
-class VREXPANSIONPLUGIN_API AVRPlayerController : public APlayerController
+class VREXPANSIONPLUGIN_API AVRPlayerController : public AVRBasePlayerController
 {
 	GENERATED_BODY()
 
@@ -37,4 +63,26 @@ public:
 	* I am overriding this so that for VRCharacters it doesn't apply the view rotation and instead lets CMC handle it
 	*/
 	virtual void PlayerTick(float DeltaTime) override;
+};
+
+/**
+* Utility class, when set as the default local player it will spawn the target PlayerController class instead as the pending player controller
+*/
+UCLASS(BlueprintType, Blueprintable, meta = (ShortTooltip = "Utility class, when set as the default local player it will spawn the target PlayerController class instead as the pending one"))
+class VREXPANSIONPLUGIN_API UVRLocalPlayer : public ULocalPlayer
+{
+	GENERATED_UCLASS_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSubclassOf<class APlayerController> OverridePendingLevelPlayerControllerClass;
+
+	virtual bool SpawnPlayActor(const FString& URL, FString& OutError, UWorld* InWorld)
+	{
+		if (OverridePendingLevelPlayerControllerClass)
+		{
+			PendingLevelPlayerControllerClass = OverridePendingLevelPlayerControllerClass;
+		}
+
+		return Super::SpawnPlayActor(URL, OutError, InWorld);
+	}
 };
