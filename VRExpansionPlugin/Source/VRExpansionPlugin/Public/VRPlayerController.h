@@ -68,7 +68,7 @@ public:
 /**
 * Utility class, when set as the default local player it will spawn the target PlayerController class instead as the pending player controller
 */
-UCLASS(BlueprintType, Blueprintable, meta = (ShortTooltip = "Utility class, when set as the default local player it will spawn the target PlayerController class instead as the pending one"))
+UCLASS(Blueprintable, meta = (ShortTooltip = "Utility class, when set as the default local player it will spawn the target PlayerController class instead as the pending one"))
 class VREXPANSIONPLUGIN_API UVRLocalPlayer : public ULocalPlayer
 {
 	GENERATED_UCLASS_BODY()
