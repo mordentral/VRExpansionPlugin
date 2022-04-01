@@ -551,8 +551,16 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
 				SetActorLocationAndRotationVR(SeatInformation.StoredTargetTransform.GetTranslation(), SeatInformation.StoredTargetTransform.Rotator(), true, true, true);
-				LeftMotionController->PostTeleportMoveGrippedObjects();
-				RightMotionController->PostTeleportMoveGrippedObjects();
+				
+				if (LeftMotionController)
+				{
+					LeftMotionController->PostTeleportMoveGrippedObjects();
+				}
+
+				if (RightMotionController)
+				{
+					RightMotionController->PostTeleportMoveGrippedObjects();
+				}
 
 				/*if (UVRBaseCharacterMovementComponent * charMovement = Cast<UVRBaseCharacterMovementComponent>(GetMovementComponent()))
 				{
