@@ -99,6 +99,7 @@ public class VRExpansionPlugin : ModuleRules
                 //"FLEX", remove comment if building in the NVIDIA flex branch - NOTE when put in place FLEX only listed win32 and win64 at compatible platforms
                 //"HeadMountedDisplay",
                 "RHI",
+				"ApplicationCore",
                 "RenderCore",
                // "ShaderCore",
                 "NetworkReplayStreaming",
