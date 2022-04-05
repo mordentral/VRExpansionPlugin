@@ -275,6 +275,8 @@ struct FClientRepData {
 
 	FClientRepData() 
 	{
+		PC = nullptr;
+		ReplicationProxy = nullptr;
 		bIsRelevant = false;
 		bIsDirty = false;
 	}

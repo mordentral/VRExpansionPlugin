@@ -152,6 +152,7 @@ public:
 		MinimumHitVelocity = 1000.f;
 		AcceptableForwardProductRange = 0.1f;
 		AcceptableForwardProductRangeForHits = 0.1f;
+		TargetComponent = nullptr;
 	}
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "LodgeComponentInfo")
