@@ -47,10 +47,13 @@ DECLARE_CYCLE_STAT(TEXT("Char NavProjectLocation"), STAT_CharNavProjectLocation,
 DECLARE_CYCLE_STAT(TEXT("Char AdjustFloorHeight"), STAT_CharAdjustFloorHeight, STATGROUP_Character);
 DECLARE_CYCLE_STAT(TEXT("Char ProcessLanded"), STAT_CharProcessLanded, STATGROUP_Character);
 
-// MAGIC NUMBERS
-const float MAX_STEP_SIDE_Z = 0.08f;	// maximum z value for the normal on the vertical side of steps
-const float SWIMBOBSPEED = -80.f;
-const float VERTICAL_SLOPE_NORMAL_Z = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
+namespace CharacterMovementConstants
+{
+	// MAGIC NUMBERS
+	const float MAX_STEP_SIDE_ZVR = 0.08f;	// maximum z value for the normal on the vertical side of steps
+	const float SWIMBOBSPEEDVR = -80.f;
+	const float VERTICAL_SLOPE_NORMAL_ZVR = 0.001f; // Slope is vertical if Abs(Normal.Z) <= this threshold. Accounts for precision problems that sometimes angle normals slightly off horizontal for vertical surface.
+}
 
 // Defines for build configs
 #if DO_CHECK && !UE_BUILD_SHIPPING // Disable even if checks in shipping are enabled.
@@ -88,7 +91,7 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 	}
 
 	// See if collision is already at desired size.
-	if (CharacterOwner->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() == CrouchedHalfHeight)
+	if (CharacterOwner->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() == GetCrouchedHalfHeight())
 	{
 		if (!bClientSimulation)
 		{
@@ -115,7 +118,7 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 	const float OldUnscaledHalfHeight = CharacterOwner->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
 	const float OldUnscaledRadius = CharacterOwner->GetCapsuleComponent()->GetUnscaledCapsuleRadius();
 	// Height is not allowed to be smaller than radius.
-	const float ClampedCrouchedHalfHeight = FMath::Max3(0.f, OldUnscaledRadius, CrouchedHalfHeight);
+	const float ClampedCrouchedHalfHeight = FMath::Max3(0.f, OldUnscaledRadius, GetCrouchedHalfHeight());
 
 	if (VRRootCapsule)
 		VRRootCapsule->SetCapsuleSizeVR(OldUnscaledRadius, ClampedCrouchedHalfHeight);
@@ -1593,7 +1596,7 @@ void UVRCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, fl
 
 		if (Hit.IsValidBlockingHit())
 		{
-			if (CanStepUp(Hit) || (CharacterOwner->GetMovementBase() != NULL && CharacterOwner->GetMovementBase()->GetOwner() == Hit.GetActor()))
+			if (CanStepUp(Hit) || (CharacterOwner->GetMovementBase() != nullptr && Hit.HitObjectHandle == CharacterOwner->GetMovementBase()->GetOwner()))
 			{
 				// hit a barrier, try to step up
 				const FVector PreStepUpLocation = UpdatedComponent->GetComponentLocation();
@@ -1833,7 +1836,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			{
 				// We should reject the floor result if we are trying to step up an actual step where we are not able to perch (this is rare).
 				// In those cases we should instead abort the step up and try to slide along the stair.
-				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < MAX_STEP_SIDE_Z)
+				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < CharacterMovementConstants::MAX_STEP_SIDE_ZVR)
 				{
 					ScopedStepUpMovement.RevertMove();
 					return false;
@@ -2066,7 +2069,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 			{
 				// We should reject the floor result if we are trying to step up an actual step where we are not able to perch (this is rare).
 				// In those cases we should instead abort the step up and try to slide along the stair.
-				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < MAX_STEP_SIDE_Z)
+				if (!StepDownResult.FloorResult.bBlockingHit && StepSideZ < CharacterMovementConstants::MAX_STEP_SIDE_ZVR)
 				{
 					ScopedStepUpMovement.RevertMove();
 					return false;
@@ -2135,81 +2138,71 @@ void UVRCharacterMovementComponent::UpdateBasedMovement(float DeltaSeconds)
 		const FQuatRotationTranslationMatrix OldLocalToWorld(OldBaseQuat, OldBaseLocation);
 		const FQuatRotationTranslationMatrix NewLocalToWorld(NewBaseQuat, NewBaseLocation);
 
-		if (CharacterOwner->IsMatineeControlled())
-		{
-			FRotationTranslationMatrix HardRelMatrix(CharacterOwner->GetBasedMovement().Rotation, CharacterOwner->GetBasedMovement().Location);
-			const FMatrix NewWorldTM = HardRelMatrix * NewLocalToWorld;
-			const FQuat NewWorldRot = bIgnoreBaseRotation ? UpdatedComponent->GetComponentQuat() : NewWorldTM.ToQuat();
-			MoveUpdatedComponent(NewWorldTM.GetOrigin() - UpdatedComponent->GetComponentLocation(), NewWorldRot, true);
-		}
-		else
-		{
-			FQuat FinalQuat = UpdatedComponent->GetComponentQuat();
+		FQuat FinalQuat = UpdatedComponent->GetComponentQuat();
 
-			if (bRotationChanged && !bIgnoreBaseRotation)
+		if (bRotationChanged && !bIgnoreBaseRotation)
+		{
+			// Apply change in rotation and pipe through FaceRotation to maintain axis restrictions
+			const FQuat PawnOldQuat = UpdatedComponent->GetComponentQuat();
+			const FQuat TargetQuat = DeltaQuat * FinalQuat;
+			FRotator TargetRotator(TargetQuat);
+			CharacterOwner->FaceRotation(TargetRotator, 0.f);
+			FinalQuat = UpdatedComponent->GetComponentQuat();
+
+			if (PawnOldQuat.Equals(FinalQuat, 1e-6f))
 			{
-				// Apply change in rotation and pipe through FaceRotation to maintain axis restrictions
-				const FQuat PawnOldQuat = UpdatedComponent->GetComponentQuat();
-				const FQuat TargetQuat = DeltaQuat * FinalQuat;
-				FRotator TargetRotator(TargetQuat);
-				CharacterOwner->FaceRotation(TargetRotator, 0.f);
-				FinalQuat = UpdatedComponent->GetComponentQuat();
-
-				if (PawnOldQuat.Equals(FinalQuat, 1e-6f))
+				// Nothing changed. This means we probably are using another rotation mechanism (bOrientToMovement etc). We should still follow the base object.
+				// @todo: This assumes only Yaw is used, currently a valid assumption. This is the only reason FaceRotation() is used above really, aside from being a virtual hook.
+				if (bOrientRotationToMovement || (bUseControllerDesiredRotation && CharacterOwner->Controller))
 				{
-					// Nothing changed. This means we probably are using another rotation mechanism (bOrientToMovement etc). We should still follow the base object.
-					// @todo: This assumes only Yaw is used, currently a valid assumption. This is the only reason FaceRotation() is used above really, aside from being a virtual hook.
-					if (bOrientRotationToMovement || (bUseControllerDesiredRotation && CharacterOwner->Controller))
-					{
-						TargetRotator.Pitch = 0.f;
-						TargetRotator.Roll = 0.f;
-						MoveUpdatedComponent(FVector::ZeroVector, TargetRotator, false);
-						FinalQuat = UpdatedComponent->GetComponentQuat();
-					}
-				}
-
-				// Pipe through ControlRotation, to affect camera.
-				if (CharacterOwner->Controller)
-				{
-					const FQuat PawnDeltaRotation = FinalQuat * PawnOldQuat.Inverse();
-					FRotator FinalRotation = FinalQuat.Rotator();
-					UpdateBasedRotation(FinalRotation, PawnDeltaRotation.Rotator());
+					TargetRotator.Pitch = 0.f;
+					TargetRotator.Roll = 0.f;
+					MoveUpdatedComponent(FVector::ZeroVector, TargetRotator, false);
 					FinalQuat = UpdatedComponent->GetComponentQuat();
 				}
 			}
 
-			// We need to offset the base of the character here, not its origin, so offset by half height
-			float HalfHeight, Radius;
-			CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleSize(Radius, HalfHeight);
-
-			FVector const BaseOffset(0.0f, 0.0f, 0.0f);//(0.0f, 0.0f, HalfHeight);
-			FVector const LocalBasePos = OldLocalToWorld.InverseTransformPosition(UpdatedComponent->GetComponentLocation() - BaseOffset);
-			FVector const NewWorldPos = ConstrainLocationToPlane(NewLocalToWorld.TransformPosition(LocalBasePos) + BaseOffset);
-			DeltaPosition = ConstrainDirectionToPlane(NewWorldPos - UpdatedComponent->GetComponentLocation());
-
-			// move attached actor
-			if (bFastAttachedMove)
+			// Pipe through ControlRotation, to affect camera.
+			if (CharacterOwner->Controller)
 			{
-				// we're trusting no other obstacle can prevent the move here
-				UpdatedComponent->SetWorldLocationAndRotation(NewWorldPos, FinalQuat, false);
+				const FQuat PawnDeltaRotation = FinalQuat * PawnOldQuat.Inverse();
+				FRotator FinalRotation = FinalQuat.Rotator();
+				UpdateBasedRotation(FinalRotation, PawnDeltaRotation.Rotator());
+				FinalQuat = UpdatedComponent->GetComponentQuat();
 			}
-			else
-			{
-				// hack - transforms between local and world space introducing slight error FIXMESTEVE - discuss with engine team: just skip the transforms if no rotation?
-				FVector BaseMoveDelta = NewBaseLocation - OldBaseLocation;
-				if (!bRotationChanged && (BaseMoveDelta.X == 0.f) && (BaseMoveDelta.Y == 0.f))
-				{
-					DeltaPosition.X = 0.f;
-					DeltaPosition.Y = 0.f;
-				}
+		}
 
-				FHitResult MoveOnBaseHit(1.f);
-				const FVector OldLocation = UpdatedComponent->GetComponentLocation();
-				MoveUpdatedComponent(DeltaPosition, FinalQuat, true, &MoveOnBaseHit);
-				if ((UpdatedComponent->GetComponentLocation() - (OldLocation + DeltaPosition)).IsNearlyZero() == false)
-				{
-					OnUnableToFollowBaseMove(DeltaPosition, OldLocation, MoveOnBaseHit);
-				}
+		// We need to offset the base of the character here, not its origin, so offset by half height
+		float HalfHeight, Radius;
+		CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleSize(Radius, HalfHeight);
+
+		FVector const BaseOffset(0.0f, 0.0f, 0.0f);//(0.0f, 0.0f, HalfHeight);
+		FVector const LocalBasePos = OldLocalToWorld.InverseTransformPosition(UpdatedComponent->GetComponentLocation() - BaseOffset);
+		FVector const NewWorldPos = ConstrainLocationToPlane(NewLocalToWorld.TransformPosition(LocalBasePos) + BaseOffset);
+		DeltaPosition = ConstrainDirectionToPlane(NewWorldPos - UpdatedComponent->GetComponentLocation());
+
+		// move attached actor
+		if (bFastAttachedMove)
+		{
+			// we're trusting no other obstacle can prevent the move here
+			UpdatedComponent->SetWorldLocationAndRotation(NewWorldPos, FinalQuat, false);
+		}
+		else
+		{
+			// hack - transforms between local and world space introducing slight error FIXMESTEVE - discuss with engine team: just skip the transforms if no rotation?
+			FVector BaseMoveDelta = NewBaseLocation - OldBaseLocation;
+			if (!bRotationChanged && (BaseMoveDelta.X == 0.f) && (BaseMoveDelta.Y == 0.f))
+			{
+				DeltaPosition.X = 0.f;
+				DeltaPosition.Y = 0.f;
+			}
+
+			FHitResult MoveOnBaseHit(1.f);
+			const FVector OldLocation = UpdatedComponent->GetComponentLocation();
+			MoveUpdatedComponent(DeltaPosition, FinalQuat, true, &MoveOnBaseHit);
+			if ((UpdatedComponent->GetComponentLocation() - (OldLocation + DeltaPosition)).IsNearlyZero() == false)
+			{
+				OnUnableToFollowBaseMove(DeltaPosition, OldLocation, MoveOnBaseHit);
 			}
 		}
 
@@ -2312,7 +2305,7 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 					|| MovementBaseUtility::IsDynamicBase(MovementBase);
 			}
 
-			const bool IsActorBasePendingKill = BaseActor && BaseActor->IsPendingKill();
+			const bool IsActorBasePendingKill = !IsValid(BaseActor);
 
 			if (!bForceNextFloorCheck && !IsActorBasePendingKill && MovementBase)
 			{
@@ -2581,6 +2574,8 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		const FQuat PawnRotation = UpdatedComponent->GetComponentQuat();
 		bJustTeleported = false;
 
+		const FVector OldVelocityWithRootMotion = Velocity;
+
 		RestorePreAdditiveRootMotionVelocity();
 	//	RestorePreAdditiveVRMotionVelocity();
 
@@ -2627,28 +2622,41 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		// Apply gravity
 		Velocity = NewFallVelocity(Velocity, Gravity, GravityTime);
 
+		//UE_LOG(LogCharacterMovement, Log, TEXT("dt=(%.6f) OldLocation=(%s) OldVelocity=(%s) OldVelocityWithRootMotion=(%s) NewVelocity=(%s)"), timeTick, *(UpdatedComponent->GetComponentLocation()).ToString(), *OldVelocity.ToString(), *OldVelocityWithRootMotion.ToString(), *Velocity.ToString());
+		ApplyRootMotionToVelocity(timeTick);
+		DecayFormerBaseVelocity(timeTick);
+
 		// See if we need to sub-step to exactly reach the apex. This is important for avoiding "cutting off the top" of the trajectory as framerate varies.
 		static const auto CVarForceJumpPeakSubstep = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ForceJumpPeakSubstep"));
-		if (CVarForceJumpPeakSubstep->GetInt() != 0 && OldVelocity.Z > 0.f && Velocity.Z <= 0.f && NumJumpApexAttempts < MaxJumpApexAttemptsPerSimulation)
+		if (CVarForceJumpPeakSubstep->GetInt() != 0 && OldVelocityWithRootMotion.Z > 0.f && Velocity.Z <= 0.f && NumJumpApexAttempts < MaxJumpApexAttemptsPerSimulation)
 		{
-			const FVector DerivedAccel = (Velocity - OldVelocity) / timeTick;
+			const FVector DerivedAccel = (Velocity - OldVelocityWithRootMotion) / timeTick;
 			if (!FMath::IsNearlyZero(DerivedAccel.Z))
 			{
-				const float TimeToApex = -OldVelocity.Z / DerivedAccel.Z;
+				const float TimeToApex = -OldVelocityWithRootMotion.Z / DerivedAccel.Z;
 
 				// The time-to-apex calculation should be precise, and we want to avoid adding a substep when we are basically already at the apex from the previous iteration's work.
 				const float ApexTimeMinimum = 0.0001f;
 				if (TimeToApex >= ApexTimeMinimum && TimeToApex < timeTick)
 				{
-					const FVector ApexVelocity = OldVelocity + DerivedAccel * TimeToApex;
+					const FVector ApexVelocity = OldVelocityWithRootMotion + (DerivedAccel * TimeToApex);
 					Velocity = ApexVelocity;
 					Velocity.Z = 0.f; // Should be nearly zero anyway, but this makes apex notifications consistent.
 
 					// We only want to move the amount of time it takes to reach the apex, and refund the unused time for next iteration.
-					remainingTime += (timeTick - TimeToApex);
+					const float TimeToRefund = (timeTick - TimeToApex);
+
+					remainingTime += TimeToRefund;
 					timeTick = TimeToApex;
 					Iterations--;
 					NumJumpApexAttempts++;
+
+					// Refund time to any active Root Motion Sources as well
+					for (TSharedPtr<FRootMotionSource> RootMotionSource : CurrentRootMotion.RootMotionSources)
+					{
+						const float RewoundRMSTime = FMath::Max(0.0f, RootMotionSource->GetTime() - TimeToRefund);
+						RootMotionSource->SetTime(RewoundRMSTime);
+					}
 				}
 			}
 		}
@@ -2666,7 +2674,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		}
 
 		// Compute change in position (using midpoint integration method).
-		FVector Adjusted = (0.5f * (OldVelocity + Velocity) * timeTick) + ((AdditionalVRInputVector / deltaTime) * timeTick);
+		FVector Adjusted = (0.5f * (OldVelocityWithRootMotion + Velocity) * timeTick) + ((AdditionalVRInputVector / deltaTime) * timeTick);
 
 		ApplyVRMotionToVelocity(deltaTime);
 
@@ -2676,7 +2684,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 			// We had a portion of the time at constant speed then a portion with acceleration due to gravity.
 			// Account for that here with a more correct change in position.
 			const float NonGravityTime = FMath::Max(0.f, timeTick - GravityTime);
-			Adjusted = ((OldVelocity * NonGravityTime) + (0.5f * (OldVelocity + Velocity) * GravityTime)) /*+ ((AdditionalVRInputVector / deltaTime) * timeTick)*/;
+			Adjusted = ((OldVelocityWithRootMotion * NonGravityTime) + (0.5f * (OldVelocityWithRootMotion + Velocity) * GravityTime)) /*+ ((AdditionalVRInputVector / deltaTime) * timeTick)*/;
 		}
 
 		// Move
@@ -2769,7 +2777,15 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 				FVector Delta = ComputeSlideVector(Adjusted, 1.f - Hit.Time, OldHitNormal, Hit);
 
 				// Compute velocity after deflection (only gravity component for RootMotion)
-				if (subTimeTickRemaining > KINDA_SMALL_NUMBER && !bJustTeleported)
+				const UPrimitiveComponent* HitComponent = Hit.GetComponent();
+				static const auto CVarUseTargetVelocityOnImpact = IConsoleManager::Get().FindConsoleVariable(TEXT("p.UseTargetVelocityOnImpact"));
+				if (CVarUseTargetVelocityOnImpact->GetInt() && !Velocity.IsNearlyZero() && MovementBaseUtility::IsSimulatedBase(HitComponent))
+				{
+					const FVector ContactVelocity = MovementBaseUtility::GetMovementBaseVelocity(HitComponent, NAME_None) + MovementBaseUtility::GetMovementBaseTangentialVelocity(HitComponent, NAME_None, Hit.ImpactPoint);
+					const FVector NewVelocity = Velocity - Hit.ImpactNormal * FVector::DotProduct(Velocity - ContactVelocity, Hit.ImpactNormal);
+					Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
+				}
+				else if (subTimeTickRemaining > KINDA_SMALL_NUMBER && !bJustTeleported)
 				{
 					const FVector NewVelocity = (Delta / subTimeTickRemaining);
 					Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
@@ -2805,7 +2821,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 						}
 
 						// Act as if there was no air control on the last move when computing new deflection.
-						if (bHasLimitedAirControl && Hit.Normal.Z > VERTICAL_SLOPE_NORMAL_Z)
+						if (bHasLimitedAirControl && Hit.Normal.Z > CharacterMovementConstants::VERTICAL_SLOPE_NORMAL_ZVR)
 						{
 							const FVector LastMoveNoAirControl = VelocityNoAirControl * LastMoveTimeSlice;
 							Delta = ComputeSlideVector(LastMoveNoAirControl, 1.f, OldHitNormal, Hit);
@@ -3108,12 +3124,12 @@ void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iteratio
 	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (Velocity.Z > 0.33f * MaxSwimSpeed) && (NetBuoyancy != 0.f))
 	{
 		//damp positive Z out of water
-		Velocity.Z = FMath::Max(0.33f * MaxSwimSpeed, Velocity.Z * Depth*Depth);
+		Velocity.Z = FMath::Max<FVector::FReal>(0.33f * MaxSwimSpeed, Velocity.Z * Depth * Depth);
 	}
 	else if (Depth < 0.65f)
 	{
 		bLimitedUpAccel = (Acceleration.Z > 0.f);
-		Acceleration.Z = FMath::Min(0.1f, Acceleration.Z);
+		Acceleration.Z = FMath::Min<FVector::FReal>(0.1f, Acceleration.Z);
 	}
 
 	Iterations++;
@@ -3244,9 +3260,9 @@ void UVRCharacterMovementComponent::StartSwimmingVR(FVector OldLocation, FVector
 		}
 		MoveUpdatedComponent(End - NewLocation, UpdatedComponent->GetComponentQuat(), true);
 	}
-	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (Velocity.Z > 2.f*SWIMBOBSPEED) && (Velocity.Z < 0.f)) //allow for falling out of water
+	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (Velocity.Z > 2.f* CharacterMovementConstants::SWIMBOBSPEEDVR) && (Velocity.Z < 0.f)) //allow for falling out of water
 	{
-		Velocity.Z = SWIMBOBSPEED - Velocity.Size2D() * 0.7f; //smooth bobbing
+		Velocity.Z = CharacterMovementConstants::SWIMBOBSPEEDVR - Velocity.Size2D() * 0.7f; //smooth bobbing
 	}
 	if ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations))
 	{
@@ -3303,7 +3319,7 @@ bool UVRCharacterMovementComponent::CheckWaterJump(FVector CheckPoint, FVector& 
 	const ECollisionChannel CollisionChannel = UpdatedComponent->GetCollisionObjectType();
 	bool bHit = GetWorld()->SweepSingleByChannel(HitInfo, currentLoc, CheckPoint, FQuat::Identity, CollisionChannel, CapsuleShape, CapsuleParams, ResponseParam);
 
-	if (bHit && !Cast<APawn>(HitInfo.GetActor()))
+	if (bHit && !HitInfo.HitObjectHandle.DoesRepresentClass(APawn::StaticClass()))
 	{
 		// hit a wall - check if it is low enough
 		WallNormal = -1.f * HitInfo.ImpactNormal;
@@ -3560,7 +3576,16 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 	  // Call custom post-movement events. These happen after the scoped movement completes in case the events want to use the current state of overlaps etc.
 	CallMovementUpdateDelegate(DeltaSeconds, OldLocation, OldVelocity);
 
-	SaveBaseLocation();
+	static const auto CVarBasedMovementMode = IConsoleManager::Get().FindConsoleVariable(TEXT("p.BasedMovementMode"));
+	if (CVarBasedMovementMode->GetInt() == 0)
+	{
+		SaveBaseLocation(); // behaviour before implementing this fix
+	}
+	else
+	{
+		MaybeSaveBaseLocation();
+	}
+
 	UpdateComponentVelocity();
 	bJustTeleported = false;
 
@@ -3929,12 +3954,177 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 		ClientLoc = FRepMovement::RebaseOntoLocalOrigin(ClientLoc, this);
 	}
 
+	FVector ServerLoc = UpdatedComponent->GetComponentLocation();
+
 	// Client may send a null movement base when walking on bases with no relative location (to save bandwidth).
 	// In this case don't check movement base in error conditions, use the server one (which avoids an error based on differing bases). Position will still be validated.
-	if (ClientMovementBase == nullptr && ClientMovementMode == MOVE_Walking)
+	if (ClientMovementBase == nullptr)
 	{
-		ClientMovementBase = CharacterOwner->GetBasedMovement().MovementBase;
-		ClientBaseBoneName = CharacterOwner->GetBasedMovement().BoneName;
+		TEnumAsByte<EMovementMode> NetMovementMode(MOVE_None);
+		TEnumAsByte<EMovementMode> NetGroundMode(MOVE_None);
+		uint8 NetCustomMode(0);
+		UnpackNetworkMovementMode(ClientMovementMode, NetMovementMode, NetCustomMode, NetGroundMode);
+		if (NetMovementMode == MOVE_Walking)
+		{
+			ClientMovementBase = CharacterOwner->GetBasedMovement().MovementBase;
+			ClientBaseBoneName = CharacterOwner->GetBasedMovement().BoneName;
+		}
+	}
+
+	// If base location is out of sync on server and client, changing base can result in a jarring correction.
+	// So in the case that the base has just changed on server or client, server trusts the client (within a threshold)
+	UPrimitiveComponent* MovementBase = CharacterOwner->GetMovementBase();
+	FName MovementBaseBoneName = CharacterOwner->GetBasedMovement().BoneName;
+	const bool bServerIsFalling = IsFalling();
+	const bool bClientIsFalling = ClientMovementMode == MOVE_Falling;
+	const bool bServerJustLanded = bLastServerIsFalling && !bServerIsFalling;
+	const bool bClientJustLanded = bLastClientIsFalling && !bClientIsFalling;
+
+	FVector RelativeLocation = ServerLoc;
+	FVector RelativeVelocity = Velocity;
+	bool bUseLastBase = false;
+	bool bFallingWithinAcceptableError = false;
+
+	// Potentially trust the client a little when landing
+	static const auto CVarClientAuthorityThresholdOnBaseChange = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ClientAuthorityThresholdOnBaseChange"));
+	static const auto CVarMaxFallingCorrectionLeash = IConsoleManager::Get().FindConsoleVariable(TEXT("p.MaxFallingCorrectionLeash"));
+
+	const float ClientAuthorityThreshold = CVarClientAuthorityThresholdOnBaseChange->GetFloat();
+	const float MaxFallingCorrectionLeash = CVarMaxFallingCorrectionLeash->GetFloat();
+	const bool bDeferServerCorrectionsWhenFalling = ClientAuthorityThreshold > 0.f || MaxFallingCorrectionLeash > 0.f;
+	if (bDeferServerCorrectionsWhenFalling)
+	{
+		// Teleports and other movement modes mean we should just trust the server like we normally would
+		if (bTeleportedSinceLastUpdate || (MovementMode != MOVE_Walking && MovementMode != MOVE_Falling))
+		{
+			MaxServerClientErrorWhileFalling = 0.f;
+			bCanTrustClientOnLanding = false;
+		}
+
+		// MaxFallingCorrectionLeash indicates we'll use a variable correction size based on the error on take-off and the direction of movement.
+		// ClientAuthorityThreshold is an static client-trusting correction upon landing.
+		// If both are set, use the smaller of the two. If only one is set, use that. If neither are set, we wouldn't even be inside this block.
+		float MaxLandingCorrection = 0.f;
+		if (ClientAuthorityThreshold > 0.f && MaxFallingCorrectionLeash > 0.f)
+		{
+			MaxLandingCorrection = FMath::Min(ClientAuthorityThreshold, MaxServerClientErrorWhileFalling);
+		}
+		else
+		{
+			MaxLandingCorrection = FMath::Max(ClientAuthorityThreshold, MaxServerClientErrorWhileFalling);
+		}
+
+		if (bCanTrustClientOnLanding && MaxLandingCorrection > 0.f && (bClientJustLanded || bServerJustLanded))
+		{
+			// no longer falling; server should trust client up to a point to finish the landing as the client sees it
+			const FVector LocDiff = ServerLoc - ClientLoc;
+
+			if (!LocDiff.IsNearlyZero(KINDA_SMALL_NUMBER))
+			{
+				if (LocDiff.SizeSquared() < FMath::Square(MaxLandingCorrection))
+				{
+					ServerLoc = ClientLoc;
+					UpdatedComponent->MoveComponent(ServerLoc - UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
+					bJustTeleported = true;
+				}
+				else
+				{
+					const FVector ClampedDiff = LocDiff.GetSafeNormal() * MaxLandingCorrection;
+					ServerLoc -= ClampedDiff;
+					UpdatedComponent->MoveComponent(ServerLoc - UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
+					bJustTeleported = true;
+				}
+			}
+
+			MaxServerClientErrorWhileFalling = 0.f;
+			bCanTrustClientOnLanding = false;
+		}
+
+		if (bServerIsFalling && bLastServerIsWalking && !bTeleportedSinceLastUpdate)
+		{
+			float ClientForwardFactor = 1.f;
+			UPrimitiveComponent* LastServerMovementBaseVRPtr = LastServerMovementBaseVR.Get();
+			if (IsValid(LastServerMovementBaseVRPtr) && MovementBaseUtility::IsDynamicBase(LastServerMovementBaseVRPtr) && MaxWalkSpeed > KINDA_SMALL_NUMBER)
+			{
+				const FVector LastBaseVelocity = MovementBaseUtility::GetMovementBaseVelocity(LastServerMovementBaseVRPtr, LastServerMovementBaseBoneName);
+				RelativeVelocity = Velocity - LastBaseVelocity;
+				const FVector BaseDirection = LastBaseVelocity.GetSafeNormal2D();
+				const FVector RelativeDirection = RelativeVelocity * (1.f / MaxWalkSpeed);
+
+				ClientForwardFactor = FMath::Clamp(FVector::DotProduct(BaseDirection, RelativeDirection), 0.f, 1.f);
+
+				// To improve position syncing, use old base for take-off
+				if (MovementBaseUtility::UseRelativeLocation(LastServerMovementBaseVRPtr))
+				{
+					FVector BaseLocation;
+					FQuat BaseQuat;
+					MovementBaseUtility::GetMovementBaseTransform(LastServerMovementBaseVRPtr, LastServerMovementBaseBoneName, BaseLocation, BaseQuat);
+
+					// Relative Location
+					RelativeLocation = UpdatedComponent->GetComponentLocation() - BaseLocation;
+					bUseLastBase = true;
+				}
+			}
+
+			if (ClientAuthorityThreshold > 0.f && ClientForwardFactor < 1.f)
+			{
+				const float AdjustedClientAuthorityThreshold = ClientAuthorityThreshold * (1.f - ClientForwardFactor);
+				const FVector LocDiff = ServerLoc - ClientLoc;
+
+				// Potentially trust the client a little when taking off in the opposite direction to the base (to help not get corrected back onto the base)
+				if (!LocDiff.IsNearlyZero(KINDA_SMALL_NUMBER))
+				{
+					if (LocDiff.SizeSquared() < FMath::Square(AdjustedClientAuthorityThreshold))
+					{
+						ServerLoc = ClientLoc;
+						UpdatedComponent->MoveComponent(ServerLoc - UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
+						bJustTeleported = true;
+					}
+					else
+					{
+						const FVector ClampedDiff = LocDiff.GetSafeNormal() * AdjustedClientAuthorityThreshold;
+						ServerLoc -= ClampedDiff;
+						UpdatedComponent->MoveComponent(ServerLoc - UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
+						bJustTeleported = true;
+					}
+				}
+			}
+
+			if (ClientForwardFactor < 1.f)
+			{
+				MaxServerClientErrorWhileFalling = FMath::Min((ServerLoc - ClientLoc).Size() * (1.f - ClientForwardFactor), MaxFallingCorrectionLeash);
+				bCanTrustClientOnLanding = true;
+			}
+			else
+			{
+				MaxServerClientErrorWhileFalling = 0.f;
+				bCanTrustClientOnLanding = false;
+			}
+		}
+		else if (!bServerIsFalling && bCanTrustClientOnLanding)
+		{
+			MaxServerClientErrorWhileFalling = 0.f;
+			bCanTrustClientOnLanding = false;
+		}
+
+		if (MaxServerClientErrorWhileFalling > 0.f && (bServerIsFalling || bClientIsFalling))
+		{
+			const FVector LocDiff = ServerLoc - ClientLoc;
+			if (LocDiff.SizeSquared() <= FMath::Square(MaxServerClientErrorWhileFalling))
+			{
+				ServerLoc = ClientLoc;
+				// Still want a velocity update when we first take off
+				bFallingWithinAcceptableError = true;
+			}
+			else
+			{
+				// Change ServerLoc to be on the edge of the acceptable error rather than doing a full correction.
+				// This is not actually changing the server position, but changing it as far as corrections are concerned.
+				// This means we're just holding the client on a longer leash while we're falling.
+				static const auto CVarMaxFallingCorrectionLeashBuffer = IConsoleManager::Get().FindConsoleVariable(TEXT("p.MaxFallingCorrectionLeashBuffer"));
+				ServerLoc = ServerLoc - LocDiff.GetSafeNormal() * FMath::Clamp(MaxServerClientErrorWhileFalling - CVarMaxFallingCorrectionLeashBuffer->GetFloat(), 0.f, MaxServerClientErrorWhileFalling);
+			}
+		}
 	}
 
 	bool bInClientAuthoritativeMovementMode = false;
@@ -3953,21 +4143,30 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 	// Compute the client error from the server's position
 	// If client has accumulated a noticeable positional error, correct them.
 	bNetworkLargeClientCorrection = ServerData->bForceClientUpdate;
-
-	if (!bInClientAuthoritativeMovementMode && (ServerData->bForceClientUpdate || ServerCheckClientErrorVR(ClientTimeStamp, DeltaTime, Accel, ClientLoc, ClientYaw, RelativeClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode)))
+	if (!bInClientAuthoritativeMovementMode && (ServerData->bForceClientUpdate || (!bFallingWithinAcceptableError && ServerCheckClientErrorVR(ClientTimeStamp, DeltaTime, Accel, ClientLoc, ClientYaw, RelativeClientLoc, ClientMovementBase, ClientBaseBoneName, ClientMovementMode))))
 	{
-		UPrimitiveComponent* MovementBase = CharacterOwner->GetMovementBase();
+		//UPrimitiveComponent* MovementBase = CharacterOwner->GetMovementBase();
 		ServerData->PendingAdjustment.NewVel = Velocity;
 		ServerData->PendingAdjustment.NewBase = MovementBase;
-		ServerData->PendingAdjustment.NewBaseBoneName = CharacterOwner->GetBasedMovement().BoneName;
-		ServerData->PendingAdjustment.NewLoc = FRepMovement::RebaseOntoZeroOrigin(UpdatedComponent->GetComponentLocation(), this);
+		ServerData->PendingAdjustment.NewBaseBoneName = MovementBaseBoneName;
+		ServerData->PendingAdjustment.NewLoc = FRepMovement::RebaseOntoZeroOrigin(ServerLoc, this);
 		ServerData->PendingAdjustment.NewRot = UpdatedComponent->GetComponentRotation();
 
-		ServerData->PendingAdjustment.bBaseRelativePosition = MovementBaseUtility::UseRelativeLocation(MovementBase);
+		ServerData->PendingAdjustment.bBaseRelativePosition = (bDeferServerCorrectionsWhenFalling && bUseLastBase) || MovementBaseUtility::UseRelativeLocation(MovementBase);
 		if (ServerData->PendingAdjustment.bBaseRelativePosition)
 		{
 			// Relative location
-			ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetBasedMovement().Location;
+			if (bDeferServerCorrectionsWhenFalling && bUseLastBase)
+			{
+				ServerData->PendingAdjustment.NewVel = RelativeVelocity;
+				ServerData->PendingAdjustment.NewBase = LastServerMovementBaseVR.Get();
+				ServerData->PendingAdjustment.NewBaseBoneName = LastServerMovementBaseBoneName;
+				ServerData->PendingAdjustment.NewLoc = RelativeLocation;
+			}
+			else
+			{
+				ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetBasedMovement().Location;
+			}
 
 			// TODO: this could be a relative rotation, but all client corrections ignore rotation right now except the root motion one, which would need to be updated.
 			//ServerData->PendingAdjustment.NewRot = CharacterOwner->GetBasedMovement().Rotation;
@@ -4030,6 +4229,12 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 	//PerfCountersIncrement(PerfCounter_NumServerMoves);
 
 	ServerData->bForceClientUpdate = false;
+
+	LastServerMovementBaseVR = MovementBase;
+	LastServerMovementBaseBoneName = MovementBaseBoneName;
+	bLastClientIsFalling = bClientIsFalling;
+	bLastServerIsFalling = bServerIsFalling;
+	bLastServerIsWalking = MovementMode == MOVE_Walking;
 }
 
 FVector UVRCharacterMovementComponent::GetPenetrationAdjustment(const FHitResult& Hit) const
@@ -4053,8 +4258,7 @@ FVector UVRCharacterMovementComponent::GetPenetrationAdjustment(const FHitResult
 	{
 		const bool bIsProxy = (CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy);
 		float MaxDistance = bIsProxy ? MaxDepenetrationWithGeometryAsProxy : MaxDepenetrationWithGeometry;
-		const AActor* HitActor = Hit.GetActor();
-		if (Cast<APawn>(HitActor))
+		if (Hit.HitObjectHandle.DoesRepresentClass(APawn::StaticClass()))
 		{
 			MaxDistance = bIsProxy ? MaxDepenetrationWithPawnAsProxy : MaxDepenetrationWithPawn;
 		}

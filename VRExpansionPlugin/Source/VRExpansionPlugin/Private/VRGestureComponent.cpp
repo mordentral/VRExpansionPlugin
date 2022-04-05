@@ -65,7 +65,7 @@ void UGesturesDatabase::FillSplineWithGesture(FVRGesture &Gesture, USplineCompon
 		for (auto Child : Children)
 		{
 			USplineMeshComponent* SplineMesh = Cast<USplineMeshComponent>(Child);
-			if (SplineMesh != nullptr && !SplineMesh->IsPendingKill())
+			if (SplineMesh != nullptr && IsValid(SplineMesh))
 			{
 				CurrentSplineChildren.Add(SplineMesh);
 			}
@@ -385,8 +385,8 @@ void UVRGestureComponent::RecognizeGesture(FVRGesture inputGesture)
 
 	if (/*minDist < FMath::Square(globalThreshold) && */OutGestureIndex != -1)
 	{
-		OnGestureDetected(GesturesDB->Gestures[OutGestureIndex].GestureType, /*minDist,*/ GesturesDB->Gestures[OutGestureIndex].Name, OutGestureIndex, GesturesDB);
-		OnGestureDetected_Bind.Broadcast(GesturesDB->Gestures[OutGestureIndex].GestureType, /*minDist,*/ GesturesDB->Gestures[OutGestureIndex].Name, OutGestureIndex, GesturesDB);
+		OnGestureDetected(GesturesDB->Gestures[OutGestureIndex].GestureType, /*minDist,*/ GesturesDB->Gestures[OutGestureIndex].Name, OutGestureIndex, GesturesDB, Size);
+		OnGestureDetected_Bind.Broadcast(GesturesDB->Gestures[OutGestureIndex].GestureType, /*minDist,*/ GesturesDB->Gestures[OutGestureIndex].Name, OutGestureIndex, GesturesDB, Size);
 		ClearRecording(); // Clear the recording out, we don't want to detect this gesture again with the same data
 		RecordingGestureDraw.Reset();
 	}

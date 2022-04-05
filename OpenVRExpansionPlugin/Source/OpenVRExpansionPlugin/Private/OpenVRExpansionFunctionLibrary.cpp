@@ -418,7 +418,7 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::CreateCameraTexture2D(UPARAM(ref) 
 		check(NewRenderTarget2D);
 
 		//Setting some Parameters for the Texture and finally returning it
-		NewRenderTarget2D->PlatformData->SetNumSlices(1);
+		NewRenderTarget2D->GetPlatformData()->SetNumSlices(1);
 		NewRenderTarget2D->NeverStream = true;
 		NewRenderTarget2D->UpdateResource();
 
@@ -479,19 +479,22 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 	// Enforces correct buffer size for the camera feed
 	if (TargetRenderTarget->GetSizeX() != Width || TargetRenderTarget->GetSizeY() != Height || TargetRenderTarget->GetPixelFormat() != EPixelFormat::PF_R8G8B8A8)
 	{
-		TargetRenderTarget->PlatformData->SizeX = Width;
-		TargetRenderTarget->PlatformData->SizeY = Height;
-		TargetRenderTarget->PlatformData->PixelFormat = EPixelFormat::PF_R8G8B8A8;
-		
-		// Allocate first mipmap.
-		int32 NumBlocksX = Width / GPixelFormats[EPixelFormat::PF_R8G8B8A8].BlockSizeX;
-		int32 NumBlocksY = Height / GPixelFormats[EPixelFormat::PF_R8G8B8A8].BlockSizeY;
+		if (FTexturePlatformData* PlatformData = TargetRenderTarget->GetPlatformData())
+		{
+			PlatformData->SizeX = Width;
+			PlatformData->SizeY = Height;
+			PlatformData->PixelFormat = EPixelFormat::PF_R8G8B8A8;
 
-		TargetRenderTarget->PlatformData->Mips[0].SizeX = Width;
-		TargetRenderTarget->PlatformData->Mips[0].SizeY = Height;
-		TargetRenderTarget->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
-		TargetRenderTarget->PlatformData->Mips[0].BulkData.Realloc(NumBlocksX * NumBlocksY * GPixelFormats[EPixelFormat::PF_R8G8B8A8].BlockBytes);
-		TargetRenderTarget->PlatformData->Mips[0].BulkData.Unlock();
+			// Allocate first mipmap.
+			int32 NumBlocksX = Width / GPixelFormats[EPixelFormat::PF_R8G8B8A8].BlockSizeX;
+			int32 NumBlocksY = Height / GPixelFormats[EPixelFormat::PF_R8G8B8A8].BlockSizeY;
+
+			PlatformData->Mips[0].SizeX = Width;
+			PlatformData->Mips[0].SizeY = Height;
+			PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+			PlatformData->Mips[0].BulkData.Realloc(NumBlocksX * NumBlocksY * GPixelFormats[EPixelFormat::PF_R8G8B8A8].BlockBytes);
+			PlatformData->Mips[0].BulkData.Unlock();
+		}
 	}
 	
 	vr::CameraVideoStreamFrameHeader_t CamHeader;
@@ -538,7 +541,7 @@ void UOpenVRExpansionFunctionLibrary::GetVRCameraFrame(UPARAM(ref) FBPOpenVRCame
 		region.Width = TexturePtr->GetSizeX();// TEX_WIDTH;
 		region.Height = TexturePtr->GetSizeY();//TEX_HEIGHT;
 
-		FTexture2DResource* resource = (FTexture2DResource*)TexturePtr->Resource;
+		FTexture2DResource* resource = (FTexture2DResource*)TexturePtr->GetResource();
 		RHIUpdateTexture2D(resource->GetTexture2DRHI(), 0, region, region.Width * GPixelFormats[TexturePtr->GetPixelFormat()].BlockBytes/*TEX_PIXEL_SIZE_IN_BYTES*/, TextureData);
 		delete[] TextureData;
 	});
@@ -1116,16 +1119,19 @@ UTexture2D * UOpenVRExpansionFunctionLibrary::GetVRDeviceModelAndTexture(UObject
 		//uint32 DestStride = 0;
 		//uint8* MipData = reinterpret_cast<uint8*>(RHILockTexture2D(TextureRHI, 0, RLM_WriteOnly, DestStride, false, false));
 
-		uint8* MipData = (uint8*)OutTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
-		FMemory::Memcpy(MipData, (void*)texture->rubTextureMapData, Height * Width * 4);
-		OutTexture->PlatformData->Mips[0].BulkData.Unlock();
-		//RHIUnlockTexture2D(TextureRHI, 0, false, false);
+		if (FTexturePlatformData* PlatformData = OutTexture->GetPlatformData())
+		{
+			uint8* MipData = (uint8*)PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+			FMemory::Memcpy(MipData, (void*)texture->rubTextureMapData, Height * Width * 4);
+			PlatformData->Mips[0].BulkData.Unlock();
+			//RHIUnlockTexture2D(TextureRHI, 0, false, false);
 
 
-		//Setting some Parameters for the Texture and finally returning it
-		OutTexture->PlatformData->SetNumSlices(1);
-		OutTexture->NeverStream = true;
-		OutTexture->UpdateResource();
+			//Setting some Parameters for the Texture and finally returning it
+			PlatformData->SetNumSlices(1);
+			OutTexture->NeverStream = true;
+			OutTexture->UpdateResource();
+		}
 
 		/*if (bReturnRawTexture)
 		{

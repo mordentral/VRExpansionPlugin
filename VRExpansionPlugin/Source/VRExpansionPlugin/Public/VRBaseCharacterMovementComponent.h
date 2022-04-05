@@ -39,7 +39,7 @@ public:
 
 	/** BaseVR Character movement component belongs to */
 	UPROPERTY(Transient, DuplicateTransient)
-		AVRBaseCharacter* BaseVRCharacterOwner;
+		TObjectPtr<AVRBaseCharacter> BaseVRCharacterOwner;
 
 	virtual void SetUpdatedComponent(USceneComponent* NewUpdatedComponent);
 
@@ -83,8 +83,8 @@ public:
 	bool IsClimbing() const;
 
 	// Sets the crouching half height since it isn't exposed during runtime to blueprints
-	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void SetCrouchedHalfHeight(float NewCrouchedHalfHeight);
+	//UFUNCTION(BlueprintCallable, Category = "VRMovement")
+	//	void SetCrouchedHalfHeight(float NewCrouchedHalfHeight);
 
 	// Setting this higher will divide the wall slide effect by this value, to reduce collision sliding.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement", meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))

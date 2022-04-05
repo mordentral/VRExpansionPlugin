@@ -46,7 +46,7 @@ void UParentRelativeAttachmentComponent::InitializeComponent()
 	Super::InitializeComponent();
 
 	// Update our tracking
-	if (!bUseFeetLocation && AttachChar.IsValid()) // New case to early out and with less calculations
+	if (!bUseFeetLocation && IsValid(AttachChar)) // New case to early out and with less calculations
 	{
 		SetRelativeTransform(AttachChar->VRReplicatedCamera->GetRelativeTransform());
 	}
@@ -61,7 +61,7 @@ void UParentRelativeAttachmentComponent::OnAttachmentChanged()
 	}
 	else
 	{
-		AttachChar.Reset();
+		AttachChar = nullptr;
 	}
 
 	if (AVRBaseCharacter * BaseCharacterOwner = Cast<AVRBaseCharacter>(this->GetOwner()))
@@ -70,7 +70,7 @@ void UParentRelativeAttachmentComponent::OnAttachmentChanged()
 	}
 	else
 	{
-		AttachBaseChar.Reset();
+		AttachBaseChar = nullptr;
 	}
 
 	Super::OnAttachmentChanged();
@@ -99,7 +99,7 @@ void UParentRelativeAttachmentComponent::UpdateTracking(float DeltaTime)
 		SetRelativeTransform(TrackedParentWaist);
 
 	}
-	else if (AttachChar.IsValid()) // New case to early out and with less calculations
+	else if (IsValid(AttachChar)) // New case to early out and with less calculations
 	{
 		SetRelativeRotAndLoc(AttachChar->VRRootReference->curCameraLoc, AttachChar->VRRootReference->StoredCameraRotOffset, DeltaTime);
 	}
@@ -124,7 +124,7 @@ void UParentRelativeAttachmentComponent::UpdateTracking(float DeltaTime)
 				SetRelativeRotAndLoc(curCameraLoc, FRotator::ZeroRotator, DeltaTime);
 		}
 	}
-	else if (AttachBaseChar.IsValid())
+	else if (IsValid(AttachBaseChar))
 	{
 		if (AttachBaseChar->VRReplicatedCamera)
 		{
@@ -154,7 +154,7 @@ void UParentRelativeAttachmentComponent::UpdateTracking(float DeltaTime)
 
 void UParentRelativeAttachmentComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
-	if (!bUpdateInCharacterMovement || !AttachChar.IsValid())
+	if (!bUpdateInCharacterMovement || !IsValid(AttachChar))
 	{
 		UpdateTracking(DeltaTime);
 	}

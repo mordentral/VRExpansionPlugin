@@ -159,7 +159,7 @@ void UVRRenderTargetManager::AddMaterialTrianglesDrawOperation(TArray<FCanvasUVT
 
 void UVRRenderTargetManager::DrawOperation(UCanvas* Canvas, const FRenderManagerOperation& Operation)
 {
-	if (LocalProxy.IsValid() && LocalProxy->OwnersID == Operation.OwnerID)
+	if (IsValid(LocalProxy) && LocalProxy->OwnersID == Operation.OwnerID)
 	{
 		return;
 	}
@@ -177,10 +177,10 @@ void UVRRenderTargetManager::DrawOperation(UCanvas* Canvas, const FRenderManager
 	}break;
 	case ERenderManagerOperationType::Op_TexDraw:
 	{
-		if (Operation.Texture && Operation.Texture->Resource)
+		if (Operation.Texture && Operation.Texture->GetResource())
 		{
 			//FTexture* RenderTextureResource = (RenderBase) ? RenderBase->Resource : GWhiteTexture;
-			FCanvasTileItem TileItem(Operation.P1, Operation.Texture->Resource, FVector2D(Operation.Texture->GetSizeX(), Operation.Texture->GetSizeY()), FVector2D(0, 0), FVector2D(1.f, 1.f), ClearColor);
+			FCanvasTileItem TileItem(Operation.P1, Operation.Texture->GetResource(), FVector2D(Operation.Texture->GetSizeX(), Operation.Texture->GetSizeY()), FVector2D(0, 0), FVector2D(1.f, 1.f), ClearColor);
 			TileItem.BlendMode = FCanvas::BlendToSimpleElementBlend(EBlendMode::BLEND_Translucent);
 			Canvas->DrawItem(TileItem);
 		}
@@ -232,7 +232,7 @@ void UVRRenderTargetManager::DrawPoll()
 		if (LocalRenderOperationStore.Num())
 		{
 			// Send operations to server
-			if (LocalProxy.IsValid())
+			if (IsValid(LocalProxy))
 			{
 				LocalProxy->SendLocalDrawOperations(LocalRenderOperationStore);
 			}
@@ -319,7 +319,7 @@ ARenderTargetReplicationProxy::ARenderTargetReplicationProxy(const FObjectInitia
 void ARenderTargetReplicationProxy::OnRep_Manager()
 {
 	// If our manager is valid, save off a reference to ourselves to the local copy.
-	if (OwningManager.IsValid())
+	if (IsValid(OwningManager))
 	{
 		OwningManager->LocalProxy = this;
 
@@ -345,7 +345,7 @@ bool ARenderTargetReplicationProxy::SendLocalDrawOperations_Validate(const TArra
 
 void ARenderTargetReplicationProxy::SendLocalDrawOperations_Implementation(const TArray<FRenderManagerOperation>& LocalRenderOperationStoreList)
 {
-	if (OwningManager.IsValid())
+	if (IsValid(OwningManager))
 	{
 		OwningManager->RenderOperationStore.Append(LocalRenderOperationStoreList);
 
@@ -365,7 +365,7 @@ void ARenderTargetReplicationProxy::SendLocalDrawOperations_Implementation(const
 
 void ARenderTargetReplicationProxy::ReceiveTexture_Implementation(const FBPVRReplicatedTextureStore& TextureData)
 {
-	if (OwningManager.IsValid())
+	if (IsValid(OwningManager))
 	{
 		OwningManager->RenderTargetStore = TextureData;
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, FString::Printf(TEXT("Recieved Texture, byte count: %i"), TextureData.PackedData.Num()));
@@ -387,7 +387,7 @@ void ARenderTargetReplicationProxy::InitTextureSend_Implementation(int32 Width, 
 
 	BlobNum = BlobCount;
 
-	if (OwningManager.IsValid())
+	if (IsValid(OwningManager))
 	{
 		OwningManager->bIsLoadingTextureBuffer = true;
 	}
@@ -426,7 +426,7 @@ void ARenderTargetReplicationProxy::SendInitMessage()
 
 void ARenderTargetReplicationProxy::SendNextDataBlob()
 {
-	if (this->IsPendingKill() || !this->GetOwner() || this->GetOwner()->IsPendingKill())
+	if (!IsValid(this) || !this->GetOwner() || !IsValid(this->GetOwner()))
 	{	
 		TextureStore.Reset();
 		TextureStore.PackedData.Empty();
@@ -493,7 +493,7 @@ void ARenderTargetReplicationProxy::ReceiveTextureBlob_Implementation(const TArr
 		Ack_ReceiveTextureBlob(BlobNum);
 
 		// We finished, unpack and display
-		if (OwningManager.IsValid())
+		if (IsValid(OwningManager))
 		{
 			OwningManager->bIsLoadingTextureBuffer = false;
 			OwningManager->RenderTargetStore = TextureStore;
@@ -529,7 +529,7 @@ void UVRRenderTargetManager::UpdateRelevancyMap()
 
 	for (int i = NetRelevancyLog.Num() - 1; i >= 0; i--)
 	{
-		if (!NetRelevancyLog[i].PC.IsValid() || NetRelevancyLog[i].PC->IsLocalController() || !NetRelevancyLog[i].PC->GetPawn())
+		if (!IsValid(NetRelevancyLog[i].PC) || NetRelevancyLog[i].PC->IsLocalController() || !NetRelevancyLog[i].PC->GetPawn())
 		{
 			NetRelevancyLog[i].ReplicationProxy->Destroy();
 			NetRelevancyLog.RemoveAt(i);
@@ -651,12 +651,12 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 	UTexture2D* RenderBase = UTexture2D::CreateTransient(Width, Height, PF_R8G8B8A8);// RenderTargetStore.PixelFormat);
 
 	// Switched to a Memcpy instead of byte by byte transer
-	uint8* MipData = (uint8*)RenderBase->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+	uint8* MipData = (uint8*)RenderBase->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
 	FMemory::Memcpy(MipData, (void*)FinalColorData.GetData(), FinalColorData.Num() * sizeof(FColor));
-	RenderBase->PlatformData->Mips[0].BulkData.Unlock();
+	RenderBase->GetPlatformData()->Mips[0].BulkData.Unlock();
 
 	//Setting some Parameters for the Texture and finally returning it
-	RenderBase->PlatformData->SetNumSlices(1);
+	RenderBase->GetPlatformData()->SetNumSlices(1);
 	RenderBase->NeverStream = true;
 	RenderBase->SRGB = true;
 	//Avatar->CompressionSettings = TC_EditorIcon;
@@ -710,7 +710,7 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 
 	if (CanvasToUse)
 	{
-		FTexture* RenderTextureResource = (RenderBase) ? RenderBase->Resource : GWhiteTexture;
+		FTexture* RenderTextureResource = (RenderBase) ? RenderBase->GetResource() : GWhiteTexture;
 		FCanvasTileItem TileItem(FVector2D(0, 0), RenderTextureResource, FVector2D(RenderTarget->SizeX, RenderTarget->SizeY), FVector2D(0, 0), FVector2D(1.f, 1.f), FLinearColor::White);
 		TileItem.BlendMode = FCanvas::BlendToSimpleElementBlend(EBlendMode::BLEND_Opaque);
 		CanvasToUse->DrawItem(TileItem);
@@ -724,7 +724,7 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 	}
 
 	RenderBase->ReleaseResource();
-	RenderBase->MarkPendingKill();
+	RenderBase->MarkAsGarbage();
 
 	return true;
 }
@@ -840,9 +840,9 @@ void UVRRenderTargetManager::TickComponent(float DeltaTime, enum ELevelTick Tick
 
 				for (int i = NetRelevancyLog.Num() - 1; i >= 0; i--)
 				{
-					if (NetRelevancyLog[i].bIsDirty && NetRelevancyLog[i].PC.IsValid() && !NetRelevancyLog[i].PC->IsLocalController())
+					if (NetRelevancyLog[i].bIsDirty && IsValid(NetRelevancyLog[i].PC) && !NetRelevancyLog[i].PC->IsLocalController())
 					{
-						if (NetRelevancyLog[i].ReplicationProxy.IsValid())
+						if (IsValid(NetRelevancyLog[i].ReplicationProxy))
 						{
 							NetRelevancyLog[i].ReplicationProxy->TextureStore = RenderTargetStore;
 							NetRelevancyLog[i].ReplicationProxy->SendInitMessage();
@@ -898,13 +898,12 @@ void UVRRenderTargetManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	for (FClientRepData& RepData : NetRelevancyLog)
 	{
 		RepData.PC = nullptr;
-		RepData.PC.Reset();
-		if (RepData.ReplicationProxy.IsValid() && !RepData.ReplicationProxy->IsPendingKill())
+		if (IsValid(RepData.ReplicationProxy.Get()))
 		{
 			RepData.ReplicationProxy->Destroy();
 		}
 
-		RepData.ReplicationProxy.Reset();
+		RepData.ReplicationProxy = nullptr;
 	}
 
 }
@@ -1006,7 +1005,7 @@ bool UVRRenderTargetManager::GenerateTrisFromBoxPlaneIntersection(UPrimitiveComp
 			//DrawDebugSphere(GetWorld(), WorldTransformOfPlane.TransformPosition(Intersection), 2.f, 32.f, FColor::Black);
 			PlanePoint = Intersection;
 
-			if (RenderTarget)
+			if (IsValid(RenderTarget))
 			{
 				NewPt.X = ((PlanePoint.X + HalfPlane.X) / PlaneSize.X) * RenderTarget->SizeX;
 				NewPt.Y = ((PlanePoint.Y + HalfPlane.Y) / PlaneSize.Y) * RenderTarget->SizeY;

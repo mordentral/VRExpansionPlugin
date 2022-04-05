@@ -28,7 +28,7 @@ public:
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
 
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))	
-	UVRRootComponent * VRRootReference;
+		TObjectPtr<UVRRootComponent> VRRootReference;
 
 	// Regenerates the base offsetcomponenttoworld that VR uses
 	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw) override;

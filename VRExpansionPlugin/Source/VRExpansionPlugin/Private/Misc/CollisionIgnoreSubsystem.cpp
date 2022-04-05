@@ -4,6 +4,14 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 
+#if WITH_CHAOS
+#include "Chaos/ParticleHandle.h"
+#include "Chaos/KinematicGeometryParticles.h"
+#include "Chaos/ParticleHandle.h"
+#include "PhysicsProxy/SingleParticlePhysicsProxy.h"
+#include "PBDRigidsSolver.h"
+#endif
+
 DEFINE_LOG_CATEGORY(VRE_CollisionIgnoreLog);
 
 
@@ -14,7 +22,7 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 	for (const TPair<FCollisionPrimPair, FCollisionIgnorePairArray>& KeyPair : CollisionTrackedPairs)
 	{
 		// First check for invalid primitives
-		if (!KeyPair.Key.Prim1.IsValid() || !KeyPair.Key.Prim2.IsValid() /*|| KeyPair.Key.Prim1->IsPendingKill() || KeyPair.Key.Prim2->IsPendingKill()*/)
+		if (!IsValid(KeyPair.Key.Prim1) || !IsValid(KeyPair.Key.Prim2) /*|| KeyPair.Key.Prim1->IsPendingKill() || KeyPair.Key.Prim2->IsPendingKill()*/)
 		{
 			// If we don't have a map element for this pair, then add it now
 			if (!RemovedPairs.Contains(KeyPair.Key))
@@ -48,15 +56,19 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 		}*/
 	}
 
-/*#if WITH_CHAOS
-	if (FPhysScene* PhysScene2 = GetWorld()->GetPhysicsScene())
+#if WITH_CHAOS
+	/*if (FPhysScene* PhysScene2 = GetWorld()->GetPhysicsScene())
 	{
 		Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene2->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
 		int32 ExternalTimestamp = PhysScene2->GetSolver()->GetMarshallingManager().GetExternalTimestamp_External();
-		Chaos::FIgnoreCollisionManager::FPendingMap& ActivationMap = IgnoreCollisionManager.GetPendingDeactivationsForGameThread(ExternalTimestamp)
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Pending deactivation Chaos: %i"), ActivationMap.Num()));
-	}
-#endif*/
+
+		Chaos::FIgnoreCollisionManager::FDeactivationSet IgnoreSet = IgnoreCollisionManager.GetPendingActivationsForGameThread(ExternalTimestamp);
+
+		// Prints out the list of items currently being re-activated after one of their pairs died.
+		// Chaos automatically cleans up here, I don't need to do anything.
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Pending activation Chaos: %i"), IgnoreCollisionManager.FActiveMap.Num()));
+	}*/
+#endif
 
 	if (RemovedPairs.Num() > 0 || bDoubleCheckPairs == true)
 	{
@@ -418,7 +430,7 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 									// If we don't have a map element for this pair, then add it now
 									if (!RemovedPairs.Contains(newPrimPair))
 									{
-										RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray >());
+										RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
 									}
 									RemovedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
 								}

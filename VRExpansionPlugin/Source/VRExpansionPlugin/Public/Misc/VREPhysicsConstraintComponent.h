@@ -7,7 +7,14 @@
 // Delete this eventually when the physics interface is fixed
 #if PHYSICS_INTERFACE_PHYSX
 #include "PhysXPublic.h"
-#endif // WITH_PHYSX
+#elif WITH_CHAOS
+#include "Chaos/ParticleHandle.h"
+#include "Chaos/KinematicGeometryParticles.h"
+#include "Chaos/PBDJointConstraintTypes.h"
+#include "Chaos/PBDJointConstraintData.h"
+#include "Chaos/Sphere.h"
+#include "PhysicsProxy/SingleParticlePhysicsProxy.h"
+#endif
 
 #include "VREPhysicsConstraintComponent.generated.h"
 

@@ -166,7 +166,7 @@ void UGripMotionControllerComponent::RegisterEndPhysicsTick(bool bRegister)
 void UGripMotionControllerComponent::EndPhysicsTickComponent(FGripComponentEndPhysicsTickFunction& ThisTickFunction)
 {
 
-	if (this->IsPendingKill())
+	if (!IsValid(this))
 		return;
 
 	// Now check if we should turn off any post physics ticking
@@ -174,10 +174,10 @@ void UGripMotionControllerComponent::EndPhysicsTickComponent(FGripComponentEndPh
 
 	for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 	{
-		if (!LocallyGrippedObjects[i].GrippedObject || LocallyGrippedObjects[i].GrippedObject->IsPendingKill())
+		if (!LocallyGrippedObjects[i].GrippedObject || !IsValid(LocallyGrippedObjects[i].GrippedObject))
 			continue; // Skip, don't process this
 
-		if (LocallyGrippedObjects[i].GrippedObject && !LocallyGrippedObjects[i].GrippedObject->IsPendingKill() && LocallyGrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		if (LocallyGrippedObjects[i].GrippedObject && IsValid(LocallyGrippedObjects[i].GrippedObject) && LocallyGrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 		{
 			EGripInterfaceTeleportBehavior TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(LocallyGrippedObjects[i].GrippedObject);
 			if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation)
@@ -208,7 +208,7 @@ void UGripMotionControllerComponent::EndPhysicsTickComponent(FGripComponentEndPh
 
 	for (int i = 0; i < GrippedObjects.Num(); ++i)
 	{
-		if (!GrippedObjects[i].GrippedObject || GrippedObjects[i].GrippedObject->IsPendingKill())
+		if (!GrippedObjects[i].GrippedObject || !IsValid(GrippedObjects[i].GrippedObject))
 			continue; // Skip, don't process this
 
 		if (GrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -246,7 +246,7 @@ void FGripComponentEndPhysicsTickFunction::ExecuteTick(float DeltaTime, enum ELe
 	QUICK_SCOPE_CYCLE_COUNTER(FGripComponentEndPhysicsTickFunction_ExecuteTick);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(Physics);
 
-	if (Target && !Target->IsPendingKill())
+	if (Target && IsValid(Target))
 	{
 		FActorComponentTickFunction::ExecuteTickHelper(Target, /*bTickInEditor=*/ false, DeltaTime, TickType, [this](float DilatedTime)
 		{
@@ -1308,7 +1308,7 @@ bool UGripMotionControllerComponent::GripActor(
 		return false;
 	}
 
-	if (!ActorToGrip || ActorToGrip->IsPendingKill())
+	if (!ActorToGrip || !IsValid(ActorToGrip))
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or pending kill actor"));
 		return false;
@@ -1476,7 +1476,7 @@ bool UGripMotionControllerComponent::GripActor(
 	}
 	else if (bWorldOffsetIsRelative)
 	{
-		if (bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() && !bIsSlotGrip)
+		if (bSkipPivotTransformAdjustment && IsValid(CustomPivotComponent) && !bIsSlotGrip)
 		{
 			newActorGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
@@ -1583,7 +1583,7 @@ bool UGripMotionControllerComponent::GripComponent(
 		return false;
 	}
 
-	if (!ComponentToGrip || ComponentToGrip->IsPendingKill())
+	if (!ComponentToGrip || !IsValid(ComponentToGrip))
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or pending kill component"));
 		return false;
@@ -1724,7 +1724,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	}
 	else if (bWorldOffsetIsRelative)
 	{
-		if (bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() && !bIsSlotGrip)
+		if (bSkipPivotTransformAdjustment && IsValid(CustomPivotComponent) && !bIsSlotGrip)
 		{
 			newComponentGrip.RelativeTransform = (WorldOffset * this->GetComponentTransform()).GetRelativeTransform(CustomPivotComponent->GetComponentTransform());
 		}
@@ -2002,7 +2002,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 
 bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPActorGripInformation & GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies, bool bSkipServerNotify)
 {
-	if (!SocketingParent || SocketingParent->IsPendingKill())
+	if (!SocketingParent || !IsValid(SocketingParent))
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid socketing parent"));
 		return false;
@@ -2055,7 +2055,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 
 	UObject * GrippedObject = GripInfo->GrippedObject;
 
-	if (!GrippedObject || GrippedObject->IsPendingKill())
+	if (!GrippedObject || !IsValid(GrippedObject))
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid or pending kill gripped object"));
 		return false;
@@ -2110,7 +2110,7 @@ void UGripMotionControllerComponent::SetSocketTransform(UObject* ObjectToSocket,
 		return;
 	}
 
-	if (!ObjectToSocket || ObjectToSocket->IsPendingKill())
+	if (!ObjectToSocket || !IsValid(ObjectToSocket))
 		return;
 
 	/*FAttachmentTransformRules TransformRule = FAttachmentTransformRules::KeepWorldTransform;//KeepWorldTransform;
@@ -2796,8 +2796,8 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 		if (bHasMovementAuthority || IsServer())
 		{
-			FName BoneName = CustomPivotComponent.IsValid() ? CustomPivotComponentSocketName : NAME_None;
-			root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules(EAttachmentRule::KeepWorld, true), BoneName);
+			FName BoneName = IsValid(CustomPivotComponent) ? CustomPivotComponentSocketName : NAME_None;
+			root->AttachToComponent(IsValid(CustomPivotComponent) ? CustomPivotComponent.Get() : this, FAttachmentTransformRules(EAttachmentRule::KeepWorld, true), BoneName);
 		}
 
 	}break;
@@ -3971,7 +3971,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 	}
 
-	if (!PrimComp || !actor || actor->IsPendingKill() || PrimComp->IsPendingKill())
+	if (!PrimComp || !actor || !IsValid(actor) || !IsValid(PrimComp))
 		return false;
 
 	// Only use with actual teleporting
@@ -4178,7 +4178,7 @@ void UGripMotionControllerComponent::OnAttachmentChanged()
 	}
 	else
 	{
-		AttachChar.Reset();
+		AttachChar = nullptr;
 	}
 
 	Super::OnAttachmentChanged();
@@ -4261,6 +4261,7 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 				{
 					// Handle the display component
 					// #TODO: Don't run if already has a display model, can't access yet
+					// || !DisplayComponent is private
 					if (bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
 						RefreshDisplayComponent();
 				}
@@ -4540,7 +4541,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 			if (Grip->bIsPaused)
 				continue;
 
-			if (Grip->GripID != INVALID_VRGRIP_ID && Grip->GrippedObject && !Grip->GrippedObject->IsPendingKill())
+			if (Grip->GripID != INVALID_VRGRIP_ID && Grip->GrippedObject && IsValid(Grip->GrippedObject))
 			{
 				if (Grip->GripCollisionType == EGripCollisionType::EventsOnly)
 					continue; // Earliest safe spot to continue at, we needed to check if the object is pending kill or invalid first
@@ -4571,7 +4572,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				}
 
 				// Last check to make sure the variables are valid
-				if (!root || !actor || root->IsPendingKill() || actor->IsPendingKill())
+				if (!root || !actor || !IsValid(root) || !IsValid(actor))
 					continue;
 
 				// Keep checking for pending kill on gripped objects, and ptr removals, but don't run grip logic when seamless
@@ -5048,7 +5049,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							if (HasGripMovementAuthority(*Grip) || IsServer())
 							{
 								root->SetSimulatePhysics(false);
-								if (root->AttachToComponent(CustomPivotComponent.IsValid() ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform))
+								if (root->AttachToComponent(IsValid(CustomPivotComponent) ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform))
 								{
 									UE_LOG(LogVRMotionController, Warning, TEXT("Re-attached"));
 									if (!root->GetRelativeTransform().Equals(RelativeTrans))
@@ -5114,7 +5115,7 @@ void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformati
 		// Clean up tailing physics handles with null objects
 		for (int g = PhysicsGrips.Num() - 1; g >= 0; --g)
 		{
-			if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjectsArray[GripIndex].GrippedObject || PhysicsGrips[g].HandledObject->IsPendingKill())
+			if (!PhysicsGrips[g].HandledObject || PhysicsGrips[g].HandledObject == GrippedObjectsArray[GripIndex].GrippedObject || !IsValid(PhysicsGrips[g].HandledObject))
 			{
 				// Need to delete it from the physics thread
 				DestroyPhysicsHandle(&PhysicsGrips[g]);
@@ -5319,7 +5320,7 @@ void UGripMotionControllerComponent::OnGripMassUpdated(FBodyInstance* GripBodyIn
 
 		if (!root && pActor)
 		{
-			if (pActor->IsPendingKill())
+			if (!IsValid(pActor))
 				continue;
 
 			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
@@ -5328,7 +5329,7 @@ void UGripMotionControllerComponent::OnGripMassUpdated(FBodyInstance* GripBodyIn
 		if (!root || root != GripBodyInstance->OwnerComponent)
 			continue;
 
-		if (!root->IsPendingKill())
+		if (IsValid(root))
 		{
 			UpdatePhysicsHandle(NewGrip, false);
 		}
@@ -5534,7 +5535,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 		}
 
-		if (!NewGrip.bIsLerping && bConstrainToPivot && CustomPivotComponent.IsValid())
+		if (!NewGrip.bIsLerping && bConstrainToPivot && IsValid(CustomPivotComponent))
 		{
 			if (UPrimitiveComponent* PivotPrim = Cast<UPrimitiveComponent>(CustomPivotComponent))
 			{
@@ -6255,7 +6256,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 				const FHitResult& TestHit = Hits[HitIdx];
 
 				// Ignore the owning actor to the motion controller
-				if (TestHit.Actor == this->GetOwner() || (bSkipSimulatingComponents && TestHit.Component->IsSimulatingPhysics()))
+				if (TestHit.GetActor() == this->GetOwner() || (bSkipSimulatingComponents && TestHit.Component->IsSimulatingPhysics()))
 				{
 					if (Hits.Num() == 1)
 					{
@@ -6299,7 +6300,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 	}
 
 	// Handle blocking hit notifications. Avoid if pending kill (which could happen after overlaps).
-	if (BlockingHit.bBlockingHit && !root->IsPendingKill())
+	if (BlockingHit.bBlockingHit && IsValid(root))
 	{
 		check(bFilledHitResult);
 		if (root->IsDeferringMovementUpdates())
@@ -6500,10 +6501,12 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 	} // Release lock on motion controller component
 
 	  // Tell the late update manager to apply the offset to the scene components
-	LateUpdate.Apply_RenderThread(InViewFamily.Scene, InViewFamily.bLateLatchingEnabled ? InViewFamily.FrameNumber : -1, OldTransform, NewTransform);
+	LateUpdate.Apply_RenderThread(InViewFamily.Scene, OldTransform, NewTransform);
+	// #TODO: UE5 is missing this pull
+	//LateUpdate.Apply_RenderThread(InViewFamily.Scene, InViewFamily.bLateLatchingEnabled ? InViewFamily.FrameNumber : -1, OldTransform, NewTransform);
 }
 
-void UGripMotionControllerComponent::FGripViewExtension::LateLatchingViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
+/*void UGripMotionControllerComponent::FGripViewExtension::LateLatchingViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
 {
 	SCOPED_NAMED_EVENT(UMotionControllerComponent_Latch, FColor::Orange);
 	if (!MotionControllerComponent)
@@ -6554,7 +6557,7 @@ void UGripMotionControllerComponent::FGripViewExtension::LateLatchingViewFamily_
 
 	// Tell the late update manager to apply the offset to the scene components
 	LateUpdate.Apply_RenderThread(InViewFamily.Scene, InViewFamily.FrameNumber, OldTransform, NewTransform);
-}
+}*/
 
 void UGripMotionControllerComponent::GetAllGrips(TArray<FBPActorGripInformation> &GripArray)
 {
@@ -6769,7 +6772,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 	{
 		if (AActor* DroppingActor = FoundGrip.GetGrippedActor())
 		{
-			if (!DroppingActor->IsPendingKill())
+			if (IsValid(DroppingActor))
 			{
 				DroppingActor->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
 			}
@@ -6779,7 +6782,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 	{
 		if (UPrimitiveComponent* DroppingComp = FoundGrip.GetGrippedComponent())
 		{
-			if (!DroppingComp->IsPendingKill())
+			if (IsValid(DroppingComp))
 			{
 				DroppingComp->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
 			}
@@ -6929,7 +6932,8 @@ void FExpandedLateUpdateManager::Setup(const FTransform& ParentToWorld, UGripMot
 
 }
 
-void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, const int32 FrameNumber, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform)
+//void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, const int32 FrameNumber, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform)
+void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, const FTransform& OldRelativeTransform, const FTransform& NewRelativeTransform)
 {
 	check(IsInRenderingThread());
 
@@ -6945,13 +6949,14 @@ void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, cons
 
 	bool bIndicesHaveChanged = false;
 
-
+	/*
 	// Under HMD late-latching senario, Apply_RenderThread will be called twice in same frame under PreRenderViewFamily_RenderThread and 
 	// LateLatchingViewFamily_RenderThread. We don't want to apply PrimitivePair.Value = -1 directly on UpdateStates[LateUpdateRenderReadIndex].Primitives
 	// because the modification will affect second Apply_RenderThread's logic under LateLatchingViewFamily_RenderThread.
 	// Since the list is very small(only affect stuff attaching to the controller),  we just make a local copy PrimitivesLocal.
 	TMap<FPrimitiveSceneInfo*, int32> PrimitivesLocal = UpdateStates[LateUpdateRenderReadIndex].Primitives;
-	for (auto& PrimitivePair : PrimitivesLocal)
+	for (auto& PrimitivePair : PrimitivesLocal)*/
+	for (auto& PrimitivePair : UpdateStates[LateUpdateRenderReadIndex].Primitives)
 	{
 		if (PrimitivePair.Value == -1)
 			continue;
@@ -6970,10 +6975,10 @@ void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, cons
 		{
 			CachedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
 			PrimitivePair.Value = -1; // Set the cached index to -1 to indicate that this primitive was already processed
-			if (FrameNumber >= 0)
+			/*if (FrameNumber >= 0)
 			{
 				CachedSceneInfo->Proxy->SetPatchingFrameNumber(FrameNumber);
-			}
+			}*/
 		}
 	}
 
@@ -6984,15 +6989,15 @@ void FExpandedLateUpdateManager::Apply_RenderThread(FSceneInterface* Scene, cons
 		FPrimitiveSceneInfo* RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(Index++);
 		while (RetrievedSceneInfo)
 		{
-
-			int32* PrimitiveIndex = PrimitivesLocal.Find(RetrievedSceneInfo);
-			if (RetrievedSceneInfo->Proxy && PrimitiveIndex != nullptr && *PrimitiveIndex >= 0)
+			/*int32* PrimitiveIndex = PrimitivesLocal.Find(RetrievedSceneInfo);
+			if (RetrievedSceneInfo->Proxy && PrimitiveIndex != nullptr && *PrimitiveIndex >= 0)*/
+			if (RetrievedSceneInfo->Proxy && UpdateStates[LateUpdateRenderReadIndex].Primitives.Contains(RetrievedSceneInfo) && UpdateStates[LateUpdateRenderReadIndex].Primitives[RetrievedSceneInfo] >= 0)
 			{
 				RetrievedSceneInfo->Proxy->ApplyLateUpdateTransform(LateUpdateTransform);
-				if (FrameNumber >= 0)
+				/*if (FrameNumber >= 0)
 				{
 					RetrievedSceneInfo->Proxy->SetPatchingFrameNumber(FrameNumber);
-				}
+				}*/
 			}
 			RetrievedSceneInfo = Scene->GetPrimitiveSceneInfo(Index++);
 		}
@@ -7162,7 +7167,7 @@ FVector UGripMotionControllerComponent::GetPivotLocation_BP()
 
 FTransform UGripMotionControllerComponent::ConvertToControllerRelativeTransform(const FTransform & InTransform)
 {
-	return InTransform.GetRelativeTransform(!bSkipPivotTransformAdjustment && CustomPivotComponent.IsValid() ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform());
+	return InTransform.GetRelativeTransform(!bSkipPivotTransformAdjustment && IsValid(CustomPivotComponent) ? CustomPivotComponent->GetSocketTransform(CustomPivotComponentSocketName) : this->GetComponentTransform());
 }
 
 FTransform UGripMotionControllerComponent::ConvertToGripRelativeTransform(const FTransform& GrippedActorTransform, const FTransform & InTransform)

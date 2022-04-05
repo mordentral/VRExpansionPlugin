@@ -2,7 +2,7 @@
 
 #include "AnimGraphDefinitions.h"
 #include "Kismet2/BlueprintEditorUtils.h"
-#include "Editor/AnimGraph/Classes/AnimGraphNode_SkeletalControlBase.h"
+#include "Editor/AnimGraph/Public/AnimGraphNode_SkeletalControlBase.h"
 
 #include "AnimNode_ApplyOpenXRHandPose.h"
 // Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.

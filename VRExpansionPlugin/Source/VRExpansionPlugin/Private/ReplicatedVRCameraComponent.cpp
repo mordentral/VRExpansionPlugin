@@ -41,8 +41,8 @@ bool TMP_IsHeadTrackingAllowedForWorld(IXRTrackingSystem* XRSystem, UWorld* Worl
 		PlaySettings->GetPlayNetMode(PlayNetMode);
 		int32 AllowedPIEInstanceID = PlayNetMode == PIE_Client ? 1 : 0;
 		// If join a server when PIEInstanceID will be index none. just gonna assume that's fine. might actually be issues if you have two clients when you join a server...
-		int32 PIEInstanceID = World->GetOutermost()->PIEInstanceID;
-		return XRSystem->IsHeadTrackingAllowed() && ((World->WorldType != EWorldType::PIE) || (World->GetOutermost()->PIEInstanceID == AllowedPIEInstanceID) || World->GetOutermost()->PIEInstanceID == INDEX_NONE);
+		int32 PIEInstanceID = World->GetOutermost()->GetPIEInstanceID();
+		return XRSystem->IsHeadTrackingAllowed() && ((World->WorldType != EWorldType::PIE) || (World->GetOutermost()->GetPIEInstanceID() == AllowedPIEInstanceID) || World->GetOutermost()->GetPIEInstanceID() == INDEX_NONE);
 	}
 #endif
 	return XRSystem->IsHeadTrackingAllowedForWorld(*World);
@@ -160,7 +160,7 @@ void UReplicatedVRCameraComponent::OnAttachmentChanged()
 	}
 	else
 	{
-		AttachChar.Reset();
+		AttachChar = nullptr;
 	}
 
 	Super::OnAttachmentChanged();
@@ -237,7 +237,7 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 
-	if (!bUpdateInCharacterMovement || !AttachChar.IsValid())
+	if (!bUpdateInCharacterMovement || !IsValid(AttachChar))
 	{
 		UpdateTracking(DeltaTime);
 	}

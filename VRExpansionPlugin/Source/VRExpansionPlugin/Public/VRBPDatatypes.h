@@ -96,7 +96,7 @@ public:
 
 	// Tracked parent reference
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings")
-		UPrimitiveComponent * TrackedDevice;
+		TObjectPtr<UPrimitiveComponent> TrackedDevice;
 
 	bool IsValid()
 	{
@@ -1238,7 +1238,7 @@ public:
 		bool bHasSecondaryAttachment;
 
 	UPROPERTY(BlueprintReadOnly, Category = "SecondaryGripInfo")
-		USceneComponent * SecondaryAttachment;
+		TObjectPtr<USceneComponent> SecondaryAttachment;
 
 	UPROPERTY(BlueprintReadOnly, Category = "SecondaryGripInfo")
 		FTransform_NetQuantize SecondaryRelativeTransform;
@@ -1357,7 +1357,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripTargetType GripTargetType;
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
-		UObject * GrippedObject;
+		TObjectPtr<UObject> GrippedObject;
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		EGripCollisionType GripCollisionType;
 	UPROPERTY(BlueprintReadWrite, Category = "Settings")
@@ -1592,7 +1592,7 @@ struct VREXPANSIONPLUGIN_API FBPGripPair
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripPair")
-	UGripMotionControllerComponent * HoldingController;
+		TObjectPtr<UGripMotionControllerComponent> HoldingController;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripPair")
 	uint8 GripID;
@@ -1723,7 +1723,7 @@ struct VREXPANSIONPLUGIN_API FBPActorPhysicsHandleInformation
 	GENERATED_BODY()
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
-		UObject * HandledObject;
+		TObjectPtr<UObject> HandledObject;
 	uint8 GripID;
 
 	FPhysicsActorHandle KinActorData2;

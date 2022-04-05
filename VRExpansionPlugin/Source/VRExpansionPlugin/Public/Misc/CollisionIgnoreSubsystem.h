@@ -19,9 +19,9 @@ struct FCollisionPrimPair
 public:
 
 	UPROPERTY()
-	TWeakObjectPtr<UPrimitiveComponent> Prim1;
+	TObjectPtr<UPrimitiveComponent> Prim1;
 	UPROPERTY()
-	TWeakObjectPtr<UPrimitiveComponent> Prim2;
+	TObjectPtr<UPrimitiveComponent> Prim2;
 
 	FCollisionPrimPair()
 	{

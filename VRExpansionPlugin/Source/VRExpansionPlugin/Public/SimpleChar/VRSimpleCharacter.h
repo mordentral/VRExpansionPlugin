@@ -41,7 +41,7 @@ public:
 	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
 
 	UPROPERTY(Category = VRSimpleCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	USceneComponent * VRSceneComponent;
+		TObjectPtr<USceneComponent> VRSceneComponent;
 
 	//A helper function that offsets a given vector by the roots collision location
 	//pass in a teleport location and it provides the correct spot for it to be at your feet

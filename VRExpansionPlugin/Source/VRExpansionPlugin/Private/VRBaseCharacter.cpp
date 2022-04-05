@@ -83,7 +83,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	}
 
 	LeftMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::LeftMotionControllerComponentName);
-	if (LeftMotionController)
+	if (IsValid(LeftMotionController))
 	{
 		LeftMotionController->SetupAttachment(VRProxyComponent);
 		//LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
@@ -97,7 +97,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	}
 
 	RightMotionController = CreateDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::RightMotionControllerComponentName);
-	if (RightMotionController)
+	if (IsValid(RightMotionController))
 	{
 		RightMotionController->SetupAttachment(VRProxyComponent);
 		//RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
@@ -154,7 +154,7 @@ void AVRBaseCharacter::PostInitializeComponents()
 
 	Super::PostInitializeComponents();
 
-	if (!IsPendingKill())
+	if (IsValid(this))
 	{
 		if (NetSmoother)
 		{
@@ -300,7 +300,7 @@ bool AVRBaseCharacter::Server_SendTransformCamera_Validate(FBPVRComponentPosRep 
 
 void AVRBaseCharacter::Server_SendTransformLeftController_Implementation(FBPVRComponentPosRep NewTransform)
 {
-	if (LeftMotionController)
+	if (IsValid(LeftMotionController))
 		LeftMotionController->Server_SendControllerTransform_Implementation(NewTransform);
 }
 
@@ -312,7 +312,7 @@ bool AVRBaseCharacter::Server_SendTransformLeftController_Validate(FBPVRComponen
 
 void AVRBaseCharacter::Server_SendTransformRightController_Implementation(FBPVRComponentPosRep NewTransform)
 {
-	if(RightMotionController)
+	if(IsValid(RightMotionController))
 		RightMotionController->Server_SendControllerTransform_Implementation(NewTransform);
 }
 
@@ -352,10 +352,10 @@ void AVRBaseCharacter::NotifyOfTeleport(bool bRegisterAsTeleport)
 		}
 	}
 
-	if (LeftMotionController)
+	if (IsValid(LeftMotionController))
 		LeftMotionController->bIsPostTeleport = true;
 
-	if (RightMotionController)
+	if (IsValid(RightMotionController))
 		RightMotionController->bIsPostTeleport = true;
 }
 
@@ -552,12 +552,12 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 
 				SetActorLocationAndRotationVR(SeatInformation.StoredTargetTransform.GetTranslation(), SeatInformation.StoredTargetTransform.Rotator(), true, true, true);
 				
-				if (LeftMotionController)
+				if (IsValid(LeftMotionController))
 				{
 					LeftMotionController->PostTeleportMoveGrippedObjects();
 				}
 
-				if (RightMotionController)
+				if (IsValid(RightMotionController))
 				{
 					RightMotionController->PostTeleportMoveGrippedObjects();
 				}

@@ -160,7 +160,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 	{
 		if (!bSkipHighQualityOperations && bUseVirtualStock)
 		{
-			if (VirtualStockComponent.IsValid())
+			if (IsValid(VirtualStockComponent))
 			{
 				FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VirtualStockComponent->GetComponentRotation());
 				MountWorldTransform = FTransform(PureYaw.Quaternion(), VirtualStockComponent->GetComponentLocation() + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset));
@@ -177,7 +177,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 					MountWorldTransform = FTransform(PureYaw.Quaternion(), curLoc + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset)) * GrippingController->GetAttachParent()->GetComponentTransform();
 				}
 			}
-			else if(CameraComponent.IsValid())
+			else if(IsValid(CameraComponent))
 			{		
 				FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(CameraComponent->GetComponentRotation());
 				MountWorldTransform = FTransform(PureYaw.Quaternion(), CameraComponent->GetComponentLocation() + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset));

@@ -168,8 +168,13 @@ void FPhysicsReplicationVR::ApplyAsyncDesiredStateVR(const float DeltaSeconds, c
 				{
 					ObjectStateType = EObjectStateType::Sleeping;
 				}
-				auto* Solver = Proxy->GetSolver<FPBDRigidsSolver>();
-				Solver->GetEvolution()->SetParticleObjectState(Proxy->GetHandle_LowLevel()->CastToRigidParticle(), ObjectStateType);	//todo: move object state into physics thread api
+				// don't allow kinematic to sleeping transition
+				bool bInvalidObjectState = (ObjectStateType == EObjectStateType::Sleeping && Handle->ObjectState() == EObjectStateType::Kinematic);
+				if (!bInvalidObjectState)
+				{
+					auto* Solver = Proxy->GetSolver<FPBDRigidsSolver>();
+					Solver->GetEvolution()->SetParticleObjectState(Proxy->GetHandle_LowLevel()->CastToRigidParticle(), ObjectStateType);	//todo: move object state into physics thread api
+				}
 			}
 		}
 	}

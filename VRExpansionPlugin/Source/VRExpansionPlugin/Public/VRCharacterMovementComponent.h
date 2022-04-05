@@ -57,7 +57,7 @@ class VREXPANSIONPLUGIN_API UVRCharacterMovementComponent : public UVRBaseCharac
 public:
 
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
-	UVRRootComponent * VRRootCapsule;
+		TObjectPtr<UVRRootComponent> VRRootCapsule;
 
 	/** Reject sweep impacts that are this close to the edge of the vertical portion of the capsule when performing vertical sweeps, and try again with a smaller capsule. */
 	static const float CLIMB_SWEEP_EDGE_REJECT_DISTANCE;
@@ -125,6 +125,9 @@ public:
 	///////////////////////////
 	// Client adjustment overrides to allow for rotation
 	///////////////////////////
+
+	// Engines version of this is private for some reason, making it impossible to override the function that uses it.
+	TWeakObjectPtr<UPrimitiveComponent> LastServerMovementBaseVR = nullptr;
 
 	virtual void ClientHandleMoveResponse(const FCharacterMoveResponseDataContainer& MoveResponse) override;
 
