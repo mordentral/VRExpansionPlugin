@@ -2,7 +2,7 @@
 
 #include "Misc/VRFullScreenUserWidget.h"
 
-#include "Components/PostProcessComponent.h"
+//#include "Components/PostProcessComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/UserInterfaceSettings.h"
@@ -38,9 +38,9 @@
 namespace
 {
 	const FName NAME_LevelEditorName = "LevelEditor";
-	const FName NAME_SlateUI = "SlateUI";
-	const FName NAME_TintColorAndOpacity = "TintColorAndOpacity";
-	const FName NAME_OpacityFromTexture = "OpacityFromTexture";
+	//const FName NAME_SlateUI = "SlateUI";
+	//const FName NAME_TintColorAndOpacity = "TintColorAndOpacity";
+	//const FName NAME_OpacityFromTexture = "OpacityFromTexture";
 
 	EVisibility ConvertWindowVisibilityToVisibility(EWindowVisibility visibility)
 	{
@@ -299,10 +299,10 @@ void FVRFullScreenUserWidget_Viewport::Tick(UWorld* World, float DeltaSeconds)
 // FVRFullScreenUserWidget_PostProcess
 
 FVRFullScreenUserWidget_PostProcess::FVRFullScreenUserWidget_PostProcess()
-	: PostProcessMaterial(nullptr)
-	, PostProcessTintColorAndOpacity(FLinearColor::White)
-	, PostProcessOpacityFromTexture(1.0f)
-	, bWidgetDrawSize(false)
+	:// PostProcessMaterial(nullptr)
+	//, PostProcessTintColorAndOpacity(FLinearColor::White)
+	//, PostProcessOpacityFromTexture(1.0f)
+	bWidgetDrawSize(false)
 	, WidgetDrawSize(FIntPoint(640, 360))
 	, bWindowFocusable(true)
 	, WindowVisibility(EWindowVisibility::SelfHitTestInvisible)
@@ -310,12 +310,13 @@ FVRFullScreenUserWidget_PostProcess::FVRFullScreenUserWidget_PostProcess()
 	, RenderTargetBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 1.0f))
 	, RenderTargetBlendMode(EWidgetBlendMode::Masked)
 	, WidgetRenderTarget(nullptr)
-	, PostProcessComponent(nullptr)
-	, PostProcessMaterialInstance(nullptr)
+	//, PostProcessComponent(nullptr)
+	//, PostProcessMaterialInstance(nullptr)
 	, WidgetRenderer(nullptr)
 	, CurrentWidgetDrawSize(FIntPoint::ZeroValue)
 {
 	bRenderToTextureOnly = true;
+	bDrawToVRPreview = true;
 	VRDisplayType = ESpectatorScreenMode::TexturePlusEye;
 	PostVRDisplayType = ESpectatorScreenMode::SingleEye;
 }
@@ -325,7 +326,7 @@ bool FVRFullScreenUserWidget_PostProcess::Display(UWorld* World, UUserWidget* Wi
 
 	bool bOk = CreateRenderer(World, Widget, InDPIScale);
 
-	if (bRenderToTextureOnly && WidgetRenderTarget && bDrawToVRPreview)
+	if (bRenderToTextureOnly && IsValid(WidgetRenderTarget) && bDrawToVRPreview)
 	{
 		IHeadMountedDisplay* HMD = GEngine->XRSystem.IsValid() ? GEngine->XRSystem->GetHMDDevice() : nullptr;
 		ISpectatorScreenController* Controller = nullptr;
@@ -413,7 +414,7 @@ TSharedPtr<SVirtualWindow> FVRFullScreenUserWidget_PostProcess::GetSlateWindow()
 	return SlateWindow;
 }
 
-bool FVRFullScreenUserWidget_PostProcess::CreatePostProcessComponent(UWorld* World)
+/*bool FVRFullScreenUserWidget_PostProcess::CreatePostProcessComponent(UWorld* World)
 {
 	ReleasePostProcessComponent();
 	if (World && PostProcessMaterial)
@@ -437,9 +438,9 @@ bool FVRFullScreenUserWidget_PostProcess::CreatePostProcessComponent(UWorld* Wor
 	}
 
 	return PostProcessComponent && PostProcessMaterialInstance;
-}
+}*/
 
-void FVRFullScreenUserWidget_PostProcess::ReleasePostProcessComponent()
+/*void FVRFullScreenUserWidget_PostProcess::ReleasePostProcessComponent()
 {
 	if (PostProcessComponent)
 	{
@@ -447,7 +448,7 @@ void FVRFullScreenUserWidget_PostProcess::ReleasePostProcessComponent()
 	}
 	PostProcessComponent = nullptr;
 	PostProcessMaterialInstance = nullptr;
-}
+}*/
 
 bool FVRFullScreenUserWidget_PostProcess::CreateRenderer(UWorld* World, UUserWidget* Widget, float InDPIScale)
 {
@@ -502,10 +503,10 @@ bool FVRFullScreenUserWidget_PostProcess::CreateRenderer(UWorld* World, UUserWid
 			WidgetRenderTarget->InitCustomFormat(CurrentWidgetDrawSize.X, CurrentWidgetDrawSize.Y, PF_B8G8R8A8, false);
 			WidgetRenderTarget->UpdateResourceImmediate();
 
-			if (!bRenderToTextureOnly && PostProcessMaterialInstance)
+			/*if (!bRenderToTextureOnly && PostProcessMaterialInstance)
 			{
 				PostProcessMaterialInstance->SetTextureParameterValue(NAME_SlateUI, WidgetRenderTarget);
-			}
+			}*/
 		}
 	}
 
@@ -529,10 +530,10 @@ void FVRFullScreenUserWidget_PostProcess::ReleaseRenderer()
 void FVRFullScreenUserWidget_PostProcess::TickRenderer(UWorld* World, float DeltaSeconds)
 {
 	check(World);
-	if (WidgetRenderTarget)
+	if (IsValid(WidgetRenderTarget))
 	{
 
-		if (bRenderToTextureOnly)
+		if (bRenderToTextureOnly && bDrawToVRPreview)
 		{
 			IHeadMountedDisplay* HMD = GEngine->XRSystem.IsValid() ? GEngine->XRSystem->GetHMDDevice() : nullptr;
 			ISpectatorScreenController* Controller = nullptr;
@@ -1026,27 +1027,33 @@ void UVRFullScreenUserWidget::PostEditChangeProperty(FPropertyChangedEvent& Prop
 	{
 		static FName NAME_WidgetClass = GET_MEMBER_NAME_CHECKED(UVRFullScreenUserWidget, WidgetClass);
 		static FName NAME_EditorDisplayType = GET_MEMBER_NAME_CHECKED(UVRFullScreenUserWidget, EditorDisplayType);
-		static FName NAME_PostProcessMaterial = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, PostProcessMaterial);
+		//static FName NAME_PostProcessMaterial = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, PostProcessMaterial);
 		static FName NAME_WidgetDrawSize = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, WidgetDrawSize);
 		static FName NAME_WindowFocusable = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, bWindowFocusable);
 		static FName NAME_WindowVisibility = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, WindowVisibility);
 		static FName NAME_ReceiveHardwareInput = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, bReceiveHardwareInput);
 		static FName NAME_RenderTargetBackgroundColor = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, RenderTargetBackgroundColor);
 		static FName NAME_RenderTargetBlendMode = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, RenderTargetBlendMode);
-		static FName NAME_PostProcessTintColorAndOpacity = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, PostProcessTintColorAndOpacity);
-		static FName NAME_PostProcessOpacityFromTexture = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, PostProcessOpacityFromTexture);
+		//static FName NAME_PostProcessTintColorAndOpacity = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, PostProcessTintColorAndOpacity);
+		//static FName NAME_PostProcessOpacityFromTexture = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, PostProcessOpacityFromTexture);
+		static FName NAME_DrawToVRPreview = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, bDrawToVRPreview);
+		static FName NAME_VRDisplayType = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, VRDisplayType);
+		static FName NAME_PostVRDisplayType = GET_MEMBER_NAME_CHECKED(FVRFullScreenUserWidget_PostProcess, PostVRDisplayType);
 
 		if (Property->GetFName() == NAME_WidgetClass
 			|| Property->GetFName() == NAME_EditorDisplayType
-			|| Property->GetFName() == NAME_PostProcessMaterial
+			//|| Property->GetFName() == NAME_PostProcessMaterial
 			|| Property->GetFName() == NAME_WidgetDrawSize
 			|| Property->GetFName() == NAME_WindowFocusable
 			|| Property->GetFName() == NAME_WindowVisibility
 			|| Property->GetFName() == NAME_ReceiveHardwareInput
 			|| Property->GetFName() == NAME_RenderTargetBackgroundColor
 			|| Property->GetFName() == NAME_RenderTargetBlendMode
-			|| Property->GetFName() == NAME_PostProcessTintColorAndOpacity
-			|| Property->GetFName() == NAME_PostProcessOpacityFromTexture)
+			|| Property->GetFName() == NAME_DrawToVRPreview
+			|| Property->GetFName() == NAME_VRDisplayType
+			|| Property->GetFName() == NAME_PostVRDisplayType)
+			//|| Property->GetFName() == NAME_PostProcessTintColorAndOpacity
+			//|| Property->GetFName() == NAME_PostProcessOpacityFromTexture)
 		{
 			bool bWasRequestedDisplay = bDisplayRequested;
 			UWorld* CurrentWorld = World.Get();
@@ -1074,10 +1081,12 @@ AVRFullScreenUserWidgetActor::AVRFullScreenUserWidgetActor(const FObjectInitiali
 	ScreenUserWidget = CreateDefaultSubobject<UVRFullScreenUserWidget>(TEXT("ScreenUserWidget"));
 
 	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.bStartWithTickEnabled = true;
-	bAllowTickBeforeBeginPlay = true;
-	SetActorTickEnabled(true);
-	SetHidden(false);
+	PrimaryActorTick.bStartWithTickEnabled = false;
+	bAllowTickBeforeBeginPlay = false;
+	SetActorTickEnabled(false);
+	//SetHidden(false);
+
+	bShowOnInit = false;
 }
 
 void AVRFullScreenUserWidgetActor::PostInitializeComponents()
@@ -1118,7 +1127,10 @@ void AVRFullScreenUserWidgetActor::Destroyed()
 
 void AVRFullScreenUserWidgetActor::BeginPlay()
 {
-	RequestGameDisplay();
+	if (ScreenUserWidget && bShowOnInit)
+	{
+		RequestGameDisplay();
+	}
 
 	Super::BeginPlay();
 }
@@ -1173,6 +1185,7 @@ void AVRFullScreenUserWidgetActor::RequestGameDisplay()
 	if (ScreenUserWidget && ActorWorld && (ActorWorld->WorldType == EWorldType::Game || ActorWorld->WorldType == EWorldType::PIE))
 	{
 		ScreenUserWidget->Display(ActorWorld);
+		SetActorTickEnabled(true);
 	}
 }
 
@@ -1180,19 +1193,14 @@ void AVRFullScreenUserWidgetActor::SetWidgetVisible(bool bIsVisible)
 {
 	if (ScreenUserWidget)
 	{
-		if (bIsVisible)
+ 		if (!bIsVisible)
 		{
 			ScreenUserWidget->Hide();
 			SetActorTickEnabled(false);
 		}
 		else
 		{
-			UWorld* ActorWorld = GetWorld();
-			if (ScreenUserWidget && ActorWorld && (ActorWorld->WorldType == EWorldType::Game || ActorWorld->WorldType == EWorldType::PIE))
-			{
-				ScreenUserWidget->Display(ActorWorld);
-				SetActorTickEnabled(true);
-			}
+			RequestGameDisplay();
 		}
 	}
 }

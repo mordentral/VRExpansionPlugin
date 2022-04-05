@@ -84,8 +84,8 @@ public:
 	TSharedPtr<SVirtualWindow> VREXPANSIONPLUGIN_API GetSlateWindow() const;
 
 private:
-	bool CreatePostProcessComponent(UWorld* World);
-	void ReleasePostProcessComponent();
+	//bool CreatePostProcessComponent(UWorld* World);
+	//void ReleasePostProcessComponent();
 
 	bool CreateRenderer(UWorld* World, UUserWidget* Widget, float InDPIScale);
 	void ReleaseRenderer();
@@ -104,16 +104,16 @@ public:
 	 * TintColorAndOpacity [Vector]
 	 * OpacityFromTexture [Scalar]
 	 */
-	UPROPERTY(EditAnywhere, Category = PostProcess)
-	UMaterialInterface* PostProcessMaterial;
+	//UPROPERTY(EditAnywhere, Category = PostProcess)
+	//UMaterialInterface* PostProcessMaterial;
 
 	/** Tint color and opacity for this component. */
-	UPROPERTY(EditAnywhere, Category = PostProcess)
-	FLinearColor PostProcessTintColorAndOpacity;
+	//UPROPERTY(EditAnywhere, Category = PostProcess)
+	//FLinearColor PostProcessTintColorAndOpacity;
 
 	/** Sets the amount of opacity from the widget's UI texture to use when rendering the translucent or masked UI to the viewport (0.0-1.0). */
-	UPROPERTY(EditAnywhere, Category = PostProcess, meta = (ClampMin = 0.0f, ClampMax = 1.0f))
-	float PostProcessOpacityFromTexture;
+	//UPROPERTY(EditAnywhere, Category = PostProcess, meta = (ClampMin = 0.0f, ClampMax = 1.0f))
+	//float PostProcessOpacityFromTexture;
 
 	/** The size of the rendered widget. */
 	UPROPERTY(EditAnywhere, Category = PostProcess, meta=(InlineEditConditionToggle))
@@ -173,12 +173,12 @@ public:
 #endif
 private:
 	/** Post process component used to add the material to the post process chain. */
-	UPROPERTY(Transient)
-	UPostProcessComponent* PostProcessComponent;
+	//UPROPERTY(Transient)
+	//UPostProcessComponent* PostProcessComponent;
 
 	/** The dynamic instance of the material that the render target is attached to. */
-	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* PostProcessMaterialInstance;
+	//UPROPERTY(Transient)
+	//UMaterialInstanceDynamic* PostProcessMaterialInstance;
 
 	/** The slate window that contains the user widget content. */
 	TSharedPtr<SVirtualWindow> SlateWindow;
@@ -231,6 +231,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FullScreenWidgetComp")
 	virtual void Hide();
 
+	UFUNCTION(BlueprintCallable, Category = "FullScreenWidgetComp")
+		void SetIsHidden(bool bNewHidden)
+	{
+		if (bNewHidden)
+		{
+			Hide();
+		}
+		else
+		{
+			if (World.IsValid())
+			{
+				Display(World.Get());
+			}
+			else
+			{
+				UWorld* myWorld = this->GetWorld();
+				if (myWorld)
+				{
+					Display(myWorld);
+				}
+			}
+		}
+	}
+
 	virtual void Tick(float DeltaTime);
 
 	void SetDisplayTypes(EVRWidgetDisplayType InEditorDisplayType, EVRWidgetDisplayType InGameDisplayType, EVRWidgetDisplayType InPIEDisplayType);
@@ -246,24 +270,28 @@ private:
 	void OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld);
 	void OnWorldCleanup(UWorld* InWorld, bool bSessionEnded, bool bCleanupResources);
 
+
 protected:
+
+
+public:
+
 	/** The display type when the world is an editor world. */
 	UPROPERTY(EditAnywhere, Category = "User Interface")
-	EVRWidgetDisplayType EditorDisplayType;
+		EVRWidgetDisplayType EditorDisplayType;
 
 	/** The display type when the world is a game world. */
 	UPROPERTY(EditAnywhere, Category = "User Interface")
-	EVRWidgetDisplayType GameDisplayType;
+		EVRWidgetDisplayType GameDisplayType;
 
 	/** The display type when the world is a PIE world. */
 	UPROPERTY(EditAnywhere, Category = "User Interface", meta = (DisplayName = "PIE Display Type"))
-	EVRWidgetDisplayType PIEDisplayType;
+		EVRWidgetDisplayType PIEDisplayType;
 
 	/** Behavior when the widget should be display by the slate attached to the viewport. */
 	UPROPERTY(EditAnywhere, Category = "Viewport", meta = (ShowOnlyInnerProperties))
-	FVRFullScreenUserWidget_Viewport ViewportDisplayType;
+		FVRFullScreenUserWidget_Viewport ViewportDisplayType;
 
-public:
 	/** The class of User Widget to create and display an instance of */
 	UPROPERTY(EditAnywhere, Category = "User Interface")
 	TSubclassOf<UUserWidget> WidgetClass;
@@ -327,12 +355,38 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 
+	/** If true the widget will be shown right away, if false you will need to set SetWidgetVisible(true) to show it */
+	UPROPERTY(EditAnywhere, Category = "User Interface")
+		bool bShowOnInit;
+
 	/** */
 	UPROPERTY(VisibleAnywhere, Instanced, NoClear, Category = "User Interface", meta = (ShowOnlyInnerProperties))
 		UVRFullScreenUserWidget* ScreenUserWidget;
 
 	UFUNCTION(BlueprintCallable, Category = "FullScreenWidgetActor")
 		UVRFullScreenUserWidget* GetPreviewWidgetComp();
+
+	UFUNCTION(BlueprintCallable, Category = "FullScreenWidgetActor")
+	void SetPIEDisplayType(EVRWidgetDisplayType NewDisplayType)
+	{
+		if (IsValid(ScreenUserWidget))
+		{
+			ScreenUserWidget->PIEDisplayType = NewDisplayType;
+			ScreenUserWidget->Hide();
+			RequestGameDisplay();
+		}
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "FullScreenWidgetActor")
+	void SetGameDisplayType(EVRWidgetDisplayType NewDisplayType)
+	{
+		if (IsValid(ScreenUserWidget))
+		{
+			ScreenUserWidget->GameDisplayType = NewDisplayType;
+			ScreenUserWidget->Hide();
+			RequestGameDisplay();
+		}
+	}
 
 	// Set the widget to visible or not, this will be overriden by any changed to the actors hidden state
 	// IE: Setting actor to hidden will force this hidden as well, also setting the actor to visible will do the opposite
