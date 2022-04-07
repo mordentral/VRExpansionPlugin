@@ -7,39 +7,6 @@
 #include "GripScripts/GS_GunTools.h"
 #include "VRGlobalSettings.generated.h"
 
-
-/*namespace ControllerProfileStatics
-{
-	static const FTransform OculusTouchStaticOffset(FRotator(-70.f, 0.f, 0.f));
-}*/
-
-// As of 4.24 these do nothing, they are left for a few versions as a reference of old bindings
-// #TODO: Delete around 4.26
-/*USTRUCT(BlueprintType, Category = "VRGlobalSettings")
-struct FAxisMappingDetails
-{
-	GENERATED_BODY()
-public:
-
-	// List of all axis key mappings that correspond to the axis name in the containing map 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	TArray<FInputAxisKeyMapping> AxisMappings;
-
-};
-
-// As of 4.24 these do nothing, they are left for a few versions as a reference of old bindings
-// #TODO: Delete around 4.26
-USTRUCT(BlueprintType, Category = "VRGlobalSettings")
-struct FActionMappingDetails
-{
-	GENERATED_BODY()
-public:
-
-	// List of all axis key mappings that correspond to the axis name in the containing map 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-		TArray<FInputActionKeyMapping> ActionMappings;
-};*/
-
 USTRUCT(BlueprintType, Category = "ControllerProfiles")
 struct VREXPANSIONPLUGIN_API FBPVRControllerProfile
 {
@@ -61,18 +28,6 @@ public:
 	// Offset to use with this controller
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfiles", meta = (editcondition = "bUseSeperateHandOffsetTransforms"))
 		FTransform_NetQuantize SocketOffsetTransformRightHand;
-
-	// Setting an axis value here with key bindings will override the equivalent bindings on profile load
-	// As of 4.24 these do nothing, they are left for a few versions as a reference of old bindings
-	// #TODO: Delete around 4.26
-	/*UPROPERTY(EditDefaultsOnly, NotReplicated, Category = "ControllerProfiles")
-	TMap<FName, FAxisMappingDetails> AxisOverrides;
-
-	// Setting action mappings here will override the equivalent bindings on profile load
-		// As of 4.24 these do nothing, they are left for a few versions as a reference of old bindings
-	// #TODO: Delete around 4.26
-	UPROPERTY(EditDefaultsOnly, NotReplicated, Category = "ControllerProfiles")
-	TMap<FName, FActionMappingDetails> ActionOverrides;*/
 
 
 	FBPVRControllerProfile() :
@@ -116,6 +71,11 @@ class VREXPANSIONPLUGIN_API UVRGlobalSettings : public UObject
 
 public:
 	UVRGlobalSettings(const FObjectInitializer& ObjectInitializer);
+
+	// Whether we should use the physx to chaos translation scalers or not
+	// This should be off on native chaos projects that have been set with the correct stiffness and damping settings already
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
+		bool bUseChaosTranslationScalers; 
 
 	// A scaler to apply to constraint drives when chaos is active
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")

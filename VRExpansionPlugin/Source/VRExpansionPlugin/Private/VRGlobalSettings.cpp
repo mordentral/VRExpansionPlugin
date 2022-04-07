@@ -24,6 +24,7 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 	CurrentControllerProfileTransformRight(FTransform::Identity)
 {
 #if WITH_CHAOS
+		bUseChaosTranslationScalers = true;
 		LinearDriveStiffnessScale = Chaos::ConstraintSettings::LinearDriveStiffnessScale();
 		LinearDriveDampingScale = Chaos::ConstraintSettings::LinearDriveDampingScale();
 		AngularDriveStiffnessScale = Chaos::ConstraintSettings::AngularDriveStiffnessScale();
