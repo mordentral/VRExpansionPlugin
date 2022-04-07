@@ -21,9 +21,6 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	Stiffness = 1500.0f;
 	Damping = 200.0f;
 
-#if PHYSICS_INTERFACE_PHYSX
-	HandleData = nullptr;
-#endif
 	//SceneIndex = 0;
 
 	bIsPhysicsLever = false;
@@ -649,152 +646,13 @@ bool UVRLeverComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*>
 
 bool UVRLeverComponent::DestroyConstraint()
 {
-#if PHYSICS_INTERFACE_PHYSX
-	if (HandleData)
-	{
-		// use correct scene
-		PxScene* PScene = HandleData->getScene();//GetPhysXSceneFromIndex(SceneIndex);
-		if (PScene)
-		{
-			PScene->lockWrite();
-			//SCOPED_SCENE_WRITE_LOCK(PScene);
-			// Destroy joint.
-			HandleData->release();
-			PScene->unlockWrite();
-		}
-
-		HandleData = NULL;
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-#endif // WITH_PHYSX
-
+	// #TODO: Recreate with chaos
 	return true;
 }
 
 bool UVRLeverComponent::SetupConstraint()
 {
-#if PHYSICS_INTERFACE_PHYSX
-
-	if (HandleData)
-		return true;
-
-	// Get the PxRigidDynamic that we want to grab.
-	FBodyInstance* rBodyInstance = this->GetBodyInstance(NAME_None);
-	if (!rBodyInstance)
-	{
-		return false;
-	}
-
-
-	FTransform A2Transform = FTransform::Identity;//GetComponentTransform().Inverse();
-	if (ParentComponent.IsValid())
-	{
-		UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ParentComponent.Get());
-
-		if (PrimComp)
-			A2Transform = PrimComp->GetComponentTransform();
-	}
-
-	float rotationalOffset = (LeverLimitPositive - LeverLimitNegative) / 2;
-	FRotator AngularRotationOffset = UVRInteractibleFunctionLibrary::SetAxisValueRot((EVRInteractibleAxis)LeverRotationAxis, rotationalOffset, FRotator::ZeroRotator);
-	FTransform RefFrame2 = FTransform(InitialRelativeTransform.GetRotation() * AngularRotationOffset.Quaternion(), A2Transform.InverseTransformPosition(GetComponentLocation()));
-
-	// If we don't already have a handle - make one now.
-	if (!HandleData)
-	{
-		FPhysicsCommand::ExecuteWrite(BodyInstance.ActorHandle, [&](const FPhysicsActorHandle& Actor)
-			//ExecuteOnPxRigidDynamicReadWrite(rBodyInstance, [&](PxRigidDynamic* Actor)
-		{
-			if (PxRigidActor* PActor = FPhysicsInterface::GetPxRigidActor_AssumesLocked(Actor))
-			{
-				PxScene* Scene = PActor->getScene();
-				PxD6Joint* NewJoint = NULL;
-				PxRigidDynamic * ParentBody = NULL;
-
-				if (ParentComponent.IsValid())
-				{
-					UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ParentComponent.Get());
-
-					if (PrimComp && PrimComp->BodyInstance.IsValidBodyInstance())
-					{
-						ParentBody = FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(PrimComp->BodyInstance.ActorHandle);
-						//ParentBody = PrimComp->BodyInstance.GetPxRigidDynamic_AssumesLocked();
-					}
-				}
-
-				NewJoint = PxD6JointCreate(Scene->getPhysics(), ParentBody, U2PTransform(RefFrame2), PActor, PxTransform(PxIdentity));
-
-				if (!NewJoint)
-				{
-					HandleData = NULL;
-				}
-				else
-				{
-					// No constraint instance
-					NewJoint->userData = NULL; // don't need
-					HandleData = NewJoint;
-
-					// Remember the scene index that the handle joint/actor are in.
-					FPhysScene* RBScene = FPhysxUserData::Get<FPhysScene>(Scene->userData);
-					//const uint32 SceneType = rBodyInstance->UseAsyncScene(RBScene) ? PST_Async : PST_Sync;
-					//SceneIndex = RBScene->PhysXSceneIndex[SceneType];
-
-					// Pretty Much Unbreakable
-					NewJoint->setBreakForce(PX_MAX_REAL, PX_MAX_REAL);
-					//	NewJoint->setConstraintFlag(PxConstraintFlag::ePROJECTION, true);
-
-					//	NewJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
-
-					PxConstraintFlags Flags = NewJoint->getConstraintFlags();
-
-					// False flags
-					//Flags |= PxConstraintFlag::ePROJECTION;
-					Flags |= PxConstraintFlag::eCOLLISION_ENABLED;
-
-					// True flags
-					Flags &= ~PxConstraintFlag::ePROJECTION;
-
-					NewJoint->setConstraintFlag(PxConstraintFlag::ePROJECTION, true);
-					NewJoint->setProjectionAngularTolerance(FMath::DegreesToRadians(0.1f));
-					NewJoint->setProjectionLinearTolerance(0.1f);
-					NewJoint->setConstraintFlags(Flags);
-
-					// Setting up the joint
-					NewJoint->setMotion(PxD6Axis::eX, PxD6Motion::eLOCKED);
-					NewJoint->setMotion(PxD6Axis::eY, PxD6Motion::eLOCKED);
-					NewJoint->setMotion(PxD6Axis::eZ, PxD6Motion::eLOCKED);
-
-					NewJoint->setMotion(PxD6Axis::eTWIST, LeverRotationAxis == EVRInteractibleLeverAxis::Axis_X || LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
-					NewJoint->setMotion(PxD6Axis::eSWING1, LeverRotationAxis == EVRInteractibleLeverAxis::Axis_Y || LeverRotationAxis == EVRInteractibleLeverAxis::Axis_XY ? PxD6Motion::eLIMITED : PxD6Motion::eLOCKED);
-					NewJoint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
-
-					const float CorrectedLeverLimit = (LeverLimitPositive + LeverLimitNegative) / 2;
-					const float LeverLimitRad = CorrectedLeverLimit * (PI / 180.0f);
-					//PxReal LimitContactDistance = FMath::DegreesToRadians(FMath::Max(1.f, ProfileInstance.ConeLimit.ContactDistance));
-
-					//The limit values need to be clamped so it will be valid in PhysX
-					PxReal ZLimitAngle = FMath::ClampAngle(CorrectedLeverLimit, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
-					PxReal YLimitAngle = FMath::ClampAngle(CorrectedLeverLimit, KINDA_SMALL_NUMBER, 179.9999f) * (PI / 180.0f);
-					//PxReal LimitContactDistance = FMath::DegreesToRadians(FMath::Max(1.f, ProfileInstance.ConeLimit.ContactDistance * FMath::Min(InSwing1LimitScale, InSwing2LimitScale)));
-
-					NewJoint->setSwingLimit(PxJointLimitCone(YLimitAngle, ZLimitAngle));
-					NewJoint->setTwistLimit(PxJointAngularLimitPair(-LeverLimitRad, LeverLimitRad));
-
-					return true;
-				}
-			}
-			return false;
-		});
-	}
-
-#else
-	return false;
-#endif // WITH_PHYSX
-
+	// #TODO: Recreate with chaos
 	return false;
 }
 

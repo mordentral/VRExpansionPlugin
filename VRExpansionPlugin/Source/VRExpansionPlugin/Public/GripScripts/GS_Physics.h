@@ -7,11 +7,6 @@
 #include "GripScripts/GS_Default.h"
 #include "GS_Physics.generated.h"
 
-#if PHYSICS_INTERFACE_PHYSX
-#include "PhysXPublic.h"
-#endif // WITH_PHYSX
-
-
 /**
 * A pure physics multi hand interaction grip script, expects that bAllowMultiGrips is set on the parent object*
 */

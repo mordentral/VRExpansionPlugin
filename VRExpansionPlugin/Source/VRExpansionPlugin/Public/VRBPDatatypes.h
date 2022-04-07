@@ -7,12 +7,6 @@
 
 #include "PhysicsPublic.h"
 #include "PhysicsEngine/ConstraintDrives.h"
-
-#if PHYSICS_INTERFACE_PHYSX
-//#include "PhysXPublic.h"
-//#include "PhysicsEngine/PhysXSupport.h"
-#endif // WITH_PHYSX
-
 #include "VRBPDatatypes.generated.h"
 
 class UGripMotionControllerComponent;
@@ -881,7 +875,7 @@ enum class EGripCollisionType : uint8
 	/** Uses Stiffness and damping settings on collision, on no collision uses stiffness values 10x stronger so it has less play. */
 	InteractiveHybridCollisionWithPhysics,
 
-	/** Swaps back and forth between physx grip and a sweep type grip depending on if the held object will be colliding this frame or not. */
+	/** Swaps back and forth between physics grip and a sweep type grip depending on if the held object will be colliding this frame or not. */
 	InteractiveHybridCollisionWithSweep,
 
 	/** Only sweeps movement, will not be offset by geomtry, still pushes physics simulating objects, no weight. */
@@ -1020,7 +1014,6 @@ UENUM(Blueprintable)
 enum class EPhysicsGripConstraintType : uint8
 {
 	AccelerationConstraint = 0,
-	// Not available when not using Physx
 	ForceConstraint = 1
 };
 
@@ -1048,7 +1041,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings")
 		bool bUsePhysicsSettings;
 
-	// Not available outside of physx, chaos has no force constraints and other plugin physics engines may not as well
+	// Set the constraint force mode
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicsSettings", meta = (editcondition = "bUsePhysicsSettings"))
 		EPhysicsGripConstraintType PhysicsConstraintType;
 

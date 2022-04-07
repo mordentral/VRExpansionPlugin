@@ -76,48 +76,6 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 		{
 #if WITH_CHAOS
 			// I think chaos may handle this itself here, i need to double check
-
-#elif PHYSICS_INTERFACE_PHYSX
-			if (PxScene* PScene = PhysScene->GetPxScene())
-			{
-				if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
-				{
-					FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
-
-					for (int i = ContactCallback->ContactsToIgnore.Num() - 1; i >= 0; --i)
-					{
-						if (
-							(!ContactCallback->ContactsToIgnore[i].Prim1.IsValid() || !ContactCallback->ContactsToIgnore[i].Prim2.IsValid()) ||
-							(!ContactCallback->ContactsToIgnore[i].Actor1.IsValid() || !FPhysicsInterface::IsValid(ContactCallback->ContactsToIgnore[i].Actor1)) ||
-							(!ContactCallback->ContactsToIgnore[i].Actor2.IsValid() || !FPhysicsInterface::IsValid(ContactCallback->ContactsToIgnore[i].Actor2))
-							)
-						{
-							ContactCallback->ContactsToIgnore.RemoveAt(i);
-						}
-					}
-
-					//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("CCD IGNORE: %i"), ContactCallback->ContactsToIgnore.Num()));
-				}
-
-				if (FContactModifyCallbackVR* ContactCallback = (FContactModifyCallbackVR*)PScene->getContactModifyCallback())
-				{
-					FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
-
-					for (int i = ContactCallback->ContactsToIgnore.Num() - 1; i >= 0; --i)
-					{
-						if (
-							(!ContactCallback->ContactsToIgnore[i].Prim1.IsValid() || !ContactCallback->ContactsToIgnore[i].Prim2.IsValid()) ||
-							(!ContactCallback->ContactsToIgnore[i].Actor1.IsValid() || !FPhysicsInterface::IsValid(ContactCallback->ContactsToIgnore[i].Actor1)) ||
-							(!ContactCallback->ContactsToIgnore[i].Actor2.IsValid() || !FPhysicsInterface::IsValid(ContactCallback->ContactsToIgnore[i].Actor2))
-							)
-						{
-							ContactCallback->ContactsToIgnore.RemoveAt(i);
-						}
-					}
-
-					//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("IGNORE: %i"), ContactCallback->ContactsToIgnore.Num()));
-				}
-			}
 #endif
 		}
 	}
@@ -161,36 +119,6 @@ void UCollisionIgnoreSubsystem::RemoveComponentCollisionIgnoreState(UPrimitiveCo
 		{
 #if WITH_CHAOS
 			// I think chaos may handle this itself here, i need to double check
-
-#elif PHYSICS_INTERFACE_PHYSX
-			if (PxScene* PScene = PhysScene->GetPxScene())
-			{
-				if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
-				{
-					FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
-
-					for (int i = ContactCallback->ContactsToIgnore.Num() - 1; i >= 0; --i)
-					{
-						if (ContactCallback->ContactsToIgnore[i].Prim1 == Prim1 || ContactCallback->ContactsToIgnore[i].Prim2 == Prim1)
-						{
-							ContactCallback->ContactsToIgnore.RemoveAt(i);
-						}
-					}
-				}
-
-				if (FContactModifyCallbackVR* ContactCallback = (FContactModifyCallbackVR*)PScene->getContactModifyCallback())
-				{
-					FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
-
-					for (int i = ContactCallback->ContactsToIgnore.Num() - 1; i >= 0; --i)
-					{
-						if (ContactCallback->ContactsToIgnore[i].Prim1 == Prim1 || ContactCallback->ContactsToIgnore[i].Prim2 == Prim1)
-						{
-							ContactCallback->ContactsToIgnore.RemoveAt(i);
-						}
-					}
-				}
-			}
 #endif
 		}
 	}
@@ -436,111 +364,6 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 								}
 							}
 						});
-
-#elif PHYSICS_INTERFACE_PHYSX
-					if (PxScene* PScene = PhysScene->GetPxScene())
-					{
-						if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
-						{
-							FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
-
-							if (bIgnoreCollision)
-							{
-								if (CollisionTrackedPairs.Contains(newPrimPair))
-								{
-									CollisionTrackedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
-								}
-
-								ContactCallback->ContactsToIgnore.AddUnique(newContactPair);
-
-								if (ApplicableBodies[i].BInstance->bContactModification != bIgnoreCollision)
-									ApplicableBodies[i].BInstance->SetContactModification(true);
-
-								if (ApplicableBodies2[j].BInstance->bContactModification != bIgnoreCollision)
-									ApplicableBodies2[j].BInstance->SetContactModification(true);
-							}
-							else
-							{
-								bool bHadPrimPair = false;
-
-								ContactCallback->ContactsToIgnore.Remove(newContactPair);
-								if (CollisionTrackedPairs.Contains(newPrimPair))
-								{
-									if (CollisionTrackedPairs[newPrimPair].PairArray.Contains(newIgnorePair))
-									{
-										bHadPrimPair = true;
-										CollisionTrackedPairs[newPrimPair].PairArray.Remove(newIgnorePair);
-									}
-
-									if (CollisionTrackedPairs[newPrimPair].PairArray.Num() < 1)
-									{
-										CollisionTrackedPairs.Remove(newPrimPair);
-									}
-								}
-
-								// If we don't have a map element for this pair, then add it now
-								if (bHadPrimPair)
-								{
-									if (!RemovedPairs.Contains(newPrimPair))
-									{
-										RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
-									}
-									RemovedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
-								}
-							}
-						}
-
-						if (FContactModifyCallbackVR* ContactCallback = (FContactModifyCallbackVR*)PScene->getContactModifyCallback())
-						{
-							FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
-
-							if (bIgnoreCollision)
-							{
-								ContactCallback->ContactsToIgnore.AddUnique(newContactPair);
-
-								if (CollisionTrackedPairs.Contains(newPrimPair))
-								{
-									CollisionTrackedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
-								}
-
-								if (ApplicableBodies[i].BInstance->bContactModification != bIgnoreCollision)
-									ApplicableBodies[i].BInstance->SetContactModification(true);
-
-								if (ApplicableBodies2[j].BInstance->bContactModification != bIgnoreCollision)
-									ApplicableBodies2[j].BInstance->SetContactModification(true);
-							}
-							else
-							{
-
-								bool bHadPrimPair = false;
-
-								ContactCallback->ContactsToIgnore.Remove(newContactPair);
-								if (CollisionTrackedPairs.Contains(newPrimPair))
-								{
-									if (CollisionTrackedPairs[newPrimPair].PairArray.Contains(newIgnorePair))
-									{
-										bHadPrimPair = true;
-										CollisionTrackedPairs[newPrimPair].PairArray.Remove(newIgnorePair);
-									}
-
-									if (CollisionTrackedPairs[newPrimPair].PairArray.Num() < 1)
-									{
-										CollisionTrackedPairs.Remove(newPrimPair);
-									}
-								}
-
-								// If we don't have a map element for this pair, then add it now
-								if (bHadPrimPair)
-								{
-									if (!RemovedPairs.Contains(newPrimPair))
-									{
-										RemovedPairs.Add(newPrimPair, FCollisionIgnorePairArray());
-									}
-									RemovedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
-								}
-							}
-						}
-					}
 #endif
 				}
 			}

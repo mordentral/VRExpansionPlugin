@@ -5,10 +5,6 @@
 #if WITH_CHAOS
 #include "WheeledVehiclePawn.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
-//#else if PHYSICS_INTERFACE_PHYSX
-//#include "WheeledVehicle.h"
-//#include "WheeledVehicleMovementComponent.h"
-//#include "SimpleWheeledVehicleMovementComponent.h"
 #endif
 
 #include "UObject/ObjectMacros.h"

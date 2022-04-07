@@ -15,10 +15,6 @@
 
 #include "PhysicsPublic.h"
 
-#if WITH_PHYSX
-#include "PhysXPublic.h"
-#endif // WITH_PHYSX
-
 #include "VRLeverComponent.generated.h"
 
 
@@ -319,11 +315,6 @@ public:
 	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnDropSignature OnDropped;
-
-#if WITH_PHYSX
-	physx::PxD6Joint* HandleData;
-	//int32 SceneIndex;
-#endif
 
 	bool DestroyConstraint();
 	bool SetupConstraint();

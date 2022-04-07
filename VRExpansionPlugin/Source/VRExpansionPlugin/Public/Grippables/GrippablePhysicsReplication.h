@@ -10,13 +10,6 @@
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "Components/SkeletalMeshComponent.h"
 
-#if PHYSICS_INTERFACE_PHYSX
-#include "Physics/PhysScene_PhysX.h"
-#include "PhysXPublicCore.h"
-//#include "PhysXPublic.h"
-#include "PhysXIncludes.h"
-#endif
-
 #include "Physics/PhysicsInterfaceUtils.h"
 #include "PhysicsInterfaceTypesCore.h"
 #include "PhysicsReplication.h"
@@ -96,70 +89,6 @@ struct FContactModBodyInstancePair
 			);
 	}
 };
-
-#if PHYSICS_INTERFACE_PHYSX
-class FContactModifyCallbackVR : public FContactModifyCallback
-{
-public:
-
-	TArray<FContactModBodyInstancePair> ContactsToIgnore;
-	FRWLock RWAccessLock;
-
-	void onContactModify(PxContactModifyPair* const pairs, PxU32 count) override;
-
-	virtual ~FContactModifyCallbackVR()
-	{
-
-	}
-};
-
-class FCCDContactModifyCallbackVR : public FCCDContactModifyCallback
-{
-public:
-
-	TArray<FContactModBodyInstancePair> ContactsToIgnore;
-	FRWLock RWAccessLock;
-
-	void onCCDContactModify(PxContactModifyPair* const pairs, PxU32 count) override;
-
-	virtual ~FCCDContactModifyCallbackVR()
-	{
-
-	}
-};
-
-class IContactModifyCallbackFactoryVR : public IContactModifyCallbackFactory
-{
-public:
-
-	virtual FContactModifyCallback* Create(FPhysScene* OwningPhysScene) override
-	{
-		return new FContactModifyCallbackVR();
-	}
-
-	virtual void Destroy(FContactModifyCallback* ContactCallback) override
-	{
-		if (ContactCallback)
-			delete ContactCallback;
-	}
-};
-
-class ICCDContactModifyCallbackFactoryVR : public ICCDContactModifyCallbackFactory
-{
-public:
-
-	virtual FCCDContactModifyCallback* Create(FPhysScene* OwningPhysScene) override
-	{
-		return new FCCDContactModifyCallbackVR();
-	}
-
-	virtual void Destroy(FCCDContactModifyCallback* ContactCallback) override
-	{
-		if (ContactCallback)
-			delete ContactCallback;
-	}
-};
-#endif
 
 //#endif
 

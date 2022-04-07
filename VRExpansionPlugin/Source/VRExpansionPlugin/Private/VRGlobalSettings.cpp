@@ -14,7 +14,6 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 	MaxSpeedForLerp(500.f),
 	LerpInterpolationMode(EVRLerpInterpolationMode::QuatInterp),
 	bUseCurve(false),
-	MaxCCDPasses(1),
 	OneEuroMinCutoff(0.1f),
 	OneEuroCutoffSlope(10.0f),
 	OneEuroDeltaCutoff(10.0f),

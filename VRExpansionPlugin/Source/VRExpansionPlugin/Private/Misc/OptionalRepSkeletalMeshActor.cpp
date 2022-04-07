@@ -331,7 +331,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 
 				// See if this is a physics bone..
 				int32 BodyIndex = PhysicsAsset->FindBodyIndex(SkeletalMesh->GetRefSkeleton().GetBoneName(BoneIndex));
-				// need to update back to physX so that physX knows where it was after blending
+				// need to update back to physics so that physics knows where it was after blending
 				FBodyInstance* PhysicsAssetBodyInstance = nullptr;
 
 				// If so - get its world space matrix and its parents world space matrix and calc relative atom.
@@ -442,7 +442,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 						* Normalize rotations.
 						* We want to remove any loss of precision due to accumulation of error.
 						* i.e. A componentSpace transform is the accumulation of all of its local space parents. The further down the chain, the greater the error.
-						* SpaceBases are used by external systems, we feed this to PhysX, send this to gameplay through bone and socket queries, etc.
+						* SpaceBases are used by external systems, we feed this to Physics, send this to gameplay through bone and socket queries, etc.
 						* So this is a good place to make sure all transforms are normalized.
 						*/
 						InOutComponentSpaceTransforms[BoneIndex].NormalizeRotation();

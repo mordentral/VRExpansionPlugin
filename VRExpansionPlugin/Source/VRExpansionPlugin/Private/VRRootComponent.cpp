@@ -9,11 +9,6 @@
 #include "VRCharacter.h"
 #include "Algo/Copy.h"
 
-#if PHYSICS_INTERFACE_PHYSX
-//#include "PhysXSupport.h"
-#endif // WITH_PHYSX
-
-
 #include "Components/PrimitiveComponent.h"
 
 DEFINE_LOG_CATEGORY(LogVRRootComponent);
@@ -790,7 +785,7 @@ void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFl
 		{
 			//If we update transform of welded bodies directly (i.e. on the actual component) we need to update the shape transforms of the parent.
 			//If the parent is updated, any welded shapes are automatically updated so we don't need to do this physx update.
-			//If the parent is updated and we are NOT welded, the child still needs to update physx
+			//If the parent is updated and we are NOT welded, the child still needs to update physics
 			const bool bTransformSetDirectly = !(UpdateTransformFlags & EUpdateTransformFlags::PropagateFromParent);
 			if (bTransformSetDirectly || !IsWelded())
 			{

@@ -2,9 +2,6 @@
 #include "SceneManagement.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"
-#if PHYSICS_INTERFACE_PHYSX
-#include "PhysXPublic.h"
-#endif
 #include "ReferenceSkeleton.h"
 #include "DrawDebugHelpers.h"
 #include "Physics/PhysicsInterfaceCore.h"
@@ -108,7 +105,6 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 	if (PhysAsset && SkeleMesh->SkeletalMesh)
 	{
 
-//#if PHYSICS_INTERFACE_PHYSX
 		for (FName BaseWeldedBoneDriverName : BaseWeldedBoneDriverNames)
 		{
 			int32 ParentBodyIdx = PhysAsset->FindBodyIndex(BaseWeldedBoneDriverName);
@@ -140,8 +136,6 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 							}
 #if WITH_CHAOS 
 							FKShapeElem* ShapeElem = FChaosUserData::Get<FKShapeElem>(FPhysicsInterface::GetUserData(Shape));
-#elif PHYSICS_INTERFACE_PHYSX
-							FKShapeElem* ShapeElem = FPhysxUserData::Get<FKShapeElem>(FPhysicsInterface::GetUserData(Shape));
 #endif
 							if (ShapeElem)
 							{
@@ -191,7 +185,6 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 				}
 			}
 		}
-//#endif
 	}
 }
 
@@ -208,12 +201,6 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 	if (!BoneDriverMap.Num())
 		return;
 
-	/*
-	#if WITH_CHAOS || WITH_IMMEDIATE_PHYSX
-		//ensure(false);
-#else
-#endif
-	*/
 	USkeletalMeshComponent* SkeleMesh = GetSkeletalMesh();
 
 	if (!SkeleMesh || !SkeleMesh->Bodies.Num())// || (!SkeleMesh->IsSimulatingPhysics(BaseWeldedBoneDriverNames) && !SkeleMesh->IsWelded()))

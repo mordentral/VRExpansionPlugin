@@ -13,11 +13,6 @@
 
 #include "PhysicsPublic.h"
 
-#if WITH_PHYSX
-//#include "PhysXSupport.h"
-#endif // WITH_PHYSX
-
-
 #include "VRMountComponent.generated.h"
 
 

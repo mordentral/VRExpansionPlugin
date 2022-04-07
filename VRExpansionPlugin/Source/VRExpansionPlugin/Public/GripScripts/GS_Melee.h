@@ -7,11 +7,6 @@
 #include "GripScripts/GS_Default.h"
 #include "GS_Melee.generated.h"
 
-#if PHYSICS_INTERFACE_PHYSX
-#include "PhysXPublic.h"
-#endif // WITH_PHYSX
-
-
 
 // The type of melee hit zone we are
 UENUM(BlueprintType)

@@ -130,11 +130,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GlobalLerpToHand")
 		static bool IsGlobalLerpEnabled();
 
-	// How many passes CCD will take during simulation, larger values significantly increase the cost of CCD calculation but also prevent tunneling artifacts
-	// Physx only
-	UPROPERTY(config, EditAnywhere, Category = "Physics")
-		int MaxCCDPasses;
-
 	// List of surfaces and their properties for the melee script
 	UPROPERTY(config, EditAnywhere, Category = "MeleeSettings")
 		TArray<FBPHitSurfaceProperties> MeleeSurfaceSettings;
