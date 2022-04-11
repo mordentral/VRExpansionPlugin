@@ -82,7 +82,7 @@ public:
 		TEnumAsByte<EVRAxis::Type> MirrorAxis;
 
 	// Axis to flip on when mirroring this socket
-	UPROPERTY(EditDefaultsOnly, Category = "Hand Socket Data|Mirroring|Advanced")
+	UPROPERTY(VisibleDefaultsOnly, Category = "Hand Socket Data|Mirroring|Advanced")
 		TEnumAsByte<EVRAxis::Type> FlipAxis;
 
 	// Relative placement of the hand to this socket
@@ -254,7 +254,22 @@ public:
 
 	inline TEnumAsByte<EAxis::Type> GetCrossAxis()
 	{
-		if (FlipAxis == EVRAxis::Y)
+		if (MirroredScale.X < 0)
+		{
+			return EAxis::X;
+		}
+		else if (MirroredScale.Z < 0)
+		{
+			return EAxis::Z;
+		}
+		else if (MirroredScale.Y < 0)
+		{
+			return EAxis::Y;
+		}
+
+		return GetAsEAxis(FlipAxis);
+
+		/*if (FlipAxis == EVRAxis::Y)
 		{
 			return EAxis::Z;
 		}
@@ -265,9 +280,9 @@ public:
 		else if (FlipAxis == EVRAxis::X)
 		{
 			return EAxis::Y;
-		}
+		}*/
 
-		return EAxis::None;
+		//return EAxis::None;
 	}
 	// Returns the target relative transform of the hand to the gripped object
 	// If you want the transform mirrored you need to pass in which hand is requesting the information
@@ -364,10 +379,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		bool bMirrorVisualizationMesh;
 
+#endif
+
 	// Scale to apply when mirroring the hand, adjust to visualize your off hand correctly
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		FVector MirroredScale;
 
+#if WITH_EDITORONLY_DATA
 	// Material to apply to the hand
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Visualization")
 		UMaterial* HandPreviewMaterial;
