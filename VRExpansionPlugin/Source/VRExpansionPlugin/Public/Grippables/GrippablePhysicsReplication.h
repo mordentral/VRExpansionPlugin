@@ -74,22 +74,6 @@ public:
 	}
 };
 
-struct FContactModBodyInstancePair
-{
-	FPhysicsActorHandle Actor1;
-	FPhysicsActorHandle Actor2;
-	TWeakObjectPtr<UPrimitiveComponent> Prim1;
-	TWeakObjectPtr<UPrimitiveComponent> Prim2;
-
-	FORCEINLINE bool operator==(const FContactModBodyInstancePair &Other) const
-	{
-		return (
-			(Actor1 == Other.Actor1 || Actor1 == Other.Actor2) &&
-			(Actor2 == Other.Actor2 || Actor2 == Other.Actor1)
-			);
-	}
-};
-
 //#endif
 
 USTRUCT()

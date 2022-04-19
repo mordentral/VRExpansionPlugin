@@ -64,6 +64,18 @@ public:
 	UPROPERTY()
 	FName BoneName2;
 
+	// Flip our elements to retain a default ordering in an array
+	void FlipElements()
+	{
+		FPhysicsActorHandle tH = Actor1;
+		Actor1 = Actor2;
+		Actor2 = tH;
+
+		FName tN = BoneName1;
+		BoneName1 = BoneName2;
+		BoneName2 = tN;
+	}
+
 	FORCEINLINE bool operator==(const FCollisionIgnorePair& Other) const
 	{
 		return (
