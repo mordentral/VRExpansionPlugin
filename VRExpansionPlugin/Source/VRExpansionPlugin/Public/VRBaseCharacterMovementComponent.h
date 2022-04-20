@@ -108,6 +108,11 @@ public:
 
 	// Perform a snap turn in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void PerformMoveAction_SetTrackingPaused(bool bNewTrackingPaused);
+	virtual void StoreSetTrackingPaused(bool bNewTrackingPaused);
+
+	// Perform a snap turn in line with the move action system
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false, bool bFlagCharacterTeleport = false);
 
 	// Perform a rotation set in line with the move actions system
@@ -132,10 +137,11 @@ public:
 	FVRMoveActionArray MoveActionArray;
 
 	bool CheckForMoveAction();
-	bool DoMASnapTurn(FVRMoveActionContainer& MoveAction);
-	bool DoMASetRotation(FVRMoveActionContainer& MoveAction);
-	bool DoMATeleport(FVRMoveActionContainer& MoveAction);
-	bool DoMAStopAllMovement(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMASnapTurn(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMASetRotation(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMATeleport(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMAStopAllMovement(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMAPauseTracking(FVRMoveActionContainer& MoveAction);
 
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;
