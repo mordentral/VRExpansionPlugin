@@ -34,7 +34,7 @@ public:
 		TSubclassOf<UUserWidget> WidgetClass;
 
 	/** The User Widget object displayed and managed by this component */
-	UPROPERTY(Transient, DuplicateTransient)
+	UPROPERTY(BlueprintReadWrite, Transient, DuplicateTransient)
 		TObjectPtr<UUserWidget> Widget;
 
 	/** If true then we sample the requested size of the widget and reset the texture to be that size */
