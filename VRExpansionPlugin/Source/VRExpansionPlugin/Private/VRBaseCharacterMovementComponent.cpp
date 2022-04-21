@@ -578,6 +578,21 @@ void UVRBaseCharacterMovementComponent::CheckServerAuthedMoveAction()
 	}
 }
 
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SetTrackingPaused(bool bNewTrackingPaused)
+{
+	StoreSetTrackingPaused(bNewTrackingPaused);
+}
+
+void UVRBaseCharacterMovementComponent::StoreSetTrackingPaused(bool bNewTrackingPaused)
+{
+	FVRMoveActionContainer MoveAction;
+	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_PauseTracking;
+	MoveAction.MoveActionFlags = bNewTrackingPaused;
+	MoveActionArray.MoveActions.Add(MoveAction);
+	CheckServerAuthedMoveAction();
+}
+
+
 void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport)
 {
 	FVRMoveActionContainer MoveAction;
@@ -695,6 +710,10 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 		case EVRMoveAction::VRMOVEACTION_SetRotation:
 		{
 			/*return */DoMASetRotation(MoveAction);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_PauseTracking:
+		{
+			/*return */DoMAPauseTracking(MoveAction);
 		}break;
 		case EVRMoveAction::VRMOVEACTION_None:
 		{}break;
@@ -898,6 +917,18 @@ bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement(FVRMoveActionContain
 		return true;
 	}
 
+	return false;
+}
+
+bool UVRBaseCharacterMovementComponent::DoMAPauseTracking(FVRMoveActionContainer& MoveAction)
+{
+	if (AVRBaseCharacter* OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	{
+		OwningCharacter->bTrackingPaused = MoveAction.MoveActionFlags > 0;
+		OwningCharacter->PausedTrackingLoc = MoveAction.MoveActionLoc;
+		OwningCharacter->PausedTrackingRot = MoveAction.MoveActionRot.Yaw;
+		return true;
+	}
 	return false;
 }
 

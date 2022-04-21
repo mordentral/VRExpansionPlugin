@@ -21,6 +21,9 @@ FRepMovementVRCharacter::FRepMovementVRCharacter()
 {
 	bJustTeleported = false;
 	bJustTeleportedGrips = false;
+	bPausedTracking = false;
+	PausedTrackingLoc = FVector::ZeroVector;
+	PausedTrackingRot = 0.f;
 	Owner = nullptr;
 }
 
@@ -128,6 +131,9 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 
 	ReplicatedMovementVR.Owner = this;
 	bFlagTeleported = false;
+	bTrackingPaused = false;
+	PausedTrackingLoc = FVector::ZeroVector;
+	PausedTrackingRot = 0.f;
 }
 
  void AVRBaseCharacter::PossessedBy(AController* NewController)
@@ -383,6 +389,13 @@ void AVRBaseCharacter::OnRep_ReplicatedMovement()
 		{
 			NotifyOfTeleport(false);
 		}
+
+		bTrackingPaused = ReplicatedMovementVR.bPausedTracking;
+		if (bTrackingPaused)
+		{
+			PausedTrackingLoc = ReplicatedMovementVR.PausedTrackingLoc;
+			PausedTrackingRot = ReplicatedMovementVR.PausedTrackingRot;
+		}
 	}
 }
 
@@ -402,6 +415,9 @@ void AVRBaseCharacter::GatherCurrentMovement()
 	ReplicatedMovementVR.bJustTeleportedGrips = bFlagTeleportedGrips;
 	bFlagTeleported = false;
 	bFlagTeleportedGrips = false;
+	ReplicatedMovementVR.bPausedTracking = bTrackingPaused;
+	ReplicatedMovementVR.PausedTrackingLoc = PausedTrackingLoc;
+	ReplicatedMovementVR.PausedTrackingRot = PausedTrackingRot;
 }
 
 

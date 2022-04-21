@@ -283,6 +283,7 @@ public:
 
 	// Making sure that impulses are correct
 	virtual void CapsuleTouched(UPrimitiveComponent* OverlappedComp, AActor* Other, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
+	virtual void StoreSetTrackingPaused(bool bNewTrackingPaused) override;
 };
 
 

@@ -544,7 +544,11 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 	// Skip updates and stay in place if we have paused tracking to the HMD
 	if (bPauseTracking)
+	{
+		bHadRelativeMovement = false;
+		DifferenceFromLastFrame = FVector::ZeroVector;
 		return;
+	}
 
 	UVRBaseCharacterMovementComponent * CharMove = nullptr;
 
@@ -556,7 +560,12 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 	if (IsLocallyControlled())
 	{
-		if (OptionalWaistTrackingParent.IsValid())
+		if (owningVRChar && owningVRChar->bTrackingPaused)
+		{
+			curCameraLoc = owningVRChar->PausedTrackingLoc;
+			curCameraRot = FRotator(0.f, owningVRChar->PausedTrackingRot, 0.f);
+		}
+		else if (OptionalWaistTrackingParent.IsValid())
 		{
 			FTransform NewTrans = IVRTrackedParentInterface::Default_GetWaistOrientationAndPosition(OptionalWaistTrackingParent);
 			curCameraLoc = NewTrans.GetTranslation();
@@ -677,7 +686,12 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	}
 	else
 	{
-		if (TargetPrimitiveComponent)
+		if (owningVRChar && owningVRChar->bTrackingPaused)
+		{
+			curCameraLoc = owningVRChar->PausedTrackingLoc;
+			curCameraRot = FRotator(0.f, owningVRChar->PausedTrackingRot, 0.f);
+		}
+		else if (TargetPrimitiveComponent)
 		{
 			curCameraRot = TargetPrimitiveComponent->GetRelativeRotation();
 			curCameraLoc = TargetPrimitiveComponent->GetRelativeLocation();
