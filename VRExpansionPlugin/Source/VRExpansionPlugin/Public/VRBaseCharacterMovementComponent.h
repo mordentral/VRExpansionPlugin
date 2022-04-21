@@ -106,7 +106,7 @@ public:
 	// If so then we just run the logic right away as it can't be inlined and won't be replicated
 	void CheckServerAuthedMoveAction();
 
-	// Perform a snap turn in line with the move action system
+	// Set tracking paused for our root capsule and replicate the location to all connections
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_SetTrackingPaused(bool bNewTrackingPaused);
 	virtual void StoreSetTrackingPaused(bool bNewTrackingPaused);
