@@ -407,36 +407,25 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 {
 	// Optionally mirror for left hand
 
-	FTransform relTrans = this->GetRelativeTransform();
-	FTransform HandPlacement = GetHandRelativePlacement();
+	// Failsafe
+	if (!this->GetAttachParent())
+		return FTransform::Identity;
 
-	if (this->IsUsingAbsoluteScale() /*&& !bDecoupleMeshPlacement*/)
-	{
-		if (this->GetAttachParent())
-		{
-			relTrans.SetScale3D(FVector(1.0f) / this->GetAttachParent()->GetRelativeScale3D());
-			//HandPlacement.ScaleTranslation(this->GetAttachParent()->GetRelativeScale3D());
-		}
-	}
+	// Get our hands world transform
+	FTransform CompTrans = GetHandRelativePlacement() * this->GetComponentTransform();
 
-	FTransform ReturnTrans = (HandPlacement * relTrans);
+	// Inverse into it being relative to our parent (doing it this way to avoid issues with Absolute Scale
+	FTransform ReturnTrans = CompTrans * this->GetAttachParent()->GetComponentTransform().Inverse();
 
+	// If we should mirror the transform, do it now that it is in our parent relative space
 	if ((bFlipForLeftHand && (bLeftHandDominant == bIsRightHand)))
 	{
-
+		FTransform relTrans = this->GetRelativeTransform();
 		MirrorHandTransform(ReturnTrans, relTrans);
-		/*if (!bOnlyFlipRotation)
-		{
-			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation().MirrorByVector(GetMirrorVector()));
-		}
-
-		FRotationMatrix test(ReturnTrans.GetRotation().Rotator());
-		test.Mirror(GetAsEAxis(MirrorAxis), GetCrossAxis());
-		//test.Mirror(MirrorAxis, FlipAxis);
-		ReturnTrans.SetRotation(test.ToQuat());*/
 	}
 
-	if(!bUseParentScale /*&& !bDecoupleMeshPlacement*/)
+	// Fix the scale
+	if(!bUseParentScale && this->IsUsingAbsoluteScale() /*&& !bDecoupleMeshPlacement*/)
 	{ 
 		ReturnTrans.SetScale3D(FVector(1.0f));
 	}
@@ -494,14 +483,8 @@ void UHandSocketComponent::OnRegister()
 				{
 					FTransform relTrans = this->GetRelativeTransform();
 					FTransform HandPlacement = GetHandRelativePlacement();
-
-					if (this->IsUsingAbsoluteScale())// && !bDecoupleMeshPlacement)
-					{
-						relTrans.SetScale3D(FVector(1.0f) / ParentAttach->GetRelativeScale3D());
-						//HandPlacement.ScaleTranslation(ParentAttach->GetRelativeScale3D());
-					}
-
 					FTransform ReturnTrans = (HandPlacement * relTrans);
+
 					if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))
 					{					
 						MirrorHandTransform(ReturnTrans, relTrans);
