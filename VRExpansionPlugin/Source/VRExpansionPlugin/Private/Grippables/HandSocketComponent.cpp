@@ -411,24 +411,33 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 	if (!this->GetAttachParent())
 		return FTransform::Identity;
 
-	// Get our hands world transform
-	FTransform CompTrans = GetHandRelativePlacement() * this->GetComponentTransform();
+	FTransform relTrans = this->GetRelativeTransform();
+	FTransform HandTrans = GetHandRelativePlacement();
+	FTransform ReturnTrans = FTransform::Identity;
 
-	// Inverse into it being relative to our parent (doing it this way to avoid issues with Absolute Scale
-	FTransform ReturnTrans = CompTrans * this->GetAttachParent()->GetComponentTransform().Inverse();
+	// Fix the scale
+	if (!bUseParentScale && this->IsUsingAbsoluteScale() /*&& !bDecoupleMeshPlacement*/)
+	{
+		FVector ParentScale = this->GetAttachParent()->GetComponentScale();
+		// Take parent scale out of our relative transform early
+		relTrans.ScaleTranslation(ParentScale);
+		ReturnTrans = HandTrans * relTrans;
+		// We add in the inverse of the parent scale to adjust the hand mesh
+		ReturnTrans.ScaleTranslation((FVector(1.0f) / ParentScale));
+		ReturnTrans.SetScale3D(FVector(1.0f));
+	}
+	else
+	{
+		ReturnTrans = HandTrans * relTrans;
+	}
 
 	// If we should mirror the transform, do it now that it is in our parent relative space
 	if ((bFlipForLeftHand && (bLeftHandDominant == bIsRightHand)))
 	{
-		FTransform relTrans = this->GetRelativeTransform();
+		//FTransform relTrans = this->GetRelativeTransform();
 		MirrorHandTransform(ReturnTrans, relTrans);
 	}
 
-	// Fix the scale
-	if(!bUseParentScale && this->IsUsingAbsoluteScale() /*&& !bDecoupleMeshPlacement*/)
-	{ 
-		ReturnTrans.SetScale3D(FVector(1.0f));
-	}
 
 	return ReturnTrans;
 }
@@ -468,7 +477,7 @@ void UHandSocketComponent::OnRegister()
 				HandVisualizerComponent->SetComponentTickEnabled(false);
 				HandVisualizerComponent->SetHiddenInGame(true);
 				HandVisualizerComponent->RegisterComponentWithWorld(GetWorld());
-				//HandVisualizerComponent->SetUsingAbsoluteScale(this->IsUsingAbsoluteScale());
+				//HandVisualizerComponent->SetUsingAbsoluteScale(true);
 
 				if (VisualizationMesh)
 				{
