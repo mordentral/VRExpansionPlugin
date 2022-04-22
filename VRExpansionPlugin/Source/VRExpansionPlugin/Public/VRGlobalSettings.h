@@ -72,10 +72,21 @@ class VREXPANSIONPLUGIN_API UVRGlobalSettings : public UObject
 public:
 	UVRGlobalSettings(const FObjectInitializer& ObjectInitializer);
 
+	// Set scaler values
+	void SetScalers();
+
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
 	// Whether we should use the physx to chaos translation scalers or not
 	// This should be off on native chaos projects that have been set with the correct stiffness and damping settings already
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
 		bool bUseChaosTranslationScalers; 
+
+	// If true we will also set the engines chaos scalers as well to equal our overrides
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
+		bool bSetEngineChaosScalers;
 
 	// A scaler to apply to constraint drives when chaos is active
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
@@ -93,6 +104,33 @@ public:
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
 		float AngularDriveDampingScale;
 
+	// Hard joint stiffness
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|Constraints")
+		float JointStiffness;
+
+	// A scaler to apply to constraints when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|Constraints")
+		float SoftLinearStiffnessScale;
+
+	// A scaler to apply to constraints when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|Constraints")
+		float SoftLinearDampingScale;
+
+	// A scaler to apply to constraints when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|Constraints")
+		float SoftAngularStiffnessScale;
+
+	// A scaler to apply to constraints when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|Constraints")
+		float SoftAngularDampingScale;
+
+	// A scaler to apply to constraints when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|Constraints")
+		float JointLinearBreakScale;
+
+	// A scaler to apply to constraints when chaos is active
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|Constraints")
+		float JointAngularBreakScale;
 
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
 		bool bUseGlobalLerpToHand;

@@ -24,10 +24,21 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 {
 #if WITH_CHAOS
 		bUseChaosTranslationScalers = true;
-		LinearDriveStiffnessScale = Chaos::ConstraintSettings::LinearDriveStiffnessScale();
-		LinearDriveDampingScale = Chaos::ConstraintSettings::LinearDriveDampingScale();
-		AngularDriveStiffnessScale = Chaos::ConstraintSettings::AngularDriveStiffnessScale();
-		AngularDriveDampingScale = Chaos::ConstraintSettings::AngularDriveDampingScale();
+		bSetEngineChaosScalers = true;
+		LinearDriveStiffnessScale = 1.0f;// Chaos::ConstraintSettings::LinearDriveStiffnessScale();
+		LinearDriveDampingScale = 1.0f;// Chaos::ConstraintSettings::LinearDriveDampingScale();
+		AngularDriveStiffnessScale = 1.5f;// Chaos::ConstraintSettings::AngularDriveStiffnessScale();
+		AngularDriveDampingScale = 1.5f;// Chaos::ConstraintSettings::AngularDriveDampingScale();
+
+		// Constraint settings
+		JointStiffness = 1.0f;// Chaos::ConstraintSettings::JointStiffness();
+		SoftLinearStiffnessScale = 1.5f;// Chaos::ConstraintSettings::SoftLinearStiffnessScale();
+		SoftLinearDampingScale = 1.2f;// Chaos::ConstraintSettings::SoftLinearDampingScale();
+		SoftAngularStiffnessScale = 100000.f;// Chaos::ConstraintSettings::SoftAngularStiffnessScale();
+		SoftAngularDampingScale = 1000.f;// Chaos::ConstraintSettings::SoftAngularDampingScale();
+		JointLinearBreakScale = 1.0f; //Chaos::ConstraintSettings::LinearBreakScale();
+		JointAngularBreakScale = 1.0f; //Chaos::ConstraintSettings::AngularBreakScale();
+
 #endif
 }
 
@@ -315,7 +326,96 @@ void UVRGlobalSettings::PostInitProperties()
 		this->SaveConfig(CPF_Config, *this->GetDefaultConfigFilename());
 	}*/
 #endif
+
+	SetScalers();
+
 	Super::PostInitProperties();
+}
+
+#if WITH_EDITOR
+
+void UVRGlobalSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	FProperty* PropertyThatChanged = PropertyChangedEvent.Property;
+
+	if (PropertyThatChanged != nullptr)
+	{
+#if WITH_EDITORONLY_DATA
+		if (
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, bUseChaosTranslationScalers) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, bSetEngineChaosScalers) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, LinearDriveStiffnessScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, LinearDriveDampingScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, AngularDriveStiffnessScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, AngularDriveDampingScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, JointStiffness) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, SoftLinearStiffnessScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, SoftLinearDampingScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, SoftAngularStiffnessScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, SoftAngularDampingScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, JointLinearBreakScale) ||
+			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UVRGlobalSettings, JointAngularBreakScale)
+			)
+		{
+			SetScalers();
+		}
+#endif
+	}
+}
+#endif
+
+void UVRGlobalSettings::SetScalers()
+{
+#if WITH_CHAOS
+	auto CVarLinearDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearDriveStiffnessScale"));
+	auto CVarLinearDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinaearDriveDampingScale"));
+	auto CVarAngularDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveStiffnessScale"));
+	auto CVarAngularDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveDampingScale"));
+
+	// Constraint settings
+	auto CVarJointStiffness = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.JointStiffness"));
+	auto CVarSoftLinearStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.SoftLinearStiffnessScale"));
+	auto CVarSoftLinearDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.SoftLinearDampingScale"));
+	auto CVarSoftAngularStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.SoftAngularStiffnessScale"));
+	auto CVarSoftAngularDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.SoftAngularDampingScale"));
+	auto CVarJointLinearBreakScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearBreakScale"));
+	auto CVarJointAngularBreakScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularBreakScale"));
+
+	if (bUseChaosTranslationScalers && bSetEngineChaosScalers)
+	{
+		CVarLinearDriveStiffnessScale->Set(LinearDriveStiffnessScale, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarLinearDriveDampingScale->Set(LinearDriveDampingScale, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarAngularDriveStiffnessScale->Set(AngularDriveStiffnessScale, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarAngularDriveDampingScale->Set(AngularDriveDampingScale, EConsoleVariableFlags::ECVF_SetByCode);
+
+		// Constraint settings
+		CVarJointStiffness->Set(JointStiffness, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarSoftLinearStiffnessScale->Set(SoftLinearStiffnessScale, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarSoftLinearDampingScale->Set(SoftLinearDampingScale, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarSoftAngularStiffnessScale->Set(SoftAngularStiffnessScale, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarSoftAngularDampingScale->Set(SoftAngularDampingScale, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarJointLinearBreakScale->Set(JointLinearBreakScale, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarJointAngularBreakScale->Set(JointAngularBreakScale, EConsoleVariableFlags::ECVF_SetByCode);
+	}
+	else if (!bSetEngineChaosScalers)
+	{
+		CVarLinearDriveStiffnessScale->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarLinearDriveDampingScale->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarAngularDriveStiffnessScale->Set(1.5f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarAngularDriveDampingScale->Set(1.5f, EConsoleVariableFlags::ECVF_SetByCode);
+
+		// Constraint settings
+		CVarJointStiffness->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarSoftLinearStiffnessScale->Set(1.5f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarSoftLinearDampingScale->Set(1.2f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarSoftAngularStiffnessScale->Set(100000.f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarSoftAngularDampingScale->Set(1000.f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarJointLinearBreakScale->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
+		CVarJointAngularBreakScale->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
+	}
+#endif
 }
 
 void UVRGlobalSettings::GetMeleeSurfaceGlobalSettings(TArray<FBPHitSurfaceProperties>& OutMeleeSurfaceSettings)
