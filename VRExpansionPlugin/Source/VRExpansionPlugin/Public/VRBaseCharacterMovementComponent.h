@@ -132,7 +132,7 @@ public:
 	// Be sure to set the minimum data replication requirements for your move action in order to save on replication.
 	// Flags will always replicate if it is non zero
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags);
+		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags = 0);
 
 	FVRMoveActionArray MoveActionArray;
 
