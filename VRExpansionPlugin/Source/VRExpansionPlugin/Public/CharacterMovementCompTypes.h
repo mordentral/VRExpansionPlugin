@@ -628,6 +628,7 @@ public:
 	FVector_NetQuantize100 VRCapsuleLocation;
 	FVector_NetQuantize100 LFDiff;
 	uint16 VRCapsuleRotation;
+	EVRConjoinedMovementModes ReplicatedMovementMode;
 	FVRConditionalMoveRep ConditionalMoveReps;
 
 	FVRCharacterNetworkMoveData();

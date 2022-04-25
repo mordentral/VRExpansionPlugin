@@ -18,11 +18,12 @@ enum class EVRCustomMovementMode : uint8
 {
 	VRMOVE_Climbing UMETA(DisplayName = "Climbing"),
 	VRMOVE_LowGrav  UMETA(DisplayName = "LowGrav"),
-	VRMOVE_Seated UMETA(DisplayName = "Seated")
+	VRMOVE_Seated UMETA(DisplayName = "Seated"),
+	VRMOVE_SplineFollow UMETA(DisplayName = "SplineFollow")
 //	VRMove_Spider UMETA(DisplayName = "Spider")
 };
 
-// We use 4 bits for this so a maximum of 16 elements
+// We use 6 bits for this so a maximum of 64 elements
 UENUM(BlueprintType)
 enum class EVRConjoinedMovementModes : uint8
 {
@@ -38,11 +39,31 @@ enum class EVRConjoinedMovementModes : uint8
 	C_VRMOVE_LowGrav = 0x09 UMETA(DisplayName = "LowGrav"),
 	//C_VRMOVE_Spider = 0x0A UMETA(DisplayName = "Spider"),
 	C_VRMOVE_Seated = 0x0A UMETA(DisplayName = "Seated"),
-	C_VRMOVE_Custom1 = 0x0B UMETA(DisplayName = "Custom1"),
-	C_VRMOVE_Custom2 = 0x0C UMETA(DisplayName = "Custom2"),
-	C_VRMOVE_Custom3 = 0x0D UMETA(DisplayName = "Custom3"),
-	C_VRMOVE_Custom4 = 0x0E UMETA(DisplayName = "Custom4"),
-	C_VRMOVE_Custom5 = 0x0F UMETA(DisplayName = "Custom5")
+	C_VRMOVE_SplineFollow = 0x0B UMETA(DisplayName = "SplineFollow"), // 
+	// 0x0C
+	// 0x0D
+	// 0x0E
+	// 0x0F
+	// 0x10
+	// 0x11
+	// 0x12
+	// 0x13
+	// 0x14
+	// 0x15
+	// 0x16
+	// 0x17
+	// 0x18
+	// 0x19
+	C_VRMOVE_Custom1 = 0x1A UMETA(DisplayName = "Custom1"),
+	C_VRMOVE_Custom2 = 0x1B UMETA(DisplayName = "Custom2"),
+	C_VRMOVE_Custom3 = 0x1C UMETA(DisplayName = "Custom3"),
+	C_VRMOVE_Custom4 = 0x1D UMETA(DisplayName = "Custom4"),
+	C_VRMOVE_Custom5 = 0x1E UMETA(DisplayName = "Custom5"),
+	C_VRMOVE_Custom6 = 0x1F UMETA(DisplayName = "Custom6"),
+	C_VRMOVE_Custom7 = 0x20 UMETA(DisplayName = "Custom7"),
+	C_VRMOVE_Custom8 = 0x21 UMETA(DisplayName = "Custom8"),
+	C_VRMOVE_Custom9 = 0x22 UMETA(DisplayName = "Custom9"),
+	C_VRMOVE_Custom10 = 0x23 UMETA(DisplayName = "Custom10")
 };
 
 // This makes a lot of the blueprint functions cleaner

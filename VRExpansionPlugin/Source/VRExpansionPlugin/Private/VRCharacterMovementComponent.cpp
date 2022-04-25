@@ -546,6 +546,7 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 
 			CustomVRInputVector = MoveDataVR->ConditionalMoveReps.CustomVRInputVector;
 			MoveActionArray = MoveDataVR->ConditionalMoveReps.MoveActionArray;
+			VRReplicatedMovementMode = MoveDataVR->ReplicatedMovementMode;
 
 			// Set capsule location prior to testing movement
 			// I am overriding the replicated value here when movement is made on purpose
