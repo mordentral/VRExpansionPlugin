@@ -584,8 +584,8 @@ public:
 
 	// Event triggered when a move action is performed, this is ran just prior to PerformMovement in the character tick
 	UFUNCTION(BlueprintNativeEvent, Category = "VRMovement")
-		void OnCustomMoveActionPerformed(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator);
-	virtual void OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator);
+		void OnCustomMoveActionPerformed(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags);
+	virtual void OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags);
 
 	// Event triggered when beginning to be pushed back from a wall
 	// bHadLocomotionInput means that the character was moving itself
