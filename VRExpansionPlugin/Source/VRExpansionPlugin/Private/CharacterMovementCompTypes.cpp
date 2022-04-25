@@ -28,7 +28,7 @@ uint8 FSavedMove_VRBaseCharacter::GetCompressedFlags() const
 
 	// Not supporting custom movement mode directly at this time by replicating custom index
 	// We use 4 bits for this so a maximum of 16 elements
-	Result |= (uint8)VRReplicatedMovementMode << 2;
+	//Result |= (uint8)VRReplicatedMovementMode << 2;
 
 	// This takes up custom_2
 	/*if (bWantsToSnapTurn)
@@ -289,6 +289,7 @@ FVRCharacterNetworkMoveData::FVRCharacterNetworkMoveData() : FCharacterNetworkMo
 	VRCapsuleLocation = FVector::ZeroVector;
 	LFDiff = FVector::ZeroVector;
 	VRCapsuleRotation = 0;
+	ReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 }
 
 FVRCharacterNetworkMoveData::~FVRCharacterNetworkMoveData()
@@ -303,6 +304,7 @@ void FVRCharacterNetworkMoveData::ClientFillNetworkMoveData(const FSavedMove_Cha
 	// I know that we overloaded this, so it should be our base type
 	if (const FSavedMove_VRBaseCharacter* SavedMove = (const FSavedMove_VRBaseCharacter*)(&ClientMove))
 	{
+		ReplicatedMovementMode = SavedMove->VRReplicatedMovementMode;
 		ConditionalMoveReps = SavedMove->ConditionalValues;
 
 		// #TODO: Roll these into the conditionals
@@ -404,6 +406,19 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 		SerializeOptionalValue<UPrimitiveComponent*>(bIsSaving, Ar, MovementBase, nullptr);
 		SerializeOptionalValue<FName>(bIsSaving, Ar, MovementBaseBoneName, NAME_None);
 		//SerializeOptionalValue<uint8>(bIsSaving, Ar, MovementMode, MOVE_Walking); // Epic has this like this too, but it is bugged and killing movements
+	}
+
+	bool bHasReplicatedMovementMode = ReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX;
+	Ar.SerializeBits(&bHasReplicatedMovementMode, 1);
+
+	if (bHasReplicatedMovementMode)
+	{
+		// Increased to 6 bits for 64 total elements instead of 16
+		Ar.SerializeBits(&ReplicatedMovementMode, 6);
+	}
+	else if (!bIsSaving)
+	{
+		ReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 	}
 
 	// Rep out our custom move settings

@@ -1982,8 +1982,8 @@ FVector UVRBaseCharacterMovementComponent::GetCustomInputVector()
 void UVRBaseCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 {
 	// If is a custom or VR custom movement mode
-	int32 MovementFlags = (Flags >> 2) & 15;
-	VRReplicatedMovementMode = (EVRConjoinedMovementModes)MovementFlags;
+	//int32 MovementFlags = (Flags >> 2) & 15;
+	//VRReplicatedMovementMode = (EVRConjoinedMovementModes)MovementFlags;
 
 	//bWantsToSnapTurn = ((Flags & FSavedMove_VRBaseCharacter::FLAG_SnapTurn) != 0);
 

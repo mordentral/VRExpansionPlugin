@@ -1259,6 +1259,7 @@ void UVRSimpleCharacterMovementComponent::ServerMove_PerformMovement(const FChar
 			CustomVRInputVector = MoveDataVR->ConditionalMoveReps.CustomVRInputVector;
 			MoveActionArray = MoveDataVR->ConditionalMoveReps.MoveActionArray;
 			AdditionalVRInputVector = MoveDataVR->LFDiff;
+			VRReplicatedMovementMode = MoveDataVR->ReplicatedMovementMode;
 
 			if (BaseVRCharacterOwner)
 			{
