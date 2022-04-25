@@ -22,7 +22,7 @@ enum class EVRMoveAction : uint8
 	VRMOVEACTION_Teleport = 0x02,
 	VRMOVEACTION_StopAllMovement = 0x03,
 	VRMOVEACTION_SetRotation = 0x04,
-	VRMOVEACTION_PauseTracking = 0x14, // Reserved from here up to 0x20
+	VRMOVEACTION_PauseTracking = 0x14, // Reserved from here up to 0x40
 	VRMOVEACTION_CUSTOM1 = 0x05,
 	VRMOVEACTION_CUSTOM2 = 0x06,
 	VRMOVEACTION_CUSTOM3 = 0x07,
@@ -86,6 +86,8 @@ public:
 	UPROPERTY()
 		uint8 MoveActionFlags;
 	UPROPERTY()
+		TArray<UObject*> MoveActionObjectReferences;
+	UPROPERTY()
 		EVRMoveActionVelocityRetention VelRetentionSetting;
 
 	FVRMoveActionContainer()
@@ -102,6 +104,7 @@ public:
 		MoveActionRot = FRotator::ZeroRotator;
 		MoveActionFlags = 0;
 		VelRetentionSetting = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None;
+		MoveActionObjectReferences.Empty();
 	}
 
 	/** Network serialization */
@@ -110,7 +113,7 @@ public:
 	{
 		bOutSuccess = true;
 
-		Ar.SerializeBits(&MoveAction, 5); // 32 elements, only allowing 1 per frame, they aren't flags
+		Ar.SerializeBits(&MoveAction, 6); // 64 elements, only allowing 1 per frame, they aren't flags
 
 		switch (MoveAction)
 		{
@@ -269,6 +272,20 @@ public:
 
 			if (((uint8)MoveActionDataReq & (uint8)EVRMoveActionDataReq::VRMOVEACTIONDATA_ROT) != 0)
 				MoveActionRot.SerializeCompressedShort(Ar);
+
+			bool bSerializeObjects = MoveActionObjectReferences.Num() > 0;
+			Ar.SerializeBits(&bSerializeObjects, 1);
+			if (bSerializeObjects)
+			{
+				Ar << MoveActionObjectReferences;
+			}
+
+			bool bSerializeFlags = MoveActionFlags != 0x00;
+			Ar.SerializeBits(&bSerializeFlags, 1);
+			if (bSerializeFlags)
+			{
+				Ar << MoveActionFlags;
+			}
 
 		}break;
 		}

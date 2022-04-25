@@ -272,7 +272,7 @@ bool AVRBaseCharacter::Server_ReZeroSeating_Validate(FTransform_NetQuantize NewT
 	return true;
 }
 
-void AVRBaseCharacter::OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator)
+void AVRBaseCharacter::OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags)
 {
 
 }

@@ -685,7 +685,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_StopAllMovement()
 	CheckServerAuthedMoveAction();
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = MoveActionToPerform;
@@ -694,6 +694,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction M
 	MoveAction.MoveActionLoc = RoundDirectMovement(MoveActionVector);
 	MoveAction.MoveActionRot = MoveActionRotator;
 	MoveAction.MoveActionDataReq = DataRequirementsForMoveAction;
+	MoveAction.MoveActionFlags = MoveActionFlags;
 	MoveActionArray.MoveActions.Add(MoveAction);
 
 	CheckServerAuthedMoveAction();
@@ -731,7 +732,7 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 		{
 			if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 			{
-				OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot);
+				OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot, MoveAction.MoveActionFlags);
 			}
 		}break;
 		}
