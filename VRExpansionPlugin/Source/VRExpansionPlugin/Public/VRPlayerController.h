@@ -75,7 +75,7 @@ class VREXPANSIONPLUGIN_API UVRLocalPlayer : public ULocalPlayer
 {
 	GENERATED_UCLASS_BODY()
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "LocalPlayer")
 	TSubclassOf<class APlayerController> OverridePendingLevelPlayerControllerClass;
 	
 	virtual bool SpawnPlayActor(const FString& URL, FString& OutError, UWorld* InWorld)
