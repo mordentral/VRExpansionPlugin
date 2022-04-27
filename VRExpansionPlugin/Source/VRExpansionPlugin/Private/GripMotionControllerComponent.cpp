@@ -2433,7 +2433,10 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 			LocallyGrippedObjects.RemoveAt(fIndex);
 		}
 		else
+		{
+			LocallyGrippedObjects[fIndex].bIsPendingKill = true;
 			LocallyGrippedObjects[fIndex].bIsPaused = true; // Pause it instead of dropping, dropping can corrupt the array in rare cases
+		}
 	}
 	else
 	{
@@ -2445,7 +2448,10 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 				GrippedObjects.RemoveAt(fIndex);
 			}
 			else
+			{
+				GrippedObjects[fIndex].bIsPendingKill = true;
 				GrippedObjects[fIndex].bIsPaused = true; // Pause it instead of dropping, dropping can corrupt the array in rare cases
+			}
 		}
 	}
 
@@ -3403,7 +3409,10 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			LocallyGrippedObjects.RemoveAt(fIndex);
 		}
 		else
+		{
+			LocallyGrippedObjects[fIndex].bIsPendingKill = true;
 			LocallyGrippedObjects[fIndex].bIsPaused = true; // Pause it instead of dropping, dropping can corrupt the array in rare cases
+		}
 	}
 	else
 	{
@@ -3415,7 +3424,10 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				GrippedObjects.RemoveAt(fIndex);
 			}
 			else
+			{
+				GrippedObjects[fIndex].bIsPendingKill = true;
 				GrippedObjects[fIndex].bIsPaused = true; // Pause it instead of dropping, dropping can corrupt the array in rare cases
+			}
 		}
 	}
 
@@ -4523,7 +4535,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 				continue; // If we didn't successfully handle the replication (out of order) then continue on.
 
 			// Continue if the grip is paused
-			if (Grip->bIsPaused)
+			if (Grip->bIsPaused || Grip->bIsPendingKill)
 				continue;
 
 			if (Grip->GripID != INVALID_VRGRIP_ID && Grip->GrippedObject && IsValid(Grip->GrippedObject))
@@ -5116,6 +5128,7 @@ void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformati
 	}
 	else
 	{
+		GrippedObjectsArray[GripIndex].bIsPendingKill = true;
 		GrippedObjectsArray[GripIndex].bIsPaused = true;
 	}
 }
