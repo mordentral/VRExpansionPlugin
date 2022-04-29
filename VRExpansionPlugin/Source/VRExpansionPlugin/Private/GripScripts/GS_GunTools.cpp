@@ -561,24 +561,22 @@ void UGS_GunTools::AddRecoilInstance(const FTransform & RecoilAddition, FVector 
 
 		FVector CurVec = BackEndRecoilTarget.GetTranslation();
 
-		// Identity on min value is technically wrong, what if they want to recoil in the opposing direction?
-		CurVec.X = FMath::Clamp(CurVec.X, FMath::Min(0.f, MaxRecoilTranslation.X), FMath::Max(MaxRecoilTranslation.X, 0.f));
-		CurVec.Y = FMath::Clamp(CurVec.Y, FMath::Min(0.f, MaxRecoilTranslation.Y), FMath::Max(MaxRecoilTranslation.Y, 0.f));
-		CurVec.Z = FMath::Clamp(CurVec.Z, FMath::Min(0.f, MaxRecoilTranslation.Z), FMath::Max(MaxRecoilTranslation.Z, 0.f));
+		CurVec.X = FMath::Clamp(CurVec.X, FMath::Min(-MaxRecoilTranslation.X, MaxRecoilTranslation.X), FMath::Max(MaxRecoilTranslation.X, 0.f));
+		CurVec.Y = FMath::Clamp(CurVec.Y, FMath::Min(-MaxRecoilTranslation.Y, MaxRecoilTranslation.Y), FMath::Max(MaxRecoilTranslation.Y, 0.f));
+		CurVec.Z = FMath::Clamp(CurVec.Z, FMath::Min(-MaxRecoilTranslation.Z, MaxRecoilTranslation.Z), FMath::Max(MaxRecoilTranslation.Z, 0.f));
 		BackEndRecoilTarget.SetTranslation(CurVec);
 
 		FVector CurScale = BackEndRecoilTarget.GetScale3D();
 
-		// Identity on min value is technically wrong, what if they want to recoil in the opposing direction?
-		CurScale.X = FMath::Clamp(CurScale.X, FMath::Min(0.f, MaxRecoilScale.X), FMath::Max(MaxRecoilScale.X, 0.f));
-		CurScale.Y = FMath::Clamp(CurScale.Y, FMath::Min(0.f, MaxRecoilScale.Y), FMath::Max(MaxRecoilScale.Y, 0.f));
-		CurScale.Z = FMath::Clamp(CurScale.Z, FMath::Min(0.f, MaxRecoilScale.Z), FMath::Max(MaxRecoilScale.Z, 0.f));
+		CurScale.X = FMath::Clamp(CurScale.X, FMath::Min(-MaxRecoilScale.X, MaxRecoilScale.X), FMath::Max(MaxRecoilScale.X, 0.f));
+		CurScale.Y = FMath::Clamp(CurScale.Y, FMath::Min(-MaxRecoilScale.Y, MaxRecoilScale.Y), FMath::Max(MaxRecoilScale.Y, 0.f));
+		CurScale.Z = FMath::Clamp(CurScale.Z, FMath::Min(-MaxRecoilScale.Z, MaxRecoilScale.Z), FMath::Max(MaxRecoilScale.Z, 0.f));
 		BackEndRecoilTarget.SetScale3D(CurScale);
 
 		FRotator curRot = BackEndRecoilTarget.Rotator();
-		curRot.Pitch = FMath::Clamp(curRot.Pitch, FMath::Min(0.f, MaxRecoilRotation.Y), FMath::Max(MaxRecoilRotation.Y, 0.f));
-		curRot.Yaw = FMath::Clamp(curRot.Yaw, FMath::Min(0.f, MaxRecoilRotation.Z), FMath::Max(MaxRecoilRotation.Z, 0.f));
-		curRot.Roll = FMath::Clamp(curRot.Roll, FMath::Min(0.f, MaxRecoilRotation.X), FMath::Max(MaxRecoilRotation.X, 0.f));
+		curRot.Pitch = FMath::Clamp(curRot.Pitch, FMath::Min(-MaxRecoilRotation.Y, MaxRecoilRotation.Y), FMath::Max(MaxRecoilRotation.Y, 0.f));
+		curRot.Yaw = FMath::Clamp(curRot.Yaw, FMath::Min(-MaxRecoilRotation.Z, MaxRecoilRotation.Z), FMath::Max(MaxRecoilRotation.Z, 0.f));
+		curRot.Roll = FMath::Clamp(curRot.Roll, FMath::Min(-MaxRecoilRotation.X, MaxRecoilRotation.X), FMath::Max(MaxRecoilRotation.X, 0.f));
 
 		BackEndRecoilTarget.SetRotation(curRot.Quaternion());
 
