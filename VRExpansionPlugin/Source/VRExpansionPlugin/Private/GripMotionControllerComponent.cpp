@@ -5204,15 +5204,21 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 #if WITH_CHAOS
 			if (HandleInfo)
 			{
-				auto* JointConstraint = HandleInfo->HandleData2.Constraint;
-				JointConstraint->SetParticleProxies({ Actor,HandleInfo->KinActorData2});
-
-				if (HandleInfo->bSetCOM && !HandleInfo->bSkipResettingCom)
+				if (HandleInfo->KinActorData2 && FPhysicsInterface::IsValid(HandleInfo->KinActorData2))
 				{
-					FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
-					//localCom.SetLocation(Loc);
-					localCom.SetLocation(HandleInfo->COMPosition.GetTranslation());//Loc);
-					FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
+					auto* JointConstraint = HandleInfo->HandleData2.Constraint;
+					if (JointConstraint)
+					{
+						JointConstraint->SetParticleProxies({ Actor,HandleInfo->KinActorData2 });
+					}
+
+					if (HandleInfo->bSetCOM && !HandleInfo->bSkipResettingCom)
+					{
+						FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
+						//localCom.SetLocation(Loc);
+						localCom.SetLocation(HandleInfo->COMPosition.GetTranslation());//Loc);
+						FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
+					}
 				}
 			}
 #endif
