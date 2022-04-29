@@ -560,14 +560,12 @@ void UGS_GunTools::AddRecoilInstance(const FTransform & RecoilAddition, FVector 
 		BackEndRecoilTarget += RecoilAddition;
 
 		FVector CurVec = BackEndRecoilTarget.GetTranslation();
-
 		CurVec.X = FMath::Clamp(CurVec.X, FMath::Min(-MaxRecoilTranslation.X, MaxRecoilTranslation.X), FMath::Max(MaxRecoilTranslation.X, 0.f));
 		CurVec.Y = FMath::Clamp(CurVec.Y, FMath::Min(-MaxRecoilTranslation.Y, MaxRecoilTranslation.Y), FMath::Max(MaxRecoilTranslation.Y, 0.f));
 		CurVec.Z = FMath::Clamp(CurVec.Z, FMath::Min(-MaxRecoilTranslation.Z, MaxRecoilTranslation.Z), FMath::Max(MaxRecoilTranslation.Z, 0.f));
 		BackEndRecoilTarget.SetTranslation(CurVec);
 
 		FVector CurScale = BackEndRecoilTarget.GetScale3D();
-
 		CurScale.X = FMath::Clamp(CurScale.X, FMath::Min(-MaxRecoilScale.X, MaxRecoilScale.X), FMath::Max(MaxRecoilScale.X, 0.f));
 		CurScale.Y = FMath::Clamp(CurScale.Y, FMath::Min(-MaxRecoilScale.Y, MaxRecoilScale.Y), FMath::Max(MaxRecoilScale.Y, 0.f));
 		CurScale.Z = FMath::Clamp(CurScale.Z, FMath::Min(-MaxRecoilScale.Z, MaxRecoilScale.Z), FMath::Max(MaxRecoilScale.Z, 0.f));
