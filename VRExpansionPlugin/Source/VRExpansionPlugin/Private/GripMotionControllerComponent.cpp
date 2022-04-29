@@ -3,7 +3,6 @@
 #include "GripMotionControllerComponent.h"
 #include "IHeadMountedDisplay.h"
 #include "HeadMountedDisplayTypes.h"
-//#include "DestructibleComponent.h" 4.18 moved apex destruct to a plugin
 #include "Misc/ScopeLock.h"
 #include "Net/UnrealNetwork.h"
 #include "PrimitiveSceneInfo.h"
@@ -19,6 +18,10 @@
 #include "DrawDebugHelpers.h"
 #include "TimerManager.h"
 #include "VRBaseCharacter.h"
+#include "VRGlobalSettings.h"
+#include "Math/DualQuat.h"
+#include "IIdentifiableXRDevice.h" // for FXRDeviceId
+#include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 
 #include "GripScripts/GS_Default.h"
 #include "GripScripts/GS_LerpToHand.h"

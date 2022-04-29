@@ -9,23 +9,20 @@
 #include "VRBPDatatypes.h"
 #include "MotionControllerComponent.h"
 #include "LateUpdateManager.h"
-#include "IIdentifiableXRDevice.h" // for FXRDeviceId
 #include "IXRTrackingSystem.h"
 #include "VRGripInterface.h"
-#include "VRGlobalSettings.h"
 #include "GripScripts/VRGripScriptBase.h"
-#include "Math/DualQuat.h"
-#include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 #include "GripMotionControllerComponent.generated.h"
 
 class AVRBaseCharacter;
+struct FXRDeviceId;
 
 /**
 *
 */
 
 /** Override replication control variable for inherited properties that are private. Be careful since it removes a compile-time error when the variable doesn't exist */
-// This is a temp macro until epic adds their own equivilant
+// This is a temp macro until epic adds their own equivalent
 #define DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(c,v,active) \
 { \
 	static FProperty* sp##v = GetReplicatedProperty(StaticClass(), c::StaticClass(),FName(TEXT(#v))); \
