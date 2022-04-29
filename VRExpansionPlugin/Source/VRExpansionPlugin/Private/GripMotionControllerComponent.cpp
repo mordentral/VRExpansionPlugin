@@ -5170,11 +5170,7 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 
 	if (!HandleInfo)
 		return false;
-
-	// #TODO: 5.0 see if we can get the quick method working again outside of physx
-	// We don't have access to the shortcuts outside of physx
-	return SetUpPhysicsHandle(GripInfo);
-	/*
+	
 	if (bFullyRecreate)
 	{
 		return SetUpPhysicsHandle(GripInfo);
@@ -5202,26 +5198,24 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 
 	FPhysicsCommand::ExecuteWrite(rBodyInstance->ActorHandle, [&](const FPhysicsActorHandle& Actor)
 	{
-		if (HandleInfo)
-		{
-			if (PxRigidDynamic * PActor = FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(Actor))
+#if WITH_CHAOS
+			if (HandleInfo)
 			{
-				if(HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.ConstraintData)
-					HandleInfo->HandleData2.ConstraintData->setActors(PActor, FPhysicsInterface::GetPxRigidDynamic_AssumesLocked(HandleInfo->KinActorData2));
-			}
+				auto* JointConstraint = HandleInfo->HandleData2.Constraint;
+				JointConstraint->SetParticleProxies({ Actor,HandleInfo->KinActorData2});
 
-			if (HandleInfo->bSetCOM && !HandleInfo->bSkipResettingCom)
-			{
-				FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
-				//localCom.SetLocation(Loc);
-				localCom.SetLocation(HandleInfo->COMPosition.GetTranslation());//Loc);
-				FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
+				if (HandleInfo->bSetCOM && !HandleInfo->bSkipResettingCom)
+				{
+					FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
+					//localCom.SetLocation(Loc);
+					localCom.SetLocation(HandleInfo->COMPosition.GetTranslation());//Loc);
+					FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
+				}
 			}
-		}
-
+#endif
 	});
 
-	return true;*/
+	return true;
 //#endif
 
 	return false;
