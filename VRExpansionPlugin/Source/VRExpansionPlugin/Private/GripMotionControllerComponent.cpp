@@ -5174,18 +5174,13 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 
 	if (!HandleInfo)
 		return false;
-	
-	// Need to fix the chaos version of this
-	return SetUpPhysicsHandle(GripInfo);
 
 	if (bFullyRecreate)
 	{
 		return SetUpPhysicsHandle(GripInfo);
 	}
 
-	// Not fully recreating
-
-
+	// Not fully recreating, we just re-set important variables
 	UPrimitiveComponent* root = GripInfo.GetGrippedComponent();
 	AActor* pActor = GripInfo.GetGrippedActor();
 
@@ -5210,12 +5205,14 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 			{
 				if (HandleInfo->KinActorData2 && FPhysicsInterface::IsValid(HandleInfo->KinActorData2))
 				{
+					// Make sure that the constraint particles are correct, the body instance may have changed
 					auto* JointConstraint = HandleInfo->HandleData2.Constraint;
 					if (JointConstraint)
 					{
-						JointConstraint->SetParticleProxies({ Actor,HandleInfo->KinActorData2 });
+						JointConstraint->SetParticleProxies({ HandleInfo->KinActorData2,Actor });
 					}
 
+					// Ensure center of mass is still correct
 					if (HandleInfo->bSetCOM && !HandleInfo->bSkipResettingCom)
 					{
 						FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
