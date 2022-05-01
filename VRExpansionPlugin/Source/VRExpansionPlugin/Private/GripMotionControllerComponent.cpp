@@ -5175,6 +5175,9 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 	if (!HandleInfo)
 		return false;
 	
+	// Need to fix the chaos version of this
+	return SetUpPhysicsHandle(GripInfo);
+
 	if (bFullyRecreate)
 	{
 		return SetUpPhysicsHandle(GripInfo);
