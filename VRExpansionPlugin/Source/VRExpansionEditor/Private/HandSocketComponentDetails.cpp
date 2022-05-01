@@ -2,7 +2,7 @@
 
 #include "HandSocketComponentDetails.h"
 #include "HandSocketVisualizer.h"
-#include "PropertyEditing.h"
+//#include "PropertyEditing.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
 #include "PropertyHandle.h"

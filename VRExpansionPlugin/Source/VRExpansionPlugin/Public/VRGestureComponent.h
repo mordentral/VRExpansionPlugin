@@ -3,21 +3,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "VRBPDatatypes.h"
-#include "Algo/Reverse.h"
-#include "Components/SplineMeshComponent.h"
-#include "Components/SplineComponent.h"
-#include "VRBaseCharacter.h"
 #include "Engine/DataAsset.h"
-#include "DrawDebugHelpers.h"
-#include "Components/LineBatchComponent.h"
-#include "Engine/EngineTypes.h"
-#include "Engine/EngineBaseTypes.h"
+
+//#include "Engine/EngineTypes.h"
+//#include "Engine/EngineBaseTypes.h"
 #include "TimerManager.h"
 #include "VRGestureComponent.generated.h"
 
 DECLARE_STATS_GROUP(TEXT("TICKGesture"), STATGROUP_TickGesture, STATCAT_Advanced);
+
+class USplineMeshComponent;
+class USplineComponent;
+class AVRBaseCharacter;
 
 
 UENUM(Blueprintable)

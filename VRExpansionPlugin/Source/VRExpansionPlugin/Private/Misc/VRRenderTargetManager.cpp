@@ -3,6 +3,16 @@
 #include "Misc/VRRenderTargetManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerState.h"
+#include "GameFramework/PlayerController.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetRenderingLibrary.h"
+#include "Engine/CanvasRenderTarget2D.h"
+#include "Engine/Canvas.h"
+#include "GeomTools.h"
+#include "Serialization/ArchiveSaveCompressedProxy.h"
+#include "Serialization/ArchiveLoadCompressedProxy.h"
+#include "Materials/Material.h"
 #include "Net/UnrealNetwork.h"
 
 namespace RLE_Funcs

@@ -2,18 +2,14 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
-#include "VRBPDatatypes.h"
-#include "AITypes.h"
-#include "AI/Navigation/NavigationTypes.h"
-#include "Navigation/PathFollowingComponent.h"
-#include "GameFramework/Character.h"
+#include "CharacterMovementCompTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "CharacterMovementCompTypes.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
 class AVRBaseCharacter;
+struct FAIRequestID;
+struct FPathFollowingResult;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRBaseCharacterMovement, Log, All);
 

@@ -4,16 +4,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
-#include "MotionControllerComponent.h"
-#include "VRGripInterface.h"
 #include "GameplayTagContainer.h"
+#include "VRGripInterface.h"
 #include "GameplayTagAssetInterface.h"
-#include "Components/SplineComponent.h"
-#include "VRInteractibleFunctionLibrary.h"
+#include "Interactibles/VRInteractibleFunctionLibrary.h"
 #include "Components/StaticMeshComponent.h"
-
 #include "VRSliderComponent.generated.h"
+
+class UGripMotionControllerComponent;
+class USplineComponent;
 
 UENUM(Blueprintable)
 enum class EVRInteractibleSliderLerpType : uint8

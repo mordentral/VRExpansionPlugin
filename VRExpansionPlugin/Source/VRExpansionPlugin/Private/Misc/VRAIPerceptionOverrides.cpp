@@ -4,7 +4,7 @@
 #include "EngineDefines.h"
 #include "EngineGlobals.h"
 #include "CollisionQueryParams.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "AIModule/Classes/AISystem.h"
 #include "AIModule/Classes/Perception/AIPerceptionComponent.h"
 #include "VisualLogger/VisualLogger.h"

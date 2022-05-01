@@ -10,6 +10,9 @@
 #include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.h"
 #include "VRRootComponent.h"
+#include "AITypes.h"
+#include "AI/Navigation/NavigationTypes.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
 

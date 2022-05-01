@@ -1,6 +1,9 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Interactibles/VRButtonComponent.h"
+#include "Net/UnrealNetwork.h"
+//#include "VRGripInterface.h"
+#include "GripMotionControllerComponent.h"
 #include "GameFramework/Character.h"
 
   //=============================================================================
@@ -377,4 +380,35 @@ void UVRButtonComponent::ResetInitialButtonLocation()
 bool UVRButtonComponent::IsButtonInUse()
 {
 	return IsValid(LocalInteractingComponent);
+}
+
+float UVRButtonComponent::GetAxisValue(FVector CheckLocation)
+{
+	switch (ButtonAxis)
+	{
+	case EVRInteractibleAxis::Axis_X:
+		return CheckLocation.X; break;
+	case EVRInteractibleAxis::Axis_Y:
+		return CheckLocation.Y; break;
+	case EVRInteractibleAxis::Axis_Z:
+		return CheckLocation.Z; break;
+	default:return 0.0f; break;
+	}
+}
+
+FVector UVRButtonComponent::SetAxisValue(float SetValue)
+{
+	FVector vec = FVector::ZeroVector;
+
+	switch (ButtonAxis)
+	{
+	case EVRInteractibleAxis::Axis_X:
+		vec.X = SetValue; break;
+	case EVRInteractibleAxis::Axis_Y:
+		vec.Y = SetValue; break;
+	case EVRInteractibleAxis::Axis_Z:
+		vec.Z = SetValue; break;
+	}
+
+	return vec;
 }

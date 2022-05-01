@@ -1,6 +1,9 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRAIController.h"
+//#include "VRBPDatatypes.h"
+#include "VRBaseCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "NetworkingDistanceConstants.h" // Needed for the LinOfSightTo function override to work
 #include "Navigation/CrowdFollowingComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"

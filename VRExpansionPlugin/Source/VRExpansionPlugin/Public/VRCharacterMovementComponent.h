@@ -2,27 +2,16 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "AI/Navigation/NavigationAvoidanceTypes.h"
-#include "AI/RVOAvoidanceInterface.h"
-#include "AITypes.h"
-#include "VRRootComponent.h"
-#include "Navigation/PathFollowingComponent.h"
-#include "AI/Navigation/NavigationTypes.h"
-//#include "AI/Navigation/NavigationSystem.h"
-#include "Animation/AnimationAsset.h"
-#include "Engine/EngineBaseTypes.h"
-#include "Engine/EngineTypes.h"
-#include "GameFramework/PawnMovementComponent.h"
-#include "Interfaces/NetworkPredictionInterface.h"
-#include "WorldCollision.h"
-#include "Runtime/Launch/Resources/Version.h"
+//#include "Engine/EngineBaseTypes.h"
+//#include "Engine/EngineTypes.h"
+#include "CharacterMovementCompTypes.h"
 #include "VRBaseCharacterMovementComponent.h"
-#include "GameFramework/CharacterMovementReplication.h"
 #include "VRCharacterMovementComponent.generated.h"
 
 class FDebugDisplayInfo;
 class ACharacter;
 class AVRCharacter;
+class UVRRootComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRCharacterMovement, Log, All);
 

@@ -3,22 +3,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
-#include "VRExpansionFunctionLibrary.h"
 #include "Animation/SkeletalMeshActor.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
-#include "GripScripts/VRGripScriptBase.h"
 #include "Engine/ActorChannel.h"
-#include "DrawDebugHelpers.h"
-#include "Grippables/GrippablePhysicsReplication.h"
 #include "Grippables/GrippableDataTypes.h"
-#include "Misc/BucketUpdateSubsystem.h"
+#include "Grippables/GrippablePhysicsReplication.h"
 #include "GrippableSkeletalMeshActor.generated.h"
+
+class UGripMotionControllerComponent;
+class UVRGripScriptBase;
 
 /**
 * A component specifically for being able to turn off movement replication in the component at will

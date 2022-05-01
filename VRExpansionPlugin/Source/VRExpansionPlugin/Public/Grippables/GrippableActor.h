@@ -3,20 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
+
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
-#include "Engine/Engine.h"
-#include "VRExpansionFunctionLibrary.h"
+//#include "Engine/Engine.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
-#include "GripScripts/VRGripScriptBase.h"
 #include "Engine/ActorChannel.h"
-#include "DrawDebugHelpers.h"
-#include "Grippables/GrippablePhysicsReplication.h"
 #include "Grippables/GrippableDataTypes.h"
-#include "Misc/BucketUpdateSubsystem.h"
+#include "Grippables/GrippablePhysicsReplication.h"
 #include "GrippableActor.generated.h"
+
+class UGripMotionControllerComponent;
+class UVRGripScriptBase;
 
 /**
 *

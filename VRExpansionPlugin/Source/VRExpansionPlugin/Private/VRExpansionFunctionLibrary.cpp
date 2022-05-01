@@ -6,6 +6,15 @@
 #include "IHeadMountedDisplay.h"
 #include "Grippables/HandSocketComponent.h"
 #include "Misc/CollisionIgnoreSubsystem.h"
+#include "Components/SplineComponent.h"
+#include "Components/SplineMeshComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "GripMotionControllerComponent.h"
+//#include "IMotionController.h"
+//#include "HeadMountedDisplayFunctionLibrary.h"
+#include "Grippables/GrippablePhysicsReplication.h"
+#include "GameplayTagContainer.h"
+//#include "IHeadMountedDisplay.h"
 
 #if WITH_CHAOS
 #include "Chaos/ParticleHandle.h"
@@ -602,4 +611,93 @@ USceneComponent* UVRExpansionFunctionLibrary::AddSceneComponentByClass(UObject* 
 	}
 
 	return nullptr;
+}
+
+void UVRExpansionFunctionLibrary::SmoothUpdateLaserSpline(USplineComponent* LaserSplineComponent, TArray<USplineMeshComponent*> LaserSplineMeshComponents, FVector InStartLocation, FVector InEndLocation, FVector InForward, float LaserRadius)
+{
+	if (LaserSplineComponent == nullptr)
+		return;
+
+	LaserSplineComponent->ClearSplinePoints();
+
+	const FVector SmoothLaserDirection = InEndLocation - InStartLocation;
+	float Distance = SmoothLaserDirection.Size();
+	const FVector StraightLaserEndLocation = InStartLocation + (InForward * Distance);
+	const int32 NumLaserSplinePoints = LaserSplineMeshComponents.Num();
+
+	LaserSplineComponent->AddSplinePoint(InStartLocation, ESplineCoordinateSpace::World, false);
+	for (int32 Index = 1; Index < NumLaserSplinePoints; Index++)
+	{
+		float Alpha = (float)Index / (float)NumLaserSplinePoints;
+		Alpha = FMath::Sin(Alpha * PI * 0.5f);
+		const FVector PointOnStraightLaser = FMath::Lerp(InStartLocation, StraightLaserEndLocation, Alpha);
+		const FVector PointOnSmoothLaser = FMath::Lerp(InStartLocation, InEndLocation, Alpha);
+		const FVector PointBetweenLasers = FMath::Lerp(PointOnStraightLaser, PointOnSmoothLaser, Alpha);
+		LaserSplineComponent->AddSplinePoint(PointBetweenLasers, ESplineCoordinateSpace::World, false);
+	}
+	LaserSplineComponent->AddSplinePoint(InEndLocation, ESplineCoordinateSpace::World, false);
+
+	// Update all the segments of the spline
+	LaserSplineComponent->UpdateSpline();
+
+	const float LaserPointerRadius = LaserRadius;
+	Distance *= 0.0001f;
+	for (int32 Index = 0; Index < NumLaserSplinePoints; Index++)
+	{
+		USplineMeshComponent* SplineMeshComponent = LaserSplineMeshComponents[Index];
+		check(SplineMeshComponent != nullptr);
+
+		FVector StartLoc, StartTangent, EndLoc, EndTangent;
+		LaserSplineComponent->GetLocationAndTangentAtSplinePoint(Index, StartLoc, StartTangent, ESplineCoordinateSpace::Local);
+		LaserSplineComponent->GetLocationAndTangentAtSplinePoint(Index + 1, EndLoc, EndTangent, ESplineCoordinateSpace::Local);
+
+		const float AlphaIndex = (float)Index / (float)NumLaserSplinePoints;
+		const float AlphaDistance = Distance * AlphaIndex;
+		float Radius = LaserPointerRadius * ((AlphaIndex * AlphaDistance) + 1);
+		FVector2D LaserScale(Radius, Radius);
+		SplineMeshComponent->SetStartScale(LaserScale, false);
+
+		const float NextAlphaIndex = (float)(Index + 1) / (float)NumLaserSplinePoints;
+		const float NextAlphaDistance = Distance * NextAlphaIndex;
+		Radius = LaserPointerRadius * ((NextAlphaIndex * NextAlphaDistance) + 1);
+		LaserScale = FVector2D(Radius, Radius);
+		SplineMeshComponent->SetEndScale(LaserScale, false);
+
+		SplineMeshComponent->SetStartAndEnd(StartLoc, StartTangent, EndLoc, EndTangent, true);
+	}
+
+}
+
+bool UVRExpansionFunctionLibrary::MatchesAnyTagsWithDirectParentTag(FGameplayTag DirectParentTag, const FGameplayTagContainer& BaseContainer, const FGameplayTagContainer& OtherContainer)
+{
+	TArray<FGameplayTag> BaseContainerTags;
+	BaseContainer.GetGameplayTagArray(BaseContainerTags);
+
+	for (const FGameplayTag& OtherTag : BaseContainerTags)
+	{
+		if (OtherTag.RequestDirectParent().MatchesTagExact(DirectParentTag))
+		{
+			if (OtherContainer.HasTagExact(OtherTag))
+				return true;
+		}
+	}
+
+	return false;
+}
+
+bool UVRExpansionFunctionLibrary::GetFirstGameplayTagWithExactParent(FGameplayTag DirectParentTag, const FGameplayTagContainer& BaseContainer, FGameplayTag& FoundTag)
+{
+	TArray<FGameplayTag> BaseContainerTags;
+	BaseContainer.GetGameplayTagArray(BaseContainerTags);
+
+	for (const FGameplayTag& OtherTag : BaseContainerTags)
+	{
+		if (OtherTag.RequestDirectParent().MatchesTagExact(DirectParentTag))
+		{
+			FoundTag = OtherTag;
+			return true;
+		}
+	}
+
+	return false;
 }

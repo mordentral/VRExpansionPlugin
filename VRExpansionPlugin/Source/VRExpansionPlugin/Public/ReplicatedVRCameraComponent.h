@@ -3,7 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
-#include "Net/UnrealNetwork.h"
+//#include "Net/UnrealNetwork.h"
 #include "Camera/CameraComponent.h"
 #include "ReplicatedVRCameraComponent.generated.h"
 

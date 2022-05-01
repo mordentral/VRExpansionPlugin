@@ -1,7 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "GripScripts/GS_InteractibleSettings.h"
+#include "Components/PrimitiveComponent.h"
+#include "GripMotionControllerComponent.h"
+#include "GameFramework/Actor.h"
 
 UGS_InteractibleSettings::UGS_InteractibleSettings(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer)
@@ -34,6 +36,21 @@ void UGS_InteractibleSettings::OnGripRelease_Implementation(UGripMotionControlle
 	InteractionSettings.bHasValidBaseTransform = false;
 }
 
+void UGS_InteractibleSettings::RemoveRelativeRotation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation)
+{
+	InteractionSettings.BaseTransform = GripInformation.RelativeTransform;
+
+	// Reconstitute the controller transform relative to the object, then remove the rotation and set it back to relative to controller
+	// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
+	FTransform compTrans = this->GetParentTransform(true, GripInformation.GrippedBoneName);
+
+	InteractionSettings.BaseTransform = FTransform(InteractionSettings.BaseTransform.ToInverseMatrixWithScale()) * compTrans; // Reconstitute transform
+	InteractionSettings.BaseTransform.SetScale3D(GrippingController->GetPivotTransform().GetScale3D());
+	InteractionSettings.BaseTransform.SetRotation(FQuat::Identity); // Remove rotation
+
+	InteractionSettings.BaseTransform = compTrans.GetRelativeTransform(InteractionSettings.BaseTransform); // Set back to relative
+	InteractionSettings.bHasValidBaseTransform = true;
+}
 
 bool UGS_InteractibleSettings::GetWorldTransform_Implementation
 (

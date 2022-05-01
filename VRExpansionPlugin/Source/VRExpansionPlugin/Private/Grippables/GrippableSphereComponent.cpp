@@ -1,6 +1,9 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Grippables/GrippableSphereComponent.h"
+#include "GripMotionControllerComponent.h"
+#include "VRExpansionFunctionLibrary.h"
+#include "GripScripts/VRGripScriptBase.h"
 #include "Net/UnrealNetwork.h"
 
   //=============================================================================

@@ -1,13 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "OpenVRExpansionFunctionLibrary.h"
 //#include "EngineMinimal.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "CoreMinimal.h"
 #include "Engine/Texture2D.h"
 #include "Rendering/Texture2DResource.h"
 #include "RenderUtils.h"
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
+#include "ProceduralMeshComponent.h"
+#include "HeadMountedDisplayFunctionLibrary.h"
 
 #if WITH_EDITOR
 #include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"

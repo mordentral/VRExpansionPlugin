@@ -4,6 +4,13 @@
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 #include "PhysicsReplication.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
+#include "GripMotionControllerComponent.h"
+#include "VRExpansionFunctionLibrary.h"
+#include "Misc/BucketUpdateSubsystem.h"
+#include "GripScripts/VRGripScriptBase.h"
+#include "DrawDebugHelpers.h"
 #if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"
 #endif

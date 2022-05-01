@@ -27,6 +27,10 @@
 #include "Slate/SWorldWidgetScreenLayer.h"
 #include "Widgets/SViewport.h"
 #include "Widgets/SViewport.h"
+#include "Slate/WidgetRenderer.h"
+#include "Blueprint/UserWidget.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "StereoLayerShapes.h"
 
 // CVars
 namespace StereoWidgetCvars

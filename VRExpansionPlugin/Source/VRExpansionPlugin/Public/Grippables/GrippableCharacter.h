@@ -3,8 +3,9 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Grippables/GrippableSkeletalMeshComponent.h"
 #include "GrippableCharacter.generated.h"
+
+class UGrippableSkeletalMeshComponent;
 
 UCLASS()
 class VREXPANSIONPLUGIN_API AGrippableCharacter : public ACharacter

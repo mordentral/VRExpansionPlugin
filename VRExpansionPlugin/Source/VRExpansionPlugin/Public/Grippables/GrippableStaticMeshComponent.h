@@ -3,15 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
-#include "VRExpansionFunctionLibrary.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
-#include "GripScripts/VRGripScriptBase.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/ActorChannel.h"
 #include "GrippableStaticMeshComponent.generated.h"
+
+class UVRGripScriptBase;
+class UGripMotionControllerComponent;
 
 /**
 *

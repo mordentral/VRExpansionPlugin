@@ -3,7 +3,6 @@
 #include "CoreMinimal.h"
 #include "Engine/Engine.h"
 #include "VRGripScriptBase.h"
-#include "GameFramework/WorldSettings.h"
 #include "GripScripts/GS_Default.h"
 #include "GS_Melee.generated.h"
 

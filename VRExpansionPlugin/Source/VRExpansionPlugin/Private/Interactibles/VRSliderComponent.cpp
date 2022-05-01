@@ -2,6 +2,8 @@
 
 #include "Interactibles/VRSliderComponent.h"
 #include "VRExpansionFunctionLibrary.h"
+#include "Components/SplineComponent.h"
+#include "GripMotionControllerComponent.h"
 #include "Net/UnrealNetwork.h"
 
   //=============================================================================

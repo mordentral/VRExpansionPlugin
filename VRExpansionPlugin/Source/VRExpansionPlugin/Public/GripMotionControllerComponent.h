@@ -3,13 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
-#include "IMotionController.h"
+//#include "Engine/Engine.h"
+//#include "Engine/EngineBaseTypes.h"
 #include "SceneViewExtension.h"
 #include "VRBPDatatypes.h"
 #include "MotionControllerComponent.h"
-#include "LateUpdateManager.h"
-#include "IXRTrackingSystem.h"
 #include "VRGripInterface.h"
 #include "GripScripts/VRGripScriptBase.h"
 #include "GripMotionControllerComponent.generated.h"

@@ -3,7 +3,7 @@
 
 #pragma once
 #include "Engine/GameViewportClient.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "CoreMinimal.h"
 
 #include "VRGameViewportClient.generated.h"

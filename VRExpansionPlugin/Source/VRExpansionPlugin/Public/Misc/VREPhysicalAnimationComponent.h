@@ -2,12 +2,12 @@
 
 #include "PhysicsEngine/PhysicalAnimationComponent.h"
 #include "CoreMinimal.h"
-#include "UObject/ObjectMacros.h"
+//#include "UObject/ObjectMacros.h"
 #include "Components/ActorComponent.h"
-#include "ReferenceSkeleton.h"
 #include "EngineDefines.h"
-#include "PhysicsEngine/ConstraintInstance.h"
 #include "VREPhysicalAnimationComponent.generated.h"
+
+struct FReferenceSkeleton;
 
 USTRUCT()
 struct VREXPANSIONPLUGIN_API FWeldedBoneDriverData

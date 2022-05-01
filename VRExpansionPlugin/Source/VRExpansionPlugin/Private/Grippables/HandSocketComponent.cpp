@@ -2,6 +2,15 @@
 
 #include "Grippables/HandSocketComponent.h"
 #include "Engine/CollisionProfile.h"
+#include "Animation/AnimSequence.h"
+#include "Animation/AnimInstanceProxy.h"
+#include "Animation/PoseSnapshot.h"
+//#include "VRExpansionFunctionLibrary.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/PoseableMeshComponent.h"
+#include "GripMotionControllerComponent.h"
+//#include "VRGripInterface.h"
+//#include "VRBPDatatypes.h"
 #include "Net/UnrealNetwork.h"
 
 DEFINE_LOG_CATEGORY(LogVRHandSocketComponent);
@@ -685,3 +694,33 @@ void UHandSocketComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 }
 #endif
 
+UHandSocketComponent* UHandSocketComponent::GetHandSocketComponentFromObject(UObject* ObjectToCheck, FName SocketName)
+{
+	if (AActor* OwningActor = Cast<AActor>(ObjectToCheck))
+	{
+		if (USceneComponent* OwningRoot = Cast<USceneComponent>(OwningActor->GetRootComponent()))
+		{
+			TArray<USceneComponent*> AttachChildren = OwningRoot->GetAttachChildren();
+			for (USceneComponent* AttachChild : AttachChildren)
+			{
+				if (AttachChild && AttachChild->IsA<UHandSocketComponent>() && AttachChild->GetFName() == SocketName)
+				{
+					return Cast<UHandSocketComponent>(AttachChild);
+				}
+			}
+		}
+	}
+	else if (USceneComponent* OwningRoot = Cast<USceneComponent>(ObjectToCheck))
+	{
+		TArray<USceneComponent*> AttachChildren = OwningRoot->GetAttachChildren();
+		for (USceneComponent* AttachChild : AttachChildren)
+		{
+			if (AttachChild && AttachChild->IsA<UHandSocketComponent>() && AttachChild->GetFName() == SocketName)
+			{
+				return Cast<UHandSocketComponent>(AttachChild);
+			}
+		}
+	}
+
+	return nullptr;
+}

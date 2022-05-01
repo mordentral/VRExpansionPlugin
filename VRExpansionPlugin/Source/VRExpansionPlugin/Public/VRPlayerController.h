@@ -2,8 +2,6 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "VRBPDatatypes.h"
-#include "VRPathFollowingComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/LocalPlayer.h"
 #include "VRPlayerController.generated.h"

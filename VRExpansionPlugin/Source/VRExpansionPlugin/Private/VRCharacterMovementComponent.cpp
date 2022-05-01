@@ -27,6 +27,12 @@
 #include "Engine/DemoNetDriver.h"
 #include "Engine/NetworkObjectList.h"
 
+#include "VRRootComponent.h"
+#include "WorldCollision.h"
+#include "Runtime/Launch/Resources/Version.h"
+#include "GameFramework/CharacterMovementReplication.h"
+#include "Interfaces/NetworkPredictionInterface.h"
+
 //#include "PerfCountersHelpers.h"
 
 DEFINE_LOG_CATEGORY(LogVRCharacterMovement);

@@ -2,7 +2,8 @@
 
 #include "ReplicatedVRCameraComponent.h"
 #include "Net/UnrealNetwork.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
+#include "Net/UnrealNetwork.h"
 #include "VRBaseCharacter.h"
 #include "IXRTrackingSystem.h"
 #include "IXRCamera.h"

@@ -3,7 +3,7 @@
 #include "Misc/VRFullScreenUserWidget.h"
 
 //#include "Components/PostProcessComponent.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/UserInterfaceSettings.h"
 #include "GameFramework/WorldSettings.h"
@@ -799,7 +799,7 @@ bool UVRFullScreenUserWidget::Display(UWorld* InWorld)
 		{
 			bWasAdded = ViewportDisplayType.Display(InWorld, Widget, DPIScale);
 		}
-		else if ((CurrentDisplayType == EVRWidgetDisplayType::PostProcess) /*|| (CurrentDisplayType == EVRWidgetDisplayType::Composure)*/)
+		else if (CurrentDisplayType == EVRWidgetDisplayType::PostProcess /*|| (CurrentDisplayType == EVRWidgetDisplayType::Composure)*/)
 		{
 			bWasAdded = PostProcessDisplayType.Display(InWorld, Widget, /*(CurrentDisplayType == EVRWidgetDisplayType::Composure)*/true, DPIScale);
 		}
@@ -862,7 +862,7 @@ void UVRFullScreenUserWidget::Hide()
 		{
 			ViewportDisplayType.Hide(World.Get());
 		}
-		else if ((CurrentDisplayType == EVRWidgetDisplayType::PostProcess) /*|| (CurrentDisplayType == EVRWidgetDisplayType::Composure)*/)
+		else if (CurrentDisplayType == EVRWidgetDisplayType::PostProcess /*|| (CurrentDisplayType == EVRWidgetDisplayType::Composure)*/)
 		{
 			PostProcessDisplayType.Hide(World.Get());
 		}
@@ -895,7 +895,7 @@ void UVRFullScreenUserWidget::Tick(float DeltaSeconds)
 			{
 				ViewportDisplayType.Tick(CurrentWorld, DeltaSeconds);
 			}
-			else if ((CurrentDisplayType == EVRWidgetDisplayType::PostProcess) /*|| (CurrentDisplayType == EVRWidgetDisplayType::Composure)*/)
+			else if (CurrentDisplayType == EVRWidgetDisplayType::PostProcess /*|| (CurrentDisplayType == EVRWidgetDisplayType::Composure)*/)
 			{
 				PostProcessDisplayType.Tick(CurrentWorld, DeltaSeconds);
 			}

@@ -2,6 +2,7 @@
 #include "SceneManagement.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+#include "PhysicsEngine/ConstraintInstance.h"
 #include "ReferenceSkeleton.h"
 #include "DrawDebugHelpers.h"
 #include "Physics/PhysicsInterfaceCore.h"

@@ -1,26 +1,14 @@
 #pragma once
-
-#include "Serialization/ArchiveSaveCompressedProxy.h"
-#include "Serialization/ArchiveLoadCompressedProxy.h"
-
-//#include "RenderUtils.h"
-#include "GeomTools.h"
-//#include "DrawDebugHelpers.h"
-#include "Engine/TextureRenderTarget2D.h"
-#include "Kismet/KismetMathLibrary.h"
-#include "Kismet/KismetRenderingLibrary.h"
-#include "Engine/CanvasRenderTarget2D.h"
-//#include "Net/Core/PushModel/PushModel.h"
 #include "TimerManager.h"
-#include "GameFramework/PlayerController.h"
-#include "Engine/Canvas.h"
-#include "Materials/Material.h"
-//#include "ImageWrapper/Public/IImageWrapper.h"
-//#include "ImageWrapper/Public/IImageWrapperModule.h"
-
 #include "VRRenderTargetManager.generated.h"
 
 class UVRRenderTargetManager;
+class UCanvasRenderTarget2D;
+class UCanvas;
+class UTexture2D;
+class UMaterial;
+class APlayerController;
+
 
 // #TODO: Dirty rects so don't have to send entire texture?
 

@@ -6,9 +6,10 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "TimerManager.h"
 #include "Components/PrimitiveComponent.h"
-#include "Grippables/GrippablePhysicsReplication.h"
+//#include "Grippables/GrippablePhysicsReplication.h"
 #include "CollisionIgnoreSubsystem.generated.h"
 //#include "GrippablePhysicsReplication.generated.h"
+
 
 DECLARE_LOG_CATEGORY_EXTERN(VRE_CollisionIgnoreLog, Log, All);
 

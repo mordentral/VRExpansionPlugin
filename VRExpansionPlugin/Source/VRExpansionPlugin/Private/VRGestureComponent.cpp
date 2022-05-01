@@ -1,4 +1,10 @@
 #include "VRGestureComponent.h"
+#include "VRBaseCharacter.h"
+#include "Components/SplineMeshComponent.h"
+#include "Components/SplineComponent.h"
+#include "Components/LineBatchComponent.h"
+#include "DrawDebugHelpers.h"
+#include "Algo/Reverse.h"
 #include "TimerManager.h"
 
 DECLARE_CYCLE_STAT(TEXT("TickGesture ~ TickingGesture"), STAT_TickGesture, STATGROUP_TickGesture);

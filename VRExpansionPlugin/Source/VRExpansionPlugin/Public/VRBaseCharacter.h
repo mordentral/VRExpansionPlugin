@@ -3,17 +3,16 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
-#include "Navigation/PathFollowingComponent.h"
 #include "VRBaseCharacterMovementComponent.h"
 #include "ReplicatedVRCameraComponent.h"
-#include "ParentRelativeAttachmentComponent.h"
-#include "GripMotionControllerComponent.h"
 #include "GameFramework/Character.h"
-#include "GameFramework/Controller.h"
-#include "Components/CapsuleComponent.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "VRBaseCharacter.generated.h"
 
 class AVRPlayerController;
+class UGripMotionControllerComponent;
+class UParentRelativeAttachmentComponent;
+class AController;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);
 
@@ -335,19 +334,7 @@ public:
 		FVRReplicatedCapsuleHeight ReplicatedCapsuleHeight;
 
 	UFUNCTION()
-	void OnRep_CapsuleHeight()
-	{
-		if (!VRReplicateCapsuleHeight)
-			return;
-
-		if (UCapsuleComponent * Capsule = Cast<UCapsuleComponent>(GetRootComponent()))
-		{
-			if (ReplicatedCapsuleHeight.CapsuleHeight > 0.0f && !FMath::IsNearlyEqual(ReplicatedCapsuleHeight.CapsuleHeight, Capsule->GetUnscaledCapsuleHalfHeight()))
-			{
-				SetCharacterHalfHeightVR(ReplicatedCapsuleHeight.CapsuleHeight, false);
-			}
-		}
-	}
+	void OnRep_CapsuleHeight();
 
 	// Override this in c++ or blueprints to pass in an IK mesh to be used in some optimizations
 	// May be extended in the future
@@ -604,55 +591,18 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "VRBaseCharacter|Navigation")
 		void ReceiveNavigationMoveCompleted(EPathFollowingResult::Type PathingResult);
 
-	virtual void NavigationMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
-	{
-		this->Controller->StopMovement();
-		ReceiveNavigationMoveCompleted(Result.Code);
-	}
+	virtual void NavigationMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
 
 	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter|Navigation")
-	EPathFollowingStatus::Type GetMoveStatus() const
-	{
-		if (!Controller)
-			return EPathFollowingStatus::Idle;
-
-		if (UPathFollowingComponent* pathComp = Controller->FindComponentByClass<UPathFollowingComponent>())
-		{
-			pathComp->GetStatus();
-		}
-
-		return EPathFollowingStatus::Idle;
-	}
+	EPathFollowingStatus::Type GetMoveStatus() const;
 
 	/** Returns true if the current PathFollowingComponent's path is partial (does not reach desired destination). */
 	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter|Navigation")
-	bool HasPartialPath() const
-	{
-		if (!Controller)
-			return false;
-
-		if (UPathFollowingComponent* pathComp = Controller->FindComponentByClass<UPathFollowingComponent>())
-		{
-			return pathComp->HasPartialPath();
-		}
-
-		return false;
-	}
+	bool HasPartialPath() const;
 
 	// Instantly stops pathing
 	UFUNCTION(BlueprintCallable, Category = "VRBaseCharacter|Navigation")
-	void StopNavigationMovement()
-	{
-		if (!Controller)
-			return;
-
-		if (UPathFollowingComponent* pathComp = Controller->FindComponentByClass<UPathFollowingComponent>())
-		{
-			// @note FPathFollowingResultFlags::ForcedScript added to make AITask_MoveTo instances 
-			// not ignore OnRequestFinished notify that's going to be sent out due to this call
-			pathComp->AbortMove(*this, FPathFollowingResultFlags::MovementStop | FPathFollowingResultFlags::ForcedScript);
-		}
-	}
+	void StopNavigationMovement();
 
 	UPROPERTY(BlueprintReadWrite, Category = AI)
 		TSubclassOf<UNavigationQueryFilter> DefaultNavigationFilterClass;

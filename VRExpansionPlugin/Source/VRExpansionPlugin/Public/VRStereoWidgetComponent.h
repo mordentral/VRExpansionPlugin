@@ -3,20 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
-#include "VRBPDatatypes.h"
-#include "VRGripInterface.h"
+//#include "Engine/Engine.h"
+//#include "VRBPDatatypes.h"
+#include "Components/StereoLayerComponent.h"
 #include "Components/WidgetComponent.h"
-#include "Components/StereoLayerComponent.h"
-#include "Slate/WidgetRenderer.h"
-#include "Blueprint/UserWidget.h"
-#include "Components/StereoLayerComponent.h"
-#include "Engine/TextureRenderTarget2D.h"
 //#include "Animation/UMGSequencePlayer.h"
-#include "Engine/GameViewportClient.h"
-#include "StereoLayerShapes.h"
 
 #include "VRStereoWidgetComponent.generated.h"
+
+class FWidgetRenderer;
+class UUserWidget;
+class UTextureRenderTarget2D;
+class UStereoLayerShape;
+
 
 /**
 * A stereo component that displays a widget instead of a texture.

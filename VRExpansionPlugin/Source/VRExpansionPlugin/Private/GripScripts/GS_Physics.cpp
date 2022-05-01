@@ -2,6 +2,8 @@
 
 #include "GripScripts/GS_Physics.h"
 #include "VRGripInterface.h"
+#include "Components/PrimitiveComponent.h"
+#include "GameFramework/Actor.h"
 #include "GripMotionControllerComponent.h"
 
 UGS_Physics::UGS_Physics(const FObjectInitializer& ObjectInitializer) :

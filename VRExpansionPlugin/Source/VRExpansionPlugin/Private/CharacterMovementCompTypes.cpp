@@ -8,7 +8,6 @@
 #include "CharacterMovementCompTypes.h"
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDatatypes.h"
-#include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.h"
 #include "VRRootComponent.h"
 #include "VRPlayerController.h"
@@ -440,5 +439,26 @@ void FVRCharacterMoveResponseDataContainer::ServerFillResponseData(const UCharac
 	if (const UVRBaseCharacterMovementComponent* BaseMovecomp = Cast<const UVRBaseCharacterMovementComponent>(&CharacterMovement))
 	{
 		bHasRotation = !BaseMovecomp->bUseClientControlRotation;
+	}
+}
+
+FScopedMeshBoneUpdateOverrideVR::FScopedMeshBoneUpdateOverrideVR(USkeletalMeshComponent* Mesh, EKinematicBonesUpdateToPhysics::Type OverrideSetting)
+	: MeshRef(Mesh)
+{
+	if (MeshRef)
+	{
+		// Save current state.
+		SavedUpdateSetting = MeshRef->KinematicBonesUpdateType;
+		// Override bone update setting.
+		MeshRef->KinematicBonesUpdateType = OverrideSetting;
+	}
+}
+
+FScopedMeshBoneUpdateOverrideVR::~FScopedMeshBoneUpdateOverrideVR()
+{
+	if (MeshRef)
+	{
+		// Restore bone update flag.
+		MeshRef->KinematicBonesUpdateType = SavedUpdateSetting;
 	}
 }

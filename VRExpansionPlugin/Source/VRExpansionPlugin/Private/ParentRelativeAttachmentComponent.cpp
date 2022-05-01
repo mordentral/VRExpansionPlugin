@@ -3,6 +3,7 @@
 #include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.h"
 #include "VRCharacter.h"
+#include "VRRootComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 //#include "VRSimpleCharacter.h"
 //#include "VRCharacter.h"

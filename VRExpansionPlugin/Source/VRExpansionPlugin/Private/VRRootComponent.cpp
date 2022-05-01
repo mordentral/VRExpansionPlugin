@@ -6,6 +6,7 @@
 #include "PhysicsPublic.h"
 #include "DrawDebugHelpers.h"
 #include "IHeadMountedDisplay.h"
+#include "IXRTrackingSystem.h"
 #include "VRCharacter.h"
 #include "Algo/Copy.h"
 

@@ -3,18 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VRGlobalSettings.h"
-#include "Engine/Classes/GameFramework/PlayerController.h"
-#include "Engine/Classes/GameFramework/PlayerState.h"
-#include "Engine/Player.h"
-#include "PhysicsEngine/PhysicsSettings.h"
-#include "Components/SkeletalMeshComponent.h"
-
 #include "Physics/PhysicsInterfaceUtils.h"
-#include "PhysicsInterfaceTypesCore.h"
 #include "PhysicsReplication.h"
 
-#include "Misc/ScopeRWLock.h"
+
 
 #include "GrippablePhysicsReplication.generated.h"
 //#include "GrippablePhysicsReplication.generated.h"

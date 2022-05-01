@@ -4,6 +4,9 @@
 #include "GripMotionControllerComponent.h"
 #include "VRGripInterface.h"
 #include "Engine/BlueprintGeneratedClass.h"
+#include "Components/PrimitiveComponent.h"
+#include "GameFramework/Actor.h"
+#include "Net/UnrealNetwork.h"
 #include "Engine/NetDriver.h"
 
  

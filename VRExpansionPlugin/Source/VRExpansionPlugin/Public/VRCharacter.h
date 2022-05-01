@@ -2,17 +2,10 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "VRBPDatatypes.h"
 #include "VRBaseCharacter.h"
-#include "GripMotionControllerComponent.h"
-#include "VRExpansionFunctionLibrary.h"
-#include "ReplicatedVRCameraComponent.h"
-#include "ParentRelativeAttachmentComponent.h"
-#include "VRRootComponent.h"
-#include "VRCharacterMovementComponent.h"
-#include "Runtime/Launch/Resources/Version.h"
 #include "VRCharacter.generated.h"
 
+class UVRRootComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRCharacter, Log, All);
 

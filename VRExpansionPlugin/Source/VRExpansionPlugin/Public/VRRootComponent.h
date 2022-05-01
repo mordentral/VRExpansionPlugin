@@ -2,12 +2,13 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
-#include "Components/ShapeComponent.h"
+//#include "Engine/Engine.h"
+//#include "Components/ShapeComponent.h"
 #include "VRTrackedParentInterface.h"
 #include "VRBaseCharacter.h"
 #include "VRExpansionFunctionLibrary.h"
 #include "GameFramework/PhysicsVolume.h"
+#include "Components/CapsuleComponent.h"
 #include "VRRootComponent.generated.h"
 
 //For UE4 Profiler ~ Stat Group

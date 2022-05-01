@@ -3,20 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
-#include "VRBPDatatypes.h"
-#include "VRGripInterface.h"
-#include "VRExpansionFunctionLibrary.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
 #include "Components/SceneComponent.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "Components/PoseableMeshComponent.h"
-#include "Animation/AnimSequence.h"
 #include "Animation/AnimInstance.h"
-#include "Animation/AnimInstanceProxy.h"
-#include "Animation/PoseSnapshot.h"
 #include "HandSocketComponent.generated.h"
+
+class USkeletalMeshComponent;
+class UPoseableMeshComponent;
+class USkeletalMesh;
+class UGripMotionControllerComponent;
+class UAnimSequence;
+struct FPoseSnapshot;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRHandSocketComponent, Log, All);
 
@@ -295,36 +293,7 @@ public:
 	// Returns the defined hand socket component (if it exists, you need to valid check the return!
 	// If it is a valid return you can then cast to your projects base socket class and handle whatever logic you want
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
-	static UHandSocketComponent* GetHandSocketComponentFromObject(UObject* ObjectToCheck, FName SocketName)
-	{
-		if (AActor* OwningActor = Cast<AActor>(ObjectToCheck))
-		{
-			if (USceneComponent* OwningRoot = Cast<USceneComponent>(OwningActor->GetRootComponent()))
-			{
-				TArray<USceneComponent*> AttachChildren = OwningRoot->GetAttachChildren();
-				for (USceneComponent* AttachChild : AttachChildren)
-				{
-					if (AttachChild && AttachChild->IsA<UHandSocketComponent>() && AttachChild->GetFName() == SocketName)
-					{
-						return Cast<UHandSocketComponent>(AttachChild);
-					}
-				}
-			}
-		}
-		else if (USceneComponent* OwningRoot = Cast<USceneComponent>(ObjectToCheck))
-		{
-			TArray<USceneComponent*> AttachChildren = OwningRoot->GetAttachChildren();
-			for (USceneComponent* AttachChild : AttachChildren)
-			{
-				if (AttachChild && AttachChild->IsA<UHandSocketComponent>() && AttachChild->GetFName() == SocketName)
-				{
-					return Cast<UHandSocketComponent>(AttachChild);
-				}
-			}
-		}
-
-		return nullptr;
-	}
+	static UHandSocketComponent* GetHandSocketComponentFromObject(UObject* ObjectToCheck, FName SocketName);
 
 	virtual FTransform GetHandSocketTransform(UGripMotionControllerComponent* QueryController, bool bIgnoreOnlySnapMesh = false);
 

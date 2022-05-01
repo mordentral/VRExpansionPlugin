@@ -4,6 +4,7 @@
 #include "CanvasItem.h"
 #include "CanvasTypes.h"
 #include "Modules/ModuleManager.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Misc/PackageName.h"
 //#include "Persona.h"
 

@@ -3,13 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
-#include "MotionControllerComponent.h"
-#include "VRGripInterface.h"
 #include "Components/StaticMeshComponent.h"
 #include "VRInteractibleFunctionLibrary.h"
-//#include "VRBPDatatypes.h"
-//#include "VRExpansionFunctionLibrary.h"
 #include "VRButtonComponent.generated.h"
 
 /**
@@ -187,35 +182,8 @@ protected:
 	FVector InitialComponentLoc;
 	float LastToggleTime;
 
-	inline float GetAxisValue(FVector CheckLocation)
-	{
-		switch (ButtonAxis)
-		{
-		case EVRInteractibleAxis::Axis_X:
-			return CheckLocation.X; break;
-		case EVRInteractibleAxis::Axis_Y:
-			return CheckLocation.Y; break;
-		case EVRInteractibleAxis::Axis_Z:
-			return CheckLocation.Z; break;
-		default:return 0.0f; break;
-		}
-	}
+	float GetAxisValue(FVector CheckLocation);
 
-	inline FVector SetAxisValue(float SetValue)
-	{
-		FVector vec = FVector::ZeroVector;
-
-		switch (ButtonAxis)
-		{
-		case EVRInteractibleAxis::Axis_X:
-			vec.X = SetValue; break;
-		case EVRInteractibleAxis::Axis_Y:
-			vec.Y = SetValue; break;
-		case EVRInteractibleAxis::Axis_Z:
-			vec.Z = SetValue; break;
-		}
-
-		return vec;
-	}
+	FVector SetAxisValue(float SetValue);
 
 };

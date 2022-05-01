@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "GripMotionControllerComponent.h"
+#include "VRExpansionFunctionLibrary.h"
 #include "IHeadMountedDisplay.h"
 #include "HeadMountedDisplayTypes.h"
 #include "Misc/ScopeLock.h"

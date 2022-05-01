@@ -2,10 +2,12 @@
 
 #pragma once
 #include "CoreMinimal.h"
-//#include "EngineMinimal.h"
-#include "Components/PrimitiveComponent.h"
-
+#include "Engine/NetSerialization.h"
 #include "PhysicsPublic.h"
+//#include "EngineMinimal.h"
+//#include "Components/PrimitiveComponent.h"
+
+//#include "PhysicsPublic.h"
 #include "PhysicsEngine/ConstraintDrives.h"
 #include "VRBPDatatypes.generated.h"
 

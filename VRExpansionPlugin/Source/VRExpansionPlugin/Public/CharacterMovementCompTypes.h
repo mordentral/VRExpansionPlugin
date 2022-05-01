@@ -2,12 +2,10 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
 #include "VRBPDatatypes.h"
 #include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/CharacterMovementReplication.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "CharacterMovementCompTypes.generated.h"
 
 
@@ -568,26 +566,9 @@ struct TStructOpsTypeTraits< FVRConditionalMoveRep2 > : public TStructOpsTypeTra
 */
 struct FScopedMeshBoneUpdateOverrideVR
 {
-	FScopedMeshBoneUpdateOverrideVR(USkeletalMeshComponent* Mesh, EKinematicBonesUpdateToPhysics::Type OverrideSetting)
-		: MeshRef(Mesh)
-	{
-		if (MeshRef)
-		{
-			// Save current state.
-			SavedUpdateSetting = MeshRef->KinematicBonesUpdateType;
-			// Override bone update setting.
-			MeshRef->KinematicBonesUpdateType = OverrideSetting;
-		}
-	}
+	FScopedMeshBoneUpdateOverrideVR(USkeletalMeshComponent* Mesh, EKinematicBonesUpdateToPhysics::Type OverrideSetting);
 
-	~FScopedMeshBoneUpdateOverrideVR()
-	{
-		if (MeshRef)
-		{
-			// Restore bone update flag.
-			MeshRef->KinematicBonesUpdateType = SavedUpdateSetting;
-		}
-	}
+	~FScopedMeshBoneUpdateOverrideVR();
 
 private:
 	USkeletalMeshComponent* MeshRef;

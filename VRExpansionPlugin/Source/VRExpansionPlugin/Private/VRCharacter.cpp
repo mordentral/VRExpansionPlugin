@@ -2,6 +2,14 @@
 
 #include "VRCharacter.h"
 #include "NavigationSystem.h"
+#include "VRBPDatatypes.h"
+//#include "GripMotionControllerComponent.h"
+//#include "VRExpansionFunctionLibrary.h"
+//#include "ReplicatedVRCameraComponent.h"
+//#include "ParentRelativeAttachmentComponent.h"
+#include "VRRootComponent.h"
+#include "VRCharacterMovementComponent.h"
+#include "Runtime/Launch/Resources/Version.h"
 #include "VRPathFollowingComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 

@@ -2,12 +2,16 @@
 
 #include "GripScripts/GS_Melee.h"
 #include "VRGripInterface.h"
+#include "GameFramework/WorldSettings.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "PhysicsEngine/PhysicsConstraintActor.h"
 #include "PhysicsEngine/PhysicsConstraintComponent.h"
 #include "VRExpansionFunctionLibrary.h"
+#include "GripMotionControllerComponent.h"
 #include "VRGlobalSettings.h"
 #include "DrawDebugHelpers.h"
+#include "Components/PrimitiveComponent.h"
+#include "GameFramework/Actor.h"
 #include "GripMotionControllerComponent.h"
 
 UGS_Melee::UGS_Melee(const FObjectInitializer& ObjectInitializer) :

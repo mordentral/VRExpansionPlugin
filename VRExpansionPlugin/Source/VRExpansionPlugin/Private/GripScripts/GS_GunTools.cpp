@@ -7,6 +7,10 @@
 #include "IXRTrackingSystem.h"
 #include "VRGlobalSettings.h"
 #include "VRBaseCharacter.h"
+#include "Components/PrimitiveComponent.h"
+#include "GameFramework/Actor.h"
+//#include "Camera/CameraComponent.h"
+#include "ReplicatedVRCameraComponent.h"
 #include "DrawDebugHelpers.h"
 
 UGS_GunTools::UGS_GunTools(const FObjectInitializer& ObjectInitializer) :

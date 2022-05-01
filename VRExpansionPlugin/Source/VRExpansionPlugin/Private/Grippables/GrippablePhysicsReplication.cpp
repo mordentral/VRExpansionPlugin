@@ -10,6 +10,14 @@
 #include "PBDRigidsSolver.h"
 #include "Chaos/PBDRigidsEvolutionGBF.h"
 #endif
+#include "VRGlobalSettings.h"
+//#include "Engine/Classes/GameFramework/PlayerController.h"
+//#include "Engine/Classes/GameFramework/PlayerState.h"
+//#include "Engine/Player.h"
+#include "PhysicsEngine/PhysicsSettings.h"
+//#include "Components/SkeletalMeshComponent.h"
+#include "Misc/ScopeRWLock.h"
+//#include "PhysicsInterfaceTypesCore.h"
 
 // I cannot dynamic cast without RTTI so I am using a static var as a declarative in case the user removed our custom replicator
 // We don't want our casts to cause issues.

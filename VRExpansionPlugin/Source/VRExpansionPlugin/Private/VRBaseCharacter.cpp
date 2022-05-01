@@ -3,7 +3,13 @@
 #include "VRBaseCharacter.h"
 #include "VRPlayerController.h"
 #include "NavigationSystem.h"
+#include "GameFramework/Controller.h"
+#include "Components/CapsuleComponent.h"
+#include "ParentRelativeAttachmentComponent.h"
+#include "GripMotionControllerComponent.h"
 #include "VRPathFollowingComponent.h"
+#include "Net/UnrealNetwork.h"
+#include "XRMotioncontrollerBase.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 DEFINE_LOG_CATEGORY(LogBaseVRCharacter);
@@ -878,6 +884,20 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 	return NewLocation - NewLoc;
 }
 
+void  AVRBaseCharacter::OnRep_CapsuleHeight()
+{
+	if (!VRReplicateCapsuleHeight)
+		return;
+
+	if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(GetRootComponent()))
+	{
+		if (ReplicatedCapsuleHeight.CapsuleHeight > 0.0f && !FMath::IsNearlyEqual(ReplicatedCapsuleHeight.CapsuleHeight, Capsule->GetUnscaledCapsuleHalfHeight()))
+		{
+			SetCharacterHalfHeightVR(ReplicatedCapsuleHeight.CapsuleHeight, false);
+		}
+	}
+}
+
 void AVRBaseCharacter::SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
 {
 	if (UCapsuleComponent * Capsule = Cast<UCapsuleComponent>(this->RootComponent))
@@ -1039,4 +1059,49 @@ bool AVRBaseCharacter::GetCurrentNavigationPathPoints(TArray<FVector>& Navigatio
 	}
 
 	return false;
+}
+
+void AVRBaseCharacter::NavigationMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
+{
+	this->Controller->StopMovement();
+	ReceiveNavigationMoveCompleted(Result.Code);
+}
+
+EPathFollowingStatus::Type AVRBaseCharacter::GetMoveStatus() const
+{
+	if (!Controller)
+		return EPathFollowingStatus::Idle;
+
+	if (UPathFollowingComponent* pathComp = Controller->FindComponentByClass<UPathFollowingComponent>())
+	{
+		pathComp->GetStatus();
+	}
+
+	return EPathFollowingStatus::Idle;
+}
+
+bool AVRBaseCharacter::HasPartialPath() const
+{
+	if (!Controller)
+		return false;
+
+	if (UPathFollowingComponent* pathComp = Controller->FindComponentByClass<UPathFollowingComponent>())
+	{
+		return pathComp->HasPartialPath();
+	}
+
+	return false;
+}
+
+void AVRBaseCharacter::StopNavigationMovement()
+{
+	if (!Controller)
+		return;
+
+	if (UPathFollowingComponent* pathComp = Controller->FindComponentByClass<UPathFollowingComponent>())
+	{
+		// @note FPathFollowingResultFlags::ForcedScript added to make AITask_MoveTo instances 
+		// not ignore OnRequestFinished notify that's going to be sent out due to this call
+		pathComp->AbortMove(*this, FPathFollowingResultFlags::MovementStop | FPathFollowingResultFlags::ForcedScript);
+	}
 }
