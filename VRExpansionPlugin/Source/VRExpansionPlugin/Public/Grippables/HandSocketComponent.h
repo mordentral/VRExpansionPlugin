@@ -254,15 +254,18 @@ public:
 
 	inline TEnumAsByte<EAxis::Type> GetCrossAxis()
 	{
-		if (MirroredScale.X < 0)
+		// Checking against the sign now to avoid possible mobile precision issues
+		FVector SignVec = MirroredScale.GetSignVector();
+
+		if (SignVec.X < 0)
 		{
 			return EAxis::X;
 		}
-		else if (MirroredScale.Z < 0)
+		else if (SignVec.Z < 0)
 		{
 			return EAxis::Z;
 		}
-		else if (MirroredScale.Y < 0)
+		else if (SignVec.Y < 0)
 		{
 			return EAxis::Y;
 		}
