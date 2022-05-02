@@ -478,9 +478,7 @@ void UHandSocketComponent::OnRegister()
 		}
 		else if (!bShowVisualizationMesh && HandVisualizerComponent)
 		{
-			HandVisualizerComponent->SetVisibility(false);
-			HandVisualizerComponent->DestroyComponent();
-			HandVisualizerComponent = nullptr;
+			HideVisualizationMesh();
 		}
 
 		if (HandVisualizerComponent)
@@ -496,25 +494,7 @@ void UHandSocketComponent::OnRegister()
 				}
 			}
 
-			if (USceneComponent* ParentAttach = this->GetAttachParent())
-			{
-				FTransform relTrans = this->GetRelativeTransform();
-				FTransform HandPlacement = GetHandRelativePlacement();
-				FTransform ReturnTrans = (HandPlacement * relTrans);
-
-				if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))
-				{					
-					MirrorHandTransform(ReturnTrans, relTrans);
-				}
-
-				if ((bLeftHandDominant && !bMirrorVisualizationMesh) || (!bLeftHandDominant && bMirrorVisualizationMesh))
-				{
-					ReturnTrans.SetScale3D(ReturnTrans.GetScale3D() * MirroredScale);
-				}
-
-				HandVisualizerComponent->SetRelativeTransform(ReturnTrans.GetRelativeTransform(relTrans)/*newRel*/);
-			}
-
+			PositionVisualizationMesh();
 			PoseVisualizationToAnimation(true);
 		}
 	}
@@ -523,6 +503,47 @@ void UHandSocketComponent::OnRegister()
 
 	Super::OnRegister();
 }
+
+#if WITH_EDITORONLY_DATA
+
+void UHandSocketComponent::PositionVisualizationMesh()
+{
+	if (!HandVisualizerComponent)
+	{
+		return;
+	}
+
+	if (USceneComponent* ParentAttach = this->GetAttachParent())
+	{
+		FTransform relTrans = this->GetRelativeTransform();
+		FTransform HandPlacement = GetHandRelativePlacement();
+		FTransform ReturnTrans = (HandPlacement * relTrans);
+
+		if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))
+		{
+			MirrorHandTransform(ReturnTrans, relTrans);
+		}
+
+		if ((bLeftHandDominant && !bMirrorVisualizationMesh) || (!bLeftHandDominant && bMirrorVisualizationMesh))
+		{
+			ReturnTrans.SetScale3D(ReturnTrans.GetScale3D() * MirroredScale);
+		}
+
+		HandVisualizerComponent->SetRelativeTransform(ReturnTrans.GetRelativeTransform(relTrans)/*newRel*/);
+	}
+}
+
+void UHandSocketComponent::HideVisualizationMesh()
+{
+	if (!bShowVisualizationMesh && HandVisualizerComponent)
+	{
+		HandVisualizerComponent->SetVisibility(false);
+		HandVisualizerComponent->DestroyComponent();
+		HandVisualizerComponent = nullptr;
+	}
+}
+
+#endif
 
 #if WITH_EDITORONLY_DATA
 void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
@@ -674,11 +695,20 @@ void UHandSocketComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 			PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, VisualizationMesh)
 			)
 		{
+			PositionVisualizationMesh();
 			PoseVisualizationToAnimation(true);
 		}
 		else if (PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, CustomPoseDeltas))
 		{
 			PoseVisualizationToAnimation(true);
+		}
+		else if (PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement))
+		{
+			PositionVisualizationMesh();
+		}
+		else if (PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bShowVisualizationMesh))
+		{
+			HideVisualizationMesh();
 		}
 #endif
 	}
