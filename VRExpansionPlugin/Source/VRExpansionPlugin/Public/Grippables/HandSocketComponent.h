@@ -339,7 +339,7 @@ public:
 		//class USkeletalMeshComponent* HandVisualizerComponent;
 	class UPoseableMeshComponent* HandVisualizerComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Transient, Category = "Hand Visualization")
 		TObjectPtr<USkeletalMesh> VisualizationMesh;
 
 	// If we should show the visualization mesh
@@ -349,6 +349,9 @@ public:
 	// Show the visualization mirrored
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		bool bMirrorVisualizationMesh;
+
+	void PositionVisualizationMesh();
+	void HideVisualizationMesh();
 
 #endif
 
