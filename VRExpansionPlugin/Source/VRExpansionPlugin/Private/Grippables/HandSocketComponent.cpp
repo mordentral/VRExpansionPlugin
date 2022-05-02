@@ -478,53 +478,60 @@ void UHandSocketComponent::OnRegister()
 	AActor* MyOwner = GetOwner();
 	if (bShowVisualizationMesh && (MyOwner != nullptr) && !IsRunningCommandlet())
 	{
-		if (HandVisualizerComponent == nullptr)
+		if (HandVisualizerComponent == nullptr && bShowVisualizationMesh)
 		{
-			//HandVisualizerComponent = NewObject<USkeletalMeshComponent>(MyOwner, NAME_None, RF_Transactional | RF_TextExportTransient);
 			HandVisualizerComponent = NewObject<UPoseableMeshComponent>(MyOwner, NAME_None, RF_Transactional | RF_TextExportTransient);
-			if (HandVisualizerComponent)
+			HandVisualizerComponent->SetupAttachment(this);
+			HandVisualizerComponent->SetIsVisualizationComponent(true);
+			HandVisualizerComponent->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+			HandVisualizerComponent->CastShadow = false;
+			HandVisualizerComponent->CreationMethod = CreationMethod;
+			//HandVisualizerComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			HandVisualizerComponent->SetComponentTickEnabled(false);
+			HandVisualizerComponent->SetHiddenInGame(true);
+			HandVisualizerComponent->RegisterComponentWithWorld(GetWorld());
+			//HandVisualizerComponent->SetUsingAbsoluteScale(true);
+		}
+		else if (!bShowVisualizationMesh && HandVisualizerComponent)
+		{
+			HandVisualizerComponent->SetVisibility(false);
+			HandVisualizerComponent->DestroyComponent();
+			HandVisualizerComponent = nullptr;
+		}
+
+		if (HandVisualizerComponent)
+		{
+			bTickedPose = false;
+
+			if (VisualizationMesh)
 			{
-				HandVisualizerComponent->SetupAttachment(this);
-				HandVisualizerComponent->SetIsVisualizationComponent(true);
-				HandVisualizerComponent->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
-				HandVisualizerComponent->CastShadow = false;
-				HandVisualizerComponent->CreationMethod = CreationMethod;
-				//HandVisualizerComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-				HandVisualizerComponent->SetComponentTickEnabled(false);
-				HandVisualizerComponent->SetHiddenInGame(true);
-				HandVisualizerComponent->RegisterComponentWithWorld(GetWorld());
-				//HandVisualizerComponent->SetUsingAbsoluteScale(true);
-
-				if (VisualizationMesh)
+				HandVisualizerComponent->SetSkeletalMesh(VisualizationMesh);
+				if (HandPreviewMaterial)
 				{
-					HandVisualizerComponent->SetSkeletalMesh(VisualizationMesh);
-					if (HandPreviewMaterial)
-					{
-						HandVisualizerComponent->SetMaterial(0, HandPreviewMaterial);
-					}
+					HandVisualizerComponent->SetMaterial(0, HandPreviewMaterial);
 				}
-
-				if (USceneComponent* ParentAttach = this->GetAttachParent())
-				{
-					FTransform relTrans = this->GetRelativeTransform();
-					FTransform HandPlacement = GetHandRelativePlacement();
-					FTransform ReturnTrans = (HandPlacement * relTrans);
-
-					if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))
-					{					
-						MirrorHandTransform(ReturnTrans, relTrans);
-					}
-
-					if ((bLeftHandDominant && !bMirrorVisualizationMesh) || (!bLeftHandDominant && bMirrorVisualizationMesh))
-					{
-						ReturnTrans.SetScale3D(ReturnTrans.GetScale3D() * MirroredScale);
-					}
-
-					HandVisualizerComponent->SetRelativeTransform(ReturnTrans.GetRelativeTransform(relTrans)/*newRel*/);
-				}
-
-				PoseVisualizationToAnimation();
 			}
+
+			if (USceneComponent* ParentAttach = this->GetAttachParent())
+			{
+				FTransform relTrans = this->GetRelativeTransform();
+				FTransform HandPlacement = GetHandRelativePlacement();
+				FTransform ReturnTrans = (HandPlacement * relTrans);
+
+				if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))
+				{					
+					MirrorHandTransform(ReturnTrans, relTrans);
+				}
+
+				if ((bLeftHandDominant && !bMirrorVisualizationMesh) || (!bLeftHandDominant && bMirrorVisualizationMesh))
+				{
+					ReturnTrans.SetScale3D(ReturnTrans.GetScale3D() * MirroredScale);
+				}
+
+				HandVisualizerComponent->SetRelativeTransform(ReturnTrans.GetRelativeTransform(relTrans)/*newRel*/);
+			}
+
+			PoseVisualizationToAnimation(true);
 		}
 	}
 
@@ -603,7 +610,7 @@ void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
 
 	}
 
-	if (HandVisualizerComponent && !bTickedPose)
+	if (HandVisualizerComponent && (!bTickedPose || bForceRefresh))
 	{
 		// Tick Pose first
 		if (HandVisualizerComponent->IsRegistered())
