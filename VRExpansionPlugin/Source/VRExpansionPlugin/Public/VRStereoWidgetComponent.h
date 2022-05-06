@@ -132,6 +132,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		bool bRenderBothStereoAndWorld;
 
+	/** Forces the widget to skip stereo regardless of all other settings (localized version of vr.ForceNoStereoWithVRWidgets)*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+		bool bDrawWithoutStereo;
+
 	// If true, use Epics world locked stereo implementation instead of my own temp solution
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		bool bUseEpicsWorldLockedStereo;
