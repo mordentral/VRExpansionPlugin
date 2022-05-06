@@ -383,6 +383,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	bIsDirty = true;
 	bDirtyRenderTarget = false;
 	bRenderBothStereoAndWorld = false;
+	bDrawWithoutStereo = false;
 	bDelayForRenderThread = false;
 	bIsSleeping = false;
 	//Texture = nullptr;
@@ -441,6 +442,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	// If we are set to not use stereo layers or we don't have a valid stereo layer device
 	if (
 		StereoWidgetCvars::ForceNoStereoWithVRWidgets == 1 ||
+		bDrawWithoutStereo ||
 		!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || 
 		!GEngine->StereoRenderingDevice.IsValid() || 
 		(GEngine->StereoRenderingDevice->GetStereoLayers() == nullptr)
