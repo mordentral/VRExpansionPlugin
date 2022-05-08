@@ -143,6 +143,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
 		TObjectPtr<UAnimSequence> HandTargetAnimation;
 
+	// Scale to apply when mirroring the hand, adjust to visualize your off hand correctly
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+		FVector MirroredScale;
+
 #if WITH_EDITORONLY_DATA
 	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, FName BoneName, bool bUseRawDataOnly);
 #endif
@@ -357,10 +361,6 @@ public:
 	void HideVisualizationMesh();
 
 #endif
-
-	// Scale to apply when mirroring the hand, adjust to visualize your off hand correctly
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
-		FVector MirroredScale;
 
 #if WITH_EDITORONLY_DATA
 	// Material to apply to the hand
