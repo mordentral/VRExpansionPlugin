@@ -143,13 +143,13 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, AttachmentWeldReplication, RootComponent && !RootComponent->GetIsReplicated());
 
 	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
-	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(AActor, AttachmentReplication, RootComponent && !RootComponent->GetIsReplicated());
+	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(AActor, AttachmentReplication, false);// RootComponent && !RootComponent->GetIsReplicated());
 
 
 #if WITH_PUSH_MODEL
 	if (UNLIKELY(OldAttachParent != AttachmentWeldReplication.AttachParent || OldAttachComponent != AttachmentWeldReplication.AttachComponent))
 	{
-		//MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, AttachmentWeldReplication, this);
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, AttachmentWeldReplication, this);
 	}
 #endif
 
@@ -252,14 +252,14 @@ void AGrippableStaticMeshActor::GatherCurrentMovement()
 #if WITH_PUSH_MODEL
 		if (bWasRepMovementModified)
 		{
-		//	MARK_PROPERTY_DIRTY_FROM_NAME(AActor, ReplicatedMovement, this);
+			MARK_PROPERTY_DIRTY_FROM_NAME(AActor, ReplicatedMovement, this);
 		}
 
 		if (bWasAttachmentModified ||
 			OldAttachParent != AttachmentWeldReplication.AttachParent ||
 			OldAttachComponent != AttachmentWeldReplication.AttachComponent)
 		{
-			//MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, AttachmentWeldReplication, this);
+			MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, AttachmentWeldReplication, this);
 		}
 #endif
 	}
