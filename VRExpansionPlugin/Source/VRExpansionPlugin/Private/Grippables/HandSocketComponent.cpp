@@ -23,7 +23,6 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 	bTickedPose = false;
 	bShowVisualizationMesh = true;
 	bMirrorVisualizationMesh = false;
-	MirroredScale = FVector(1.f, 1.f, -1.f);
 #endif
 
 	HandRelativePlacement = FTransform::Identity;
@@ -34,6 +33,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 	SlotPrefix = FName("VRGripP");
 	bUseCustomPoseDeltas = false;
 	HandTargetAnimation = nullptr;
+	MirroredScale = FVector(1.f, 1.f, -1.f);
 	bOnlySnapMesh = false;
 	bFlipForLeftHand = false;
 	bLeftHandDominant = false;
