@@ -602,6 +602,33 @@ void UGripMotionControllerComponent::GetGripMass(const FBPActorGripInformation& 
 	Mass = primComp->GetMass();
 }
 
+FTransform UGripMotionControllerComponent::GetGrippedObjectTransform(const FBPActorGripInformation& Grip)
+{
+	FTransform returnTrans = FTransform::Identity;
+
+	if (!IsValid(Grip.GrippedObject))
+	{
+		return returnTrans;
+	}
+
+	if (Grip.GripTargetType == EGripTargetType::ActorGrip)
+	{
+		if (AActor* GrippedActor = Cast<AActor>(Grip.GrippedObject))
+		{
+			returnTrans = GrippedActor->GetActorTransform();
+		}
+	}
+	else
+	{
+		if (UPrimitiveComponent* GrippedComp = Cast<UPrimitiveComponent>(Grip.GrippedObject))
+		{
+			returnTrans = GrippedComp->GetComponentTransform();
+		}
+	}
+
+	return returnTrans;
+}
+
 void UGripMotionControllerComponent::GetGripByActor(FBPActorGripInformation &Grip, AActor * ActorToLookForGrip, EBPVRResultSwitch &Result)
 {
 	if (!ActorToLookForGrip)

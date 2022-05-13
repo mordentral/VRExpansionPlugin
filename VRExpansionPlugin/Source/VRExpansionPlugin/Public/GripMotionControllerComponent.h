@@ -1034,7 +1034,11 @@ public:
 
 	// Get the root components mass of a grip
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-		void GetGripMass(const FBPActorGripInformation& Grip, float& Mass);
+		static void GetGripMass(const FBPActorGripInformation& Grip, float& Mass);
+
+	/* Returns the world transform of a gripped object from the grip structure */
+	UFUNCTION(BlueprintPure, Category = "GripMotionController")
+		static FTransform GetGrippedObjectTransform(const FBPActorGripInformation& Grip);
 
 	// Sets whether an active grip is paused or not (is not replicated by default as it is likely you will want to pass variables with this setting).
 	// If you want it server authed you should RPC a bool down with any additional information (ie: attach location).
