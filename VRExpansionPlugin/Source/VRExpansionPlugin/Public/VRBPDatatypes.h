@@ -478,7 +478,7 @@ namespace TransNetQuant
 }
 
 USTRUCT(/*noexport, */BlueprintType, Category = "VRExpansionLibrary|TransformNetQuantize", meta = (HasNativeMake = "VRExpansionPlugin.VRExpansionFunctionLibrary.MakeTransform_NetQuantize", HasNativeBreak = "VRExpansionPlugin.VRExpansionFunctionLibrary.BreakTransform_NetQuantize"))
-struct FTransform_NetQuantize : public FTransform
+struct VREXPANSIONPLUGIN_API FTransform_NetQuantize : public FTransform
 {
 	GENERATED_USTRUCT_BODY()
 
