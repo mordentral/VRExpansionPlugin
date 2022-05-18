@@ -644,6 +644,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 		IStereoLayers::FLayerDesc LayerDsec;
 		LayerDsec.Priority = Priority;
+		LayerDsec.QuadSize = FVector2D(DrawSize);
 		LayerDsec.UVRect = UVRect;
 
 		if (bDelayForRenderThread && !LastTransform.Equals(FTransform::Identity))
