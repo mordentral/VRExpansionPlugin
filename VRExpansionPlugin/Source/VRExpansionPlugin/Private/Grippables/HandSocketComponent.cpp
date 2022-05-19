@@ -23,6 +23,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 	bTickedPose = false;
 	bShowVisualizationMesh = true;
 	bMirrorVisualizationMesh = false;
+	bShowRangeVisualization = false;
 #endif
 
 	HandRelativePlacement = FTransform::Identity;

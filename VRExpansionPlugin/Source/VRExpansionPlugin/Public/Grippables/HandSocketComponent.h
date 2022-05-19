@@ -386,6 +386,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		bool bMirrorVisualizationMesh;
 
+	// If we should show the grip range of this socket (shows text if always in range)
+	// If override distance is zero then it attempts to infer the value from the parent architecture
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
+		bool bShowRangeVisualization;
+
 	void PositionVisualizationMesh();
 	void HideVisualizationMesh();
 
