@@ -3,6 +3,9 @@
 #include "HandSocketVisualizer.h"
 #include "CanvasItem.h"
 #include "CanvasTypes.h"
+#include "SceneManagement.h"
+//#include "UObject/Field.h"
+#include "VRBPDatatypes.h"
 #include "Modules/ModuleManager.h"
 #include "Components/PoseableMeshComponent.h"
 #include "Misc/PackageName.h"
@@ -195,6 +198,58 @@ void FHandSocketVisualizer::DrawVisualization(const UActorComponent* Component, 
 				PDI->SetHitProxy(NULL);
 				newHitProxy = nullptr;
 			}
+		}
+
+		if (HandComponent->bShowRangeVisualization)
+		{
+			float RangeVisualization = HandComponent->OverrideDistance;
+
+			if (RangeVisualization <= 0.0f)
+			{
+				if (USceneComponent* Parent = Cast<USceneComponent>(HandComponent->GetAttachParent()))
+				{
+					FStructProperty* ObjectProperty = CastField<FStructProperty>(Parent->GetClass()->FindPropertyByName("VRGripInterfaceSettings"));
+
+					AActor* ParentsActor = nullptr;
+					if (!ObjectProperty)
+					{
+						ParentsActor = Parent->GetOwner();
+						if (ParentsActor)
+						{
+							ObjectProperty = CastField<FStructProperty>(Parent->GetOwner()->GetClass()->FindPropertyByName("VRGripInterfaceSettings"));
+						}
+					}
+
+					if (ObjectProperty)
+					{
+						UObject* Target = ParentsActor;
+
+						if (Target == nullptr)
+						{
+							Target = Parent;
+						}
+
+						if (const FBPInterfaceProperties* Curve = ObjectProperty->ContainerPtrToValuePtr<FBPInterfaceProperties>(Target))
+						{
+							if (HandComponent->SlotPrefix == "VRGripS")
+							{
+								RangeVisualization = Curve->SecondarySlotRange;
+							}
+							else
+							{
+								RangeVisualization = Curve->PrimarySlotRange;
+							}
+						}
+					}
+				}
+			}
+
+			// Scale into our parents space as that is actually what the range is based on			
+			FBox BoxToDraw = FBox::BuildAABB(FVector::ZeroVector, FVector(RangeVisualization) * HandComponent->GetAttachParent()->GetComponentScale());
+			BoxToDraw.Min += HandComponent->GetComponentLocation();
+			BoxToDraw.Max += HandComponent->GetComponentLocation();
+
+			DrawWireBox(PDI, BoxToDraw, FColor::Green, 0.0f);
 		}
 	}
 }
