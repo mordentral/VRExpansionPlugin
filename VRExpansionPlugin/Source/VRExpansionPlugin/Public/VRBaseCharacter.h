@@ -521,7 +521,7 @@ public:
 	// This is just a helper proxy component after the net smoother to make it easier to move tracking around for people
 	// but still maintain the netsmoothers functionality
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-		USceneComponent* VRProxyComponent;
+		TObjectPtr<USceneComponent> VRProxyComponent;
 
 	UPROPERTY(Category = VRBaseCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		TObjectPtr<UVRBaseCharacterMovementComponent> VRMovementReference;
