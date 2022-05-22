@@ -4163,8 +4163,13 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 			FTransform newTrans = Handle->COMPosition * (Handle->RootBoneRotation * physicsTrans);
 			FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
 				{
+				// There is no real reason for these additional checks, the phys interface already does this and i check for validity above
+				// However in some rare cases the actor is somehow nulling out after here and its not an expensive call
+				if (FPhysicsInterface::IsValid(Actor) && FPhysicsInterface::GetCurrentScene(Actor))
+				{
 					FPhysicsInterface::SetKinematicTarget_AssumesLocked(Actor, newTrans);
 					FPhysicsInterface::SetGlobalPose_AssumesLocked(Actor, newTrans);
+				}
 				});
 		}
 	}
