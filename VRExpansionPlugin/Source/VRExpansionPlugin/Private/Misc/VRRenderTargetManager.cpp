@@ -274,6 +274,9 @@ void UVRRenderTargetManager::DrawOperations()
 
 	UWorld* World = GetWorld();
 
+	if (!World || !World->bBegunPlay)
+		return;
+
 	// Reference to the Render Target resource
 	FTextureRenderTargetResource* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
@@ -568,6 +571,9 @@ void UVRRenderTargetManager::UpdateRelevancyMap()
 			if (PC->IsLocalController())
 				continue;
 
+			if (!PC->HasClientLoadedCurrentWorld())
+				continue;
+
 			if (APawn* pawn = PC->GetPawn())
 			{
 
@@ -586,7 +592,7 @@ void UVRRenderTargetManager::UpdateRelevancyMap()
 						ARenderTargetReplicationProxy* RenderProxy = GetWorld()->SpawnActorDeferred<ARenderTargetReplicationProxy>(ARenderTargetReplicationProxy::StaticClass(), NewTransform, PC);
 						if (RenderProxy)
 						{
-							RenderProxy->OwnersID = OwnerIDCounter++;
+							RenderProxy->OwnersID = ++OwnerIDCounter;
 							RenderProxy->OwningManager = this;
 							RenderProxy->MaxBytesPerSecondRate = MaxBytesPerSecondRate;
 							RenderProxy->TextureBlobSize = TextureBlobSize;
