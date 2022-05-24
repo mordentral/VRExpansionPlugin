@@ -1278,6 +1278,8 @@ public:
 	bool GetPhysicsGripIndex(const FBPActorGripInformation & GripInfo, int & index);
 	FBPActorPhysicsHandleInformation * CreatePhysicsGrip(const FBPActorGripInformation & GripInfo);
 	bool DestroyPhysicsHandle(FBPActorPhysicsHandleInformation * HandleInfo);
+	bool PausePhysicsHandle(FBPActorPhysicsHandleInformation* HandleInfo);
+	bool UnPausePhysicsHandle(FBPActorGripInformation& GripInfo, FBPActorPhysicsHandleInformation* HandleInfo);
 	
 	// Gets the advanced physics handle settings
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController|Custom", meta = (DisplayName = "GetPhysicsHandleSettings"))

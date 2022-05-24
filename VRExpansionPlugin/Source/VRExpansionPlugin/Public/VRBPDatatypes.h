@@ -1755,6 +1755,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 		UObject * HandledObject;
 	uint8 GripID;
+	bool bIsPaused;
 
 	FPhysicsActorHandle KinActorData2;
 	FPhysicsConstraintHandle HandleData2;
@@ -1776,6 +1777,7 @@ public:
 		LastPhysicsTransform = FTransform::Identity;
 		COMPosition = FTransform::Identity;
 		GripID = INVALID_VRGRIP_ID;
+		bIsPaused = false;
 		RootBoneRotation = FTransform::Identity;
 		bSetCOM = false;
 		bSkipResettingCom = false;
