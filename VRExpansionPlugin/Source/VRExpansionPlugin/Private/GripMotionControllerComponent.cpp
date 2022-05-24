@@ -4965,9 +4965,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 						if (!Grip->bColliding)
 						{
-							if (GripHandle)
+							if (GripHandle && !GripHandle->bIsPaused)
 							{
-								DestroyPhysicsHandle(*Grip);
+								PausePhysicsHandle(GripHandle);
+								//DestroyPhysicsHandle(*Grip);
 
 								switch (Grip->GripTargetType)
 								{
@@ -4984,15 +4985,30 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 							root->SetWorldTransform(WorldTransform, false);// , &OutHit);
 
-						}
-						else if (Grip->bColliding && !GripHandle)
-						{
-							root->SetSimulatePhysics(true);
+							if (GripHandle)
+							{
+								UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+							}
 
-							SetUpPhysicsHandle(*Grip, &GripScripts);
-							UpdatePhysicsHandleTransform(*Grip, WorldTransform);
-							if (bRescalePhysicsGrips)
-								root->SetWorldScale3D(WorldTransform.GetScale3D());
+						}
+						else if (Grip->bColliding)
+						{
+							if (!GripHandle)
+							{
+								root->SetSimulatePhysics(true);
+								SetUpPhysicsHandle(*Grip, &GripScripts);
+							}
+							else if (GripHandle->bIsPaused)
+							{
+								UnPausePhysicsHandle(*Grip, GripHandle);
+							}
+
+							if (GripHandle)
+							{
+								UpdatePhysicsHandleTransform(*Grip, WorldTransform);
+								if (bRescalePhysicsGrips)
+									root->SetWorldScale3D(WorldTransform.GetScale3D());
+							}
 						}
 						else
 						{
@@ -5263,6 +5279,27 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 	return false;
 }
 
+bool UGripMotionControllerComponent::PausePhysicsHandle(FBPActorPhysicsHandleInformation* HandleInfo)
+{
+	if (!HandleInfo)
+		return false;
+
+	HandleInfo->bIsPaused = true;
+	FPhysicsInterface::ReleaseConstraint(HandleInfo->HandleData2);
+	return true;
+}
+
+bool UGripMotionControllerComponent::UnPausePhysicsHandle(FBPActorGripInformation& GripInfo, FBPActorPhysicsHandleInformation* HandleInfo)
+{
+	if (!HandleInfo)
+		return false;
+
+	HandleInfo->bIsPaused = false;
+	SetUpPhysicsHandle(GripInfo);
+
+	return true;
+}
+
 bool UGripMotionControllerComponent::DestroyPhysicsHandle(FBPActorPhysicsHandleInformation* HandleInfo)
 {
 	if (!HandleInfo)
@@ -5383,6 +5420,12 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	if (HandleInfo == nullptr)
 	{
 		HandleInfo = CreatePhysicsGrip(NewGrip);
+	}
+
+	// If currently paused lets skip this step
+	if (HandleInfo->bIsPaused)
+	{
+		return false;
 	}
 
 	HandleInfo->bSetCOM = false; // Zero this out in case it is a re-init
@@ -6078,7 +6121,7 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 
 	FBPActorPhysicsHandleInformation * HandleInfo = GetPhysicsGrip(GrippedActor);
 
-	if (!HandleInfo || !FPhysicsInterface::IsValid(HandleInfo->KinActorData2) || !HandleInfo->HandleData2.IsValid())
+	if (!HandleInfo || !FPhysicsInterface::IsValid(HandleInfo->KinActorData2))// || !HandleInfo->HandleData2.IsValid())
 		return;
 
 	// Don't call moveKinematic if it hasn't changed - that will stop bodies from going to sleep.
