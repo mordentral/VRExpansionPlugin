@@ -5201,14 +5201,15 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 	int HandleIndex = 0;
 	FBPActorPhysicsHandleInformation* HandleInfo = GetPhysicsGrip(GripInfo);
 
-	if (!HandleInfo)
+	// Don't update if the handle doesn't exist or is currently paused
+	if (!HandleInfo || HandleInfo->bIsPaused)
 		return false;
 
 #if !PHYSICS_INTERFACE_PHYSX
 		// We don't have access to the shortcuts outside of physx
 		return SetUpPhysicsHandle(GripInfo);
 #else
-	if (bFullyRecreate)
+	if (bFullyRecreate || !HandleInfo->HandleData2.IsValid())
 	{
 		return SetUpPhysicsHandle(GripInfo);
 	}
