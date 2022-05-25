@@ -1464,6 +1464,18 @@ public:
 		return GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep;
 	}
 
+	// If the grip is valid
+	bool IsValid() const
+	{
+		return (!bIsPendingKill && GripID != INVALID_VRGRIP_ID && GrippedObject);
+	}
+
+	// Both valid and is not paused
+	bool IsActive() const
+	{
+		return (!bIsPendingKill && GripID != INVALID_VRGRIP_ID && GrippedObject && !bIsPaused);
+	}
+
 	// Cached values - since not using a full serialize now the old array state may not contain what i need to diff
 	// I set these in On_Rep now and check against them when new replications happen to control some actions.
 	struct FGripValueCache

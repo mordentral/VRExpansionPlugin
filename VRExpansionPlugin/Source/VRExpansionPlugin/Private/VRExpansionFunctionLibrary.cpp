@@ -522,6 +522,11 @@ bool UVRExpansionFunctionLibrary::EqualEqual_FBPActorGripInformation(const FBPAc
 	return A == B;
 }
 
+bool UVRExpansionFunctionLibrary::IsActiveGrip(const FBPActorGripInformation& Grip)
+{
+	return Grip.IsValid() && !Grip.bIsPaused;
+}
+
 
 FTransform_NetQuantize UVRExpansionFunctionLibrary::MakeTransform_NetQuantize(FVector Translation, FRotator Rotation, FVector Scale)
 {

@@ -4551,12 +4551,12 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 			if (!Grip->ValueCache.bWasInitiallyRepped && !HasGripAuthority(*Grip) && !HandleGripReplication(*Grip))
 				continue; // If we didn't successfully handle the replication (out of order) then continue on.
 
-			// Continue if the grip is paused
-			if (Grip->bIsPaused || Grip->bIsPendingKill)
-				continue;
-
-			if (Grip->GripID != INVALID_VRGRIP_ID && Grip->GrippedObject && !Grip->GrippedObject->IsPendingKill())
+			if (Grip->IsValid() && !Grip->GrippedObject->IsPendingKill())
 			{
+				// Continue if the grip is paused
+				if (Grip->bIsPaused)
+					continue;
+
 				if (Grip->GripCollisionType == EGripCollisionType::EventsOnly)
 					continue; // Earliest safe spot to continue at, we needed to check if the object is pending kill or invalid first
 
@@ -5129,8 +5129,11 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 			}
 			else
 			{
-				// Object has been destroyed without notification to plugin
-				CleanUpBadGrip(GrippedObjectsArray, i, bReplicatedArray);
+				// Object has been destroyed without notification to plugin or is pending kill
+				if (!Grip->bIsPendingKill)
+				{
+					CleanUpBadGrip(GrippedObjectsArray, i, bReplicatedArray);
+				}
 			}
 		}
 	}
@@ -6614,6 +6617,40 @@ void UGripMotionControllerComponent::FGripViewExtension::LateLatchingViewFamily_
 
 	// Tell the late update manager to apply the offset to the scene components
 	LateUpdate.Apply_RenderThread(InViewFamily.Scene, InViewFamily.FrameNumber, OldTransform, NewTransform);
+}
+
+bool UGripMotionControllerComponent::K2_GetFirstActiveGrip(FBPActorGripInformation& FirstActiveGrip)
+{
+	FBPActorGripInformation * FirstGrip = GetFirstActiveGrip();
+
+	if (FirstGrip)
+	{
+		FirstActiveGrip = *FirstGrip;
+		return true;
+	}
+
+	return false;
+}
+
+FBPActorGripInformation * UGripMotionControllerComponent::GetFirstActiveGrip()
+{
+	for (FBPActorGripInformation& Grip : GrippedObjects)
+	{
+		if (Grip.IsValid() && !Grip.bIsPaused)
+		{
+			return &Grip;
+		}
+	}
+
+	for (FBPActorGripInformation& LocalGrip : LocallyGrippedObjects)
+	{
+		if (LocalGrip.IsValid() && !LocalGrip.bIsPaused)
+		{
+			return &LocalGrip;
+		}
+	}
+
+	return nullptr;
 }
 
 void UGripMotionControllerComponent::GetAllGrips(TArray<FBPActorGripInformation> &GripArray)
