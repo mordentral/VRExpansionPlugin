@@ -198,6 +198,9 @@ public:
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal VR Grip", CompactNodeTitle = "==", Keywords = "== equal"), Category = "VRExpansionFunctions")
 	static bool EqualEqual_FBPActorGripInformation(const FBPActorGripInformation &A, const FBPActorGripInformation &B);
 
+	/* Returns true if the grip is active (both valid and not paused) */
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions")
+		static bool IsActiveGrip(const FBPActorGripInformation& Grip);
 
 	/** Make a transform net quantize from location, rotation and scale */
 	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|TransformNetQuantize")
