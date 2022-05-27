@@ -3,6 +3,9 @@
 
 #include "GripScripts/GS_LerpToHand.h"
 #include "GripMotionControllerComponent.h"
+#include "VRGlobalSettings.h"
+#include "Components/PrimitiveComponent.h"
+#include "GameFramework/Actor.h"
 #include "Math/DualQuat.h"
 
 UGS_LerpToHand::UGS_LerpToHand(const FObjectInitializer& ObjectInitializer) :
@@ -21,6 +24,7 @@ UGS_LerpToHand::UGS_LerpToHand(const FObjectInitializer& ObjectInitializer) :
 	MinDistanceForLerp = 0.0f;
 	MinSpeedForLerp = 0.f;
 	MaxSpeedForLerp = 0.f;
+	TargetGrip = INVALID_VRGRIP_ID;
 }
 
 //void UGS_InteractibleSettings::BeginPlay_Implementation() {}
@@ -35,6 +39,8 @@ void UGS_LerpToHand::OnGrip_Implementation(UGripMotionControllerComponent * Grip
 		bIsActive = false;
 		return;
 	}*/
+
+	TargetGrip = GripInformation.GripID;
 
 	OnGripTransform = GetParentTransform(true, GripInformation.GrippedBoneName);
 	UObject* ParentObj = this->GetParent();
@@ -83,7 +89,11 @@ void UGS_LerpToHand::OnGrip_Implementation(UGripMotionControllerComponent * Grip
 
 void UGS_LerpToHand::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
 {
-	bIsActive = false;
+	if(GripInformation.GripID == TargetGrip)
+	{ 
+		TargetGrip = INVALID_VRGRIP_ID;
+		bIsActive = false;
+	}
 }
 
 bool UGS_LerpToHand::GetWorldTransform_Implementation

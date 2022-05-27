@@ -2,27 +2,16 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "AI/Navigation/NavigationAvoidanceTypes.h"
-#include "AI/RVOAvoidanceInterface.h"
-#include "AITypes.h"
-#include "VRRootComponent.h"
-#include "Navigation/PathFollowingComponent.h"
-#include "AI/Navigation/NavigationTypes.h"
-//#include "AI/Navigation/NavigationSystem.h"
-#include "Animation/AnimationAsset.h"
-#include "Engine/EngineBaseTypes.h"
-#include "Engine/EngineTypes.h"
-#include "GameFramework/PawnMovementComponent.h"
-#include "Interfaces/NetworkPredictionInterface.h"
-#include "WorldCollision.h"
-#include "Runtime/Launch/Resources/Version.h"
+//#include "Engine/EngineBaseTypes.h"
+//#include "Engine/EngineTypes.h"
+#include "CharacterMovementCompTypes.h"
 #include "VRBaseCharacterMovementComponent.h"
-#include "GameFramework/CharacterMovementReplication.h"
 #include "VRCharacterMovementComponent.generated.h"
 
 class FDebugDisplayInfo;
 class ACharacter;
 class AVRCharacter;
+class UVRRootComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRCharacterMovement, Log, All);
 
@@ -57,7 +46,7 @@ class VREXPANSIONPLUGIN_API UVRCharacterMovementComponent : public UVRBaseCharac
 public:
 
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
-	UVRRootComponent * VRRootCapsule;
+		TObjectPtr<UVRRootComponent> VRRootCapsule;
 
 	/** Reject sweep impacts that are this close to the edge of the vertical portion of the capsule when performing vertical sweeps, and try again with a smaller capsule. */
 	static const float CLIMB_SWEEP_EDGE_REJECT_DISTANCE;
@@ -125,6 +114,9 @@ public:
 	///////////////////////////
 	// Client adjustment overrides to allow for rotation
 	///////////////////////////
+
+	// Engines version of this is private for some reason, making it impossible to override the function that uses it.
+	TWeakObjectPtr<UPrimitiveComponent> LastServerMovementBaseVR = nullptr;
 
 	virtual void ClientHandleMoveResponse(const FCharacterMoveResponseDataContainer& MoveResponse) override;
 
@@ -283,6 +275,8 @@ public:
 
 	// Making sure that impulses are correct
 	virtual void CapsuleTouched(UPrimitiveComponent* OverlappedComp, AActor* Other, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
+
+	virtual void StoreSetTrackingPaused(bool bNewTrackingPaused) override;
 };
 
 

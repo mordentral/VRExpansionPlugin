@@ -3,20 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
-#include "VRBPDatatypes.h"
-#include "VRGripInterface.h"
+//#include "Engine/Engine.h"
+//#include "VRBPDatatypes.h"
+#include "Components/StereoLayerComponent.h"
 #include "Components/WidgetComponent.h"
-#include "Components/StereoLayerComponent.h"
-#include "Slate/WidgetRenderer.h"
-#include "Blueprint/UserWidget.h"
-#include "Components/StereoLayerComponent.h"
-#include "Engine/TextureRenderTarget2D.h"
 //#include "Animation/UMGSequencePlayer.h"
-#include "Engine/GameViewportClient.h"
-#include "StereoLayerShapes.h"
 
 #include "VRStereoWidgetComponent.generated.h"
+
+class FWidgetRenderer;
+class UUserWidget;
+class UTextureRenderTarget2D;
+class UStereoLayerShape;
+
 
 /**
 * A stereo component that displays a widget instead of a texture.
@@ -34,8 +33,8 @@ public:
 		TSubclassOf<UUserWidget> WidgetClass;
 
 	/** The User Widget object displayed and managed by this component */
-	UPROPERTY(Transient, DuplicateTransient)
-		UUserWidget* Widget;
+	UPROPERTY(BlueprintReadWrite, Transient, DuplicateTransient, Category = "WidgetSettings")
+		TObjectPtr<UUserWidget> Widget;
 
 	/** If true then we sample the requested size of the widget and reset the texture to be that size */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WidgetSettings", meta = (ExposeOnSpawn = true))
@@ -75,7 +74,7 @@ public:
 
 	/** The render target being display */
 	UPROPERTY(BlueprintReadOnly, Transient, DuplicateTransient, Category = "WidgetSettings")
-		UTextureRenderTarget2D* RenderTarget;
+		TObjectPtr<UTextureRenderTarget2D> RenderTarget;
 
 	/** The slate window that contains the user widget content */
 	TSharedPtr<class SVirtualWindow> SlateWindow;
@@ -115,7 +114,7 @@ public:
 
 	/** Specifies which shape of layer it is.  Note that some shapes will be supported only on certain platforms! **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Instanced, Category = "StereoLayer", DisplayName = "Stereo Layer Shape")
-		UStereoLayerShape* Shape;
+		TObjectPtr<UStereoLayerShape> Shape;
 
 	void BeginDestroy() override;
 	void OnUnregister() override;
@@ -132,6 +131,10 @@ public:
 	// Overriden by the console command vr.ForceNoStereoWithVRWidgets if it is set to 1
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		bool bRenderBothStereoAndWorld;
+
+	/** Forces the widget to skip stereo regardless of all other settings (localized version of vr.ForceNoStereoWithVRWidgets)*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+		bool bDrawWithoutStereo;
 
 	// If true, use Epics world locked stereo implementation instead of my own temp solution
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")

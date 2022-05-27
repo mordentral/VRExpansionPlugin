@@ -7,7 +7,7 @@
 //#include "VRBPDatatypes.h"
 #include "OpenVRExpansionFunctionLibrary.h"
 //#include "GripMotionControllerComponent.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"

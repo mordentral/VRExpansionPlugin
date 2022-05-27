@@ -8,7 +8,6 @@
 #include "CharacterMovementCompTypes.h"
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDatatypes.h"
-#include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.h"
 #include "VRRootComponent.h"
 #include "VRPlayerController.h"
@@ -28,7 +27,7 @@ uint8 FSavedMove_VRBaseCharacter::GetCompressedFlags() const
 
 	// Not supporting custom movement mode directly at this time by replicating custom index
 	// We use 4 bits for this so a maximum of 16 elements
-	Result |= (uint8)VRReplicatedMovementMode << 2;
+	//Result |= (uint8)VRReplicatedMovementMode << 2;
 
 	// This takes up custom_2
 	/*if (bWantsToSnapTurn)
@@ -289,6 +288,7 @@ FVRCharacterNetworkMoveData::FVRCharacterNetworkMoveData() : FCharacterNetworkMo
 	VRCapsuleLocation = FVector::ZeroVector;
 	LFDiff = FVector::ZeroVector;
 	VRCapsuleRotation = 0;
+	ReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 }
 
 FVRCharacterNetworkMoveData::~FVRCharacterNetworkMoveData()
@@ -303,6 +303,7 @@ void FVRCharacterNetworkMoveData::ClientFillNetworkMoveData(const FSavedMove_Cha
 	// I know that we overloaded this, so it should be our base type
 	if (const FSavedMove_VRBaseCharacter* SavedMove = (const FSavedMove_VRBaseCharacter*)(&ClientMove))
 	{
+		ReplicatedMovementMode = SavedMove->VRReplicatedMovementMode;
 		ConditionalMoveReps = SavedMove->ConditionalValues;
 
 		// #TODO: Roll these into the conditionals
@@ -406,6 +407,20 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 		//SerializeOptionalValue<uint8>(bIsSaving, Ar, MovementMode, MOVE_Walking); // Epic has this like this too, but it is bugged and killing movements
 	}
 
+
+	bool bHasReplicatedMovementMode = ReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX;
+	Ar.SerializeBits(&bHasReplicatedMovementMode, 1);
+
+	if (bHasReplicatedMovementMode)
+	{
+		// Increased to 6 bits for 64 total elements instead of 16
+		Ar.SerializeBits(&ReplicatedMovementMode, 6);
+	}
+	else if(!bIsSaving)
+	{
+		ReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
+	}
+
 	// Rep out our custom move settings
 	ConditionalMoveReps.NetSerialize(Ar, PackageMap, bLocalSuccess);
 
@@ -424,5 +439,26 @@ void FVRCharacterMoveResponseDataContainer::ServerFillResponseData(const UCharac
 	if (const UVRBaseCharacterMovementComponent* BaseMovecomp = Cast<const UVRBaseCharacterMovementComponent>(&CharacterMovement))
 	{
 		bHasRotation = !BaseMovecomp->bUseClientControlRotation;
+	}
+}
+
+FScopedMeshBoneUpdateOverrideVR::FScopedMeshBoneUpdateOverrideVR(USkeletalMeshComponent* Mesh, EKinematicBonesUpdateToPhysics::Type OverrideSetting)
+	: MeshRef(Mesh)
+{
+	if (MeshRef)
+	{
+		// Save current state.
+		SavedUpdateSetting = MeshRef->KinematicBonesUpdateType;
+		// Override bone update setting.
+		MeshRef->KinematicBonesUpdateType = OverrideSetting;
+	}
+}
+
+FScopedMeshBoneUpdateOverrideVR::~FScopedMeshBoneUpdateOverrideVR()
+{
+	if (MeshRef)
+	{
+		// Restore bone update flag.
+		MeshRef->KinematicBonesUpdateType = SavedUpdateSetting;
 	}
 }

@@ -2,16 +2,16 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "UObject/ObjectMacros.h"
-#include "UObject/ScriptMacros.h"
+//#include "UObject/ObjectMacros.h"
+//#include "UObject/ScriptMacros.h"
 #include "VRBPDatatypes.h"
-#include "GripScripts/VRGripScriptBase.h"
 #include "UObject/Interface.h"
 
 #include "VRGripInterface.generated.h"
 
 // Forward declare
 class UGripMotionControllerComponent;
+class UVRGripScriptBase;
 
 UINTERFACE(Blueprintable)
 class VREXPANSIONPLUGIN_API UVRGripInterface: public UInterface
@@ -95,6 +95,8 @@ public:
 	// Event triggered on the interfaced object when grip is released
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")
 		void OnGripRelease(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed = false);
+
+	virtual void Native_NotifyThrowGripDelegates(UGripMotionControllerComponent* Controller, bool bGripped, const FBPActorGripInformation& GripInformation, bool bWasSocketed = false);
 
 	// Event triggered on the interfaced object when child component is gripped
 	UFUNCTION(BlueprintNativeEvent, Category = "VRGripInterface")

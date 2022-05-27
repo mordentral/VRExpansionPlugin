@@ -2,6 +2,7 @@
 
 #include "VRStereoWidgetComponent.h"
 #include "VRExpansionFunctionLibrary.h"
+#include "IXRTrackingSystem.h"
 #include "VRBaseCharacter.h"
 #include "TextureResource.h"
 #include "Engine/Texture.h"
@@ -27,6 +28,10 @@
 #include "Slate/SWorldWidgetScreenLayer.h"
 #include "Widgets/SViewport.h"
 #include "Widgets/SViewport.h"
+#include "Slate/WidgetRenderer.h"
+#include "Blueprint/UserWidget.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "StereoLayerShapes.h"
 
 // CVars
 namespace StereoWidgetCvars
@@ -199,7 +204,7 @@ void UVRStereoWidgetRenderComponent::InitWidget()
 
 	if (Widget != nullptr)
 	{
-		Widget->MarkPendingKill();
+		Widget->MarkAsGarbage();
 		Widget = nullptr;
 	}
 
@@ -334,7 +339,7 @@ void UVRStereoWidgetRenderComponent::RenderWidget(float DeltaTime)
 		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, requestedFormat /*PF_B8G8R8A8*/, false);
 		MarkStereoLayerDirty();
 	}
-	else if (RenderTarget->Resource->GetSizeX() != TextureSize.X || RenderTarget->Resource->GetSizeY() != TextureSize.Y)
+	else if (RenderTarget->GetResource()->GetSizeX() != TextureSize.X || RenderTarget->GetResource()->GetSizeY() != TextureSize.Y)
 	{
 		const EPixelFormat requestedFormat = FSlateApplication::Get().GetRenderer()->GetSlateRecommendedColorFormat();
 		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, requestedFormat /*PF_B8G8R8A8*/, false);
@@ -383,6 +388,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	bIsDirty = true;
 	bDirtyRenderTarget = false;
 	bRenderBothStereoAndWorld = false;
+	bDrawWithoutStereo = false;
 	bDelayForRenderThread = false;
 	bIsSleeping = false;
 	//Texture = nullptr;
@@ -434,6 +440,11 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+
 	//bool bIsCurVis = IsWidgetVisible();
 
 	bool bIsVisible = IsVisible() && IsWidgetVisible() && !bIsSleeping;// && ((GetWorld()->TimeSince(GetLastRenderTime()) <= 0.5f));
@@ -441,6 +452,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	// If we are set to not use stereo layers or we don't have a valid stereo layer device
 	if (
 		StereoWidgetCvars::ForceNoStereoWithVRWidgets == 1 ||
+		bDrawWithoutStereo ||
 		!UVRExpansionFunctionLibrary::IsInVREditorPreviewOrGame() || 
 		!GEngine->StereoRenderingDevice.IsValid() || 
 		(GEngine->StereoRenderingDevice->GetStereoLayers() == nullptr)
@@ -538,15 +550,21 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				//bTextureNeedsUpdate = true;
 				if (mpawn)
 				{
-					// Set transform to this relative transform
 
+					// Offset the transform by the widget pivot.
+					float DeltaY = (Pivot.X - 0.5f) * DrawSize.X;
+					float DeltaZ = (Pivot.Y - 0.5f) * DrawSize.Y;
+					FTransform OffsetTransform = FTransform(FVector(0.f, DeltaY, DeltaZ));
+					OffsetTransform = OffsetTransform * GetComponentTransform();
+
+					// Set transform to this relative transform
 
 					bool bHandledTransform = false;
 					if (AVRBaseCharacter* BaseVRChar = Cast<AVRBaseCharacter>(mpawn))
 					{
 						if (USceneComponent* CameraParent = BaseVRChar->VRReplicatedCamera->GetAttachParent())
 						{
-							Transform = GetComponentTransform().GetRelativeTransform(CameraParent->GetComponentTransform());
+							Transform = OffsetTransform.GetRelativeTransform(CameraParent->GetComponentTransform());
 							Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
 							bHandledTransform = true;
 						}
@@ -556,7 +574,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 						// Look for generic camera comp and use its attach parent
 						if (USceneComponent* CameraParent = Camera->GetAttachParent())
 						{
-							Transform = GetComponentTransform().GetRelativeTransform(CameraParent->GetComponentTransform());
+							Transform = OffsetTransform.GetRelativeTransform(CameraParent->GetComponentTransform());
 							Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
 							bHandledTransform = true;							
 						}
@@ -564,7 +582,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 					if(!bHandledTransform) // Just use the pawn as we don't know the heirarchy
 					{
-						Transform = GetComponentTransform().GetRelativeTransform(mpawn->GetTransform());
+						Transform = OffsetTransform.GetRelativeTransform(mpawn->GetTransform());
 						Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
 					}
 					
@@ -609,13 +627,20 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 
 	bool bCurrVisible = bIsVisible;
-	if (!RenderTarget || !RenderTarget->Resource)
+	if (!RenderTarget || !RenderTarget->GetResource())
 	{
 		bCurrVisible = false;
 	}
 
 	if (bIsDirty)
 	{
+		// OpenXR doesn't take the transforms scale component into account for the stereo layer, so we need to scale the buffer instead
+		bool bScaleBuffer = false;
+		static FName SystemName(TEXT("OpenXR"));
+		if (GEngine->XRSystem.IsValid() && (GEngine->XRSystem->GetSystemName() == SystemName))
+		{
+			bScaleBuffer = true;
+		}
 
 		IStereoLayers::FLayerDesc LayerDsec;
 		LayerDsec.Priority = Priority;
@@ -625,15 +650,23 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		if (bDelayForRenderThread && !LastTransform.Equals(FTransform::Identity))
 		{
 			LayerDsec.Transform = LastTransform;
+			if (bScaleBuffer)
+			{
+				LayerDsec.QuadSize = FVector2D(DrawSize) * FVector2D(LastTransform.GetScale3D());
+			}
 		}
 		else
 		{
 			LayerDsec.Transform = Transform;
+			if (bScaleBuffer)
+			{
+				LayerDsec.QuadSize = FVector2D(DrawSize) * FVector2D(Transform.GetScale3D());
+			}
 		}
 
 		if (RenderTarget)
 		{
-			LayerDsec.Texture = RenderTarget->Resource->TextureRHI;
+			LayerDsec.Texture = RenderTarget->GetResource()->TextureRHI;
 			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
 		}
 		// Forget the left texture implementation
@@ -678,7 +711,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			{
 				if (Shape)
 				{
-					Shape->MarkPendingKill();
+					Shape->MarkAsGarbage();
 				}
 
 				Cylinder = NewObject<UStereoLayerShapeCylinder>(this, NAME_None, RF_Public);
@@ -708,7 +741,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			{
 				if (Shape)
 				{
-					Shape->MarkPendingKill();
+					Shape->MarkAsGarbage();
 				}
 				Shape = NewObject<UStereoLayerShapeQuad>(this, NAME_None, RF_Public);
 			}
@@ -822,7 +855,7 @@ public:
 
 		if (RenderTarget)//false)//RenderTarget)
 		{
-			FTextureResource* TextureResource = RenderTarget->Resource;
+			FTextureResource* TextureResource = RenderTarget->GetResource();
 			if (TextureResource)
 			{
 				if (GeometryMode == EWidgetGeometryMode::Plane)
@@ -840,10 +873,10 @@ public:
 
 						if (VisibilityMap & (1 << ViewIndex))
 						{
-							VertexIndices[0] = MeshBuilder.AddVertex(-FVector(0, U, V), FVector2D(0, 0), FVector(0, -1, 0), FVector(0, 0, -1), FVector(1, 0, 0), FColor::White);
-							VertexIndices[1] = MeshBuilder.AddVertex(-FVector(0, U, VL), FVector2D(0, 1), FVector(0, -1, 0), FVector(0, 0, -1), FVector(1, 0, 0), FColor::White);
-							VertexIndices[2] = MeshBuilder.AddVertex(-FVector(0, UL, VL), FVector2D(1, 1), FVector(0, -1, 0), FVector(0, 0, -1), FVector(1, 0, 0), FColor::White);
-							VertexIndices[3] = MeshBuilder.AddVertex(-FVector(0, UL, V), FVector2D(1, 0), FVector(0, -1, 0), FVector(0, 0, -1), FVector(1, 0, 0), FColor::White);
+							VertexIndices[0] = MeshBuilder.AddVertex(-FVector3f(0, U, V), FVector2f(0, 0), FVector3f(0, -1, 0), FVector3f(0, 0, -1), FVector3f(1, 0, 0), FColor::White);
+							VertexIndices[1] = MeshBuilder.AddVertex(-FVector3f(0, U, VL), FVector2f(0, 1), FVector3f(0, -1, 0), FVector3f(0, 0, -1), FVector3f(1, 0, 0), FColor::White);
+							VertexIndices[2] = MeshBuilder.AddVertex(-FVector3f(0, UL, VL), FVector2f(1, 1), FVector3f(0, -1, 0), FVector3f(0, 0, -1), FVector3f(1, 0, 0), FColor::White);
+							VertexIndices[3] = MeshBuilder.AddVertex(-FVector3f(0, UL, V), FVector2f(1, 0), FVector3f(0, -1, 0), FVector3f(0, 0, -1), FVector3f(1, 0, 0), FColor::White);
 
 							MeshBuilder.AddTriangle(VertexIndices[0], VertexIndices[1], VertexIndices[2]);
 							MeshBuilder.AddTriangle(VertexIndices[0], VertexIndices[2], VertexIndices[3]);
@@ -917,10 +950,10 @@ public:
 									LastTangentZ = TangentZ;
 								}
 
-								VertexIndices[0] = MeshBuilder.AddVertex(Vertex0, FVector2D(U0, 0), LastTangentX, LastTangentY, LastTangentZ, FColor::White);
-								VertexIndices[1] = MeshBuilder.AddVertex(Vertex1, FVector2D(U0, 1), LastTangentX, LastTangentY, LastTangentZ, FColor::White);
-								VertexIndices[2] = MeshBuilder.AddVertex(Vertex2, FVector2D(U1, 1), TangentX, TangentY, TangentZ, FColor::White);
-								VertexIndices[3] = MeshBuilder.AddVertex(Vertex3, FVector2D(U1, 0), TangentX, TangentY, TangentZ, FColor::White);
+								VertexIndices[0] = MeshBuilder.AddVertex((FVector3f)Vertex0, FVector2f(U0, 0), (FVector3f)LastTangentX, (FVector3f)LastTangentY, (FVector3f)LastTangentZ, FColor::White);
+								VertexIndices[1] = MeshBuilder.AddVertex((FVector3f)Vertex1, FVector2f(U0, 1), (FVector3f)LastTangentX, (FVector3f)LastTangentY, (FVector3f)LastTangentZ, FColor::White);
+								VertexIndices[2] = MeshBuilder.AddVertex((FVector3f)Vertex2, FVector2f(U1, 1), (FVector3f)TangentX, (FVector3f)TangentY, (FVector3f)TangentZ, FColor::White);
+								VertexIndices[3] = MeshBuilder.AddVertex((FVector3f)Vertex3, FVector2f(U1, 0), (FVector3f)TangentX, (FVector3f)TangentY, (FVector3f)TangentZ, FColor::White);
 
 								MeshBuilder.AddTriangle(VertexIndices[0], VertexIndices[1], VertexIndices[2]);
 								MeshBuilder.AddTriangle(VertexIndices[0], VertexIndices[2], VertexIndices[3]);
@@ -1013,7 +1046,7 @@ public:
 		Result.bShadowRelevance = IsShadowCast(View);
 		Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 		Result.bEditorPrimitiveRelevance = false;
-		Result.bVelocityRelevance = IsMovable() && Result.bOpaque && Result.bRenderInMainPass;
+		Result.bVelocityRelevance = DrawsVelocity() && Result.bOpaque && Result.bRenderInMainPass;
 
 		return Result;
 	}

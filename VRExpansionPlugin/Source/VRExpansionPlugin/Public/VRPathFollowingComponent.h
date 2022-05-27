@@ -19,7 +19,7 @@ class VREXPANSIONPLUGIN_API UVRPathFollowingComponent : public UPathFollowingCom
 
 public:
 	UPROPERTY(transient)
-	UVRBaseCharacterMovementComponent* VRMovementComp;
+		UVRBaseCharacterMovementComponent* VRMovementComp;
 
 	// Add link to VRMovementComp
 	void SetMovementComponent(UNavMovementComponent* MoveComp) override;
@@ -46,27 +46,11 @@ public:
 	void PauseMove(FAIRequestID RequestID = FAIRequestID::CurrentRequest, EPathFollowingVelocityMode VelocityMode = EPathFollowingVelocityMode::Reset) override;
 	// Now has an actor feet call  .......Just a debug reference
 	//virtual FAIRequestID RequestMove(FNavPathSharedPtr Path, FRequestCompletedSignature OnComplete, const AActor* DestinationActor = NULL, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius, bool bStopOnOverlap = true, FCustomMoveSharedPtr GameData = NULL) override;
-
-
+	// 
 	// Fine in 4.13
 	bool ShouldCheckPathOnResume() const override;
 
 	// Fine in 4.13, had to change feet based for both
 	bool UpdateBlockDetection() override;
 
-
-	/** simple test for stationary agent (used as early finish condition), check if reached given point
-	*  @param TestPoint - point to test
-	*  @param AcceptanceRadius - allowed 2D distance
-	*  @param ReachMode - modifiers for AcceptanceRadius
-	*/
-	bool HasReached(const FVector& TestPoint, EPathFollowingReachMode ReachMode, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius) const;
-
-	/** simple test for stationary agent (used as early finish condition), check if reached given goal
-	*  @param TestGoal - actor to test
-	*  @param AcceptanceRadius - allowed 2D distance
-	*  @param ReachMode - modifiers for AcceptanceRadius
-	*  @param bUseNavAgentGoalLocation - true: if the goal is a nav agent, we will use their nav agent location rather than their actual location
-	*/
-	bool HasReached(const AActor& TestGoal, EPathFollowingReachMode ReachMode, float AcceptanceRadius = UPathFollowingComponent::DefaultAcceptanceRadius, bool bUseNavAgentGoalLocation = true) const;
 };

@@ -10,6 +10,14 @@
 #include "PBDRigidsSolver.h"
 #include "Chaos/PBDRigidsEvolutionGBF.h"
 #endif
+#include "VRGlobalSettings.h"
+//#include "Engine/Classes/GameFramework/PlayerController.h"
+//#include "Engine/Classes/GameFramework/PlayerState.h"
+//#include "Engine/Player.h"
+#include "PhysicsEngine/PhysicsSettings.h"
+//#include "Components/SkeletalMeshComponent.h"
+#include "Misc/ScopeRWLock.h"
+//#include "PhysicsInterfaceTypesCore.h"
 
 // I cannot dynamic cast without RTTI so I am using a static var as a declarative in case the user removed our custom replicator
 // We don't want our casts to cause issues.
@@ -77,18 +85,6 @@ FPhysicsReplicationVR::FPhysicsReplicationVR(FPhysScene* PhysScene) :
 	AsyncCallbackServer = nullptr;
 #endif
 	VRPhysicsReplicationStatics::bHasVRPhysicsReplication = true;
-
-#if PHYSICS_INTERFACE_PHYSX
-	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-	if (VRSettings.MaxCCDPasses != 1)
-	{
-		if (PxScene * PScene = PhysScene->GetPxScene())
-		{
-			PScene->setCCDMaxPasses(VRSettings.MaxCCDPasses);
-		}
-	}
-
-#endif
 }
 
 #if WITH_CHAOS
@@ -168,8 +164,13 @@ void FPhysicsReplicationVR::ApplyAsyncDesiredStateVR(const float DeltaSeconds, c
 				{
 					ObjectStateType = EObjectStateType::Sleeping;
 				}
-				auto* Solver = Proxy->GetSolver<FPBDRigidsSolver>();
-				Solver->GetEvolution()->SetParticleObjectState(Proxy->GetHandle_LowLevel()->CastToRigidParticle(), ObjectStateType);	//todo: move object state into physics thread api
+				// don't allow kinematic to sleeping transition
+				bool bInvalidObjectState = (ObjectStateType == EObjectStateType::Sleeping && Handle->ObjectState() == EObjectStateType::Kinematic);
+				if (!bInvalidObjectState)
+				{
+					auto* Solver = Proxy->GetSolver<FPBDRigidsSolver>();
+					Solver->GetEvolution()->SetParticleObjectState(Proxy->GetHandle_LowLevel()->CastToRigidParticle(), ObjectStateType);	//todo: move object state into physics thread api
+				}
 			}
 		}
 	}
@@ -615,81 +616,6 @@ void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrim
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Phys Rep Tick!"));
 	//FPhysicsReplication::OnTick(DeltaSeconds, ComponentsToTargets);
 }
-
-#if PHYSICS_INTERFACE_PHYSX
-void FContactModifyCallbackVR::onContactModify(PxContactModifyPair* const pairs, PxU32 count)
-{
-	for (uint32 PairIdx = 0; PairIdx < count; PairIdx++)
-	{
-		const PxActor* PActor0 = pairs[PairIdx].actor[0];
-		const PxActor* PActor1 = pairs[PairIdx].actor[1];
-		check(PActor0 && PActor1);
-
-		const PxRigidBody* PRigidBody0 = PActor0->is<PxRigidBody>();
-		const PxRigidBody* PRigidBody1 = PActor1->is<PxRigidBody>();
-
-		//physx::PxRigidActor* SyncActor;
-
-		const FBodyInstance* BodyInst0 = FPhysxUserData::Get<FBodyInstance>(PActor0->userData);
-		const FBodyInstance* BodyInst1 = FPhysxUserData::Get<FBodyInstance>(PActor1->userData);
-		if (BodyInst0 == nullptr || BodyInst1 == nullptr)
-		{
-			continue;
-		}
-
-		if (BodyInst0->bContactModification && BodyInst1->bContactModification)
-		{
-			FRWScopeLock(RWAccessLock, FRWScopeLockType::SLT_ReadOnly);
-
-			const FContactModBodyInstancePair* prop = ContactsToIgnore.FindByPredicate([&](const FContactModBodyInstancePair& it) {return (it.Actor1.SyncActor == PRigidBody0 && it.Actor2.SyncActor == PRigidBody1) || (it.Actor2.SyncActor == PRigidBody0 && it.Actor1.SyncActor == PRigidBody1);  });
-			if (prop)
-			{
-				for (uint32 ContactPt = 0; ContactPt < pairs[PairIdx].contacts.size(); ContactPt++)
-				{
-					pairs[PairIdx].contacts.ignore(ContactPt);
-				}
-			}
-		}
-	}
-}
-
-void FCCDContactModifyCallbackVR::onCCDContactModify(PxContactModifyPair* const pairs, PxU32 count)
-{
-	for (uint32 PairIdx = 0; PairIdx < count; PairIdx++)
-	{
-		const PxActor* PActor0 = pairs[PairIdx].actor[0];
-		const PxActor* PActor1 = pairs[PairIdx].actor[1];
-		check(PActor0 && PActor1);
-
-		const PxRigidBody* PRigidBody0 = PActor0->is<PxRigidBody>();
-		const PxRigidBody* PRigidBody1 = PActor1->is<PxRigidBody>();
-
-		//physx::PxRigidActor* SyncActor;
-
-		const FBodyInstance* BodyInst0 = FPhysxUserData::Get<FBodyInstance>(PActor0->userData);
-		const FBodyInstance* BodyInst1 = FPhysxUserData::Get<FBodyInstance>(PActor1->userData);
-
-		if (BodyInst0 == nullptr || BodyInst1 == nullptr)
-		{
-			continue;
-		}
-
-		if (BodyInst0->bContactModification && BodyInst1->bContactModification)
-		{
-			FRWScopeLock(RWAccessLock, FRWScopeLockType::SLT_ReadOnly);
-
-			const FContactModBodyInstancePair* prop = ContactsToIgnore.FindByPredicate([&](const FContactModBodyInstancePair& it) {return (it.Actor1.SyncActor == PRigidBody0 && it.Actor2.SyncActor == PRigidBody1) || (it.Actor2.SyncActor == PRigidBody0 && it.Actor1.SyncActor == PRigidBody1);  });
-			if (prop)
-			{
-				for (uint32 ContactPt = 0; ContactPt < pairs[PairIdx].contacts.size(); ContactPt++)
-				{
-					pairs[PairIdx].contacts.ignore(ContactPt);
-				}
-			}
-		}
-	}
-}
-#endif
 
 FRepMovementVR::FRepMovementVR() : FRepMovement()
 {

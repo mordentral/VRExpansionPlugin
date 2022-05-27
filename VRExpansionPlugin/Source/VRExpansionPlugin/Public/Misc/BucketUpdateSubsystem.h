@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Subsystems/EngineSubsystem.h"
+#include "Subsystems/WorldSubsystem.h"
 #include "Tickable.h"
 #include "BucketUpdateSubsystem.generated.h"
 //#include "GrippablePhysicsReplication.generated.h"
@@ -11,13 +11,6 @@
 
 //DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRPhysicsReplicationDelegate, void, Return);
 
-/*static TAutoConsoleVariable<int32> CVarEnableCustomVRPhysicsReplication(
-	TEXT("vr.VRExpansion.EnableCustomVRPhysicsReplication"),
-	0,
-	TEXT("Enable valves input controller that overrides legacy input.\n")
-	TEXT(" 0: use the engines default input mapping (default), will also be default if vr.SteamVR.EnableVRInput is enabled\n")
-	TEXT(" 1: use the valve input controller. You will have to define input bindings for the controllers you want to support."),
-	ECVF_ReadOnly);*/
 
 DECLARE_DELEGATE_RetVal(bool, FBucketUpdateTickSignature);
 DECLARE_DYNAMIC_DELEGATE(FDynamicBucketUpdateTickSignature);
@@ -103,7 +96,7 @@ public:
 };
 
 UCLASS()
-class VREXPANSIONPLUGIN_API UBucketUpdateSubsystem : public UEngineSubsystem, public FTickableGameObject
+class VREXPANSIONPLUGIN_API UBucketUpdateSubsystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()
 
@@ -112,6 +105,12 @@ public:
 		Super()
 	{
 
+	}
+
+	virtual bool DoesSupportWorldType(EWorldType::Type WorldType) const override
+	{
+		return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
+		// Not allowing for editor type as this is a replication subsystem
 	}
 
 	//UPROPERTY()

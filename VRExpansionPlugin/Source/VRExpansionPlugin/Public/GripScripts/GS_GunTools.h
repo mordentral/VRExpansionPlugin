@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "VRGripScriptBase.h"
 #include "GripScripts/GS_Default.h"
 #include "GS_GunTools.generated.h"
@@ -42,6 +42,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
 		FVector_NetQuantize100 StockSnapOffset;
 
+	// *Global Value* If we want to have the stock location adjust to follow the primary hands Z value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock")
+		bool bAdjustZOfStockToPrimaryHand;
+
 	// *Global Value* Whether we should lerp the location of the rearmost (stock side) hand, mostly used for snipers.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VirtualStock|Smoothing")
 		bool bSmoothStockHand;
@@ -65,6 +69,7 @@ public:
 		StockSnapDistance = B.StockSnapDistance;
 		StockSnapLerpThreshold = B.StockSnapLerpThreshold;
 		StockSnapOffset = B.StockSnapOffset;
+		bAdjustZOfStockToPrimaryHand = B.bAdjustZOfStockToPrimaryHand;
 		bSmoothStockHand = B.bSmoothStockHand;
 		SmoothingValueForStock = B.SmoothingValueForStock;
 		StockHandSmoothing = B.StockHandSmoothing;
@@ -73,6 +78,7 @@ public:
 	FBPVirtualStockSettings()
 	{
 		StockSnapOffset = FVector(0.f, 0.f, 0.f);
+		bAdjustZOfStockToPrimaryHand = true;
 		StockSnapDistance = 35.f;
 		StockSnapLerpThreshold = 20.0f;
 		StockLerpValue = 0.0f;
@@ -219,11 +225,11 @@ public:
 	FTransform MountWorldTransform;
 	bool bIsMounted;
 	FTransform RelativeTransOnSecondaryRelease;
-	TWeakObjectPtr<USceneComponent> CameraComponent;
+	TObjectPtr<USceneComponent> CameraComponent;
 
 	// Overrides the default behavior of using the HMD location for the stock and uses this component instead
 	UPROPERTY(BlueprintReadWrite, Category = "VirtualStock")
-		TWeakObjectPtr<USceneComponent> VirtualStockComponent;
+		TObjectPtr<USceneComponent> VirtualStockComponent;
 
 	// Loads the global virtual stock settings on grip (only if locally controlled, you need to manually replicate and store the global settings
 	// In the character if networked).

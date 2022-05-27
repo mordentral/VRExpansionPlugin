@@ -2,18 +2,14 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
-#include "VRBPDatatypes.h"
-#include "AITypes.h"
-#include "AI/Navigation/NavigationTypes.h"
-#include "Navigation/PathFollowingComponent.h"
-#include "GameFramework/Character.h"
+#include "CharacterMovementCompTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "CharacterMovementCompTypes.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
 class AVRBaseCharacter;
+struct FAIRequestID;
+struct FPathFollowingResult;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRBaseCharacterMovement, Log, All);
 
@@ -39,7 +35,7 @@ public:
 
 	/** BaseVR Character movement component belongs to */
 	UPROPERTY(Transient, DuplicateTransient)
-		AVRBaseCharacter* BaseVRCharacterOwner;
+		TObjectPtr<AVRBaseCharacter> BaseVRCharacterOwner;
 
 	virtual void SetUpdatedComponent(USceneComponent* NewUpdatedComponent);
 
@@ -83,8 +79,8 @@ public:
 	bool IsClimbing() const;
 
 	// Sets the crouching half height since it isn't exposed during runtime to blueprints
-	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void SetCrouchedHalfHeight(float NewCrouchedHalfHeight);
+	//UFUNCTION(BlueprintCallable, Category = "VRMovement")
+	//	void SetCrouchedHalfHeight(float NewCrouchedHalfHeight);
 
 	// Setting this higher will divide the wall slide effect by this value, to reduce collision sliding.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement", meta = (ClampMin = "0.0", UIMin = "0", ClampMax = "5.0", UIMax = "5"))
@@ -106,6 +102,11 @@ public:
 	// If so then we just run the logic right away as it can't be inlined and won't be replicated
 	void CheckServerAuthedMoveAction();
 
+	// Set tracking paused for our root capsule and replicate the location to all connections
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void PerformMoveAction_SetTrackingPaused(bool bNewTrackingPaused);
+	virtual void StoreSetTrackingPaused(bool bNewTrackingPaused);
+
 	// Perform a snap turn in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false, bool bFlagCharacterTeleport = false);
@@ -125,17 +126,18 @@ public:
 	
 	// Perform a custom moveaction that you define, will call the OnCustomMoveActionPerformed event in the character when processed so you can run your own logic
 	// Be sure to set the minimum data replication requirements for your move action in order to save on replication.
-	// Move actions are currently limited to 1 per frame.
+	// Flags will always replicate if it is non zero
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator);
+		void PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags = 0);
 
 	FVRMoveActionArray MoveActionArray;
 
 	bool CheckForMoveAction();
-	bool DoMASnapTurn(FVRMoveActionContainer& MoveAction);
-	bool DoMASetRotation(FVRMoveActionContainer& MoveAction);
-	bool DoMATeleport(FVRMoveActionContainer& MoveAction);
-	bool DoMAStopAllMovement(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMASnapTurn(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMASetRotation(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMATeleport(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMAStopAllMovement(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMAPauseTracking(FVRMoveActionContainer& MoveAction);
 
 	FVector CustomVRInputVector;
 	FVector AdditionalVRInputVector;

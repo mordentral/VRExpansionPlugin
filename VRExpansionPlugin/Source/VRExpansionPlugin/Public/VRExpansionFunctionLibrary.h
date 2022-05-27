@@ -2,22 +2,17 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "IMotionController.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "Components/SplineComponent.h"
-#include "Components/SplineMeshComponent.h"
-
-//#include "HeadMountedDisplay.h" 
-#include "HeadMountedDisplayFunctionLibrary.h"
-//#include "HeadMountedDisplayFunctionLibrary.h"
-#include "IHeadMountedDisplay.h"
-#include "Grippables/GrippablePhysicsReplication.h"
-
 #include "VRBPDatatypes.h"
-#include "GameplayTagContainer.h"
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
-
 #include "VRExpansionFunctionLibrary.generated.h"
+
+class USplineComponent;
+class UPrimitiveComponent;
+class UGripMotioncontroller;
+struct FGameplayTag;
+struct FGameplayTagContainer;
+
 
 //General Advanced Sessions Log
 DECLARE_LOG_CATEGORY_EXTERN(VRExpansionFunctionLibraryLog, Log, All);
@@ -42,9 +37,30 @@ class VREXPANSIONPLUGIN_API UVRExpansionFunctionLibrary : public UBlueprintFunct
 	//~UVRExpansionFunctionLibrary();
 public:
 
-	// Applies a delta rotation around a pivot point, if bUseOriginalYawOnly is true then it only takes the original Yaw into account (characters)
-	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true"))
-		static void SetObjectsIgnoreCollision(UPrimitiveComponent* Prim1 = nullptr, FName OptionalBoneName1 = NAME_None, UPrimitiveComponent* Prim2 = nullptr, FName OptionalBoneName2 = NAME_None, bool bIgnoreCollision = true);
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+		static UGameViewportClient * GetGameViewportClient(UObject* WorldContextObject);
+
+
+	// Sets two primitive components to ignore collision between two specific bodies
+	// If bAddChildBones is true then it will also add all child bones of the given bone (or the entire skeleton if no name is given)
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+		static void SetObjectsIgnoreCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1 = nullptr, FName OptionalBoneName1 = NAME_None, bool bAddChildBones1 = false, UPrimitiveComponent* Prim2 = nullptr, FName OptionalBoneName2 = NAME_None, bool bAddChildBones2 = false, bool bIgnoreCollision = true);
+
+	// Sets two actors to entirely ignore collision between them
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+		static void SetActorsIgnoreAllCollision(UObject* WorldContextObject, AActor* Actor1 = nullptr, AActor* Actor2 = nullptr, bool bIgnoreCollision = true);
+
+	// Removes all collision ignore matches for the given primitive object
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+		static void RemoveObjectCollisionIgnore(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
+
+	// Removes all collision ignore matches for the given actor
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+		static void RemoveActorCollisionIgnore(UObject* WorldContextObject, AActor* Actor1);
+
+	// Returns if the component is ignoring any collisions
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|Collision", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+		static bool IsComponentIgnoringCollision(UObject* WorldContextObject, UPrimitiveComponent* Prim1);
 
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
 	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
@@ -176,12 +192,15 @@ public:
 
 	// Gets if an actors root component contains a grip slot within range
 	UFUNCTION(BlueprintPure, Category = "VRGrip", meta = (bIgnoreSelf = "true", DisplayName = "GetGripSlotInRangeByTypeName_Component"))
-	static void GetGripSlotInRangeByTypeName_Component(FName SlotType, UPrimitiveComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent* QueryController = nullptr);
+	static void GetGripSlotInRangeByTypeName_Component(FName SlotType, USceneComponent * Component, FVector WorldLocation, float MaxRange, bool & bHadSlotInRange, FTransform & SlotWorldTransform, FName & SlotName, UGripMotionControllerComponent* QueryController = nullptr);
 
 	/* Returns true if the values are equal (A == B) */
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal VR Grip", CompactNodeTitle = "==", Keywords = "== equal"), Category = "VRExpansionFunctions")
 	static bool EqualEqual_FBPActorGripInformation(const FBPActorGripInformation &A, const FBPActorGripInformation &B);
 
+	/* Returns true if the grip is active (both valid and not paused) */
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions")
+		static bool IsActiveGrip(const FBPActorGripInformation& Grip);
 
 	/** Make a transform net quantize from location, rotation and scale */
 	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|TransformNetQuantize")
@@ -270,60 +289,7 @@ public:
 
 	// Applies the same laser smoothing that the vr editor uses to an array of points
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Smooth Update Laser Spline"), Category = "VRExpansionLibrary")
-	static void SmoothUpdateLaserSpline(USplineComponent * LaserSplineComponent, TArray<USplineMeshComponent *> LaserSplineMeshComponents, FVector InStartLocation, FVector InEndLocation, FVector InForward, float LaserRadius)
-	{
-		if (LaserSplineComponent == nullptr)
-			return;
-
-		LaserSplineComponent->ClearSplinePoints();
-
-		const FVector SmoothLaserDirection = InEndLocation - InStartLocation;
-		float Distance = SmoothLaserDirection.Size();
-		const FVector StraightLaserEndLocation = InStartLocation + (InForward * Distance);
-		const int32 NumLaserSplinePoints = LaserSplineMeshComponents.Num();
-
-		LaserSplineComponent->AddSplinePoint(InStartLocation, ESplineCoordinateSpace::World, false);
-		for (int32 Index = 1; Index < NumLaserSplinePoints; Index++)
-		{
-			float Alpha = (float)Index / (float)NumLaserSplinePoints;
-			Alpha = FMath::Sin(Alpha * PI * 0.5f);
-			const FVector PointOnStraightLaser = FMath::Lerp(InStartLocation, StraightLaserEndLocation, Alpha);
-			const FVector PointOnSmoothLaser = FMath::Lerp(InStartLocation, InEndLocation, Alpha);
-			const FVector PointBetweenLasers = FMath::Lerp(PointOnStraightLaser, PointOnSmoothLaser, Alpha);
-			LaserSplineComponent->AddSplinePoint(PointBetweenLasers, ESplineCoordinateSpace::World, false);
-		}
-		LaserSplineComponent->AddSplinePoint(InEndLocation, ESplineCoordinateSpace::World, false);
-		
-		// Update all the segments of the spline
-		LaserSplineComponent->UpdateSpline();
-
-		const float LaserPointerRadius = LaserRadius;
-		Distance *= 0.0001f;
-		for (int32 Index = 0; Index < NumLaserSplinePoints; Index++)
-		{
-			USplineMeshComponent* SplineMeshComponent = LaserSplineMeshComponents[Index];
-			check(SplineMeshComponent != nullptr);
-
-			FVector StartLoc, StartTangent, EndLoc, EndTangent;
-			LaserSplineComponent->GetLocationAndTangentAtSplinePoint(Index, StartLoc, StartTangent, ESplineCoordinateSpace::Local);
-			LaserSplineComponent->GetLocationAndTangentAtSplinePoint(Index + 1, EndLoc, EndTangent, ESplineCoordinateSpace::Local);
-
-			const float AlphaIndex = (float)Index / (float)NumLaserSplinePoints;
-			const float AlphaDistance = Distance * AlphaIndex;
-			float Radius = LaserPointerRadius * ((AlphaIndex * AlphaDistance) + 1);
-			FVector2D LaserScale(Radius, Radius);
-			SplineMeshComponent->SetStartScale(LaserScale, false);
-
-			const float NextAlphaIndex = (float)(Index + 1) / (float)NumLaserSplinePoints;
-			const float NextAlphaDistance = Distance * NextAlphaIndex;
-			Radius = LaserPointerRadius * ((NextAlphaIndex * NextAlphaDistance) + 1);
-			LaserScale = FVector2D(Radius, Radius);
-			SplineMeshComponent->SetEndScale(LaserScale, false);
-
-			SplineMeshComponent->SetStartAndEnd(StartLoc, StartTangent, EndLoc, EndTangent, true);
-		}
-
-	}
+	static void SmoothUpdateLaserSpline(USplineComponent * LaserSplineComponent, TArray<USplineMeshComponent *> LaserSplineMeshComponents, FVector InStartLocation, FVector InEndLocation, FVector InForward, float LaserRadius);
 
 	/**
 	* Determine if any tag in the BaseContainer matches against any tag in OtherContainer with a required direct parent for both
@@ -335,22 +301,7 @@ public:
 	* @return True if any tag was found that matches any tags explicitly present in OtherContainer with the same DirectParent
 	*/
 	UFUNCTION(BlueprintPure, Category = "GameplayTags")
-	static bool MatchesAnyTagsWithDirectParentTag(FGameplayTag DirectParentTag,const FGameplayTagContainer& BaseContainer, const FGameplayTagContainer& OtherContainer)
-	{
-		TArray<FGameplayTag> BaseContainerTags;
-		BaseContainer.GetGameplayTagArray(BaseContainerTags);
-
-		for (const FGameplayTag& OtherTag : BaseContainerTags)
-		{
-			if (OtherTag.RequestDirectParent().MatchesTagExact(DirectParentTag))
-			{
-				if (OtherContainer.HasTagExact(OtherTag))
-					return true;
-			}
-		}
-
-		return false;
-	}
+	static bool MatchesAnyTagsWithDirectParentTag(FGameplayTag DirectParentTag,const FGameplayTagContainer& BaseContainer, const FGameplayTagContainer& OtherContainer);
 
 	/**
 	* Determine if any tag in the BaseContainer has the exact same direct parent tag and returns the first one
@@ -360,22 +311,7 @@ public:
 	* @return True if any tag was found and also returns the tag
 	*/
 	UFUNCTION(BlueprintPure, Category = "GameplayTags")
-	static bool GetFirstGameplayTagWithExactParent(FGameplayTag DirectParentTag, const FGameplayTagContainer& BaseContainer, FGameplayTag& FoundTag)
-	{
-		TArray<FGameplayTag> BaseContainerTags;
-		BaseContainer.GetGameplayTagArray(BaseContainerTags);
-
-		for (const FGameplayTag& OtherTag : BaseContainerTags)
-		{
-			if (OtherTag.RequestDirectParent().MatchesTagExact(DirectParentTag))
-			{
-				FoundTag = OtherTag;
-				return true;
-			}
-		}
-
-		return false;
-	}
+	static bool GetFirstGameplayTagWithExactParent(FGameplayTag DirectParentTag, const FGameplayTagContainer& BaseContainer, FGameplayTag& FoundTag);
 
 	// #TODO: probably need to implement this some day
 	// This doesn't work for the web browser widget but it does for the normal widgets like text boxes

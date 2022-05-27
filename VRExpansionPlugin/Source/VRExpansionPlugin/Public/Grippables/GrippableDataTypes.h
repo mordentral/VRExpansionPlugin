@@ -2,7 +2,7 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "Engine/EngineTypes.h"
+//#include "Engine/EngineTypes.h"
 #include "GrippableDataTypes.generated.h"
 
 // A version of the attachment structure that include welding data

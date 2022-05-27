@@ -76,7 +76,17 @@ public:
 		if (MotionControllerData.bValid)
 		{
 			HandPoseContainer.SkeletalTransforms.Empty(MotionControllerData.HandKeyPositions.Num());
-			FTransform ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
+			FTransform ParentTrans = FTransform::Identity;
+
+			if (MotionControllerData.DeviceVisualType == EXRVisualType::Controller)
+			{
+				ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
+			}
+			else // EXRVisualType::Hand visual type
+			{
+				ParentTrans = FTransform(MotionControllerData.HandKeyRotations[(uint8)EHandKeypoint::Palm], MotionControllerData.HandKeyPositions[(uint8)EHandKeypoint::Palm], FVector(1.f));
+			}
+
 			for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); i++)
 			{
 				// Convert to component space, we convert then to parent space later when applying it

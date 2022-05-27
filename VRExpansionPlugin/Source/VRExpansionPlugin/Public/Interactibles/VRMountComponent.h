@@ -2,23 +2,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
-#include "MotionControllerComponent.h"
-#include "VRGripInterface.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
-#include "VRInteractibleFunctionLibrary.h"
-#include "PhysicsEngine/ConstraintInstance.h"
 #include "Components/StaticMeshComponent.h"
-
-#include "PhysicsPublic.h"
-
-#if WITH_PHYSX
-//#include "PhysXSupport.h"
-#endif // WITH_PHYSX
-
-
+#include "Interactibles/VRInteractibleFunctionLibrary.h"
+#include "VRGripInterface.h"
 #include "VRMountComponent.generated.h"
+
+class UGripMotionControllerComponent;
 
 
 UENUM(Blueprintable)

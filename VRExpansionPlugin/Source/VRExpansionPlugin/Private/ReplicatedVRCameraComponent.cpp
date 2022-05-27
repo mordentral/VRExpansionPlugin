@@ -2,7 +2,8 @@
 
 #include "ReplicatedVRCameraComponent.h"
 #include "Net/UnrealNetwork.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
+#include "Net/UnrealNetwork.h"
 #include "VRBaseCharacter.h"
 #include "IXRTrackingSystem.h"
 #include "IXRCamera.h"
@@ -36,6 +37,10 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	bReppedOnce = false;
 
 	OverrideSendTransform = nullptr;
+
+	LastRelativePosition = FTransform::Identity;
+	bSampleVelocityInWorldSpace = false;
+	bHadValidFirstVelocity = false;
 
 	//bUseVRNeckOffset = true;
 	//VRNeckOffset = FTransform(FRotator::ZeroRotator, FVector(15.0f,0,0), FVector(1.0f));
@@ -118,7 +123,7 @@ void UReplicatedVRCameraComponent::OnAttachmentChanged()
 	}
 	else
 	{
-		AttachChar.Reset();
+		AttachChar = nullptr;
 	}
 
 	Super::OnAttachmentChanged();
@@ -178,14 +183,24 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 			}
 		}
 	}
+
+	// Save out the component velocity from this and last frame
+	if(bHadValidFirstVelocity || !LastRelativePosition.Equals(FTransform::Identity))
+	{ 
+		bHadValidFirstVelocity = true;
+		ComponentVelocity = ((bSampleVelocityInWorldSpace ? GetComponentLocation() : GetRelativeLocation()) - LastRelativePosition.GetTranslation()) / DeltaTime;
+	}
+
+	LastRelativePosition = bSampleVelocityInWorldSpace ? this->GetComponentTransform() : this->GetRelativeTransform();
 }
+
 
 void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 
-	if (!bUpdateInCharacterMovement || !AttachChar.IsValid())
+	if (!bUpdateInCharacterMovement || !IsValid(AttachChar))
 	{
 		UpdateTracking(DeltaTime);
 	}

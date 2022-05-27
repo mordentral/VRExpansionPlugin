@@ -3,20 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
-#include "VRBPDatatypes.h"
-#include "VRGripInterface.h"
-#include "VRExpansionFunctionLibrary.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
 #include "Components/SceneComponent.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "Components/PoseableMeshComponent.h"
-#include "Animation/AnimSequence.h"
 #include "Animation/AnimInstance.h"
-#include "Animation/AnimInstanceProxy.h"
-#include "Animation/PoseSnapshot.h"
 #include "HandSocketComponent.generated.h"
+
+class USkeletalMeshComponent;
+class UPoseableMeshComponent;
+class USkeletalMesh;
+class UGripMotionControllerComponent;
+class UAnimSequence;
+struct FPoseSnapshot;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRHandSocketComponent, Log, All);
 
@@ -82,7 +80,7 @@ public:
 		TEnumAsByte<EVRAxis::Type> MirrorAxis;
 
 	// Axis to flip on when mirroring this socket
-	UPROPERTY(EditDefaultsOnly, Category = "Hand Socket Data|Mirroring|Advanced")
+	UPROPERTY(VisibleDefaultsOnly, Category = "Hand Socket Data|Mirroring|Advanced")
 		TEnumAsByte<EVRAxis::Type> FlipAxis;
 
 	// Relative placement of the hand to this socket
@@ -143,9 +141,15 @@ public:
 	// Primary hand animation, for both hands if they share animations, right hand if they don't
 	// If using a custom pose delta this is expected to be the base pose
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
-		UAnimSequence* HandTargetAnimation;
+		TObjectPtr<UAnimSequence> HandTargetAnimation;
 
-	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, bool bUseRawDataOnly);
+	// Scale to apply when mirroring the hand, adjust to visualize your off hand correctly
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+		FVector MirroredScale;
+
+#if WITH_EDITORONLY_DATA
+	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, FName BoneName, bool bUseRawDataOnly);
+#endif
 
 	// Returns the base target animation of the hand (if there is one)
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
@@ -175,6 +179,20 @@ public:
 	// Returns the target relative transform of the hand
 	//UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
 	FTransform GetHandRelativePlacement();
+
+	inline void MirrorHandTransform(FTransform& ReturnTrans, FTransform& relTrans)
+	{
+		if (bOnlyFlipRotation)
+		{
+			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation() - relTrans.GetTranslation());
+			ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetCrossAxis());
+			ReturnTrans.SetTranslation(ReturnTrans.GetTranslation() + relTrans.GetTranslation());
+		}
+		else
+		{
+			ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetCrossAxis());
+		}
+	}
 
 	inline TEnumAsByte<EAxis::Type> GetAsEAxis(TEnumAsByte<EVRAxis::Type> InAxis)
 	{
@@ -240,61 +258,51 @@ public:
 
 	inline TEnumAsByte<EAxis::Type> GetCrossAxis()
 	{
-		if (FlipAxis != EVRAxis::Z && MirrorAxis != EVRAxis::Z)
-		{
-			return EAxis::Z;
-		}
-		else if (FlipAxis != EVRAxis::Y && MirrorAxis != EVRAxis::Y)
-		{
-			return EAxis::Y;
-		}
-		else if (FlipAxis != EVRAxis::X && MirrorAxis != EVRAxis::X)
+		// Checking against the sign now to avoid possible mobile precision issues
+		FVector SignVec = MirroredScale.GetSignVector();
+
+		if (SignVec.X < 0)
 		{
 			return EAxis::X;
 		}
+		else if (SignVec.Z < 0)
+		{
+			return EAxis::Z;
+		}
+		else if (SignVec.Y < 0)
+		{
+			return EAxis::Y;
+		}
 
-		return EAxis::None;
+		return GetAsEAxis(FlipAxis);
+
+		/*if (FlipAxis == EVRAxis::Y)
+		{
+			return EAxis::Z;
+		}
+		else if (FlipAxis == EVRAxis::Z)
+		{
+			return EAxis::X;
+		}
+		else if (FlipAxis == EVRAxis::X)
+		{
+			return EAxis::Y;
+		}*/
+
+		//return EAxis::None;
 	}
 	// Returns the target relative transform of the hand to the gripped object
 	// If you want the transform mirrored you need to pass in which hand is requesting the information
+	// If UseParentScale is true then we will scale the value by the parent scale (generally only for when not using absolute hand scale)
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
-	FTransform GetMeshRelativeTransform(bool bIsRightHand);
+	FTransform GetMeshRelativeTransform(bool bIsRightHand, bool bUseParentScale = false);
 
 	// Returns the defined hand socket component (if it exists, you need to valid check the return!
 	// If it is a valid return you can then cast to your projects base socket class and handle whatever logic you want
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
-	static UHandSocketComponent *  GetHandSocketComponentFromObject(UObject * ObjectToCheck, FName SocketName)
-	{
-		if (AActor* OwningActor = Cast<AActor>(ObjectToCheck))
-		{
-			if (USceneComponent* OwningRoot = Cast<USceneComponent>(OwningActor->GetRootComponent()))
-			{
-				TArray<USceneComponent*> AttachChildren = OwningRoot->GetAttachChildren();
-				for (USceneComponent* AttachChild : AttachChildren)
-				{
-					if (AttachChild && AttachChild->IsA<UHandSocketComponent>() && AttachChild->GetFName() == SocketName)
-					{
-						return Cast<UHandSocketComponent>(AttachChild);
-					}
-				}
-			}
-		}
-		else if (USceneComponent* OwningRoot = Cast<USceneComponent>(ObjectToCheck))
-		{
-			TArray<USceneComponent*> AttachChildren = OwningRoot->GetAttachChildren();
-			for (USceneComponent* AttachChild : AttachChildren)
-			{
-				if (AttachChild && AttachChild->IsA<UHandSocketComponent>() && AttachChild->GetFName() == SocketName)
-				{
-					return Cast<UHandSocketComponent>(AttachChild);
-				}
-			}
-		}
+	static UHandSocketComponent* GetHandSocketComponentFromObject(UObject* ObjectToCheck, FName SocketName);
 
-		return nullptr;
-	}
-
-	virtual FTransform GetHandSocketTransform(UGripMotionControllerComponent* QueryController);
+	virtual FTransform GetHandSocketTransform(UGripMotionControllerComponent* QueryController, bool bIgnoreOnlySnapMesh = false);
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -338,8 +346,8 @@ public:
 		//class USkeletalMeshComponent* HandVisualizerComponent;
 	class UPoseableMeshComponent* HandVisualizerComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
-		class USkeletalMesh* VisualizationMesh;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Transient, Category = "Hand Visualization")
+		TObjectPtr<USkeletalMesh> VisualizationMesh;
 
 	// If we should show the visualization mesh
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
@@ -349,13 +357,20 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
 		bool bMirrorVisualizationMesh;
 
-	// Scale to apply when mirroring the hand, adjust to visualize your off hand correctly
+	// If we should show the grip range of this socket (shows text if always in range)
+	// If override distance is zero then it attempts to infer the value from the parent architecture
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hand Visualization")
-		FVector MirroredScale;
+		bool bShowRangeVisualization;
 
+	void PositionVisualizationMesh();
+	void HideVisualizationMesh();
+
+#endif
+
+#if WITH_EDITORONLY_DATA
 	// Material to apply to the hand
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Visualization")
-		UMaterial* HandPreviewMaterial;
+		TObjectPtr<UMaterial> HandPreviewMaterial;
 
 #endif
 };
@@ -368,7 +383,7 @@ class VREXPANSIONPLUGIN_API UHandSocketAnimInstance : public UAnimInstance
 public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, transient, Category = "Socket Data")
-		UHandSocketComponent* OwningSocket;
+		TObjectPtr<UHandSocketComponent> OwningSocket;
 
 	virtual void NativeInitializeAnimation() override
 	{

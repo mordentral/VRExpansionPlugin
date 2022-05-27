@@ -10,6 +10,9 @@
 #include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.h"
 #include "VRRootComponent.h"
+#include "AITypes.h"
+#include "AI/Navigation/NavigationTypes.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
 
@@ -171,6 +174,17 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 
 				if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 				{
+
+					//#TODO 5.0: Handle this?
+					/*FVector InputVector = FVector::ZeroVector;
+					bool bUsingAsyncTick = (CharacterMovementCVars::AsyncCharacterMovement == 1) && IsAsyncCallbackRegistered();
+					if (!bUsingAsyncTick)
+					{
+						// Do not consume input if simulating asynchronously, we will consume input when filling out async inputs.
+						InputVector = ConsumeInputVector();
+					}*/
+
+
 					const FVector InputVector = ConsumeInputVector();
 					if (!HasValidData() || ShouldSkipUpdate(DeltaTime))
 					{
@@ -194,6 +208,19 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 						if (AVRBaseCharacter* BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
 						{
 							BaseChar->TickSeatInformation(DeltaTime);
+						}
+
+						if (CharacterOwner && !CharacterOwner->IsLocallyControlled() && DeltaTime > 0.0f)
+						{
+							// If not playing root motion, tick animations after physics. We do this here to keep events, notifies, states and transitions in sync with client updates.
+							if (!CharacterOwner->bClientUpdating && !CharacterOwner->IsPlayingRootMotion() && CharacterOwner->GetMesh())
+							{
+								TickCharacterPose(DeltaTime);
+								// TODO: SaveBaseLocation() in case tick moves us?
+
+								// Trigger Events right away, as we could be receiving multiple ServerMoves per frame.
+								CharacterOwner->GetMesh()->ConditionallyDispatchQueuedAnimEvents();
+							}
 						}
 
 					}
@@ -531,10 +558,10 @@ float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta,
 
 }
 
-void UVRBaseCharacterMovementComponent::SetCrouchedHalfHeight(float NewCrouchedHalfHeight)
+/*void UVRBaseCharacterMovementComponent::SetCrouchedHalfHeight(float NewCrouchedHalfHeight)
 {
 	this->CrouchedHalfHeight = NewCrouchedHalfHeight;
-}
+}*/
 
 void UVRBaseCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
 {
@@ -563,6 +590,20 @@ void UVRBaseCharacterMovementComponent::CheckServerAuthedMoveAction()
 			MoveActionArray.Clear();
 		}
 	}
+}
+
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SetTrackingPaused(bool bNewTrackingPaused)
+{
+	StoreSetTrackingPaused(bNewTrackingPaused);
+}
+
+void UVRBaseCharacterMovementComponent::StoreSetTrackingPaused(bool bNewTrackingPaused)
+{
+	FVRMoveActionContainer MoveAction;
+	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_PauseTracking;
+	MoveAction.MoveActionFlags = bNewTrackingPaused;
+	MoveActionArray.MoveActions.Add(MoveAction);
+	CheckServerAuthedMoveAction();
 }
 
 void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport)
@@ -647,7 +688,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_StopAllMovement()
 	CheckServerAuthedMoveAction();
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = MoveActionToPerform;
@@ -656,6 +697,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction M
 	MoveAction.MoveActionLoc = RoundDirectMovement(MoveActionVector);
 	MoveAction.MoveActionRot = MoveActionRotator;
 	MoveAction.MoveActionDataReq = DataRequirementsForMoveAction;
+	MoveAction.MoveActionFlags = MoveActionFlags;
 	MoveActionArray.MoveActions.Add(MoveAction);
 
 	CheckServerAuthedMoveAction();
@@ -683,13 +725,17 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 		{
 			/*return */DoMASetRotation(MoveAction);
 		}break;
+		case EVRMoveAction::VRMOVEACTION_PauseTracking:
+		{
+			/*return */DoMAPauseTracking(MoveAction);
+		}break;
 		case EVRMoveAction::VRMOVEACTION_None:
 		{}break;
 		default: // All other move actions (CUSTOM)
 		{
 			if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 			{
-				OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot);
+				OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot, MoveAction.MoveActionFlags);
 			}
 		}break;
 		}
@@ -885,6 +931,18 @@ bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement(FVRMoveActionContain
 		return true;
 	}
 
+	return false;
+}
+
+bool UVRBaseCharacterMovementComponent::DoMAPauseTracking(FVRMoveActionContainer& MoveAction)
+{
+	if (AVRBaseCharacter* OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	{
+		OwningCharacter->bTrackingPaused = MoveAction.MoveActionFlags > 0;
+		OwningCharacter->PausedTrackingLoc = MoveAction.MoveActionLoc;
+		OwningCharacter->PausedTrackingRot = MoveAction.MoveActionRot.Yaw;
+		return true;
+	}
 	return false;
 }
 
@@ -1533,21 +1591,22 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			// Avoid moving the mesh during movement if SmoothClientPosition will take care of it.
 			if(NetworkSmoothingMode != ENetworkSmoothingMode::Disabled)
 			{
-				const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
+				const FScopedPreventAttachedComponentMove PreventMeshMove(bPreventMeshMovement ? BaseVRCharacterOwner->NetSmoother : nullptr);
 				//const FScopedPreventAttachedComponentMove PreventMeshMovement(bPreventMeshMovement ? Mesh : nullptr);
-				if (CharacterOwner->IsMatineeControlled() || CharacterOwner->IsPlayingRootMotion())
+				if (CharacterOwner->IsPlayingRootMotion())
 				{
 					PerformMovement(DeltaSeconds);
 				}
 				else
 				{
-					if(!bDisableSimulatedTickWhenSmoothingMovement)
+					// Moved this var into the VRChar to control smoothing
+					//if(!bDisableSimulatedTickWhenSmoothingMovement)
 						SimulateMovement(DeltaSeconds);
 				}
 			}
 			else
 			{
-				if (CharacterOwner->IsMatineeControlled() || CharacterOwner->IsPlayingRootMotion())
+				if (CharacterOwner->IsPlayingRootMotion())
 				{
 					PerformMovement(DeltaSeconds);
 				}
@@ -1789,6 +1848,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 				// Take difference between where we were rotated before, and where we're going
 				ClientData->MeshRotationOffset = FQuat::Identity;// (NewRotation.Inverse() * OldRotation) * ClientData->MeshRotationOffset;
 				ClientData->MeshRotationTarget = FQuat::Identity;
+
 				const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner->NetSmoother);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 			}
@@ -1883,21 +1943,22 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
 		{
 			// Erased most of the code here, check back in later
-			const FVector NewRelLocation = ClientData->MeshRotationOffset.UnrotateVector(ClientData->MeshTranslationOffset) + CharacterOwner->GetBaseTranslationOffset();
+			const FVector NewRelLocation = ClientData->MeshRotationOffset.UnrotateVector(ClientData->MeshTranslationOffset);// + CharacterOwner->GetBaseTranslationOffset();
 			BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(NewRelLocation);
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
 		{
 			// Adjust mesh location and rotation
-			const FVector NewRelTranslation = UpdatedComponent->GetComponentToWorld().InverseTransformVectorNoScale(ClientData->MeshTranslationOffset) + CharacterOwner->GetBaseTranslationOffset();
-			const FQuat NewRelRotation = ClientData->MeshRotationOffset * CharacterOwner->GetBaseRotationOffset();
+			const FVector NewRelTranslation = UpdatedComponent->GetComponentToWorld().InverseTransformVectorNoScale(ClientData->MeshTranslationOffset);// +CharacterOwner->GetBaseTranslationOffset();
+			const FQuat NewRelRotation = ClientData->MeshRotationOffset;// *CharacterOwner->GetBaseRotationOffset();
 			//Basechar->NetSmoother->SetRelativeLocation(NewRelTranslation);
 
 			BaseVRCharacterOwner->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
+
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
 		{
-			if (!UpdatedComponent->GetComponentQuat().Equals(ClientData->MeshRotationOffset, SCENECOMPONENT_QUAT_TOLERANCE) || !UpdatedComponent->GetComponentLocation().Equals(ClientData->MeshTranslationOffset, KINDA_SMALL_NUMBER))
+			if (!UpdatedComponent->GetComponentQuat().Equals(ClientData->MeshRotationOffset, SCENECOMPONENT_QUAT_TOLERANCE))// || !UpdatedComponent->GetComponentLocation().Equals(ClientData->MeshTranslationOffset, KINDA_SMALL_NUMBER))
 			{
 				//UpdatedComponent->SetWorldLocation(ClientData->MeshTranslationOffset);
 				UpdatedComponent->SetWorldLocationAndRotation(ClientData->MeshTranslationOffset, ClientData->MeshRotationOffset);
@@ -1934,8 +1995,8 @@ FVector UVRBaseCharacterMovementComponent::GetCustomInputVector()
 void UVRBaseCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 {
 	// If is a custom or VR custom movement mode
-	int32 MovementFlags = (Flags >> 2) & 15;
-	VRReplicatedMovementMode = (EVRConjoinedMovementModes)MovementFlags;
+	//int32 MovementFlags = (Flags >> 2) & 15;
+	//VRReplicatedMovementMode = (EVRConjoinedMovementModes)MovementFlags;
 
 	//bWantsToSnapTurn = ((Flags & FSavedMove_VRBaseCharacter::FLAG_SnapTurn) != 0);
 

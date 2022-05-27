@@ -7,7 +7,7 @@
 #include "UObject/Object.h"
 #include "Engine/EngineTypes.h"
 
-#include "OpenXRExpansionTypes.Generated.h"
+#include "OpenXRExpansionTypes.generated.h"
 
 // This makes a lot of the blueprint functions cleaner
 UENUM()

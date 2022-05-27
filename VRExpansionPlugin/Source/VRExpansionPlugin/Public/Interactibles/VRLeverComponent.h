@@ -3,24 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GripMotionControllerComponent.h"
-#include "MotionControllerComponent.h"
-#include "VRGripInterface.h"
 #include "GameplayTagContainer.h"
 #include "GameplayTagAssetInterface.h"
+#include "VRGripInterface.h"
 #include "Interactibles/VRInteractibleFunctionLibrary.h"
-#include "VRExpansionFunctionLibrary.h"
-#include "PhysicsEngine/ConstraintInstance.h"
 #include "Components/StaticMeshComponent.h"
-
-#include "PhysicsPublic.h"
-
-#if WITH_PHYSX
-#include "PhysXPublic.h"
-#endif // WITH_PHYSX
-
 #include "VRLeverComponent.generated.h"
 
+class UGripMotionControllerComponent;
 
 UENUM(Blueprintable)
 enum class EVRInteractibleLeverAxis : uint8
@@ -311,19 +301,12 @@ public:
 	virtual void OnUnregister() override;
 
 	// Called when a object is gripped
-	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnGripSignature OnGripped;
 
 	// Called when a object is dropped
-	// If you override the OnGrip event then you will need to call the parent implementation or this event will not fire!!
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnDropSignature OnDropped;
-
-#if WITH_PHYSX
-	physx::PxD6Joint* HandleData;
-	//int32 SceneIndex;
-#endif
 
 	bool DestroyConstraint();
 	bool SetupConstraint();
@@ -370,6 +353,9 @@ public:
 
 	// Returns if the object is held and if so, which controllers are holding it
 	void IsHeld_Implementation(TArray<FBPGripPair>& CurHoldingControllers, bool& bCurIsHeld) override;
+
+	// Interface function used to throw the delegates that is invisible to blueprints so that it can't be overridden
+	virtual void Native_NotifyThrowGripDelegates(UGripMotionControllerComponent* Controller, bool bGripped, const FBPActorGripInformation& GripInformation, bool bWasSocketed = false) override;
 
 	// Sets is held, used by the plugin
 	void SetHeld_Implementation(UGripMotionControllerComponent* NewHoldingController, uint8 GripID, bool bNewIsHeld) override;

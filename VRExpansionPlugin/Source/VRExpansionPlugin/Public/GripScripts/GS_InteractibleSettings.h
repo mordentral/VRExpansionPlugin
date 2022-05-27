@@ -6,6 +6,7 @@
 #include "VRGripScriptBase.h"
 #include "GS_InteractibleSettings.generated.h"
 
+class UGripMotionControllerComponent;
 
 USTRUCT(BlueprintType, Category = "VRExpansionLibrary")
 struct VREXPANSIONPLUGIN_API FBPGS_InteractionSettings
@@ -109,18 +110,5 @@ public:
 		InteractionSettings.bHasValidBaseTransform = false;
 	}
 
-	inline void RemoveRelativeRotation(UGripMotionControllerComponent * GrippingController, const FBPActorGripInformation & GripInformation)
-	{
-		InteractionSettings.BaseTransform = GripInformation.RelativeTransform;
-
-		// Reconstitute the controller transform relative to the object, then remove the rotation and set it back to relative to controller
-		// This could likely be done easier by just removing rotation that the object doesn't possess but for now this will do.
-		FTransform compTrans = this->GetParentTransform(true, GripInformation.GrippedBoneName);
-
-		InteractionSettings.BaseTransform = InteractionSettings.BaseTransform.Inverse() * compTrans; // Reconstitute transform
-		InteractionSettings.BaseTransform.SetRotation(FQuat::Identity); // Remove rotation
-
-		InteractionSettings.BaseTransform = compTrans.GetRelativeTransform(InteractionSettings.BaseTransform); // Set back to relative
-		InteractionSettings.bHasValidBaseTransform = true;
-	}
+	void RemoveRelativeRotation(UGripMotionControllerComponent* GrippingController, const FBPActorGripInformation& GripInformation);
 };

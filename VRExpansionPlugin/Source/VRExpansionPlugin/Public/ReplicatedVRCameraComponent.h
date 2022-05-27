@@ -3,7 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
-#include "Net/UnrealNetwork.h"
+//#include "Net/UnrealNetwork.h"
 #include "Camera/CameraComponent.h"
 #include "ReplicatedVRCameraComponent.generated.h"
 
@@ -26,7 +26,7 @@ public:
 		bool bUpdateInCharacterMovement;
 
 	UPROPERTY()
-		TWeakObjectPtr<AVRBaseCharacter> AttachChar;
+		TObjectPtr<AVRBaseCharacter> AttachChar;
 	void UpdateTracking(float DeltaTime);
 
 	virtual void OnAttachmentChanged() override;
@@ -39,6 +39,13 @@ public:
 
 	/** Whether or not this component is currently on the network server*/
 	bool bIsServer;
+
+	FTransform LastRelativePosition;
+	bool bHadValidFirstVelocity;
+
+	// If we should sample the velocity in world or local space
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|ComponentVelocity")
+		bool bSampleVelocityInWorldSpace;
 
 	// For non view target positional updates
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")

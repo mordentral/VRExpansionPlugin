@@ -2,6 +2,9 @@
 
 #include "Interactibles/VRMountComponent.h"
 #include "VRExpansionFunctionLibrary.h"
+#include "GripMotionControllerComponent.h"
+//#include "PhysicsPublic.h"
+//#include "PhysicsEngine/ConstraintInstance.h"
 #include "Net/UnrealNetwork.h"
 
 //=============================================================================

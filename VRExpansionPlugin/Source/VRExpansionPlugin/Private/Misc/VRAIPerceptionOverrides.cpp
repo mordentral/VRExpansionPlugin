@@ -4,7 +4,7 @@
 #include "EngineDefines.h"
 #include "EngineGlobals.h"
 #include "CollisionQueryParams.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "AIModule/Classes/AISystem.h"
 #include "AIModule/Classes/Perception/AIPerceptionComponent.h"
 #include "VisualLogger/VisualLogger.h"
@@ -377,7 +377,7 @@ float UAISense_Sight_VR::Update()
 
 						auto HitResultActorIsOwnedByTargetActor = [&HitResult, TargetActor]()
 						{
-							AActor* HitResultActor = HitResult.Actor.Get();
+							AActor* HitResultActor = HitResult.HitObjectHandle.FetchActor();
 							return (HitResultActor ? HitResultActor->IsOwnedBy(TargetActor) : false);
 						};
 

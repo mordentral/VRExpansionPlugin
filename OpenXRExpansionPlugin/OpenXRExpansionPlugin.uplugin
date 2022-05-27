@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 1,
-	"VersionName": "1.0",
+	"Version": 5.0,
+	"VersionName": "5.0",
 	"FriendlyName": "OpenXRExpansionPlugin",
 	"Description": "An set of utility functions for OpenXR",
 	"Category": "Virtual Reality",
@@ -14,6 +14,12 @@
 	"CanContainContent": false,
 	"IsBetaVersion": false,
 	"Installed": true,
+	"SupportedTargetPlatforms": [
+		"Win64",
+		"Linux",
+		"Android",
+		"HoloLens"
+	],
 	"Modules": [
 		{
 			"Name": "OpenXRExpansionPlugin",

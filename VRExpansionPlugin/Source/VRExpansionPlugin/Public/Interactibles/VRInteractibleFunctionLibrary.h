@@ -2,11 +2,10 @@
 
 #pragma once
 #include "CoreMinimal.h"
-//#include "IMotionController.h"
 #include "VRBPDatatypes.h"
-#include "UObject/ObjectMacros.h"
-#include "Engine/EngineTypes.h"
-#include "UObject/ScriptInterface.h"
+//#include "UObject/ObjectMacros.h"
+//#include "Engine/EngineTypes.h"
+//#include "UObject/ScriptInterface.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GameplayTagContainer.h"
 

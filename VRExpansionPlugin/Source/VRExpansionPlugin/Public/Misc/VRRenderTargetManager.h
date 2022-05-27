@@ -1,26 +1,14 @@
 #pragma once
-
-#include "Serialization/ArchiveSaveCompressedProxy.h"
-#include "Serialization/ArchiveLoadCompressedProxy.h"
-
-//#include "RenderUtils.h"
-#include "GeomTools.h"
-//#include "DrawDebugHelpers.h"
-#include "Engine/TextureRenderTarget2D.h"
-#include "Kismet/KismetMathLibrary.h"
-#include "Kismet/KismetRenderingLibrary.h"
-#include "Engine/CanvasRenderTarget2D.h"
-//#include "Net/Core/PushModel/PushModel.h"
 #include "TimerManager.h"
-#include "GameFramework/PlayerController.h"
-#include "Engine/Canvas.h"
-#include "Materials/Material.h"
-//#include "ImageWrapper/Public/IImageWrapper.h"
-//#include "ImageWrapper/Public/IImageWrapperModule.h"
-
 #include "VRRenderTargetManager.generated.h"
 
 class UVRRenderTargetManager;
+class UCanvasRenderTarget2D;
+class UCanvas;
+class UTexture2D;
+class UMaterial;
+class APlayerController;
+
 
 // #TODO: Dirty rects so don't have to send entire texture?
 
@@ -191,7 +179,7 @@ public:
 	ARenderTargetReplicationProxy(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_Manager)
-		TWeakObjectPtr<UVRRenderTargetManager> OwningManager;
+		TObjectPtr<UVRRenderTargetManager> OwningManager;
 
 	UPROPERTY(Replicated)
 		uint32 OwnersID;
@@ -262,10 +250,10 @@ struct FClientRepData {
 	GENERATED_BODY()
 
 	UPROPERTY()
-		TWeakObjectPtr<APlayerController> PC;
+		TObjectPtr<APlayerController> PC;
 
 	UPROPERTY()
-		TWeakObjectPtr<ARenderTargetReplicationProxy> ReplicationProxy;
+		TObjectPtr<ARenderTargetReplicationProxy> ReplicationProxy;
 
 	UPROPERTY()
 		bool bIsRelevant;
@@ -275,6 +263,8 @@ struct FClientRepData {
 
 	FClientRepData() 
 	{
+		PC = nullptr;
+		ReplicationProxy = nullptr;
 		bIsRelevant = false;
 		bIsDirty = false;
 	}
@@ -298,7 +288,7 @@ public:
 	uint32 OwnerIDCounter;
 
 	UPROPERTY(Transient)
-		TWeakObjectPtr<ARenderTargetReplicationProxy> LocalProxy;
+		TObjectPtr<ARenderTargetReplicationProxy> LocalProxy;
 
 	TArray<FRenderManagerOperation> RenderOperationStore;
 	TArray<FRenderManagerOperation> LocalRenderOperationStore;
@@ -351,7 +341,7 @@ public:
 		int32 MaxBytesPerSecondRate;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "RenderTargetManager")
-		UCanvasRenderTarget2D* RenderTarget;
+		TObjectPtr<UCanvasRenderTarget2D> RenderTarget;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "RenderTargetManager")
 		int32 RenderTargetWidth;
@@ -394,6 +384,6 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 protected:
-	TQueue<FRenderDataStore*> RenderDataQueue;
+	TQueue<FRenderDataStore *> RenderDataQueue;
 
 };

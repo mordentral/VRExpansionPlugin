@@ -3,18 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "UObject/Object.h"
 #include "VRBPDatatypes.h"
-#include "Components/PrimitiveComponent.h"
-#include "GameFramework/Actor.h"
 #include "Tickable.h"
-#include "Net/UnrealNetwork.h"
 
 #include "VRGripScriptBase.generated.h"
 
 class UGripMotionControllerComponent;
 class UVRGripInterface;
+class UPrimitiveComponent;
+class AActor;
+
 
 UENUM(Blueprintable)
 enum class EGSTransformOverrideType : uint8
