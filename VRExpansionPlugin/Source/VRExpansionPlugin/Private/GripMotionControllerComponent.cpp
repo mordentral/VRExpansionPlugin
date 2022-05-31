@@ -5439,6 +5439,14 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		}
 	}
 
+	// Get the PxRigidDynamic that we want to grab.
+	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
+	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !FPhysicsInterface::IsValid(rBodyInstance->ActorHandle) || !rBodyInstance->BodySetup.IsValid())
+	{	
+		return false;
+	}
+
+	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
 
 	// Needs to be simulating in order to run physics
 	if (!NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || !NewGrip.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
@@ -5452,15 +5460,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		if (skele)
 			skele->SetAllBodiesBelowSimulatePhysics(NewGrip.GrippedBoneName, true);
 	}*/
-
-	// Get the PxRigidDynamic that we want to grab.
-	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
-	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !FPhysicsInterface::IsValid(rBodyInstance->ActorHandle) || !rBodyInstance->BodySetup.IsValid())
-	{	
-		return false;
-	}
-
-	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
 	
 	if (!HandleInfo->bSkipResettingCom && !FPhysicsInterface::IsValid(HandleInfo->KinActorData2) && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 	{
