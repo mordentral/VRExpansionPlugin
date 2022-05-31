@@ -1782,6 +1782,7 @@ public:
 	bool bSkipResettingCom;
 	bool bSkipMassCheck;
 	bool bSkipDeletingKinematicActor;
+	bool bInitiallySetup;
 
 	FBPActorPhysicsHandleInformation()
 	{	
@@ -1795,6 +1796,7 @@ public:
 		bSkipResettingCom = false;
 		bSkipMassCheck = false;
 		bSkipDeletingKinematicActor = false;
+		bInitiallySetup = false;
 #if WITH_CHAOS
 		KinActorData2 = nullptr;
 #endif

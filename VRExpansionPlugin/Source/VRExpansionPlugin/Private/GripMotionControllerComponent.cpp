@@ -2189,6 +2189,15 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 
 	if (UPrimitiveComponent * root = Cast<UPrimitiveComponent>(ObjectToSocket))
 	{
+
+		if (FBodyInstance* rBodyInstance = root->GetBodyInstance())
+		{
+			if (rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+			{
+				rBodyInstance->OnRecalculatedMassProperties().RemoveAll(this);
+			}
+		}
+
 		// Stop simulation for socketing
 		if (bWasSimulating || root->IsSimulatingPhysics())
 		{
@@ -2204,6 +2213,15 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 
 		if (UPrimitiveComponent * rootComp = Cast<UPrimitiveComponent>(pActor->GetRootComponent()))
 		{
+
+			if (FBodyInstance* rBodyInstance = rootComp->GetBodyInstance())
+			{
+				if (rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+				{
+					rBodyInstance->OnRecalculatedMassProperties().RemoveAll(this);
+				}
+			}
+
 			if (bWasSimulating || rootComp->IsSimulatingPhysics())
 			{
 				// Stop simulation for socketing
@@ -5205,7 +5223,7 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 	FBPActorPhysicsHandleInformation* HandleInfo = GetPhysicsGrip(GripInfo);
 
 	// Don't update if the handle doesn't exist or is currently paused
-	if (!HandleInfo || HandleInfo->bIsPaused)
+	if (!HandleInfo || HandleInfo->bIsPaused || !HandleInfo->bInitiallySetup)
 		return false;
 
 #if !PHYSICS_INTERFACE_PHYSX
@@ -5439,6 +5457,10 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		}
 	}
 
+	// Needs to be simulating in order to run physics
+	if (!NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || !NewGrip.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
+		root->SetSimulatePhysics(true);
+
 	// Get the PxRigidDynamic that we want to grab.
 	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
 	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !FPhysicsInterface::IsValid(rBodyInstance->ActorHandle) || !rBodyInstance->BodySetup.IsValid())
@@ -5447,19 +5469,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	}
 
 	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
-
-	// Needs to be simulating in order to run physics
-	if (!NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || !NewGrip.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
-		root->SetSimulatePhysics(true);
-
-	/*if(NewGrip.GrippedBoneName == NAME_None)
-		root->SetSimulatePhysics(true);
-	else
-	{
-		USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root);
-		if (skele)
-			skele->SetAllBodiesBelowSimulatePhysics(NewGrip.GrippedBoneName, true);
-	}*/
 	
 	if (!HandleInfo->bSkipResettingCom && !FPhysicsInterface::IsValid(HandleInfo->KinActorData2) && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 	{
@@ -5468,11 +5477,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		rBodyInstance->UpdateMassProperties();
 
 	}
-
-	/*if (NewGrip.GrippedBoneName != NAME_None)
-	{
-		rBodyInstance->SetInstanceSimulatePhysics(true);
-	}*/
 
 	FPhysicsCommand::ExecuteWrite(rBodyInstance->ActorHandle, [&](const FPhysicsActorHandle& Actor)
 	{
@@ -5923,6 +5927,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 #endif
 		}
 	});
+
+	HandleInfo->bInitiallySetup = true;
 
 	// Bind to further updates in order to keep it alive
 	if (!HandleInfo->bSkipMassCheck && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
