@@ -6715,7 +6715,6 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 								// Deny the old grip, another connection came and gripped it
 								GripPair.HoldingController->DropObjectByInterface(newGrip.GrippedObject, GripPair.GripID);
 								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
-								return;
 							}break;
 							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_DropAll:
 							{
