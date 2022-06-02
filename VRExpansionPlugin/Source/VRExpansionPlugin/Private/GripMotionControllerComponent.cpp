@@ -91,6 +91,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bDisableLowLatencyUpdate = false;
 	bHasAuthority = false;
 	bUseWithoutTracking = false;
+	ClientAuthConflictResolutionMethod = EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_First;
 	bAlwaysSendTickGrip = false;
 	bAutoActivate = true;
 
@@ -6672,6 +6673,70 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 
 	if (!LocallyGrippedObjects.Contains(newGrip))
 	{
+
+		bool bImplementsInterface = newGrip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass());
+
+		TArray<FBPGripPair> HoldingControllers;
+		bool bIsHeld = false;
+		if (bImplementsInterface)
+		{
+			IVRGripInterface::Execute_IsHeld(newGrip.GrippedObject, HoldingControllers, bIsHeld);
+
+			if (bIsHeld && ClientAuthConflictResolutionMethod != EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_None)
+			{
+				// Its held and doesn't allow more than one grip at a time
+				if (!IVRGripInterface::Execute_AllowsMultipleGrips(newGrip.GrippedObject))
+				{
+					// Lets see if a different owner is holding it, if so, deny this request
+					for (FBPGripPair& GripPair : HoldingControllers)
+					{
+						if (!GripPair.HoldingController || GripPair.GripID == INVALID_VRGRIP_ID)
+						{
+							continue;
+						}
+
+						// If the controllers have different owners (if its the same then consider them as locally transacting and let it go)
+						if (GripPair.HoldingController->GetOwner()->GetNetOwner() != this->GetOwner()->GetNetOwner())
+						{
+							switch (ClientAuthConflictResolutionMethod)
+							{
+							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_First:
+							{
+								// Deny the grip, another connection already came and gripped it
+								Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, newGrip.GripID);
+
+								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
+								return;
+							}break;
+							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_Last:
+							{				
+								// Deny the old grip, another connection came and gripped it
+								GripPair.HoldingController->DropObjectByInterface(newGrip.GrippedObject, GripPair.GripID);
+								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
+								return;
+							}break;
+							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_DropAll:
+							{
+								// Deny both grips
+								Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, newGrip.GripID);
+								GripPair.HoldingController->DropObjectByInterface(newGrip.GrippedObject, GripPair.GripID);
+								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
+								return;
+							}break;
+							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_None:
+							default:
+							{
+								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
+							}break;
+
+							}
+						}
+					}
+				}
+			}
+		}
+
+
 		UPrimitiveComponent* PrimComp = nullptr;
 		AActor* pActor = nullptr;
 
@@ -6693,18 +6758,14 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 			return;
 		}
 
-		TArray<FBPGripPair> HoldingControllers;
-		bool bIsHeld = false;
 		bool bHadOriginalSettings = false;
 		bool bOriginalGravity = false;
 		bool bOriginalReplication = false;
 
-		if (newGrip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+		if (bImplementsInterface)
 		{
 			//if (IVRGripInterface::Execute_DenyGripping(root))
 			//	return false; // Interface is saying not to grip it right now
-
-			IVRGripInterface::Execute_IsHeld(newGrip.GrippedObject, HoldingControllers, bIsHeld);
 			if (bIsHeld)
 			{
 				// If we are held by multiple controllers then lets copy our original values from the first one	

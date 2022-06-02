@@ -57,6 +57,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRGripControllerOnGripOutOfRange, 
 /** Delegate for notification when the controller profile transform changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRGripControllerOnProfileTransformChanged, const FTransform &, NewRelTransForProcComps, const FTransform &, NewProfileTransform);
 
+/** Delegate for notification when the controller handled a local auth grip conflict. Only called on the server. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVROnClientAuthGripConflict, UObject *, Object, EVRClientAuthConflictResolutionMode, ResolutionMethod);
+
 /**
 * Utility class for applying an offset to a hierarchy of components in the renderer thread.
 */
@@ -452,6 +455,12 @@ public:
 	// Notify the server that we locally gripped something
 	UFUNCTION(Reliable, Server, WithValidation)
 	void Server_NotifyLocalGripRemoved(uint8 GripID, const FTransform_NetQuantize &TransformAtDrop, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity);
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|ClientAuth")
+		EVRClientAuthConflictResolutionMode ClientAuthConflictResolutionMethod;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
+		FVROnClientAuthGripConflict OnClientAuthGripConflict;
 	
 	// Handle a server initiated grip
 	UFUNCTION(Reliable, Server, WithValidation, Category = "GripMotionController")
