@@ -5533,6 +5533,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				{
 					RootBoneRotation = FTransform(skele->GetBoneTransform(RootBodyIndex, FTransform::Identity));
 					RootBoneRotation.SetScale3D(FVector(1.f));
+					RootBoneRotation.NormalizeRotation();
 					HandleInfo->RootBoneRotation = RootBoneRotation;
 				}
 			}
@@ -5552,11 +5553,12 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 		}
 
-
 		if (COMType == EPhysicsGripCOMType::COM_SetAndGripAt)
 		{
 			// Update the center of mass
-			FVector Loc = (FTransform((RootBoneRotation * NewGrip.RelativeTransform).ToInverseMatrixWithScale())).GetLocation();
+			FTransform ForwardTrans = (RootBoneRotation * NewGrip.RelativeTransform);
+			ForwardTrans.NormalizeRotation();
+			FVector Loc = (FTransform(ForwardTrans.ToInverseMatrixWithScale())).GetLocation();
 			Loc *= rBodyInstance->Scale3D;
 
 			FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);

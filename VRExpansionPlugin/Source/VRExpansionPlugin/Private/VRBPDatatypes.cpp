@@ -86,6 +86,7 @@ bool FTransform_NetQuantize::NetSerialize(FArchive& Ar, class UPackageMap* Map, 
 
 		// Set it
 		this->SetComponents(rRotation.Quaternion(), rTranslation, rScale3D);
+		this->NormalizeRotation();
 	}
 
 	return bOutSuccess;
