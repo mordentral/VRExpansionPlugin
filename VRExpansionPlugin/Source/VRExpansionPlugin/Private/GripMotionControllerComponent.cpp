@@ -5224,8 +5224,9 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 
 	// Don't update if the handle doesn't exist or is currently paused
 	if (!HandleInfo || HandleInfo->bIsPaused || !HandleInfo->bInitiallySetup)
+	{
 		return false;
-
+	}
 #if !PHYSICS_INTERFACE_PHYSX
 		// We don't have access to the shortcuts outside of physx
 		return SetUpPhysicsHandle(GripInfo);
@@ -5291,6 +5292,7 @@ bool UGripMotionControllerComponent::PausePhysicsHandle(FBPActorPhysicsHandleInf
 		return false;
 
 	HandleInfo->bIsPaused = true;
+	HandleInfo->bInitiallySetup = false;
 	FPhysicsInterface::ReleaseConstraint(HandleInfo->HandleData2);
 	return true;
 }
