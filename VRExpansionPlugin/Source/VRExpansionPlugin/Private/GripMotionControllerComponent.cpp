@@ -5306,6 +5306,7 @@ bool UGripMotionControllerComponent::PausePhysicsHandle(FBPActorPhysicsHandleInf
 		return false;
 
 	HandleInfo->bIsPaused = true;
+	HandleInfo->bIsInitiallySetup = false;
 	FPhysicsInterface::ReleaseConstraint(HandleInfo->HandleData2);
 	return true;
 }
