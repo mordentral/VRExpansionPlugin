@@ -9,7 +9,7 @@
 #include "GripMotionControllerComponent.h"
 #include "VRPathFollowingComponent.h"
 #include "Net/UnrealNetwork.h"
-#include "XRMotioncontrollerBase.h"
+#include "XRMotionControllerBase.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 DEFINE_LOG_CATEGORY(LogBaseVRCharacter);
