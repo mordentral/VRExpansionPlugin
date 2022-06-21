@@ -424,8 +424,10 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 			{
 				Owner->Modify();
 			}
+
 			HandSocketComponent->HandRelativePlacement = HandSocketComponent->HandRelativePlacement * HandSocketComponent->GetRelativeTransform();// HandSocketComponent->GetComponentTransform();
-			
+			HandSocketComponent->bDecoupled = true;
+
 			TSharedPtr<FComponentVisualizer> Visualizer = GUnrealEd->FindComponentVisualizer(HandSocketComponent->GetClass());
 			FHandSocketVisualizer* HandVisualizer = (FHandSocketVisualizer*)Visualizer.Get();
 
@@ -434,6 +436,7 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 				if (UHandSocketComponent* RefHand = HandVisualizer->GetCurrentlyEditingComponent())
 				{
 					RefHand->HandRelativePlacement = HandSocketComponent->HandRelativePlacement;
+					RefHand->bDecoupled = true;
 					//FComponentVisualizer::NotifyPropertyModified(RefHand, FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
 				}
 			}
@@ -449,6 +452,7 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 				Owner->Modify();
 			}
 			HandSocketComponent->HandRelativePlacement = HandSocketComponent->HandRelativePlacement.GetRelativeTransform(HandSocketComponent->GetRelativeTransform());
+			HandSocketComponent->bDecoupled = false;
 			
 			TSharedPtr<FComponentVisualizer> Visualizer = GUnrealEd->FindComponentVisualizer(HandSocketComponent->GetClass());
 			FHandSocketVisualizer* HandVisualizer = (FHandSocketVisualizer*)Visualizer.Get();
@@ -458,13 +462,17 @@ void FHandSocketComponentDetails::OnLockedStateUpdated(IDetailLayoutBuilder* Lay
 				if (UHandSocketComponent* RefHand = HandVisualizer->GetCurrentlyEditingComponent())
 				{
 					RefHand->HandRelativePlacement = HandSocketComponent->HandRelativePlacement;
+					RefHand->bDecoupled = false;
 					//FComponentVisualizer::NotifyPropertyModified(RefHand, FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
 				}
 			}
 		}
 	}
 
-	FComponentVisualizer::NotifyPropertyModified(HandSocketComponent.Get(), FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
+	TArray<FProperty*> PropertiesToModify;
+	PropertiesToModify.Add(FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, HandRelativePlacement)));
+	PropertiesToModify.Add(FindFProperty<FProperty>(UHandSocketComponent::StaticClass(), GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bDecoupled)));
+	FComponentVisualizer::NotifyPropertiesModified(HandSocketComponent.Get(), PropertiesToModify);
 }
 
 void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)

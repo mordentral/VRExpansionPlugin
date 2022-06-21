@@ -7,6 +7,7 @@
 #include "GameplayTagAssetInterface.h"
 #include "Components/SceneComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Misc/Guid.h"
 #include "HandSocketComponent.generated.h"
 
 class USkeletalMeshComponent;
@@ -17,6 +18,29 @@ class UAnimSequence;
 struct FPoseSnapshot;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRHandSocketComponent, Log, All);
+
+// Custom serialization version for assets/classes in the AnimGraphRuntime and AnimGraph modules
+struct VREXPANSIONPLUGIN_API FVRHandSocketCustomVersion
+{
+	enum Type
+	{
+		// Before any version changes were made in the plugin
+		BeforeCustomVersionWasAdded = 0,
+
+		// Added a set state tracker to handle in editor construction edge cases
+		HandSocketStoringSetState = 1,
+
+		// -----<new versions can be added above this line>-------------------------------------------------
+		VersionPlusOne,
+		LatestVersion = VersionPlusOne - 1
+	};
+
+	// The GUID for this custom version number
+	const static FGuid GUID;
+
+private:
+	FVRHandSocketCustomVersion() {}
+};
 
 
 UENUM()
@@ -312,7 +336,12 @@ public:
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 	void PoseVisualizationToAnimation(bool bForceRefresh = false);
 	bool bTickedPose;
+
+	UPROPERTY()
+	bool bDecoupled;
+
 #endif
+	virtual void Serialize(FArchive& Ar) override;
 	virtual void OnRegister() override;
 	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 
