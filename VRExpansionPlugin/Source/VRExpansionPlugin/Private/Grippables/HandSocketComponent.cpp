@@ -3,8 +3,31 @@
 #include "Grippables/HandSocketComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Net/UnrealNetwork.h"
+#include "Serialization/CustomVersion.h"
 
 DEFINE_LOG_CATEGORY(LogVRHandSocketComponent);
+
+const FGuid FVRHandSocketCustomVersion::GUID(0x1EB5FDBD, 0x11AC4D10, 0x1136F38F, 0x1393A5DA);
+
+// Register the custom version with core
+FCustomVersionRegistration GRegisterHandSocketCustomVersion(FVRHandSocketCustomVersion::GUID, FVRHandSocketCustomVersion::LatestVersion, TEXT("HandSocketVer"));
+
+
+void UHandSocketComponent::Serialize(FArchive& Ar)
+{
+	Super::Serialize(Ar);
+
+	Ar.UsingCustomVersion(FVRHandSocketCustomVersion::GUID);
+
+#if WITH_EDITORONLY_DATA
+	const int32 CustomHandSocketVersion = Ar.CustomVer(FVRHandSocketCustomVersion::GUID);
+
+	if (CustomHandSocketVersion < FVRHandSocketCustomVersion::HandSocketStoringSetState)
+	{
+		bDecoupled = bDecoupleMeshPlacement;
+	}
+#endif
+}
 
   //=============================================================================
 UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectInitializer)
@@ -21,6 +44,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 
 #if WITH_EDITORONLY_DATA
 	bTickedPose = false;
+	bDecoupled = false;
 	bShowVisualizationMesh = true;
 	bMirrorVisualizationMesh = false;
 	bShowRangeVisualization = false;
@@ -517,6 +541,19 @@ void UHandSocketComponent::PositionVisualizationMesh()
 	if (USceneComponent* ParentAttach = this->GetAttachParent())
 	{
 		FTransform relTrans = this->GetRelativeTransform();
+
+		if (bDecoupled != bDecoupleMeshPlacement)
+		{
+			if (bDecoupleMeshPlacement)
+			{
+				HandRelativePlacement = HandRelativePlacement * GetRelativeTransform();
+			}
+			else
+			{
+				HandRelativePlacement = HandRelativePlacement.GetRelativeTransform(GetRelativeTransform());
+			}
+		}
+
 		FTransform HandPlacement = GetHandRelativePlacement();
 		FTransform ReturnTrans = (HandPlacement * relTrans);
 
