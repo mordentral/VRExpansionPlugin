@@ -14,7 +14,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Serialization/CustomVersion.h"
 
-const FGuid FVRHandSocketCustomVersion::GUID(0x1EB5FDBD, 0x11AC4D10, 0x1136F38F, 0x1393A5DA);
+const FGuid FVRHandSocketCustomVersion::GUID(0x5A018B7F, 0x48A7AFDE, 0xAFBEB580, 0xAD575412);
 
 // Register the custom version with core
 FCustomVersionRegistration GRegisterHandSocketCustomVersion(FVRHandSocketCustomVersion::GUID, FVRHandSocketCustomVersion::LatestVersion, TEXT("HandSocketVer"));
@@ -500,6 +500,7 @@ FTransform UHandSocketComponent::GetBoneTransformAtTime(UAnimSequence* MyAnimSeq
 
 void UHandSocketComponent::OnRegister()
 {
+
 #if WITH_EDITORONLY_DATA
 	AActor* MyOwner = GetOwner();
 	if (bShowVisualizationMesh && (MyOwner != nullptr) && !IsRunningCommandlet())
