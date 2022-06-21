@@ -14,6 +14,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Serialization/CustomVersion.h"
 
+DEFINE_LOG_CATEGORY(LogVRHandSocketComponent);
+
 const FGuid FVRHandSocketCustomVersion::GUID(0x5A018B7F, 0x48A7AFDE, 0xAFBEB580, 0xAD575412);
 
 // Register the custom version with core
@@ -35,9 +37,6 @@ void UHandSocketComponent::Serialize(FArchive& Ar)
 	}
 #endif
 }
-
-
-DEFINE_LOG_CATEGORY(LogVRHandSocketComponent);
 
   //=============================================================================
 UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectInitializer)
@@ -573,8 +572,6 @@ void UHandSocketComponent::PositionVisualizationMesh()
 		}
 
 		FTransform HandPlacement = GetHandRelativePlacement();
-		FTransform rtrans = HandRelativePlacement;
-
 		FTransform ReturnTrans = (HandPlacement * relTrans);
 
 		if (bMirrorVisualizationMesh)//(bFlipForLeftHand && !bIsRightHand))

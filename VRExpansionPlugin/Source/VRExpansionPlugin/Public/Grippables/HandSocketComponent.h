@@ -19,7 +19,7 @@ struct FPoseSnapshot;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogVRHandSocketComponent, Log, All);
 
-// Custom serialization version for assets/classes in the AnimGraphRuntime and AnimGraph modules
+// Custom serialization version for the hand socket component
 struct VREXPANSIONPLUGIN_API FVRHandSocketCustomVersion
 {
 	enum Type
