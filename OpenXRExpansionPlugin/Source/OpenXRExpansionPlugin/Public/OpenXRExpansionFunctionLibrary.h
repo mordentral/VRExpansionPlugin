@@ -7,8 +7,10 @@
 #include "UObject/Object.h"
 #include "Engine/EngineTypes.h"
 #include "HeadMountedDisplayTypes.h"
+#if defined(OPENXR_SUPPORTED)
 #include "OpenXRCore.h"
 #include "OpenXRHMD.h"
+#endif
 #include "OpenXRExpansionTypes.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
 
@@ -17,6 +19,9 @@
 
 #include "OpenXRExpansionFunctionLibrary.generated.h"
 
+#if !defined(OPENXR_SUPPORTED)
+class FOpenXRHMD;
+#endif
 
 DECLARE_LOG_CATEGORY_EXTERN(OpenXRExpansionFunctionLibraryLog, Log, All);
 
@@ -51,11 +56,13 @@ public:
 
 	static FOpenXRHMD* GetOpenXRHMD()
 	{
+#if defined(OPENXR_SUPPORTED)
 		static FName SystemName(TEXT("OpenXR"));
 		if (GEngine->XRSystem.IsValid() && (GEngine->XRSystem->GetSystemName() == SystemName))
 		{
 			return static_cast<FOpenXRHMD*>(GEngine->XRSystem.Get());
 		}
+#endif
 
 		return nullptr;
 	}
