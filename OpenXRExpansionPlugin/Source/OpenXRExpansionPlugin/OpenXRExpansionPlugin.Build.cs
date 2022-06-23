@@ -48,7 +48,7 @@ namespace UnrealBuildTool.Rules
                 }
 				);
                 
-            if (Target.Platform != UnrealTargetPlatform.Mac
+            if (Target.Platform != UnrealTargetPlatform.Mac)
             {
                 PrivateDependencyModuleNames.AddRange(
                     new string[]
