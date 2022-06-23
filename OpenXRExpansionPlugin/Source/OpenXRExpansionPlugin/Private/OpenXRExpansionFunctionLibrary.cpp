@@ -22,6 +22,7 @@ UOpenXRExpansionFunctionLibrary::~UOpenXRExpansionFunctionLibrary()
 
 void UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& TrackingSystemName, EBPOpenXRControllerDeviceType& DeviceType, EBPXRResultSwitch& Result)
 {
+#if defined(OPENXR_SUPPORTED)
 	DeviceType = EBPOpenXRControllerDeviceType::DT_UnknownController;
 	Result = EBPXRResultSwitch::OnFailed;
 
@@ -144,6 +145,7 @@ void UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& Trackin
 			}
 		}
 	}
+#endif
 
 	TrackingSystemName.Empty();
 	return;
