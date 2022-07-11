@@ -85,6 +85,7 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 				"Vive MV";
 				"Vive Cosmos"
 				"VIVE_Pro MV"
+				"Vive Focus"
 				"Oculus Rift CV1";
 				"Lenovo Explorer";
 				"HP Windows Mixed Reality Headset";
@@ -105,7 +106,18 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 			}
 			else if (DeviceModelNumber.Find("vive", ESearchCase::IgnoreCase) != INDEX_NONE)
 			{
-				DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
+				if (DeviceModelNumber.Find("focus3", ESearchCase::IgnoreCase) != INDEX_NONE)
+				{
+					DeviceType = EBPOpenVRHMDDeviceType::DT_ViveFocus3;
+				}
+				else if (DeviceModelNumber.Find("focus", ESearchCase::IgnoreCase) != INDEX_NONE)
+				{
+					DeviceType = EBPOpenVRHMDDeviceType::DT_ViveFocus;
+				}
+				else
+				{
+					DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
+				}
 			}
 			else if ((DeviceModelNumber.Find("oculus quest", ESearchCase::IgnoreCase) != INDEX_NONE) ||
 					(DeviceModelNumber.Find("miramar", ESearchCase::IgnoreCase) != INDEX_NONE))
