@@ -354,7 +354,22 @@ void UGripMotionControllerComponent::EndPlay(const EEndPlayReason::Type EndPlayR
 		DestroyPhysicsHandle(GrippedObjects[i]);
 
 		if (/*HasGripAuthority(GrippedObjects[i]) || */IsServer())
+		{
 			DropObjectByInterface(nullptr, GrippedObjects[i].GripID);
+		}
+		else
+		{
+			if (GrippedObjects[i].GrippedObject)
+			{
+				bool bSimulateOnDrop = true;
+				if (GrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				{
+					bSimulateOnDrop = IVRGripInterface::Execute_SimulateOnDrop(GrippedObjects[i].GrippedObject);
+				}
+
+				NotifyDrop(GrippedObjects[i], bSimulateOnDrop);
+			}
+		}
 	}
 	GrippedObjects.Empty();
 
@@ -363,7 +378,22 @@ void UGripMotionControllerComponent::EndPlay(const EEndPlayReason::Type EndPlayR
 		DestroyPhysicsHandle(LocallyGrippedObjects[i]);
 
 		if (/*HasGripAuthority(LocallyGrippedObjects[i]) || */IsServer())
+		{
 			DropObjectByInterface(nullptr, LocallyGrippedObjects[i].GripID);
+		}
+		else
+		{
+			if (LocallyGrippedObjects[i].GrippedObject)
+			{
+				bool bSimulateOnDrop = true;
+				if (LocallyGrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+				{
+					bSimulateOnDrop = IVRGripInterface::Execute_SimulateOnDrop(LocallyGrippedObjects[i].GrippedObject);
+				}
+
+				NotifyDrop(LocallyGrippedObjects[i], bSimulateOnDrop);
+			}
+		}
 	}
 	LocallyGrippedObjects.Empty();
 
