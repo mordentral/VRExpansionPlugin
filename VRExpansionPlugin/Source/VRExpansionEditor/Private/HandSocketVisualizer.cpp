@@ -5,6 +5,7 @@
 //#include "UObject/Field.h"
 #include "VRBPDatatypes.h"
 #include "Modules/ModuleManager.h"
+#include "EditorViewportClient.h"
 #include "Misc/PackageName.h"
 //#include "Persona.h"
 
