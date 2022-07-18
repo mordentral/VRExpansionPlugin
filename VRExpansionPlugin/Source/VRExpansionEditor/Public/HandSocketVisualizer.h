@@ -4,6 +4,8 @@
 #include "Grippables/HandSocketComponent.h"
 #include "ActorEditorUtils.h"
 
+class FEditorViewportClient;
+
 /**Base class for clickable targeting editing proxies*/
 struct VREXPANSIONEDITOR_API HHandSocketVisProxy : public HComponentVisProxy
 {
