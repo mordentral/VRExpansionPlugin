@@ -80,8 +80,7 @@ public:
 		float MaxHeightAllowed;
 
 	/** Sets lock to hmd automatically based on if the camera is currently locally controlled or not */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
-		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking")
 		uint32 bAutoSetLockToHmd : 1;
 
 	//UFUNCTION(BlueprintCallable, Category = Camera)
