@@ -515,7 +515,7 @@ void UHandSocketComponent::OnRegister()
 				HandVisualizerComponent->SetSkeletalMesh(VisualizationMesh);
 				if (HandPreviewMaterial)
 				{
-					HandVisualizerComponent->SetMaterial(0, HandPreviewMaterial);
+					HandVisualizerComponent->SetMaterial(0, (UMaterialInterface*)HandPreviewMaterial);
 				}
 			}
 
