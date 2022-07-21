@@ -190,12 +190,38 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnControllerGripSignature OnLerpToHandFinished;
 
+	// If true we will scale the tracking of the motion controller by the TrackingScaler value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1"))
+		bool bScaleTracking;
+
+	// A scale to be applied to the tracked positions of the controller if bScaleTracking is true
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bScaleTracking"))
+		FVector TrackingScaler;
+
+	// If true we will use the minimum height value to clamp the Z too
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1"))
+		bool bLimitMinHeight;
+
+	// The minimum height to allow for this controller
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLimitMinHeight"))
+		float MinimumHeight;
+
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
-	bool bOffsetByHMD;
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking")
+		bool bOffsetByHMD;
+
+	// If true this controller will attempt to stay within its LeashRange distance from the HMD
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking")
+		bool bLeashToHMD;
+
+	// How far away from the HMD the controller should stay max (vector distance)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLeashToHMD"))
+		float LeashRange;
 
 	// When true any physics constraints will be attached to the grip pivot instead of a new kinematic actor in the scene
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced")
 		bool bConstrainToPivot;
 
 	UPROPERTY()
@@ -292,6 +318,7 @@ protected:
 	FTransform GripRenderThreadRelativeTransform;
 	FVector GripRenderThreadComponentScale;
 	FTransform GripRenderThreadProfileTransform;
+	FVector GripRenderThreadLastLocationForLateUpdate;
 
 	FDelegateHandle NewControllerProfileEvent_Handle;
 	UFUNCTION()

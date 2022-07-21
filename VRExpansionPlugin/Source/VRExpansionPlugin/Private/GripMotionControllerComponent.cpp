@@ -102,7 +102,13 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bLerpingPosition = false;
 	bSmoothReplicatedMotion = false;
 	bReppedOnce = false;
+	bScaleTracking = false;
+	TrackingScaler = FVector(1.0f);
+	bLimitMinHeight = false;
+	MinimumHeight = 0.0f;
 	bOffsetByHMD = false;
+	bLeashToHMD = false;
+	LeashRange = 300.0f;
 	bConstrainToPivot = false;
 
 	bSmoothHandTracking = false;
@@ -448,6 +454,7 @@ void UGripMotionControllerComponent::CreateRenderState_Concurrent(FRegisterCompo
 		GripRenderThreadRelativeTransform = GetRelativeTransform();
 		GripRenderThreadComponentScale = GetComponentScale();
 		GripRenderThreadProfileTransform = CurrentControllerProfileTransform;
+		GripRenderThreadLastLocationForLateUpdate = LastLocationForLateUpdate;
 	}
 
 	Super::Super::CreateRenderState_Concurrent(Context);
@@ -463,12 +470,14 @@ void UGripMotionControllerComponent::SendRenderTransform_Concurrent()
 			FTransform RenderThreadRelativeTransform;
 			FVector RenderThreadComponentScale;
 			FTransform RenderThreadProfileTransform;
+			FVector GripRenderThreadLastLocationForLateUpdate;
 		};
 
 		FPrimitiveUpdateRenderThreadRelativeTransformParams UpdateParams;
 		UpdateParams.RenderThreadRelativeTransform = GetRelativeTransform();
 		UpdateParams.RenderThreadComponentScale = GetComponentScale();
 		UpdateParams.RenderThreadProfileTransform = CurrentControllerProfileTransform;
+		UpdateParams.GripRenderThreadLastLocationForLateUpdate = LastLocationForLateUpdate;
 
 		ENQUEUE_RENDER_COMMAND(UpdateRTRelativeTransformCommand)(
 			[UpdateParams, this](FRHICommandListImmediate& RHICmdList)
@@ -476,6 +485,7 @@ void UGripMotionControllerComponent::SendRenderTransform_Concurrent()
 				GripRenderThreadRelativeTransform = UpdateParams.RenderThreadRelativeTransform;
 				GripRenderThreadComponentScale = UpdateParams.RenderThreadComponentScale;
 				GripRenderThreadProfileTransform = UpdateParams.RenderThreadProfileTransform;
+				GripRenderThreadLastLocationForLateUpdate = UpdateParams.GripRenderThreadLastLocationForLateUpdate;
 			});
 	}
 
@@ -6476,7 +6486,17 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				}
 #endif
 
-				if (bOffsetByHMD)
+				if (bScaleTracking)
+				{
+					Position *= TrackingScaler;
+				}
+
+				if (bLimitMinHeight)
+				{
+					Position.Z = FMath::Max(Position.Z, MinimumHeight);
+				}
+
+				if (bOffsetByHMD || bLeashToHMD)
 				{
 					if (bIsInGameThread)
 					{
@@ -6486,7 +6506,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 							FVector curLoc;
 							if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
 							{
-								curLoc.Z = 0;
+								//curLoc.Z = 0;
 								LastLocationForLateUpdate = curLoc;
 							}
 							else
@@ -6499,7 +6519,22 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 					// #TODO: This is technically unsafe, need to use a seperate value like the transforms for the render thread
 					// If I ever delete the simple char then this setup can just go away anyway though
 					// It has a data race condition right now though
-					Position -= LastLocationForLateUpdate;
+					FVector CorrectLastLocation = bIsInGameThread ? LastLocationForLateUpdate : GripRenderThreadLastLocationForLateUpdate;
+
+					if (bOffsetByHMD)
+					{
+						Position -= FVector(CorrectLastLocation.X, CorrectLastLocation.Y, 0.0f);
+					}
+
+					if (bLeashToHMD)
+					{
+						FVector DifferenceVec = bOffsetByHMD ? Position : (Position - CorrectLastLocation);
+
+						if (DifferenceVec.SizeSquared() > FMath::Square(LeashRange))
+						{
+							Position = CorrectLastLocation + (DifferenceVec.GetSafeNormal() * LeashRange);
+						}
+					}
 				}
 
 				if (bOffsetByControllerProfile)
