@@ -29,7 +29,13 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 
 	bUsePawnControlRotation = false;
 	bAutoSetLockToHmd = true;
+	bScaleTracking = false;
+	TrackingScaler = FVector(1.0f);
 	bOffsetByHMD = false;
+	bLimitMinHeight = false;
+	MinimumHeightAllowed = 0.0f;
+	bLimitMaxHeight = false;
+	MaxHeightAllowed = 300.f;
 
 	bSetPositionDuringTick = false;
 	bSmoothReplicatedMotion = false;
@@ -148,6 +154,21 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 				{
 					Position.X = 0;
 					Position.Y = 0;
+				}
+
+				if (bScaleTracking)
+				{
+					Position *= TrackingScaler;
+				}
+
+				if (bLimitMaxHeight)
+				{
+					Position.Z = FMath::Min(MaxHeightAllowed, Position.Z);
+				}
+
+				if (bLimitMinHeight)
+				{
+					Position.Z = FMath::Max(MinimumHeightAllowed, Position.Z);
 				}
 
 				SetRelativeTransform(FTransform(Orientation, Position));
@@ -288,6 +309,21 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 						{
 							Position.X = 0;
 							Position.Y = 0;
+						}
+
+						if (bScaleTracking)
+						{
+							Position *= TrackingScaler;
+						}
+
+						if (bLimitMaxHeight || bLimitMinHeight)
+						{
+							Position.Z = FMath::Min(MaxHeightAllowed, Position.Z);
+						}
+
+						if (bLimitMinHeight)
+						{
+							Position.Z = FMath::Max(MinimumHeightAllowed, Position.Z);
 						}
 
 						SetRelativeTransform(FTransform(Orientation, Position));
