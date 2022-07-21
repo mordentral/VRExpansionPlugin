@@ -207,8 +207,7 @@ public:
 		float MinimumHeight;
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
-		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking")
 		bool bOffsetByHMD;
 
 	// If true this controller will attempt to stay within its LeashRange distance from the HMD
@@ -220,8 +219,7 @@ public:
 		float LeashRange;
 
 	// When true any physics constraints will be attached to the grip pivot instead of a new kinematic actor in the scene
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
-		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced")
 		bool bConstrainToPivot;
 
 	UPROPERTY()
