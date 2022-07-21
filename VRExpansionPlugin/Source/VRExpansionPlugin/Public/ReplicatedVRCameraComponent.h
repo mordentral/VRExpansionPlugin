@@ -3,7 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "VRBPDatatypes.h"
-//#include "Net/UnrealNetwork.h"
+#include "Net/UnrealNetwork.h"
 #include "Camera/CameraComponent.h"
 #include "ReplicatedVRCameraComponent.generated.h"
 
@@ -26,7 +26,7 @@ public:
 		bool bUpdateInCharacterMovement;
 
 	UPROPERTY()
-		TObjectPtr<AVRBaseCharacter> AttachChar;
+		TWeakObjectPtr<AVRBaseCharacter> AttachChar;
 	void UpdateTracking(float DeltaTime);
 
 	virtual void OnAttachmentChanged() override;
