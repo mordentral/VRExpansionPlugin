@@ -15,6 +15,7 @@
 #include "GameFramework/GameState.h"
 #include "Engine/Engine.h"
 #include "Components/PrimitiveComponent.h"
+#include "IXRTrackingSystem.h"
 #include "Animation/AnimMontage.h"
 //#include "PhysicsEngine/DestructibleActor.h"
 
