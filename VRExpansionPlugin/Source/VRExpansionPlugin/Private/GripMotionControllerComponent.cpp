@@ -6508,6 +6508,12 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 							{
 								//curLoc.Z = 0;
 								LastLocationForLateUpdate = curLoc;
+
+								// Assume HMD has the same tracking scaler
+								if (bScaleTracking)
+								{
+									LastLocationForLateUpdate *= TrackingScaler;
+								}
 							}
 							else
 							{
