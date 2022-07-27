@@ -135,6 +135,35 @@ void UReplicatedVRCameraComponent::OnAttachmentChanged()
 	Super::OnAttachmentChanged();
 }
 
+bool UReplicatedVRCameraComponent::HasTrackingParameters()
+{
+	return bOffsetByHMD || bScaleTracking || bLimitMaxHeight || bLimitMinHeight;
+}
+
+void UReplicatedVRCameraComponent::ApplyTrackingParameters(FVector &OriginalPosition)
+{
+	if (bOffsetByHMD)
+	{
+		OriginalPosition.X = 0;
+		OriginalPosition.Y = 0;
+	}
+
+	if (bScaleTracking)
+	{
+		OriginalPosition *= TrackingScaler;
+	}
+
+	if (bLimitMaxHeight)
+	{
+		OriginalPosition.Z = FMath::Min(MaxHeightAllowed, OriginalPosition.Z);
+	}
+
+	if (bLimitMinHeight)
+	{
+		OriginalPosition.Z = FMath::Max(MinimumHeightAllowed, OriginalPosition.Z);
+	}
+}
+
 void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 {
 	bHasAuthority = IsLocallyControlled();
@@ -150,25 +179,9 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 			FVector Position;
 			if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, Orientation, Position))
 			{
-				if (bOffsetByHMD)
+				if (HasTrackingParameters())
 				{
-					Position.X = 0;
-					Position.Y = 0;
-				}
-
-				if (bScaleTracking)
-				{
-					Position *= TrackingScaler;
-				}
-
-				if (bLimitMaxHeight)
-				{
-					Position.Z = FMath::Min(MaxHeightAllowed, Position.Z);
-				}
-
-				if (bLimitMinHeight)
-				{
-					Position.Z = FMath::Max(MinimumHeightAllowed, Position.Z);
+					ApplyTrackingParameters(Position);
 				}
 
 				SetRelativeTransform(FTransform(Orientation, Position));
