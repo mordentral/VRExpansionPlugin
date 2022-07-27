@@ -218,6 +218,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLeashToHMD"))
 		float LeashRange;
 
+	void ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread);
+	bool HasTrackingParameters();
+
 	// When true any physics constraints will be attached to the grip pivot instead of a new kinematic actor in the scene
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced")
 		bool bConstrainToPivot;
@@ -789,6 +792,12 @@ public:
 	virtual void OnRep_ReplicatedControllerTransform()
 	{
 		//ReplicatedControllerTransform.Unpack();
+
+		if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
+		{
+			// Ensure that the client is sending valid boundries
+			ApplyTrackingParameters(ReplicatedControllerTransform.Position, true);
+		}
 
 		if (bSmoothReplicatedMotion)
 		{

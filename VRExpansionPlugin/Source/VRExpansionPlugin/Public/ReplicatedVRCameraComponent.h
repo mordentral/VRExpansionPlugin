@@ -83,6 +83,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking")
 		uint32 bAutoSetLockToHmd : 1;
 
+	void ApplyTrackingParameters(FVector& OriginalPosition);
+	bool HasTrackingParameters();
+
 	//UFUNCTION(BlueprintCallable, Category = Camera)
 		virtual void GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView) override;
 
@@ -102,6 +105,12 @@ public:
 	UFUNCTION()
 	virtual void OnRep_ReplicatedCameraTransform()
 	{
+		if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
+		{
+			// Ensure that we clamp to the expected values from the client
+			ApplyTrackingParameters(ReplicatedCameraTransform.Position);
+		}
+
 		if (bSmoothReplicatedMotion)
 		{
 			if (bReppedOnce)

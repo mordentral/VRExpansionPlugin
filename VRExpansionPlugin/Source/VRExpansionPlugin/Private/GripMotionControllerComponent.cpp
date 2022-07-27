@@ -6447,6 +6447,76 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 	return false;
 }
 
+bool UGripMotionControllerComponent::HasTrackingParameters()
+{
+	return bOffsetByHMD || bScaleTracking || bLeashToHMD || bLimitMinHeight;
+}
+
+void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread)
+{
+	if (bScaleTracking)
+	{
+		OriginalPosition *= TrackingScaler;
+	}
+
+	if (bLimitMinHeight)
+	{
+		OriginalPosition.Z = FMath::Max(OriginalPosition.Z, MinimumHeight);
+	}
+
+	if (bOffsetByHMD || bLeashToHMD)
+	{
+		if (bIsInGameThread)
+		{
+			if (IsLocallyControlled() && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowedForWorld(*GetWorld()))
+			{
+				FQuat curRot;
+				FVector curLoc;
+				if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
+				{
+					//curLoc.Z = 0;
+					LastLocationForLateUpdate = curLoc;
+
+					// Assume HMD has the same tracking scaler
+					if (bScaleTracking)
+					{
+						LastLocationForLateUpdate *= TrackingScaler;
+					}
+				}
+				else
+				{
+					// Keep last location instead
+				}
+			}
+			else if (AttachChar.IsValid() && AttachChar->VRReplicatedCamera)
+			{
+				// Sample camera location instead
+				LastLocationForLateUpdate = AttachChar->VRReplicatedCamera->GetRelativeLocation();
+			}
+		}
+
+		// #TODO: This is technically unsafe, need to use a seperate value like the transforms for the render thread
+		// If I ever delete the simple char then this setup can just go away anyway though
+		// It has a data race condition right now though
+		FVector CorrectLastLocation = bIsInGameThread ? LastLocationForLateUpdate : GripRenderThreadLastLocationForLateUpdate;
+
+		if (bOffsetByHMD)
+		{
+			OriginalPosition -= FVector(CorrectLastLocation.X, CorrectLastLocation.Y, 0.0f);
+		}
+
+		if (bLeashToHMD)
+		{
+			FVector DifferenceVec = bOffsetByHMD ? OriginalPosition : (OriginalPosition - CorrectLastLocation);
+
+			if (DifferenceVec.SizeSquared() > FMath::Square(LeashRange))
+			{
+				OriginalPosition = CorrectLastLocation + (DifferenceVec.GetSafeNormal() * LeashRange);
+			}
+		}
+	}
+}
+
 //=============================================================================
 bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, FRotator& Orientation , float WorldToMetersScale)
 {
@@ -6486,61 +6556,9 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				}
 #endif
 
-				if (bScaleTracking)
+				if (HasTrackingParameters())
 				{
-					Position *= TrackingScaler;
-				}
-
-				if (bLimitMinHeight)
-				{
-					Position.Z = FMath::Max(Position.Z, MinimumHeight);
-				}
-
-				if (bOffsetByHMD || bLeashToHMD)
-				{
-					if (bIsInGameThread)
-					{
-						if (GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowedForWorld(*GetWorld()))
-						{
-							FQuat curRot;
-							FVector curLoc;
-							if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
-							{
-								//curLoc.Z = 0;
-								LastLocationForLateUpdate = curLoc;
-
-								// Assume HMD has the same tracking scaler
-								if (bScaleTracking)
-								{
-									LastLocationForLateUpdate *= TrackingScaler;
-								}
-							}
-							else
-							{
-								 // Keep last location instead
-							}
-						}
-					}
-
-					// #TODO: This is technically unsafe, need to use a seperate value like the transforms for the render thread
-					// If I ever delete the simple char then this setup can just go away anyway though
-					// It has a data race condition right now though
-					FVector CorrectLastLocation = bIsInGameThread ? LastLocationForLateUpdate : GripRenderThreadLastLocationForLateUpdate;
-
-					if (bOffsetByHMD)
-					{
-						Position -= FVector(CorrectLastLocation.X, CorrectLastLocation.Y, 0.0f);
-					}
-
-					if (bLeashToHMD)
-					{
-						FVector DifferenceVec = bOffsetByHMD ? Position : (Position - CorrectLastLocation);
-
-						if (DifferenceVec.SizeSquared() > FMath::Square(LeashRange))
-						{
-							Position = CorrectLastLocation + (DifferenceVec.GetSafeNormal() * LeashRange);
-						}
-					}
+					ApplyTrackingParameters(Position, bIsInGameThread);
 				}
 
 				if (bOffsetByControllerProfile)
