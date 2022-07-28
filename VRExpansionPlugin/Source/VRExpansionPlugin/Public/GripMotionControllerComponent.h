@@ -192,7 +192,7 @@ public:
 
 
 	// If true we will scale the tracking of the motion controller by the TrackingScaler value
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking")
 		bool bScaleTracking;
 
 	// A scale to be applied to the tracked positions of the controller if bScaleTracking is true
@@ -200,12 +200,20 @@ public:
 		FVector TrackingScaler;
 
 	// If true we will use the minimum height value to clamp the Z too
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking")
 		bool bLimitMinHeight;
 
 	// The minimum height to allow for this controller
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLimitMinHeight"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bLimitMinHeight"))
 		float MinimumHeight;
+
+	// If true we will use the maximum height value to clamp the Z too
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking")
+		bool bLimitMaxHeight;
+
+	// The maximum height to allow for this controller
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLimitMinHeight"))
+		float MaximumHeight;
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking")
