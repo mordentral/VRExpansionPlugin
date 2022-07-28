@@ -106,6 +106,8 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	TrackingScaler = FVector(1.0f);
 	bLimitMinHeight = false;
 	MinimumHeight = 0.0f;
+	bLimitMaxHeight = false;
+	MaximumHeight = 240.0f;
 	bOffsetByHMD = false;
 	bLeashToHMD = false;
 	LeashRange = 300.0f;
@@ -6449,7 +6451,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 
 bool UGripMotionControllerComponent::HasTrackingParameters()
 {
-	return bOffsetByHMD || bScaleTracking || bLeashToHMD || bLimitMinHeight;
+	return bOffsetByHMD || bScaleTracking || bLeashToHMD || bLimitMinHeight || bLimitMaxHeight;
 }
 
 void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread)
@@ -6464,6 +6466,11 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 		OriginalPosition.Z = FMath::Max(OriginalPosition.Z, MinimumHeight);
 	}
 
+	if (bLimitMaxHeight)
+	{
+		OriginalPosition.Z = FMath::Min(OriginalPosition.Z, MaximumHeight);
+	}
+
 	if (bOffsetByHMD || bLeashToHMD)
 	{
 		if (bIsInGameThread)
@@ -6474,24 +6481,23 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 				FVector curLoc;
 				if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
 				{
+
+					if (AttachChar.IsValid() && AttachChar->VRReplicatedCamera)
+					{
+						AttachChar->VRReplicatedCamera->ApplyTrackingParameters(curLoc);
+					}
+
 					//curLoc.Z = 0;
 					LastLocationForLateUpdate = curLoc;
-
-					// Assume HMD has the same tracking scaler
-					if (bScaleTracking)
-					{
-						LastLocationForLateUpdate *= TrackingScaler;
-					}
-				}
-				else
-				{
-					// Keep last location instead
 				}
 			}
-			else if (AttachChar.IsValid() && AttachChar->VRReplicatedCamera)
+			else
 			{
-				// Sample camera location instead
-				LastLocationForLateUpdate = AttachChar->VRReplicatedCamera->GetRelativeLocation();
+				if (AttachChar.IsValid() && AttachChar->VRReplicatedCamera)
+				{
+					// Sample camera location instead
+					LastLocationForLateUpdate = AttachChar->VRReplicatedCamera->GetRelativeLocation();
+				}
 			}
 		}
 

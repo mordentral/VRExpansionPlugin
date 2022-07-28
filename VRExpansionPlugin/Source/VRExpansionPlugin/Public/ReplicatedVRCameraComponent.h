@@ -64,11 +64,11 @@ public:
 		FVector TrackingScaler;
 
 	// If true we will use the minimum height value to clamp the Z too
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking")
 		bool bLimitMinHeight;
 
 	// The minimum height to allow for this camera
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLimitMinHeight"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking", meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bLimitMinHeight"))
 		float MinimumHeightAllowed;
 
 	// If true will limit the max Z height that the camera is capable of reaching
@@ -78,6 +78,14 @@ public:
 	// If we are limiting the max height, this is the maximum allowed value
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLimitMaxHeight"))
 		float MaxHeightAllowed;
+
+	// If true will limit the maximum offset from center of the players tracked space
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking")
+		bool bLimitBounds;
+
+	// If we are limiting the maximum bounds, this is the maximum length of the vector from the center of the tracked space
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLimitMaxHeight"))
+		float MaximumTrackedBounds;
 
 	/** Sets lock to hmd automatically based on if the camera is currently locally controlled or not */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking")

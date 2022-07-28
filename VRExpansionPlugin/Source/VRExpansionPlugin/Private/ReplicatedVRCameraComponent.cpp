@@ -65,6 +65,9 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	MinimumHeightAllowed = 0.0f;
 	bLimitMaxHeight = false;
 	MaxHeightAllowed = 300.f;
+	bLimitBounds = false;
+	// Just shy of 20' distance from the center of tracked space
+	MaximumTrackedBounds = 1028;
 
 	bSetPositionDuringTick = false;
 	bSmoothReplicatedMotion = false;
@@ -166,7 +169,7 @@ void UReplicatedVRCameraComponent::OnAttachmentChanged()
 
 bool UReplicatedVRCameraComponent::HasTrackingParameters()
 {
-	return bOffsetByHMD || bScaleTracking || bLimitMaxHeight || bLimitMinHeight;
+	return bOffsetByHMD || bScaleTracking || bLimitMaxHeight || bLimitMinHeight || bLimitBounds;
 }
 
 void UReplicatedVRCameraComponent::ApplyTrackingParameters(FVector& OriginalPosition)
@@ -175,6 +178,12 @@ void UReplicatedVRCameraComponent::ApplyTrackingParameters(FVector& OriginalPosi
 	{
 		OriginalPosition.X = 0;
 		OriginalPosition.Y = 0;
+	}
+
+	if (bLimitBounds)
+	{
+		OriginalPosition.X = FMath::Clamp(OriginalPosition.X, -MaximumTrackedBounds, MaximumTrackedBounds);
+		OriginalPosition.Y = FMath::Clamp(OriginalPosition.Y, -MaximumTrackedBounds, MaximumTrackedBounds);
 	}
 
 	if (bScaleTracking)
@@ -348,25 +357,9 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 					FVector Position;
 					if (XRCamera->UpdatePlayerCamera(Orientation, Position))
 					{
-						if (bOffsetByHMD)
+						if (HasTrackingParameters())
 						{
-							Position.X = 0;
-							Position.Y = 0;
-						}
-
-						if (bScaleTracking)
-						{
-							Position *= TrackingScaler;
-						}
-
-						if (bLimitMaxHeight || bLimitMinHeight)
-						{
-							Position.Z = FMath::Min(MaxHeightAllowed, Position.Z);
-						}
-
-						if (bLimitMinHeight)
-						{
-							Position.Z = FMath::Max(MinimumHeightAllowed, Position.Z);
+							ApplyTrackingParameters(Position);
 						}
 
 						SetRelativeTransform(FTransform(Orientation, Position));
