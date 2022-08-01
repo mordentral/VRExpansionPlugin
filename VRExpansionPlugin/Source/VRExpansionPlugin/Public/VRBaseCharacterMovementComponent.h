@@ -58,6 +58,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRBaseCharacterMovementComponent|Smoothing")
 		bool bDisableSimulatedTickWhenSmoothingMovement;
 
+	// When true the hmd movement injection speed is capped to the maximum movement speed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRBaseCharacterMovementComponent|VRMovement")
+		bool bCapHMDMovementToMaxMovementSpeed;
+
 	// Adding seated transition
 	void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
 
@@ -211,6 +215,12 @@ public:
 		LastPreAdditiveVRVelocity += (CustomVRInputVector / deltaTime);
 
 		Velocity += LastPreAdditiveVRVelocity;
+
+		if (bCapHMDMovementToMaxMovementSpeed && IsExceedingMaxSpeed(GetMaxSpeed()))
+		{
+			// Force us to the max possible speed for the movement mode
+			Velocity = Velocity.GetSafeNormal() * GetMaxSpeed();
+		}
 	}
 
 	inline void RestorePreAdditiveVRMotionVelocity()

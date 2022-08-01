@@ -76,6 +76,7 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 
 	bUseClientControlRotation = true;
 	bDisableSimulatedTickWhenSmoothingMovement = true;
+	bCapHMDMovementToMaxMovementSpeed = false;
 
 	SetNetworkMoveDataContainer(VRNetworkMoveDataContainer);
 	SetMoveResponseDataContainer(VRMoveResponseDataContainer);
