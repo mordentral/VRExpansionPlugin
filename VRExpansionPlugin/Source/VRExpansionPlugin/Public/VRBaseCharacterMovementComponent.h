@@ -59,7 +59,7 @@ public:
 		bool bDisableSimulatedTickWhenSmoothingMovement;
 
 	// When true the hmd movement injection speed is capped to the maximum movement speed
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRBaseCharacterMovementComponent|VRMovement")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
 		bool bCapHMDMovementToMaxMovementSpeed;
 
 	// Adding seated transition
