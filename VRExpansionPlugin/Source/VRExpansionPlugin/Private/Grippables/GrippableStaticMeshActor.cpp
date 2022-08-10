@@ -625,9 +625,12 @@ void AGrippableStaticMeshActor::Server_GetClientAuthReplication_Implementation(c
 {
 	if (!VRGripInterfaceSettings.bIsHeld)
 	{
-		FRepMovement& MovementRep = GetReplicatedMovement_Mutable();
-		newMovement.CopyTo(MovementRep);
-		OnRep_ReplicatedMovement();
+		if (!newMovement.Location.ContainsNaN() && !newMovement.Rotation.ContainsNaN())
+		{
+			FRepMovement& MovementRep = GetReplicatedMovement_Mutable();
+			newMovement.CopyTo(MovementRep);
+			OnRep_ReplicatedMovement();
+		}
 	}
 }
 

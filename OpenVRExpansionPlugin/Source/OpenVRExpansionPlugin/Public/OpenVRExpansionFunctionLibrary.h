@@ -12,6 +12,8 @@
 #include "IMotionController.h"
 //#include "VRBPDatatypes.h"
 
+class UTexture;
+
 //Re-defined here as I can't load ISteamVRPlugin on non windows platforms
 // Make sure to update if it changes
 
