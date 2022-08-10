@@ -3,6 +3,7 @@
 //#include "EngineMinimal.h"
 //#include "Engine/Engine.h"
 #include "CoreMinimal.h"
+#include "Engine/Texture.h"
 #include "Engine/Texture2D.h"
 #include "Rendering/Texture2DResource.h"
 #include "RenderUtils.h"
