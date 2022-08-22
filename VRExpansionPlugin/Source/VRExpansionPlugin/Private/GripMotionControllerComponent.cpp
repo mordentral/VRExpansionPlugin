@@ -1382,7 +1382,7 @@ bool UGripMotionControllerComponent::GripActor(
 	//bool bIgnoreHandRotation = false;
 
 	TArray<FBPGripPair> HoldingControllers;
-	bool bIsHeld;
+	bool bIsHeld = false;
 	bool bHadOriginalSettings = false;
 	bool bOriginalGravity = false;
 	bool bOriginalReplication = false;
@@ -1654,7 +1654,7 @@ bool UGripMotionControllerComponent::GripComponent(
 	//bool bIgnoreHandRotation = false;
 
 	TArray<FBPGripPair> HoldingControllers;
-	bool bIsHeld;
+	bool bIsHeld = false;
 	bool bHadOriginalSettings = false;
 	bool bOriginalGravity = false;
 	bool bOriginalReplication = false;
@@ -4161,7 +4161,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		if (!Grip.bSkipNextTeleportCheck && (bRootHasInterface || bActorHasInterface))
 		{
 			TArray<FBPGripPair> HoldingControllers;
-			bool bIsHeld;
+			bool bIsHeld = false;
 			IVRGripInterface::Execute_IsHeld(Grip.GrippedObject, HoldingControllers, bIsHeld);
 
 			for (FBPGripPair pair : HoldingControllers)
@@ -6979,29 +6979,32 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 	if (Result == EBPVRResultSwitch::OnFailed)
 		return;
 
-	switch (FoundGrip.GripTargetType)
+	if (FoundGrip.GripCollisionType != EGripCollisionType::EventsOnly)
 	{
-	case EGripTargetType::ActorGrip:
-	{
-		if (AActor* DroppingActor = FoundGrip.GetGrippedActor())
+		switch (FoundGrip.GripTargetType)
 		{
-			if (!DroppingActor->IsPendingKill())
-			{
-				DroppingActor->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
-			}
-		}
-	}break;
-	case EGripTargetType::ComponentGrip:
-	{
-		if (UPrimitiveComponent* DroppingComp = FoundGrip.GetGrippedComponent())
+		case EGripTargetType::ActorGrip:
 		{
-			if (!DroppingComp->IsPendingKill())
+			if (AActor* DroppingActor = FoundGrip.GetGrippedActor())
 			{
-				DroppingComp->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
+				if (!DroppingActor->IsPendingKill())
+				{
+					DroppingActor->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
+				}
 			}
+		}break;
+		case EGripTargetType::ComponentGrip:
+		{
+			if (UPrimitiveComponent* DroppingComp = FoundGrip.GetGrippedComponent())
+			{
+				if (!DroppingComp->IsPendingKill())
+				{
+					DroppingComp->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
+				}
+			}
+		}break;
+		default:break;
 		}
-	}break;
-	default:break;
 	}
 
 	if (!DropObjectByInterface(nullptr, FoundGrip.GripID, AngularVelocity, LinearVelocity))
