@@ -248,11 +248,6 @@ public:
 	FVector LastRelativePos;
 	FVector RelativeBetweenGripsCenterPos;
 
-	// If true then we won't bind to the objects mass updates, we don't expect thing to attach to us
-	// This is a perf savings when possible
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
-		bool bSkipGripMassChecks;
-
 	// When true, will auto set the primary and secondary hands by the WeaponRootOrientationComponents X Axis distance.
 	// Smallest value along the X Axis will be considered the primary hand.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")

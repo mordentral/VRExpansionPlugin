@@ -18,7 +18,6 @@ UGS_Physics::UGS_Physics(const FObjectInitializer& ObjectInitializer) :
 	bInjectPostPhysicsHandle = true;
 
 	bCanEverTick = false;
-	bSkipGripMassChecks = true;
 
 	SingleHandPhysicsSettings.TwistSettings.MaxForceCoefficient = 1.f;
 	SingleHandPhysicsSettings.SwingSettings = SingleHandPhysicsSettings.TwistSettings;
@@ -104,9 +103,6 @@ void UGS_Physics::HandlePostPhysicsHandle(UGripMotionControllerComponent* Grippi
 {
 	if (!bIsActive)
 		return;
-
-	if(bSkipGripMassChecks)
-		HandleInfo->bSkipMassCheck = true;
 
 
 	UpdateDualHandInfo(GrippingController, false);

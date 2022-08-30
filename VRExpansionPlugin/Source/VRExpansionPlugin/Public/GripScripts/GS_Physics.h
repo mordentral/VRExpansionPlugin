@@ -18,11 +18,6 @@ public:
 
 	UGS_Physics(const FObjectInitializer& ObjectInitializer);
 
-	// If true then we won't bind to the objects mass updates, we don't expect thing to attach to us
-	// This is a perf savings when possible
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings")
-		bool bSkipGripMassChecks;
-
 	// Grip settings to use when a single hand is gripping, overrides interface defaults
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics Settings")
 		FBPAdvancedPhysicsHandleSettings SingleHandPhysicsSettings;

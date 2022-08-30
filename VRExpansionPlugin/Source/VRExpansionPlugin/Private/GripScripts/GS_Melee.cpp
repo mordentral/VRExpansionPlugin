@@ -40,7 +40,6 @@ UGS_Melee::UGS_Melee(const FObjectInitializer& ObjectInitializer) :
 	bCanEverTick = false;
 	bAlwaysTickPenetration = false;
 	COMType = EVRMeleeComType::VRPMELEECOM_BetweenHands;
-	bSkipGripMassChecks = true;
 	bOnlyPenetrateWithTwoHands = false;
 }
 
@@ -717,9 +716,6 @@ void UGS_Melee::HandlePostPhysicsHandle(UGripMotionControllerComponent* Gripping
 {
 	if (!bIsActive)
 		return;
-
-	if(bSkipGripMassChecks)
-		HandleInfo->bSkipMassCheck = true;
 
 	if (SecondaryHand.IsValid() )// && GrippingController == PrimaryHand.HoldingController)
 	{
