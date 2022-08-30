@@ -1780,7 +1780,6 @@ public:
 
 	bool bSetCOM;
 	bool bSkipResettingCom;
-	bool bSkipMassCheck;
 	bool bSkipDeletingKinematicActor;
 	bool bInitiallySetup;
 
@@ -1794,7 +1793,6 @@ public:
 		RootBoneRotation = FTransform::Identity;
 		bSetCOM = false;
 		bSkipResettingCom = false;
-		bSkipMassCheck = false;
 		bSkipDeletingKinematicActor = false;
 		bInitiallySetup = false;
 #if WITH_CHAOS

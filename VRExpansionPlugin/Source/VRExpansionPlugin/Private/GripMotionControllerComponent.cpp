@@ -5287,7 +5287,7 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 		// We don't have access to the shortcuts outside of physx
 		return SetUpPhysicsHandle(GripInfo);
 #else
-	if (bFullyRecreate || !HandleInfo->HandleData2.IsValid())
+	if (bFullyRecreate || !HandleInfo->HandleData2.IsValid() || HandleInfo->bSkipResettingCom)
 	{
 		return SetUpPhysicsHandle(GripInfo);
 	}
@@ -5992,7 +5992,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	HandleInfo->bInitiallySetup = true;
 
 	// Bind to further updates in order to keep it alive
-	if (!HandleInfo->bSkipMassCheck && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+	if (!rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 	{
 		rBodyInstance->OnRecalculatedMassProperties().AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
 	}
@@ -6224,7 +6224,6 @@ bool UGripMotionControllerComponent::GetPhysicsJointLength(const FBPActorGripInf
 	// Also skipping it on skip resetting com as we aren't gripped to the COM then
 	bool bUseComLoc = 
 		(
-			!HandleInfo->bSkipMassCheck &&
 			!HandleInfo->bSkipResettingCom &&
 			(HandleInfo->bSetCOM || 
 			(GrippedActor.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && GrippedActor.AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings == EPhysicsGripCOMType::COM_GripAt))
