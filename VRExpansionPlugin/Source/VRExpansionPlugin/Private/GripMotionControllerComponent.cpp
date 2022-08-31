@@ -4203,8 +4203,31 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		}
 	}
 
+	// Run some error checks and logging against the resulting transform
+	if (!WorldTransform.IsValid())
+	{
+		if (WorldTransform.ContainsNaN())
+		{
+			UE_LOG(LogVRMotionController, Error, TEXT("Failed to teleport grip, bad transform, NaN detected with object: %s"), *Grip.GrippedObject->GetName());
+			return false;
+		}
+		else if (!WorldTransform.GetRotation().IsNormalized())
+		{
+			WorldTransform.NormalizeRotation();
+
+			if (!WorldTransform.IsValid())
+			{
+				UE_LOG(LogVRMotionController, Error, TEXT("Failed to teleport grip, bad transform, rotation normalization issue: %s"), *Grip.GrippedObject->GetName());
+				return false;
+			}
+			else
+			{
+				UE_LOG(LogVRMotionController, Error, TEXT("Error during teleport grip, rotation not normalized for object: %s"), *Grip.GrippedObject->GetName());
+			}
+		}
+	}
+
 	// Need to use WITH teleport for this function so that the velocity isn't updated and without sweep so that they don't collide
-	
 	FBPActorPhysicsHandleInformation * Handle = GetPhysicsGrip(Grip);
 
 	if (!Handle)
