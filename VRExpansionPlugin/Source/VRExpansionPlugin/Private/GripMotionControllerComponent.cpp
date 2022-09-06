@@ -142,6 +142,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bSampleVelocityInWorldSpace = false;
 	VelocitySamples = 30.f;
 
+	bProjectNonSimulatingGrips = false;
 	EndPhysicsTickFunction.TickGroup = TG_EndPhysics;
 	EndPhysicsTickFunction.bCanEverTick = true;
 	EndPhysicsTickFunction.bStartWithTickEnabled = false;
