@@ -162,19 +162,21 @@ public:
 	void EndPhysicsTickComponent(FGripComponentEndPhysicsTickFunction& ThisTickFunction);
 	void RegisterEndPhysicsTick(bool bRegister);
 
-
-
+	// If true then we will sample the post physics scene to get the relative location of this object.
+	// This lets us reproject that relative position prior to running the grip logic.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "GripMotionController|Advanced")
+		bool bProjectNonSimulatingGrips;
 
 
 	// The grip script that defines the default behaviors of grips
 	// Don't edit this unless you really know what you are doing, leave it empty
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced")
 		TSubclassOf<class UVRGripScriptBase> DefaultGripScriptClass;
 	
 	// This is the pointer to the default grip script
 	// It is here to access so if you want to set some variables on your override then you can
 	// Due to a bug with instanced variables and parent classes you can't directly edit this in subclass in the details panel
-	UPROPERTY(VisibleAnywhere, Transient, BlueprintReadOnly, Category = "GripMotionController")
+	UPROPERTY(VisibleAnywhere, Transient, BlueprintReadOnly, Category = "GripMotionController|Advanced")
 		TObjectPtr<UVRGripScriptBase> DefaultGripScript;
 
 	// Lerping functions and events
