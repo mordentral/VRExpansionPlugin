@@ -4997,7 +4997,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							FScopedMovementUpdate ScopedMovementUpdate(root, EScopedUpdate::DeferredUpdates);
 							FTransform baseTrans = this->GetAttachParent()->GetComponentTransform();
-							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::TeleportPhysics);
+							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::None);
 							root->SetWorldTransform(WorldTransform, true, &OutHit);
 						}
 						else
@@ -5139,7 +5139,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							{
 								FScopedMovementUpdate ScopedMovementUpdate(root, EScopedUpdate::DeferredUpdates);
 								FTransform baseTrans = this->GetAttachParent()->GetComponentTransform();
-								root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::TeleportPhysics);
+								root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::None);
 								root->SetWorldTransform(WorldTransform, false);// , &OutHit);
 							}
 							else
@@ -5236,7 +5236,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							FScopedMovementUpdate ScopedMovementUpdate(root, EScopedUpdate::DeferredUpdates);
 							FTransform baseTrans = this->GetAttachParent()->GetComponentTransform();
-							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::TeleportPhysics);
+							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::None);
 							// Move the actor, we are not offsetting by the hit result anyway
 							root->SetWorldTransform(WorldTransform, false);
 						}
@@ -5260,7 +5260,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							FScopedMovementUpdate ScopedMovementUpdate(root, EScopedUpdate::DeferredUpdates);
 							FTransform baseTrans = this->GetAttachParent()->GetComponentTransform();
-							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::TeleportPhysics);
+							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::None);
 							// Move the actor, we are not offsetting by the hit result anyway
 							root->SetWorldTransform(WorldTransform, false);
 						}
