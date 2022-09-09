@@ -5011,7 +5011,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							FScopedMovementUpdate ScopedMovementUpdate(root, EScopedUpdate::DeferredUpdates);
 							FTransform baseTrans = this->GetAttachParent()->GetComponentTransform();
-							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::TeleportPhysics);
+							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::None);
 							root->SetWorldTransform(WorldTransform, true, &OutHit);
 						}
 						else
@@ -5153,7 +5153,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							{
 								FScopedMovementUpdate ScopedMovementUpdate(root, EScopedUpdate::DeferredUpdates);
 								FTransform baseTrans = this->GetAttachParent()->GetComponentTransform();
-								root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::TeleportPhysics);
+								root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::None);
 								root->SetWorldTransform(WorldTransform, false);// , &OutHit);
 							}
 							else
@@ -5250,7 +5250,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							FScopedMovementUpdate ScopedMovementUpdate(root, EScopedUpdate::DeferredUpdates);
 							FTransform baseTrans = this->GetAttachParent()->GetComponentTransform();
-							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::TeleportPhysics);
+							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::None);
 							// Move the actor, we are not offsetting by the hit result anyway
 							root->SetWorldTransform(WorldTransform, false);
 						}
@@ -5274,7 +5274,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							FScopedMovementUpdate ScopedMovementUpdate(root, EScopedUpdate::DeferredUpdates);
 							FTransform baseTrans = this->GetAttachParent()->GetComponentTransform();
-							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::TeleportPhysics);
+							root->SetWorldTransform(Grip->LastWorldTransform * baseTrans, false, nullptr, ETeleportType::None);
 							// Move the actor, we are not offsetting by the hit result anyway
 							root->SetWorldTransform(WorldTransform, false);
 						}
@@ -7084,7 +7084,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 			{
 				if (IsValid(DroppingActor) && TransformAtDrop.IsValid())
 				{
-					DroppingActor->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
+					DroppingActor->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::None);
 				}
 			}
 		}break;
@@ -7094,7 +7094,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 			{
 				if (IsValid(DroppingComp) && TransformAtDrop.IsValid())
 				{
-					DroppingComp->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::TeleportPhysics);
+					DroppingComp->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::None);
 				}
 			}
 		}break;
