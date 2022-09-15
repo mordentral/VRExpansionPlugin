@@ -501,6 +501,7 @@ enum class EBPOpenVRHMDDeviceType : uint8
 	DT_OculusQuestHMD,
 	DT_OculusHMD,
 	DT_WindowsMR,
+	DT_PicoNeo3,
 	//DT_OSVR,
 	DT_Unknown
 };
@@ -516,6 +517,7 @@ enum class EBPOpenVRControllerDeviceType : uint8
 	DT_RiftSController,
 	DT_QuestController,
 	DT_WMRController,
+	DT_PicoNeo3Controller,
 	DT_UnknownController
 };
 
