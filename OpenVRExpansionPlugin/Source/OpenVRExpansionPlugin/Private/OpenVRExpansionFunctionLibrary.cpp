@@ -113,6 +113,10 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 				{
 					DeviceType = EBPOpenVRHMDDeviceType::DT_ViveFocus;
 				}
+				else if (DeviceModelNumber.Find("Pico  Neo3", ESearchCase::IgnoreCase) != INDEX_NONE)
+				{
+					DeviceType = EBPOpenVRHMDDeviceType::DT_PicoNeo3;
+				}
 				else
 				{
 					DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
@@ -245,6 +249,10 @@ EBPOpenVRControllerDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRControll
 		else if (DeviceModelNumber.Find("windowsmr", ESearchCase::IgnoreCase) != INDEX_NONE) // Oculus Rift CV1
 		{
 			DeviceType = EBPOpenVRControllerDeviceType::DT_WMRController;
+		}
+		else if (DeviceModelNumber.Find("Pico  Neo3  Controller", ESearchCase::IgnoreCase) != INDEX_NONE) // PicoNeo3
+		{
+			DeviceType = EBPOpenVRControllerDeviceType::DT_PicoNeo3Controller;
 		}
 		else
 		{

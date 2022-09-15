@@ -318,8 +318,10 @@ public:
 	// Returns the target relative transform of the hand to the gripped object
 	// If you want the transform mirrored you need to pass in which hand is requesting the information
 	// If UseParentScale is true then we will scale the value by the parent scale (generally only for when not using absolute hand scale)
+	// If UseMirrorScale is true then we will mirror the scale on the hand by the hand sockets mirror scale when appropriate (not for fully body!)
+	// if UseMirrorScale is false than the resulting transform will not have mirroring scale added so you may have to break the transform.
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
-	FTransform GetMeshRelativeTransform(bool bIsRightHand, bool bUseParentScale = false);
+	FTransform GetMeshRelativeTransform(bool bIsRightHand, bool bUseParentScale = false, bool bUseMirrorScale = false);
 
 	// Returns the defined hand socket component (if it exists, you need to valid check the return!
 	// If it is a valid return you can then cast to your projects base socket class and handle whatever logic you want
