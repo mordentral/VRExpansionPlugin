@@ -33,6 +33,7 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 	
 	LeverLimitNegative = 0.0f;
 	LeverLimitPositive = 90.0f;
+	FlightStickYawLimit = 180.0f;
 	bLeverState = false;
 	LeverTogglePercentage = 0.8f;
 
@@ -322,7 +323,13 @@ void UVRLeverComponent::TickGrip_Implementation(UGripMotionControllerComponent *
 				CurInteractorLocation = (CalcTransform * ParentTransform).InverseTransformPosition(GrippingController->GetPivotLocation());
 			}
 
-			float CurrentLeverYawAngle = UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_Z, CurInteractorLocation, InitialGripRot);
+			float CurrentLeverYawAngle = FRotator::NormalizeAxis(UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_Z, CurInteractorLocation, InitialGripRot));
+
+			if (FlightStickYawLimit < 180.0f)
+			{
+				CurrentLeverYawAngle = FMath::Clamp(CurrentLeverYawAngle, -FlightStickYawLimit, FlightStickYawLimit);
+			}
+
 			FQuat newLocalRot = CalcTransform.GetRotation() * FQuat(FVector::UpVector, FMath::DegreesToRadians(CurrentLeverYawAngle));
 			this->SetRelativeRotation(newLocalRot.Rotator());
 		}
@@ -731,7 +738,11 @@ void UVRLeverComponent::CalculateCurrentAngle(FTransform & CurrentTransform)
 
 		if (LeverRotationAxis == EVRInteractibleLeverAxis::FlightStick_XY)
 		{
-			AllCurrentLeverAngles.Yaw = FMath::RoundToFloat(UVRExpansionFunctionLibrary::GetHMDPureYaw_I(CurrentRelRot.Rotator()).Yaw);
+			AllCurrentLeverAngles.Yaw = FRotator::NormalizeAxis(FMath::RoundToFloat(UVRExpansionFunctionLibrary::GetHMDPureYaw_I(CurrentRelRot.Rotator()).Yaw));
+			if (FlightStickYawLimit < 180.0f)
+			{
+				AllCurrentLeverAngles.Yaw = FMath::Clamp(AllCurrentLeverAngles.Yaw, -FlightStickYawLimit, FlightStickYawLimit);
+			}
 		}
 		else
 			AllCurrentLeverAngles.Yaw = 0.0f;

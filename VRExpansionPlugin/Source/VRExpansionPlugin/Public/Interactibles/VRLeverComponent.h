@@ -119,6 +119,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent", meta = (ClampMin = "0.0", ClampMax = "179.9", UIMin = "0.0", UIMax = "180.0"))
 		float LeverLimitNegative;
 
+	// The max angle of the flightsticks yaw in either direction off of 0
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Flight Stick Settings", meta = (ClampMin = "0.0", ClampMax = "179.9", UIMin = "0.0", UIMax = "180.0"))
+		float FlightStickYawLimit;
+
 	// If true then this lever is locked in place until unlocked again
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent")
 		bool bIsLocked;
