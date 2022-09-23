@@ -2409,11 +2409,13 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 			{
 				IVRGripInterface::Execute_SetHeld(pActor, this, NewDrop.GripID, false);
 
-				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
+				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment || SecondaryGripIDs.Contains(NewDrop.GripID))
 				{
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, this, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 					OnSecondaryGripRemoved.Broadcast(NewDrop);
 				}
+
+				SecondaryGripIDs.Remove(NewDrop.GripID);
 
 				TArray<UVRGripScriptBase*> GripScripts;
 				if (IVRGripInterface::Execute_GetGripScripts(pActor, GripScripts))
@@ -2479,8 +2481,13 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 			{
 				IVRGripInterface::Execute_SetHeld(root, this, NewDrop.GripID, false);
 
-				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
+				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment || SecondaryGripIDs.Contains(NewDrop.GripID))
+				{
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, this, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
+					OnSecondaryGripRemoved.Broadcast(NewDrop);
+				}
+
+				SecondaryGripIDs.Remove(NewDrop.GripID);
 
 				TArray<UVRGripScriptBase*> GripScripts;
 				if (IVRGripInterface::Execute_GetGripScripts(root, GripScripts))
@@ -3311,11 +3318,13 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			{
 				IVRGripInterface::Execute_SetHeld(pActor, this, NewDrop.GripID, false);
 
-				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
+				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment || SecondaryGripIDs.Contains(NewDrop.GripID))
 				{
 					IVRGripInterface::Execute_OnSecondaryGripRelease(pActor, this, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 					OnSecondaryGripRemoved.Broadcast(NewDrop);
 				}
+
+				SecondaryGripIDs.Remove(NewDrop.GripID);
 
 				TArray<UVRGripScriptBase*> GripScripts;
 				if (IVRGripInterface::Execute_GetGripScripts(pActor, GripScripts))
@@ -3433,11 +3442,13 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 			{
 				IVRGripInterface::Execute_SetHeld(root, this, NewDrop.GripID, false);
 
-				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment)
+				if (NewDrop.SecondaryGripInfo.bHasSecondaryAttachment || SecondaryGripIDs.Contains(NewDrop.GripID))
 				{
 					IVRGripInterface::Execute_OnSecondaryGripRelease(root, this, NewDrop.SecondaryGripInfo.SecondaryAttachment, NewDrop);
 					OnSecondaryGripRemoved.Broadcast(NewDrop);
 				}
+
+				SecondaryGripIDs.Remove(NewDrop.GripID);
 
 				TArray<UVRGripScriptBase*> GripScripts;
 				if (IVRGripInterface::Execute_GetGripScripts(root, GripScripts))
@@ -3782,6 +3793,8 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 
 	if (bGrippedObjectIsInterfaced)
 	{
+		SecondaryGripIDs.Add(GripToUse->GripID);
+
 		IVRGripInterface::Execute_OnSecondaryGrip(GripToUse->GrippedObject, this, SecondaryPointComponent, *GripToUse);
 
 		TArray<UVRGripScriptBase*> GripScripts;
@@ -3881,6 +3894,8 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGrip(const FBP
 	// Handle the grip if it was found
 	if (GripToUse && GripToUse->GrippedObject && GripToUse->GripID != INVALID_VRGRIP_ID)
 	{
+		SecondaryGripIDs.Remove(GripToUse->GripID);
+
 		if (GripToUse->SecondaryGripInfo.GripLerpState == EGripLerpState::StartLerp)
 			LerpToTime = 0.0f;
 
@@ -3990,6 +4005,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGrip(const FBP
 
 		}
 
+		SecondaryGripIDs.Remove(GripToUse->GripID);
 		OnSecondaryGripRemoved.Broadcast(*GripToUse);
 		GripToUse = nullptr;
 		return true;
