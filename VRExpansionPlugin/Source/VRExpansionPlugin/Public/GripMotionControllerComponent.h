@@ -368,6 +368,13 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnControllerGripSignature OnSecondaryGripRemoved;
 
+	// Storage for remote players for secondary grips specifically
+	// Its more than a little hacky, but ordering of drop and the secondaries being
+	// removed on the rep notify require this in rare cases. If Epic ever fixes the last array state not containing removed
+	// grips then this would be a lot cleaner.
+	TArray<uint8> SecondaryGripIDs;
+
+
 	// Called when an object we hold has its grip transform changed
 	UPROPERTY(BlueprintAssignable, Category = "Grip Events")
 		FVROnControllerGripSignature OnGripTransformChanged;
@@ -597,6 +604,7 @@ public:
 
 				if (Grip.GrippedObject && Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 				{
+					SecondaryGripIDs.Add(Grip.GripID);
 					IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
 
 					TArray<UVRGripScriptBase*> GripScripts;
@@ -669,6 +677,7 @@ public:
 						}
 					}
 
+					SecondaryGripIDs.Remove(Grip.GripID);
 					OnSecondaryGripRemoved.Broadcast(Grip);
 				}
 
@@ -676,6 +685,7 @@ public:
 				{
 					if (Grip.GrippedObject && Grip.GrippedObject->IsValidLowLevelFast() && Grip.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
+						SecondaryGripIDs.Add(Grip.GripID);
 						IVRGripInterface::Execute_OnSecondaryGrip(Grip.GrippedObject, this, Grip.SecondaryGripInfo.SecondaryAttachment, Grip);
 
 						TArray<UVRGripScriptBase*> GripScripts;
