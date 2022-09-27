@@ -168,6 +168,7 @@ public:
 // Event thrown when we the melee weapon becomes lodged
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_SevenParams(FVROnMeleeShouldLodgeSignature, FBPLodgeComponentInfo, LogComponent, AActor *, OtherActor, UPrimitiveComponent *, OtherComp, ECollisionChannel, OtherCompCollisionChannel, FBPHitSurfaceProperties, HitSurfaceProperties, FVector, NormalImpulse, const FHitResult&, Hit);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_SevenParams(FVROnMeleeOnHit, FBPLodgeComponentInfo, LogComponent, AActor*, OtherActor, UPrimitiveComponent*, OtherComp, ECollisionChannel, OtherCompCollisionChannel, FBPHitSurfaceProperties, HitSurfaceProperties, FVector, NormalImpulse, const FHitResult&, Hit);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FVROnMeleeInvalidHitSignature, AActor*, OtherActor, UPrimitiveComponent*, OtherComp, FVector, NormalImpulse, const FHitResult&, Hit);
 
 /**
 * A Melee grip script that hands multi hand interactions and penetration notifications*
@@ -199,9 +200,14 @@ public:
 	// Thrown if we should lodge into a hit object
 	UPROPERTY(BlueprintAssignable, Category = "Melee|Lodging")
 		FVROnMeleeShouldLodgeSignature OnShouldLodgeInObject;
-
+	
+	// Thrown if we hit something we can damage
 	UPROPERTY(BlueprintAssignable, Category = "Melee|Hit")
 		FVROnMeleeOnHit OnMeleeHit;
+
+	// Fired when a hit is invalid (hit something that isn't flagged for damage or stabbing or was below the damage or stab threshold)
+	UPROPERTY(BlueprintAssignable, Category = "Melee|Hit")
+		FVROnMeleeInvalidHitSignature OnMeleeInvalidHit;
 
 	// Always tick for penetration
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Melee|Lodging")
