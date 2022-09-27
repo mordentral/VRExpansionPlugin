@@ -82,6 +82,20 @@ enum class EBPVRResultSwitch : uint8
 	OnFailed
 };
 
+// Which method of handling gripping conflict to take with client auth
+UENUM(BlueprintType)
+enum class EVRClientAuthConflictResolutionMode : uint8
+{
+	// Do nothing
+	VRGRIP_CONFLICT_None,
+	// Give to the first to arrive
+	VRGRIP_CONFLICT_First,
+	// Give to the last to arrive
+	VRGRIP_CONFLICT_Last,
+	// Force all ends to drop their grip
+	VRGRIP_CONFLICT_DropAll
+};
+
 // Wasn't needed when final setup was realized
 // Tracked device waist location
 UENUM(Blueprintable)
