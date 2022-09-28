@@ -6978,13 +6978,18 @@ void UGripMotionControllerComponent::GetGrippedComponents(TArray<UPrimitiveCompo
 }
 
 // Locally gripped functions
-void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementation(UObject * LocallyGrippedObject, uint8 GripID)
+void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementation(UObject * LocallyGrippedObject, uint8 GripID, bool bWasAGripConflict)
 {
 	if (GripID != INVALID_VRGRIP_ID)
 	{
 		if (FBPActorGripInformation* GripInfo = GetGripPtrByID(GripID))
 		{
 			DropObjectByInterface(nullptr, GripID);
+
+			if (LocallyGrippedObject && bWasAGripConflict)
+			{
+				OnClientAuthGripConflict.Broadcast(LocallyGrippedObject, ClientAuthConflictResolutionMethod);
+			}
 			return;
 		}		
 	}
@@ -6999,6 +7004,11 @@ void UGripMotionControllerComponent::Client_NotifyInvalidLocalGrip_Implementatio
 
 	// Drop it, server told us that it was a bad grip
 	DropObjectByInterface(nullptr, FoundGrip.GripID);
+
+	if (LocallyGrippedObject && bWasAGripConflict)
+	{
+		OnClientAuthGripConflict.Broadcast(LocallyGrippedObject, ClientAuthConflictResolutionMethod);
+	}
 }
 
 bool UGripMotionControllerComponent::Server_NotifyHandledTransaction_Validate(uint8 GripID)
@@ -7059,7 +7069,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_First:
 							{
 								// Deny the grip, another connection already came and gripped it
-								Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, newGrip.GripID);
+								Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, newGrip.GripID, true);
 
 								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
 								return;
@@ -7068,14 +7078,16 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 							{
 								// Deny the old grip, another connection came and gripped it
 								GripPair.HoldingController->DropObjectByInterface(newGrip.GrippedObject, GripPair.GripID);
+								GripPair.HoldingController->Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, GripPair.GripID, true);
 								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
 								return;
 							}break;
 							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_DropAll:
 							{
 								// Deny both grips
-								Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, newGrip.GripID);
+								Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, newGrip.GripID, true);
 								GripPair.HoldingController->DropObjectByInterface(newGrip.GrippedObject, GripPair.GripID);
+								GripPair.HoldingController->Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, GripPair.GripID, true);
 								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
 								return;
 							}break;
