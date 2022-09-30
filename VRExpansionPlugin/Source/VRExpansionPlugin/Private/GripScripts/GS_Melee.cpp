@@ -578,6 +578,9 @@ void UGS_Melee::OnEndPlay_Implementation(const EEndPlayReason::Type EndPlayReaso
 
 void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVector NormalImpulse, const FHitResult& Hit)
 {
+	if (!Hit.GetComponent())
+		return;
+
 	if (!bCheckLodge || !bIsActive || bIsLodged || OtherActor == SelfActor)
 	{
 		if (bAlwaysTickPenetration || bIsHeld)
@@ -653,8 +656,6 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 
 	bool bHadFirstHit = false;
 	FBPLodgeComponentInfo FirstHitComp;
-	FHitResult FirstHitResult;
-	FVector FirstHitImpulse;
 
 	float HitNormalImpulse = NormalImpulse.SizeSquared();
 
@@ -692,15 +693,13 @@ void UGS_Melee::OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVecto
 			{
 				bHadFirstHit = true;
 				FirstHitComp = LodgeData;
-				FirstHitResult = Hit;
-				FirstHitImpulse = NormalImpulse;
 			}
 		}
 	}
 
 	if (bHadFirstHit)
 	{
-		OnMeleeHit.Broadcast(FirstHitComp, OtherActor, FirstHitResult.GetComponent(), FirstHitResult.GetComponent()->GetCollisionObjectType(), HitSurfaceProperties, FirstHitImpulse, FirstHitResult);
+		OnMeleeHit.Broadcast(FirstHitComp, OtherActor, Hit.GetComponent(), Hit.GetComponent()->GetCollisionObjectType(), HitSurfaceProperties, NormalImpulse, Hit);
 	}
 	else
 	{
