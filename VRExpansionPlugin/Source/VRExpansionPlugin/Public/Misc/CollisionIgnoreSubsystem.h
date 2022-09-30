@@ -239,6 +239,8 @@ public:
 	void SetComponentCollisionIgnoreState(bool bIterateChildren1, bool bIterateChildren2, UPrimitiveComponent* Prim1, FName OptionalBoneName1, UPrimitiveComponent* Prim2, FName OptionalBoneName2, bool bIgnoreCollision, bool bCheckFilters = false);
 	void RemoveComponentCollisionIgnoreState(UPrimitiveComponent* Prim1);
 	bool IsComponentIgnoringCollision(UPrimitiveComponent* Prim1);
+	bool AreComponentsIgnoringCollisions(UPrimitiveComponent* Prim1, UPrimitiveComponent* Prim2);
+	bool HasCollisionIgnorePairs();
 private:
 
 	FTimerHandle UpdateHandle;
