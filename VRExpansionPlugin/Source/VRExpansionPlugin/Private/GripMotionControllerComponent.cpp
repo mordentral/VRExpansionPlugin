@@ -42,6 +42,8 @@
 #include "Chaos/ChaosConstraintSettings.h"
 #endif
 
+#include "Misc/CollisionIgnoreSubsystem.h"
+
 #include "Features/IModularFeatures.h"
 
 DEFINE_LOG_CATEGORY(LogVRMotionController);
@@ -5000,7 +5002,28 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 									GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params)
 								)
 							{
-								Grip->bColliding = true;
+
+								// Check if the two components are ignoring collisions with each other
+								UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
+								
+								if (CollisionIgnoreSubsystem->HasCollisionIgnorePairs())
+								{
+									// Pre-set this so it falls back to false if none of these hits are valid
+									Grip->bColliding = false;
+
+									for (const FHitResult& Hit : Hits)
+									{
+										if (Hit.bBlockingHit && !CollisionIgnoreSubsystem->AreComponentsIgnoringCollisions(root, Hit.Component.Get()))
+										{
+											Grip->bColliding = true;
+											break;
+										}
+									}
+								}
+								else
+								{
+									Grip->bColliding = true;
+								}
 							}
 							else
 							{
@@ -5088,11 +5111,47 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						}
 						else if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
 						{
-							if (!Grip->bColliding)
+							// Check if the two components are ignoring collisions with each other
+							UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
+
+							if (CollisionIgnoreSubsystem->HasCollisionIgnorePairs())
 							{
-								SetGripConstraintStiffnessAndDamping(Grip, false);
+
+								bool bOriginalColliding = Grip->bColliding;
+								// Pre-set this so it falls back to false if none of these hits are valid
+								Grip->bColliding = false;
+
+								for (const FHitResult& Hit : Hits)
+								{
+									if (Hit.bBlockingHit && !CollisionIgnoreSubsystem->AreComponentsIgnoringCollisions(root, Hit.Component.Get()))
+									{
+										if (!bOriginalColliding)
+										{
+											SetGripConstraintStiffnessAndDamping(Grip, false);
+										}
+										Grip->bColliding = true;
+										break;
+									}
+								}
+
+								if (!Grip->bColliding)
+								{
+									if (bOriginalColliding)
+									{
+										SetGripConstraintStiffnessAndDamping(Grip, true);
+									}
+								}
+
+
 							}
-							Grip->bColliding = true;
+							else
+							{
+								if (!Grip->bColliding)
+								{
+									SetGripConstraintStiffnessAndDamping(Grip, false);
+								}
+								Grip->bColliding = true;
+							}
 						}
 						else
 						{
@@ -5138,7 +5197,27 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						}
 						else if (GetWorld()->ComponentSweepMulti(Hits, root, BaseTransform.GetLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
 						{
-							Grip->bColliding = true;
+							// Check if the two components are ignoring collisions with each other
+							UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
+
+							if (CollisionIgnoreSubsystem->HasCollisionIgnorePairs())
+							{
+								// Pre-set this so it falls back to false if none of these hits are valid
+								Grip->bColliding = false;
+
+								for (const FHitResult& Hit : Hits)
+								{
+									if (Hit.bBlockingHit && !CollisionIgnoreSubsystem->AreComponentsIgnoringCollisions(root, Hit.Component.Get()))
+									{
+										Grip->bColliding = true;
+										break;
+									}
+								}
+							}
+							else
+							{
+								Grip->bColliding = true;
+							}
 						}
 						else
 						{
