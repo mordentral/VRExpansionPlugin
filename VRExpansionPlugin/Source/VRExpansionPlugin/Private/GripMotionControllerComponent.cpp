@@ -32,15 +32,14 @@
 #include "PhysicsEngine/ConstraintDrives.h"
 #include "PhysicsReplication.h"
 
-#if WITH_CHAOS
 #include "Chaos/ParticleHandle.h"
 #include "Chaos/KinematicGeometryParticles.h"
 #include "Chaos/PBDJointConstraintTypes.h"
+#include "Chaos/PBDConstraintBaseData.h"
 #include "Chaos/PBDJointConstraintData.h"
 #include "Chaos/Sphere.h"
 #include "PhysicsProxy/SingleParticlePhysicsProxy.h"
 #include "Chaos/ChaosConstraintSettings.h"
-#endif
 
 #include "Misc/CollisionIgnoreSubsystem.h"
 
@@ -5575,16 +5574,15 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 
 	FPhysicsCommand::ExecuteWrite(rBodyInstance->ActorHandle, [&](const FPhysicsActorHandle& Actor)
 	{
-#if WITH_CHAOS
 			if (HandleInfo)
 			{
 				if (HandleInfo->KinActorData2 && FPhysicsInterface::IsValid(HandleInfo->KinActorData2))
 				{
 					// Make sure that the constraint particles are correct, the body instance may have changed
-					auto* JointConstraint = HandleInfo->HandleData2.Constraint;
-					if (JointConstraint)
+					Chaos::FConstraintBase* ConstraintHandle = HandleInfo->HandleData2.Constraint;
+					if (ConstraintHandle)
 					{
-						JointConstraint->SetParticleProxies({ HandleInfo->KinActorData2,Actor });
+						((Chaos::FJointConstraint*)ConstraintHandle)->SetParticleProxies({ HandleInfo->KinActorData2, Actor });
 					}
 
 					// Ensure center of mass is still correct
@@ -5597,7 +5595,6 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 					}
 				}
 			}
-#endif
 	});
 
 	return true;
@@ -5962,7 +5959,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				//FPhysicsInterface::SetActorUserData_AssumesLocked(HandleInfo->KinActorData2, NULL);
 			}
 
-#if WITH_CHAOS
 			using namespace Chaos;
 			// Missing from physx, not sure how it is working for them currently.
 			//TArray<FPhysicsActorHandle> ActorHandles;
@@ -5971,7 +5967,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			FPhysicsInterface::AddActorToSolver(HandleInfo->KinActorData2, ActorParams.Scene->GetSolver());
 			//ActorHandles.Add(HandleInfo->KinActorData2);
 			//ActorParams.Scene->AddActorsToScene_AssumesLocked(ActorHandles);
-#endif
 		}
 
 		// If we don't already have a handle - make one now.
@@ -5997,8 +5992,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			FTransform newTrans = HandleInfo->COMPosition * (HandleInfo->RootBoneRotation * HandleInfo->LastPhysicsTransform);
 			*/
 
-#if WITH_CHAOS
-
 			// There isn't a direct set for the particles, so keep it as a recreation instead.
 			FPhysicsInterface::ReleaseConstraint(HandleInfo->HandleData2);
 
@@ -6011,7 +6004,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			{
 				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2, Actor, FTransform::Identity, KinPose.GetRelativeTransform(FPhysicsInterface::GetGlobalPose_AssumesLocked(Actor)));
 			}
-#endif
 		
 		}
 
@@ -6063,7 +6055,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
 			}
 			
-#if WITH_CHAOS
 			const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
 
 			if (VRSettings.bUseChaosTranslationScalers)
@@ -6073,7 +6064,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				AngularStiffness *= VRSettings.AngularDriveStiffnessScale;
 				AngularDamping *= VRSettings.AngularDriveDampingScale;
 			}
-#endif
 
 			AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
 			MaxForce = (float)FMath::Clamp<double>((double)Stiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0, (double)MAX_FLT);
@@ -6192,7 +6182,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			// This is a temp workaround until epic fixes the drive creation to allow force constraints
 			// I wanted to use the new interface and not directly set the drive so that it is ready to delete this section
 			// When its fixed
-#if WITH_CHAOS
 			if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint)
 			{
 				if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint->IsType(Chaos::EConstraintType::JointConstraintType))
@@ -6204,7 +6193,6 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 					}
 				}
 			}
-#endif
 		}
 	});
 
@@ -6252,7 +6240,6 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 						AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
 					}
 
-#if WITH_CHAOS
 					const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
 					
 					if (VRSettings.bUseChaosTranslationScalers)
@@ -6262,7 +6249,6 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 						AngularStiffness *= VRSettings.AngularDriveStiffnessScale;
 						AngularDamping *= VRSettings.AngularDriveDampingScale;
 					}
-#endif
 
 					AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
 					MaxForce = (float)FMath::Clamp<double>((double)Stiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.LinearMaxForceCoefficient, 0, (double)MAX_FLT);
@@ -6282,7 +6268,6 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 						HandleInfo->LinConstraint.ZDrive.MaxForce = MaxForce;
 
 						FPhysicsInterface::UpdateLinearDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->LinConstraint);
-#if WITH_CHAOS
 						if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint)
 						{
 							if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint->IsType(Chaos::EConstraintType::JointConstraintType))
@@ -6294,7 +6279,6 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 								}
 							}
 						}
-#endif
 
 						if (Grip->GripCollisionType == EGripCollisionType::ManipulationGripWithWristTwist)
 						{
@@ -6332,7 +6316,6 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 						HandleInfo->LinConstraint.ZDrive.MaxForce = MaxForce;
 
 						FPhysicsInterface::UpdateLinearDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->LinConstraint);
-#if WITH_CHAOS
 						if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint)
 						{
 							if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint->IsType(Chaos::EConstraintType::JointConstraintType))
@@ -6343,14 +6326,12 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 								}
 							}
 						}
-#endif
 
 
 						HandleInfo->AngConstraint.SlerpDrive.Damping = AngularDamping;
 						HandleInfo->AngConstraint.SlerpDrive.Stiffness = AngularStiffness;
 						HandleInfo->AngConstraint.SlerpDrive.MaxForce = AngularMaxForce;
 						FPhysicsInterface::UpdateAngularDrive_AssumesLocked(HandleInfo->HandleData2, HandleInfo->AngConstraint);
-#if WITH_CHAOS
 						if (bUseForceDrive && HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint)
 						{
 							if (HandleInfo->HandleData2.IsValid() && HandleInfo->HandleData2.Constraint->IsType(Chaos::EConstraintType::JointConstraintType))
@@ -6361,7 +6342,6 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 								}
 							}
 						}
-#endif
 					}
 
 				});
@@ -6701,18 +6681,18 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				continue;
 			}
 
-#if !PLATFORM_PS4	
+/*#if !PLATFORM_PS4
 				if (bIsInGameThread)
 				{
 					CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
 					if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
 						continue;
 				}			
-#endif
+#endif*/
 
 			if (MotionController->GetControllerOrientationAndPosition(PlayerIndex, MotionSource, Orientation, Position, WorldToMetersScale))
 			{
-#if PLATFORM_PS4
+/*#if PLATFORM_PS4
 				// Moving this in here to work around a PSVR module bug
 				if (bIsInGameThread)
 				{
@@ -6720,7 +6700,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 					if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
 						continue;
 				}
-#endif
+#endif*/
 				if (HasTrackingParameters())
 				{
 					ApplyTrackingParameters(Position, bIsInGameThread);
@@ -6752,12 +6732,12 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 							
 				return true;
 			}
-#if PLATFORM_PS4
+/*#if PLATFORM_PS4
 			else if (bIsInGameThread)
 			{
 				CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
 			}
-#endif
+#endif*/
 		}
 
 		// #NOTE: This was adding in 4.20, I presume to allow for HMDs as tracking sources for mixed reality.

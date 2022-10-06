@@ -135,9 +135,8 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 									continue;
 								}
 							}
-#if WITH_CHAOS 
+
 							FKShapeElem* ShapeElem = FChaosUserData::Get<FKShapeElem>(FPhysicsInterface::GetUserData(Shape));
-#endif
 							if (ShapeElem)
 							{
 								FName TargetBoneName = ShapeElem->GetName();

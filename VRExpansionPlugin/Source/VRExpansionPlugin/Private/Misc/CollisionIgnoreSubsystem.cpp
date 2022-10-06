@@ -4,13 +4,11 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 
-#if WITH_CHAOS
 #include "Chaos/ParticleHandle.h"
 #include "Chaos/KinematicGeometryParticles.h"
 #include "Chaos/ParticleHandle.h"
 #include "PhysicsProxy/SingleParticlePhysicsProxy.h"
 #include "PBDRigidsSolver.h"
-#endif
 
 DEFINE_LOG_CATEGORY(VRE_CollisionIgnoreLog);
 
@@ -332,7 +330,6 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 					newIgnorePair.Actor2 = ApplicableBodies2[j].BInstance->ActorHandle;
 					newIgnorePair.BoneName2 = ApplicableBodies2[j].BName;
 
-#if WITH_CHAOS
 					Chaos::FUniqueIdx ID0 = ApplicableBodies[i].BInstance->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
 					Chaos::FUniqueIdx ID1 = ApplicableBodies2[j].BInstance->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
 
@@ -420,7 +417,6 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 								}
 							}
 						});
-#endif
 				}
 			}
 		}

@@ -2,10 +2,8 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#if WITH_CHAOS
 #include "WheeledVehiclePawn.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
-#endif
 
 #include "UObject/ObjectMacros.h"
 #include "GameFramework/Pawn.h"

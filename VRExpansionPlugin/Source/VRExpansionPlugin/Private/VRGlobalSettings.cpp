@@ -1,9 +1,6 @@
 
 #include "VRGlobalSettings.h"
-
-#if WITH_CHAOS
 #include "Chaos/ChaosConstraintSettings.h"
-#endif
 
 UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
@@ -23,7 +20,6 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 	bUseSeperateHandTransforms(false),
 	CurrentControllerProfileTransformRight(FTransform::Identity)
 {
-#if WITH_CHAOS
 		bUseChaosTranslationScalers = true;
 		bSetEngineChaosScalers = true;
 		LinearDriveStiffnessScale = 1.0f;// Chaos::ConstraintSettings::LinearDriveStiffnessScale();
@@ -40,7 +36,6 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 		JointLinearBreakScale = 1.0f; //Chaos::ConstraintSettings::LinearBreakScale();
 		JointAngularBreakScale = 1.0f; //Chaos::ConstraintSettings::AngularBreakScale();
 
-#endif
 }
 
 bool UVRGlobalSettings::IsGlobalLerpEnabled()
@@ -369,7 +364,6 @@ void UVRGlobalSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 
 void UVRGlobalSettings::SetScalers()
 {
-#if WITH_CHAOS
 	auto CVarLinearDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearDriveStiffnessScale"));
 	auto CVarLinearDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinaearDriveDampingScale"));
 	auto CVarAngularDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveStiffnessScale"));
@@ -416,7 +410,6 @@ void UVRGlobalSettings::SetScalers()
 		CVarJointLinearBreakScale->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
 		CVarJointAngularBreakScale->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
 	}
-#endif
 }
 
 void UVRGlobalSettings::GetMeleeSurfaceGlobalSettings(TArray<FBPHitSurfaceProperties>& OutMeleeSurfaceSettings)

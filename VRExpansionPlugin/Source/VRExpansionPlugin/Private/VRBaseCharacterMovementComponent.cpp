@@ -1438,7 +1438,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_CharacterMovementSimulated);
 	checkSlow(CharacterOwner != nullptr);
 
-	if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
+	/*if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
 	{
 		const FVector OldLocation = UpdatedComponent ? UpdatedComponent->GetComponentLocation() : FVector::ZeroVector;
 		const FVector OldVelocity = Velocity;
@@ -1473,7 +1473,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 
 		//TickCharacterPose( DeltaSeconds );
 		return;
-	}
+	}*/
 
 	// If we are playing a RootMotion AnimMontage.
 	if (CharacterOwner->IsPlayingNetworkedRootMotionMontage())
@@ -1735,12 +1735,12 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 	bNetworkSmoothingComplete = false;
 
 	// Handle selected smoothing mode.
-	if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
+	/**if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
 	{
 		// Replays use pure interpolation in this mode, all of the work is done in SmoothClientPosition_Interpolate
 		return;
 	}
-	else if (NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
+	else*/ if (NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
 	{
 		UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
 		bNetworkSmoothingComplete = true;
@@ -1957,14 +1957,14 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			BaseVRCharacterOwner->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
 
 		}
-		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
+		/*else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
 		{
 			if (!UpdatedComponent->GetComponentQuat().Equals(ClientData->MeshRotationOffset, SCENECOMPONENT_QUAT_TOLERANCE))// || !UpdatedComponent->GetComponentLocation().Equals(ClientData->MeshTranslationOffset, KINDA_SMALL_NUMBER))
 			{
 				//UpdatedComponent->SetWorldLocation(ClientData->MeshTranslationOffset);
 				UpdatedComponent->SetWorldLocationAndRotation(ClientData->MeshTranslationOffset, ClientData->MeshRotationOffset);
 			}
-		}
+		}*/
 		else
 		{
 			// Unhandled mode

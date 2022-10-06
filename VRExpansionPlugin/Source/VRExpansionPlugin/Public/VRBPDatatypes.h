@@ -1807,9 +1807,7 @@ public:
 		bSkipResettingCom = false;
 		bSkipDeletingKinematicActor = false;
 		bInitiallySetup = false;
-#if WITH_CHAOS
 		KinActorData2 = nullptr;
-#endif
 	}
 
 	FORCEINLINE bool operator==(const FBPActorGripInformation & Other) const
