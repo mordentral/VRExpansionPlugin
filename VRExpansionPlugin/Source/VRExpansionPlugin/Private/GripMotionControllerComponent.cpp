@@ -3039,6 +3039,36 @@ void UGripMotionControllerComponent::HandleGlobalLerpToHand(FBPActorGripInformat
 	if (!VRSettings->bUseGlobalLerpToHand || !GripInformation.bIsLerping)
 		return;
 
+	if (VRSettings.bSkipLerpToHandIfHeld && GripInformation.GrippedObject && GripInformation.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	{
+		bool bIsHeld = false;
+		TArray<FBPGripPair> HoldingControllers;
+		// Check if a different controller is holding it
+		IVRGripInterface::Execute_IsHeld(GripInformation.GrippedObject, HoldingControllers, bIsHeld);
+
+		if (HoldingControllers.Num() > 0)
+		{
+			for (FBPGripPair& ControllerPair : HoldingControllers)
+			{
+				if (ControllerPair.HoldingController && ControllerPair.HoldingController != this)
+				{
+					FBPActorGripInformation Grip;
+					EBPVRResultSwitch Result;
+					ControllerPair.HoldingController->GetGripByID(Grip, ControllerPair.GripID, Result);
+
+					if (Result != EBPVRResultSwitch::OnFailed)
+					{
+						if (Grip.IsValid())
+						{
+							// We are skipping lerping now
+							return;
+						}
+					}
+				}
+			}
+		}
+	}
+
 	EBPVRResultSwitch Result;
 	TSubclassOf<class UVRGripScriptBase> Class = UGS_LerpToHand::StaticClass();
 	UVRGripScriptBase * LerpScript = UVRGripScriptBase::GetGripScriptByClass(GripInformation.GrippedObject, Class, Result);
