@@ -137,6 +137,9 @@ public:
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
 		bool bUseGlobalLerpToHand;
 
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
+		bool bSkipLerpToHandIfHeld;
+
 	// If the initial grip distance is closer than this value then the lerping will not be performed.
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
 		float MinDistanceForLerp;
