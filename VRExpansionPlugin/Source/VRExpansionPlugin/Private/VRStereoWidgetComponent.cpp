@@ -997,7 +997,7 @@ public:
 				// Draw simple collision as wireframe if 'show collision', collision is enabled, and we are not using the complex as the simple
 				const bool bDrawSimpleWireframeCollision = InBodySetup->CollisionTraceFlag != ECollisionTraceFlag::CTF_UseComplexAsSimple;
 
-				if (FMath::Abs(GetLocalToWorld().Determinant()) < SMALL_NUMBER)
+				if (FMath::Abs(GetLocalToWorld().Determinant()) < UE_SMALL_NUMBER)
 				{
 					// Catch this here or otherwise GeomTransform below will assert
 					// This spams so commented out

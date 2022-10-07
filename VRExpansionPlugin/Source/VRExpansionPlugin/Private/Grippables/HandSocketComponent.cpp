@@ -122,7 +122,7 @@ bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InA
 			return false;
 		}
 
-		const FReferenceSkeleton& RefSkeleton = (TargetMesh) ? TargetMesh->SkeletalMesh->GetRefSkeleton() : InAnimationSequence->GetSkeleton()->GetReferenceSkeleton();
+		const FReferenceSkeleton& RefSkeleton = (TargetMesh) ? TargetMesh->GetSkinnedAsset()->GetRefSkeleton() : InAnimationSequence->GetSkeleton()->GetReferenceSkeleton();
 		FTransform LocalTransform;
 
 		const TArray<FTrackToSkeletonMap>& TrackMap = InAnimationSequence->GetCompressedTrackToSkeletonMapTable();
@@ -232,7 +232,7 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 			return false;
 		}
 
-		const FReferenceSkeleton& RefSkeleton = (TargetMesh) ? TargetMesh->SkeletalMesh->GetRefSkeleton() : HandTargetAnimation->GetSkeleton()->GetReferenceSkeleton();
+		const FReferenceSkeleton& RefSkeleton = (TargetMesh) ? TargetMesh->GetSkinnedAsset()->GetRefSkeleton() : HandTargetAnimation->GetSkeleton()->GetReferenceSkeleton();
 		FTransform LocalTransform;
 
 		const TArray<FTrackToSkeletonMap>& TrackMap = HandTargetAnimation->GetCompressedTrackToSkeletonMapTable();
@@ -308,13 +308,13 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 	}
 	else if (bUseCustomPoseDeltas && CustomPoseDeltas.Num() && TargetMesh)
 	{
-		PoseSnapShot.SkeletalMeshName = TargetMesh->SkeletalMesh->GetSkeleton()->GetFName();
+		PoseSnapShot.SkeletalMeshName = TargetMesh->GetSkinnedAsset()->GetSkeleton()->GetFName();
 		PoseSnapShot.SnapshotName = FName(TEXT("RawDeltaPose"));
 		PoseSnapShot.BoneNames.Empty();
 		PoseSnapShot.LocalTransforms.Empty();
 		TargetMesh->GetBoneNames(PoseSnapShot.BoneNames);
 
-		PoseSnapShot.LocalTransforms = TargetMesh->SkeletalMesh->GetSkeleton()->GetRefLocalPoses();
+		PoseSnapShot.LocalTransforms = TargetMesh->GetSkinnedAsset()->GetSkeleton()->GetRefLocalPoses();
 
 		FQuat DeltaQuat = FQuat::Identity;
 		FName TargetBoneName = NAME_None;
@@ -534,7 +534,7 @@ void UHandSocketComponent::OnRegister()
 
 			if (VisualizationMesh)
 			{
-				HandVisualizerComponent->SetSkeletalMesh(VisualizationMesh);
+				HandVisualizerComponent->SetSkinnedAsset(VisualizationMesh);
 				if (HandPreviewMaterial)
 				{
 					HandVisualizerComponent->SetMaterial(0, (UMaterialInterface*)HandPreviewMaterial);
@@ -609,14 +609,14 @@ void UHandSocketComponent::HideVisualizationMesh()
 void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
 {
 
-	if (!HandVisualizerComponent || !HandVisualizerComponent->SkeletalMesh)
+	if (!HandVisualizerComponent || !HandVisualizerComponent->GetSkinnedAsset())
 		return;
 
 	TArray<FTransform> LocalPoses;
 	if (!HandTargetAnimation)
 	{
 		// Store local poses for posing
-		LocalPoses = HandVisualizerComponent->SkeletalMesh->GetSkeleton()->GetRefLocalPoses();
+		LocalPoses = HandVisualizerComponent->GetSkinnedAsset()->GetSkeleton()->GetRefLocalPoses();
 	}
 
 	TArray<FName> BonesNames;
@@ -627,7 +627,10 @@ void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
 	{
 		if (!HandTargetAnimation && !bUseCustomPoseDeltas)
 		{
-			HandVisualizerComponent->ResetBoneTransformByName(BonesNames[i]);
+			if (HandVisualizerComponent->GetBoneSpaceTransforms().Num() > 0)
+			{
+				HandVisualizerComponent->ResetBoneTransformByName(BonesNames[i]);
+			}
 			continue;
 		}
 
@@ -682,9 +685,9 @@ void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
 		{
 			bTickedPose = true;
 			HandVisualizerComponent->TickPose(1.0f, false);
-			if (HandVisualizerComponent->MasterPoseComponent.IsValid())
+			if (HandVisualizerComponent->LeaderPoseComponent.IsValid())
 			{
-				HandVisualizerComponent->UpdateSlaveComponent();
+				HandVisualizerComponent->UpdateFollowerComponent();
 			}
 			else
 			{

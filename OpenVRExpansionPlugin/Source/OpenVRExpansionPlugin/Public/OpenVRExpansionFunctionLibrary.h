@@ -191,7 +191,7 @@ enum class EBPSteamVRTrackedDeviceType : uint8
 #if STEAMVR_SUPPORTED_PLATFORM
 static vr::ETrackedDeviceProperty VREnumToString(const FString& enumName, uint8 value)
 {
-	const UEnum* EnumPtr = FindObject<UEnum>(ANY_PACKAGE, *enumName, true);
+	const UEnum* EnumPtr = FindFirstObject<UEnum>(*enumName, EFindFirstObjectOptions::None, ELogVerbosity::Warning, TEXT("VREumtoString"));
 
 	if (!EnumPtr)
 		return vr::ETrackedDeviceProperty::Prop_Invalid;

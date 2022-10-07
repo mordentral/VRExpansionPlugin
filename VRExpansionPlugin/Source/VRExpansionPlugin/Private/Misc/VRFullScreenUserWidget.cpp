@@ -614,7 +614,7 @@ FIntPoint FVRFullScreenUserWidget_PostProcess::CalculateWidgetDrawSize(UWorld* W
 			const float SmallWidgetSize = 16.f;
 			FVector2D OutSize = FVector2D(SmallWidgetSize, SmallWidgetSize);
 			ViewportClient->GetViewportSize(OutSize);
-			if (OutSize.X < SMALL_NUMBER)
+			if (OutSize.X < UE_SMALL_NUMBER)
 			{
 				OutSize = FVector2D(SmallWidgetSize, SmallWidgetSize);
 			}

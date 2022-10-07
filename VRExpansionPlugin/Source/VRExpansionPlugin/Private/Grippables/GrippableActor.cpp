@@ -45,6 +45,10 @@ AGrippableActor::AGrippableActor(const FObjectInitializer& ObjectInitializer)
 	bAllowIgnoringAttachOnOwner = true;
 	bReplicateGripScripts = false;
 
+	// #TODO we can register them maybe in the future
+	// Don't use the replicated list, use our custom replication instead
+	bReplicateUsingRegisteredSubObjectList = false;
+
 	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration
 	// Otherwise we will get some massive slow downs if the replication is allowed to hit the 2 per second minimum default
 	MinNetUpdateFrequency = 30.0f;

@@ -76,7 +76,7 @@ FTransform UVREPhysicalAnimationComponent::GetRefPoseBoneRelativeTransform(USkel
 	{
 		//SkelMesh->ClearRefPoseOverride();
 		FReferenceSkeleton RefSkel;
-		RefSkel = SkeleMesh->SkeletalMesh->GetRefSkeleton();
+		RefSkel = SkeleMesh->GetSkinnedAsset()->GetRefSkeleton();
 
 		BoneTransform = GetWorldSpaceRefBoneTransform(RefSkel, RefSkel.FindBoneIndex(BoneName), RefSkel.FindBoneIndex(ParentBoneName));
 	}
@@ -103,7 +103,7 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 	//SkeleMesh->GetRefPosePosition()
 
 	UPhysicsAsset* PhysAsset = SkeleMesh ? SkeleMesh->GetPhysicsAsset() : nullptr;
-	if (PhysAsset && SkeleMesh->SkeletalMesh)
+	if (PhysAsset && SkeleMesh->GetSkinnedAsset())
 	{
 
 		for (FName BaseWeldedBoneDriverName : BaseWeldedBoneDriverNames)
@@ -207,7 +207,7 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 		return;
 
 	UPhysicsAsset* PhysAsset = SkeleMesh ? SkeleMesh->GetPhysicsAsset() : nullptr;
-	if(PhysAsset && SkeleMesh->SkeletalMesh)
+	if(PhysAsset && SkeleMesh->GetSkinnedAsset())
 	{
 		for (FName BaseWeldedBoneDriverName : BaseWeldedBoneDriverNames)
 		{
