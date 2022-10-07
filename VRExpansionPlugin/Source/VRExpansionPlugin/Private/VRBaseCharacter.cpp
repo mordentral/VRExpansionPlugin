@@ -235,8 +235,8 @@ void AVRBaseCharacter::PreReplication(IRepChangedPropertyTracker & ChangedProper
 {
 	Super::PreReplication(ChangedPropertyTracker);
 
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedCapsuleHeight, VRReplicateCapsuleHeight);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AVRBaseCharacter, ReplicatedMovementVR, IsReplicatingMovement());
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AVRBaseCharacter, ReplicatedCapsuleHeight, VRReplicateCapsuleHeight);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AVRBaseCharacter, ReplicatedMovementVR, IsReplicatingMovement());
 }
 
 /*USkeletalMeshComponent* AVRBaseCharacter::GetIKMesh_Implementation() const
