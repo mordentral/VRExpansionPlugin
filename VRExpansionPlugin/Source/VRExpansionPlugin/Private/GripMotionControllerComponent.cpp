@@ -3039,7 +3039,7 @@ void UGripMotionControllerComponent::HandleGlobalLerpToHand(FBPActorGripInformat
 	if (!VRSettings->bUseGlobalLerpToHand || !GripInformation.bIsLerping)
 		return;
 
-	if (VRSettings.bSkipLerpToHandIfHeld && GripInformation.GrippedObject && GripInformation.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+	if (VRSettings->bSkipLerpToHandIfHeld && GripInformation.GrippedObject && GripInformation.GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 	{
 		bool bIsHeld = false;
 		TArray<FBPGripPair> HoldingControllers;
