@@ -42,7 +42,7 @@ void UVRLogComponent::SendKeyEventToConsole(FKey Key, EInputEvent KeyEvent)
 		return;
 
 	ViewportConsole->FakeGotoState(FName(TEXT("Typing")));
-	ViewportConsole->InputKey(0, Key, KeyEvent);
+	ViewportConsole->InputKey(IPlatformInputDeviceMapper::Get().GetDefaultInputDevice(), Key, KeyEvent);
 	ViewportConsole->FakeGotoState(NAME_None);
 }
 
@@ -58,7 +58,7 @@ void UVRLogComponent::AppendTextToConsole(FString Text, bool bReturnAtEnd)
 	if (bReturnAtEnd)
 	{
 		ViewportConsole->FakeGotoState(FName(TEXT("Typing")));
-		ViewportConsole->InputKey(0, EKeys::Enter, EInputEvent::IE_Released);
+		ViewportConsole->InputKey(IPlatformInputDeviceMapper::Get().GetDefaultInputDevice(), EKeys::Enter, EInputEvent::IE_Released);
 		ViewportConsole->FakeGotoState(NAME_None);
 	}
 

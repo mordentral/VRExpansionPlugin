@@ -65,6 +65,54 @@ namespace {
 
 } // anonymous namespace
 
+namespace GripUEMotionController {
+	// A scoped lock that must be explicitly locked and will unlock upon destruction if locked.
+	// Convenient if you only sometimes want to lock and the scopes are complicated.
+	class FScopeLockOptional
+	{
+	public:
+		FScopeLockOptional()
+		{
+		}
+
+		void Lock(FCriticalSection* InSynchObject)
+		{
+			SynchObject = InSynchObject;
+			SynchObject->Lock();
+		}
+
+		/** Destructor that performs a release on the synchronization object. */
+		~FScopeLockOptional()
+		{
+			Unlock();
+		}
+
+		void Unlock()
+		{
+			if (SynchObject)
+			{
+				SynchObject->Unlock();
+				SynchObject = nullptr;
+			}
+		}
+
+	private:
+		/** Copy constructor( hidden on purpose). */
+		FScopeLockOptional(const FScopeLockOptional& InScopeLock);
+
+		/** Assignment operator (hidden on purpose). */
+		FScopeLockOptional& operator=(FScopeLockOptional& InScopeLock)
+		{
+			return *this;
+		}
+
+	private:
+
+		// Holds the synchronization object to aggregate and scope manage.
+		FCriticalSection* SynchObject = nullptr;
+	};
+}
+
   // CVars
 namespace GripMotionControllerCvars
 {
@@ -6663,6 +6711,21 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 	}
 }
 
+void UGripMotionControllerComponent::OnModularFeatureUnregistered(const FName& Type, class IModularFeature* ModularFeature)
+{
+	FScopeLock Lock(&GripPolledMotionControllerMutex);
+
+	if (ModularFeature == GripPolledMotionController_GameThread)
+	{
+		GripPolledMotionController_GameThread = nullptr;
+	}
+	if (ModularFeature == GripPolledMotionController_RenderThread)
+	{
+		GripPolledMotionController_RenderThread = nullptr;
+	}
+}
+
+
 //=============================================================================
 bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, FRotator& Orientation , float WorldToMetersScale)
 {
@@ -6672,8 +6735,35 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 
 	if (bHasAuthority)
 	{
-		// New iteration and retrieval for 4.12
-		TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
+		GripUEMotionController::FScopeLockOptional LockOptional;
+
+		TArray<IMotionController*> MotionControllers;
+		if (IsInGameThread())
+		{
+			MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
+			{
+				FScopeLock Lock(&GripPolledMotionControllerMutex);
+				GripPolledMotionController_GameThread = nullptr;
+			}
+		}
+		else if (IsInRenderingThread())
+		{
+			LockOptional.Lock(&GripPolledMotionControllerMutex);
+			if (GripPolledMotionController_RenderThread != nullptr)
+			{
+				MotionControllers.Add(GripPolledMotionController_RenderThread);
+			}
+		}
+		else
+		{
+			// If we are in some other thread we can't use the game thread code, because the ModularFeature access isn't threadsafe.
+			// The render thread code might work, or not.  
+			// Let's do the fully safe locking version, and assert because this case is not expected.
+			checkNoEntry();
+			IModularFeatures::FScopedLockModularFeatureList FeatureListLock;
+			MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
+		}
+
 		for (auto MotionController : MotionControllers)
 		{
 			if (MotionController == nullptr)
@@ -6728,6 +6818,11 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 					InUseMotionController = MotionController;
 					OnMotionControllerUpdated();
 					InUseMotionController = nullptr;
+
+					{
+						FScopeLock Lock(&GripPolledMotionControllerMutex);
+						GripPolledMotionController_GameThread = MotionController;  // We only want a render thread update from the motion controller we polled on the game thread.
+					}
 				}
 							
 				return true;
@@ -6777,7 +6872,7 @@ UGripMotionControllerComponent::FGripViewExtension::FGripViewExtension(const FAu
 }
 
 
-void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily)
+void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
 {
 	FTransform OldTransform;
 	FTransform NewTransform;
@@ -6787,6 +6882,11 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 
 		if (!MotionControllerComponent)
 			return;
+
+		{
+			FScopeLock Lock(&MotionControllerComponent->GripPolledMotionControllerMutex);
+			MotionControllerComponent->GripPolledMotionController_RenderThread = MotionControllerComponent->GripPolledMotionController_GameThread;
+		}
 
 		// Find a view that is associated with this player.
 		float WorldToMetersScale = -1.0f;
