@@ -68,6 +68,9 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 #elif PHYSICS_INTERFACE_PHYSX
 			if (PxScene* PScene = PhysScene->GetPxScene())
 			{
+				// Lock the scene since we are getting Callbacks
+				PScene->LockWrite();
+
 				if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
 				{
 					FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
@@ -105,6 +108,9 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 
 					//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("IGNORE: %i"), ContactCallback->ContactsToIgnore.Num()));
 				}
+
+				// UnLock the scene since we are getting Callbacks
+				PScene->unLockWrite();
 			}
 #endif
 		}
@@ -153,6 +159,9 @@ void UCollisionIgnoreSubsystem::RemoveComponentCollisionIgnoreState(UPrimitiveCo
 #elif PHYSICS_INTERFACE_PHYSX
 			if (PxScene* PScene = PhysScene->GetPxScene())
 			{
+				// Lock the scene since we are getting Callbacks
+				PScene->LockWrite();
+
 				if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
 				{
 					FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
@@ -178,6 +187,9 @@ void UCollisionIgnoreSubsystem::RemoveComponentCollisionIgnoreState(UPrimitiveCo
 						}
 					}
 				}
+
+				// UnLock the scene since we are getting Callbacks
+				PScene->unLockWrite();
 			}
 #endif
 		}
@@ -462,6 +474,9 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 #elif PHYSICS_INTERFACE_PHYSX
 					if (PxScene* PScene = PhysScene->GetPxScene())
 					{
+						// Lock the scene since we are getting Callbacks
+						PScene->LockWrite();
+
 						if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
 						{
 							FRWScopeLock(ContactCallback->RWAccessLock, FRWScopeLockType::SLT_Write);
@@ -562,6 +577,9 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 								}
 							}
 						}
+
+						// UnLock the scene since we are getting Callbacks
+						unPScene->unLockWrite();
 					}
 #endif
 				}
