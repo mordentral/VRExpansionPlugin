@@ -7,13 +7,13 @@
 //#include "EngineMinimal.h"
 //#include "Components/PrimitiveComponent.h"
 
-//#include "PhysicsPublic.h"
+#include "PhysicsEngine/ConstraintTypes.h"
 #include "PhysicsEngine/ConstraintDrives.h"
+#include "Physics/PhysicsInterfaceCore.h"
 #include "VRBPDatatypes.generated.h"
 
 class UGripMotionControllerComponent;
 class UVRGripScriptBase;
-class FPhysicsConstraintReference_Chaos;
 
 // Custom movement modes for the characters
 UENUM(BlueprintType)
