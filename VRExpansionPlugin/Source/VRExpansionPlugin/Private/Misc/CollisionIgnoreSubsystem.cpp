@@ -69,7 +69,7 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 			if (PxScene* PScene = PhysScene->GetPxScene())
 			{
 				// Lock the scene since we are getting Callbacks
-				PScene->LockWrite();
+				PScene->lockWrite();
 
 				if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
 				{
@@ -110,7 +110,7 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 				}
 
 				// UnLock the scene since we are getting Callbacks
-				PScene->unLockWrite();
+				PScene->unlockWrite();
 			}
 #endif
 		}
@@ -160,7 +160,7 @@ void UCollisionIgnoreSubsystem::RemoveComponentCollisionIgnoreState(UPrimitiveCo
 			if (PxScene* PScene = PhysScene->GetPxScene())
 			{
 				// Lock the scene since we are getting Callbacks
-				PScene->LockWrite();
+				PScene->lockWrite();
 
 				if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
 				{
@@ -189,7 +189,7 @@ void UCollisionIgnoreSubsystem::RemoveComponentCollisionIgnoreState(UPrimitiveCo
 				}
 
 				// UnLock the scene since we are getting Callbacks
-				PScene->unLockWrite();
+				PScene->unlockWrite();
 			}
 #endif
 		}
@@ -475,7 +475,7 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 					if (PxScene* PScene = PhysScene->GetPxScene())
 					{
 						// Lock the scene since we are getting Callbacks
-						PScene->LockWrite();
+						PScene->lockWrite();
 
 						if (FCCDContactModifyCallbackVR* ContactCallback = (FCCDContactModifyCallbackVR*)PScene->getCCDContactModifyCallback())
 						{
@@ -579,7 +579,7 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 						}
 
 						// UnLock the scene since we are getting Callbacks
-						unPScene->unLockWrite();
+						PScene->unlockWrite();
 					}
 #endif
 				}
