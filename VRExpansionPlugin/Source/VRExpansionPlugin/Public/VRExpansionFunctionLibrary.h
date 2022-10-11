@@ -13,6 +13,8 @@ class UGripMotioncontroller;
 struct FGameplayTag;
 struct FGameplayTagContainer;
 
+enum class EControllerHand : uint8;
+
 
 //General Advanced Sessions Log
 DECLARE_LOG_CATEGORY_EXTERN(VRExpansionFunctionLibraryLog, Log, All);
@@ -68,16 +70,7 @@ public:
 		static bool AreComponentsIgnoringCollisions(UObject* WorldContextObject, UPrimitiveComponent* Prim1, UPrimitiveComponent* Prim2);
 
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHandFromMotionSourceName"))
-	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
-	{
-		Hand = EControllerHand::Left;
-		if (FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
-		{
-			return true;
-		}
-
-		return false;
-	}
+	static bool GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand);
 
 	// Gets the unwound yaw of the HMD
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions", meta = (bIgnoreSelf = "true", DisplayName = "GetHMDPureYaw"))

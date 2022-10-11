@@ -13,6 +13,7 @@
 
 class UGripMotionControllerComponent;
 class UVRGripScriptBase;
+class FPhysicsConstraintReference_Chaos;
 
 // Custom movement modes for the characters
 UENUM(BlueprintType)

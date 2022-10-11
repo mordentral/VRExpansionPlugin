@@ -4,6 +4,7 @@
 #include "Engine/Engine.h"
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
+#include "InputCore/Classes/InputCoreTypes.h"
 #include "Grippables/HandSocketComponent.h"
 #include "Misc/CollisionIgnoreSubsystem.h"
 #include "Components/SplineComponent.h"
@@ -308,6 +309,17 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 			SlotWorldTransform.SetScale3D(FVector(1.0f));
 		}
 	}
+}
+
+bool UVRExpansionFunctionLibrary::GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
+{
+	Hand = EControllerHand::Left;
+	if (FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
+	{
+		return true;
+	}
+
+	return false;
 }
 
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)

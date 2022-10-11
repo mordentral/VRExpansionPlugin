@@ -12,6 +12,7 @@
 // Forward declare
 class UGripMotionControllerComponent;
 class UVRGripScriptBase;
+struct FKey;
 
 UINTERFACE(Blueprintable)
 class VREXPANSIONPLUGIN_API UVRGripInterface: public UInterface

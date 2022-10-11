@@ -7,6 +7,7 @@
 //#include "Engine/EngineTypes.h"
 //#include "UObject/ScriptInterface.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Components/SceneComponent.h"
 #include "GameplayTagContainer.h"
 
 #include "VRInteractibleFunctionLibrary.generated.h"
