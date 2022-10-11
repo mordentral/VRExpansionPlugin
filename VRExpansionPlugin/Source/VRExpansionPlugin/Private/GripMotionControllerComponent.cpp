@@ -5730,9 +5730,12 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 					rBodyInstance->UpdateMassProperties();
 				}
 
-				// Offset the linear velocity by the new COM position and set it
-				vel += FVector::CrossProduct(aVel, rBodyInstance->GetCOMPosition() - originalCOM);
-				rBodyInstance->SetLinearVelocity(vel, false);
+				if (rBodyInstance->IsInstanceSimulatingPhysics())
+				{
+					// Offset the linear velocity by the new COM position and set it
+					vel += FVector::CrossProduct(aVel, rBodyInstance->GetCOMPosition() - originalCOM);
+					rBodyInstance->SetLinearVelocity(vel, false);
+				}
 			}
 		}
 	}
