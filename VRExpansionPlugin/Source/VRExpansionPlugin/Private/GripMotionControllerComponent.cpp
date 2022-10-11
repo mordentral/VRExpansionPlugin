@@ -2030,16 +2030,26 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 	}
 	else
 	{
-
-		// Had to move in front of deletion to properly set velocity
-
-		/*if (((bWasLocalGrip && !IsLocallyControlled()) ||
-			Grip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ForceClientSideMovement) &&
-			(!OptionalLinearVelocity.IsNearlyZero() || !OptionalAngularVelocity.IsNearlyZero())*/
-		if (!OptionalLinearVelocity.IsNearlyZero() || !OptionalAngularVelocity.IsNearlyZero())
+		if (bSimulate && (!OptionalLinearVelocity.IsNearlyZero() || !OptionalAngularVelocity.IsNearlyZero()))
 		{
-			PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
-			PrimComp->SetPhysicsAngularVelocityInDegrees(OptionalAngularVelocity);
+			if (Grip.GripCollisionType != EGripCollisionType::EventsOnly)
+			{
+				// Need to set simulation in all of these cases, including if it isn't the root component (simulation isn't replicated on non roots)
+				if (!Grip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || !Grip.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
+				{
+					if (PrimComp->IsSimulatingPhysics() != bSimulate)
+					{
+						PrimComp->SetSimulatePhysics(bSimulate);
+					}
+				}
+			}
+
+			// Had to move in front of deletion to properly set velocity
+			if (PrimComp->IsSimulatingPhysics())
+			{
+				PrimComp->SetPhysicsLinearVelocity(OptionalLinearVelocity);
+				PrimComp->SetPhysicsAngularVelocityInDegrees(OptionalAngularVelocity);
+			}
 		}
 	}
 
