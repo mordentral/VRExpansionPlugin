@@ -1254,9 +1254,9 @@ void UVRSimpleCharacterMovementComponent::ServerMove_PerformMovement(const FChar
 		ServerData->ServerTimeStamp = MyWorld->GetTimeSeconds();
 		ServerData->ServerTimeStampLastServerMove = ServerData->ServerTimeStamp;
 
-		if (PC)
+		if (AController* CharacterController = Cast<AController>(CharacterOwner->GetController()))
 		{
-			PC->SetControlRotation(ClientControlRotation);
+			CharacterController->SetControlRotation(ClientControlRotation);
 		}
 
 		if (!bServerReadyForClient)

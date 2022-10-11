@@ -438,6 +438,8 @@ void FVRCharacterMoveResponseDataContainer::ServerFillResponseData(const UCharac
 
 	if (const UVRBaseCharacterMovementComponent* BaseMovecomp = Cast<const UVRBaseCharacterMovementComponent>(&CharacterMovement))
 	{
+		// #TODO: This is set in the pending adjustment now in 5.1
+		//bHasRotation = CharacterMovement.ShouldCorrectRotation();
 		bHasRotation = !BaseMovecomp->bUseClientControlRotation;
 	}
 }

@@ -526,9 +526,12 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 		ServerData->ServerTimeStamp = MyWorld->GetTimeSeconds();
 		ServerData->ServerTimeStampLastServerMove = ServerData->ServerTimeStamp;
 
-		if (PC && bUseClientControlRotation)
+		if (bUseClientControlRotation)
 		{
-			PC->SetControlRotation(ClientControlRotation);
+			if (AController* CharacterController = Cast<AController>(CharacterOwner->GetController()))
+			{
+				CharacterController->SetControlRotation(ClientControlRotation);
+			}
 		}
 
 		if (!bServerReadyForClient)
@@ -1372,6 +1375,22 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	bUseClientControlRotation = false;
 	bAllowMovementMerging = true;
 	bRequestedMoveUseAcceleration = false;
+}
+
+void UVRCharacterMovementComponent::OnRegister()
+{
+	Super::OnRegister();
+
+	//#TODO: double check that this works, they enforce linear usually
+	// Force exponential smoothing for replays.
+	const UWorld* MyWorld = GetWorld();
+	const bool bIsReplay = (MyWorld && MyWorld->IsPlayingReplay());
+	
+	if (bIsReplay)
+	{
+		//NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
+		NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
+	}
 }
 
 
@@ -3586,6 +3605,7 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 		UpdateCharacterStateAfterMovement(DeltaSeconds);
 
 		// consume path following requested velocity
+		LastUpdateRequestedVelocity = bHasRequestedVelocity ? RequestedVelocity : FVector::ZeroVector;
 		bHasRequestedVelocity = false;
 
 		OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
@@ -3730,10 +3750,15 @@ void UVRCharacterMovementComponent::ClientHandleMoveResponse(const FCharacterMov
 				MoveResponse.bHasBase,
 				MoveResponse.ClientAdjustment.bBaseRelativePosition,
 				MoveResponse.ClientAdjustment.MovementMode);
+
+				// #TODO: Epic added rotation adjustment in 5.1
+				//MoveResponse.bHasRotation ? MoveResponse.ClientAdjustment.NewRot : TOptional<FRotator>()
 		}
 	}
 }
 
+// #TODO: Epic added their own rotation correct in 5.1
+//TOptional<FRotator> OptionalRotation /* = TOptional<FRotator>()*/
 void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 (
 	float TimeStamp,
@@ -3829,6 +3854,17 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 	// Trust the server's positioning.
 	if (UpdatedComponent)
 	{
+
+		// #TODO: Epics 5.1 rotation enforce, we use our own currently
+		/*if (OptionalRotation.IsSet())
+		{
+			UpdatedComponent->SetWorldLocationAndRotation(WorldShiftedNewLocation, OptionalRotation.GetValue(), false, nullptr, ETeleportType::TeleportPhysics);
+		}
+		else
+		{
+			UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+		}*/
+
 		UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 	}
 	Velocity = NewVelocity;

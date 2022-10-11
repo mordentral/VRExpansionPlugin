@@ -173,6 +173,8 @@ public:
 	 */
 	UVRCharacterMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	virtual void OnRegister() override;
+
 	float ImmersionDepth() const override;
 	bool CanCrouch();
 
