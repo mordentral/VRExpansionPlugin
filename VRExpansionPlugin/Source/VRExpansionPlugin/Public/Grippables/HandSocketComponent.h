@@ -373,9 +373,9 @@ public:
 
 	/** mesh component to indicate hand placement */
 #if WITH_EDITORONLY_DATA
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Transient, Category = "Hand Visualization")
-		//class USkeletalMeshComponent* HandVisualizerComponent;
-	class UPoseableMeshComponent* HandVisualizerComponent;
+
+	UPROPERTY()
+		TObjectPtr<UPoseableMeshComponent> HandVisualizerComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Transient, Category = "Hand Visualization")
 		TObjectPtr<USkeletalMesh> VisualizationMesh;
