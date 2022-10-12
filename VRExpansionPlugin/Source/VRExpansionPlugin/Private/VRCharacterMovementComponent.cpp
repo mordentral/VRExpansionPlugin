@@ -1365,6 +1365,22 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	bRequestedMoveUseAcceleration = false;
 }
 
+void UVRCharacterMovementComponent::OnRegister()
+{
+	Super::OnRegister();
+
+	// they enforce linear usually
+	// Force exponential smoothing for replays as it works best for our vr stuff
+	const UWorld* MyWorld = GetWorld();
+	const bool bIsReplay = (MyWorld && MyWorld->IsPlayingReplay());
+
+	if (bIsReplay)
+	{
+		//NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
+		NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
+	}
+}
+
 
 void UVRCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
