@@ -1147,6 +1147,101 @@ void UVRCharacterMovementComponent::CapsuleTouched(UPrimitiveComponent* Overlapp
 	}
 }
 
+void UVRCharacterMovementComponent::ApplyImpactPhysicsForces(const FHitResult& Impact, const FVector& ImpactAcceleration, const FVector& ImpactVelocity)
+{
+ 	if (bEnablePhysicsInteraction && Impact.bBlockingHit)
+	{
+
+		static const auto CVarbGeometryCollectionImpulseWorkAround = IConsoleManager::Get().FindConsoleVariable(TEXT("p.CVarGeometryCollectionImpulseWorkAround"));
+
+		if (UPrimitiveComponent* ImpactComponent = Impact.GetComponent())
+		{
+			FVector ForcePoint = Impact.ImpactPoint;
+			float BodyMass = 1.0f; // set to 1 as this is used as a multiplier
+
+			bool bCanBePushed = false;
+			FBodyInstance* BI = ImpactComponent->GetBodyInstance(Impact.BoneName);
+			if (BI != nullptr && BI->IsInstanceSimulatingPhysics())
+			{
+				bCanBePushed = true;
+				BodyMass = FMath::Max(BI->GetBodyMass(), 1.0f);
+
+				if (bPushForceUsingZOffset)
+				{
+					FBox Bounds = BI->GetBodyBounds();
+
+					FVector Center, Extents;
+					Bounds.GetCenterAndExtents(Center, Extents);
+
+					if (!Extents.IsNearlyZero())
+					{
+						ForcePoint.Z = Center.Z + Extents.Z * PushForcePointZOffsetFactor;
+					}
+				}
+			}
+			else if (CVarbGeometryCollectionImpulseWorkAround->GetBool())
+			{
+				const FName ClassName = ImpactComponent->GetClass()->GetFName();
+				const FName GeometryCollectionClassName("UGeometryCollectionComponent");
+				if (ClassName == GeometryCollectionClassName && ImpactComponent->BodyInstance.bSimulatePhysics)
+				{
+					// in some case GetBodyInstance can return null while the BodyInstance still exists ( geometry collection component for example )
+					// but we cannot check for its component directly here because of modules cyclic dependencies
+					// todo(chaos): change this logic to be more driven at the primitive component level to avoid the high level classes to have to be aware of the different component
+
+					// because of the above limititation we have to ignore bPushForceUsingZOffset
+
+					bCanBePushed = true; // not necessary as this is already set by default but it's better than leaving this block empty
+				}
+			}
+			else
+			{
+				// THIS IS NEVER REACH IN 5.1 as the above isalways true with the CVAR!!! engine bug
+				// no body instance, not a GC, not supported scenario
+				bCanBePushed = false;
+			}
+			if (bCanBePushed)
+			{
+				FVector Force = Impact.ImpactNormal * -1.0f;
+
+				float PushForceModificator = 1.0f;
+
+				const FVector ComponentVelocity = ImpactComponent->GetPhysicsLinearVelocity();
+				const FVector VirtualVelocity = ImpactAcceleration.IsZero() ? ImpactVelocity : ImpactAcceleration.GetSafeNormal() * GetMaxSpeed();
+
+				float Dot = 0.0f;
+
+				if (bScalePushForceToVelocity && !ComponentVelocity.IsNearlyZero())
+				{
+					Dot = ComponentVelocity | VirtualVelocity;
+
+					if (Dot > 0.0f && Dot < 1.0f)
+					{
+						PushForceModificator *= Dot;
+					}
+				}
+
+				if (bPushForceScaledToMass)
+				{
+					PushForceModificator *= BodyMass;
+				}
+
+				Force *= PushForceModificator;
+				const float ZeroVelocityTolerance = 1.0f;
+				if (ComponentVelocity.IsNearlyZero(ZeroVelocityTolerance))
+				{
+					Force *= InitialPushForceFactor;
+					ImpactComponent->AddImpulseAtLocation(Force, ForcePoint, Impact.BoneName);
+				}
+				else
+				{
+					Force *= PushForceFactor;
+					ImpactComponent->AddForceAtLocation(Force, ForcePoint, Impact.BoneName);
+				}
+			}
+		}
+	}
+}
 
 void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration)
 {
