@@ -8,6 +8,7 @@
 #include "GripScripts/GS_GunTools.h"
 #include "VRGlobalSettings.generated.h"
 
+class UGrippableSkeletalMeshComponent;
 
 USTRUCT(BlueprintType, Category = "ControllerProfiles")
 struct VREXPANSIONPLUGIN_API FBPVRControllerProfile
@@ -80,6 +81,14 @@ public:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+
+	// The skeletal mesh component class to use for grippable characters
+	// If you set this to none it will fall back to the default grippable class so that it doesn't brick your project
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "Misc")
+		TSubclassOf<class UGrippableSkeletalMeshComponent> DefaultGrippableCharacterMeshComponentClass;
+
+	// Using a getter to stay safe from bricking peoples projects if they set it to none somehow
+	TSubclassOf<class UGrippableSkeletalMeshComponent> GetDefaultGrippableCharacterMeshComponentClass();
 
 	// Whether we should use the physx to chaos translation scalers or not
 	// This should be off on native chaos projects that have been set with the correct stiffness and damping settings already
