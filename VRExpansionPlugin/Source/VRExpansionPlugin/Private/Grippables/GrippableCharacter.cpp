@@ -6,7 +6,7 @@
 
 
 AGrippableCharacter::AGrippableCharacter(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer.SetDefaultSubobjectClass(ACharacter::MeshComponentName, GetMutableDefault<UVRGlobalSettings>()->GetDefaultGrippableCharacterMeshComponentClass()))
+	: Super(ObjectInitializer.SetDefaultSubobjectClass(ACharacter::MeshComponentName, UVRGlobalSettings::GetDefaultGrippableCharacterMeshComponentClass()))
 {
 	ViewOriginationSocket = NAME_None;
 	GrippableMeshReference = Cast<UGrippableSkeletalMeshComponent>(GetMesh());

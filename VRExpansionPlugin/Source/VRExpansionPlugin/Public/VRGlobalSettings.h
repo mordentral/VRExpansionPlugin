@@ -88,7 +88,7 @@ public:
 		TSubclassOf<class UGrippableSkeletalMeshComponent> DefaultGrippableCharacterMeshComponentClass;
 
 	// Using a getter to stay safe from bricking peoples projects if they set it to none somehow
-	TSubclassOf<class UGrippableSkeletalMeshComponent> GetDefaultGrippableCharacterMeshComponentClass();
+	static TSubclassOf<class UGrippableSkeletalMeshComponent> GetDefaultGrippableCharacterMeshComponentClass();
 
 	// Whether we should use the physx to chaos translation scalers or not
 	// This should be off on native chaos projects that have been set with the correct stiffness and damping settings already
