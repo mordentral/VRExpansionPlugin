@@ -2,10 +2,11 @@
 
 #include "Grippables/GrippableCharacter.h"
 #include "Grippables/GrippableSkeletalMeshComponent.h"
+#include "VRGlobalSettings.h"
 
 
 AGrippableCharacter::AGrippableCharacter(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer.SetDefaultSubobjectClass<UGrippableSkeletalMeshComponent>(ACharacter::MeshComponentName))
+	: Super(ObjectInitializer.SetDefaultSubobjectClass(ACharacter::MeshComponentName, GetMutableDefault<UVRGlobalSettings>()->GetDefaultGrippableCharacterMeshComponentClass()))
 
 {
 	ViewOriginationSocket = NAME_None;

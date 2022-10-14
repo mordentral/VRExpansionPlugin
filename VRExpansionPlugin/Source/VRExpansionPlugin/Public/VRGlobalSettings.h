@@ -7,6 +7,8 @@
 #include "GripScripts/GS_GunTools.h"
 #include "VRGlobalSettings.generated.h"
 
+class UGrippableSkeletalMeshComponent;
+
 
 /*namespace ControllerProfileStatics
 {
@@ -116,6 +118,14 @@ class VREXPANSIONPLUGIN_API UVRGlobalSettings : public UObject
 
 public:
 	UVRGlobalSettings(const FObjectInitializer& ObjectInitializer);
+
+	// The skeletal mesh component class to use for grippable characters
+	// If you set this to none it will fall back to the default grippable class so that it doesn't brick your project
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "Misc")
+		TSubclassOf<class UGrippableSkeletalMeshComponent> DefaultGrippableCharacterMeshComponentClass;
+
+	// Using a getter to stay safe from bricking peoples projects if they set it to none somehow
+	TSubclassOf<class UGrippableSkeletalMeshComponent> GetDefaultGrippableCharacterMeshComponentClass();
 
 	// A scaler to apply to constraint drives when chaos is active
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
