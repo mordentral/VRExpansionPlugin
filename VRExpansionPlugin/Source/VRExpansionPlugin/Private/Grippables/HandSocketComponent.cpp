@@ -534,11 +534,11 @@ void UHandSocketComponent::OnRegister()
 
 			if (VisualizationMesh)
 			{
-				HandVisualizerComponent->SetSkinnedAsset(VisualizationMesh);
 				if (HandPreviewMaterial)
 				{
 					HandVisualizerComponent->SetMaterial(0, (UMaterialInterface*)HandPreviewMaterial);
 				}
+				HandVisualizerComponent->SetSkinnedAssetAndUpdate(VisualizationMesh);
 			}
 
 			PositionVisualizationMesh();
