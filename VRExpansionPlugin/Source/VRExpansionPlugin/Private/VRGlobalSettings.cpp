@@ -37,15 +37,18 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 
 TSubclassOf<class UGrippableSkeletalMeshComponent> UVRGlobalSettings::GetDefaultGrippableCharacterMeshComponentClass()
 {
-	// Using a getter to stay safe from bricking peoples projects if they set it to none somehow
-	if (DefaultGrippableCharacterMeshComponentClass != nullptr)
+	const UVRGlobalSettings* VRSettings = GetDefault<UVRGlobalSettings>();
+
+	if (VRSettings)
 	{
-		return DefaultGrippableCharacterMeshComponentClass;
+		// Using a getter to stay safe from bricking peoples projects if they set it to none somehow
+		if (VRSettings->DefaultGrippableCharacterMeshComponentClass != nullptr)
+		{
+			return VRSettings->DefaultGrippableCharacterMeshComponentClass;
+		}
 	}
-	else
-	{
-		return UGrippableSkeletalMeshComponent::StaticClass();
-	}
+
+	return UGrippableSkeletalMeshComponent::StaticClass();
 }
 
 
