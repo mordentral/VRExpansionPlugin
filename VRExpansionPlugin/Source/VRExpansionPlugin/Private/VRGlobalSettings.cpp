@@ -23,6 +23,9 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 {
 		DefaultGrippableCharacterMeshComponentClass = UGrippableSkeletalMeshComponent::StaticClass();
 
+		bUseCollisionModificationForCollisionIgnore = false;
+		CollisionIgnoreSubsystemUpdateRate = 1.f;
+
 		bUseChaosTranslationScalers = true;
 		bSetEngineChaosScalers = true;
 		LinearDriveStiffnessScale = 1.0f;// Chaos::ConstraintSettings::LinearDriveStiffnessScale();

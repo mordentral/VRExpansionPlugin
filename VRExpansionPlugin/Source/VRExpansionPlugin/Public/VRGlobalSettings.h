@@ -90,6 +90,16 @@ public:
 	// Using a getter to stay safe from bricking peoples projects if they set it to none somehow
 	static TSubclassOf<class UGrippableSkeletalMeshComponent> GetDefaultGrippableCharacterMeshComponentClass();
 
+	// If true we will use contact modification for the collision ignore subsystem
+	// Its more expensive but works with non simulating pairs
+	// #WARNING: Don't use yet EXPERIMENTAL
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|CollisionIgnore")
+		bool bUseCollisionModificationForCollisionIgnore;
+
+	// Number of updates a second to use for the collision cleanup checks
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|CollisionIgnore")
+		float CollisionIgnoreSubsystemUpdateRate;
+
 	// Whether we should use the physx to chaos translation scalers or not
 	// This should be off on native chaos projects that have been set with the correct stiffness and damping settings already
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
