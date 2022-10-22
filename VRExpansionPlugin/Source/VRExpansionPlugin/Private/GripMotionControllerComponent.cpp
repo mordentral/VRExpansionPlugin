@@ -5256,6 +5256,8 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 								PausePhysicsHandle(GripHandle);
 								//DestroyPhysicsHandle(*Grip);
 
+								root->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
 								switch (Grip->GripTargetType)
 								{
 								case EGripTargetType::ComponentGrip:
@@ -5291,11 +5293,13 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							if (!GripHandle)
 							{
+								root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 								root->SetSimulatePhysics(true);
 								SetUpPhysicsHandle(*Grip, &GripScripts);
 							}
 							else if(GripHandle->bIsPaused)
 							{
+								root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 								UnPausePhysicsHandle(*Grip, GripHandle);
 							}
 
