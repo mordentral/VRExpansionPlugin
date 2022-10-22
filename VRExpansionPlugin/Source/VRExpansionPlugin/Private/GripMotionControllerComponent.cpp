@@ -5256,8 +5256,6 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 								PausePhysicsHandle(GripHandle);
 								//DestroyPhysicsHandle(*Grip);
 
-								root->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-
 								switch (Grip->GripTargetType)
 								{
 								case EGripTargetType::ComponentGrip:
@@ -5293,13 +5291,11 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							if (!GripHandle)
 							{
-								root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 								root->SetSimulatePhysics(true);
 								SetUpPhysicsHandle(*Grip, &GripScripts);
 							}
 							else if(GripHandle->bIsPaused)
 							{
-								root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 								UnPausePhysicsHandle(*Grip, GripHandle);
 							}
 
@@ -5788,7 +5784,10 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	// Needs to be simulating in order to run physics
 	if (!NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || !NewGrip.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
+	{
+		root->RecreatePhysicsState();
 		root->SetSimulatePhysics(true);
+	}
 
 	// Get the PxRigidDynamic that we want to grab.
 	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
