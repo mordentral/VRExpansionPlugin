@@ -57,6 +57,8 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 	bShowVisualizationMesh = true;
 	bMirrorVisualizationMesh = false;
 	bShowRangeVisualization = false;
+	bFilterBonesByPostfix = false;
+	FilterPostfix = FString(TEXT("_r"));
 #endif
 
 	HandRelativePlacement = FTransform::Identity;
