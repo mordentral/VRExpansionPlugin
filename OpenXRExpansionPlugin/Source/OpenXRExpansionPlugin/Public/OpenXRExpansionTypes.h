@@ -61,10 +61,27 @@ enum class EXRHandJointType : uint8
 UENUM(BlueprintType)
 enum class EVROpenXRSkeletonType : uint8
 {
+	// UE4 Skeletal Right hand
 	OXR_SkeletonType_UE4Default_Right,
+	// UE4 Skeletal Left hand
 	OXR_SkeletonType_UE4Default_Left,
+
+	// OpenVR Skeletal Right hand
 	OXR_SkeletonType_OpenVRDefault_Right,
+
+	// OpenVR Skeletal Left hand
 	OXR_SkeletonType_OpenVRDefault_Left,
+
+	// UE5 Skeletal Right hand
+	OXR_SkeletonType_UE5Default_Right,
+	// UE5 Skeletal Left hand
+	OXR_SkeletonType_UE5Default_Left,
+
+	// OpenXR Skeletal Right hand
+	OXR_SkeletonType_OpenXRDefault_Right,
+	// OpenXR Skeletal Left hand
+	OXR_SkeletonType_OpenXRDefault_Left,
+
 	OXR_SkeletonType_Custom
 };
 
@@ -205,6 +222,18 @@ public:
 			bMergeMissingBonesUE4 = true;
 			SetDefaultUE4Inputs(SkeletonType, bSkipRootBone);
 		}break;
+		case EVROpenXRSkeletonType::OXR_SkeletonType_UE5Default_Left:
+		case EVROpenXRSkeletonType::OXR_SkeletonType_UE5Default_Right:
+		{
+			bMergeMissingBonesUE4 = false;
+			SetDefaultUE5Inputs(SkeletonType, bSkipRootBone);
+		}break;
+		case EVROpenXRSkeletonType::OXR_SkeletonType_OpenXRDefault_Left:
+		case EVROpenXRSkeletonType::OXR_SkeletonType_OpenXRDefault_Right:
+		{
+			bMergeMissingBonesUE4 = false;
+			SetDefaultOpenXRInputs(SkeletonType, bSkipRootBone);
+		}break;
 		}
 	}
 
@@ -290,6 +319,92 @@ public:
 		{
 			BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
 		}
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_INDEX_PROXIMAL_EXT, FString::Printf(TEXT("index_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_INDEX_INTERMEDIATE_EXT, FString::Printf(TEXT("index_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_INDEX_DISTAL_EXT, FString::Printf(TEXT("index_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_MIDDLE_PROXIMAL_EXT, FString::Printf(TEXT("middle_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT, FString::Printf(TEXT("middle_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_MIDDLE_DISTAL_EXT, FString::Printf(TEXT("middle_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_LITTLE_PROXIMAL_EXT, FString::Printf(TEXT("pinky_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_LITTLE_INTERMEDIATE_EXT, FString::Printf(TEXT("pinky_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_LITTLE_DISTAL_EXT, FString::Printf(TEXT("pinky_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_RING_PROXIMAL_EXT, FString::Printf(TEXT("ring_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_RING_INTERMEDIATE_EXT, FString::Printf(TEXT("ring_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_RING_DISTAL_EXT, FString::Printf(TEXT("ring_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_THUMB_METACARPAL_EXT, FString::Printf(TEXT("thumb_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_THUMB_PROXIMAL_EXT, FString::Printf(TEXT("thumb_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_THUMB_DISTAL_EXT, FString::Printf(TEXT("thumb_03_%s"), HandDelimiter)));
+
+	}
+
+	void SetDefaultUE5Inputs(EVROpenXRSkeletonType cSkeletonType, bool bSkipRootBone)
+	{
+		// Don't map anything if the end user already has
+		if (BonePairs.Num())
+			return;
+
+		bool bIsRightHand = cSkeletonType != EVROpenXRSkeletonType::OXR_SkeletonType_UE5Default_Left;
+		FString HandDelimiterS = !bIsRightHand ? "l" : "r";
+		const TCHAR* HandDelimiter = *HandDelimiterS;
+
+		TargetHand = bIsRightHand ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
+
+		// Default ue5 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
+		if (!bSkipRootBone)
+		{
+			BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
+		}
+
+		// There are inner and outer wrist elements to this, going to be anoying to map that to a single wrist index....
+		//OXR_HAND_JOINT_WRIST_EXT = 1,
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_INDEX_PROXIMAL_EXT, FString::Printf(TEXT("index_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_INDEX_INTERMEDIATE_EXT, FString::Printf(TEXT("index_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_INDEX_DISTAL_EXT, FString::Printf(TEXT("index_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_MIDDLE_PROXIMAL_EXT, FString::Printf(TEXT("middle_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT, FString::Printf(TEXT("middle_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_MIDDLE_DISTAL_EXT, FString::Printf(TEXT("middle_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_LITTLE_PROXIMAL_EXT, FString::Printf(TEXT("pinky_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_LITTLE_INTERMEDIATE_EXT, FString::Printf(TEXT("pinky_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_LITTLE_DISTAL_EXT, FString::Printf(TEXT("pinky_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_RING_PROXIMAL_EXT, FString::Printf(TEXT("ring_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_RING_INTERMEDIATE_EXT, FString::Printf(TEXT("ring_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_RING_DISTAL_EXT, FString::Printf(TEXT("ring_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_THUMB_METACARPAL_EXT, FString::Printf(TEXT("thumb_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_THUMB_PROXIMAL_EXT, FString::Printf(TEXT("thumb_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_THUMB_DISTAL_EXT, FString::Printf(TEXT("thumb_03_%s"), HandDelimiter)));
+
+	}
+
+	void SetDefaultOpenXRInputs(EVROpenXRSkeletonType cSkeletonType, bool bSkipRootBone)
+	{
+		// Don't map anything if the end user already has
+		if (BonePairs.Num())
+			return;
+
+		bool bIsRightHand = cSkeletonType != EVROpenXRSkeletonType::OXR_SkeletonType_OpenXRDefault_Left;
+		FString HandDelimiterS = !bIsRightHand ? "l" : "r";
+		const TCHAR* HandDelimiter = *HandDelimiterS;
+
+		TargetHand = bIsRightHand ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
+
+		// Default ue5 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
+		if (!bSkipRootBone)
+		{
+			BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
+		}
+
+		// There are inner and outer wrist elements to this, going to be anoyying to map that to a single wrist index....
+		//OXR_HAND_JOINT_WRIST_EXT = 1,
 
 		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_INDEX_PROXIMAL_EXT, FString::Printf(TEXT("index_01_%s"), HandDelimiter)));
 		BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_INDEX_INTERMEDIATE_EXT, FString::Printf(TEXT("index_02_%s"), HandDelimiter)));
