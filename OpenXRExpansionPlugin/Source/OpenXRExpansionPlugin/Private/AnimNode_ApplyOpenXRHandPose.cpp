@@ -83,6 +83,27 @@ void FAnimNode_ApplyOpenXRHandPose::InitializeBoneReferences(const FBoneContaine
 					// Get our parent bones index
 					BonePair.ParentReference = RequiredBones.GetParentBoneIndex(BonePair.ReferenceToConstruct.CachedCompactPoseIndex);
 
+					FTransform BoneRefPose = GetRefBoneInCS(RefBones, RefBonesInfo, BonePair.ReferenceToConstruct.BoneIndex);
+					FTransform FinalPose = BoneRefPose;
+
+					FRotator BoneRot = BoneRefPose.GetRotation().Rotator();
+					FVector ForVec = BoneRefPose.GetRotation().GetForwardVector();
+
+					FVector BoneUpVector = FinalPose.GetRotation().GetUpVector();
+					FVector BoneForwardVector = FinalPose.GetRotation().GetForwardVector();
+
+
+					FQuat AdjustmentForward = FQuat::FindBetweenNormals(FVector::ForwardVector, BoneForwardVector);
+					FRotator AFor = AdjustmentForward.Rotator();
+
+					FQuat AdjustmentUp = FQuat::FindBetweenNormals(AdjustmentForward.GetUpVector(), BoneUpVector);
+					FRotator AUp = AdjustmentUp.Rotator();
+
+					FQuat FinalAdjustment = AdjustmentUp * AdjustmentForward;
+					FRotator Difference = FinalAdjustment.Rotator();
+					BonePair.RetargetRot = FinalAdjustment;
+
+
 					/*FTransform WristPose = GetRefBoneInCS(RefBones, RefBonesInfo, BonePair.ReferenceToConstruct.BoneIndex);
 
 					FVector WristForward = WristPose.GetRotation().GetForwardVector();
@@ -195,6 +216,8 @@ void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform
 		24,	// LittleTip -> LittleDistal
 	};
 
+	bool bUseAutoCalculatedRetarget = AddTrans.Equals(FTransform::Identity);
+
 	// Convert transforms to parent space
 	// The hand tracking transforms are in world space.
 
@@ -207,7 +230,30 @@ void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform
 			WorldTransforms[Index].Mirror(EAxis::Y, EAxis::Y);
 		}
 
-		WorldTransforms[Index].ConcatenateRotation(AddTrans.GetRotation());
+		if (bUseAutoCalculatedRetarget)
+		{
+			WorldTransforms[Index].ConcatenateRotation(MappedBonePairs.BonePairs[0].RetargetRot);
+		}
+		else
+		{
+			WorldTransforms[Index].ConcatenateRotation(AddTrans.GetRotation());
+		}
+		//BoneTransIndex = (int8)BonePair.OpenXRBone;
+		// Make reverse lookup list to save time here
+		/*bool bFoundIndex = false;
+		for (const FBPOpenXRSkeletalPair& BonePair : MappedBonePairs.BonePairs)
+		{
+			if ((int8)BonePair.OpenXRBone == Index)
+			{
+				WorldTransforms[Index].ConcatenateRotation(BonePair.RetargetRot);
+				bFoundIndex = true;
+				break;
+			}
+		}
+		if (!bFoundIndex)
+		{
+			WorldTransforms[Index].ConcatenateRotation(MappedBonePairs.BonePairs[0].RetargetRot);
+		}*/
 	}
 
 	for (int32 Index = 0; Index < EHandKeypointCount; ++Index)
@@ -313,6 +359,9 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 		BoneTransIndex = (int8)BonePair.OpenXRBone;
 		ParentTrans = FTransform::Identity;
 
+		if (bSkipRootBone && BonePair.OpenXRBone == EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT)
+			continue;
+
 		if (BoneTransIndex >= NumBones || BonePair.ReferenceToConstruct.CachedCompactPoseIndex == INDEX_NONE)
 			continue;		
 
@@ -331,6 +380,7 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 
 		EXRHandJointType CurrentBone = (EXRHandJointType)BoneTransIndex;
 		TempTrans = (HandTransforms[BoneTransIndex]);
+		//TempTrans.ConcatenateRotation(BonePair.RetargetRot);
 
 		/*if (StoredActionInfoPtr->bMirrorHand)
 		{

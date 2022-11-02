@@ -255,7 +255,7 @@ public:
 			//BonePairs.Add(FBPOpenVRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_PALM_EXT, FString::Printf(TEXT("Root"), HandDelimiter)));
 		//}
 
-		if (!bSkipRootBone)
+		//if (!bSkipRootBone)
 		{
 			BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT, FString::Printf(TEXT("wrist_%s"), HandDelimiter)));
 		}
@@ -315,7 +315,7 @@ public:
 		TargetHand = bIsRightHand ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
 
 		// Default ue4 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
-		if (!bSkipRootBone)
+		//if (!bSkipRootBone)
 		{
 			BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
 		}
@@ -355,7 +355,7 @@ public:
 		TargetHand = bIsRightHand ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
 
 		// Default ue5 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
-		if (!bSkipRootBone)
+		//if (!bSkipRootBone)
 		{
 			BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
 		}
@@ -398,7 +398,7 @@ public:
 		TargetHand = bIsRightHand ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
 
 		// Default ue5 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
-		if (!bSkipRootBone)
+		//if (!bSkipRootBone)
 		{
 			BonePairs.Add(FBPOpenXRSkeletalPair(EXRHandJointType::OXR_HAND_JOINT_WRIST_EXT, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
 		}
