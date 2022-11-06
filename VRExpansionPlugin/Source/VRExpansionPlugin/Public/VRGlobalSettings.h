@@ -143,6 +143,11 @@ public:
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
 		float AngularDriveDampingScale;
 
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
+		bool bLerpHybridWithSweepGrips;
+
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
+		float HybridWithSweepLerpDuration;
 
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
 		bool bUseGlobalLerpToHand;
