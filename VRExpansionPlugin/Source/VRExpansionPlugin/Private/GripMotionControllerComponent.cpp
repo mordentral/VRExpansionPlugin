@@ -5278,11 +5278,63 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							BaseTransform = Grip->LastWorldTransform * baseTrans;
 						}
 						
+						bool bWasColliding = Grip->bColliding;
+						bool bLerpCollisions = false;
+						float LerpSpeed = 0.0f;
+						const UVRGlobalSettings* VRSettings = GetDefault<UVRGlobalSettings>();
+
+						if (VRSettings)
+						{
+							bLerpCollisions = VRSettings->bLerpHybridWithSweepGrips;
+							LerpSpeed = VRSettings->HybridWithSweepLerpDuration;
+						}
+
 						if (Grip->bLockHybridGrip)
 						{
 							Grip->bColliding = true;
 						}
+						// Check our target rotation
 						else if (GetWorld()->ComponentSweepMulti(Hits, root, BaseTransform.GetLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
+						{
+							// Check if the two components are ignoring collisions with each other
+							UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
+							if (CollisionIgnoreSubsystem->HasCollisionIgnorePairs())
+							{
+								// Pre-set this so it falls back to false if none of these hits are valid
+								Grip->bColliding = false;
+
+								for (const FHitResult& Hit : Hits)
+								{
+									if (Hit.bBlockingHit && !CollisionIgnoreSubsystem->AreComponentsIgnoringCollisions(root, Hit.Component.Get()))
+									{
+										Grip->bColliding = true;
+										break;
+									}
+								}
+
+								// We need to also check the other rotation here as a fallback
+								if (bLerpCollisions && !Grip->bColliding)
+								{
+									if (bLerpCollisions && GetWorld()->ComponentSweepMulti(Hits, root, BaseTransform.GetLocation(), WorldTransform.GetLocation(), root->GetComponentRotation(), Params))
+									{
+										for (const FHitResult& Hit : Hits)
+										{
+											if (Hit.bBlockingHit && !CollisionIgnoreSubsystem->AreComponentsIgnoringCollisions(root, Hit.Component.Get()))
+											{
+												Grip->bColliding = true;
+												break;
+											}
+										}
+									}
+								}
+							}
+							else
+							{
+								Grip->bColliding = true;
+							}
+						}
+						// Check the other rotation
+						else if (bLerpCollisions && GetWorld()->ComponentSweepMulti(Hits, root, BaseTransform.GetLocation(), WorldTransform.GetLocation(), root->GetComponentRotation(), Params))
 						{
 							// Check if the two components are ignoring collisions with each other
 							UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
@@ -5328,6 +5380,35 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 								{
 									actor->DisableComponentsSimulatePhysics();
 								} break;
+								}
+							}
+
+							if (bLerpCollisions && !Grip->bIsLerping)
+							{
+								if (bWasColliding && !Grip->bIsLerping)
+								{
+									// Store relative transform and base movements off of lerping out of it to the target transform
+
+									// Re-use this transform as it will let us not add additional variables
+									Grip->OnGripTransform = root->GetComponentTransform().GetRelativeTransform(this->GetPivotTransform());
+									Grip->CurrentLerpTime = 1.0f;
+									Grip->LerpSpeed = (1.f / LerpSpeed);
+								}
+
+								if (Grip->CurrentLerpTime > 0.0f)
+								{
+									FQuat NB = (Grip->OnGripTransform * this->GetPivotTransform()).GetRotation();
+									float Alpha = 0.0f;
+
+									Grip->CurrentLerpTime -= DeltaTime * Grip->LerpSpeed;
+									float OrigAlpha = FMath::Clamp(Grip->CurrentLerpTime, 0.f, 1.0f);
+									Alpha = OrigAlpha;
+
+									FQuat NA = WorldTransform.GetRotation();
+									NA.Normalize();
+									NB.Normalize();
+
+									WorldTransform.SetRotation(FQuat::Slerp(NA, NB, Alpha));
 								}
 							}
 

@@ -5,6 +5,8 @@
 
 UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
+	bLerpHybridWithSweepGrips(false),
+	HybridWithSweepLerpDuration(0.2f),
 	bUseGlobalLerpToHand(false),
 	bSkipLerpToHandIfHeld(false),
 	MinDistanceForLerp(10.0f),
