@@ -508,6 +508,9 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 					Chaos::FUniqueIdx ID0 = ApplicableBodies[i].BInstance->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
 					Chaos::FUniqueIdx ID1 = ApplicableBodies2[j].BInstance->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
 
+					auto* pHandle1 = ApplicableBodies[i].BInstance->ActorHandle->GetParticle_LowLevel();
+					auto* pHandle2 = ApplicableBodies[j].BInstance->ActorHandle->GetParticle_LowLevel();
+
 					Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
 
 					FPhysicsCommand::ExecuteWrite(PhysScene, [&]()
@@ -517,40 +520,43 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 							if (bIgnoreCollision)
 							{
 								if (!IgnoreCollisionManager.IgnoresCollision(ID0, ID1))
-								{
-									TPBDRigidParticleHandle<FReal, 3>* ParticleHandle0 = ApplicableBodies[i].BInstance->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
-									TPBDRigidParticleHandle<FReal, 3>* ParticleHandle1 = ApplicableBodies2[j].BInstance->ActorHandle->GetHandle_LowLevel()->CastToRigidParticle();
-
-									if (ParticleHandle0 && ParticleHandle1)
+								{							
+									if (pHandle1 && pHandle2)
 									{
-										ParticleHandle0->AddCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
-										IgnoreCollisionManager.AddIgnoreCollisionsFor(ID0, ID1);
+										/*TPBDRigidParticleHandle<FReal, 3>*/auto* ParticleHandle0 = pHandle1->CastToRigidParticle();
+										/*TPBDRigidParticleHandle<FReal, 3>*/ auto * ParticleHandle1 = pHandle2->CastToRigidParticle();
 
-										ParticleHandle1->AddCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
-										IgnoreCollisionManager.AddIgnoreCollisionsFor(ID1, ID0);
-
-
-										TSet<FCollisionPrimPair> CurrentKeys;
-										int numKeys = CollisionTrackedPairs.GetKeys(CurrentKeys);
-
-										// This checks if we exist already as well as provides an index
-										if (FCollisionPrimPair* CurrentPair = CurrentKeys.Find(newPrimPair))
+										if (ParticleHandle0 && ParticleHandle1)
 										{
-											// Check if the current one has the same primitive ordering as the new check
-											if (CurrentPair->Prim1 != newPrimPair.Prim1)
+											ParticleHandle0->AddCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+											IgnoreCollisionManager.AddIgnoreCollisionsFor(ID0, ID1);
+
+											ParticleHandle1->AddCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
+											IgnoreCollisionManager.AddIgnoreCollisionsFor(ID1, ID0);
+
+
+											TSet<FCollisionPrimPair> CurrentKeys;
+											int numKeys = CollisionTrackedPairs.GetKeys(CurrentKeys);
+
+											// This checks if we exist already as well as provides an index
+											if (FCollisionPrimPair* CurrentPair = CurrentKeys.Find(newPrimPair))
 											{
-												// If not then lets flip the elements around in order to match it
-												newIgnorePair.FlipElements();
+												// Check if the current one has the same primitive ordering as the new check
+												if (CurrentPair->Prim1 != newPrimPair.Prim1)
+												{
+													// If not then lets flip the elements around in order to match it
+													newIgnorePair.FlipElements();
+												}
+
+												CollisionTrackedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
 											}
 
-											CollisionTrackedPairs[newPrimPair].PairArray.AddUnique(newIgnorePair);
+											/*if (ApplicableBodies[i].BInstance->bContactModification != bIgnoreCollision)
+												ApplicableBodies[i].BInstance->SetContactModification(true);
+
+											if (ApplicableBodies2[j].BInstance->bContactModification != bIgnoreCollision)
+												ApplicableBodies2[j].BInstance->SetContactModification(true);*/
 										}
-
-										/*if (ApplicableBodies[i].BInstance->bContactModification != bIgnoreCollision)
-											ApplicableBodies[i].BInstance->SetContactModification(true);
-
-										if (ApplicableBodies2[j].BInstance->bContactModification != bIgnoreCollision)
-											ApplicableBodies2[j].BInstance->SetContactModification(true);*/
 									}
 								}
 							}
