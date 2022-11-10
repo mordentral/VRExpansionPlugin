@@ -118,6 +118,8 @@ public:
 		TArray<FTransform> OldSkeletalTransforms;
 
 	// The rotation required to rotate the finger bones back to X+
+	// The animation node attempts to auto calculate it, if you have a non standard hand you may need to fill
+	// This in by yourself
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		FTransform AdditionTransform;
 
@@ -130,7 +132,7 @@ public:
 	FBPOpenXRActionSkeletalData()
 	{
 		//bGetTransformsInParentSpace = false;
-		AdditionTransform = FTransform(FRotator(180.f, 0.f, -90.f), FVector::ZeroVector, FVector(1.f));//FTransform(FRotator(0.f, 90.f, 90.f), FVector::ZeroVector, FVector(1.f));
+		AdditionTransform = FTransform::Identity;// FTransform(FRotator(180.f, 0.f, -90.f), FVector::ZeroVector, FVector(1.f));//FTransform(FRotator(0.f, 90.f, 90.f), FVector::ZeroVector, FVector(1.f));
 		WorldScaleOverride = 0.0f;
 		bAllowDeformingMesh = true;
 		bMirrorLeftRight = false;
@@ -191,6 +193,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
 		TArray<FBPOpenXRSkeletalPair> BonePairs;
 
+	TArray<int32> ReverseBonePairMap;
+
 	// Merge the transforms of bones that are missing from the OpenVR skeleton to the UE4 one.
 	// This should be always enabled for UE4 skeletons generally.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
@@ -204,6 +208,24 @@ public:
 	bool bInitialized;
 
 	FName LastInitializedName;
+
+	void ConstructReverseMapping()
+	{
+		int32 MaxElements = ((uint8)EXRHandJointType::OXR_HAND_JOINT_LITTLE_TIP_EXT) + 1;
+		ReverseBonePairMap.Empty(MaxElements);
+		ReverseBonePairMap.AddUninitialized(MaxElements);
+		FMemory::Memset(ReverseBonePairMap.GetData(), 0, MaxElements * sizeof(int32));
+
+
+		for (int i = 0; i < BonePairs.Num(); ++i)
+		{
+			// Just in case someone messed up the mapping file
+			if (i < MaxElements)
+			{
+				ReverseBonePairMap[(uint8)BonePairs[i].OpenXRBone] = i;
+			}
+		}
+	}
 
 	void ConstructDefaultMappings(EVROpenXRSkeletonType SkeletonType, bool bSkipRootBone)
 	{
