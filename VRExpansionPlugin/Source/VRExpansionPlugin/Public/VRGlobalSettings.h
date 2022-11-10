@@ -143,8 +143,13 @@ public:
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
 		float AngularDriveDampingScale;
 
+	// If we should lerp hybrid with sweep grips out of collision
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
 		bool bLerpHybridWithSweepGrips;
+
+	// If true we only lerp the rotation of hybrid grips
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
+		bool bOnlyLerpHybridRotation;
 
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
 		float HybridWithSweepLerpDuration;

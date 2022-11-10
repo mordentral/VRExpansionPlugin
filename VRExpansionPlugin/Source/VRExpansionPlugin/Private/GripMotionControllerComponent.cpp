@@ -5218,6 +5218,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					
 						bool bWasColliding = Grip->bColliding;
 						bool bLerpCollisions = false;
+						bool bLerpRotationOnly = false;
 						float LerpSpeed = 0.0f;
 						const UVRGlobalSettings* VRSettings = GetDefault<UVRGlobalSettings>();
 
@@ -5225,6 +5226,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						{
 							bLerpCollisions = VRSettings->bLerpHybridWithSweepGrips;
 							LerpSpeed = VRSettings->HybridWithSweepLerpDuration;
+							bLerpRotationOnly = VRSettings->bOnlyLerpHybridRotation;
 						}
 
 						if (Grip->bLockHybridGrip)
@@ -5336,18 +5338,25 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 								if (Grip->CurrentLerpTime > 0.0f)
 								{
-									FQuat NB = (Grip->OnGripTransform * this->GetPivotTransform()).GetRotation();
+									FTransform NB = (Grip->OnGripTransform * this->GetPivotTransform());
 									float Alpha = 0.0f;
 
 									Grip->CurrentLerpTime -= DeltaTime * Grip->LerpSpeed;
 									float OrigAlpha = FMath::Clamp(Grip->CurrentLerpTime, 0.f, 1.0f);
 									Alpha = OrigAlpha;
 
-									FQuat NA = WorldTransform.GetRotation();
-									NA.Normalize();
-									NB.Normalize();
+									FTransform NA = WorldTransform;
+									NA.NormalizeRotation();
+									NB.NormalizeRotation();
 
-									WorldTransform.SetRotation(FQuat::Slerp(NA, NB, Alpha));
+									if (!bLerpRotationOnly)
+									{
+										WorldTransform.Blend(NA, NB, Alpha);
+									}
+									else
+									{
+										WorldTransform.SetRotation(FQuat::Slerp(NA.GetRotation(), NB.GetRotation(), Alpha));
+									}
 								}
 							}
 
