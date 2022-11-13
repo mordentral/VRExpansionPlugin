@@ -107,6 +107,10 @@ public:
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bMirrorLeftRight;
 
+	// List of aproximated curls for each finger
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
+		TArray<float> FingerCurls;
+
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		TArray<FTransform> SkeletalTransforms;
 

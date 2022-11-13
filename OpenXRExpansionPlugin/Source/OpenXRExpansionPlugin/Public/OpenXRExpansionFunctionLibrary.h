@@ -94,10 +94,15 @@ public:
 				ParentTrans = FTransform(MotionControllerData.HandKeyRotations[(uint8)EHandKeypoint::Palm], MotionControllerData.HandKeyPositions[(uint8)EHandKeypoint::Palm], FVector(1.f));
 			}
 
-			for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); i++)
+			for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); ++i)
 			{
 				// Convert to component space, we convert then to parent space later when applying it
 				HandPoseContainer.SkeletalTransforms.Add(FTransform(MotionControllerData.HandKeyRotations[i].GetNormalized(), MotionControllerData.HandKeyPositions[i], FVector(1.f)).GetRelativeTransform(ParentTrans));
+			}
+
+			//if (bGetCurlValues)
+			{
+				GetFingerCurlValues(HandPoseContainer);
 			}
 
 			HandPoseContainer.bHasValidData = true;
@@ -106,6 +111,77 @@ public:
 
 		HandPoseContainer.bHasValidData = false;
 		return false;
+	}
+
+	//UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
+	static void GetFingerCurlValues(FBPOpenXRActionSkeletalData& HandPoseContainer)
+	{
+		// Fail if the count is too low
+		if (HandPoseContainer.SkeletalTransforms.Num() < EHandKeypointCount)
+			return;
+
+		if (HandPoseContainer.FingerCurls.Num() < 5)
+		{
+			HandPoseContainer.FingerCurls.AddZeroed(5);
+		}
+
+		HandPoseContainer.FingerCurls[0] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::ThumbMetacarpal);
+		HandPoseContainer.FingerCurls[1] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::IndexProximal);
+		HandPoseContainer.FingerCurls[2] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::MiddleProximal);
+		HandPoseContainer.FingerCurls[3] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::RingProximal);
+		HandPoseContainer.FingerCurls[4] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::LittleProximal);
+	}
+
+	inline static float GetCurlValueForBoneRoot(FBPOpenXRActionSkeletalData& HandPoseContainer, EHandKeypoint RootBone)
+	{
+		float Angle1 = 0.0f;
+		float Angle2 = 0.0f;
+		float Angle1Curl = 0.0f;
+		float Angle2Curl = 0.0f;
+
+		if (RootBone == EHandKeypoint::ThumbMetacarpal)
+		{
+			FVector Prox = HandPoseContainer.SkeletalTransforms[(uint8)RootBone].GetRotation().GetForwardVector();
+			FVector Inter = HandPoseContainer.SkeletalTransforms[(uint8)RootBone + 1].GetRotation().GetForwardVector();
+			FVector Distal = HandPoseContainer.SkeletalTransforms[(uint8)RootBone + 2].GetRotation().GetForwardVector();
+
+			Prox = FVector::VectorPlaneProject(Prox, FVector::UpVector);
+			Inter = FVector::VectorPlaneProject(Inter, FVector::UpVector);
+			Distal = FVector::VectorPlaneProject(Distal, FVector::UpVector);
+
+			Angle1 = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Inter, Distal)));
+			Angle2 = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Prox, Inter)));
+
+			Angle1Curl = (Angle1 - 10.0f) / 64.0f;
+			Angle2Curl = (Angle2 - 20.0f) / 42.0f;
+		}
+		else
+		{
+			FVector Prox = HandPoseContainer.SkeletalTransforms[(uint8)RootBone].GetRotation().GetForwardVector();
+			FVector Inter = HandPoseContainer.SkeletalTransforms[(uint8)RootBone + 1].GetRotation().GetForwardVector();
+			FVector Distal = HandPoseContainer.SkeletalTransforms[(uint8)RootBone + 2].GetRotation().GetForwardVector();
+
+
+			// We don't use the Y (splay) value, only X and Z plane
+			
+			Prox = FVector::VectorPlaneProject(Prox, FVector::RightVector);
+			Inter = FVector::VectorPlaneProject(Inter, FVector::RightVector);
+			Distal = FVector::VectorPlaneProject(Distal, FVector::RightVector);
+
+			Angle1 = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct( Inter, Distal )));
+			Angle2 = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct( Prox,  Inter )));
+
+			Angle1Curl = (Angle1 - 10.0f) / 60.0f;
+			Angle2Curl = (Angle2 - 10.0f) / 100.0f;
+		}
+
+		// Can lower number of variables by doing these
+
+		float FinalAngleAvg = FMath::Clamp((Angle1Curl + Angle2Curl) / 2.0f, 0.0f, 1.0f);
+
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Finger Curl %f"), IndexCurl));
+		return FinalAngleAvg;
+
 	}
 
 	//UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
