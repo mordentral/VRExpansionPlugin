@@ -4407,18 +4407,21 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 		if (Grip.bIsLerping || !bConstrainToPivot)
 		{
+			FBodyInstance* pInstance = PrimComp->GetBodyInstance();
 			FPhysicsActorHandle ActorHandle = Handle->KinActorData2;
 			FTransform newTrans = Handle->COMPosition * (Handle->RootBoneRotation * physicsTrans);
-			FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
-				{
-				// There is no real reason for these additional checks, the phys interface already does this and i check for validity above
-				// However in some rare cases the actor is somehow nulling out after here and its not an expensive call
-				if (FPhysicsInterface::IsValid(Actor) && FPhysicsInterface::GetCurrentScene(Actor))
-				{
-					FPhysicsInterface::SetKinematicTarget_AssumesLocked(Actor, newTrans);
-					FPhysicsInterface::SetGlobalPose_AssumesLocked(Actor, newTrans);
-				}
-				});
+			if (pInstance && pInstance->IsValidBodyInstance())
+			{
+				//FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
+				FPhysicsCommand::ExecuteWrite(pInstance->GetPhysicsScene(), [&]()
+					{
+						if (FPhysicsInterface::IsValid(ActorHandle) && FPhysicsInterface::GetCurrentScene(ActorHandle))
+						{
+							FPhysicsInterface::SetKinematicTarget_AssumesLocked(ActorHandle, newTrans);
+							FPhysicsInterface::SetGlobalPose_AssumesLocked(ActorHandle, newTrans);
+						}
+					});
+			}
 		}
 	}
 
@@ -5781,7 +5784,14 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(FBPActorPhysicsHandleI
 
 	if (!HandleInfo->bSkipDeletingKinematicActor)
 	{
-		FPhysicsInterface::ReleaseActor(HandleInfo->KinActorData2, FPhysicsInterface::GetCurrentScene(HandleInfo->KinActorData2));
+		if (FPhysicsInterface::IsValid(HandleInfo->KinActorData2))
+		{
+			FPhysicsActorHandle ActorHandle = HandleInfo->KinActorData2;
+			FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
+			{
+					FPhysicsInterface::ReleaseActor(HandleInfo->KinActorData2, FPhysicsInterface::GetCurrentScene(HandleInfo->KinActorData2));
+			});
+		}
 	}
 
 	return true;
