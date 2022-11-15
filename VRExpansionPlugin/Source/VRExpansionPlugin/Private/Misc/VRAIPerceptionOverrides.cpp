@@ -6,6 +6,7 @@
 #include "CollisionQueryParams.h"
 //#include "Engine/Engine.h"
 #include "AIModule/Classes/AISystem.h"
+#include "AIModule/Public/AIHelpers.h"
 #include "AIModule/Classes/Perception/AIPerceptionComponent.h"
 #include "VisualLogger/VisualLogger.h"
 #include "AIModule/Classes/Perception/AISightTargetInterface.h"
@@ -121,8 +122,10 @@ FAISightTargetVR::FAISightTargetVR(AActor* InTarget, FGenericTeamId InTeamId)
 //----------------------------------------------------------------------//
 UAISense_Sight_VR::FDigestedSightProperties::FDigestedSightProperties(const UAISenseConfig_Sight_VR& SenseConfig)
 {
-	SightRadiusSq = FMath::Square(SenseConfig.SightRadius);
-	LoseSightRadiusSq = FMath::Square(SenseConfig.LoseSightRadius);
+	SightRadiusSq = FMath::Square(SenseConfig.SightRadius + SenseConfig.PointOfViewBackwardOffset);
+	LoseSightRadiusSq = FMath::Square(SenseConfig.LoseSightRadius + SenseConfig.PointOfViewBackwardOffset);
+	PointOfViewBackwardOffset = SenseConfig.PointOfViewBackwardOffset;
+	NearClippingRadiusSq = FMath::Square(SenseConfig.NearClippingRadius);
 	PeripheralVisionAngleCos = FMath::Cos(FMath::Clamp(FMath::DegreesToRadians(SenseConfig.PeripheralVisionAngleDegrees), 0.f, PI));
 	AffiliationFlags = SenseConfig.DetectionByAffiliation.GetAsFlags();
 	// keep the special value of FAISystem::InvalidRange (-1.f) if it's set.
@@ -130,8 +133,9 @@ UAISense_Sight_VR::FDigestedSightProperties::FDigestedSightProperties(const UAIS
 }
 
 UAISense_Sight_VR::FDigestedSightProperties::FDigestedSightProperties()
-	: PeripheralVisionAngleCos(0.f), SightRadiusSq(-1.f), AutoSuccessRangeSqFromLastSeenLocation(FAISystem::InvalidRange), LoseSightRadiusSq(-1.f), AffiliationFlags(-1)
+	: PeripheralVisionAngleCos(0.f), SightRadiusSq(-1.f), AutoSuccessRangeSqFromLastSeenLocation(FAISystem::InvalidRange), LoseSightRadiusSq(-1.f), PointOfViewBackwardOffset(0.0f), NearClippingRadiusSq(0.0f), AffiliationFlags(-1)
 {}
+
 
 //----------------------------------------------------------------------//
 // UAISense_Sight_VR
@@ -367,7 +371,7 @@ float UAISense_Sight_VR::Update()
 		bIsInRangeQuery ? ++InRangeItr : ++OutOfRangeItr;
 
 		FPerceptionListener& Listener = ListenersMap[SightQuery->ObserverId];
-		FAISightTarget& Target = ObservedTargets[SightQuery->TargetId];
+		FAISightTargetVR& Target = ObservedTargets[SightQuery->TargetId];
 
 		AActor* TargetActor = Target.Target.Get();
 		UAIPerceptionComponent* ListenerPtr = Listener.Listener.Get();
@@ -499,7 +503,7 @@ float UAISense_Sight_VR::Update()
 	return 0.f;
 }
 
-bool UAISense_Sight::ComputeVisibility(const UWorld* World, FAISightQuery& SightQuery, FPerceptionListener& Listener, const AActor* ListenerActor, FAISightTarget& Target, AActor* TargetActor, const FDigestedSightProperties& PropDigest, float& OutStimulusStrength, FVector& OutSeenLocation, int32& OutNumberOfLoSChecksPerformed) const
+bool UAISense_Sight_VR::ComputeVisibility(const UWorld* World, FAISightQueryVR& SightQuery, FPerceptionListener& Listener, const AActor* ListenerActor, FAISightTargetVR& Target, AActor* TargetActor, const FDigestedSightProperties& PropDigest, float& OutStimulusStrength, FVector& OutSeenLocation, int32& OutNumberOfLoSChecksPerformed) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_ComputeVisibility);
 
@@ -552,7 +556,7 @@ bool UAISense_Sight::ComputeVisibility(const UWorld* World, FAISightQuery& Sight
 	}
 }
 
-void UAISense_Sight::UpdateQueryVisibilityStatus(FAISightQuery& SightQuery, FPerceptionListener& Listener, const bool bIsVisible, const FVector& SeenLocation, const float StimulusStrength, AActor* TargetActor, const FVector& TargetLocation) const
+void UAISense_Sight_VR::UpdateQueryVisibilityStatus(FAISightQueryVR& SightQuery, FPerceptionListener& Listener, const bool bIsVisible, const FVector& SeenLocation, const float StimulusStrength, AActor* TargetActor, const FVector& TargetLocation) const
 {
 	if (bIsVisible)
 	{
@@ -572,7 +576,7 @@ void UAISense_Sight::UpdateQueryVisibilityStatus(FAISightQuery& SightQuery, FPer
 		SightQuery.LastSeenLocation = FAISystem::InvalidLocation;
 	}
 
-	SIGHT_LOG_SEGMENT(ListenerPtr->GetOwner(), Listener.CachedLocation, TargetLocation, bIsVisible ? FColor::Green : FColor::Red, TEXT("TargetID %d"), Target.TargetId);
+	//SIGHT_LOG_SEGMENT(ListenerPtr->GetOwner(), Listener.CachedLocation, TargetLocation, bIsVisible ? FColor::Green : FColor::Red, TEXT("TargetID %d"), Target.TargetId);
 }
 
 void UAISense_Sight_VR::RegisterEvent(const FAISightEventVR& Event)
