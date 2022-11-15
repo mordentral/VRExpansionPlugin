@@ -101,7 +101,7 @@ void UCollisionIgnoreSubsystem::UpdateTimer(bool bChangesWereMade)
 					if (FPhysScene* PhysScene = World->GetPhysicsScene())
 					{
 						// Register a callback
-						ContactModifierCallback = PhysScene->GetSolver()->CreateAndRegisterSimCallbackObject_External<FCollisionIgnoreSubsystemAsyncCallback>(true);
+						ContactModifierCallback = PhysScene->GetSolver()->CreateAndRegisterSimCallbackObject_External<FCollisionIgnoreSubsystemAsyncCallback>(/*true*/);
 					}
 				}
 			}

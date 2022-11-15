@@ -76,9 +76,9 @@ struct FSimCallbackNoOutputVR : public Chaos::FSimCallbackOutput
 	void Reset() {}
 };
 
-
-class FCollisionIgnoreSubsystemAsyncCallback : public Chaos::TSimCallbackObject<FSimCallbackInputVR, FSimCallbackNoOutputVR>
+class FCollisionIgnoreSubsystemAsyncCallback : public Chaos::TSimCallbackObject<FSimCallbackInputVR, FSimCallbackNoOutputVR, Chaos::ESimCallbackOptions::ContactModification>
 {
+
 private:
 	
 	virtual void OnPreSimulate_Internal() override
