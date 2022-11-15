@@ -36,7 +36,7 @@ public:
 		float LoseSightRadius;
 
 	/** How far to the side AI can see, in degrees. Use SetPeripheralVisionAngle to change the value at runtime.
-	*	The value represents the angle measured in relation to the forward vector, not the whole range. */
+	 *	The value represents the angle measured in relation to the forward vector, not the whole range. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sense", config, meta = (UIMin = 0.0, ClampMin = 0.0, UIMax = 180.0, ClampMax = 180.0, DisplayName = "PeripheralVisionHalfAngleDegrees"))
 		float PeripheralVisionAngleDegrees;
 
@@ -48,7 +48,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sense", config)
 		float AutoSuccessRangeFromLastSeenLocation;
 
+	/** Point of view move back distance for cone calculation. In conjunction with near clipping distance, this will act as a close by awareness and peripheral vision. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sense", config, meta = (UIMin = 0.0, ClampMin = 0.0))
+		float PointOfViewBackwardOffset;
+
+	/** Near clipping distance, to be used with point of view backward offset. Will act as a close by awareness and peripheral vision */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sense", config, meta = (UIMin = 0.0, ClampMin = 0.0))
+		float NearClippingRadius;
+
 	virtual TSubclassOf<UAISense> GetSenseImplementation() const override;
+
 
 #if WITH_EDITOR
 	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
@@ -127,7 +136,7 @@ struct FAISightQueryVR
 
 	FVector LastSeenLocation;
 
-	/** User data that can be used inside the IAISightTargetInterface::TestVisibilityFrom method to store a persistence state */
+	/** User data that can be used inside the IAISightTargetInterface::CanBeSeenFrom method to store a persistence state */
 	mutable int32 UserData;
 
 	uint64 bLastResult : 1;
@@ -184,6 +193,8 @@ public:
 		float SightRadiusSq;
 		float AutoSuccessRangeSqFromLastSeenLocation;
 		float LoseSightRadiusSq;
+		float PointOfViewBackwardOffset;
+		float NearClippingRadiusSq;
 		uint8 AffiliationFlags;
 
 		FDigestedSightProperties();
@@ -240,7 +251,9 @@ public:
 protected:
 	virtual float Update() override;
 
+	bool ComputeVisibility(const UWorld* World, FAISightQueryVR& SightQuery, FPerceptionListener& Listener, const AActor* ListenerActor, FAISightTargetVR& Target, AActor* TargetActor, const FDigestedSightProperties& PropDigest, float& OutStimulusStrength, FVector& OutSeenLocation, int32& OutNumberOfLoSChecksPerformed) const;
 	virtual bool ShouldAutomaticallySeeTarget(const FDigestedSightProperties& PropDigest, FAISightQueryVR* SightQuery, FPerceptionListener& Listener, AActor* TargetActor, float& OutStimulusStrength) const;
+	void UpdateQueryVisibilityStatus(FAISightQueryVR& SightQuery, FPerceptionListener& Listener, const bool bIsVisible, const FVector& SeenLocation, const float StimulusStrength, AActor* TargetActor, const FVector& TargetLocation) const;
 
 	void OnNewListenerImpl(const FPerceptionListener& NewListener);
 	void OnListenerUpdateImpl(const FPerceptionListener& UpdatedListener);

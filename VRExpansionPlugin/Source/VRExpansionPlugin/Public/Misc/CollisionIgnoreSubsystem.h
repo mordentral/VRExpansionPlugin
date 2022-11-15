@@ -7,11 +7,96 @@
 #include "TimerManager.h"
 #include "Components/PrimitiveComponent.h"
 //#include "Grippables/GrippablePhysicsReplication.h"
+
+// For async physics scene callback modifications
+// Some of these can be moved out to the cpp
+#include "Chaos/SimCallbackObject.h"
+#include "Chaos/SimCallbackInput.h"
+#include "Chaos/ParticleHandle.h"
+//#include "Chaos/ContactModification.h"
+//#include "PBDRigidsSolver.h"
+
+
 #include "CollisionIgnoreSubsystem.generated.h"
 //#include "GrippablePhysicsReplication.generated.h"
 
 
+
+
 DECLARE_LOG_CATEGORY_EXTERN(VRE_CollisionIgnoreLog, Log, All);
+
+
+USTRUCT()
+struct FChaosParticlePair
+{
+	GENERATED_BODY()
+
+	Chaos::TPBDRigidParticleHandle<Chaos::FReal, 3>* ParticleHandle0;
+	Chaos::TPBDRigidParticleHandle<Chaos::FReal, 3>* ParticleHandle1;
+
+	FChaosParticlePair()
+	{
+		ParticleHandle0 = nullptr;
+		ParticleHandle1 = nullptr;
+	}
+
+	FChaosParticlePair(Chaos::TPBDRigidParticleHandle<Chaos::FReal, 3>* pH1, Chaos::TPBDRigidParticleHandle<Chaos::FReal, 3>* pH2)
+	{
+		ParticleHandle0 = pH1;
+		ParticleHandle1 = pH2;
+	}
+
+	FORCEINLINE bool operator==(const FChaosParticlePair& Other) const
+	{
+		return(
+			(ParticleHandle0 == Other.ParticleHandle0 || ParticleHandle0 == Other.ParticleHandle1) &&
+			(ParticleHandle1 == Other.ParticleHandle1 || ParticleHandle1 == Other.ParticleHandle0)
+			);
+	}
+};
+
+/*
+* All input is const, non-const data goes in output. 'AsyncSimState' points to non-const sim state.
+*/
+struct FSimCallbackInputVR : public Chaos::FSimCallbackInput
+{
+	virtual ~FSimCallbackInputVR() {}
+	void Reset() 
+	{
+		ParticlePairs.Empty();
+	}
+
+	TArray<FChaosParticlePair> ParticlePairs;
+
+	bool bIsInitialized;
+};
+
+struct FSimCallbackNoOutputVR : public Chaos::FSimCallbackOutput
+{
+	void Reset() {}
+};
+
+class FCollisionIgnoreSubsystemAsyncCallback : public Chaos::TSimCallbackObject<FSimCallbackInputVR, FSimCallbackNoOutputVR, Chaos::ESimCallbackOptions::ContactModification>
+{
+
+private:
+	
+	virtual void OnPreSimulate_Internal() override
+	{
+		// Copy paired bodies here?
+
+		// Actually use input data to input our paired bodies and copy over here
+	}
+
+	/**
+	* Called once per simulation step. Allows user to modify contacts
+	*
+	* NOTE: you must explicitly request contact modification when registering the callback for this to be called
+	*/
+	virtual void OnContactModification_Internal(Chaos::FCollisionContactModifier& Modifier) override;
+
+};
+
 
 USTRUCT()
 struct FCollisionPrimPair
@@ -112,7 +197,12 @@ public:
 	UCollisionIgnoreSubsystem() :
 		Super()
 	{
+		ContactModifierCallback = nullptr;
 	}
+
+	FCollisionIgnoreSubsystemAsyncCallback* ContactModifierCallback;
+
+	void ConstructInput();
 
 	virtual bool DoesSupportWorldType(EWorldType::Type WorldType) const override
 	{
@@ -145,23 +235,7 @@ public:
 	//TArray<FCollisionIgnorePair> RemovedPairs;
 
 	//
-	void UpdateTimer()
-	{
-		RemovedPairs.Reset();
-
-		if (CollisionTrackedPairs.Num() > 0)
-		{
-			if (!UpdateHandle.IsValid())
-			{
-				// Setup the heartbeat on 1htz checks
-				GetWorld()->GetTimerManager().SetTimer(UpdateHandle, this, &UCollisionIgnoreSubsystem::CheckActiveFilters, 1.0f, true, 1.0f);
-			}
-		}
-		else if (UpdateHandle.IsValid())
-		{
-			GetWorld()->GetTimerManager().ClearTimer(UpdateHandle);
-		}
-	}
+	void UpdateTimer(bool bChangesWereMade);
 
 	UFUNCTION(Category = "Collision")
 		void CheckActiveFilters();

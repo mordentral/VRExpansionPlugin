@@ -91,6 +91,11 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 	
 	bRepGripSettingsAndGameplayTags = true;
 	bReplicateGripScripts = false;
+
+	// #TODO we can register them maybe in the future
+	// Don't use the replicated list, use our custom replication instead
+	bReplicateUsingRegisteredSubObjectList = false;
+
 	bAllowIgnoringAttachOnOwner = true;
 
 	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration
@@ -120,9 +125,9 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 {
 	//Super::PreReplication(ChangedPropertyTracker);
 	
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, GripLogicScripts, bReplicateGripScripts);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, GripLogicScripts, bReplicateGripScripts);
 	
 	//Super::PreReplication(ChangedPropertyTracker);
 
@@ -140,7 +145,7 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(AActor, ReplicatedMovement, IsReplicatingMovement());
 
 	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableStaticMeshActor, AttachmentWeldReplication, RootComponent && !RootComponent->GetIsReplicated());
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, AttachmentWeldReplication, RootComponent && !RootComponent->GetIsReplicated());
 
 	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
 	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(AActor, AttachmentReplication, false);// RootComponent && !RootComponent->GetIsReplicated());
@@ -181,10 +186,30 @@ void AGrippableStaticMeshActor::GatherCurrentMovement()
 		UPrimitiveComponent* RootPrimComp = Cast<UPrimitiveComponent>(GetRootComponent());
 		if (RootPrimComp && RootPrimComp->IsSimulatingPhysics())
 		{
-			FRigidBodyState RBState;
-			RootPrimComp->GetRigidBodyState(RBState);
+#if UE_WITH_IRIS
+			const bool bPrevRepPhysics = ReplicatedMovement.bRepPhysics;
+#endif // UE_WITH_IRIS
 
-			RepMovement.FillFrom(RBState, this);
+			bool bFoundInCache = false;
+
+			UWorld* World = GetWorld();
+			if (FPhysScene_Chaos* Scene = static_cast<FPhysScene_Chaos*>(World->GetPhysicsScene()))
+			{
+				if (FRigidBodyState* FoundState = Scene->ReplicationCache.Map.Find(FObjectKey(RootPrimComp)))
+				{
+					RepMovement.FillFrom(*FoundState, this, Scene->ReplicationCache.ServerFrame);
+					bFoundInCache = true;
+				}
+			}
+
+			if (!bFoundInCache)
+			{
+				// fallback to GT data
+				FRigidBodyState RBState;
+				RootPrimComp->GetRigidBodyState(RBState);
+				RepMovement.FillFrom(RBState, this, 0);
+			}
+
 			// Don't replicate movement if we're welded to another parent actor.
 			// Their replication will affect our position indirectly since we are attached.
 			RepMovement.bRepPhysics = !RootPrimComp->IsWelded();
@@ -213,6 +238,14 @@ void AGrippableStaticMeshActor::GatherCurrentMovement()
 
 			// Technically, the values might have stayed the same, but we'll just assume they've changed.
 			bWasRepMovementModified = true;
+
+#if UE_WITH_IRIS
+			// If RepPhysics has changed value then notify the ReplicationSystem
+			if (bPrevRepPhysics != ReplicatedMovement.bRepPhysics)
+			{
+				UpdateReplicatePhysicsCondition();
+			}
+#endif // UE_WITH_IRIS
 		}
 		else if (RootComponent != nullptr)
 		{
@@ -221,7 +254,7 @@ void AGrippableStaticMeshActor::GatherCurrentMovement()
 			{
 				// Networking for attachments assumes the RootComponent of the AttachParent actor. 
 				// If that's not the case, we can't update this, as the client wouldn't be able to resolve the Component and would detach as a result.
-				AttachmentWeldReplication.AttachParent = RootComponent->GetAttachParent()->GetAttachmentRootActor();
+				AttachmentWeldReplication.AttachParent = RootComponent->GetAttachParentActor();
 				if (AttachmentWeldReplication.AttachParent != nullptr)
 				{
 					AttachmentWeldReplication.LocationOffset = RootComponent->GetRelativeLocation();

@@ -4,6 +4,7 @@
 #include "Engine/Engine.h"
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
+#include "InputCore/Classes/InputCoreTypes.h"
 #include "Grippables/HandSocketComponent.h"
 #include "Misc/CollisionIgnoreSubsystem.h"
 #include "Components/SplineComponent.h"
@@ -16,13 +17,11 @@
 #include "GameplayTagContainer.h"
 //#include "IHeadMountedDisplay.h"
 
-#if WITH_CHAOS
 #include "Chaos/ParticleHandle.h"
 #include "Chaos/KinematicGeometryParticles.h"
 #include "Chaos/ParticleHandle.h"
 #include "PhysicsProxy/SingleParticlePhysicsProxy.h"
 #include "PBDRigidsSolver.h"
-#endif
 
 #if WITH_EDITOR
 #include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"
@@ -310,6 +309,17 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 			SlotWorldTransform.SetScale3D(FVector(1.0f));
 		}
 	}
+}
+
+bool UVRExpansionFunctionLibrary::GetHandFromMotionSourceName(FName MotionSource, EControllerHand& Hand)
+{
+	Hand = EControllerHand::Left;
+	if (FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
+	{
+		return true;
+	}
+
+	return false;
 }
 
 FRotator UVRExpansionFunctionLibrary::GetHMDPureYaw(FRotator HMDRotation)

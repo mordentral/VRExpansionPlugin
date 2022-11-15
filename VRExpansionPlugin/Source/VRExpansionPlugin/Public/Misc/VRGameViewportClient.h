@@ -95,6 +95,9 @@ public:
 
 	virtual bool InputKey(const FInputKeyEventArgs& EventArgs) override
 	{
+		// Remap the old int32 ControllerId value to the new InputDeviceId
+		IPlatformInputDeviceMapper& DeviceMapper = IPlatformInputDeviceMapper::Get();
+
 		// Early out if a gamepad event or ignoring input or is default setup / no GEngine
 		if(GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput() || (EventArgs.IsGamepad() && !IsValidGamePadKey(EventArgs.Key)))
 			return Super::InputKey(EventArgs);
@@ -104,6 +107,7 @@ public:
 		// Also early out if number of players is less than 2
 		if (NumLocalPlayers < 2)
 			return Super::InputKey(EventArgs);
+		
 
 		// Its const so have to copy and send a new one in now that the function signature has changed
 		FInputKeyEventArgs NewStruct = EventArgs;
@@ -112,6 +116,11 @@ public:
 		{
 			// keyboard / mouse always go to player 0, so + 1 will be player 2
 			NewStruct.ControllerId++;
+
+			FPlatformUserId UserId = PLATFORMUSERID_NONE;
+			FInputDeviceId DeviceId = INPUTDEVICEID_NONE;
+			DeviceMapper.RemapControllerIdToPlatformUserAndDevice(NewStruct.ControllerId, UserId, NewStruct.InputDevice);
+
 			return Super::InputKey(NewStruct);
 		}
 		else // Shared keyboard and mouse
@@ -120,6 +129,11 @@ public:
 			for (int32 i = 0; i < NumLocalPlayers; i++)
 			{
 				NewStruct.ControllerId = i;
+
+				FPlatformUserId UserId = PLATFORMUSERID_NONE;
+				FInputDeviceId DeviceId = INPUTDEVICEID_NONE;
+				DeviceMapper.RemapControllerIdToPlatformUserAndDevice(NewStruct.ControllerId, UserId, NewStruct.InputDevice);
+
 				bRetVal = Super::InputKey(NewStruct) || bRetVal;
 			}
 
@@ -127,27 +141,38 @@ public:
 		}
 	}
 
-	virtual bool InputAxis(FViewport* tViewport, int32 ControllerId, FKey Key, float Delta, float DeltaTime, int32 NumSamples = 1, bool bGamepad = false) override
+	virtual bool InputAxis(FViewport* tViewport, FInputDeviceId InputDevice, FKey Key, float Delta, float DeltaTime, int32 NumSamples = 1, bool bGamepad = false) override
 	{		
-		
+		// Remap the old int32 ControllerId value to the new InputDeviceId
+		IPlatformInputDeviceMapper& DeviceMapper = IPlatformInputDeviceMapper::Get();
+
 		const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
 
 		// Early out if a gamepad or not a mouse event (vr controller) or ignoring input or is default setup / no GEngine
 		if (((!Key.IsMouseButton() && !bGamepad) || (bGamepad && !IsValidGamePadKey(Key))) || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput())
-			return Super::InputAxis(tViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
+			return Super::InputAxis(tViewport, InputDevice, Key, Delta, DeltaTime, NumSamples, bGamepad);
 
 		if (GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
 		{
 			// keyboard / mouse always go to player 0, so + 1 will be player 2
-			++ControllerId;
-			return Super::InputAxis(tViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
+			int32 ControllerId = 1;
+
+			FPlatformUserId UserId = PLATFORMUSERID_NONE;
+			FInputDeviceId DeviceId = INPUTDEVICEID_NONE;
+			DeviceMapper.RemapControllerIdToPlatformUserAndDevice(ControllerId, UserId, DeviceId);
+
+			return Super::InputAxis(tViewport, DeviceId, Key, Delta, DeltaTime, NumSamples, bGamepad);
 		}
 		else // Shared keyboard and mouse
 		{
 			bool bRetVal = false;
 			for (int32 i = 0; i < NumLocalPlayers; i++)
 			{
-				bRetVal = Super::InputAxis(tViewport, i, Key, Delta, DeltaTime, NumSamples, bGamepad) || bRetVal;
+				FPlatformUserId UserId = PLATFORMUSERID_NONE;
+				FInputDeviceId DeviceId = INPUTDEVICEID_NONE;
+				DeviceMapper.RemapControllerIdToPlatformUserAndDevice(i, UserId, DeviceId);
+
+				bRetVal = Super::InputAxis(tViewport, DeviceId, Key, Delta, DeltaTime, NumSamples, bGamepad) || bRetVal;
 			}
 
 			return bRetVal;

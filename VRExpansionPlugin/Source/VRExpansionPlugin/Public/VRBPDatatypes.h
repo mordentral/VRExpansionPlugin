@@ -7,8 +7,9 @@
 //#include "EngineMinimal.h"
 //#include "Components/PrimitiveComponent.h"
 
-//#include "PhysicsPublic.h"
+#include "PhysicsEngine/ConstraintTypes.h"
 #include "PhysicsEngine/ConstraintDrives.h"
+#include "Physics/PhysicsInterfaceCore.h"
 #include "VRBPDatatypes.generated.h"
 
 class UGripMotionControllerComponent;
@@ -487,7 +488,7 @@ namespace TransNetQuant
 	static const float MinMaxQDiff = TransNetQuant::MaximumQ - TransNetQuant::MinimumQ;
 }
 
-USTRUCT(/*noexport, */BlueprintType, Category = "VRExpansionLibrary|TransformNetQuantize", meta = (HasNativeMake = "VRExpansionPlugin.VRExpansionFunctionLibrary.MakeTransform_NetQuantize", HasNativeBreak = "VRExpansionPlugin.VRExpansionFunctionLibrary.BreakTransform_NetQuantize"))
+USTRUCT(/*noexport, */BlueprintType, Category = "VRExpansionLibrary|TransformNetQuantize", meta = (HasNativeMake = "/Script/VRExpansionPlugin.VRExpansionFunctionLibrary.MakeTransform_NetQuantize", HasNativeBreak = "/Script/VRExpansionPlugin.VRExpansionFunctionLibrary.BreakTransform_NetQuantize"))
 struct FTransform_NetQuantize : public FTransform
 {
 	GENERATED_USTRUCT_BODY()
@@ -1807,9 +1808,7 @@ public:
 		bSkipResettingCom = false;
 		bSkipDeletingKinematicActor = false;
 		bInitiallySetup = false;
-#if WITH_CHAOS
 		KinActorData2 = nullptr;
-#endif
 	}
 
 	FORCEINLINE bool operator==(const FBPActorGripInformation & Other) const

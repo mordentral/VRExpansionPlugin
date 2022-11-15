@@ -21,6 +21,7 @@ struct FXRDeviceId;
 
 /** Override replication control variable for inherited properties that are private. Be careful since it removes a compile-time error when the variable doesn't exist */
 // This is a temp macro until epic adds their own equivalent
+
 #define DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(c,v,active) \
 { \
 	static FProperty* sp##v = GetReplicatedProperty(StaticClass(), c::StaticClass(),FName(TEXT(#v))); \
@@ -326,6 +327,12 @@ protected:
 	virtual void CreateRenderState_Concurrent(FRegisterComponentContext* Context) override;
 	virtual void SendRenderTransform_Concurrent() override;
 	//~ End UActorComponent Interface.
+	
+	void OnModularFeatureUnregistered(const FName& Type, class IModularFeature* ModularFeature);
+
+	IMotionController* GripPolledMotionController_GameThread;
+	IMotionController* GripPolledMotionController_RenderThread;
+	FCriticalSection GripPolledMotionControllerMutex;
 
 	FTransform GripRenderThreadRelativeTransform;
 	FVector GripRenderThreadComponentScale;
@@ -1426,9 +1433,10 @@ private:
 		virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
 		virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {}
 		virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
-		virtual void PreRenderView_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override {}
-		virtual void PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
-		//virtual void LateLatchingViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
+		//virtual void PreRenderView_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override {}
+		//virtual void PreRenderViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
+		virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override {}
+		virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) override;
 
 		virtual int32 GetPriority() const override { return -10; }
 

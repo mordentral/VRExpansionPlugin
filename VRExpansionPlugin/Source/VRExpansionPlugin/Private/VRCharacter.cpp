@@ -9,6 +9,7 @@
 //#include "ParentRelativeAttachmentComponent.h"
 #include "VRRootComponent.h"
 #include "VRCharacterMovementComponent.h"
+#include "GameFramework/Controller.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "VRPathFollowingComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"

@@ -1,12 +1,13 @@
 
 #include "VRGlobalSettings.h"
-
-#if WITH_CHAOS
 #include "Chaos/ChaosConstraintSettings.h"
-#endif
+#include "Grippables/GrippableSkeletalMeshComponent.h"
 
 UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer),
+	bLerpHybridWithSweepGrips(false),
+	bOnlyLerpHybridRotation(false),
+	HybridWithSweepLerpDuration(0.2f),
 	bUseGlobalLerpToHand(false),
 	bSkipLerpToHandIfHeld(false),
 	MinDistanceForLerp(10.0f),
@@ -23,7 +24,11 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 	bUseSeperateHandTransforms(false),
 	CurrentControllerProfileTransformRight(FTransform::Identity)
 {
-#if WITH_CHAOS
+		DefaultGrippableCharacterMeshComponentClass = UGrippableSkeletalMeshComponent::StaticClass();
+
+		bUseCollisionModificationForCollisionIgnore = false;
+		CollisionIgnoreSubsystemUpdateRate = 1.f;
+
 		bUseChaosTranslationScalers = true;
 		bSetEngineChaosScalers = true;
 		LinearDriveStiffnessScale = 1.0f;// Chaos::ConstraintSettings::LinearDriveStiffnessScale();
@@ -40,7 +45,22 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 		JointLinearBreakScale = 1.0f; //Chaos::ConstraintSettings::LinearBreakScale();
 		JointAngularBreakScale = 1.0f; //Chaos::ConstraintSettings::AngularBreakScale();
 
-#endif
+}
+
+TSubclassOf<class UGrippableSkeletalMeshComponent> UVRGlobalSettings::GetDefaultGrippableCharacterMeshComponentClass()
+{
+	const UVRGlobalSettings* VRSettings = GetDefault<UVRGlobalSettings>();
+
+	if (VRSettings)
+	{
+		// Using a getter to stay safe from bricking peoples projects if they set it to none somehow
+		if (VRSettings->DefaultGrippableCharacterMeshComponentClass != nullptr)
+		{
+			return VRSettings->DefaultGrippableCharacterMeshComponentClass;
+		}
+	}
+
+	return UGrippableSkeletalMeshComponent::StaticClass();
 }
 
 bool UVRGlobalSettings::IsGlobalLerpEnabled()
@@ -369,7 +389,6 @@ void UVRGlobalSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 
 void UVRGlobalSettings::SetScalers()
 {
-#if WITH_CHAOS
 	auto CVarLinearDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearDriveStiffnessScale"));
 	auto CVarLinearDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinaearDriveDampingScale"));
 	auto CVarAngularDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveStiffnessScale"));
@@ -416,7 +435,6 @@ void UVRGlobalSettings::SetScalers()
 		CVarJointLinearBreakScale->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
 		CVarJointAngularBreakScale->Set(1.0f, EConsoleVariableFlags::ECVF_SetByCode);
 	}
-#endif
 }
 
 void UVRGlobalSettings::GetMeleeSurfaceGlobalSettings(TArray<FBPHitSurfaceProperties>& OutMeleeSurfaceSettings)

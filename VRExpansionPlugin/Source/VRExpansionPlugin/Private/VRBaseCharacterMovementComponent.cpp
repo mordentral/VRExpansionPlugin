@@ -369,7 +369,7 @@ void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleL
 	{
 		// Only if the supplied sweep was vertical and downward.
 		if ((DownwardSweepResult->TraceStart.Z > DownwardSweepResult->TraceEnd.Z) &&
-			(DownwardSweepResult->TraceStart - DownwardSweepResult->TraceEnd).SizeSquared2D() <= KINDA_SMALL_NUMBER)
+			(DownwardSweepResult->TraceStart - DownwardSweepResult->TraceEnd).SizeSquared2D() <= UE_KINDA_SMALL_NUMBER)
 		{
 			// Reject hits that are barely on the cusp of the radius of the capsule
 			if (IsWithinEdgeTolerance(DownwardSweepResult->Location, DownwardSweepResult->ImpactPoint, PawnRadius))
@@ -429,7 +429,7 @@ void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleL
 			{
 				// Use a capsule with a slightly smaller radius and shorter height to avoid the adjacent object.
 				// Capsule must not be nearly zero or the trace will fall back to a line trace from the start point and have the wrong length.
-				CapsuleShape.Capsule.Radius = FMath::Max(0.f, CapsuleShape.Capsule.Radius - SWEEP_EDGE_REJECT_DISTANCE - KINDA_SMALL_NUMBER);
+				CapsuleShape.Capsule.Radius = FMath::Max(0.f, CapsuleShape.Capsule.Radius - SWEEP_EDGE_REJECT_DISTANCE - UE_KINDA_SMALL_NUMBER);
 				if (!CapsuleShape.IsNearlyZero())
 				{
 					ShrinkHeight = (PawnHalfHeight - PawnRadius) * (1.f - ShrinkScaleOverlap);
@@ -523,13 +523,13 @@ float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta,
 				Normal = Normal.GetSafeNormal2D();
 			}
 		}
-		else if (Normal.Z < -KINDA_SMALL_NUMBER)
+		else if (Normal.Z < -UE_KINDA_SMALL_NUMBER)
 		{
 			// Don't push down into the floor when the impact is on the upper portion of the capsule.
 			if (CurrentFloor.FloorDist < MIN_FLOOR_DIST && CurrentFloor.bBlockingHit)
 			{
 				const FVector FloorNormal = CurrentFloor.HitResult.Normal;
-				const bool bFloorOpposedToMovement = (Delta | FloorNormal) < 0.f && (FloorNormal.Z < 1.f - DELTA);
+				const bool bFloorOpposedToMovement = (Delta | FloorNormal) < 0.f && (FloorNormal.Z < 1.f - UE_DELTA);
 				if (bFloorOpposedToMovement)
 				{
 					Normal = FloorNormal;
@@ -1261,114 +1261,6 @@ void UVRBaseCharacterMovementComponent::ApplyNetworkMovementMode(const uint8 Rec
 	Super::ApplyNetworkMovementMode(ReceivedMode);
 }
 
-/*void UVRBaseCharacterMovementComponent::SendClientAdjustment()
-{
-	if (!HasValidData())
-	{
-		return;
-	}
-
-	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
-	check(ServerData);
-
-	if (ServerData->PendingAdjustment.TimeStamp <= 0.f)
-	{
-		return;
-	}
-
-	if (ServerData->PendingAdjustment.bAckGoodMove == true)
-	{
-		// just notify client this move was received
-		ClientAckGoodMove(ServerData->PendingAdjustment.TimeStamp);
-	}
-	else
-	{
-		const bool bIsPlayingNetworkedRootMotionMontage = CharacterOwner->IsPlayingNetworkedRootMotionMontage();
-		if (HasRootMotionSources())
-		{
-			FRotator Rotation = ServerData->PendingAdjustment.NewRot.GetNormalized();
-			FVector_NetQuantizeNormal CompressedRotation(Rotation.Pitch / 180.f, Rotation.Yaw / 180.f, Rotation.Roll / 180.f);
-			ClientAdjustRootMotionSourcePosition
-			(
-				ServerData->PendingAdjustment.TimeStamp,
-				CurrentRootMotion,
-				bIsPlayingNetworkedRootMotionMontage,
-				bIsPlayingNetworkedRootMotionMontage ? CharacterOwner->GetRootMotionAnimMontageInstance()->GetPosition() : -1.f,
-				ServerData->PendingAdjustment.NewLoc,
-				CompressedRotation,
-				ServerData->PendingAdjustment.NewVel.Z,
-				ServerData->PendingAdjustment.NewBase,
-				ServerData->PendingAdjustment.NewBaseBoneName,
-				ServerData->PendingAdjustment.NewBase != NULL,
-				ServerData->PendingAdjustment.bBaseRelativePosition,
-				PackNetworkMovementMode()
-			);
-		}
-		else if (bIsPlayingNetworkedRootMotionMontage)
-		{
-			FRotator Rotation = ServerData->PendingAdjustment.NewRot.GetNormalized();
-			FVector_NetQuantizeNormal CompressedRotation(Rotation.Pitch / 180.f, Rotation.Yaw / 180.f, Rotation.Roll / 180.f);
-			ClientAdjustRootMotionPosition
-			(
-				ServerData->PendingAdjustment.TimeStamp,
-				CharacterOwner->GetRootMotionAnimMontageInstance()->GetPosition(),
-				ServerData->PendingAdjustment.NewLoc,
-				CompressedRotation,
-				ServerData->PendingAdjustment.NewVel.Z,
-				ServerData->PendingAdjustment.NewBase,
-				ServerData->PendingAdjustment.NewBaseBoneName,
-				ServerData->PendingAdjustment.NewBase != NULL,
-				ServerData->PendingAdjustment.bBaseRelativePosition,
-				PackNetworkMovementMode()
-			);
-		}
-		else if (ServerData->PendingAdjustment.NewVel.IsZero())
-		{
-			if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(GetOwner()))
-			{
-				FVector CusVec = VRC->GetVRLocation_Inline();
-				GEngine->AddOnScreenDebugMessage(-1, 125.f, IsLocallyControlled() ? FColor::Red : FColor::Green, FString::Printf(TEXT("VrLoc: x: %f, y: %f, X: %f"), CusVec.X, CusVec.Y, CusVec.Z));
-			}
-			GEngine->AddOnScreenDebugMessage(-1, 125.f, FColor::Red, TEXT("Correcting Client Location!"));
-			ClientVeryShortAdjustPosition
-			(
-				ServerData->PendingAdjustment.TimeStamp,
-				ServerData->PendingAdjustment.NewLoc,
-				ServerData->PendingAdjustment.NewBase,
-				ServerData->PendingAdjustment.NewBaseBoneName,
-				ServerData->PendingAdjustment.NewBase != NULL,
-				ServerData->PendingAdjustment.bBaseRelativePosition,
-				PackNetworkMovementMode()
-			);
-		}
-		else
-		{
-			if (AVRBaseCharacter * VRC = Cast<AVRBaseCharacter>(GetOwner()))
-			{
-				FVector CusVec = VRC->GetVRLocation_Inline();
-				GEngine->AddOnScreenDebugMessage(-1, 125.f, IsLocallyControlled() ? FColor::Red : FColor::Green, FString::Printf(TEXT("VrLoc: x: %f, y: %f, X: %f"), CusVec.X, CusVec.Y, CusVec.Z));
-			}
-			GEngine->AddOnScreenDebugMessage(-1, 125.f, FColor::Red, TEXT("Correcting Client Location!"));
-			ClientAdjustPosition
-			(
-				ServerData->PendingAdjustment.TimeStamp,
-				ServerData->PendingAdjustment.NewLoc,
-				ServerData->PendingAdjustment.NewVel,
-				ServerData->PendingAdjustment.NewBase,
-				ServerData->PendingAdjustment.NewBaseBoneName,
-				ServerData->PendingAdjustment.NewBase != NULL,
-				ServerData->PendingAdjustment.bBaseRelativePosition,
-				PackNetworkMovementMode()
-			);
-		}
-	}
-
-	ServerData->PendingAdjustment.TimeStamp = 0;
-	ServerData->PendingAdjustment.bAckGoodMove = false;
-	ServerData->bForceClientUpdate = false;
-}
-*/
-
 void  UVRBaseCharacterMovementComponent::SetUpdatedComponent(USceneComponent* NewUpdatedComponent)
 {
 	Super::SetUpdatedComponent(NewUpdatedComponent);
@@ -1438,43 +1330,6 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_CharacterMovementSimulated);
 	checkSlow(CharacterOwner != nullptr);
 
-	if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
-	{
-		const FVector OldLocation = UpdatedComponent ? UpdatedComponent->GetComponentLocation() : FVector::ZeroVector;
-		const FVector OldVelocity = Velocity;
-
-		// Interpolate between appropriate samples
-		{
-			QUICK_SCOPE_CYCLE_COUNTER(STAT_Character_CharacterMovementSmoothClientPosition);
-			SmoothClientPosition(DeltaSeconds);
-		}
-
-		// Update replicated movement mode
-		ApplyNetworkMovementMode(GetCharacterOwner()->GetReplicatedMovementMode());
-
-		UpdateComponentVelocity();
-		bJustTeleported = false;
-
-		if (CharacterOwner)
-		{
-			CharacterOwner->RootMotionRepMoves.Empty();
-			CurrentRootMotion.Clear();
-			CharacterOwner->SavedRootMotion.Clear();
-		}
-
-		// Note: we do not call the Super implementation, that runs prediction.
-		// We do still need to call these though
-		OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
-		CallMovementUpdateDelegate(DeltaSeconds, OldLocation, OldVelocity);
-
-		LastUpdateLocation = UpdatedComponent ? UpdatedComponent->GetComponentLocation() : FVector::ZeroVector;
-		LastUpdateRotation = UpdatedComponent ? UpdatedComponent->GetComponentQuat() : FQuat::Identity;
-		LastUpdateVelocity = Velocity;
-
-		//TickCharacterPose( DeltaSeconds );
-		return;
-	}
-
 	// If we are playing a RootMotion AnimMontage.
 	if (CharacterOwner->IsPlayingNetworkedRootMotionMontage())
 	{
@@ -1493,10 +1348,15 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			}
 		}
 
+		const FQuat OldRotationQuat = UpdatedComponent->GetComponentQuat();
+		const FVector OldLocation = UpdatedComponent->GetComponentLocation();
+
+		USkeletalMeshComponent* Mesh = CharacterOwner->GetMesh();
+		const FVector SavedMeshRelativeLocation = Mesh ? Mesh->GetRelativeLocation() : FVector::ZeroVector;
+
+
 		if (RootMotionParams.bHasRootMotion)
 		{
-			const FQuat OldRotationQuat = UpdatedComponent->GetComponentQuat();
-			const FVector OldLocation = UpdatedComponent->GetComponentLocation();
 			SimulateRootMotion(DeltaSeconds, RootMotionParams.GetRootMotionTransform());
 
 #if !(UE_BUILD_SHIPPING)
@@ -1520,6 +1380,18 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 		if (CharacterOwner && (CharacterOwner->RootMotionRepMoves.Num() > 0))
 		{
 			CharacterOwner->SimulatedRootMotionPositionFixup(DeltaSeconds);
+		}
+
+		if (!bNetworkSmoothingComplete && (NetworkSmoothingMode == ENetworkSmoothingMode::Linear))
+		{
+			// Same mesh with different rotation?
+			const FQuat NewCapsuleRotation = UpdatedComponent->GetComponentQuat();
+			if (Mesh == CharacterOwner->GetMesh() && !NewCapsuleRotation.Equals(OldRotationQuat, 1e-6f) && ClientPredictionData)
+			{
+				// Smoothing should lerp toward this new rotation target, otherwise it will just try to go back toward the old rotation.
+				ClientPredictionData->MeshRotationTarget = NewCapsuleRotation;
+				Mesh->SetRelativeLocationAndRotation(SavedMeshRelativeLocation, CharacterOwner->GetBaseRotationOffset());
+			}
 		}
 	}
 	else if (CurrentRootMotion.HasActiveRootMotionSources())
@@ -1558,6 +1430,13 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			CharacterOwner->RootMotionRepMoves.Reset();
 		}
 
+		// Update replicated movement mode.
+		if (bNetworkMovementModeChanged)
+		{
+			ApplyNetworkMovementMode(CharacterOwner->GetReplicatedMovementMode());
+			bNetworkMovementModeChanged = false;
+		}
+
 		// Perform movement
 		PerformMovement(DeltaSeconds);
 
@@ -1575,7 +1454,6 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 		// (Root Motion could leave Velocity out of sync w/ ReplicatedMovement)
 		if (bWasSimulatingRootMotion)
 		{
-			bWasSimulatingRootMotion = false;
 			CharacterOwner->RootMotionRepMoves.Empty();
 			CharacterOwner->OnRep_ReplicatedMovement();
 			CharacterOwner->OnRep_ReplicatedBasedMovement();
@@ -1596,6 +1474,13 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 				//const FScopedPreventAttachedComponentMove PreventMeshMovement(bPreventMeshMovement ? Mesh : nullptr);
 				if (CharacterOwner->IsPlayingRootMotion())
 				{
+					// Update replicated movement mode.
+					if (bNetworkMovementModeChanged)
+					{
+						ApplyNetworkMovementMode(CharacterOwner->GetReplicatedMovementMode());
+						bNetworkMovementModeChanged = false;
+					}
+
 					PerformMovement(DeltaSeconds);
 				}
 				else
@@ -1631,6 +1516,11 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 					Mesh->SetRelativeLocationAndRotation(SavedMeshRelativeLocation, CharacterOwner->GetBaseRotationOffset());
 				}
 			}*/
+		}
+
+		if (bWasSimulatingRootMotion)
+		{
+			bWasSimulatingRootMotion = false;
 		}
 	}
 
@@ -1693,8 +1583,13 @@ void UVRBaseCharacterMovementComponent::MoveAutonomous(
 		}
 		// TODO: SaveBaseLocation() in case tick moves us?
 
-		// Trigger Events right away, as we could be receiving multiple ServerMoves per frame.
-		CharacterOwner->GetMesh()->ConditionallyDispatchQueuedAnimEvents();
+		static const auto CVarEnableQueuedAnimEventsOnServer = IConsoleManager::Get().FindConsoleVariable(TEXT("a.EnableQueuedAnimEventsOnServer"));
+		if (!CVarEnableQueuedAnimEventsOnServer->GetInt() || CharacterOwner->GetMesh()->ShouldOnlyTickMontages(DeltaTime))
+		{
+			// If we're not doing a full anim graph update on the server, 
+			// trigger events right away, as we could be receiving multiple ServerMoves per frame.
+			CharacterOwner->GetMesh()->ConditionallyDispatchQueuedAnimEvents();
+		}
 	}
 
 	if (CharacterOwner && UpdatedComponent)
@@ -1735,12 +1630,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 	bNetworkSmoothingComplete = false;
 
 	// Handle selected smoothing mode.
-	if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
-	{
-		// Replays use pure interpolation in this mode, all of the work is done in SmoothClientPosition_Interpolate
-		return;
-	}
-	else if (NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
+	if (NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
 	{
 		UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
 		bNetworkSmoothingComplete = true;
@@ -1944,26 +1834,32 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
 		{
 			// Erased most of the code here, check back in later
+			const USceneComponent* MeshParent = BaseVRCharacterOwner->NetSmoother->GetAttachParent();
+			FVector MeshParentScale = MeshParent != nullptr ? MeshParent->GetComponentScale() : FVector(1.0f, 1.0f, 1.0f);
+
+			MeshParentScale.X = FMath::IsNearlyZero(MeshParentScale.X) ? 1.0f : MeshParentScale.X;
+			MeshParentScale.Y = FMath::IsNearlyZero(MeshParentScale.Y) ? 1.0f : MeshParentScale.Y;
+			MeshParentScale.Z = FMath::IsNearlyZero(MeshParentScale.Z) ? 1.0f : MeshParentScale.Z;
+
 			const FVector NewRelLocation = ClientData->MeshRotationOffset.UnrotateVector(ClientData->MeshTranslationOffset);// + CharacterOwner->GetBaseTranslationOffset();
 			BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(NewRelLocation);
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
 		{
+			const USceneComponent* MeshParent = BaseVRCharacterOwner->NetSmoother->GetAttachParent();
+			FVector MeshParentScale = MeshParent != nullptr ? MeshParent->GetComponentScale() : FVector(1.0f, 1.0f, 1.0f);
+
+			MeshParentScale.X = FMath::IsNearlyZero(MeshParentScale.X) ? 1.0f : MeshParentScale.X;
+			MeshParentScale.Y = FMath::IsNearlyZero(MeshParentScale.Y) ? 1.0f : MeshParentScale.Y;
+			MeshParentScale.Z = FMath::IsNearlyZero(MeshParentScale.Z) ? 1.0f : MeshParentScale.Z;
+
 			// Adjust mesh location and rotation
-			const FVector NewRelTranslation = UpdatedComponent->GetComponentToWorld().InverseTransformVectorNoScale(ClientData->MeshTranslationOffset);// +CharacterOwner->GetBaseTranslationOffset();
+			const FVector NewRelTranslation = (UpdatedComponent->GetComponentToWorld().InverseTransformVectorNoScale(ClientData->MeshTranslationOffset) / MeshParentScale);// +CharacterOwner->GetBaseTranslationOffset();
 			const FQuat NewRelRotation = ClientData->MeshRotationOffset;// *CharacterOwner->GetBaseRotationOffset();
 			//Basechar->NetSmoother->SetRelativeLocation(NewRelTranslation);
 
 			BaseVRCharacterOwner->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
 
-		}
-		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Replay)
-		{
-			if (!UpdatedComponent->GetComponentQuat().Equals(ClientData->MeshRotationOffset, SCENECOMPONENT_QUAT_TOLERANCE))// || !UpdatedComponent->GetComponentLocation().Equals(ClientData->MeshTranslationOffset, KINDA_SMALL_NUMBER))
-			{
-				//UpdatedComponent->SetWorldLocation(ClientData->MeshTranslationOffset);
-				UpdatedComponent->SetWorldLocationAndRotation(ClientData->MeshTranslationOffset, ClientData->MeshRotationOffset);
-			}
 		}
 		else
 		{

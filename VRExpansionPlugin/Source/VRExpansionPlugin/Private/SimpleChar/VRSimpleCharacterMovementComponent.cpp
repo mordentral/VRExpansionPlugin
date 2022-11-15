@@ -422,7 +422,7 @@ void UVRSimpleCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 
 			const float ProjectionScale = (OldLocation.Z > CachedNavLocation.Location.Z) ? NavMeshProjectionHeightScaleUp : NavMeshProjectionHeightScaleDown;
 			const float DistZThr = TotalCapsuleHeight * FMath::Max(0.f, ProjectionScale);
 
-			bSameNavLocation = (DistSq2D <= KINDA_SMALL_NUMBER) && (DistZ < DistZThr);
+			bSameNavLocation = (DistSq2D <= UE_KINDA_SMALL_NUMBER) && (DistZ < DistZThr);
 		}
 		else
 		{
@@ -729,13 +729,13 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 					const FVector NewVelocity = Velocity - Hit.ImpactNormal * FVector::DotProduct(Velocity - ContactVelocity, Hit.ImpactNormal);
 					Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
 				}
-				else if (subTimeTickRemaining > KINDA_SMALL_NUMBER && !bJustTeleported)
+				else if (subTimeTickRemaining > UE_KINDA_SMALL_NUMBER && !bJustTeleported)
 				{
 					const FVector NewVelocity = (Delta / subTimeTickRemaining);
 					Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
 				}
 
-				if (subTimeTickRemaining > KINDA_SMALL_NUMBER && (Delta | Adjusted) > 0.f)
+				if (subTimeTickRemaining > UE_KINDA_SMALL_NUMBER && (Delta | Adjusted) > 0.f)
 				{
 					// Move in deflected direction.
 					SafeMoveUpdatedComponent(Delta, PawnRotation, true, Hit);
@@ -785,14 +785,14 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 						}
 
 						// Compute velocity after deflection (only gravity component for RootMotion)
-						if (subTimeTickRemaining > KINDA_SMALL_NUMBER && !bJustTeleported)
+						if (subTimeTickRemaining > UE_KINDA_SMALL_NUMBER && !bJustTeleported)
 						{
 							const FVector NewVelocity = (Delta / subTimeTickRemaining);
 							Velocity = HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocityWithIgnoreZAccumulate() ? FVector(Velocity.X, Velocity.Y, NewVelocity.Z) : NewVelocity;
 						}
 
 						// bDitch=true means that pawn is straddling two slopes, neither of which he can stand on
-						bool bDitch = ((OldHitImpactNormal.Z > 0.f) && (Hit.ImpactNormal.Z > 0.f) && (FMath::Abs(Delta.Z) <= KINDA_SMALL_NUMBER) && ((Hit.ImpactNormal | OldHitImpactNormal) < 0.f));
+						bool bDitch = ((OldHitImpactNormal.Z > 0.f) && (Hit.ImpactNormal.Z > 0.f) && (FMath::Abs(Delta.Z) <= UE_KINDA_SMALL_NUMBER) && ((Hit.ImpactNormal | OldHitImpactNormal) < 0.f));
 						SafeMoveUpdatedComponent(Delta, PawnRotation, true, Hit);
 						if (Hit.Time == 0.f)
 						{
@@ -831,7 +831,7 @@ void UVRSimpleCharacterMovementComponent::PhysFalling(float deltaTime, int32 Ite
 			}
 		}
 
-		if (Velocity.SizeSquared2D() <= KINDA_SMALL_NUMBER * 10.f)
+		if (Velocity.SizeSquared2D() <= UE_KINDA_SMALL_NUMBER * 10.f)
 		{
 			Velocity.X = 0.f;
 			Velocity.Y = 0.f;
@@ -938,7 +938,7 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 			{
 				// pawn decided to jump up
 				const float DesiredDist = Delta.Size();
-				if (DesiredDist > KINDA_SMALL_NUMBER)
+				if (DesiredDist > UE_KINDA_SMALL_NUMBER)
 				{
 					const float ActualDist = (UpdatedComponent->GetComponentLocation() - OldLocation).Size2D();
 					remainingTime += timeTick * (1.f - FMath::Min(1.f, ActualDist / DesiredDist));
@@ -1254,9 +1254,9 @@ void UVRSimpleCharacterMovementComponent::ServerMove_PerformMovement(const FChar
 		ServerData->ServerTimeStamp = MyWorld->GetTimeSeconds();
 		ServerData->ServerTimeStampLastServerMove = ServerData->ServerTimeStamp;
 
-		if (PC)
+		if (AController* CharacterController = Cast<AController>(CharacterOwner->GetController()))
 		{
-			PC->SetControlRotation(ClientControlRotation);
+			CharacterController->SetControlRotation(ClientControlRotation);
 		}
 
 		if (!bServerReadyForClient)

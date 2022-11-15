@@ -94,8 +94,9 @@ public:
 	void ApplyTrackingParameters(FVector & OriginalPosition);
 	bool HasTrackingParameters();
 
-	//UFUNCTION(BlueprintCallable, Category = Camera)
-		virtual void GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView) override;
+	// Get Camera View is no longer required, they finally broke the HMD logic out into its own section!!
+	//virtual void GetCameraView(float DeltaTime, FMinimalViewInfo& DesiredView) override;
+	virtual void HandleXRCamera() override;
 
 	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedCameraTransform, Category = "ReplicatedCamera|Networking")
 	FBPVRComponentPosRep ReplicatedCameraTransform;

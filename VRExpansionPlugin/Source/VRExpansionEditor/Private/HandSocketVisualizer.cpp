@@ -187,7 +187,18 @@ void FHandSocketVisualizer::DrawVisualization(const UActorComponent* Component, 
 			// We skip root bone, moving the visualizer itself handles that
 			for (int i = 1; i < HandComponent->HandVisualizerComponent->GetNumBones(); i++)
 			{
+
 				FName BoneName = HandComponent->HandVisualizerComponent->GetBoneName(i);
+
+				if (HandComponent->bFilterBonesByPostfix)
+				{
+					if (BoneName.ToString().Right(2) != HandComponent->FilterPostfix)
+					{
+						// Skip visualizing this bone its the incorrect side
+						continue;
+					}
+				}
+
 				FTransform BoneTransform = HandComponent->HandVisualizerComponent->GetBoneTransform(i);
 				FVector BoneLoc = BoneTransform.GetLocation();
 				BoneScale = 1.0f - ((View->ViewLocation - BoneLoc).SizeSquared() / FMath::Square(100.0f));

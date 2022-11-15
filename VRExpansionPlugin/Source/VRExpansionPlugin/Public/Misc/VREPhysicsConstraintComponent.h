@@ -5,14 +5,12 @@
 #include "PhysicsEngine/PhysicsConstraintComponent.h"
 
 // Delete this eventually when the physics interface is fixed
-#if WITH_CHAOS
 #include "Chaos/ParticleHandle.h"
 #include "Chaos/KinematicGeometryParticles.h"
 #include "Chaos/PBDJointConstraintTypes.h"
 #include "Chaos/PBDJointConstraintData.h"
 #include "Chaos/Sphere.h"
 #include "PhysicsProxy/SingleParticlePhysicsProxy.h"
-#endif
 
 #include "VREPhysicsConstraintComponent.generated.h"
 
@@ -29,7 +27,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRE Physics Constraint Component")
 		void SetConstraintToForceBased(bool bUseForceConstraint)
 	{
-#if WITH_CHAOS
 
 		if (!ConstraintInstance.ConstraintHandle.IsValid())
 			return;
@@ -43,7 +40,6 @@ public:
 			}
 		}
 
-#endif
 		//#endif
 	}
 

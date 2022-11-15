@@ -139,7 +139,7 @@ void UInversePhysicsSkeletalMeshComponent::BlendInPhysicsInternalVR(FTickFunctio
 	check(IsInGameThread());
 
 	// Can't do anything without a SkeletalMesh
-	if (!SkeletalMesh)
+	if (!GetSkinnedAsset())
 	{
 		return;
 	}
@@ -231,7 +231,7 @@ void UInversePhysicsSkeletalMeshComponent::FinalizeAnimationUpdateVR()
 	MarkRenderDynamicDataDirty();
 
 	// If we have any Slave Components, they need to be refreshed as well.
-	RefreshSlaveComponents();
+	RefreshFollowerComponents();
 }
 
 struct FAssetWorldBoneTM
@@ -259,7 +259,7 @@ void UpdateWorldBoneTMVR(TAssetWorldBoneTMArray& WorldBoneTMs, const TArray<FTra
 	else
 	{
 		// If not root, use our cached world-space bone transforms.
-		int32 ParentIndex = SkelComp->SkeletalMesh->GetRefSkeleton().GetParentIndex(BoneIndex);
+		int32 ParentIndex = SkelComp->GetSkeletalMeshAsset()->GetRefSkeleton().GetParentIndex(BoneIndex);
 		UpdateWorldBoneTMVR(WorldBoneTMs, InBoneSpaceTransforms, ParentIndex, SkelComp, LocalToWorldTM, Scale3D);
 		ParentTM = WorldBoneTMs[ParentIndex].TM;
 	}
@@ -330,7 +330,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 				int32 BoneIndex = InRequiredBones[i];
 
 				// See if this is a physics bone..
-				int32 BodyIndex = PhysicsAsset->FindBodyIndex(SkeletalMesh->GetRefSkeleton().GetBoneName(BoneIndex));
+				int32 BodyIndex = PhysicsAsset->FindBodyIndex(GetSkeletalMeshAsset()->GetRefSkeleton().GetBoneName(BoneIndex));
 				// need to update back to physics so that physics knows where it was after blending
 				FBodyInstance* PhysicsAssetBodyInstance = nullptr;
 
@@ -342,7 +342,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 					if (!ensure(Bodies.IsValidIndex(BodyIndex)))
 					{
 						UE_LOG(LogPhysics, Warning, TEXT("%s(Mesh %s, PhysicsAsset %s)"),
-							*GetName(), *GetNameSafe(SkeletalMesh), *GetNameSafe(PhysicsAsset));
+							*GetName(), *GetNameSafe(GetSkeletalMeshAsset()), *GetNameSafe(PhysicsAsset));
 						UE_LOG(LogPhysics, Warning, TEXT(" - # of BodySetup (%d), # of Bodies (%d), Invalid BodyIndex(%d)"),
 							PhysicsAsset->SkeletalBodySetups.Num(), Bodies.Num(), BodyIndex);
 						continue;
@@ -385,7 +385,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 							else
 							{
 								// If not root, get parent TM from cache (making sure its up-to-date).
-								int32 ParentIndex = SkeletalMesh->GetRefSkeleton().GetParentIndex(BoneIndex);
+								int32 ParentIndex = GetSkeletalMeshAsset()->GetRefSkeleton().GetParentIndex(BoneIndex);
 								UpdateWorldBoneTMVR(WorldBoneTMs, InOutBoneSpaceTransforms, ParentIndex, this, LocalToWorldTM, TotalScale3D);
 								ParentWorldTM = WorldBoneTMs[ParentIndex].TM;
 							}
@@ -435,7 +435,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 						{
 							continue;
 						}
-						const int32 ParentIndex = SkeletalMesh->GetRefSkeleton().GetParentIndex(BoneIndex);
+						const int32 ParentIndex = GetSkeletalMeshAsset()->GetRefSkeleton().GetParentIndex(BoneIndex);
 						InOutComponentSpaceTransforms[BoneIndex] = InOutBoneSpaceTransforms[BoneIndex] * InOutComponentSpaceTransforms[ParentIndex];
 
 						/**

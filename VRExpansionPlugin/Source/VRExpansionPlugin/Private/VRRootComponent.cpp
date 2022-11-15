@@ -257,7 +257,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, bool bAllowSimulatingCo
 			{
 				UE_LOG(LogVRRootComponent, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
 				DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
-				if (TestHit.PenetrationDepth > KINDA_SMALL_NUMBER)
+				if (TestHit.PenetrationDepth > UE_KINDA_SMALL_NUMBER)
 				{
 					DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + TestHit.PenetrationDepth * TestHit.Normal, 5.f, FColor(64, 255, 64), true, 4.f);
 				}
@@ -834,47 +834,7 @@ void UVRRootComponent::GetNavigationData(FNavigationRelevantData& Data) const
 {
 	if (bDynamicObstacle)
 	{
-		//Data.Modifiers.CreateAreaModifiers(this, AreaClass);
-		UBodySetup* BodySetup = ((UPrimitiveComponent*)this)->GetBodySetup();
-		if (BodySetup == nullptr)
-		{
-			return;
-		}
-
-		for (int32 Idx = 0; Idx < BodySetup->AggGeom.BoxElems.Num(); Idx++)
-		{
-			const FKBoxElem& BoxElem = BodySetup->AggGeom.BoxElems[Idx];
-			const FBox BoxSize = BoxElem.CalcAABB(FTransform::Identity, 1.0f);
-
-			FAreaNavModifier AreaMod(BoxSize, OffsetComponentToWorld, AreaClass);
-			Data.Modifiers.Add(AreaMod);
-		}
-
-		for (int32 Idx = 0; Idx < BodySetup->AggGeom.SphylElems.Num(); Idx++)
-		{
-			const FKSphylElem& SphylElem = BodySetup->AggGeom.SphylElems[Idx];
-			const FTransform AreaOffset(FVector(0, 0, -SphylElem.Length));
-
-			FAreaNavModifier AreaMod(SphylElem.Radius, SphylElem.Length * 2.0f, AreaOffset *  OffsetComponentToWorld, AreaClass);
-			Data.Modifiers.Add(AreaMod);
-		}
-
-		for (int32 Idx = 0; Idx < BodySetup->AggGeom.ConvexElems.Num(); Idx++)
-		{
-			const FKConvexElem& ConvexElem = BodySetup->AggGeom.ConvexElems[Idx];
-
-			FAreaNavModifier AreaMod(ConvexElem.VertexData, 0, ConvexElem.VertexData.Num(), ENavigationCoordSystem::Unreal, OffsetComponentToWorld, AreaClass);
-			Data.Modifiers.Add(AreaMod);
-		}
-
-		for (int32 Idx = 0; Idx < BodySetup->AggGeom.SphereElems.Num(); Idx++)
-		{
-			const FKSphereElem& SphereElem = BodySetup->AggGeom.SphereElems[Idx];
-			const FTransform AreaOffset(FVector(0, 0, -SphereElem.Radius));
-
-			FAreaNavModifier AreaMod(SphereElem.Radius, SphereElem.Radius * 2.0f, AreaOffset *  OffsetComponentToWorld, AreaClass);
-			Data.Modifiers.Add(AreaMod);
-		}
+		Data.Modifiers.CreateAreaModifiers(this, GetDesiredAreaClass());
 	}
 }
 
@@ -958,8 +918,8 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 //	float DeltaSizeSq = Delta.SizeSquared();
 	const FQuat InitialRotationQuat = GetComponentTransform().GetRotation();//ComponentToWorld.GetRotation();
 
-	// ComponentSweepMulti does nothing if moving < KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
-	const float MinMovementDistSq = (bSweep ? FMath::Square(4.f*KINDA_SMALL_NUMBER) : 0.f);
+	// ComponentSweepMulti does nothing if moving < UE_KINDA_SMALL_NUMBER in distance, so it's important to not try to sweep distances smaller than that. 
+	const float MinMovementDistSq = (bSweep ? FMath::Square(4.f*UE_KINDA_SMALL_NUMBER) : 0.f);
 	if (DeltaSizeSq <= MinMovementDistSq)
 	{
 		// Skip if no vector or rotation.
@@ -1047,7 +1007,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			if (bHadBlockingHit || (GetGenerateOverlapEvents() || bForceGatherOverlaps))
 			{
 				int32 BlockingHitIndex = INDEX_NONE;
-				float BlockingHitNormalDotDelta = BIG_NUMBER;
+				float BlockingHitNormalDotDelta = UE_BIG_NUMBER;
 				for (int32 HitIdx = 0; HitIdx < Hits.Num(); HitIdx++)
 				{
 					const FHitResult& TestHit = Hits[HitIdx];

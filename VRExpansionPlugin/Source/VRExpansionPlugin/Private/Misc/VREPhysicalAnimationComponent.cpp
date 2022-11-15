@@ -76,7 +76,7 @@ FTransform UVREPhysicalAnimationComponent::GetRefPoseBoneRelativeTransform(USkel
 	{
 		//SkelMesh->ClearRefPoseOverride();
 		FReferenceSkeleton RefSkel;
-		RefSkel = SkeleMesh->SkeletalMesh->GetRefSkeleton();
+		RefSkel = SkeleMesh->GetSkinnedAsset()->GetRefSkeleton();
 
 		BoneTransform = GetWorldSpaceRefBoneTransform(RefSkel, RefSkel.FindBoneIndex(BoneName), RefSkel.FindBoneIndex(ParentBoneName));
 	}
@@ -103,7 +103,7 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 	//SkeleMesh->GetRefPosePosition()
 
 	UPhysicsAsset* PhysAsset = SkeleMesh ? SkeleMesh->GetPhysicsAsset() : nullptr;
-	if (PhysAsset && SkeleMesh->SkeletalMesh)
+	if (PhysAsset && SkeleMesh->GetSkinnedAsset())
 	{
 
 		for (FName BaseWeldedBoneDriverName : BaseWeldedBoneDriverNames)
@@ -135,9 +135,8 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 									continue;
 								}
 							}
-#if WITH_CHAOS 
+
 							FKShapeElem* ShapeElem = FChaosUserData::Get<FKShapeElem>(FPhysicsInterface::GetUserData(Shape));
-#endif
 							if (ShapeElem)
 							{
 								FName TargetBoneName = ShapeElem->GetName();
@@ -208,7 +207,7 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 		return;
 
 	UPhysicsAsset* PhysAsset = SkeleMesh ? SkeleMesh->GetPhysicsAsset() : nullptr;
-	if(PhysAsset && SkeleMesh->SkeletalMesh)
+	if(PhysAsset && SkeleMesh->GetSkinnedAsset())
 	{
 		for (FName BaseWeldedBoneDriverName : BaseWeldedBoneDriverNames)
 		{
@@ -216,8 +215,9 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 
 			if (FBodyInstance* ParentBody = (ParentBodyIdx == INDEX_NONE ? nullptr : SkeleMesh->Bodies[ParentBodyIdx]))
 			{
-				if (!ParentBody->IsInstanceSimulatingPhysics() && !ParentBody->WeldParent)
-					return;
+				// Allow it to run even when not simulating physics, if we have a welded root then it needs to animate anyway
+				//if (!ParentBody->IsInstanceSimulatingPhysics() && !ParentBody->WeldParent)
+				//	return;
 
 				FPhysicsActorHandle& ActorHandle = ParentBody->WeldParent ? ParentBody->WeldParent->GetPhysicsActorHandle() : ParentBody->GetPhysicsActorHandle();
 

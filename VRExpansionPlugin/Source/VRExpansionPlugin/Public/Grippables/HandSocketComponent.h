@@ -172,6 +172,14 @@ public:
 		FVector MirroredScale;
 
 #if WITH_EDITORONLY_DATA
+	// If true we will attempt to only show editing widgets for bones matching the _l or _r postfixes
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
+		bool bFilterBonesByPostfix;
+
+	// The postfix to filter by
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
+		FString FilterPostfix;
+
 	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, FName BoneName, bool bUseRawDataOnly);
 #endif
 
@@ -373,9 +381,9 @@ public:
 
 	/** mesh component to indicate hand placement */
 #if WITH_EDITORONLY_DATA
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Transient, Category = "Hand Visualization")
-		//class USkeletalMeshComponent* HandVisualizerComponent;
-	class UPoseableMeshComponent* HandVisualizerComponent;
+
+	UPROPERTY()
+		TObjectPtr<UPoseableMeshComponent> HandVisualizerComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Transient, Category = "Hand Visualization")
 		TObjectPtr<USkeletalMesh> VisualizationMesh;

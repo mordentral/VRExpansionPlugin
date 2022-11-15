@@ -94,10 +94,15 @@ public:
 				ParentTrans = FTransform(MotionControllerData.HandKeyRotations[(uint8)EHandKeypoint::Palm], MotionControllerData.HandKeyPositions[(uint8)EHandKeypoint::Palm], FVector(1.f));
 			}
 
-			for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); i++)
+			for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); ++i)
 			{
 				// Convert to component space, we convert then to parent space later when applying it
 				HandPoseContainer.SkeletalTransforms.Add(FTransform(MotionControllerData.HandKeyRotations[i].GetNormalized(), MotionControllerData.HandKeyPositions[i], FVector(1.f)).GetRelativeTransform(ParentTrans));
+			}
+
+			//if (bGetCurlValues)
+			{
+				GetFingerCurlValues(HandPoseContainer);
 			}
 
 			HandPoseContainer.bHasValidData = true;
@@ -106,6 +111,77 @@ public:
 
 		HandPoseContainer.bHasValidData = false;
 		return false;
+	}
+
+	//UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
+	static void GetFingerCurlValues(FBPOpenXRActionSkeletalData& HandPoseContainer)
+	{
+		// Fail if the count is too low
+		if (HandPoseContainer.SkeletalTransforms.Num() < EHandKeypointCount)
+			return;
+
+		if (HandPoseContainer.FingerCurls.Num() < 5)
+		{
+			HandPoseContainer.FingerCurls.AddZeroed(5);
+		}
+
+		HandPoseContainer.FingerCurls[0] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::ThumbMetacarpal);
+		HandPoseContainer.FingerCurls[1] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::IndexProximal);
+		HandPoseContainer.FingerCurls[2] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::MiddleProximal);
+		HandPoseContainer.FingerCurls[3] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::RingProximal);
+		HandPoseContainer.FingerCurls[4] = GetCurlValueForBoneRoot(HandPoseContainer, EHandKeypoint::LittleProximal);
+	}
+
+	inline static float GetCurlValueForBoneRoot(FBPOpenXRActionSkeletalData& HandPoseContainer, EHandKeypoint RootBone)
+	{
+		float Angle1 = 0.0f;
+		float Angle2 = 0.0f;
+		float Angle1Curl = 0.0f;
+		float Angle2Curl = 0.0f;
+
+		if (RootBone == EHandKeypoint::ThumbMetacarpal)
+		{
+			FVector Prox = HandPoseContainer.SkeletalTransforms[(uint8)RootBone].GetRotation().GetForwardVector();
+			FVector Inter = HandPoseContainer.SkeletalTransforms[(uint8)RootBone + 1].GetRotation().GetForwardVector();
+			FVector Distal = HandPoseContainer.SkeletalTransforms[(uint8)RootBone + 2].GetRotation().GetForwardVector();
+
+			Prox = FVector::VectorPlaneProject(Prox, FVector::UpVector);
+			Inter = FVector::VectorPlaneProject(Inter, FVector::UpVector);
+			Distal = FVector::VectorPlaneProject(Distal, FVector::UpVector);
+
+			Angle1 = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Inter, Distal)));
+			Angle2 = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Prox, Inter)));
+
+			Angle1Curl = (Angle1 - 10.0f) / 64.0f;
+			Angle2Curl = (Angle2 - 20.0f) / 42.0f;
+		}
+		else
+		{
+			FVector Prox = HandPoseContainer.SkeletalTransforms[(uint8)RootBone].GetRotation().GetForwardVector();
+			FVector Inter = HandPoseContainer.SkeletalTransforms[(uint8)RootBone + 1].GetRotation().GetForwardVector();
+			FVector Distal = HandPoseContainer.SkeletalTransforms[(uint8)RootBone + 2].GetRotation().GetForwardVector();
+
+
+			// We don't use the Y (splay) value, only X and Z plane
+			
+			Prox = FVector::VectorPlaneProject(Prox, FVector::RightVector);
+			Inter = FVector::VectorPlaneProject(Inter, FVector::RightVector);
+			Distal = FVector::VectorPlaneProject(Distal, FVector::RightVector);
+
+			Angle1 = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct( Inter, Distal )));
+			Angle2 = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct( Prox,  Inter )));
+
+			Angle1Curl = (Angle1 - 10.0f) / 60.0f;
+			Angle2Curl = (Angle2 - 10.0f) / 100.0f;
+		}
+
+		// Can lower number of variables by doing these
+
+		float FinalAngleAvg = FMath::Clamp((Angle1Curl + Angle2Curl) / 2.0f, 0.0f, 1.0f);
+
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Finger Curl %f"), IndexCurl));
+		return FinalAngleAvg;
+
 	}
 
 	//UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
@@ -217,39 +293,39 @@ public:
 		}
 	}
 
-	//UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
 	static void GetMockUpControllerData(FXRMotionControllerData& MotionControllerData, FBPOpenXRActionSkeletalData& SkeletalMappingData, bool bOpenHand = false)
 	{
 
 
 		TArray<FQuat> HandRotationsClosed = {
 			// Closed palm
-			FQuat(0.419283837f,-0.547548413f,-0.704691410f,-0.166739136f),
-			FQuat(-0.494952023f,0.567746222f,0.647768855f,0.114382625f),
-			FQuat(0.105539620f,-0.079821065f,-0.934957743f,0.329157114f),
-			FQuat(0.309810340f,0.005135804f,-0.887668610f,0.340640306f),
-			FQuat(-0.292820454f,0.003018156f,0.892185807f,-0.343877673f),
-			FQuat(-0.292820454f,0.003018156f,0.892185807f,-0.343877673f),
-			FQuat(0.351302803f,-0.693441451f,-0.594165504f,-0.206626847f),
-			FQuat(0.510899961f,-0.668595433f,-0.531049490f,-0.099752367f),
-			FQuat(0.582462251f,-0.656170130f,-0.478819191f,0.030230284f),
-			FQuat(0.631917894f,-0.637212157f,-0.435243726f,0.072160020f),
-			FQuat(0.631917894f,-0.637212157f,-0.435243726f,0.072160020f),
-			FQuat(0.419282734f,-0.547549129f,-0.704691410f,-0.166739583f),
-			FQuat(0.514688492f,-0.678421855f,-0.501057625f,-0.154207960f),
-			FQuat(0.603475809f,-0.696219206f,-0.388458073f,0.014001161f),
-			FQuat(0.665590405f,-0.681470037f,-0.267755210f,0.144555300f),
-			FQuat(0.670854926f,-0.691665173f,-0.240195125f,0.117731705f),
-			FQuat(0.468501151f,-0.566464663f,-0.638139248f,-0.228914157f),
-			FQuat(0.541896224f,-0.702563524f,-0.417507589f,-0.196058303f),
-			FQuat(0.619513929f,-0.728625834f,-0.289327621f,-0.039927930f),
-			FQuat(0.676032484f,-0.712538362f,-0.151063532f,0.111561134f),
-			FQuat(0.676032484f,-0.712538362f,-0.151063532f,0.111561134f),
-			FQuat(0.541268349f,-0.622995615f,-0.511540473f,-0.239230901f),
-			FQuat(0.545463741f,-0.719190478f,-0.361613214f,-0.233387768f),
-			FQuat(0.613924086f,-0.754614115f,-0.223099023f,-0.062293097f),
-			FQuat(0.682628751f,-0.717284977f,-0.112533726f,0.082796305f),
-			FQuat(0.682628751f,-0.717284977f,-0.112533726f,0.082796305f)
+			FQuat(-6.9388939039072284e-18f,-2.7755575615628914e-17f,-5.5511151231257827e-17f,1.0000000181623150),
+			FQuat(0.0010158333104005046f,-0.031842494413126823f,0.0082646248419453450f,-0.99945823120983279),
+			FQuat(0.49284713488980170f,-0.22607130273287540f,-0.44054329019960731f,0.71548243409346490),
+			FQuat(-0.60572821120045273f,-0.017497510794223320f,0.10943807503774633f,-0.78791529705201735),
+			FQuat(-0.61281359708005512f,-0.23245447006924613f,-0.058766632856478873f,-0.75297472319193537),
+			FQuat(-0.61281359708005512f,-0.23245447006924613f,-0.058766632856478873f,-0.75297472319193537),
+			FQuat(-0.11514346379358367f,-0.029229397612833233f,-0.076351329575539195f,0.98997885626789228),
+			FQuat(0.079333339113826437f,-0.72590009974051883f,0.050346047334316274f,-0.68135202233808378),
+			FQuat(0.0032539550806410245f,-0.97123336736010268f,0.098921247251489333f,0.21658665949113542),
+			FQuat(-0.064585069112672477f,-0.57963374972897053f,0.075445998290538954f,0.80880246209406348),
+			FQuat(0.064585069112672477f,0.57963374972897053f,-0.075445998290538954f,-0.80880246209406348),
+			FQuat(-7.7702472130181111e-08f,9.8656527815210726e-08f,1.3838491007001075e-06f,1.0000000181613493),
+			FQuat(0.085300231549708214f,-0.74048187833139134f,0.058532016219761618f,-0.66406663653752407),
+			FQuat(0.011595964719175678f,-0.98786834549923641f,0.099110835214894707f,0.11899052159928070),
+			FQuat(-0.063530326287074640f,-0.56012988021281451f,0.076145543493668810f,0.82244775363868539),
+			FQuat(0.030477923994508188f,0.55662337489051250f,-0.098559802475379960f,-0.82433459003921772),
+			FQuat(-0.025910339872061101f,0.052311401725670628f,0.042953782692297438f,0.99737013210455761),
+			FQuat(0.11635892750396379f,-0.74717191584145570f,-0.026909776929005647f,-0.65381238012001353),
+			FQuat(0.098078041656806447f,-0.98532297068866348f,0.071135591008198620f,0.12024601945419003),
+			FQuat(0.0028091467060491482f,-0.52817558741956572f,0.11864668261714340f,0.84080060571895254),
+			FQuat(-0.0028091467060491482f,0.52817558741956572f,-0.11864668261714340f,-0.84080060571895254),
+			FQuat(-0.11913260527111892f,0.10934177100849747f,0.11664955310670821f,0.97992077106196507),
+			FQuat(-0.18696185363314571f,0.78123174637415782f,0.043590203318890380f,0.59398834520762267),
+			FQuat(0.15903913486884827f,-0.97287570092949460f,0.091728860868847406f,0.14073122087670015),
+			FQuat(0.035141532005084519f,-0.48251853052338572f,0.18910886397987722f,0.85450501128943579),
+			FQuat(0.035141532005084519f,-0.48251853052338572f,0.18910886397987722f,0.85450501128943579)
 		};
 		TArray<FQuat> HandRotationsOpen = {
 			// Open Hand
@@ -281,36 +357,36 @@ public:
 			FQuat(0.116890728f,-0.981477261f,0.138804480f,-0.061412390f)
 		};
 
-		MotionControllerData.HandKeyRotations = SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandRotationsOpen : HandRotationsClosed;
+		MotionControllerData.HandKeyRotations = /*SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandRotationsOpen :*/ HandRotationsClosed;
 
 		TArray<FVector> HandPositionsClosed = {
 			// Closed palm - Left
-			FVector(-1203.819f,-516.869f,286.028f),
-			FVector(-1201.705f,-515.876f,287.796),
-			FVector(-1204.748f,-519.489f,288.397),
-			FVector(-1207.823f,-522.044f,287.811),
-			FVector(-1209.696f,-524.000f,286.012),
-			FVector(-1210.690f,-525.034f,285.137),
-			FVector(-1204.366f,-517.319f,288.299),
-			FVector(-1209.332f,-519.116f,283.063),
-			FVector(-1211.344f,-521.651f,280.094),
-			FVector(-1212.261f,-523.927f,278.608),
-			FVector(-1212.474f,-524.895f,278.097),
-			FVector(-1203.111f,-516.601f,286.951),
-			FVector(-1207.318f,-518.192f,281.462),
-			FVector(-1209.140f,-520.536f,278.337),
-			FVector(-1210.042f,-523.368f,276.842),
-			FVector(-1210.136f,-524.640f,276.636),
-			FVector(-1202.057f,-516.294f,286.121),
-			FVector(-1205.064f,-517.866f,280.471),
-			FVector(-1206.431f,-520.299f,277.509),
-			FVector(-1207.089f,-522.828f,276.311),
-			FVector(-1207.154f,-523.888f,276.263),
-			FVector(-1200.966f,-516.092f,285.475),
-			FVector(-1202.852f,-518.796f,280.113),
-			FVector(-1203.746f,-520.657f,277.907),
-			FVector(-1204.180f,-522.291f,277.237),
-			FVector(-1204.222f,-523.061f,277.211)
+			FVector(0.0000000000000000f,0.0000000000000000f,0.0000000000000000f),
+			FVector(-2.8690212431406792f,0.70708009295073815f,-0.47404338536985718f),
+			FVector(-1.1322360817697272f,-2.1125772981974671f,-1.2278703475596775f),
+			FVector(0.92697682070144727f,-5.5601677377459957f,-1.6753327187355360f),
+			FVector(4.0987554778339428f,-6.0520138168462640f,-2.1960898756852747f),
+			FVector(5.5854053809842918f,-5.4247506634349065f,-2.6631245417791525f),
+			FVector(-1.6026417502203387f,-1.4646945203797794f,-0.17057236434820122f),
+			FVector(5.7352432311721007f,-2.5389617545260998f,0.39061644722637634f),
+			FVector(5.4801464829170561f,-3.3344912297783416f,-3.8566611419550343f),
+			FVector(2.9179605371815693f,-3.2311985822561073f,-2.6652727318443148f),
+			FVector(3.2708935578922342f,-3.0117453368521279f,-1.6311186720587312f),
+			FVector(-1.1935619377191149f,-1.8034793735494103e-05f,1.4147048846974153e-06f),
+			FVector(5.9028526610092893f,1.3513666817788206e-05f,-4.3170989212359956e-06f),
+			FVector(5.4567759872551527f,-0.87968929643487392f,-4.1965100581882382f),
+			FVector(2.2252652348065158f,-0.87742006725177069f,-3.4067970851427791f),
+			FVector(2.6916877869696085f,-0.62360084690574125f,-2.2285708116727738f),
+			FVector(-1.1796822503165614f,1.3653411443775685f,-0.17694011615865479f),
+			FVector(5.3502831208188670f,1.9121382570769896f,-0.87930289382919313f),
+			FVector(4.8743654830862742f,1.3526757302541959f,-4.8457258101076217f),
+			FVector(2.1622015314362244f,0.85068796311660544f,-4.1307752690132205f),
+			FVector(2.6021369184528194f,1.0596020074600654f,-3.1860412064934174f),
+			FVector(-1.2905361603753163f,2.6108535683555365f,-0.46423293549223010f),
+			FVector(4.6820094577722964f,3.8858425146699327f,-1.9880098921962746f),
+			FVector(4.0115118130532306f,3.1678700881616777f,-4.8092930847360869f),
+			FVector(2.3757993445967389f,2.6579252395479291f,-4.2645319235961239f),
+			FVector(2.7329133227289351f,2.8811366857469527f,-3.6179750674182261f)
 		};
 
 		// Open Hand
@@ -343,7 +419,7 @@ public:
 			FVector(-1019.778f,-479.842f,203.819f)
 		};
 
-		MotionControllerData.HandKeyPositions = SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandPositionsOpen : HandPositionsClosed;
+		MotionControllerData.HandKeyPositions = /*SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandPositionsOpen : */HandPositionsClosed;
 
 		if (SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left)
 		{

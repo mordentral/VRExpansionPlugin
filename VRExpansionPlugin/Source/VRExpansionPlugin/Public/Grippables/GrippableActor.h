@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 
+#include "GameFramework/Actor.h"
 #include "VRBPDatatypes.h"
 #include "VRGripInterface.h"
 //#include "Engine/Engine.h"

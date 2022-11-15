@@ -108,7 +108,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			
 			// If active and a toggled stay, then clamp min to the toggled stay location
 			if (ButtonType == EVRButtonType::Btn_Toggle_Stay && bButtonState)
-				ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_KINDA_SMALL_NUMBER
+				ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_UE_KINDA_SMALL_NUMBER
 
 			float NewDepth = FMath::Clamp(GetAxisValue(InitialComponentLoc) + (-CheckDepth), -DepressDistance, ClampMinDepth);
 			this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(SetAxisValue(NewDepth)), false);
@@ -119,7 +119,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 					(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Server && GetNetMode() < ENetMode::NM_Client) ||
 					(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Owner && IsValid(LocalLastInteractingActor) && LocalLastInteractingActor->HasLocalNetOwner()))
 				{
-					if (!bToggledThisTouch && NewDepth <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
+					if (!bToggledThisTouch && NewDepth <= (-ButtonEngageDepth) + UE_KINDA_SMALL_NUMBER && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
 					{
 						LastToggleTime = WorldTime;
 						bToggledThisTouch = true;
@@ -157,7 +157,7 @@ void UVRButtonComponent::TickComponent(float DeltaTime, enum ELevelTick TickType
 			(StateChangeAuthorityType == EVRStateChangeAuthorityType::CanChangeState_Owner && IsValid(LocalLastInteractingActor) && LocalLastInteractingActor->HasLocalNetOwner()))
 		{
 			// Check for if we should set the state of the button, done here as for the press button the lerp counts for input
-			bool bCheckState = (GetAxisValue(InitialRelativeTransform.InverseTransformPosition(this->GetRelativeLocation())) <= (-ButtonEngageDepth) + KINDA_SMALL_NUMBER);
+			bool bCheckState = (GetAxisValue(InitialRelativeTransform.InverseTransformPosition(this->GetRelativeLocation())) <= (-ButtonEngageDepth) + UE_KINDA_SMALL_NUMBER);
 			if (bButtonState != bCheckState && (WorldTime - LastToggleTime) >= MinTimeBetweenEngaging)
 
 			{
@@ -315,7 +315,7 @@ FVector UVRButtonComponent::GetTargetRelativeLocation()
 	// If target is the half pressed
 	if (ButtonType == EVRButtonType::Btn_Toggle_Stay && bButtonState)
 	{
-		// 1.e-2f = MORE_KINDA_SMALL_NUMBER
+		// 1.e-2f = MORE_UE_KINDA_SMALL_NUMBER
 		return InitialRelativeTransform.TransformPosition(SetAxisValue(-(ButtonEngageDepth + (1.e-2f))));
 	}
 
@@ -341,7 +341,7 @@ void UVRButtonComponent::SetButtonToRestingPosition(bool bLerpToPosition)
 
 			// If active and a toggled stay, then clamp min to the toggled stay location
 			if (bButtonState)
-				ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_KINDA_SMALL_NUMBER
+				ClampMinDepth = -(ButtonEngageDepth + (1.e-2f)); // + NOT_SO_UE_KINDA_SMALL_NUMBER
 
 			float NewDepth = FMath::Clamp(ClampMinDepth, -DepressDistance, ClampMinDepth);
 			this->SetRelativeLocation(InitialRelativeTransform.TransformPosition(SetAxisValue(NewDepth)), false);

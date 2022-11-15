@@ -16,7 +16,7 @@
 #include "Editor/ContentBrowser/Public/IContentBrowserSingleton.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "AnimationUtils.h"
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "UObject/SavePackage.h"
 #include "Misc/MessageDialog.h"
 #include "Widgets/Layout/SBorder.h"
@@ -293,12 +293,12 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 		/// 
 
 		// init notifies
-
 		AnimationObject->InitializeNotifyTrack();
-		PRAGMA_DISABLE_DEPRECATION_WARNINGS
-			AnimationObject->PostProcessSequence();
-		PRAGMA_ENABLE_DEPRECATION_WARNINGS
-			AnimationObject->MarkPackageDirty();
+		//#TODO: 5.1, need to figure out what they replaced this with
+		//PRAGMA_DISABLE_DEPRECATION_WARNINGS
+			//AnimationObject->PostProcessSequence();
+		//PRAGMA_ENABLE_DEPRECATION_WARNINGS
+		AnimationObject->MarkPackageDirty();
 
 		//if (bAutoSaveAsset)
 		{
@@ -713,7 +713,7 @@ void SCreateHandAnimationDlg::Construct(const FArguments& InArgs)
 		.Padding(2)
 		[
 			SNew(SBorder)
-			.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 		[
 			SNew(SVerticalBox)
 
@@ -770,14 +770,14 @@ void SCreateHandAnimationDlg::Construct(const FArguments& InArgs)
 		.Padding(5)
 		[
 			SNew(SUniformGridPanel)
-			.SlotPadding(FEditorStyle::GetMargin("StandardDialog.SlotPadding"))
-		.MinDesiredSlotWidth(FEditorStyle::GetFloat("StandardDialog.MinDesiredSlotWidth"))
-		.MinDesiredSlotHeight(FEditorStyle::GetFloat("StandardDialog.MinDesiredSlotHeight"))
+			.SlotPadding(FAppStyle::GetMargin("StandardDialog.SlotPadding"))
+		.MinDesiredSlotWidth(FAppStyle::GetFloat("StandardDialog.MinDesiredSlotWidth"))
+		.MinDesiredSlotHeight(FAppStyle::GetFloat("StandardDialog.MinDesiredSlotHeight"))
 		+ SUniformGridPanel::Slot(0, 0)
 		[
 			SNew(SButton)
 			.HAlign(HAlign_Center)
-		.ContentPadding(FEditorStyle::GetMargin("StandardDialog.ContentPadding"))
+		.ContentPadding(FAppStyle::GetMargin("StandardDialog.ContentPadding"))
 		.Text(LOCTEXT("OK", "OK"))
 		.OnClicked(this, &SCreateHandAnimationDlg::OnButtonClick, EAppReturnType::Ok)
 		]
@@ -785,7 +785,7 @@ void SCreateHandAnimationDlg::Construct(const FArguments& InArgs)
 		[
 			SNew(SButton)
 			.HAlign(HAlign_Center)
-		.ContentPadding(FEditorStyle::GetMargin("StandardDialog.ContentPadding"))
+		.ContentPadding(FAppStyle::GetMargin("StandardDialog.ContentPadding"))
 		.Text(LOCTEXT("Cancel", "Cancel"))
 		.OnClicked(this, &SCreateHandAnimationDlg::OnButtonClick, EAppReturnType::Cancel)
 		]

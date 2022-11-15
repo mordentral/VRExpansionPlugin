@@ -8,6 +8,7 @@
 #include "GripScripts/GS_GunTools.h"
 #include "VRGlobalSettings.generated.h"
 
+class UGrippableSkeletalMeshComponent;
 
 USTRUCT(BlueprintType, Category = "ControllerProfiles")
 struct VREXPANSIONPLUGIN_API FBPVRControllerProfile
@@ -81,6 +82,24 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
+	// The skeletal mesh component class to use for grippable characters
+	// If you set this to none it will fall back to the default grippable class so that it doesn't brick your project
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "Misc")
+		TSubclassOf<class UGrippableSkeletalMeshComponent> DefaultGrippableCharacterMeshComponentClass;
+
+	// Using a getter to stay safe from bricking peoples projects if they set it to none somehow
+	static TSubclassOf<class UGrippableSkeletalMeshComponent> GetDefaultGrippableCharacterMeshComponentClass();
+
+	// If true we will use contact modification for the collision ignore subsystem
+	// Its more expensive but works with non simulating pairs
+	// #WARNING: Don't use yet EXPERIMENTAL
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|CollisionIgnore")
+		bool bUseCollisionModificationForCollisionIgnore;
+
+	// Number of updates a second to use for the collision cleanup checks
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|CollisionIgnore")
+		float CollisionIgnoreSubsystemUpdateRate;
+
 	// Whether we should use the physx to chaos translation scalers or not
 	// This should be off on native chaos projects that have been set with the correct stiffness and damping settings already
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics")
@@ -133,6 +152,17 @@ public:
 	// A scaler to apply to constraints when chaos is active
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "ChaosPhysics|Constraints")
 		float JointAngularBreakScale;
+
+	// If we should lerp hybrid with sweep grips out of collision
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
+		bool bLerpHybridWithSweepGrips;
+
+	// If true we only lerp the rotation of hybrid grips
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
+		bool bOnlyLerpHybridRotation;
+
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
+		float HybridWithSweepLerpDuration;
 
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "GlobalLerpToHand")
 		bool bUseGlobalLerpToHand;
