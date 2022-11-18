@@ -216,10 +216,13 @@ public:
 
 		Velocity += LastPreAdditiveVRVelocity;
 
-		if (bCapHMDMovementToMaxMovementSpeed && IsExceedingMaxSpeed(GetMaxSpeed()))
+		if (bCapHMDMovementToMaxMovementSpeed && GetReplicatedMovementMode() != EVRConjoinedMovementModes::C_MOVE_Falling)
 		{
-			// Force us to the max possible speed for the movement mode
-			Velocity = Velocity.GetSafeNormal() * GetMaxSpeed();
+			if (IsExceedingMaxSpeed(GetMaxSpeed()))
+			{
+				// Force us to the max possible speed for the movement mode
+				Velocity = Velocity.GetSafeNormal() * GetMaxSpeed();
+			}
 		}
 	}
 
