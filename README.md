@@ -28,7 +28,7 @@ View the patch notes at www.vreue4.com for migration guides as well.
 
 Go to www.vreue4.com and downloaded the pre-built binary version for the engine version you are using (not updated with every daily change, only weekly or with large patches).
 
-Install it into your Engine/Plugins directoy or ProjectName/Plugins Directory.
+Install it into your ProjectName/Plugins Directory (Engine level hasn't worked since 4.25 or so when it stopped letting me reference other plugins when compiling for that).
 
 **Option 2 (More up to date - preferred if possible):**
 
