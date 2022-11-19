@@ -5887,9 +5887,16 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 	// Needs to be simulating in order to run physics
 	if (!NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings || !NewGrip.AdvancedGripSettings.PhysicsSettings.bSkipSettingSimulating)
 	{
-		if (!root->IsSimulatingPhysics())
+		// This is a temp fix anyway for a physx bug that appears to only exist in 4.27 from the chaos code merges.
+		// It breaks physics constraints so I don't want to use it on the other grip types.
+		// The potential slow downs it can cause really only rear their heads on this grip type anyway
+		if (NewGrip.GripCollisionType == EGripCollisionType::InteractiveHybridCollisionWithSweep)
 		{
 			root->RecreatePhysicsState();
+		}
+
+		if(!root->IsSimulatingPhysics())
+		{
 			root->SetSimulatePhysics(true);
 		}
 	}
