@@ -4612,22 +4612,35 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 
 			if (LerpVal >= 1.0f)
 			{
-				SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+				SetRelativeLocationAndRotation(MotionSampleUpdateBuffer[0].Position, MotionSampleUpdateBuffer[0].Rotation);
 
-				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
-				// Actual prediction might be something to consider in the future, but rough to do in VR
-				// considering the speed and accuracy of movements
-				// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
-				// and might be perf taxing enough to not make it worth it.
-				bLerpingPosition = false;
-				ControllerNetUpdateCount = 0.0f;
+				static const auto CVarDoubleBufferTrackedDevices = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DoubleBufferReplicatedTrackedDevices"));
+				if (CVarDoubleBufferTrackedDevices->GetBool())
+				{
+					LastUpdatesRelativePosition = this->GetRelativeLocation();
+					LastUpdatesRelativeRotation = this->GetRelativeRotation();
+					ControllerNetUpdateCount = 0.0f;
+
+					// Move to next sample, we are catching up
+					MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
+				}
+				else
+				{
+					// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
+					// Actual prediction might be something to consider in the future, but rough to do in VR
+					// considering the speed and accuracy of movements
+					// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
+					// and might be perf taxing enough to not make it worth it.
+					bLerpingPosition = false;
+					ControllerNetUpdateCount = 0.0f;
+				}
 			}
 			else
 			{
 				// Removed variables to speed this up a bit
 				SetRelativeLocationAndRotation(
-					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedControllerTransform.Position, LerpVal),
-					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedControllerTransform.Rotation, LerpVal)
+					FMath::Lerp(LastUpdatesRelativePosition, (FVector)MotionSampleUpdateBuffer[0].Position, LerpVal),
+					FMath::Lerp(LastUpdatesRelativeRotation, MotionSampleUpdateBuffer[0].Rotation, LerpVal)
 				);
 			}
 		}

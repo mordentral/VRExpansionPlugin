@@ -14,6 +14,15 @@ namespace VRDataTypeCVARs
 		TEXT("When on, will rep Quantized transforms at full precision, WARNING use at own risk, if this isn't the same setting client & server then it will crash.\n")
 		TEXT("0: Disable, 1: Enable"),
 		ECVF_Default);
+
+	// Double buffering tracked devices will smooth out hitches
+	static int32 DoubleBufferReplicatedTrackedDevices = 0;
+	FAutoConsoleVariableRef CVarDoubleBufferReplicatedTrackedDevices(
+		TEXT("vr.DoubleBufferReplicatedTrackedDevices"),
+		DoubleBufferReplicatedTrackedDevices,
+		TEXT("When on, will double buffer the replicated transforms for tracked devices.\n")
+		TEXT("0: Disable, 1: Enable"),
+		ECVF_Default);
 }
 
 bool FTransform_NetQuantize::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
