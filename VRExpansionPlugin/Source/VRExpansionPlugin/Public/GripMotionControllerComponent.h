@@ -809,6 +809,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedControllerTransform, Category = "GripMotionController|Networking")
 	FBPVRComponentPosRep ReplicatedControllerTransform;
 
+	FBPVRComponentPosRep MotionSampleUpdateBuffer[2];
+
 	FVector LastUpdatesRelativePosition;
 	FRotator LastUpdatesRelativeRotation;
 
@@ -834,11 +836,27 @@ public:
 				ControllerNetUpdateCount = 0.0f;
 				LastUpdatesRelativePosition = this->GetRelativeLocation();
 				LastUpdatesRelativeRotation = this->GetRelativeRotation();
+
+				if (bDoubleBufferReplicatedMotion)
+				{
+					MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
+					MotionSampleUpdateBuffer[1] = ReplicatedControllerTransform;
+				}
+				else
+				{
+					MotionSampleUpdateBuffer[0] = ReplicatedControllerTransform;
+					// Also set the buffered value in case double buffering gets turned on
+					MotionSampleUpdateBuffer[1] = MotionSampleUpdateBuffer[0];
+				}
 			}
 			else
 			{
 				SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
 				bReppedOnce = true;
+
+				// Filling the second index in as well in case they turn on double buffering
+				MotionSampleUpdateBuffer[1] = ReplicatedControllerTransform;
+				MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
 			}
 		}
 		else
@@ -855,6 +873,10 @@ public:
 	// Whether to smooth (lerp) between ticks for the replicated motion, DOES NOTHING if update rate is larger than FPS!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
 		bool bSmoothReplicatedMotion;
+
+	// If true the replicated transforms will be double buffered to prevent hitching
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
+		bool bDoubleBufferReplicatedMotion;
 
 	// Whether to replicate even if no tracking (FPS or test characters)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
