@@ -235,7 +235,7 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 
 			if (LerpVal >= 1.0f)
 			{
-				SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
+				SetRelativeLocationAndRotation(MotionSampleUpdateBuffer[0].Position, MotionSampleUpdateBuffer[0].Rotation);
 
 				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
 				// Actual prediction might be something to consider in the future, but rough to do in VR
@@ -249,8 +249,8 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 			{
 				// Removed variables to speed this up a bit
 				SetRelativeLocationAndRotation(
-					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedCameraTransform.Position, LerpVal),
-					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedCameraTransform.Rotation, LerpVal)
+					FMath::Lerp(LastUpdatesRelativePosition, (FVector)MotionSampleUpdateBuffer[0].Position, LerpVal),
+					FMath::Lerp(LastUpdatesRelativeRotation, MotionSampleUpdateBuffer[0].Rotation, LerpVal)
 				);
 			}
 		}

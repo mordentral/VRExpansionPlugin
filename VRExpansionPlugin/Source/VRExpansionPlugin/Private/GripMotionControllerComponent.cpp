@@ -104,7 +104,6 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	bReplicateWithoutTracking = false;
 	bLerpingPosition = false;
 	bSmoothReplicatedMotion = false;
-	bDoubleBufferReplicatedMotion = false;
 	bReppedOnce = false;
 	bScaleTracking = false;
 	TrackingScaler = FVector(1.0f);

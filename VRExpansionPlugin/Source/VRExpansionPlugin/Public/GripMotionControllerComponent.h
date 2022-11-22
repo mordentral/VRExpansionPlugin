@@ -830,6 +830,7 @@ public:
 
 		if (bSmoothReplicatedMotion)
 		{
+			static const auto CVarDoubleBufferTrackedDevices = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DoubleBufferReplicatedTrackedDevices"));
 			if (bReppedOnce)
 			{
 				bLerpingPosition = true;
@@ -837,7 +838,7 @@ public:
 				LastUpdatesRelativePosition = this->GetRelativeLocation();
 				LastUpdatesRelativeRotation = this->GetRelativeRotation();
 
-				if (bDoubleBufferReplicatedMotion)
+				if (CVarDoubleBufferTrackedDevices->GetBool())
 				{
 					MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
 					MotionSampleUpdateBuffer[1] = ReplicatedControllerTransform;
@@ -873,10 +874,6 @@ public:
 	// Whether to smooth (lerp) between ticks for the replicated motion, DOES NOTHING if update rate is larger than FPS!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
 		bool bSmoothReplicatedMotion;
-
-	// If true the replicated transforms will be double buffered to prevent hitching
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
-		bool bDoubleBufferReplicatedMotion;
 
 	// Whether to replicate even if no tracking (FPS or test characters)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
