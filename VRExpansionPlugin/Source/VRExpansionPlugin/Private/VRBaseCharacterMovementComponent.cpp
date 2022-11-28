@@ -11,6 +11,7 @@
 #include "VRBaseCharacter.h"
 #include "VRRootComponent.h"
 #include "AITypes.h"
+#include "GripMotionControllerComponent.h"
 #include "AI/Navigation/NavigationTypes.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "VRPlayerController.h"
@@ -1319,7 +1320,9 @@ void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetwor
 	if (BaseVRCharacterOwner)
 	{
 		BaseVRCharacterOwner->OnCharacterNetworkCorrected_Bind.Broadcast();
-		BaseVRCharacterOwner->NotifyOfTeleport(false);
+		BaseVRCharacterOwner->LeftMotionController->TeleportMoveGrips(false, false);
+		BaseVRCharacterOwner->RightMotionController->TeleportMoveGrips(false, false);
+		//BaseVRCharacterOwner->NotifyOfTeleport(false);
 	}
 }
 
