@@ -1414,7 +1414,9 @@ void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetwor
 	if (BaseVRCharacterOwner)
 	{
 		BaseVRCharacterOwner->OnCharacterNetworkCorrected_Bind.Broadcast();
-		BaseVRCharacterOwner->NotifyOfTeleport(false);
+		BaseVRCharacterOwner->LeftMotionController->TeleportMoveGrips(false, false);
+		BaseVRCharacterOwner->RightMotionController->TeleportMoveGrips(false, false);
+		//BaseVRCharacterOwner->NotifyOfTeleport(false);
 	}
 }
 
