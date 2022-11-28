@@ -8,6 +8,7 @@
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDatatypes.h"
 #include "ParentRelativeAttachmentComponent.h"
+#include "GripMotionControllerComponent.h"
 #include "VRBaseCharacter.h"
 #include "VRRootComponent.h"
 #include "VRPlayerController.h"
