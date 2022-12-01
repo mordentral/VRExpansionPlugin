@@ -81,7 +81,6 @@ namespace CharacterMovementComponentStatics
 		TEXT("Error threshold value before correcting a clients rotation.\n")
 		TEXT("Rotation is replicated at 2 decimal precision, so values less than 0.01 won't matter."),
 		ECVF_Default);
-
 }
 
 void UVRCharacterMovementComponent::StoreSetTrackingPaused(bool bNewTrackingPaused)
@@ -1373,6 +1372,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	//WallRepulsionMultiplier = 0.01f;
 	bUseClientControlRotation = false;
 	bAllowMovementMerging = true;
+	bRunClientCorrectionToHMD = false;
 	bRequestedMoveUseAcceleration = false;
 }
 
@@ -3807,7 +3807,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		return;
 	}
 
-	if (!bUseClientControlRotation)
+	if (!bRunClientCorrectionToHMD && !bUseClientControlRotation)
 	{
 		float YawValue = FRotator::DecompressAxisFromShort(NewYaw);
 		// Trust the server's control yaw
@@ -3861,8 +3861,24 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 			UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 		}*/
 
-		UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+		if (bRunClientCorrectionToHMD && BaseVRCharacterOwner)
+		{
+			if (!bUseClientControlRotation)
+			{
+				float YawValue = FRotator::DecompressAxisFromShort(NewYaw);
+				BaseVRCharacterOwner->SetActorLocationAndRotationVR(WorldShiftedNewLocation, FRotator(0.0f, YawValue, 0.0f), true, true, true);
+			}
+			else
+			{
+				BaseVRCharacterOwner->SetActorLocationVR(WorldShiftedNewLocation, true);
+			}
+		}
+		else
+		{
+			UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+		}
 	}
+
 	Velocity = NewVelocity;
 
 	// Trust the server's movement mode
@@ -3975,7 +3991,7 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 		}
 	}
 
-	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
+	FNetworkPredictionData_Server_VRCharacter* ServerData = ((FNetworkPredictionData_Server_VRCharacter*)GetPredictionData_Server_Character());
 	check(ServerData);
 
 	// Don't prevent more recent updates from being sent if received this frame.
@@ -4192,8 +4208,19 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 		ServerData->PendingAdjustment.NewVel = Velocity;
 		ServerData->PendingAdjustment.NewBase = MovementBase;
 		ServerData->PendingAdjustment.NewBaseBoneName = MovementBaseBoneName;
-		ServerData->PendingAdjustment.NewLoc = FRepMovement::RebaseOntoZeroOrigin(ServerLoc, this);
 		ServerData->PendingAdjustment.NewRot = UpdatedComponent->GetComponentRotation();
+		if (bRunClientCorrectionToHMD && IsValid(BaseVRCharacterOwner))
+		{
+			FVector CapsuleLoc = BaseVRCharacterOwner->GetVRLocation();
+			CapsuleLoc.Z = ServerLoc.Z;
+			ServerData->PendingAdjustment.NewLoc = FRepMovement::RebaseOntoZeroOrigin(CapsuleLoc, this);
+			//ServerData->PendingAdjustment.NewRot = BaseVRCharacterOwner->GetVRRotation();
+		}
+		else
+		{
+			ServerData->PendingAdjustment.NewLoc = FRepMovement::RebaseOntoZeroOrigin(ServerLoc, this);
+			//ServerData->PendingAdjustment.NewRot = UpdatedComponent->GetComponentRotation();
+		}
 
 		ServerData->PendingAdjustment.bBaseRelativePosition = (bDeferServerCorrectionsWhenFalling && bUseLastBase) || MovementBaseUtility::UseRelativeLocation(MovementBase);
 		if (ServerData->PendingAdjustment.bBaseRelativePosition)
@@ -4204,11 +4231,26 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 				ServerData->PendingAdjustment.NewVel = RelativeVelocity;
 				ServerData->PendingAdjustment.NewBase = LastServerMovementBaseVR.Get();
 				ServerData->PendingAdjustment.NewBaseBoneName = LastServerMovementBaseBoneName;
-				ServerData->PendingAdjustment.NewLoc = RelativeLocation;
+
+				if (bRunClientCorrectionToHMD && IsValid(BaseVRCharacterOwner))
+				{	
+					ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetMovementBase()->GetComponentTransform().InverseTransformPosition(ServerData->PendingAdjustment.NewLoc);
+				}
+				else
+				{
+					ServerData->PendingAdjustment.NewLoc = RelativeLocation;
+				}
 			}
 			else
 			{
-				ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetBasedMovement().Location;
+				if (bRunClientCorrectionToHMD && IsValid(BaseVRCharacterOwner))
+				{
+					ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetMovementBase()->GetComponentTransform().InverseTransformPosition(ServerData->PendingAdjustment.NewLoc);
+				}
+				else
+				{
+					ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetBasedMovement().Location;
+				}
 			}
 
 			// TODO: this could be a relative rotation, but all client corrections ignore rotation right now except the root motion one, which would need to be updated.

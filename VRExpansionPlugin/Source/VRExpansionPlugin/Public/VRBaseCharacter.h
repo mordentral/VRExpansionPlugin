@@ -498,6 +498,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
 		FVector SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true, bool bTeleport = false);
 
+	// Sets the actors location taking into account the HMD as a pivot point, returns the location difference
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
+		FVector SetActorLocationVR(FVector NewLoc, bool bTeleport);
+
 	// Regenerates the base offsetcomponenttoworld that VR uses
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
 	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw)

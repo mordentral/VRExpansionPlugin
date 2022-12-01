@@ -56,8 +56,12 @@ public:
 	virtual bool IsWithinEdgeTolerance(const FVector& CapsuleLocation, const FVector& TestImpactPoint, const float CapsuleRadius) const override;
 
 	// Allow merging movement replication (may cause issues when >10 players due to capsule location
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "VRCharacterMovementComponent")
 	bool bAllowMovementMerging;
+
+	// If true we will run client corrections off of the HMD location instead of actor, this is a settable value to allow backwards compatibility
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "VRCharacterMovementComponent")
+	bool bRunClientCorrectionToHMD;
 
 	// Higher values will cause more slide but better step up
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRCharacterMovementComponent", meta = (ClampMin = "0.01", UIMin = "0", ClampMax = "1.0", UIMax = "1"))
@@ -315,10 +319,10 @@ public:
 class VREXPANSIONPLUGIN_API FNetworkPredictionData_Server_VRCharacter : public FNetworkPredictionData_Server_Character
 {
 public:
+
 	FNetworkPredictionData_Server_VRCharacter(const UCharacterMovementComponent& ClientMovement)
 		: FNetworkPredictionData_Server_Character(ClientMovement)
 	{
-
 	}
 
 	FSavedMovePtr AllocateNewMove()

@@ -884,6 +884,23 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 	return NewLocation - NewLoc;
 }
 
+FVector AVRBaseCharacter::SetActorLocationVR(FVector NewLoc, bool bTeleport)
+{
+	FVector NewLocation;
+	FRotator NewRotation;
+	FVector PivotOffsetVal = GetVRLocation_Inline() - GetActorLocation();
+	PivotOffsetVal.Z = 0.0f;
+
+
+	NewLocation = NewLoc - PivotOffsetVal;// +PivotPoint;// NewRotation.RotateVector(PivotPoint);
+						 //NewRotation = NewRot;
+
+
+	// Also setting actor rot because the control rot transfers to it anyway eventually
+	SetActorLocation(NewLocation, false, nullptr, bTeleport ? ETeleportType::TeleportPhysics : ETeleportType::None);
+	return NewLocation - NewLoc;
+}
+
 void  AVRBaseCharacter::OnRep_CapsuleHeight()
 {
 	if (!VRReplicateCapsuleHeight)
