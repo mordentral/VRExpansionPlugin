@@ -4234,7 +4234,19 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 
 				if (bRunClientCorrectionToHMD && IsValid(BaseVRCharacterOwner))
 				{	
-					ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetMovementBase()->GetComponentTransform().InverseTransformPosition(ServerData->PendingAdjustment.NewLoc);
+					FBasedMovementInfo BaseInfo = CharacterOwner->GetBasedMovement();
+					FVector BaseLocation;
+					FQuat BaseQuat;
+
+					const bool bResult = MovementBaseUtility::GetMovementBaseTransform(BaseInfo.MovementBase, BaseInfo.BoneName, BaseLocation, BaseQuat);
+					if (bResult)
+					{
+						ServerData->PendingAdjustment.NewLoc = FTransform(BaseQuat, BaseLocation).InverseTransformPositionNoScale(CharacterOwner->GetBasedMovement().Location);
+					}
+					else
+					{
+						ServerData->PendingAdjustment.NewLoc = RelativeLocation;
+					}
 				}
 				else
 				{
