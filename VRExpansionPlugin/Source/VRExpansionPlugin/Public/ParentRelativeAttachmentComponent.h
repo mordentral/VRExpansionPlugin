@@ -12,6 +12,9 @@
 class AVRBaseCharacter;
 class AVRCharacter;
 
+/** Delegate for notification when the PRC starts rotating in yaw to match the snap / yaw tolerances. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRPRCBeginYawRotationEventSignature);
+
 // Type of rotation sampling to use
 UENUM(BlueprintType)
 enum class EVR_PRC_RotationMethod : uint8
@@ -62,6 +65,9 @@ public:
 	bool bWasSetOnce;
 	FTransform LeftControllerTrans;
 	FTransform RightControllerTrans;
+
+	UPROPERTY(BlueprintAssignable, Category = "PRC Events")
+		FVRPRCBeginYawRotationEventSignature OnYawToleranceExceeded;
 
 	// If true uses feet/bottom of the capsule as the base Z position for this component instead of the HMD/Camera Z position
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
@@ -181,6 +187,7 @@ public:
 				LerpTarget = FRotator::ClampAxis(InverseRot.Yaw);
 				LastLerpVal = FMath::FixedTurn(/*LastRot*/LastLerpVal, LerpTarget, LerpSpeed * DeltaTime);
 				FinalRot = FRotator(0, LastLerpVal, 0);
+				OnYawToleranceExceeded.Broadcast();
 			}
 			else // If we aren't then just directly set it to the correct rotation
 			{
