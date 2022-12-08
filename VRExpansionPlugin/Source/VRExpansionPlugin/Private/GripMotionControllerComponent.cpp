@@ -5297,6 +5297,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 						bool bWasColliding = Grip->bColliding;
 						bool bLerpCollisions = false;
 						bool bLerpRotationOnly = false;
+						bool bDistanceBasedInterpolation = false;
 						float LerpSpeed = 0.0f;
 						const UVRGlobalSettings* VRSettings = GetDefault<UVRGlobalSettings>();
 
@@ -5305,6 +5306,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							bLerpCollisions = VRSettings->bLerpHybridWithSweepGrips;
 							LerpSpeed = VRSettings->HybridWithSweepLerpDuration;
 							bLerpRotationOnly = VRSettings->bOnlyLerpHybridRotation;
+							bDistanceBasedInterpolation = VRSettings->bHybridWithSweepUseDistanceBasedLerp;
 						}
 
 						if (Grip->bLockHybridGrip)
@@ -5409,8 +5411,14 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 									// Re-use this transform as it will let us not add additional variables
 									Grip->OnGripTransform = root->GetComponentTransform().GetRelativeTransform(this->GetPivotTransform());
-									Grip->CurrentLerpTime = 1.0f;
+									Grip->CurrentLerpTime = 1.0f;	
 									Grip->LerpSpeed = (1.f / LerpSpeed);
+
+									if (bDistanceBasedInterpolation)
+									{
+										// Just multiplying to make the values easier
+										Grip->LerpSpeed *= 10.0f;
+									}
 								}
 
 								if (Grip->CurrentLerpTime > 0.0f)
@@ -5418,9 +5426,22 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 									FTransform NB = (Grip->OnGripTransform * this->GetPivotTransform());
 									float Alpha = 0.0f;
 
-									Grip->CurrentLerpTime -= DeltaTime * Grip->LerpSpeed;
-									float OrigAlpha = FMath::Clamp(Grip->CurrentLerpTime, 0.f, 1.0f);
-									Alpha = OrigAlpha;
+									if (bDistanceBasedInterpolation)
+									{
+										if (Grip->LerpSpeed <= 0.f)
+										{
+											Alpha = 1.0f;
+											Grip->CurrentLerpTime = 0.0f;
+										}
+
+										Alpha = FMath::Clamp(DeltaTime * Grip->LerpSpeed, 0.f, 1.f);
+									}
+									else
+									{
+										Grip->CurrentLerpTime -= DeltaTime * Grip->LerpSpeed;
+										float OrigAlpha = FMath::Clamp(1.0f - Grip->CurrentLerpTime, 0.f, 1.0f);
+										Alpha = OrigAlpha;
+									}
 
 									FTransform NA = WorldTransform;
 									NA.NormalizeRotation();
@@ -5428,11 +5449,24 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 									if (!bLerpRotationOnly)
 									{
-										WorldTransform.Blend(NA, NB, Alpha);
+										WorldTransform.Blend(NB, NA, Alpha);
 									}
 									else
 									{
-										WorldTransform.SetRotation(FQuat::Slerp(NA.GetRotation(), NB.GetRotation(), Alpha));
+										WorldTransform.SetRotation(FQuat::Slerp(NB.GetRotation(), NA.GetRotation(), Alpha));
+									}
+
+									if (bDistanceBasedInterpolation)
+									{
+										if(NA.Equals(WorldTransform))
+										{
+											Grip->CurrentLerpTime = 0.0f;
+										}
+										else
+										{
+											// Save out current distance back to the originating transform
+											Grip->OnGripTransform = WorldTransform.GetRelativeTransform(this->GetPivotTransform());
+										}
 									}
 								}
 							}

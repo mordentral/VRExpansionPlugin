@@ -161,6 +161,12 @@ public:
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
 		bool bOnlyLerpHybridRotation;
 
+	// If true we calculate a speed off of the lerp duration and TInterp using it
+	// The Hybrid with sweep lerp duration then is used to divide 1.0f (x10) to get the speed (lower duration = faster movement)
+	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
+		bool bHybridWithSweepUseDistanceBasedLerp;
+
+	// Duration that the typical lerp takes, for the distance based lerp this is turned into a speed value based off of 1.0f / it
 	UPROPERTY(config, BlueprintReadWrite, EditAnywhere, Category = "HybridWithSweepLerp")
 		float HybridWithSweepLerpDuration;
 
