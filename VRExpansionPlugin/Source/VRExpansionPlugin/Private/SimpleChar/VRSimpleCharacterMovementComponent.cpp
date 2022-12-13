@@ -36,9 +36,9 @@ DECLARE_CYCLE_STAT(TEXT("Char CallServerMoveVRSimple"), STAT_CharacterMovementCa
 
 // Defines for build configs
 #if DO_CHECK && !UE_BUILD_SHIPPING // Disable even if checks in shipping are enabled.
-#define devCode( Code )		checkCode( Code )
+#define devCodeSimple( Code )		checkCode( Code )
 #else
-#define devCode(...)
+#define devCodeSimple(...)
 #endif
 
 namespace CharacterMovementConstants
@@ -378,14 +378,14 @@ void UVRSimpleCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 
 
 	// Ensure velocity is horizontal.
 	MaintainHorizontalGroundVelocity();
-	devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN before CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
+	devCodeSimple(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN before CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 
 	//bound acceleration
 	Acceleration.Z = 0.f;
 	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
 		CalcVelocity(deltaTime, GroundFriction, false, BrakingDecelerationWalking);
-		devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
+		devCodeSimple(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 	}
 
 	ApplyRootMotionToVelocity(deltaTime);
@@ -861,7 +861,7 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 		return;
 	}
 
-	devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN before Iteration (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
+	devCodeSimple(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN before Iteration (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 
 	bJustTeleported = false;
 	bool bCheckedFall = false;
@@ -896,13 +896,13 @@ void UVRSimpleCharacterMovementComponent::PhysWalking(float deltaTime, int32 Ite
 		if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 		{
 			CalcVelocity(timeTick, GroundFriction, false, BrakingDecelerationWalking);
-			devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
+			devCodeSimple(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 		}
 
 		ApplyRootMotionToVelocity(timeTick);
 		ApplyVRMotionToVelocity(deltaTime);//timeTick);
 
-		devCode(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
+		devCodeSimple(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysWalking: Velocity contains NaN after Root Motion application (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 
 		//LastPreAdditiveVRVelocity = Velocity;
 		//bHasLastAdditiveVelocity = true;
