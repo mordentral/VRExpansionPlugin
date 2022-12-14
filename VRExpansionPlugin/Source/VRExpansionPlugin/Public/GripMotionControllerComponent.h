@@ -545,9 +545,7 @@ public:
 		int HandleIndex = 0;
 		if (GetPhysicsGripIndex(GripInfo, HandleIndex))
 		{
-
-			DestroyPhysicsHandle(&PhysicsGrips[HandleIndex]);
-			PhysicsGrips.RemoveAt(HandleIndex);
+			DestroyPhysicsHandle(GripInfo);
 		}
 
 		// Grip Type or replication was changed
