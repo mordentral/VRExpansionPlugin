@@ -149,8 +149,9 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 			}
 		}
 		else
-		{				
-			for (int i = 0; i < LocalPoses.Num(); i++)
+		{
+			int numBones = HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetNum();
+			for (int i = 0; i < LocalPoses.Num() && i < numBones; ++i)
 			{
 				AnimationObject->AddNewRawTrack(HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetBoneName(i));
 			}
