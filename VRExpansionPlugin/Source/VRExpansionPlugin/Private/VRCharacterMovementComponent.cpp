@@ -3807,7 +3807,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		return;
 	}
 
-	if (!bRunClientCorrectionToHMD && !bUseClientControlRotation)
+	if (/*!bRunClientCorrectionToHMD && */!bUseClientControlRotation)
 	{
 		float YawValue = FRotator::DecompressAxisFromShort(NewYaw);
 		// Trust the server's control yaw
@@ -3863,12 +3863,12 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 
 		if (bRunClientCorrectionToHMD && BaseVRCharacterOwner)
 		{
-			if (!bUseClientControlRotation)
+			/*if (!bUseClientControlRotation)
 			{
 				float YawValue = FRotator::DecompressAxisFromShort(NewYaw);
-				BaseVRCharacterOwner->SetActorLocationAndRotationVR(WorldShiftedNewLocation, FRotator(0.0f, YawValue, 0.0f), true, true, true);
+				BaseVRCharacterOwner->SetActorLocationVR(WorldShiftedNewLocation,);// AndRotationVR(WorldShiftedNewLocation, FRotator(0.0f, YawValue, 0.0f), true, true, true);
 			}
-			else
+			else*/
 			{
 				BaseVRCharacterOwner->SetActorLocationVR(WorldShiftedNewLocation, true);
 			}
