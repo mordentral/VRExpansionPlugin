@@ -178,7 +178,7 @@ public:
 	UGS_Melee(const FObjectInitializer& ObjectInitializer);
 
 	UFUNCTION()
-	void OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVector NormalImpulse, const FHitResult& Hit);
+	virtual void OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVector NormalImpulse, const FHitResult& Hit);
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
 		void SetIsLodged(bool IsLodged, UPrimitiveComponent * LodgeComponent)
