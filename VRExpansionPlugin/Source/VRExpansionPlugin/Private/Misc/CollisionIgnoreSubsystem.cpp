@@ -509,7 +509,7 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 					Chaos::FUniqueIdx ID1 = ApplicableBodies2[j].BInstance->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
 
 					auto* pHandle1 = ApplicableBodies[i].BInstance->ActorHandle->GetParticle_LowLevel();
-					auto* pHandle2 = ApplicableBodies[j].BInstance->ActorHandle->GetParticle_LowLevel();
+					auto* pHandle2 = ApplicableBodies2[j].BInstance->ActorHandle->GetParticle_LowLevel();
 
 					Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
 
