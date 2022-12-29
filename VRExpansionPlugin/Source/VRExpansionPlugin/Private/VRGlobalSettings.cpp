@@ -29,8 +29,8 @@ UVRGlobalSettings::UVRGlobalSettings(const FObjectInitializer& ObjectInitializer
 		bUseCollisionModificationForCollisionIgnore = false;
 		CollisionIgnoreSubsystemUpdateRate = 1.f;
 
-		bUseChaosTranslationScalers = true;
-		bSetEngineChaosScalers = true;
+		bUseChaosTranslationScalers = false;
+		bSetEngineChaosScalers = false;
 		LinearDriveStiffnessScale = 1.0f;// Chaos::ConstraintSettings::LinearDriveStiffnessScale();
 		LinearDriveDampingScale = 1.0f;// Chaos::ConstraintSettings::LinearDriveDampingScale();
 		AngularDriveStiffnessScale = 1.5f;// Chaos::ConstraintSettings::AngularDriveStiffnessScale();
