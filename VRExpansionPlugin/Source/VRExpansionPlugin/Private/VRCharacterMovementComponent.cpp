@@ -465,12 +465,16 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 	FNetworkPredictionData_Server_Character* ServerData = GetPredictionData_Server_Character();
 	check(ServerData);
 
+	// Convert to our stored move data array
+	const FVRCharacterNetworkMoveData* MoveDataVR = (const FVRCharacterNetworkMoveData*)&MoveData;
+
 	if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 	{
 		return;
 	}
-	else if (bJustUnseated)
+	else if (bJustUnseated && MoveDataVR->ReplicatedMovementMode != EVRConjoinedMovementModes::C_VRMOVE_Seated)
 	{	
+		// If the client isn't still registered as seated then we accept this first change of movement and go
 		ServerData->CurrentClientTimeStamp = MoveData.TimeStamp;
 		bAutoAcceptPacket = true;
 		bJustUnseated = false;
@@ -497,10 +501,6 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 		return;
 	}
 
-
-	// Convert to our stored move data array
-	const FVRCharacterNetworkMoveData* MoveDataVR = (const FVRCharacterNetworkMoveData*)&MoveData;
-
 	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
 	FVRCharacterScopedMovementUpdate ScopedMovementUpdate(UpdatedComponent, bEnableScopedMovementUpdates ? EScopedUpdate::DeferredUpdates : EScopedUpdate::ImmediateUpdates);
 
@@ -516,7 +516,18 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 	}
 
 	const UWorld* MyWorld = GetWorld();
-	const float DeltaTime = ServerData->GetServerMoveDeltaTime(ClientTimeStamp, CharacterOwner->GetActorTimeDilation(*MyWorld));
+	/*const*/ float DeltaTime = 0.0f;
+	
+	// If we are auto accepting this packet, then accept it and use the maximum delta time as we don't know how long it has actually been since
+	// The last valid update
+	if (bAutoAcceptPacket)
+	{
+		DeltaTime = ServerData->MaxMoveDeltaTime * CharacterOwner->GetActorTimeDilation(*MyWorld);
+	}
+	else
+	{
+		DeltaTime = ServerData->GetServerMoveDeltaTime(ClientTimeStamp, CharacterOwner->GetActorTimeDilation(*MyWorld));
+	}
 
 	if (DeltaTime > 0.f)
 	{
