@@ -15,6 +15,8 @@
 //#include "HeadMountedDisplayFunctionLibrary.h"
 #include "Grippables/GrippablePhysicsReplication.h"
 #include "GameplayTagContainer.h"
+#include "XRMotionControllerBase.h"
+#include "VRBPDatatypes.h"
 //#include "IHeadMountedDisplay.h"
 
 #include "Chaos/ParticleHandle.h"
@@ -746,3 +748,30 @@ bool UVRExpansionFunctionLibrary::GetFirstGameplayTagWithExactParent(FGameplayTa
 
 	return false;
 }
+
+void UVRExpansionFunctionLibrary::ResetPeakLowPassFilter(UPARAM(ref) FBPLowPassPeakFilter& TargetPeakFilter)
+{
+	TargetPeakFilter.Reset();
+}
+
+void UVRExpansionFunctionLibrary::UpdatePeakLowPassFilter(UPARAM(ref) FBPLowPassPeakFilter& TargetPeakFilter, FVector NewSample)
+{
+	TargetPeakFilter.AddSample(NewSample);
+}
+
+FVector UVRExpansionFunctionLibrary::GetPeak_PeakLowPassFilter(UPARAM(ref) FBPLowPassPeakFilter& TargetPeakFilter)
+{
+	return TargetPeakFilter.GetPeak();
+}
+
+void UVRExpansionFunctionLibrary::ResetEuroSmoothingFilter(UPARAM(ref) FBPEuroLowPassFilter& TargetEuroFilter)
+
+{
+	TargetEuroFilter.ResetSmoothingFilter();
+}
+void UVRExpansionFunctionLibrary::RunEuroSmoothingFilter(UPARAM(ref) FBPEuroLowPassFilter& TargetEuroFilter, FVector InRawValue, const float DeltaTime, FVector & SmoothedValue)
+
+{
+	SmoothedValue = TargetEuroFilter.RunFilterSmoothing(InRawValue, DeltaTime);
+}
+ 

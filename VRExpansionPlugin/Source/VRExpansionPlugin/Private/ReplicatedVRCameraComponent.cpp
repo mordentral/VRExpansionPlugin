@@ -2,14 +2,10 @@
 
 #include "ReplicatedVRCameraComponent.h"
 #include "Net/UnrealNetwork.h"
-//#include "Engine/Engine.h"
-#include "Net/UnrealNetwork.h"
 #include "VRBaseCharacter.h"
 #include "IXRTrackingSystem.h"
 #include "IXRCamera.h"
 #include "Rendering/MotionVectorSimulation.h"
-#include "VRBaseCharacter.h"
-#include "IHeadMountedDisplay.h"
 
 
 UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitializer& ObjectInitializer)
@@ -361,4 +357,48 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 			}
 		}
 	}
+}
+
+void UReplicatedVRCameraComponent::OnRep_ReplicatedCameraTransform()
+{
+    if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
+    {
+        // Ensure that we clamp to the expected values from the client
+        ApplyTrackingParameters(ReplicatedCameraTransform.Position);
+    }
+    
+    if (bSmoothReplicatedMotion)
+    {
+        static const auto CVarDoubleBufferTrackedDevices = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DoubleBufferReplicatedTrackedDevices"));
+        if (bReppedOnce)
+        {
+            bLerpingPosition = true;
+            NetUpdateCount = 0.0f;
+            LastUpdatesRelativePosition = this->GetRelativeLocation();
+            LastUpdatesRelativeRotation = this->GetRelativeRotation();
+            
+            if (CVarDoubleBufferTrackedDevices->GetBool())
+            {
+                MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
+                MotionSampleUpdateBuffer[1] = ReplicatedCameraTransform;
+            }
+            else
+            {
+                MotionSampleUpdateBuffer[0] = ReplicatedCameraTransform;
+                // Also set the buffered value in case double buffering gets turned on
+                MotionSampleUpdateBuffer[1] = MotionSampleUpdateBuffer[0];
+            }
+        }
+        else
+        {
+            SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
+            bReppedOnce = true;
+            
+            // Filling the second index in as well in case they turn on double buffering
+            MotionSampleUpdateBuffer[1] = ReplicatedCameraTransform;
+            MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
+        }
+    }
+    else
+        SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
 }
