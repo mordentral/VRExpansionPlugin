@@ -452,7 +452,7 @@ bool UVRDialComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> 
 void UVRDialComponent::SetDialAngle(float DialAngle, bool bCallEvents)
 {
 	CurRotBackEnd = DialAngle;
-	AddDialAngle(0.0f);
+	AddDialAngle(0.0f, bCallEvents);
 }
 
 void UVRDialComponent::AddDialAngle(float DialAngleDelta, bool bCallEvents, bool bSkipSettingRot)
