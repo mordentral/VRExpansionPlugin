@@ -1587,7 +1587,7 @@ bool UGripMotionControllerComponent::GripActor(
 				}
 			}
 
-			if (bIsLocalGrip && GetNetMode() == ENetMode::NM_Client && !IsTornOff())
+			if (bIsLocalGrip && GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			{
 				Index = LocallyGrippedObjects.IndexOfByKey(newActorGrip.GripID);
 				if (Index != INDEX_NONE)
@@ -1841,7 +1841,7 @@ bool UGripMotionControllerComponent::GripComponent(
 				}
 			}
 
-			if (bIsLocalGrip && GetNetMode() == ENetMode::NM_Client && !IsTornOff())
+			if (bIsLocalGrip && GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			{
 				Index = LocallyGrippedObjects.IndexOfByKey(newComponentGrip.GripID);
 				if (Index != INDEX_NONE)
