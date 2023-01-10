@@ -234,13 +234,11 @@ void UVRExpansionFunctionLibrary::GetGripSlotInRangeByTypeName_Component(FName S
 		{
 			if (UHandSocketComponent* SocketComp = Cast<UHandSocketComponent>(AttachChild))
 			{
-
 				if (SocketComp->bDisabled)
 					continue;
 
 				FName BoneName = SocketComp->GetAttachSocketName();
 				FString SlotPrefix = BoneName != NAME_None ? BoneName.ToString() + SocketComp->SlotPrefix.ToString() : SocketComp->SlotPrefix.ToString();
-				//FString SlotPrefix2 = SocketComp->GetAttachSocketName() + SocketComp->SlotPrefix.ToString();
 
 				if (SlotPrefix.Contains(GripIdentifier, ESearchCase::IgnoreCase, ESearchDir::FromStart))
 				{
