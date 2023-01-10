@@ -124,6 +124,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		bool bOnlySnapMesh;
 
+	// If true we will not create the mesh relative transform using the attach socket we are attached too
+	// Useful in cases where you aren't doing per bone gripping but want the socket to follow a bone that is animating
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+		bool bIgnoreAttachBone;
+
 	// If true then this socket is left hand dominant and will flip for the right hand instead
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hand Socket Data")
 		bool bLeftHandDominant;

@@ -71,6 +71,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 	HandTargetAnimation = nullptr;
 	MirroredScale = FVector(1.f, 1.f, -1.f);
 	bOnlySnapMesh = false;
+	bIgnoreAttachBone = false;
 	bFlipForLeftHand = false;
 	bLeftHandDominant = false;
 	bOnlyFlipRotation = false;
@@ -421,14 +422,19 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 			if (bLeftHandDominant == bIsRightHand)
 			{
 				FTransform ReturnTrans = this->GetRelativeTransform();
-				ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
-				if (bOnlyFlipRotation)
-				{
-					ReturnTrans.SetTranslation(this->GetRelativeLocation());
-				}
-
 				if (USceneComponent* AttParent = this->GetAttachParent())
 				{
+					ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
+					if (bOnlyFlipRotation)
+					{
+						ReturnTrans.SetTranslation(this->GetRelativeLocation());
+					}
+
+					if (this->GetAttachSocketName() != NAME_None)
+					{
+						ReturnTrans = ReturnTrans * AttParent->GetSocketTransform(GetAttachSocketName(), RTS_Component);
+					}
+
 					ReturnTrans = ReturnTrans * AttParent->GetComponentTransform();
 				}
 				return ReturnTrans;
@@ -477,6 +483,11 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 		{
 			ReturnTrans.SetScale3D(ReturnTrans.GetScale3D() * MirroredScale.GetSignVector());
 		}
+	}
+
+	if (bIgnoreAttachBone && this->GetAttachSocketName() != NAME_None)
+	{
+		ReturnTrans = ReturnTrans * GetAttachParent()->GetSocketTransform(GetAttachSocketName(), RTS_Component);
 	}
 
 
