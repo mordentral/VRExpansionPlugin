@@ -7,9 +7,6 @@
 
 #include "VRTrackedParentInterface.generated.h"
 
-struct FBPVRWaistTracking_Info;
-enum class EBPVRWaistTrackingMode : uint8;
-
 UINTERFACE(MinimalAPI, meta = (CannotImplementInterfaceInBlueprint))
 class UVRTrackedParentInterface: public UInterface
 {
