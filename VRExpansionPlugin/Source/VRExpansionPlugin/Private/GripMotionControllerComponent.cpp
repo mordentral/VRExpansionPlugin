@@ -90,6 +90,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	//Hand = EControllerHand::Left;
 	bDisableLowLatencyUpdate = false;
 	bHasAuthority = false;
+	bIgnoreTrackingStatus = false;
 	bUseWithoutTracking = false;
 	ClientAuthConflictResolutionMethod = EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_First;
 	bAlwaysSendTickGrip = false;
@@ -4434,7 +4435,7 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			ETrackingStatus LastTrackingStatus = CurrentTrackingStatus;
 			const bool bNewTrackedState = GripPollControllerState(Position, Orientation, WorldToMeters);
 
-			bTracked = bNewTrackedState && CurrentTrackingStatus != ETrackingStatus::NotTracked;
+			bTracked = bNewTrackedState && (bIgnoreTrackingStatus || CurrentTrackingStatus != ETrackingStatus::NotTracked);
 			if (bTracked)
 			{
 				if (bSmoothHandTracking)
@@ -6979,7 +6980,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				if (bIsInGameThread)
 				{
 					CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
-					if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
+					if (!bIgnoreTrackingStatus && CurrentTrackingStatus == ETrackingStatus::NotTracked)
 						continue;
 				}			
 #endif
@@ -6991,7 +6992,7 @@ bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, 
 				if (bIsInGameThread)
 				{
 					CurrentTrackingStatus = MotionController->GetControllerTrackingStatus(PlayerIndex, MotionSource);
-					if (CurrentTrackingStatus == ETrackingStatus::NotTracked)
+					if (!bIgnoreTrackingStatus && CurrentTrackingStatus == ETrackingStatus::NotTracked)
 						continue;
 				}
 #endif
