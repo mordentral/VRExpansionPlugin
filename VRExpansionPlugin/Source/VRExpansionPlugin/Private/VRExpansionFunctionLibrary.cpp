@@ -16,7 +16,6 @@
 #include "Grippables/GrippablePhysicsReplication.h"
 #include "GameplayTagContainer.h"
 #include "XRMotionControllerBase.h"
-#include "VRBPDatatypes.h"
 //#include "IHeadMountedDisplay.h"
 
 #include "Chaos/ParticleHandle.h"

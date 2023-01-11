@@ -3,20 +3,15 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "VRBPDatatypes.h"
 #include "VRExpansionFunctionLibrary.generated.h"
 
 class USplineComponent;
-class USplineMeshComponent;
-class UGripMotionControllerComponent;
 class UPrimitiveComponent;
 class UGripMotioncontroller;
 struct FGameplayTag;
 struct FGameplayTagContainer;
-struct FBPActorGripInformation;
-struct FBPEuroLowPassFilter;
-struct FBPGripPair;
-struct FBPLowPassPeakFilter;
-struct FTransform_NetQuantize;
+
 
 enum class EControllerHand : uint8;
 enum class EBPHMDDeviceType : uint8;

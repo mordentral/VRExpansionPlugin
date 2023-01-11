@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerStart.h"
+#include "Components/SceneComponent.h"
 #include "VRPlayerStart.generated.h"
 
 /**
