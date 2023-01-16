@@ -129,6 +129,10 @@ void UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& Trackin
 						{
 							DeviceType = EBPOpenXRControllerDeviceType::DT_OculusGoController;
 						}
+						else if (InteractionName.Find("neo3_controller", ESearchCase::IgnoreCase) != INDEX_NONE)
+						{
+							DeviceType = EBPOpenXRControllerDeviceType::DT_PicoNeo3Controller;
+						}
 						else
 						{
 							UE_LOG(OpenXRExpansionFunctionLibraryLog, Warning, TEXT("UNKNOWN OpenXR Interaction profile detected!!!: %s"), *InteractionName);
