@@ -39,6 +39,7 @@ enum class EBPOpenXRControllerDeviceType : uint8
 	DT_OculusGoController,
 	DT_MicrosoftMotionController,
 	DT_MicrosoftXboxController,
+	DT_PicoNeo3Controller,
 	DT_UnknownController
 };
 
