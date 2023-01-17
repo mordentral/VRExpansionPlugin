@@ -407,9 +407,9 @@ void UGripMotionControllerComponent::InitializeComponent()
 	Super::InitializeComponent();
 
 	if (!DefaultGripScript && DefaultGripScriptClass)
-		DefaultGripScript = DefaultGripScriptClass.GetDefaultObject();
+		DefaultGripScript = NewObject<UGS_Default>(this, DefaultGripScriptClass); //DefaultGripScriptClass.GetDefaultObject();
 	else
-		DefaultGripScript = GetMutableDefault<UGS_Default>();
+		DefaultGripScript = NewObject<UGS_Default>(this, UGS_Default::StaticClass());
 }
 
 void UGripMotionControllerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
