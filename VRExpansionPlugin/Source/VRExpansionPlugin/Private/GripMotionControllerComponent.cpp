@@ -189,6 +189,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 
 	DefaultGripScript = nullptr;
 	DefaultGripScriptClass = UGS_Default::StaticClass();
+	DisplayComponentReference = nullptr;
 
 	VelocityCalculationType = EVRVelocityType::VRLOCITY_Default;
 	LastRelativePosition = FTransform::Identity;
@@ -4494,6 +4495,27 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			ETrackingStatus LastTrackingStatus = CurrentTrackingStatus;
 			const bool bNewTrackedState = GripPollControllerState(Position, Orientation, WorldToMeters);
 
+			// Pull a reference to the private display component if it should exist
+			if (bDisplayDeviceModel && !IsValid(DisplayComponentReference.Get()))
+			{
+				if (FProperty* Property = this->GetClass()->FindPropertyByName("DisplayComponent"))
+				{
+					const TObjectPtr<UPrimitiveComponent>* DisplayCompPrim = Property->ContainerPtrToValuePtr<TObjectPtr<UPrimitiveComponent>>(this);
+
+					if (DisplayCompPrim && IsValid(*DisplayCompPrim))
+					{
+						// Working Display component reference
+						DisplayComponentReference = DisplayCompPrim->Get();
+					}
+				}
+			}
+
+			// if controller tracking just kicked in or we haven't gotten a valid model yet
+			if (((!bTracked && bNewTrackedState) || !DisplayComponentReference.IsValid()) && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
+			{
+				RefreshDisplayComponent();
+			}
+
 			bTracked = bNewTrackedState && (bIgnoreTrackingStatus || CurrentTrackingStatus != ETrackingStatus::NotTracked);
 			if (bTracked)
 			{
@@ -4541,15 +4563,6 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			if (LastTrackingStatus != CurrentTrackingStatus)
 			{
 				OnTrackingChanged.Broadcast(CurrentTrackingStatus);
-
-				if (LastTrackingStatus == ETrackingStatus::NotTracked)
-				{
-					// Handle the display component
-					// #TODO: Don't run if already has a display model, can't access yet
-					// || !DisplayComponent is private
-					if (bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
-						RefreshDisplayComponent();
-				}
 			}
 		}
 

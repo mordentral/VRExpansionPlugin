@@ -180,6 +180,9 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, Transient, BlueprintReadOnly, Category = "GripMotionController|Advanced")
 		TObjectPtr<UVRGripScriptBase> DefaultGripScript;
 
+	// This is a pointer to be able to access the display component directly in c++
+	TWeakObjectPtr<const UPrimitiveComponent> DisplayComponentReference;
+
 	// Lerping functions and events
 	void InitializeLerpToHand(FBPActorGripInformation& GripInfo);
 	void HandleGlobalLerpToHand(FBPActorGripInformation& GripInformation, FTransform& WorldTransform, float DeltaTime);
