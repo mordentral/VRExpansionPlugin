@@ -275,6 +275,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Weapon Settings")
 	FBPGripPair SecondaryHand;
 
+	// If true we will use the primary hands grip settings when we only have one hand gripping instead of the objects VRGripInterfaces settings
+	UPROPERTY(BlueprintReadOnly, Category = "Weapon Settings")
+		bool bUsePrimaryHandSettingsWithOneHand;
+
 	// To select the type of com setting to use
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
 		EVRMeleeComType COMType;
