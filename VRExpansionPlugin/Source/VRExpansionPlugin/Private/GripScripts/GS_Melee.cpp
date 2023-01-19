@@ -748,6 +748,11 @@ void UGS_Melee::HandlePostPhysicsHandle(UGripMotionControllerComponent* Gripping
 	}
 	else
 	{
+		if (bUsePrimaryHandSettingsWithOneHand)
+		{
+			PrimaryHandPhysicsSettings.FillTo(HandleInfo);
+		}
+
 		//HandleInfo->bSetCOM = false; // Should i remove this?
 		HandleInfo->bSkipResettingCom = false;
 	}
