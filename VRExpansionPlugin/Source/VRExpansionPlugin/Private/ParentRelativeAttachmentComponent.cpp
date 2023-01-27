@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "ParentRelativeAttachmentComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(ParentRelativeAttachmentComponent)
+
 #include "VRBaseCharacter.h"
 #include "VRCharacter.h"
 #include "IXRTrackingSystem.h"

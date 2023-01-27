@@ -1,6 +1,7 @@
 // Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
 #include "AnimGraphNode_ApplyOpenXRHandPose.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(AnimGraphNode_ApplyOpenXRHandPose)
 
 /////////////////////////////////////////////////////
 // UAnimGraphNode_ModifyBSHand

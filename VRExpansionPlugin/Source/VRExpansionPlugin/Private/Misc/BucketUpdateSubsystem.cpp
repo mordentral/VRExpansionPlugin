@@ -1,6 +1,7 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Misc/BucketUpdateSubsystem.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(BucketUpdateSubsystem)
 
 	bool UBucketUpdateSubsystem::AddObjectToBucket(int32 UpdateHTZ, UObject* InObject, FName FunctionName)
 	{

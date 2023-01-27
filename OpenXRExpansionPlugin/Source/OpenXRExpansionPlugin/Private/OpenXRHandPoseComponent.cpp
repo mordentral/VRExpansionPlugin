@@ -1,5 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "OpenXRHandPoseComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(OpenXRHandPoseComponent)
+
 #include "Net/UnrealNetwork.h"
 #include "MotionControllerComponent.h"
 #include "OpenXRExpansionFunctionLibrary.h"

@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Misc/CollisionIgnoreSubsystem.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(CollisionIgnoreSubsystem)
+
 #include "Components/SkeletalMeshComponent.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 #include "VRGlobalSettings.h"

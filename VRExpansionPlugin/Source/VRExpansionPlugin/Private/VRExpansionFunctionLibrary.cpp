@@ -1,5 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "VRExpansionFunctionLibrary.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRExpansionFunctionLibrary)
+
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "IXRTrackingSystem.h"

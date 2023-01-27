@@ -6,6 +6,8 @@
 =============================================================================*/
 
 #include "CharacterMovementCompTypes.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(CharacterMovementCompTypes)
+
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRBPDatatypes.h"
 #include "VRBaseCharacter.h"

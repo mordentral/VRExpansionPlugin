@@ -1,4 +1,6 @@
 #include "VRGestureComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRGestureComponent)
+
 #include "VRBaseCharacter.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/SplineComponent.h"

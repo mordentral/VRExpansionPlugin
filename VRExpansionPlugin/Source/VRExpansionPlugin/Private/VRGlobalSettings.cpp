@@ -1,5 +1,7 @@
 
 #include "VRGlobalSettings.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRGlobalSettings)
+
 #include "Chaos/ChaosConstraintSettings.h"
 #include "Grippables/GrippableSkeletalMeshComponent.h"
 

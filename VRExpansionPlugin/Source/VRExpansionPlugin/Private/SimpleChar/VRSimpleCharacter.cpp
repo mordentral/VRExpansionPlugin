@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "SimpleChar/VRSimpleCharacter.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRSimpleCharacter)
+
 #include "Components/CapsuleComponent.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 

@@ -6,6 +6,8 @@
 =============================================================================*/
 
 #include "VRBaseCharacterMovementComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRBaseCharacterMovementComponent)
+
 #include "VRBPDatatypes.h"
 #include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.h"
@@ -16,6 +18,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
+
 
 DEFINE_LOG_CATEGORY(LogVRBaseCharacterMovement);
 

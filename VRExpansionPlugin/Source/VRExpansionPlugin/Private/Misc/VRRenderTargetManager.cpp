@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Misc/VRRenderTargetManager.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRRenderTargetManager)
+
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/PlayerController.h"

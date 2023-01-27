@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Grippables/GrippableCharacter.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrippableCharacter)
+
 #include "VRGlobalSettings.h"
 #include "Grippables/GrippableSkeletalMeshComponent.h"
 

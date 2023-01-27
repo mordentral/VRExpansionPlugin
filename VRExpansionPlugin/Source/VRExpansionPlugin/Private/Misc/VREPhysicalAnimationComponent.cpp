@@ -1,4 +1,6 @@
 #include "Misc/VREPhysicalAnimationComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VREPhysicalAnimationComponent)
+
 #include "SceneManagement.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"

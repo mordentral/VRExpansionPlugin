@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Interactibles/VRButtonComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRButtonComponent)
+
 #include "Net/UnrealNetwork.h"
 //#include "VRGripInterface.h"
 #include "GripMotionControllerComponent.h"

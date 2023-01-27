@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Grippables/HandSocketComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(HandSocketComponent)
+
 #include "Engine/CollisionProfile.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimInstanceProxy.h"

@@ -2,6 +2,8 @@
 
 
 #include "GripScripts/GS_LerpToHand.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GS_LerpToHand)
+
 #include "GripMotionControllerComponent.h"
 #include "VRGlobalSettings.h"
 #include "Components/PrimitiveComponent.h"

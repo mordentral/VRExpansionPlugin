@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRPathFollowingComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRPathFollowingComponent)
+
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 //#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 13

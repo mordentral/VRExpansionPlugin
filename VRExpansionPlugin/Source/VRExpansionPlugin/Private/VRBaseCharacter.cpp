@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRBaseCharacter.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRBaseCharacter)
+
 #include "VRPlayerController.h"
 #include "NavigationSystem.h"
 #include "GameFramework/Controller.h"

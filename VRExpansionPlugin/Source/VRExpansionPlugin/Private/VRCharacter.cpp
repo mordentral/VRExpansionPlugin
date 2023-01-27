@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRCharacter.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRCharacter)
+
 #include "NavigationSystem.h"
 #include "VRBPDatatypes.h"
 //#include "GripMotionControllerComponent.h"

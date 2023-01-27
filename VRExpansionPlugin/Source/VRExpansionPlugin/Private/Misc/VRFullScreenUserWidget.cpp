@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Misc/VRFullScreenUserWidget.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRFullScreenUserWidget)
 
 //#include "Components/PostProcessComponent.h"
 //#include "Engine/Engine.h"

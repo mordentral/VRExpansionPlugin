@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Interactibles/VRDialComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRDialComponent)
+
 #include "VRExpansionFunctionLibrary.h"
 #include "GripMotionControllerComponent.h"
 #include "Net/UnrealNetwork.h"

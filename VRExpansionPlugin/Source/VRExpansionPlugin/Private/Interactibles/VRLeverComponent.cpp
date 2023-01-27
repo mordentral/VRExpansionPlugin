@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Interactibles/VRLeverComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRLeverComponent)
+
 #include "GripMotionControllerComponent.h"
 //#include "PhysicsEngine/ConstraintInstance.h"
 #include "VRExpansionFunctionLibrary.h"

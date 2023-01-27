@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRStereoWidgetComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRStereoWidgetComponent)
+
 #include "VRExpansionFunctionLibrary.h"
 #include "IXRTrackingSystem.h"
 #include "VRBaseCharacter.h"

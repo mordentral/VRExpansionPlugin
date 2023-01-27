@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Misc/OptionalRepSkeletalMeshActor.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(OptionalRepSkeletalMeshActor)
+
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 #include "PhysicsReplication.h"

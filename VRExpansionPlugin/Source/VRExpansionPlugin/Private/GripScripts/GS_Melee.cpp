@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "GripScripts/GS_Melee.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GS_Melee)
+
 #include "VRGripInterface.h"
 #include "GameFramework/WorldSettings.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"

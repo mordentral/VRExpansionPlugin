@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "VRAIController.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRAIController)
+
 //#include "VRBPDatatypes.h"
 #include "VRBaseCharacter.h"
 #include "Components/CapsuleComponent.h"

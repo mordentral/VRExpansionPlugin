@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Interactibles/VRMountComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRMountComponent)
+
 #include "VRExpansionFunctionLibrary.h"
 #include "GripMotionControllerComponent.h"
 //#include "PhysicsPublic.h"

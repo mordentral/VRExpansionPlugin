@@ -6,6 +6,8 @@
 =============================================================================*/
 
 #include "VRCharacterMovementComponent.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(VRCharacterMovementComponent)
+
 #include "GameFramework/PhysicsVolume.h"
 #include "GameFramework/GameNetworkManager.h"
 #include "GameFramework/Character.h"

@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "GripScripts/GS_InteractibleSettings.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GS_InteractibleSettings)
+
 #include "Components/PrimitiveComponent.h"
 #include "GripMotionControllerComponent.h"
 #include "GameFramework/Actor.h"

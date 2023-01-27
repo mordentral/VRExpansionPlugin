@@ -1,6 +1,8 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "Grippables/GrippableStaticMeshActor.h"
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GrippableStaticMeshActor)
+
 #include "TimerManager.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
