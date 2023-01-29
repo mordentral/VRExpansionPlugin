@@ -3621,7 +3621,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 
 				for (int i = 0; i < LocallyGrippedObjects.Num(); ++i)
 				{
-					if (LocallyGrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					if ((LocallyGrippedObjects[i].GrippedObject != nullptr && !LocallyGrippedObjects[i].GrippedObject->IsPendingKill()) && LocallyGrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
 						EGripInterfaceTeleportBehavior TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(LocallyGrippedObjects[i].GrippedObject);
 						if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation)
@@ -3636,7 +3636,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				{
 					for (int i = 0; i < GrippedObjects.Num(); ++i)
 					{
-						if (GrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+						if ((GrippedObjects[i].GrippedObject != nullptr && !GrippedObjects[i].GrippedObject->IsPendingKill()) && GrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 						{
 							EGripInterfaceTeleportBehavior TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(GrippedObjects[i].GrippedObject);
 							if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation)
