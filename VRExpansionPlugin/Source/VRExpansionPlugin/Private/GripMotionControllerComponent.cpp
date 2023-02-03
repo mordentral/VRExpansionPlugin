@@ -5414,7 +5414,8 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 								}break;
 								case EGripTargetType::ActorGrip:
 								{
-									actor->DisableComponentsSimulatePhysics();
+									root->SetSimulatePhysics(false);
+									//actor->DisableComponentsSimulatePhysics();
 								} break;
 								}
 							}
