@@ -3081,6 +3081,7 @@ void UGripMotionControllerComponent::InitializeLerpToHand(FBPActorGripInformatio
 						if (Grip.IsValid())
 						{
 							// We are skipping lerping now
+							GripInformation.bIsLerping = false;
 							return;
 						}
 					}
