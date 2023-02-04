@@ -3072,6 +3072,9 @@ void UGripMotionControllerComponent::HandleGlobalLerpToHand(FBPActorGripInformat
 						if (Grip.IsValid())
 						{
 							// We are skipping lerping now
+							GripInformation.bIsLerping = false;
+							GripInformation.CurrentLerpTime = 0.f;
+							OnLerpToHandFinished.Broadcast(GripInformation);
 							return;
 						}
 					}
