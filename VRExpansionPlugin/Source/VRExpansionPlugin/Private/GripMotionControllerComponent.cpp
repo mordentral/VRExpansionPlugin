@@ -3020,6 +3020,12 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 			{
 				root->SetSimulatePhysics(false);
 			}
+			// #TODO Remove the ELSE below when chaos is fixed for body welding without simulation
+			else
+			{
+				root->SetSimulatePhysics(true); // Forces it to weld children
+				root->SetSimulatePhysics(false); // Stop it
+			}
 
 			if(root->GetAttachParent())
 			{
