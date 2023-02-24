@@ -821,6 +821,7 @@ public:
 
 	FVector LastUpdatesRelativePosition;
 	FRotator LastUpdatesRelativeRotation;
+	FVector ExponentialSmoothingTranslationOffset;
 
 	bool bLerpingPosition;
 	bool bReppedOnce;
@@ -845,6 +846,25 @@ public:
 				ControllerNetUpdateCount = 0.0f;
 				LastUpdatesRelativePosition = this->GetRelativeLocation();
 				LastUpdatesRelativeRotation = this->GetRelativeRotation();
+
+				if (bUseExponentialSmoothing)
+				{
+					FVector OldToNewVector = ReplicatedControllerTransform.Position - LastUpdatesRelativePosition;
+					float NewDistance = OldToNewVector.SizeSquared();
+
+					// Too far, snap to the new value
+					if (NewDistance >= FMath::Square(NetworkNoSmoothUpdateDistance))
+					{
+						SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+						bLerpingPosition = false;
+					}
+					// Outside of the buffer distance, snap within buffer and keep smoothing from there
+					else if (NewDistance >= FMath::Square(NetworkMaxSmoothUpdateDistance))
+					{
+						FVector Offset = (OldToNewVector.Size() - NetworkMaxSmoothUpdateDistance) * OldToNewVector.GetSafeNormal();
+						SetRelativeLocation(LastUpdatesRelativePosition + Offset);
+					}
+				}
 
 				if (CVarDoubleBufferTrackedDevices->GetBool())
 				{
@@ -872,6 +892,10 @@ public:
 			SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
 	}
 
+
+	// Run the smoothing step
+	void RunNetworkedSmoothing(float DeltaTime);
+
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking", meta = (ClampMin = "0", UIMin = "0"))
 	float ControllerNetUpdateRate;
@@ -882,6 +906,22 @@ public:
 	// Whether to smooth (lerp) between ticks for the replicated motion, DOES NOTHING if update rate is larger than FPS!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
 		bool bSmoothReplicatedMotion;
+
+	// If true then we will use the same exponential smoothing setup as Epic CMC uses
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bSmoothReplicatedMotion"))
+		bool bUseExponentialSmoothing = false;
+
+	// Timestep of smoothing translation
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float InterpolationSpeed = 10.0f;
+
+	// Max distance to allow smoothing before snapping the remainder
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float NetworkMaxSmoothUpdateDistance = 20.f;
+
+	// Max distance to allow smoothing before snapping entirely to the new position
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float NetworkNoSmoothUpdateDistance = 100.f;
 
 	// Whether to replicate even if no tracking (FPS or test characters)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")

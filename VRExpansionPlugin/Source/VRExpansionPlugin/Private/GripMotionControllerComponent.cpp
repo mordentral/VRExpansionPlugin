@@ -4628,7 +4628,16 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			GripViewExtension.Reset();
 		}
 
-		if (bLerpingPosition)
+		// Run any networked smoothing
+		RunNetworkedSmoothing(DeltaTime);
+	}
+}
+
+void UGripMotionControllerComponent::RunNetworkedSmoothing(float DeltaTime)
+{
+	if (bLerpingPosition)
+	{
+		if (!bUseExponentialSmoothing)
 		{
 			ControllerNetUpdateCount += DeltaTime;
 			float LerpVal = FMath::Clamp(ControllerNetUpdateCount / (1.0f / ControllerNetUpdateRate), 0.0f, 1.0f);
@@ -4666,6 +4675,43 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 					FMath::Lerp(LastUpdatesRelativeRotation, MotionSampleUpdateBuffer[0].Rotation, LerpVal)
 				);
 			}
+		}
+		else // Exponential Smoothing
+		{
+			if (InterpolationSpeed <= 0.f)
+			{
+				SetRelativeLocationAndRotation((FVector)MotionSampleUpdateBuffer[0].Position, MotionSampleUpdateBuffer[0].Rotation);
+				bLerpingPosition = false;
+				return;
+			}
+			const float Alpha = FMath::Clamp(DeltaTime * InterpolationSpeed, 0.f, 1.f);
+
+			FTransform NA = FTransform(GetRelativeRotation(), GetRelativeLocation(), FVector(1.0f));
+			FTransform NB = FTransform(MotionSampleUpdateBuffer[0].Rotation, (FVector)MotionSampleUpdateBuffer[0].Position, FVector(1.0f));
+			NA.NormalizeRotation();
+			NB.NormalizeRotation();
+
+			NA.Blend(NA, NB, Alpha);
+
+			// If we are nearly equal then snap to final position
+			if (NA.EqualsNoScale(NB))
+			{
+				static const auto CVarDoubleBufferTrackedDevices = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DoubleBufferReplicatedTrackedDevices"));
+				if (CVarDoubleBufferTrackedDevices->GetBool())
+				{
+					// Move to next sample, we are catching up
+					MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
+				}
+				else
+				{
+					SetRelativeLocationAndRotation(MotionSampleUpdateBuffer[0].Position, MotionSampleUpdateBuffer[0].Rotation);
+					bLerpingPosition = false;
+				}
+			}
+			else // Else just keep going
+			{
+				SetRelativeLocationAndRotation(NA.GetTranslation(), NA.Rotator());
+			}			
 		}
 	}
 }
