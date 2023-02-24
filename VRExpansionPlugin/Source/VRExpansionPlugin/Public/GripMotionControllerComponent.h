@@ -913,15 +913,15 @@ public:
 
 	// Timestep of smoothing translation
 	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
-		float InterpolationSpeed = 10.0f;
+		float InterpolationSpeed = 20.0f;
 
 	// Max distance to allow smoothing before snapping the remainder
 	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
-		float NetworkMaxSmoothUpdateDistance = 20.f;
+		float NetworkMaxSmoothUpdateDistance = 100.f;
 
 	// Max distance to allow smoothing before snapping entirely to the new position
 	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
-		float NetworkNoSmoothUpdateDistance = 100.f;
+		float NetworkNoSmoothUpdateDistance = 200.f;
 
 	// Whether to replicate even if no tracking (FPS or test characters)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
