@@ -4413,6 +4413,54 @@ void UGripMotionControllerComponent::OnAttachmentChanged()
 	Super::OnAttachmentChanged();
 }
 
+void UGripMotionControllerComponent::OnRep_ReplicatedControllerTransform()
+{
+	//ReplicatedControllerTransform.Unpack();
+
+	if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
+	{
+		// Ensure that the client is sending valid boundries
+		ApplyTrackingParameters(ReplicatedControllerTransform.Position, true);
+	}
+
+	if (bSmoothReplicatedMotion)
+	{
+		if (bReppedOnce)
+		{
+			bLerpingPosition = true;
+			ControllerNetUpdateCount = 0.0f;
+			LastUpdatesRelativePosition = this->GetRelativeLocation();
+			LastUpdatesRelativeRotation = this->GetRelativeRotation();
+
+			if (bUseExponentialSmoothing)
+			{
+				FVector OldToNewVector = ReplicatedControllerTransform.Position - LastUpdatesRelativePosition;
+				float NewDistance = OldToNewVector.SizeSquared();
+
+				// Too far, snap to the new value
+				if (NewDistance >= FMath::Square(NetworkNoSmoothUpdateDistance))
+				{
+					SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+					bLerpingPosition = false;
+				}
+				// Outside of the buffer distance, snap within buffer and keep smoothing from there
+				else if (NewDistance >= FMath::Square(NetworkMaxSmoothUpdateDistance))
+				{
+					FVector Offset = (OldToNewVector.Size() - NetworkMaxSmoothUpdateDistance) * OldToNewVector.GetSafeNormal();
+					SetRelativeLocation(LastUpdatesRelativePosition + Offset);
+				}
+			}
+		}
+		else
+		{
+			SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+			bReppedOnce = true;
+		}
+	}
+	else
+		SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+}
+
 void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 {
 	// Server/remote clients don't set the controller position in VR
@@ -4549,43 +4597,68 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			GripViewExtension.Reset();
 		}
 
-		if (bLerpingPosition)
+		// Run any networked smoothing
+		RunNetworkedSmoothing(DeltaTime);
+	}
+}
+
+void UGripMotionControllerComponent::RunNetworkedSmoothing(float DeltaTime)
+{
+	if (bLerpingPosition)
+	{
+		if (!bUseExponentialSmoothing)
 		{
 			ControllerNetUpdateCount += DeltaTime;
 			float LerpVal = FMath::Clamp(ControllerNetUpdateCount / (1.0f / ControllerNetUpdateRate), 0.0f, 1.0f);
 
 			if (LerpVal >= 1.0f)
 			{
-				SetRelativeLocationAndRotation(MotionSampleUpdateBuffer[0].Position, MotionSampleUpdateBuffer[0].Rotation);
+				SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
 
-				static const auto CVarDoubleBufferTrackedDevices = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DoubleBufferReplicatedTrackedDevices"));
-				if (CVarDoubleBufferTrackedDevices->GetBool())
-				{
-					LastUpdatesRelativePosition = this->GetRelativeLocation();
-					LastUpdatesRelativeRotation = this->GetRelativeRotation();
-					ControllerNetUpdateCount = 0.0f;
-
-					// Move to next sample, we are catching up
-					MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
-				}
-				else
-				{
-					// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
-					// Actual prediction might be something to consider in the future, but rough to do in VR
-					// considering the speed and accuracy of movements
-					// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
-					// and might be perf taxing enough to not make it worth it.
-					bLerpingPosition = false;
-					ControllerNetUpdateCount = 0.0f;
-				}
+				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
+				// Actual prediction might be something to consider in the future, but rough to do in VR
+				// considering the speed and accuracy of movements
+				// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
+				// and might be perf taxing enough to not make it worth it.
+				bLerpingPosition = false;
+				ControllerNetUpdateCount = 0.0f;
 			}
 			else
 			{
 				// Removed variables to speed this up a bit
 				SetRelativeLocationAndRotation(
-					FMath::Lerp(LastUpdatesRelativePosition, (FVector)MotionSampleUpdateBuffer[0].Position, LerpVal),
-					FMath::Lerp(LastUpdatesRelativeRotation, MotionSampleUpdateBuffer[0].Rotation, LerpVal)
+					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedControllerTransform.Position, LerpVal),
+					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedControllerTransform.Rotation, LerpVal)
 				);
+			}
+		}
+		else // Exponential Smoothing
+		{
+			if (InterpolationSpeed <= 0.f)
+			{
+				SetRelativeLocationAndRotation((FVector)ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+				bLerpingPosition = false;
+				return;
+			}
+
+			const float Alpha = FMath::Clamp(DeltaTime * InterpolationSpeed, 0.f, 1.f);
+
+			FTransform NA = FTransform(GetRelativeRotation(), GetRelativeLocation(), FVector(1.0f));
+			FTransform NB = FTransform(ReplicatedControllerTransform.Rotation, (FVector)ReplicatedControllerTransform.Position, FVector(1.0f));
+			NA.NormalizeRotation();
+			NB.NormalizeRotation();
+
+			NA.Blend(NA, NB, Alpha);
+
+			// If we are nearly equal then snap to final position
+			if (NA.EqualsNoScale(NB))
+			{
+				SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
+				bLerpingPosition = false;
+			}
+			else // Else just keep going
+			{
+				SetRelativeLocationAndRotation(NA.GetTranslation(), NA.Rotator());
 			}
 		}
 	}

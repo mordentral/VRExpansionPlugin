@@ -228,45 +228,8 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 	}
 	else
 	{
-		if (bLerpingPosition)
-		{
-			NetUpdateCount += DeltaTime;
-			float LerpVal = FMath::Clamp(NetUpdateCount / (1.0f / NetUpdateRate), 0.0f, 1.0f);
-
-			if (LerpVal >= 1.0f)
-			{
-				SetRelativeLocationAndRotation(MotionSampleUpdateBuffer[0].Position, MotionSampleUpdateBuffer[0].Rotation);
-
-				static const auto CVarDoubleBufferTrackedDevices = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DoubleBufferReplicatedTrackedDevices"));
-				if (CVarDoubleBufferTrackedDevices->GetBool())
-				{
-					LastUpdatesRelativePosition = this->GetRelativeLocation();
-					LastUpdatesRelativeRotation = this->GetRelativeRotation();
-					NetUpdateCount = 0.0f;
-
-					// Move to next sample, we are catching up
-					MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
-				}
-				else
-				{
-					// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
-					// Actual prediction might be something to consider in the future, but rough to do in VR
-					// considering the speed and accuracy of movements
-					// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
-					// and might be perf taxing enough to not make it worth it.
-					bLerpingPosition = false;
-					NetUpdateCount = 0.0f;
-				}
-			}
-			else
-			{
-				// Removed variables to speed this up a bit
-				SetRelativeLocationAndRotation(
-					FMath::Lerp(LastUpdatesRelativePosition, (FVector)MotionSampleUpdateBuffer[0].Position, LerpVal),
-					FMath::Lerp(LastUpdatesRelativeRotation, MotionSampleUpdateBuffer[0].Rotation, LerpVal)
-				);
-			}
-		}
+		// Run any networked smoothing
+		RunNetworkedSmoothing(DeltaTime);
 	}
 
 	// Save out the component velocity from this and last frame
@@ -277,6 +240,67 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 	}
 
 	LastRelativePosition = bSampleVelocityInWorldSpace ? this->GetComponentTransform() : this->GetRelativeTransform();
+}
+
+void UReplicatedVRCameraComponent::RunNetworkedSmoothing(float DeltaTime)
+{
+	if (bLerpingPosition)
+	{
+		if (!bUseExponentialSmoothing)
+		{
+			NetUpdateCount += DeltaTime;
+			float LerpVal = FMath::Clamp(NetUpdateCount / (1.0f / NetUpdateRate), 0.0f, 1.0f);
+
+			if (LerpVal >= 1.0f)
+			{
+				SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
+
+				// Stop lerping, wait for next update if it is delayed or lost then it will hitch here
+				// Actual prediction might be something to consider in the future, but rough to do in VR
+				// considering the speed and accuracy of movements
+				// would like to consider sub stepping but since there is no server rollback...not sure how useful it would be
+				// and might be perf taxing enough to not make it worth it.
+				bLerpingPosition = false;
+				NetUpdateCount = 0.0f;
+			}
+			else
+			{
+				// Removed variables to speed this up a bit
+				SetRelativeLocationAndRotation(
+					FMath::Lerp(LastUpdatesRelativePosition, (FVector)ReplicatedCameraTransform.Position, LerpVal),
+					FMath::Lerp(LastUpdatesRelativeRotation, ReplicatedCameraTransform.Rotation, LerpVal)
+				);
+			}
+		}
+		else // Exponential Smoothing
+		{
+			if (InterpolationSpeed <= 0.f)
+			{
+				SetRelativeLocationAndRotation((FVector)ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
+				bLerpingPosition = false;
+				return;
+			}
+
+			const float Alpha = FMath::Clamp(DeltaTime * InterpolationSpeed, 0.f, 1.f);
+
+			FTransform NA = FTransform(GetRelativeRotation(), GetRelativeLocation(), FVector(1.0f));
+			FTransform NB = FTransform(ReplicatedCameraTransform.Rotation, (FVector)ReplicatedCameraTransform.Position, FVector(1.0f));
+			NA.NormalizeRotation();
+			NB.NormalizeRotation();
+
+			NA.Blend(NA, NB, Alpha);
+
+			// If we are nearly equal then snap to final position
+			if (NA.EqualsNoScale(NB))
+			{
+				SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
+			}
+			else // Else just keep going
+			{
+				SetRelativeLocationAndRotation(NA.GetTranslation(), NA.Rotator());
+			}
+		}
+	}
 }
 
 
@@ -439,4 +463,50 @@ void UReplicatedVRCameraComponent::GetCameraView(float DeltaTime, FMinimalViewIn
 
 	// If this camera component has a motion vector simumlation transform, use that for the current view's previous transform
 	DesiredView.PreviousViewTransform = FMotionVectorSimulation::Get().GetPreviousTransform(this);
+}
+
+void UReplicatedVRCameraComponent::OnRep_ReplicatedCameraTransform()
+{
+	if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
+	{
+		// Ensure that we clamp to the expected values from the client
+		ApplyTrackingParameters(ReplicatedCameraTransform.Position);
+	}
+
+	if (bSmoothReplicatedMotion)
+	{
+		if (bReppedOnce)
+		{
+			bLerpingPosition = true;
+			NetUpdateCount = 0.0f;
+			LastUpdatesRelativePosition = this->GetRelativeLocation();
+			LastUpdatesRelativeRotation = this->GetRelativeRotation();
+
+			if (bUseExponentialSmoothing)
+			{
+				FVector OldToNewVector = ReplicatedCameraTransform.Position - LastUpdatesRelativePosition;
+				float NewDistance = OldToNewVector.SizeSquared();
+
+				// Too far, snap to the new value
+				if (NewDistance >= FMath::Square(NetworkNoSmoothUpdateDistance))
+				{
+					SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
+					bLerpingPosition = false;
+				}
+				// Outside of the buffer distance, snap within buffer and keep smoothing from there
+				else if (NewDistance >= FMath::Square(NetworkMaxSmoothUpdateDistance))
+				{
+					FVector Offset = (OldToNewVector.Size() - NetworkMaxSmoothUpdateDistance) * OldToNewVector.GetSafeNormal();
+					SetRelativeLocation(LastUpdatesRelativePosition + Offset);
+				}
+			}
+		}
+		else
+		{
+			SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
+			bReppedOnce = true;
+		}
+	}
+	else
+		SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
 }

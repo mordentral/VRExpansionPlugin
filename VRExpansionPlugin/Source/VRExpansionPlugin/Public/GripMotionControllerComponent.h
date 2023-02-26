@@ -816,51 +816,10 @@ public:
 	bool bReppedOnce;
 
 	UFUNCTION()
-	virtual void OnRep_ReplicatedControllerTransform()
-	{
-		//ReplicatedControllerTransform.Unpack();
+	virtual void OnRep_ReplicatedControllerTransform();
 
-		if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
-		{
-			// Ensure that the client is sending valid boundries
-			ApplyTrackingParameters(ReplicatedControllerTransform.Position, true);
-		}
-
-		if (bSmoothReplicatedMotion)
-		{
-			static const auto CVarDoubleBufferTrackedDevices = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DoubleBufferReplicatedTrackedDevices"));
-			if (bReppedOnce)
-			{
-				bLerpingPosition = true;
-				ControllerNetUpdateCount = 0.0f;
-				LastUpdatesRelativePosition = this->GetRelativeLocation();
-				LastUpdatesRelativeRotation = this->GetRelativeRotation();
-
-				if (CVarDoubleBufferTrackedDevices->GetBool())
-				{
-					MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
-					MotionSampleUpdateBuffer[1] = ReplicatedControllerTransform;
-				}
-				else
-				{
-					MotionSampleUpdateBuffer[0] = ReplicatedControllerTransform;
-					// Also set the buffered value in case double buffering gets turned on
-					MotionSampleUpdateBuffer[1] = MotionSampleUpdateBuffer[0];
-				}
-			}
-			else
-			{
-				SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
-				bReppedOnce = true;
-
-				// Filling the second index in as well in case they turn on double buffering
-				MotionSampleUpdateBuffer[1] = ReplicatedControllerTransform;
-				MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
-			}
-		}
-		else
-			SetRelativeLocationAndRotation(ReplicatedControllerTransform.Position, ReplicatedControllerTransform.Rotation);
-	}
+	// Run the smoothing step
+	void RunNetworkedSmoothing(float DeltaTime);
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking", meta = (ClampMin = "0", UIMin = "0"))
@@ -872,6 +831,22 @@ public:
 	// Whether to smooth (lerp) between ticks for the replicated motion, DOES NOTHING if update rate is larger than FPS!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
 		bool bSmoothReplicatedMotion;
+
+	// If true then we will use exponential smoothing with buffered correction
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bSmoothReplicatedMotion"))
+		bool bUseExponentialSmoothing = true;
+
+	// Timestep of smoothing translation
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float InterpolationSpeed = 5.0f;
+
+	// Max distance to allow smoothing before snapping the remainder
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float NetworkMaxSmoothUpdateDistance = 50.f;
+
+	// Max distance to allow smoothing before snapping entirely to the new position
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float NetworkNoSmoothUpdateDistance = 100.f;
 
 	// Whether to replicate even if no tracking (FPS or test characters)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")

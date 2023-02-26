@@ -108,54 +108,31 @@ public:
 	bool bLerpingPosition;
 	bool bReppedOnce;
 
+	// Run the smoothing step
+	void RunNetworkedSmoothing(float DeltaTime);
+
 	// Whether to smooth (lerp) between ticks for the replicated motion, DOES NOTHING if update rate is larger than FPS!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "ReplicatedCamera|Networking")
 		bool bSmoothReplicatedMotion;
+
+	// If true then we will use exponential smoothing with buffered correction
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bSmoothReplicatedMotion"))
+		bool bUseExponentialSmoothing = true;
+
+	// Timestep of smoothing translation
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float InterpolationSpeed = 5.0f;
+
+	// Max distance to allow smoothing before snapping the remainder
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float NetworkMaxSmoothUpdateDistance = 50.f;
+
+	// Max distance to allow smoothing before snapping entirely to the new position
+	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
+		float NetworkNoSmoothUpdateDistance = 100.f;
 	
 	UFUNCTION()
-	virtual void OnRep_ReplicatedCameraTransform()
-	{
-		if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
-		{
-			// Ensure that we clamp to the expected values from the client
-			ApplyTrackingParameters(ReplicatedCameraTransform.Position);
-		}
-
-		if (bSmoothReplicatedMotion)
-		{
-			static const auto CVarDoubleBufferTrackedDevices = IConsoleManager::Get().FindConsoleVariable(TEXT("vr.DoubleBufferReplicatedTrackedDevices"));
-			if (bReppedOnce)
-			{
-				bLerpingPosition = true;
-				NetUpdateCount = 0.0f;
-				LastUpdatesRelativePosition = this->GetRelativeLocation();
-				LastUpdatesRelativeRotation = this->GetRelativeRotation();
-
-				if (CVarDoubleBufferTrackedDevices->GetBool())
-				{
-					MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
-					MotionSampleUpdateBuffer[1] = ReplicatedCameraTransform;
-				}
-				else
-				{
-					MotionSampleUpdateBuffer[0] = ReplicatedCameraTransform;
-					// Also set the buffered value in case double buffering gets turned on
-					MotionSampleUpdateBuffer[1] = MotionSampleUpdateBuffer[0];
-				}
-			}
-			else
-			{
-				SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
-				bReppedOnce = true;
-
-				// Filling the second index in as well in case they turn on double buffering
-				MotionSampleUpdateBuffer[1] = ReplicatedCameraTransform;
-				MotionSampleUpdateBuffer[0] = MotionSampleUpdateBuffer[1];
-			}
-		}
-		else
-			SetRelativeLocationAndRotation(ReplicatedCameraTransform.Position, ReplicatedCameraTransform.Rotation);
-	}
+	virtual void OnRep_ReplicatedCameraTransform();
 
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "ReplicatedCamera|Networking")
