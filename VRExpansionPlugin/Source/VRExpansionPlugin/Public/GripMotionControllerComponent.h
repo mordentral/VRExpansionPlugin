@@ -819,7 +819,6 @@ public:
 
 	FVector LastUpdatesRelativePosition;
 	FRotator LastUpdatesRelativeRotation;
-	FVector ExponentialSmoothingTranslationOffset;
 
 	bool bLerpingPosition;
 	bool bReppedOnce;
