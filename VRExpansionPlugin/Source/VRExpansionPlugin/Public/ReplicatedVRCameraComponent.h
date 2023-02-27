@@ -120,7 +120,7 @@ public:
 
 	// Timestep of smoothing translation
 	UPROPERTY(EditAnywhere, Category = "ReplicatedCamera|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
-		float InterpolationSpeed = 5.0f;
+		float InterpolationSpeed = 50.0f;
 
 	// Max distance to allow smoothing before snapping the remainder
 	UPROPERTY(EditAnywhere, Category = "ReplicatedCamera|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
