@@ -337,10 +337,23 @@ protected:
 	IMotionController* GripPolledMotionController_RenderThread;
 	FCriticalSection GripPolledMotionControllerMutex;
 
-	FTransform GripRenderThreadRelativeTransform;
-	FVector GripRenderThreadComponentScale;
-	FTransform GripRenderThreadProfileTransform;
-	FVector GripRenderThreadLastLocationForLateUpdate;
+	// Late update control variables (should likely struct these soon)
+	struct FRenderTrackingParams
+	{
+		FTransform GripRenderThreadRelativeTransform = FTransform::Identity;
+		FVector GripRenderThreadComponentScale = FVector::ZeroVector;
+		FTransform GripRenderThreadProfileTransform = FTransform::Identity;
+		FVector GripRenderThreadLastLocationForLateUpdate = FVector::ZeroVector;
+
+		// Smoothing info
+		bool bRenderSmoothHandTracking = false;
+		bool bRenderSmoothWithEuroLowPassFunction = false;
+		float RenderSmoothingSpeed = 0.0f;
+		FBPEuroLowPassFilterTrans RenderEuroSmoothingParams;
+		FTransform RenderLastSmoothRelativeTransform = FTransform::Identity;
+		float RenderLastDeltaTime = 0.0f;
+	}LateUpdateParams;
+
 
 	FDelegateHandle NewControllerProfileEvent_Handle;
 	UFUNCTION()
