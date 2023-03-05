@@ -4,9 +4,7 @@
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRLeverComponent)
 
 #include "GripMotionControllerComponent.h"
-//#include "PhysicsEngine/ConstraintInstance.h"
 #include "VRExpansionFunctionLibrary.h"
-//#include "PhysicsPublic.h"
 #include "Net/UnrealNetwork.h"
 
   //=============================================================================
@@ -29,7 +27,6 @@ UVRLeverComponent::UVRLeverComponent(const FObjectInitializer& ObjectInitializer
 
 	//SceneIndex = 0;
 
-	bIsPhysicsLever = false;
 	ParentComponent = nullptr;
 	LeverRotationAxis = EVRInteractibleLeverAxis::Axis_X;
 	
@@ -240,7 +237,6 @@ void UVRLeverComponent::ProccessCurrentState(bool bWasLerping, bool bThrowEvents
 
 void UVRLeverComponent::OnUnregister()
 {
-	DestroyConstraint();
 	Super::OnUnregister();
 }
 
@@ -368,75 +364,68 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 {
 	ParentComponent = this->GetAttachParent();
 
-	if (bIsPhysicsLever)
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+			
+	// This lets me use the correct original location over the network without changes
+	FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
+	FTransform CurrentTransform = this->GetComponentTransform();
+	FTransform RelativeToGripTransform = FTransform::Identity;
+
+	if (LeverRotationAxis == EVRInteractibleLeverAxis::FlightStick_XY)
 	{
-		SetupConstraint();
+		// Offset the grip to the same height on the cross axis and centered on the lever
+		FVector InitialInteractorOffset = ReversedRelativeTransform.GetTranslation();
+		FTransform InitTrans = ReversedRelativeTransform;
+		InitialInteractorOffset.X = 0;
+		InitialInteractorOffset.Y = 0;
+		InteractorOffsetTransform = ReversedRelativeTransform;
+		InteractorOffsetTransform.AddToTranslation(-InitialInteractorOffset);
+		InteractorOffsetTransform = FTransform(InteractorOffsetTransform.ToInverseMatrixWithScale());
+
+		InitialInteractorOffset = ReversedRelativeTransform.GetTranslation();
+		InitialInteractorOffset.Z = 0;
+
+		InitTrans.AddToTranslation(-InitialInteractorOffset);
+		RelativeToGripTransform = InitTrans * CurrentTransform;
 	}
 	else
 	{
-		FTransform CurrentRelativeTransform = InitialRelativeTransform * UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
-			
-		// This lets me use the correct original location over the network without changes
-		FTransform ReversedRelativeTransform = FTransform(GripInformation.RelativeTransform.ToInverseMatrixWithScale());
-		FTransform CurrentTransform = this->GetComponentTransform();
-		FTransform RelativeToGripTransform = FTransform::Identity;
-
-		if (LeverRotationAxis == EVRInteractibleLeverAxis::FlightStick_XY)
-		{
-			// Offset the grip to the same height on the cross axis and centered on the lever
-			FVector InitialInteractorOffset = ReversedRelativeTransform.GetTranslation();
-			FTransform InitTrans = ReversedRelativeTransform;
-			InitialInteractorOffset.X = 0;
-			InitialInteractorOffset.Y = 0;
-			InteractorOffsetTransform = ReversedRelativeTransform;
-			InteractorOffsetTransform.AddToTranslation(-InitialInteractorOffset);
-			InteractorOffsetTransform = FTransform(InteractorOffsetTransform.ToInverseMatrixWithScale());
-
-			InitialInteractorOffset = ReversedRelativeTransform.GetTranslation();
-			InitialInteractorOffset.Z = 0;
-
-			InitTrans.AddToTranslation(-InitialInteractorOffset);
-			RelativeToGripTransform = InitTrans * CurrentTransform;
-		}
-		else
-		{
-			RelativeToGripTransform = ReversedRelativeTransform * CurrentTransform;
-			InteractorOffsetTransform = FTransform::Identity;
-		}
-
-		InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
-		InitialInteractorDropLocation = ReversedRelativeTransform.GetTranslation();
-
-		switch (LeverRotationAxis)
-		{
-		case EVRInteractibleLeverAxis::Axis_XY:
-		{
-			qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
-		}break;
-		case EVRInteractibleLeverAxis::FlightStick_XY:
-		{
-			qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
-			InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_Z, ReversedRelativeTransform.GetTranslation());
-		}break;
-		case EVRInteractibleLeverAxis::Axis_X:
-		case EVRInteractibleLeverAxis::Axis_Y:
-		{
-			// Get our initial interactor rotation
-			InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)LeverRotationAxis, InitialInteractorLocation);
-		}break;
-
-		case EVRInteractibleLeverAxis::Axis_Z:
-		{
-			// Get our initial interactor rotation
-			InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)LeverRotationAxis, InitialInteractorLocation);
-		}break;
-
-		default:break;
-		}
-		
-		// Get out current rotation at grab
-		RotAtGrab = UVRInteractibleFunctionLibrary::GetDeltaAngleFromTransforms((EVRInteractibleAxis)LeverRotationAxis, CurrentRelativeTransform, CurrentTransform);
+		RelativeToGripTransform = ReversedRelativeTransform * CurrentTransform;
+		InteractorOffsetTransform = FTransform::Identity;
 	}
+
+	InitialInteractorLocation = CurrentRelativeTransform.InverseTransformPosition(RelativeToGripTransform.GetTranslation());
+	InitialInteractorDropLocation = ReversedRelativeTransform.GetTranslation();
+
+	switch (LeverRotationAxis)
+	{
+	case EVRInteractibleLeverAxis::Axis_XY:
+	{
+		qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
+	}break;
+	case EVRInteractibleLeverAxis::FlightStick_XY:
+	{
+		qRotAtGrab = this->GetComponentTransform().GetRelativeTransform(CurrentRelativeTransform).GetRotation();
+		InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle(EVRInteractibleAxis::Axis_Z, ReversedRelativeTransform.GetTranslation());
+	}break;
+	case EVRInteractibleLeverAxis::Axis_X:
+	case EVRInteractibleLeverAxis::Axis_Y:
+	{
+		// Get our initial interactor rotation
+		InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)LeverRotationAxis, InitialInteractorLocation);
+	}break;
+
+	case EVRInteractibleLeverAxis::Axis_Z:
+	{
+		// Get our initial interactor rotation
+		InitialGripRot = UVRInteractibleFunctionLibrary::GetAtan2Angle((EVRInteractibleAxis)LeverRotationAxis, InitialInteractorLocation);
+	}break;
+
+	default:break;
+	}
+		
+	// Get out current rotation at grab
+	RotAtGrab = UVRInteractibleFunctionLibrary::GetDeltaAngleFromTransforms((EVRInteractibleAxis)LeverRotationAxis, CurrentRelativeTransform, CurrentTransform);
 
 	LastLeverAngle = CurrentLeverAngle;
 	bIsLerping = false;
@@ -450,13 +439,6 @@ void UVRLeverComponent::OnGrip_Implementation(UGripMotionControllerComponent * G
 
 void UVRLeverComponent::OnGripRelease_Implementation(UGripMotionControllerComponent * ReleasingController, const FBPActorGripInformation & GripInformation, bool bWasSocketed) 
 {
-	if(bIsPhysicsLever)
-	{
-		DestroyConstraint();
-		FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, true);
-		this->AttachToComponent(ParentComponent.Get(), AttachRules);
-	}
-
 	if (LeverReturnTypeWhenReleased != EVRInteractibleLeverReturnType::Stay)
 	{		
 		bIsLerping = true;
@@ -509,28 +491,10 @@ bool UVRLeverComponent::SimulateOnDrop_Implementation()
 	return false;
 }
 
-/*EGripCollisionType UVRLeverComponent::SlotGripType_Implementation()
-{
-	if (bIsPhysicsLever)
-		return EGripCollisionType::ManipulationGrip;
-	else
-		return EGripCollisionType::CustomGrip;
-}
-
-EGripCollisionType UVRLeverComponent::FreeGripType_Implementation()
-{
-	if (bIsPhysicsLever)
-		return EGripCollisionType::ManipulationGrip;
-	else
-		return EGripCollisionType::CustomGrip;
-}*/
 
 EGripCollisionType UVRLeverComponent::GetPrimaryGripType_Implementation(bool bIsSlot)
 {
-	if (bIsPhysicsLever)
-		return EGripCollisionType::ManipulationGrip;
-	else
-		return EGripCollisionType::CustomGrip;
+	return EGripCollisionType::CustomGrip;
 }
 
 ESecondaryGripType UVRLeverComponent::SecondaryGripType_Implementation()
@@ -654,18 +618,6 @@ void UVRLeverComponent::SetHeld_Implementation(UGripMotionControllerComponent * 
 
 bool UVRLeverComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
-	return false;
-}
-
-bool UVRLeverComponent::DestroyConstraint()
-{
-	// #TODO: Recreate with chaos
-	return true;
-}
-
-bool UVRLeverComponent::SetupConstraint()
-{
-	// #TODO: Recreate with chaos
 	return false;
 }
 
