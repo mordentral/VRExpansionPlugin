@@ -135,6 +135,10 @@ void UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& Trackin
 						{
 							DeviceType = EBPOpenXRControllerDeviceType::DT_PicoNeo3Controller;
 						}
+						else if (InteractionName.Find("mixed_reality_controller", ESearchCase::IgnoreCase) != INDEX_NONE)
+						{
+							DeviceType = EBPOpenXRControllerDeviceType::DT_WMRController;
+						}
 						else
 						{
 							UE_LOG(OpenXRExpansionFunctionLibraryLog, Warning, TEXT("UNKNOWN OpenXR Interaction profile detected!!!: %s"), *InteractionName);

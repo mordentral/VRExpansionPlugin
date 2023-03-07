@@ -40,6 +40,7 @@ enum class EBPOpenXRControllerDeviceType : uint8
 	DT_MicrosoftMotionController,
 	DT_MicrosoftXboxController,
 	DT_PicoNeo3Controller,
+	DT_WMRController,
 	DT_UnknownController
 };
 
