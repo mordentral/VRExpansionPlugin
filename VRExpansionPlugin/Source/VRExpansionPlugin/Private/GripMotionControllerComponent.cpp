@@ -4458,15 +4458,18 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 			FTransform newTrans = Handle->COMPosition * (Handle->RootBoneRotation * physicsTrans);
 			if (pInstance && pInstance->IsValidBodyInstance())
 			{
-				//FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
-				FPhysicsCommand::ExecuteWrite(pInstance->GetPhysicsScene(), [&]()
+				if (FPhysScene* PhysicalScene = pInstance->GetPhysicsScene())
+				{
+					//FPhysicsCommand::ExecuteWrite(ActorHandle, [&](const FPhysicsActorHandle& Actor)
+					FPhysicsCommand::ExecuteWrite(PhysicalScene, [&]()
 					{
-						if (FPhysicsInterface::IsValid(ActorHandle) && FPhysicsInterface::GetCurrentScene(ActorHandle))
+						if (FPhysicsInterface::IsValid(ActorHandle))
 						{
 							FPhysicsInterface::SetKinematicTarget_AssumesLocked(ActorHandle, newTrans);
 							FPhysicsInterface::SetGlobalPose_AssumesLocked(ActorHandle, newTrans);
 						}
 					});
+				}
 			}
 		}
 	}
