@@ -39,6 +39,12 @@ void FCollisionIgnoreSubsystemAsyncCallback::OnContactModification_Internal(Chao
 				// is resolved.
 				if (ParticleHandle0 && ParticleHandle1)
 				{
+					// This lets us pull the transform at time of collision, collision events use the first contact
+					// for the information to throw out so we should be able to pull it here and keep it for that pair for the frame
+					//FTransform particleHandle = Chaos::FRigidTransform3(ParticleHandle0->X(), ParticleHandle0->R());
+					//FTransform particleHandle2 = Chaos::FRigidTransform3(ParticleHandle0->X(), ParticleHandle1->R());
+
+
 					//bool bHasCollisionFlag = ParticleHandle0->HasCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
 					//bool bHadCollisionFlag2 = ParticleHandle1->HasCollisionConstraintFlag(Chaos::ECollisionConstraintFlags::CCF_BroadPhaseIgnoreCollisions);
 
