@@ -3,21 +3,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/Engine.h"
+//#include "Engine/Engine.h"
 #include "VRBPDatatypes.h"
-#include "Algo/Reverse.h"
-#include "Components/SplineMeshComponent.h"
-#include "Components/SplineComponent.h"
-#include "VRBaseCharacter.h"
 #include "Engine/DataAsset.h"
-#include "DrawDebugHelpers.h"
-#include "Components/LineBatchComponent.h"
-#include "Engine/EngineTypes.h"
-#include "Engine/EngineBaseTypes.h"
+
+//#include "Engine/EngineTypes.h"
+//#include "Engine/EngineBaseTypes.h"
 #include "TimerManager.h"
 #include "VRGestureComponent.generated.h"
 
 DECLARE_STATS_GROUP(TEXT("TICKGesture"), STATGROUP_TickGesture, STATCAT_Advanced);
+
+class USplineMeshComponent;
+class USplineComponent;
+class AVRBaseCharacter;
 
 
 UENUM(Blueprintable)
@@ -88,18 +87,18 @@ public:
 
 	// Name of the recorded gesture
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
-	FString Name;
+		FString Name;
 
 	// Enum uint8 for end user use
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
-	uint8 GestureType;
+		uint8 GestureType;
 
 	// Samples in the recorded gesture
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "VRGesture")
-	TArray<FVector> Samples;
+		TArray<FVector> Samples;
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "VRGesture")
-	FBox GestureSize;
+		FBox GestureSize;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
 		FVRGestureSettings GestureSettings;
@@ -152,7 +151,7 @@ public:
 
 	// Gestures in this database
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-	TArray <FVRGesture> Gestures;
+		TArray <FVRGesture> Gestures;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
 		float TargetGestureScale;
@@ -168,11 +167,11 @@ public:
 
 	// Fills a spline component with a gesture, optionally also generates spline mesh components for it (uses ones already attached if possible)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-		void FillSplineWithGesture(UPARAM(ref)FVRGesture &Gesture, USplineComponent * SplineComponent, bool bCenterPointsOnSpline = true, bool bScaleToBounds = false, float OptionalBounds = 0.0f, bool bUseCurvedPoints = true, bool bFillInSplineMeshComponents = true, UStaticMesh * Mesh = nullptr, UMaterial * MeshMat = nullptr);
+		void FillSplineWithGesture(UPARAM(ref)FVRGesture& Gesture, USplineComponent* SplineComponent, bool bCenterPointsOnSpline = true, bool bScaleToBounds = false, float OptionalBounds = 0.0f, bool bUseCurvedPoints = true, bool bFillInSplineMeshComponents = true, UStaticMesh* Mesh = nullptr, UMaterial* MeshMat = nullptr);
 
 	// Imports a spline as a gesture, Segment len is the max segment length (will break lines up into lengths of this size)
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-		bool ImportSplineAsGesture(USplineComponent * HostSplineComponent, FString GestureName, bool bKeepSplineCurves = true, float SegmentLen = 10.0f, bool bScaleToDatabase = true);
+		bool ImportSplineAsGesture(USplineComponent* HostSplineComponent, FString GestureName, bool bKeepSplineCurves = true, float SegmentLen = 10.0f, bool bScaleToDatabase = true);
 
 };
 
@@ -184,10 +183,10 @@ struct VREXPANSIONPLUGIN_API FVRGestureSplineDraw
 public:
 
 	UPROPERTY()
-	USplineComponent* SplineComponent;
+		USplineComponent* SplineComponent;
 
 	UPROPERTY()
-	TArray<USplineMeshComponent*> SplineMeshes;
+		TArray<USplineMeshComponent*> SplineMeshes;
 
 	int LastIndexSet;
 	int NextIndexCleared;
@@ -206,7 +205,7 @@ public:
 };
 
 /** Delegate for notification when the lever state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FVRGestureDetectedSignature, uint8, GestureType, FString, DetectedGestureName, int, DetectedGestureIndex, UGesturesDatabase *, GestureDataBase);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FVRGestureDetectedSignature, uint8, GestureType, FString, DetectedGestureName, int, DetectedGestureIndex, UGesturesDatabase*, GestureDataBase, FVector, OriginalUnscaledGestureSize);
 
 /**
 * A scene component that can sample its positions to record / track VR gestures
@@ -230,7 +229,7 @@ public:
 	// if I decide to support three point tracked gestures or something at some point, but its a waste for single point.
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "BaseVRCharacter")
-		void OnGestureDetected(uint8 GestureType, FString &DetectedGestureName, int & DetectedGestureIndex, UGesturesDatabase * GestureDatabase);
+		void OnGestureDetected(uint8 GestureType, FString& DetectedGestureName, int& DetectedGestureIndex, UGesturesDatabase* GestureDatabase, FVector OriginalUnscaledGestureSize);
 
 	// Call to use an object
 	UPROPERTY(BlueprintAssignable, Category = "VRGestures")
@@ -238,7 +237,7 @@ public:
 
 	// Known sequences
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-	UGesturesDatabase *GesturesDB;
+		UGesturesDatabase* GesturesDB;
 
 	// Tolerance within we throw out duplicate samples
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
@@ -250,7 +249,7 @@ public:
 
 	// Tolerance within we throw out duplicate samples
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-		AVRBaseCharacter * TargetCharacter;
+		AVRBaseCharacter* TargetCharacter;
 
 	FVRGestureSplineDraw RecordingGestureDraw;
 
@@ -291,14 +290,14 @@ public:
 
 	// Maximum vertical or horizontal steps in a row in the lookup table before throwing out a gesture
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
-	int maxSlope;
+		int maxSlope;
 
 	UPROPERTY(BlueprintReadOnly, Category = "VRGestures")
-	EVRGestureState CurrentState;
+		EVRGestureState CurrentState;
 
 	// Currently recording gesture
 	UPROPERTY(BlueprintReadOnly, Category = "VRGestures")
-	FVRGesture GestureLog;
+		FVRGesture GestureLog;
 
 	inline float GetGestureDistance(FVector Seq1, FVector Seq2, bool bMirrorGesture = false)
 	{
@@ -314,7 +313,7 @@ public:
 
 	// Recalculates a gestures size and re-scales it to the given database
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-		void RecalculateGestureSize(UPARAM(ref) FVRGesture & InputGesture, UGesturesDatabase * GestureDB);
+		void RecalculateGestureSize(UPARAM(ref) FVRGesture& InputGesture, UGesturesDatabase* GestureDB);
 
 	// Draw a gesture with a debug line batch
 	UFUNCTION(BlueprintCallable, Category = "VRGestures", meta = (WorldContext = "WorldContextObject"))
@@ -322,6 +321,7 @@ public:
 
 	FVector StartVector;
 	FTransform OriginatingTransform;
+	FTransform ParentRelativeTransform;
 
 	/* Function to begin recording a gesture for detection or saving
 	*
@@ -329,7 +329,7 @@ public:
 	* bFlattenGestue: Should we flatten the gesture into 2 dimensions (more stable detection and recording, less pretty visually)
 	* bDrawGesture: Should we draw the gesture during recording of it
 	* bDrawAsSpline: If true we will use spline meshes, if false we will draw as debug lines
-	* SamplingHTZ: How many times a second we will record a gesture point, recording is done with a timer now, i would steer away 
+	* SamplingHTZ: How many times a second we will record a gesture point, recording is done with a timer now, i would steer away
 	* from htz > possible frames as that could cause double timer updates with how timers are implemented.
 	* SampleBufferSize: How many points we will store in history at a time
 	* ClampingTolerance: If larger than 0.0, we will clamp points to a grid of this size
@@ -347,7 +347,7 @@ public:
 
 	// Saves a VRGesture to the database, if Scale To Database is true then it will scale the data
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-		void SaveRecording(UPARAM(ref) FVRGesture &Recording, FString RecordingName, bool bScaleRecordingToDatabase = true);
+		void SaveRecording(UPARAM(ref) FVRGesture& Recording, FString RecordingName, bool bScaleRecordingToDatabase = true);
 
 	void CaptureGestureFrame();
 
@@ -365,4 +365,3 @@ public:
 	float dtw(FVRGesture seq1, FVRGesture seq2, bool bMirrorGesture = false, float Scaler = 1.f);
 
 };
-
