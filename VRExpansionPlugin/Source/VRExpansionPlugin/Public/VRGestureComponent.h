@@ -321,6 +321,7 @@ public:
 
 	FVector StartVector;
 	FTransform OriginatingTransform;
+	FTransform ParentRelativeTransform;
 
 	/* Function to begin recording a gesture for detection or saving
 	*
