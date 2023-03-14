@@ -275,8 +275,8 @@ void UVRGestureComponent::CaptureGestureFrame()
 
 					MeshComp->RegisterComponentWithWorld(GetWorld());
 					MeshComp->SetMobility(EComponentMobility::Movable);
-					MeshComp->SetStaticMesh(SplineMesh);
-					MeshComp->SetMaterial(0, (UMaterialInterface*)SplineMaterial);
+					//MeshComp->SetStaticMesh(SplineMesh);
+					//MeshComp->SetMaterial(0, (UMaterialInterface*)SplineMaterial);
 					bFoundEmptyMesh = true;
 					break;
 				}
@@ -295,8 +295,8 @@ void UVRGestureComponent::CaptureGestureFrame()
 				MeshComp->SetMobility(EComponentMobility::Movable);
 				RecordingGestureDraw.SplineMeshes.Add(MeshComp);
 				MeshIndex = RecordingGestureDraw.SplineMeshes.Num() - 1;
-				MeshComp->SetStaticMesh(SplineMesh);
-				MeshComp->SetMaterial(0, (UMaterialInterface*)SplineMaterial);
+				//MeshComp->SetStaticMesh(SplineMesh);
+				//MeshComp->SetMaterial(0, (UMaterialInterface*)SplineMaterial);
 				if (!bGetGestureInWorldSpace && TargetCharacter)
 					MeshComp->AttachToComponent(TargetCharacter->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 			}
@@ -309,6 +309,10 @@ void UVRGestureComponent::CaptureGestureFrame()
 					RecordingGestureDraw.SplineMeshes[RecordingGestureDraw.LastIndexSet]->SetEndPosition(NewSample, false);
 					RecordingGestureDraw.SplineMeshes[RecordingGestureDraw.LastIndexSet]->SetEndTangent(RecordingGestureDraw.SplineComponent->GetTangentAtSplinePoint(SplineIndex, ESplineCoordinateSpace::Local), true);
 				}
+
+				// Re-init mesh and material on the spline mesh, won't do anything if its the same
+				MeshComp->SetStaticMesh(SplineMesh);
+				MeshComp->SetMaterial(0, (UMaterialInterface*)SplineMaterial);
 
 				MeshComp->SetStartScale(SplineMeshScaler);
 				MeshComp->SetEndScale(SplineMeshScaler);
