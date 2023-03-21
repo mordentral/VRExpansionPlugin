@@ -3736,11 +3736,14 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				{
 					if (IsValid(LocallyGrippedObjects[i].GrippedObject) && LocallyGrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 					{
-						EGripInterfaceTeleportBehavior TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(LocallyGrippedObjects[i].GrippedObject);
-						if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation)
+						if (LocallyGrippedObjects[i].GripCollisionType != EGripCollisionType::CustomGrip && LocallyGrippedObjects[i].GripCollisionType != EGripCollisionType::EventsOnly)
 						{
-							bNeedsPhysicsTick = true;
-							break;
+							EGripInterfaceTeleportBehavior TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(LocallyGrippedObjects[i].GrippedObject);
+							if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation)
+							{
+								bNeedsPhysicsTick = true;
+								break;
+							}
 						}
 					}
 				}
@@ -3751,11 +3754,14 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 					{
 						if (IsValid(GrippedObjects[i].GrippedObject) && GrippedObjects[i].GrippedObject->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
 						{
-							EGripInterfaceTeleportBehavior TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(GrippedObjects[i].GrippedObject);
-							if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation)
+							if (GrippedObjects[i].GripCollisionType != EGripCollisionType::CustomGrip && GrippedObjects[i].GripCollisionType != EGripCollisionType::EventsOnly)
 							{
-								bNeedsPhysicsTick = true;
-								break;
+								EGripInterfaceTeleportBehavior TeleportBehavior = IVRGripInterface::Execute_TeleportBehavior(GrippedObjects[i].GrippedObject);
+								if (TeleportBehavior == EGripInterfaceTeleportBehavior::DeltaTeleportation)
+								{
+									bNeedsPhysicsTick = true;
+									break;
+								}
 							}
 						}
 					}
@@ -4333,6 +4339,12 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		}break;
 		default:break;
 		}
+	}
+
+	// We don't teleport these two grip types at all
+	if (Grip.GripCollisionType == EGripCollisionType::AttachmentGrip || Grip.GripCollisionType == EGripCollisionType::EventsOnly)
+	{
+		return false;
 	}
 
 	FTransform WorldTransform;
