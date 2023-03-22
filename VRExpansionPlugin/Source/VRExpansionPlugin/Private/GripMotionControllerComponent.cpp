@@ -149,6 +149,9 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 
 	SetIsReplicatedByDefault(true);
 
+	// Epic never initializes this variable, so I need to
+	CurrentTrackingStatus = ETrackingStatus::NotTracked;
+
 	// Default 100 htz update rate, same as the 100htz update rate of rep_notify, will be capped to 90/45 though because of vsync on HMD
 	//bReplicateControllerTransform = true;
 	ControllerNetUpdateRate = 100.0f; // 100 htz is default
@@ -4597,7 +4600,7 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			{
 				GripViewExtension = FSceneViewExtensions::NewExtension<FGripViewExtension>(this);
 			}
-
+			
 			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
 			ETrackingStatus LastTrackingStatus = CurrentTrackingStatus;
 			const bool bNewTrackedState = GripPollControllerState(Position, Orientation, WorldToMeters);
