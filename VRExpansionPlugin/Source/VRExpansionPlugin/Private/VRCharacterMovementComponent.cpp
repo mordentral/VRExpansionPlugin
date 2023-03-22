@@ -1385,7 +1385,7 @@ UVRCharacterMovementComponent::UVRCharacterMovementComponent(const FObjectInitia
 	//WallRepulsionMultiplier = 0.01f;
 	bUseClientControlRotation = false;
 	bAllowMovementMerging = true;
-	bRunClientCorrectionToHMD = true;
+	bRunClientCorrectionToHMD = false;
 	bRequestedMoveUseAcceleration = false;
 }
 
