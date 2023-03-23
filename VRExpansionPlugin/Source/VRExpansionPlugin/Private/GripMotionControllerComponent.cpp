@@ -26,6 +26,8 @@
 #include "IIdentifiableXRDevice.h" // for FXRDeviceId
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 
+#include "Physics/Experimental/PhysScene_Chaos.h"
+
 #include "GripScripts/GS_Default.h"
 #include "GripScripts/GS_LerpToHand.h"
 
@@ -33,6 +35,7 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/ConstraintDrives.h"
 #include "PhysicsReplication.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 
 #include "Chaos/ParticleHandle.h"
 #include "Chaos/KinematicGeometryParticles.h"

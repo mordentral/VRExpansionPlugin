@@ -12,6 +12,7 @@
 #include "Chaos/PBDRigidsEvolutionGBF.h"
 #include "VRGlobalSettings.h"
 #include "PhysicsEngine/PhysicsSettings.h"
+#include "Physics/Experimental/PhysScene_Chaos.h"
 //#include "Components/SkeletalMeshComponent.h"
 #include "Misc/ScopeRWLock.h"
 

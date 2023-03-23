@@ -8,6 +8,7 @@
 #include "ISettingsContainer.h"
 #include "ISettingsModule.h"
 #include "ISettingsSection.h"
+#include "Physics/Experimental/PhysScene_Chaos.h"
 
 #define LOCTEXT_NAMESPACE "FVRExpansionPluginModule"
 

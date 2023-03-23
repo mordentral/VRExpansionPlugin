@@ -11,6 +11,7 @@
 #include "Misc/BucketUpdateSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "PhysicsReplication.h"
+#include "Physics/Experimental/PhysScene_Chaos.h"
 #if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"
 #endif
@@ -26,9 +27,9 @@ void UOptionalRepSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracke
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Don't replicate if set to not do it
-	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeLocation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeRotation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(USceneComponent, RelativeScale3D, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeLocation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeRotation, bReplicateMovement);
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeScale3D, bReplicateMovement);
 }
 
 void UOptionalRepSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty >& OutLifetimeProps) const
@@ -115,13 +116,13 @@ void AGrippableSkeletalMeshActor::PreReplication(IRepChangedPropertyTracker& Cha
 
 	GatherCurrentMovement();
 
-	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(AActor, ReplicatedMovement, IsReplicatingMovement());
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AActor, ReplicatedMovement, IsReplicatingMovement());
 
 	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
 	DOREPLIFETIME_ACTIVE_OVERRIDE(AGrippableSkeletalMeshActor, AttachmentWeldReplication, RootComponent && !RootComponent->GetIsReplicated());
 
 	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
-	DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(AActor, AttachmentReplication, false);// RootComponent && !RootComponent->GetIsReplicated());
+	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AActor, AttachmentReplication, false);// RootComponent && !RootComponent->GetIsReplicated());
 
 
 #if WITH_PUSH_MODEL
@@ -159,7 +160,7 @@ void AGrippableSkeletalMeshActor::GatherCurrentMovement()
 		if (RootPrimComp && RootPrimComp->IsSimulatingPhysics())
 		{
 #if UE_WITH_IRIS
-			const bool bPrevRepPhysics = ReplicatedMovement.bRepPhysics;
+			const bool bPrevRepPhysics = GetReplicatedMovement_Mutable().bRepPhysics;
 #endif // UE_WITH_IRIS
 
 			bool bFoundInCache = false;
@@ -207,7 +208,7 @@ void AGrippableSkeletalMeshActor::GatherCurrentMovement()
 
 #if UE_WITH_IRIS
 						// If RepPhysics has changed value then notify the ReplicationSystem
-						if (bPrevRepPhysics != ReplicatedMovement.bRepPhysics)
+						if (bPrevRepPhysics != GetReplicatedMovement_Mutable().bRepPhysics)
 						{
 							UpdateReplicatePhysicsCondition();
 						}

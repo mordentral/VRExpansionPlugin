@@ -27,6 +27,8 @@
 #include "EditorStyleSet.h"
 #include "Styling/CoreStyle.h"
 
+#include "Animation/AnimData/AnimDataModel.h"
+
 #include "Editor/UnrealEdEngine.h"
 #include "UnrealEdGlobals.h"
 
@@ -149,11 +151,11 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 			AnimController.SetFrameRate(FFrameRate(1.f / 4.f, 1));
 
 			TArray<FName> TrackNames;
-			UAnimDataModel* BaseDataModel = nullptr;
+			const IAnimationDataModel* BaseDataModel = BaseAnimation ? BaseAnimation->GetController().GetModel() : nullptr;
 
 			if (BaseAnimation)
 			{
-				BaseDataModel = BaseAnimation->GetController().GetModel();
+				//BaseDataModel = BaseAnimation->GetController().GetModel();
 				if (BaseDataModel)
 				{
 					BaseDataModel->GetBoneTrackNames(TrackNames);
@@ -185,7 +187,8 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 				AnimationObject->RetargetSource = HandSocketComponent->VisualizationMesh ? HandSocketComponent->VisualizationMesh->GetSkeleton()->GetRetargetSourceForMesh(HandSocketComponent->VisualizationMesh) : NAME_None;
 			}
 
-			UAnimDataModel* DataModel = AnimController.GetModel();
+			const IAnimationDataModel* DataModel = AnimController.GetModel();
+			//UAnimDataModel* DataModel1 = AnimController.GetModel();
 
 			/// SAVE POSE
 			if (BaseAnimation && DataModel && BaseDataModel)

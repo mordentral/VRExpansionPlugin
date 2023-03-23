@@ -21,15 +21,15 @@ struct FXRDeviceId;
 
 /** Override replication control variable for inherited properties that are private. Be careful since it removes a compile-time error when the variable doesn't exist */
 // This is a temp macro until epic adds their own equivalent
-
-#define DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(c,v,active) \
+// #UE5.2 - Epic seems to allow the std override macro to work on private properties now, commented this out in case its needed later
+/*#define DOREPLIFETIME_ACTIVE_OVERRIDE_PRIVATE_PROPERTY(c,v,active) \
 { \
 	static FProperty* sp##v = GetReplicatedProperty(StaticClass(), c::StaticClass(),FName(TEXT(#v))); \
 	for (int32 i = 0; i < sp##v->ArrayDim; i++) \
 	{ \
-		ChangedPropertyTracker.SetCustomIsActiveOverride(this, sp##v->RepIndex + i, active); \
+		UE::Net::Private::FNetPropertyConditionManager::SetPropertyActiveOverride(ChangedPropertyTracker, this, (int32)c::ENetFields_Private::v, active); \
 	} \
-}
+}*/
 
 #define RESET_REPLIFETIME_CONDITION_PRIVATE_PROPERTY(c,v,cond)  ResetReplicatedLifetimeProperty(StaticClass(), c::StaticClass(), FName(TEXT(#v)), cond, OutLifetimeProps);
 
