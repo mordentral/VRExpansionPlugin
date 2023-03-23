@@ -142,11 +142,10 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 				AnimationObject->BoneCompressionSettings = FAnimationUtils::GetDefaultAnimationBoneCompressionSettings();
 			}
 
-
 			//AnimationObject->SetSequenceLength(4.f);
-			AnimController.SetPlayLength(4.f);
+			AnimController.SetPlayLength(1.f);
 			//AnimationObject->SetRawNumberOfFrame(1);
-			AnimController.SetFrameRate(FFrameRate(1.f / 4.f, 1));
+			AnimController.SetFrameRate(FFrameRate(1, 1));
 
 			TArray<FName> TrackNames;
 			UAnimDataModel* BaseDataModel = nullptr;
@@ -610,7 +609,7 @@ void FHandSocketComponentDetails::OnUpdateShowMesh(IDetailLayoutBuilder* LayoutB
 
 FReply FHandSocketComponentDetails::OnUpdateSavePose()
 {
-	if (HandSocketComponent.IsValid() && HandSocketComponent->CustomPoseDeltas.Num() > 0)
+	if (HandSocketComponent.IsValid() /* && HandSocketComponent->CustomPoseDeltas.Num() > 0*/)
 	{
 		if (HandSocketComponent->HandTargetAnimation || HandSocketComponent->VisualizationMesh)
 		{
