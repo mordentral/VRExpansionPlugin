@@ -144,24 +144,28 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 				AnimationObject->BoneCompressionSettings = FAnimationUtils::GetDefaultAnimationBoneCompressionSettings();
 			}
 
+			AnimController.InitializeModel();
+			AnimController.RemoveAllBoneTracks(false);
+			
 
-			//AnimationObject->SetSequenceLength(4.f);
-			AnimController.SetPlayLength(4.f);
-			//AnimationObject->SetRawNumberOfFrame(1);
-			AnimController.SetFrameRate(FFrameRate(1.f / 4.f, 1));
+			//checkf(MovieScene, TEXT("No Movie Scene found for SequencerDataModel"));
+			//AnimController.SetPlayLength(4.f);
+			AnimController.SetNumberOfFrames(FFrameNumber(1), false);
+
+			// Set frame rate to 1 to 1 as we don't animate
+			AnimController.SetFrameRate(FFrameRate(1, 1));
 
 			TArray<FName> TrackNames;
 			const IAnimationDataModel* BaseDataModel = BaseAnimation ? BaseAnimation->GetController().GetModel() : nullptr;
 
 			if (BaseAnimation)
 			{
-				//BaseDataModel = BaseAnimation->GetController().GetModel();
 				if (BaseDataModel)
 				{
 					BaseDataModel->GetBoneTrackNames(TrackNames);
 					for (FName TrackName : TrackNames)
 					{
-						AnimController.AddBoneTrack(TrackName);
+						AnimController.AddBoneCurve(TrackName);
 					}
 				}
 				else
@@ -188,53 +192,20 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 			}
 
 			const IAnimationDataModel* DataModel = AnimController.GetModel();
-			//UAnimDataModel* DataModel1 = AnimController.GetModel();
 
 			/// SAVE POSE
 			if (BaseAnimation && DataModel && BaseDataModel)
 			{
-				for (int32 TrackIndex = 0; TrackIndex < DataModel->GetBoneAnimationTracks().Num(); ++TrackIndex)
+				for (int32 TrackIndex = 0; TrackIndex < /*DataModel->GetBoneAnimationTracks().Num()*/BaseDataModel->GetNumBoneTracks(); ++TrackIndex)
 				{
-					const FRawAnimSequenceTrack& RawTrack = BaseDataModel->GetBoneTrackByIndex(TrackIndex).InternalTrackData;
-
-					bool bHadLoc = false;
-					bool bHadRot = false;
-					bool bHadScale = false;
-					FVector Loc = FVector::ZeroVector;
-					FQuat Rot = FQuat::Identity;
-					FVector Scale = FVector::ZeroVector;
-
-					if (RawTrack.PosKeys.Num())
-					{
-						Loc.X = RawTrack.PosKeys[0].X;
-						Loc.Y = RawTrack.PosKeys[0].Y;
-						Loc.Z = RawTrack.PosKeys[0].Z;
-						//Loc = RawTrack.PosKeys[0];
-						bHadLoc = true;
-					}
-
-					if (RawTrack.RotKeys.Num())
-					{
-						Rot.X = RawTrack.RotKeys[0].X;
-						Rot.Y = RawTrack.RotKeys[0].Y;
-						Rot.Z = RawTrack.RotKeys[0].Z;
-						Rot.W = RawTrack.RotKeys[0].W;
-						//Rot = RawTrack.RotKeys[0];
-						bHadRot = true;
-					}
-
-					if (RawTrack.ScaleKeys.Num())
-					{
-						Scale.X = RawTrack.ScaleKeys[0].X;
-						Scale.Y = RawTrack.ScaleKeys[0].Y;
-						Scale.Z = RawTrack.ScaleKeys[0].Z;
-						//Scale = RawTrack.ScaleKeys[0];
-						bHadScale = true;
-					}
-
-					FTransform FinalTrans(Rot, Loc, Scale);
-
 					FName TrackName = TrackIndex < TrackNames.Num() ? TrackNames[TrackIndex] : NAME_None;
+					if (!BaseDataModel->IsValidBoneTrackName(TrackName))
+					{
+						continue;
+					}
+
+					FTransform FinalTrans = BaseDataModel->GetBoneTrackTransform(TrackName, 0);
+					//FTransform FinalTrans(Rot, Loc, Scale);
 
 					FQuat DeltaQuat = FQuat::Identity;
 					for (FBPVRHandPoseBonePair& HandPair : HandSocketComponent->CustomPoseDeltas)
@@ -242,7 +213,6 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 						if (HandPair.BoneName == TrackName)
 						{
 							DeltaQuat = HandPair.DeltaPose;
-							bHadRot = true;
 							break;
 						}
 					}
@@ -251,7 +221,6 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 					FinalTrans.NormalizeRotation();
 
 					//FRawAnimSequenceTrack& RawNewTrack = DataModel->GetBoneTrackByIndex(TrackIndex).InternalTrackData;
-
 					AnimController.SetBoneTrackKeys(TrackName, { FinalTrans.GetTranslation() }, { FinalTrans.GetRotation() }, { FinalTrans.GetScale3D() });
 				}
 			}
