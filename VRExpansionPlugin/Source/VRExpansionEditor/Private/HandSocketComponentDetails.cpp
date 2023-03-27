@@ -178,7 +178,8 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 				int numBones = HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetNum();
 				for (int i = 0; i < LocalPoses.Num() && i < numBones; ++i)
 				{
-					AnimController.AddBoneTrack(HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetBoneName(i));
+					AnimController.AddBoneCurve(HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetBoneName(i));
+					//AnimController.AddBoneTrack(HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetBoneName(i));
 				}
 			}
 
@@ -228,10 +229,28 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 			{
 				USkeletalMesh* SkeletalMesh = HandSocketComponent->VisualizationMesh;
 				USkeleton* AnimSkeleton = SkeletalMesh->GetSkeleton();
-				for (int32 TrackIndex = 0; TrackIndex < DataModel->GetBoneAnimationTracks().Num(); ++TrackIndex)
+				for (int32 TrackIndex = 0; TrackIndex < /*DataModel->GetBoneAnimationTracks().Num()*/BaseDataModel->GetNumBoneTracks(); ++TrackIndex)
 				{
+					FName TrackName = TrackIndex < TrackNames.Num() ? TrackNames[TrackIndex] : NAME_None;
+					if (!BaseDataModel->IsValidBoneTrackName(TrackName))
+					{
+						continue;
+					}
+
+					int32 BoneTreeIndex = INDEX_NONE;
+
+					const FBoneAnimationTrack* Track = BaseDataModel->GetBoneAnimationTracks().FindByPredicate([TrackName](const FBoneAnimationTrack& Track)
+						{
+							return Track.Name == TrackName;
+						});
+
+					if (Track)
+					{
+						BoneTreeIndex = Track->BoneTreeIndex;
+					}
 					// verify if this bone exists in skeleton
-					int32 BoneTreeIndex = DataModel->GetBoneTrackByIndex(TrackIndex).BoneTreeIndex;
+					//int32 BoneTreeIndex = DataModel->GetBoneTrackByIndex(TrackIndex).BoneTreeIndex;
+					
 					if (BoneTreeIndex != INDEX_NONE)
 					{
 						int32 BoneIndex = AnimSkeleton->GetMeshBoneIndexFromSkeletonBoneIndex(SkeletalMesh, BoneTreeIndex);
