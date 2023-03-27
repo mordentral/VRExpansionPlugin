@@ -25,6 +25,7 @@
 #include "Math/DualQuat.h"
 #include "IIdentifiableXRDevice.h" // for FXRDeviceId
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
+#include "XRDeviceVisualizationComponent.h" // For visualization component
 
 #include "Physics/Experimental/PhysScene_Chaos.h"
 
@@ -4624,10 +4625,21 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			}
 
 			// if controller tracking just kicked in or we haven't gotten a valid model yet
+			if (!bTracked && bNewTrackedState && !bHasStartedRendering)
+			{
+				if (VisualizationComponent)
+				{
+					VisualizationComponent->SetIsRenderingActive(true);
+					bHasStartedRendering = true;
+				}
+			}
+
+			// This part is deprecated and will be removed in later versions.
+			// If controller tracking just kicked in or we haven't gotten a valid model yet
 			if (((!bTracked && bNewTrackedState) || !DisplayComponentReference.IsValid()) && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
 			{
 				RefreshDisplayComponent();
-			}
+			} // End of deprecation
 
 			bTracked = bNewTrackedState && (bIgnoreTrackingStatus || CurrentTrackingStatus != ETrackingStatus::NotTracked);
 			if (bTracked)

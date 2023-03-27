@@ -1427,6 +1427,9 @@ public:
 	/** Whether or not this component has authority within the frame*/
 	bool bHasAuthority;
 
+	/** Whether or not this component has informed the visualization component (if present) to start rendering */
+	bool bHasStartedRendering = false;
+
 private:
 	/** Whether or not this component is currently on the network server*/
 	//bool bIsServer;

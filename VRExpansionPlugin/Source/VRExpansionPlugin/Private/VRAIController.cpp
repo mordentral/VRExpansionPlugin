@@ -64,7 +64,7 @@ bool AVRAIController::LineOfSightTo(const AActor* Other, FVector ViewPoint, bool
 	const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(Other);
 	const FVector OtherActorLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : Other->GetActorLocation();
 
-	const float DistSq = (OtherActorLocation - ViewPoint).SizeSquared();
+	const FVector::FReal DistSq = (OtherActorLocation - ViewPoint).SizeSquared();
 	if (DistSq > FARSIGHTTHRESHOLDSQUARED)
 	{
 		return false;
@@ -103,11 +103,11 @@ bool AVRAIController::LineOfSightTo(const AActor* Other, FVector ViewPoint, bool
 		Points[3] = OtherActorLocation + FVector(OtherRadius, -1 * OtherRadius, 0);
 		int32 IndexMin = 0;
 		int32 IndexMax = 0;
-		float CurrentMax = (Points[0] - ViewPoint).SizeSquared();
-		float CurrentMin = CurrentMax;
+		FVector::FReal CurrentMax = (Points[0] - ViewPoint).SizeSquared();
+		FVector::FReal CurrentMin = CurrentMax;
 		for (int32 PointIndex = 1; PointIndex < 4; PointIndex++)
 		{
-			const float NextSize = (Points[PointIndex] - ViewPoint).SizeSquared();
+			const FVector::FReal NextSize = (Points[PointIndex] - ViewPoint).SizeSquared();
 			if (NextSize > CurrentMin)
 			{
 				CurrentMin = NextSize;
