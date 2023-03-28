@@ -3886,6 +3886,9 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		MovementBaseUtility::TransformDirectionToWorld(NewBase, NewBaseBoneName, CurrentVelocity, NewVelocity);
 	}
 
+
+	// #TODO: Epics 5.1 rotation enforce, we use our own currently
+	/*
 	// Fall back to the last-known good rotation if the server didn't send one
 	static const auto CVarUseLastGoodRotationDuringCorrection = IConsoleManager::Get().FindConsoleVariable(TEXT("p.UseLastGoodRotationDuringCorrection"));
 	if (CVarUseLastGoodRotationDuringCorrection->GetInt()
@@ -3893,7 +3896,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		&& (!OptionalRotation.IsSet() && ClientData->LastAckedMove.IsValid()))
 	{
 		OptionalRotation = ClientData->LastAckedMove->SavedRotation;
-	}
+	}*/
 
 	// Trigger event
 	OnClientCorrectionReceived(*ClientData, TimeStamp, WorldShiftedNewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
