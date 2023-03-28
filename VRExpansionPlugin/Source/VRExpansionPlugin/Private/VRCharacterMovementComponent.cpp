@@ -445,12 +445,19 @@ void FSavedMove_VRCharacter::PrepMoveFor(ACharacter* Character)
 			}
 		}
 
+		CharMove->VRRootCapsule->StoredCameraRotOffset = CharMove->VRRootCapsule->curCameraRot;
 		CharMove->VRRootCapsule->GenerateOffsetToWorld(false, false);
 	}
 
 	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
 }
 
+
+void UVRCharacterMovementComponent::RegenerateOffset()
+{
+	if(VRRootCapsule)
+		VRRootCapsule->GenerateOffsetToWorld();
+}
 
 void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterNetworkMoveData& MoveData)
 {
@@ -597,6 +604,7 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 					}
 				}
 
+				VRRootCapsule->StoredCameraRotOffset = VRRootCapsule->curCameraRot;
 				VRRootCapsule->GenerateOffsetToWorld(false, false);
 
 				// #TODO: Should I actually implement the mesh translation from "Crouch"? Generally people are going to be

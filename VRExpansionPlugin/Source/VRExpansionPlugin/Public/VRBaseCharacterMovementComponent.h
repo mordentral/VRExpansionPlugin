@@ -138,6 +138,8 @@ public:
 
 	FVRMoveActionArray MoveActionArray;
 
+	virtual void RegenerateOffset() {};
+
 	bool CheckForMoveAction();
 	virtual bool DoMASnapTurn(FVRMoveActionContainer& MoveAction);
 	virtual bool DoMASetRotation(FVRMoveActionContainer& MoveAction);

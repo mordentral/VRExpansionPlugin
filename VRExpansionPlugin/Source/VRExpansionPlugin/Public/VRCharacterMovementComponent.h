@@ -48,6 +48,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Transient, Category = VRMovement)
 		TObjectPtr<UVRRootComponent> VRRootCapsule;
 
+	virtual void RegenerateOffset() override;
+
 	/** Reject sweep impacts that are this close to the edge of the vertical portion of the capsule when performing vertical sweeps, and try again with a smaller capsule. */
 	static const float CLIMB_SWEEP_EDGE_REJECT_DISTANCE;
 	virtual bool IsWithinClimbingEdgeTolerance(const FVector& CapsuleLocation, const FVector& TestImpactPoint, const float CapsuleRadius) const;
