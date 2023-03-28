@@ -403,6 +403,9 @@ public:
 		return OffsetComponentToWorld.GetLocation();
 	}
 
+	// Returns the head location projected from the world offset (if applicable)
+	virtual FVector GetProjectedVRLocation() const;
+
 	// Gets the rotation of the HMD offset capsule
 	UFUNCTION(BlueprintPure, Category = "BaseVRCharacter|VRLocations")
 		FRotator GetVRRotation() const
@@ -486,21 +489,25 @@ public:
 	void SetSeatRelativeLocationAndRotationVR(FVector LocDelta);
 
 	// Adds a rotation delta taking into account the HMD as a pivot point (also moves the actor), returns final location difference
+	// If bRotateAroundCapsule is true then it rotates around the offset capsule, otherwise it rotates around the camera
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
-		FVector AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYawOnly = true);
+		FVector AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYawOnly = true, bool bRotateAroundCapsule = true);
 
 	// Sets the actors rotation taking into account the HMD as a pivot point (also moves the actor), returns the location difference
 	// bAccountForHMDRotation sets the rot to have the HMD face the given rot, if it is false it ignores the HMD rotation
+	// If bRotateAroundCapsule is true then it rotates around the offset capsule, otherwise it rotates around the camera
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
-		FVector SetActorRotationVR(FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true);
+		FVector SetActorRotationVR(FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true, bool bRotateAroundCapsule = true);
 	
 	// Sets the actors rotation and location taking into account the HMD as a pivot point (also moves the actor), returns the location difference from the rotation
+	// If bRotateAroundCapsule is true then it rotates around the offset capsule, otherwise it rotates around the camera
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
-		FVector SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true, bool bTeleport = false);
+		FVector SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly = true, bool bAccountForHMDRotation = true, bool bTeleport = false, bool bRotateAroundCapsule = true);
 
 	// Sets the actors location taking into account the HMD as a pivot point, returns the location difference
+	// If SetCapsuleLocation is true then it offsets the capsule to the location, otherwise it will move the Camera itself to the location
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")
-		FVector SetActorLocationVR(FVector NewLoc, bool bTeleport);
+		FVector SetActorLocationVR(FVector NewLoc, bool bTeleport, bool bSetCapsuleLocation = true);
 
 	// Regenerates the base offsetcomponenttoworld that VR uses
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacter|VRLocations")

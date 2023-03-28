@@ -33,6 +33,9 @@ public:
 	pass in a teleport location and it provides the correct spot for it to be at your feet
 	*/
 	virtual FVector GetTeleportLocation(FVector OriginalLocation) override;
+
+	// Returns the head location projected from the world offset (if applicable)
+	virtual FVector GetProjectedVRLocation() const override;
 	
 	
 	// Overriding to correct some nav stuff
