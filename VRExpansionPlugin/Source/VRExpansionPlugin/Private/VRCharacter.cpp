@@ -222,3 +222,15 @@ void AVRCharacter::SetCharacterHalfHeightVR(float HalfHeight, bool bUpdateOverla
 		Super::SetCharacterHalfHeightVR(HalfHeight, bUpdateOverlaps);
 	}
 }
+
+FVector AVRCharacter::GetProjectedVRLocation() const
+{
+	if (VRRootReference)
+	{
+		return OffsetComponentToWorld.TransformPosition(-FVector(VRRootReference->VRCapsuleOffset.X, VRRootReference->VRCapsuleOffset.Y, 0.0f));
+	}
+	else
+	{
+		return AVRBaseCharacter::GetProjectedVRLocation();
+	}
+}

@@ -155,6 +155,9 @@ public:
 					//Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
 					//Ar << Pitch;
 				}
+
+				bool bRotateAroundCapsule = MoveActionFlags & 0x08;
+				Ar.SerializeBits(&bRotateAroundCapsule, 1);
 			}
 			else
 			{
@@ -193,6 +196,10 @@ public:
 					//Ar << Pitch;
 					//MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
 				}
+
+				bool bRotateAroundCapsule = false;
+				Ar.SerializeBits(&bRotateAroundCapsule, 1);
+				MoveActionFlags |= (uint8)(bRotateAroundCapsule << 3);
 			}
 
 			//bOutSuccess &= SerializePackedVector<100, 30>(MoveActionLoc, Ar);

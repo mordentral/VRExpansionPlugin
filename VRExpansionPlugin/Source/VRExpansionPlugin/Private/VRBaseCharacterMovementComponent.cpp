@@ -611,7 +611,7 @@ void UVRBaseCharacterMovementComponent::StoreSetTrackingPaused(bool bNewTracking
 	CheckServerAuthedMoveAction();
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYawAngle, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport, bool bRotateAroundCapsule )
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
@@ -627,6 +627,11 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	else if(bFlagGripTeleport)
 		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
 
+	if (bRotateAroundCapsule)
+	{
+		MoveAction.MoveActionFlags |= 0x08;
+	}
+
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
 		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
@@ -639,7 +644,7 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	CheckServerAuthedMoveAction();
 }
 
-void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport)
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention, bool bFlagGripTeleport, bool bFlagCharacterTeleport, bool bRotateAroundCapsule)
 {
 	FVRMoveActionContainer MoveAction;
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SetRotation;
@@ -649,6 +654,11 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SetRotation(float NewY
 		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
 	else if (bFlagGripTeleport)
 		MoveAction.MoveActionFlags = 0x01;//MoveActionRot.Roll = bFlagGripTeleport ? 1.0f : 0.0f;
+
+	if (bRotateAroundCapsule)
+	{
+		MoveAction.MoveActionFlags |= 0x08;
+	}
 
 	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
@@ -758,16 +768,18 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 
 		FQuat OrigRot = OwningCharacter->GetActorQuat();
 
+		bool bRotateAroundCapsule = MoveAction.MoveActionFlags & 0x08;
+
 		if (this->BaseVRCharacterOwner && this->BaseVRCharacterOwner->IsLocallyControlled())
 		{
 			if (this->bUseClientControlRotation)
 			{
-				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, true, false, bRotateAroundCapsule);
 				MoveAction.MoveActionFlags |= 0x04; // Flag that we are using loc only
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+				OwningCharacter->SetActorRotationVR(TargetRot, true, false, bRotateAroundCapsule);
 			}
 		}
 		else
@@ -778,7 +790,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, true, false);
+				OwningCharacter->SetActorRotationVR(TargetRot, true, false, bRotateAroundCapsule);
 			}
 		}
 
@@ -818,6 +830,8 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 
 bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& MoveAction)
 {
+	bool bRotateAroundCapsule = MoveAction.MoveActionFlags & 0x08;
+
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
@@ -830,7 +844,7 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, true);
+				OwningCharacter->SetActorRotationVR(TargetRot, true, true, bRotateAroundCapsule);
 			}
 		}
 		else
@@ -841,7 +855,7 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, true);
+				OwningCharacter->SetActorRotationVR(TargetRot, true, true, bRotateAroundCapsule);
 			}
 		}
 

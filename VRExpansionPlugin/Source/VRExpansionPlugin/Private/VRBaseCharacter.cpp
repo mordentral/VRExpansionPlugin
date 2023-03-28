@@ -782,15 +782,19 @@ void AVRBaseCharacter::SetSeatRelativeLocationAndRotationVR(FVector DeltaLoc)
 	SetActorRelativeTransform(FTransform(NewRotation, NewLocation, GetCapsuleComponent()->GetRelativeScale3D()));
 }
 
+FVector AVRBaseCharacter::GetProjectedVRLocation() const
+{
+	return GetVRLocation_Inline();
+}
 
-FVector AVRBaseCharacter::AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYawOnly)
+FVector AVRBaseCharacter::AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYawOnly, bool bRotateAroundCapsule)
 {
 	AController* OwningController = GetController();
 
 	FVector NewLocation;
 	FRotator NewRotation;
 	FVector OrigLocation = GetActorLocation();
-	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
+	FVector PivotPoint = GetActorTransform().InverseTransformPosition(bRotateAroundCapsule ? GetVRLocation_Inline() : GetProjectedVRLocation());
 	PivotPoint.Z = 0.0f;
 
 	NewRotation = bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
@@ -813,14 +817,14 @@ FVector AVRBaseCharacter::AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYa
 	return NewLocation - OrigLocation;
 }
 
-FVector AVRBaseCharacter::SetActorRotationVR(FRotator NewRot, bool bUseYawOnly, bool bAccountForHMDRotation)
+FVector AVRBaseCharacter::SetActorRotationVR(FRotator NewRot, bool bUseYawOnly, bool bAccountForHMDRotation, bool bRotateAroundCapsule)
 {
 	AController* OwningController = GetController();
 
 	FVector NewLocation;
 	FRotator NewRotation;
 	FVector OrigLocation = GetActorLocation();
-	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
+	FVector PivotPoint = GetActorTransform().InverseTransformPosition(bRotateAroundCapsule ? GetVRLocation_Inline() : GetProjectedVRLocation());
 	PivotPoint.Z = 0.0f;
 
 	FRotator OrigRotation = bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
@@ -851,13 +855,13 @@ FVector AVRBaseCharacter::SetActorRotationVR(FRotator NewRot, bool bUseYawOnly, 
 	return NewLocation - OrigLocation;
 }
 
-FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly, bool bAccountForHMDRotation, bool bTeleport)
+FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator NewRot, bool bUseYawOnly, bool bAccountForHMDRotation, bool bTeleport, bool bRotateAroundCapsule)
 {
 	AController* OwningController = GetController();
 
 	FVector NewLocation;
 	FRotator NewRotation;
-	FVector PivotPoint = GetActorTransform().InverseTransformPosition(GetVRLocation_Inline());
+	FVector PivotPoint = GetActorTransform().InverseTransformPosition(bRotateAroundCapsule ? GetVRLocation_Inline() : GetProjectedVRLocation());
 	PivotPoint.Z = 0.0f;
 
 	if (bUseYawOnly)
@@ -886,11 +890,11 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 	return NewLocation - NewLoc;
 }
 
-FVector AVRBaseCharacter::SetActorLocationVR(FVector NewLoc, bool bTeleport)
+FVector AVRBaseCharacter::SetActorLocationVR(FVector NewLoc, bool bTeleport, bool bSetCapsuleLocation)
 {
 	FVector NewLocation;
 	FRotator NewRotation;
-	FVector PivotOffsetVal = GetVRLocation_Inline() - GetActorLocation();
+	FVector PivotOffsetVal = (bSetCapsuleLocation ? GetVRLocation_Inline() : GetProjectedVRLocation()) - GetActorLocation();
 	PivotOffsetVal.Z = 0.0f;
 
 

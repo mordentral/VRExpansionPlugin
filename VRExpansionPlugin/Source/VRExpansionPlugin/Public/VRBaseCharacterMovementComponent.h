@@ -112,13 +112,15 @@ public:
 	virtual void StoreSetTrackingPaused(bool bNewTrackingPaused);
 
 	// Perform a snap turn in line with the move action system
+	// If bRotateAroundCapsule is true then the rotation is around the offset capsule (neck) rather than the actual camera location
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false, bool bFlagCharacterTeleport = false);
+		void PerformMoveAction_SnapTurn(float SnapTurnDeltaYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false, bool bFlagCharacterTeleport = false, bool bRotateAroundCapsule = true);
 
 	// Perform a rotation set in line with the move actions system
 	// This node specifically sets the FACING direction to a value, where your HMD is pointed
+	// If bRotateAroundCapsule is true then the rotation is around the offset capsule (neck) rather than the actual camera location
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
-		void PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false, bool bFlagCharacterTeleport = false);
+		void PerformMoveAction_SetRotation(float NewYaw, EVRMoveActionVelocityRetention VelocityRetention = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None, bool bFlagGripTeleport = false, bool bFlagCharacterTeleport = false, bool bRotateAroundCapsule = true);
 
 	// Perform a teleport in line with the move action system
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
