@@ -400,10 +400,10 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 	Ar << VRCapsuleRotation;
 
 	// Location is only used for error checking, so only save for the final move.
-	if (MoveType == ENetworkMoveType::NewMove)
-	{
+	//if (MoveType == ENetworkMoveType::NewMove)
+	//{
 		Location.NetSerialize(Ar, PackageMap, bLocalSuccess);
-	}
+	//}
 
 	// Movement base needs to always send now since they allow for relative based velocity
 	SerializeOptionalValue<UPrimitiveComponent*>(bIsSaving, Ar, MovementBase, nullptr);
