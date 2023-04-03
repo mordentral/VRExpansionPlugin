@@ -110,10 +110,9 @@ FReply FVRGlobalSettingsDetails::OnCorrectInvalidAnimationAssets()
 			IAnimationDataController& AnimController = AnimSeq->GetController();
 			{
 				IAnimationDataController::FScopedBracket ScopedBracket(AnimController, LOCTEXT("FixAnimationAsset_VRE", "Fixing invalid anim sequences"));
-				const IAnimationDataModel* AnimModel = AnimController.GetModel();
-
-				FFrameRate FrameRate = AnimModel->GetFrameRate();
-				int32 NumFrames = AnimModel->GetNumberOfFrames();
+				
+				FFrameRate FrameRate = AnimSeq->GetSamplingFrameRate();
+				int32 NumFrames = AnimSeq->GetNumberOfFrames();
 				double FrameRateD = FrameRate.AsDecimal();
 
 				// I was saving with a below 1.0 frame rate and 1 frame
