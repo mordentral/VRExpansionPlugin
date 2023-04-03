@@ -120,7 +120,7 @@ FReply FVRGlobalSettingsDetails::OnCorrectInvalidAnimationAssets()
 				if (FrameRateD < 1.0f)
 				{
 					// We have an invalid frame rate for 5.2
-					AnimController.SetFrameRate(FFrameRate(NumFrames, 1));
+					AnimController.SetFrameRate(FFrameRate(1, 1));
 					AnimSeq->MarkPackageDirty();
 
 					UPackage* const Package = AnimSeq->GetOutermost();
