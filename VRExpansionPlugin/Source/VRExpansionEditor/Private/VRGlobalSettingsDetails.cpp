@@ -113,11 +113,11 @@ FReply FVRGlobalSettingsDetails::OnCorrectInvalidAnimationAssets()
 				const IAnimationDataModel* AnimModel = AnimController.GetModel();
 
 				FFrameRate FrameRate = AnimModel->GetFrameRate();
-				int32 NumFrames = AnimModel->GetNumberOfFrames();
+				//int32 NumFrames = AnimModel->GetNumberOfFrames();
 				double FrameRateD = FrameRate.AsDecimal();
 
 				// I was saving with a below 1.0 frame rate and 1 frame
-				if (FrameRate.AsDecimal() < 1.0f)
+				if (FrameRateD < 1.0f)
 				{
 					// We have an invalid frame rate for 5.2
 					AnimController.SetFrameRate(FFrameRate(NumFrames, 1));
