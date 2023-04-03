@@ -7,6 +7,8 @@
 #include "PropertyEditorModule.h"
 #include "HandSocketVisualizer.h"
 #include "HandSocketComponentDetails.h"
+#include "VRGlobalSettingsDetails.h"
+#include "VRGlobalSettings.h"
 
 
 IMPLEMENT_MODULE(FVRExpansionEditorModule, VRExpansionEditor);
@@ -25,8 +27,14 @@ void FVRExpansionEditorModule::StartupModule()
 			FOnGetDetailCustomizationInstance::CreateStatic(&FHandSocketComponentDetails::MakeInstance)
 		);
 
+		PropertyModule.RegisterCustomClassLayout(
+			UVRGlobalSettings::StaticClass()->GetFName(),
+			FOnGetDetailCustomizationInstance::CreateStatic(&FVRGlobalSettingsDetails::MakeInstance)
+		);
+
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}
+
 }
 
 void FVRExpansionEditorModule::ShutdownModule()
@@ -45,6 +53,7 @@ void FVRExpansionEditorModule::ShutdownModule()
 		auto& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 
 		PropertyModule.UnregisterCustomClassLayout(UHandSocketComponent::StaticClass()->GetFName());
+		PropertyModule.UnregisterCustomClassLayout(UVRGlobalSettings::StaticClass()->GetFName());
 	}
 }
 
