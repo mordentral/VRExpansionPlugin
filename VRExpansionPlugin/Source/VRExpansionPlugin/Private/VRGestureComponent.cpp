@@ -741,7 +741,10 @@ void UVRGestureComponent::BeginDestroy()
 	RecordingGestureDraw.Clear();
 	if (TickGestureTimer_Handle.IsValid())
 	{
-		GetWorld()->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
+		if (UWorld* MyWorld = GetWorld())
+		{
+			MyWorld->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
+		}
 	}
 }
 
@@ -757,7 +760,10 @@ FVRGesture UVRGestureComponent::EndRecording()
 {
 	if (TickGestureTimer_Handle.IsValid())
 	{
-		GetWorld()->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
+		if (UWorld* MyWorld = GetWorld())
+		{
+			MyWorld->GetTimerManager().ClearTimer(TickGestureTimer_Handle);
+		}
 	}
 
 	this->SetComponentTickEnabled(false);
