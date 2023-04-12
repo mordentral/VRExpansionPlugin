@@ -5514,7 +5514,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							}
 							else
 							{
-								Grip->bColliding = true;
+								if (FHitResult::GetFirstBlockingHit(Hits) != nullptr)
+								{
+									Grip->bColliding = true;
+								}
 							}
 						}
 						// Check the other rotation
@@ -5539,7 +5542,10 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							}
 							else
 							{
-								Grip->bColliding = true;
+								if (FHitResult::GetFirstBlockingHit(Hits) != nullptr)
+								{
+									Grip->bColliding = true;
+								}
 							}
 						}
 						else
