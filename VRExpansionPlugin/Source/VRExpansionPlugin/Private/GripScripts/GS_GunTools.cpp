@@ -192,7 +192,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 			float StockSnapDistance = FMath::Square(VirtualStockSettings.StockSnapDistance);
 			float DistSquared = FVector::DistSquared(ParentTransform.GetTranslation(), MountWorldTransform.GetTranslation());
 
-			if (DistSquared <= StockSnapDistance)
+			if (!VirtualStockSettings.bUseDistanceBasedStockSnapping || (DistSquared <= StockSnapDistance))
 			{
 
 				float StockSnapLerpThresh = FMath::Square(VirtualStockSettings.StockSnapLerpThreshold);
