@@ -168,6 +168,21 @@ public:
 		return;
 	}
 
+	UFUNCTION(BlueprintPure, Category = "VRE Physics Constraint Component")     
+	void GetLinearLimits(float& LinearLimit) 
+	{ 
+		LinearLimit = ConstraintInstance.GetLinearLimit(); 
+	}
+
+	UFUNCTION(BlueprintPure, Category = "VRE Physics Constraint Component")
+	void GetAngularLimits(float &Swing1Limit, float &Swing2Limit, float &TwistLimit)
+	{
+		Swing1Limit = ConstraintInstance.GetAngularSwing1Limit();
+		Swing2Limit = ConstraintInstance.GetAngularSwing2Limit();
+		TwistLimit = ConstraintInstance.GetAngularTwistLimit();
+	}
+
+
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRE Constraint Settings")
 	//bool bSetAndMaintainCOMOnFrame2;
 
