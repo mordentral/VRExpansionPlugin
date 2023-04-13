@@ -5577,6 +5577,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 									{
 										// Just multiplying to make the values easier
 										Grip->LerpSpeed *= 10.0f;
+										Grip->CurrentLerpTime = LerpSpeed;
 									}
 								}
 
@@ -5591,6 +5592,11 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 										{
 											Alpha = 1.0f;
 											Grip->CurrentLerpTime = 0.0f;
+										}
+										else
+										{
+											Grip->CurrentLerpTime = FMath::Clamp(Grip->CurrentLerpTime - DeltaTime, 0.0f, 1.0f);
+											Alpha = FMath::Clamp(DeltaTime * Grip->LerpSpeed, 0.f, 1.f);
 										}
 
 										Alpha = FMath::Clamp(DeltaTime * Grip->LerpSpeed, 0.f, 1.f);
@@ -5617,7 +5623,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 									if (bDistanceBasedInterpolation)
 									{
-										if(NA.Equals(WorldTransform))
+										if(NA.Equals(WorldTransform, 0.01f))
 										{
 											Grip->CurrentLerpTime = 0.0f;
 										}
