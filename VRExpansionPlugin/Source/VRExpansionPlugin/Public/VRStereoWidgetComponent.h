@@ -127,6 +127,10 @@ public:
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 
 
+	/** If true then this stereo widget will skip visibility checks when in stereo mode */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
+		bool bAlwaysVisible = false;
+
 	// If true forces the widget to render both stereo and world widgets
 	// Overriden by the console command vr.ForceNoStereoWithVRWidgets if it is set to 1
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
