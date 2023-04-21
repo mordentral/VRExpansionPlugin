@@ -1467,7 +1467,7 @@ public:
 	float LerpSpeed;
 	FTransform OnGripTransform;
 
-	UPROPERTY(VisibleAnywhere, NotReplicated, Category = "Settings")
+	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "Settings")
 	bool bIsLerping;
 
 	bool IsLocalAuthGrip()
