@@ -519,11 +519,18 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 					newIgnorePair.Actor2 = ApplicableBodies2[j].BInstance->ActorHandle;
 					newIgnorePair.BoneName2 = ApplicableBodies2[j].BName;
 
-					Chaos::FUniqueIdx ID0 = ApplicableBodies[i].BInstance->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
-					Chaos::FUniqueIdx ID1 = ApplicableBodies2[j].BInstance->ActorHandle->GetParticle_LowLevel()->UniqueIdx();
 
 					auto* pHandle1 = ApplicableBodies[i].BInstance->ActorHandle->GetParticle_LowLevel();
 					auto* pHandle2 = ApplicableBodies2[j].BInstance->ActorHandle->GetParticle_LowLevel();
+
+					if (!pHandle1 || !pHandle2)
+					{
+						// Invalid actor handle, don't run this operation
+						return;
+					}
+
+					Chaos::FUniqueIdx ID0 = pHandle1->UniqueIdx();
+					Chaos::FUniqueIdx ID1 = pHandle2->UniqueIdx();
 
 					Chaos::FIgnoreCollisionManager& IgnoreCollisionManager = PhysScene->GetSolver()->GetEvolution()->GetBroadPhase().GetIgnoreCollisionManager();
 
