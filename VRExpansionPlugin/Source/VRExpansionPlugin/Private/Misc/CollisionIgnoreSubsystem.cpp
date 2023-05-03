@@ -509,7 +509,7 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 	{
 		for (int j = 0; j < ApplicableBodies2.Num(); ++j)
 		{
-			if (ApplicableBodies[i].BInstance && ApplicableBodies2[j].BInstance)
+			if (ApplicableBodies[i].BInstance && ApplicableBodies2[j].BInstance && ApplicableBodies[i].BInstance->ActorHandle && ApplicableBodies2[j].BInstance->ActorHandle)
 			{
 				if (FPhysScene* PhysScene = Prim1->GetWorld()->GetPhysicsScene())
 				{
