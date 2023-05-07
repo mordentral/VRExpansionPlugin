@@ -373,7 +373,8 @@ void UOpenXRExpansionFunctionLibrary::ConvertHandTransformsSpaceAndBack(TArray<F
 	// The hand tracking transforms are in world space.
 	for (int32 Index = 0; Index < EHandKeypointCount; ++Index)
 	{
-		const FTransform& BoneTransform = WorldTransforms[Index];
+		FTransform BoneTransform = WorldTransforms[Index];
+		BoneTransform.NormalizeRotation();
 		int32 ParentIndex = BoneParents[Index];
 		int32 ParentParent = -1;
 
@@ -389,15 +390,21 @@ void UOpenXRExpansionFunctionLibrary::ConvertHandTransformsSpaceAndBack(TArray<F
 		}
 		else
 		{
+
+			FTransform ParentTransform = FTransform::Identity;
+
 			// Merging missing metacarpal bone into the transform
 			if (ParentParent == 1) // Wrist
 			{
-				OutTransforms[Index] = BoneTransform.GetRelativeTransform(WorldTransforms[ParentParent]);
+				ParentTransform = WorldTransforms[ParentParent];
 			}
 			else
 			{
-				OutTransforms[Index] = BoneTransform.GetRelativeTransform(WorldTransforms[ParentIndex]);
+				ParentTransform = WorldTransforms[ParentIndex];
 			}
+			
+			ParentTransform.NormalizeRotation();
+			OutTransforms[Index] = BoneTransform.GetRelativeTransform(ParentTransform);
 		}
 	}
 
