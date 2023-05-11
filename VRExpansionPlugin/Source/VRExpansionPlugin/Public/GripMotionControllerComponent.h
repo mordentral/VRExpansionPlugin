@@ -13,6 +13,7 @@
 #include "GripMotionControllerComponent.generated.h"
 
 class AVRBaseCharacter;
+class AVRCharacter;
 struct FXRDeviceId;
 
 /**
@@ -241,7 +242,7 @@ public:
 		bool bConstrainToPivot;
 
 	UPROPERTY()
-		TObjectPtr<AVRBaseCharacter> AttachChar;
+		TObjectPtr<AVRCharacter> AttachChar;
 	void UpdateTracking(float DeltaTime);
 	virtual void OnAttachmentChanged() override;
 

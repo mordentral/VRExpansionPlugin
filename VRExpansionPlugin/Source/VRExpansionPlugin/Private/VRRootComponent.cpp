@@ -472,9 +472,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	UVRBaseCharacterMovementComponent * CharMove = nullptr;
 
 	// Need these for passing physics updates to character movement
-	if (ACharacter * OwningCharacter = Cast<ACharacter>(GetOwner()))
+	if (IsValid(owningVRChar))
 	{
-		CharMove = Cast<UVRBaseCharacterMovementComponent>(OwningCharacter->GetCharacterMovement());
+		CharMove = Cast<UVRBaseCharacterMovementComponent>(owningVRChar->GetCharacterMovement());
 	}
 
 	if (IsLocallyControlled())
@@ -502,7 +502,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			{
 				if (owningVRChar && owningVRChar->VRReplicatedCamera)
 				{
-					owningVRChar->VRReplicatedCamera->ApplyTrackingParameters(curCameraLoc);
+					owningVRChar->VRReplicatedCamera->ApplyTrackingParameters(curCameraLoc, true);
 				}
 
 				curCameraRot = curRot.Rotator();
@@ -522,13 +522,19 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		// Store a leveled yaw value here so it is only calculated once
 		StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curCameraRot);
 
-		// Pre-Process this for network sends
-		curCameraLoc.X = FMath::RoundToFloat(curCameraLoc.X * 100.f) / 100.f;
-		curCameraLoc.Y = FMath::RoundToFloat(curCameraLoc.Y * 100.f) / 100.f;
-		curCameraLoc.Z = FMath::RoundToFloat(curCameraLoc.Z * 100.f) / 100.f;
+		// Skip this if not retaining roomscale as we use higher initial fidelity
+		// And we can rep the values at full precision if we want too
+		if (owningVRChar->bRetainRoomscale)
+		{
+			// Pre-Process this for network sends
+			curCameraLoc.X = FMath::RoundToFloat(curCameraLoc.X * 100.f) / 100.f;
+			curCameraLoc.Y = FMath::RoundToFloat(curCameraLoc.Y * 100.f) / 100.f;
+			curCameraLoc.Z = FMath::RoundToFloat(curCameraLoc.Z * 100.f) / 100.f;
+		}
+		
 
 		// Can adjust the relative tolerances to remove jitter and some update processing
-		if (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f))
+		if (!owningVRChar->bRetainRoomscale || (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f)))
 		{
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
@@ -574,6 +580,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 						bAllowWalkingCollision = true;
 				}
 
+				// TODO: Needs not retained roomscale version that uses movement diff instead of offset to world
 				if (bAllowWalkingCollision)
 					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation()/*NextTransform.GetLocation()*/, FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
 
@@ -592,23 +599,60 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 			if (bHadRelativeMovement)
 			{
-				DifferenceFromLastFrame = OffsetComponentToWorld.GetLocation() - LastPosition;
-				//DifferenceFromLastFrame = (NextTransform.GetLocation() - LastPosition);// .GetSafeNormal2D();
-				DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
-				DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
-				DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
+				if (owningVRChar->bRetainRoomscale)
+				{
+					DifferenceFromLastFrame = OffsetComponentToWorld.GetLocation() - LastPosition;
+					lastCameraLoc = curCameraLoc;
+					lastCameraRot = curCameraRot;
+
+					//DifferenceFromLastFrame = (NextTransform.GetLocation() - LastPosition);// .GetSafeNormal2D();
+					DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
+					DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
+					DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
+				}
+				else
+				{
+
+					// Run this first so we get full fidelity on the relative space calculation
+					FVector NewLocation = StoredCameraRotOffset.RotateVector(FVector(VRCapsuleOffset.X, VRCapsuleOffset.Y, 0.0f)) + curCameraLoc;
+					DifferenceFromLastFrame = GetComponentTransform().TransformVector(NewLocation - lastCameraLoc);
+					lastCameraLoc = NewLocation;
+					lastCameraRot = curCameraRot;
+
+					// Skip routing the delta if this is the first tick, prevents an initial jump in position
+					if (!bTickedOnce)
+					{
+						DifferenceFromLastFrame = FVector::ZeroVector;
+						bTickedOnce = true;
+					}
+					else
+					{
+						// I'm limiting it to a -100 - 100 unit range in case people somehow skip tracking so far that this multiplication
+						// Would overflow the max/min values of a float. It shouldn't ever be harmful as that is a loooot of travel in one tick
+						DifferenceFromLastFrame.X = FMath::RoundToFloat(FMath::Clamp(DifferenceFromLastFrame.X, -100.0f, 100.0f) * 10000.f) / 10000.f;
+						DifferenceFromLastFrame.Y = FMath::RoundToFloat(FMath::Clamp(DifferenceFromLastFrame.Y, -100.0f, 100.0f) * 10000.f) / 10000.f;
+						DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
+					}
+				}
+
 			}
 			else // Zero it out so we don't process off of the change (multiplayer sends this)
+			{
 				DifferenceFromLastFrame = FVector::ZeroVector;
+				lastCameraLoc = curCameraLoc;
+				lastCameraRot = curCameraRot;
+			}
 		}
 		else
 		{
 			bHadRelativeMovement = false;
 			DifferenceFromLastFrame = FVector::ZeroVector;
+			lastCameraLoc = curCameraLoc;
+			lastCameraRot = curCameraRot;
 		}
 
-		lastCameraLoc = curCameraLoc;
-		lastCameraRot = curCameraRot;
+		//lastCameraLoc = curCameraLoc;
+		//lastCameraRot = curCameraRot;
 	}
 	else
 	{
@@ -778,8 +822,15 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 	/*if(bOffsetByHMD)
 		return FBoxSphereBounds(FVector(0, 0, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 	else*/
+
+	if (IsValid(owningVRChar) && owningVRChar->bRetainRoomscale)
+	{
 		return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
-		
+	}
+	else
+	{
+		return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
+	}
 }
 
 void UVRRootComponent::GetNavigationData(FNavigationRelevantData& Data) const

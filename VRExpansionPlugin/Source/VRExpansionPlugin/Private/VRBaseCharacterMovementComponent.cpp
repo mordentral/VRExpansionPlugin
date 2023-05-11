@@ -86,6 +86,17 @@ UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObje
 	SetMoveResponseDataContainer(VRMoveResponseDataContainer);
 }
 
+// Rewind the relative movement that we had with the HMD
+void UVRBaseCharacterMovementComponent::RewindVRRelativeMovement()
+{
+	if (bApplyAdditionalVRInputVectorAsNegative && (BaseVRCharacterOwner && BaseVRCharacterOwner->bRetainRoomscale))
+	{
+		//FHitResult AHit;
+		MoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false);
+		//SafeMoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false, AHit);
+	}
+}
+
 void UVRBaseCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
 {
 	if (!HasValidData())

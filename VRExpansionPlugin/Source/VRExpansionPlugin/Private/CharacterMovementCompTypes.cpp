@@ -426,7 +426,23 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 	ConditionalMoveReps.NetSerialize(Ar, PackageMap, bLocalSuccess);
 
 	//VRCapsuleLocation.NetSerialize(Ar, PackageMap, bLocalSuccess);
-	LFDiff.NetSerialize(Ar, PackageMap, bLocalSuccess);
+	if (AVRBaseCharacter* VRChar = Cast<AVRBaseCharacter>(CharacterOwner))
+	{
+		if (!VRChar->bRetainRoomscale)
+		{
+			SerializePackedVector<10000, 32>(LFDiff, Ar);
+		}
+		else
+		{
+			SerializePackedVector<100, 30>(LFDiff, Ar);
+		}
+	}
+	else
+	{
+		SerializePackedVector<100, 30>(LFDiff, Ar);
+	}
+
+	//LFDiff.NetSerialize(Ar, PackageMap, bLocalSuccess);
 	//Ar << VRCapsuleRotation;
 
 	return !Ar.IsError();

@@ -410,7 +410,12 @@ void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 		{
 			VRCapsuleLocation = VRC->VRRootReference->curCameraLoc;
 			VRCapsuleRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRC->VRRootReference->curCameraRot);
-			LFDiff = VRC->VRRootReference->DifferenceFromLastFrame;
+
+			// Don't reset this unless its zero, after that its from a movement merge
+			if (LFDiff.IsZero())
+			{
+				LFDiff = VRC->VRRootReference->DifferenceFromLastFrame;
+			}
 		}
 		else
 		{
@@ -1264,6 +1269,9 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 				UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("CombineMove: add delta %f + %f and revert from %f %f to %f %f"), DeltaTime, ClientData->PendingMove->DeltaTime, UpdatedComponent->GetComponentLocation().X, UpdatedComponent->GetComponentLocation().Y, /*OldStartLocation.X*/OverlapLocation.X, /*OldStartLocation.Y*/OverlapLocation.Y);
 
 				NewMove->CombineWith(PendingMove, CharacterOwner, PC, OldStartLocation);
+
+				// Update the input vector to the new values!! We were always forgetting to do this
+				AdditionalVRInputVector = ((FSavedMove_VRBaseCharacter*)NewMove)->LFDiff;
 
 				/************************/
 				if (PC)

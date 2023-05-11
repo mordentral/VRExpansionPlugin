@@ -156,15 +156,7 @@ public:
 	bool bApplyAdditionalVRInputVectorAsNegative;
 	
 	// Rewind the relative movement that we had with the HMD
-	inline void RewindVRRelativeMovement()
-	{
-		if (bApplyAdditionalVRInputVectorAsNegative)
-		{
-			//FHitResult AHit;
-			MoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false);
-			//SafeMoveUpdatedComponent(-AdditionalVRInputVector, UpdatedComponent->GetComponentQuat(), false, AHit);
-		}
-	}
+	void RewindVRRelativeMovement();
 
 	// Any movement above this value we will consider as have been a tracking jump and null out the movement in the character
 	// Raise this value higher if players are noticing freezing when moving quickly.
