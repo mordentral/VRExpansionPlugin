@@ -5,6 +5,8 @@
 
 #include "Net/UnrealNetwork.h"
 #include "VRBaseCharacter.h"
+#include "VRCharacter.h"
+#include "VRRootComponent.h"
 #include "IXRTrackingSystem.h"
 #include "IXRCamera.h"
 #include "Rendering/MotionVectorSimulation.h"
@@ -124,7 +126,7 @@ bool UReplicatedVRCameraComponent::Server_SendCameraTransform_Validate(FBPVRComp
 
 void UReplicatedVRCameraComponent::OnAttachmentChanged()
 {
-	if (AVRBaseCharacter* CharacterOwner = Cast<AVRBaseCharacter>(this->GetOwner()))
+	if (AVRCharacter* CharacterOwner = Cast<AVRCharacter>(this->GetOwner()))
 	{
 		AttachChar = CharacterOwner;
 	}
@@ -138,15 +140,15 @@ void UReplicatedVRCameraComponent::OnAttachmentChanged()
 
 bool UReplicatedVRCameraComponent::HasTrackingParameters()
 {
-	return bOffsetByHMD || bScaleTracking || bLimitMaxHeight || bLimitMinHeight || bLimitBounds;
+	return bOffsetByHMD || bScaleTracking || bLimitMaxHeight || bLimitMinHeight || bLimitBounds || (AttachChar && !AttachChar->bRetainRoomscale);
 }
 
-void UReplicatedVRCameraComponent::ApplyTrackingParameters(FVector &OriginalPosition)
+void UReplicatedVRCameraComponent::ApplyTrackingParameters(FVector &OriginalPosition, bool bSkipLocZero)
 {
-	if (bOffsetByHMD)
+	if (!bSkipLocZero && (bOffsetByHMD || AttachChar && !AttachChar->bRetainRoomscale))
 	{
 		OriginalPosition.X = 0;
-		OriginalPosition.Y = 0;
+		OriginalPosition.Y = 0;	
 	}
 
 	if (bLimitBounds)
@@ -189,6 +191,12 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 				if (HasTrackingParameters())
 				{
 					ApplyTrackingParameters(Position);
+				}
+
+				if (IsValid(AttachChar) && !AttachChar->bRetainRoomscale)
+				{			
+					FRotator StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(Orientation.Rotator());
+					Position += StoredCameraRotOffset.RotateVector(FVector(-AttachChar->VRRootReference->VRCapsuleOffset.X, -AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
 				}
 
 				SetRelativeTransform(FTransform(Orientation, Position));
@@ -365,6 +373,12 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 						if (HasTrackingParameters())
 						{
 							ApplyTrackingParameters(Position);
+						}
+
+						if (IsValid(AttachChar) && !AttachChar->bRetainRoomscale)
+						{
+							FRotator StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(Orientation.Rotator());
+							Position += StoredCameraRotOffset.RotateVector(FVector(-AttachChar->VRRootReference->VRCapsuleOffset.X, -AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
 						}
 
 						SetRelativeTransform(FTransform(Orientation, Position));

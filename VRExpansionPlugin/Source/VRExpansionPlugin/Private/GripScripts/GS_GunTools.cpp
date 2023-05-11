@@ -9,6 +9,8 @@
 #include "IXRTrackingSystem.h"
 #include "VRGlobalSettings.h"
 #include "VRBaseCharacter.h"
+#include "VRCharacter.h"
+#include "VRRootComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
 //#include "Camera/CameraComponent.h"
@@ -180,6 +182,15 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				{
 					// Translate hmd offset by the gripping controllers parent component, this should be in the same space
 					FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
+
+					if (AVRCharacter* OwningCharacter = Cast<AVRCharacter>(GrippingController->GetOwner()))
+					{
+						if (!OwningCharacter->bRetainRoomscale)
+						{
+							curLoc += PureYaw.RotateVector(FVector(-OwningCharacter->VRRootReference->VRCapsuleOffset.X, -OwningCharacter->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+						}
+					}
+
 					MountWorldTransform = FTransform(PureYaw.Quaternion(), curLoc + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset)) * GrippingController->GetAttachParent()->GetComponentTransform();
 				}
 			}

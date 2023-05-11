@@ -46,7 +46,11 @@ DECLARE_CYCLE_STAT(TEXT("Perception Sense: Sight, Process pending result"), STAT
 
 
 static const int32 DefaultMaxTracesPerTick = 6;
+static const int32 DefaultMaxAsyncTracesPerTick = 10;
 static const int32 DefaultMinQueriesPerTimeSliceCheck = 40;
+static const float DefaultPendingQueriesBudgetReductionRatio = 0.5f;
+static const bool bDefaultUseAsynchronousTraceForDefaultSightQueries = false;
+static const float DefaultStimulusStrength = 1.f;
 
 enum class EForEachResult : uint8
 {
@@ -145,11 +149,14 @@ UAISense_Sight_VR::FDigestedSightProperties::FDigestedSightProperties()
 UAISense_Sight_VR::UAISense_Sight_VR(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 	, MaxTracesPerTick(DefaultMaxTracesPerTick)
+	, MaxAsyncTracesPerTick(DefaultMaxAsyncTracesPerTick)
 	, MinQueriesPerTimeSliceCheck(DefaultMinQueriesPerTimeSliceCheck)
 	, MaxTimeSlicePerTick(0.005) // 5ms
 	, HighImportanceQueryDistanceThreshold(300.f)
 	, MaxQueryImportance(60.f)
 	, SightLimitQueryImportance(10.f)
+	, PendingQueriesBudgetReductionRatio(DefaultPendingQueriesBudgetReductionRatio)
+	, bUseAsynchronousTraceForDefaultSightQueries(bDefaultUseAsynchronousTraceForDefaultSightQueries)
 {
 	if (HasAnyFlags(RF_ClassDefaultObject) == false)
 	{
@@ -159,6 +166,9 @@ UAISense_Sight_VR::UAISense_Sight_VR(const FObjectInitializer& ObjectInitializer
 		OnNewListenerDelegate.BindUObject(this, &UAISense_Sight_VR::OnNewListenerImpl);
 		OnListenerUpdateDelegate.BindUObject(this, &UAISense_Sight_VR::OnListenerUpdateImpl);
 		OnListenerRemovedDelegate.BindUObject(this, &UAISense_Sight_VR::OnListenerRemovedImpl);
+
+		OnPendingCanBeSeenQueryProcessedDelegate.BindUObject(this, &UAISense_Sight_VR::OnPendingCanBeSeenQueryProcessed);
+		OnPendingTraceQueryProcessedDelegate.BindUObject(this, &UAISense_Sight_VR::OnPendingTraceQueryProcessed);
 	}
 
 	NotifyType = EAISenseNotifyType::OnPerceptionChange;
@@ -171,9 +181,9 @@ UAISense_Sight_VR::UAISense_Sight_VR(const FObjectInitializer& ObjectInitializer
 
 FORCEINLINE_DEBUGGABLE float UAISense_Sight_VR::CalcQueryImportance(const FPerceptionListener& Listener, const FVector& TargetLocation, const float SightRadiusSq) const
 {
-	const float DistanceSq = FVector::DistSquared(Listener.CachedLocation, TargetLocation);
+	const FVector::FReal DistanceSq = FVector::DistSquared(Listener.CachedLocation, TargetLocation);
 	return DistanceSq <= HighImportanceDistanceSquare ? MaxQueryImportance
-		: FMath::Clamp((SightLimitQueryImportance - MaxQueryImportance) / SightRadiusSq * DistanceSq + MaxQueryImportance, 0.f, MaxQueryImportance);
+		: static_cast<float>(FMath::Clamp((SightLimitQueryImportance - MaxQueryImportance) / SightRadiusSq * DistanceSq + MaxQueryImportance, 0.f, MaxQueryImportance));
 }
 
 void UAISense_Sight_VR::PostInitProperties()
@@ -211,7 +221,7 @@ bool UAISense_Sight_VR::ShouldAutomaticallySeeTarget(const FDigestedSightPropert
 	{
 		// Changed this up to support my VR Characters
 		const AVRBaseCharacter * VRChar = Cast<const AVRBaseCharacter>(TargetActor);
-		const float DistanceToLastSeenLocationSq = FVector::DistSquared(VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation(), SightQuery->LastSeenLocation);
+		const FVector::FReal DistanceToLastSeenLocationSq = FVector::DistSquared(VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation(), SightQuery->LastSeenLocation);
 		return (DistanceToLastSeenLocationSq <= PropDigest.AutoSuccessRangeSqFromLastSeenLocation);
 	}
 
@@ -219,9 +229,9 @@ bool UAISense_Sight_VR::ShouldAutomaticallySeeTarget(const FDigestedSightPropert
 }
 
 
-#if AISENSE_SIGHT_TIMESLICING_DEBUG
-namespace
+namespace UE::AISense_SightVR
 {
+#if AISENSE_SIGHT_TIMESLICING_DEBUG
 	struct FTimingSlicingInfo
 	{
 		FTimingSlicingInfo()
@@ -272,16 +282,30 @@ namespace
 }
 #endif // AISENSE_SIGHT_TIMESLICING_DEBUG
 
+bool IsTraceConsideredVisible(const FHitResult* HitResult, const AActor* TargetActor)
+{
+	if (HitResult == nullptr)
+	{
+		return true;
+	}
+
+	const AActor* HitResultActor = HitResult->HitObjectHandle.FetchActor();
+	return (HitResultActor ? HitResultActor->IsOwnedBy(TargetActor) : false);
+}
+}
+
 float UAISense_Sight_VR::Update()
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight);
 
-	const UWorld* World = GEngine->GetWorldFromContextObject(GetPerceptionSystem()->GetOuter(), EGetWorldErrorMode::LogAndReturnNull);
+	UWorld* World = GEngine->GetWorldFromContextObject(GetPerceptionSystem()->GetOuter(), EGetWorldErrorMode::LogAndReturnNull);
 
 	if (World == nullptr)
 	{
 		return SuspendNextUpdate;
 	}
+
+	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
 
 	// sort Sight Queries
 	{
@@ -307,17 +331,19 @@ float UAISense_Sight_VR::Update()
 	}
 
 	int32 TracesCount = 0;
+	int32 AsyncTracesCount = FMath::Max(0, static_cast<int32>(PendingQueriesBudgetReductionRatio * SightQueriesPending.Num()));	// pending queries should be requesting async collisions traces at this frame, so we might want to restrain ourself in this update
 	int32 NumQueriesProcessed = 0;
-	double TimeSliceEnd = FPlatformTime::Seconds() + MaxTimeSlicePerTick;
+	const double TimeSliceEnd = FPlatformTime::Seconds() + MaxTimeSlicePerTick;
 	bool bHitTimeSliceLimit = false;
 #if AISENSE_SIGHT_TIMESLICING_DEBUG
-	FTimingSlicingInfo SlicingInfo;
+	UE::AISense_SightVR::FTimingSlicingInfo SlicingInfo;
 #endif // AISENSE_SIGHT_TIMESLICING_DEBUG
 	static const int32 InitialInvalidItemsSize = 16;
 	enum class EOperationType : uint8
 	{
 		Remove,
-		SwapList
+		SwapList,
+		MoveToPending
 	};
 	struct FQueryOperation
 	{
@@ -344,7 +370,7 @@ float UAISense_Sight_VR::Update()
 			bHitTimeSliceLimit = true;
 		}
 
-		if (bHitTimeSliceLimit || TracesCount >= MaxTracesPerTick)
+		if (bHitTimeSliceLimit || TracesCount >= MaxTracesPerTick || AsyncTracesCount >= MaxAsyncTracesPerTick)
 		{
 			break;
 		}
@@ -385,31 +411,46 @@ float UAISense_Sight_VR::Update()
 		{
 			const FDigestedSightProperties& PropDigest = DigestedProperties[SightQuery->ObserverId];
 			const AActor* ListenerBodyActor = ListenerPtr->GetBodyActor();
-			float StimulusStrength = 1.f;
+			float StimulusStrength = DefaultStimulusStrength;
 			FVector SeenLocation(0.f);
 			int32 NumberOfLoSChecksPerformed = 0;
-			const bool bIsVisible = ComputeVisibility(World, *SightQuery, Listener, ListenerBodyActor, Target, TargetActor, PropDigest, StimulusStrength, SeenLocation, NumberOfLoSChecksPerformed);
+			int32 NumberOfAsyncLosCheckRequested = 0;
+
+			const UAISense_Sight::EVisibilityResult VisibilityResult = ComputeVisibility(World, *SightQuery, Listener, ListenerBodyActor, Target, TargetActor, PropDigest, StimulusStrength, SeenLocation, NumberOfLoSChecksPerformed, NumberOfAsyncLosCheckRequested);
 
 			TracesCount += NumberOfLoSChecksPerformed;
+			AsyncTracesCount += NumberOfAsyncLosCheckRequested;
 
-			const bool bWasVisible = SightQuery->bLastResult;
-
-			// Changed this up to support my VR Characters
-			const AVRBaseCharacter* VRChar = Cast<const AVRBaseCharacter>(TargetActor);
-			const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation();
-			//const FVector TargetLocation = TargetActor->GetActorLocation();
-
-			UpdateQueryVisibilityStatus(*SightQuery, Listener, bIsVisible, SeenLocation, StimulusStrength, TargetActor, TargetLocation);
-
-			const float SightRadiusSq = bWasVisible ? PropDigest.LoseSightRadiusSq : PropDigest.SightRadiusSq;
-			SightQuery->Importance = CalcQueryImportance(Listener, TargetLocation, SightRadiusSq);
-
-			const bool bShouldBeInRange = SightQuery->Importance > 0.0f;
-			if (bIsInRangeQuery != bShouldBeInRange)
+			if (VisibilityResult == UAISense_Sight::EVisibilityResult::Pending)
 			{
-
-				QueryOperations.Add(FQueryOperation(bIsInRangeQuery, EOperationType::SwapList, bIsInRangeQuery ? InRangeIndex : OutOfRangeIndex));
+				QueryOperations.Add(FQueryOperation(bIsInRangeQuery, EOperationType::MoveToPending, bIsInRangeQuery ? InRangeIndex : OutOfRangeIndex));
 			}
+			else
+			{
+				UE_CLOG(VisibilityResult != UAISense_Sight::EVisibilityResult::Visible && VisibilityResult != UAISense_Sight::EVisibilityResult::NotVisible, LogAIPerception, Error, TEXT("UAISense_Sight::Update received invalid Visibility result [%d] for query between Listener %s and Target %s. We'll consider it as NotVisible"), VisibilityResult, *GetNameSafe(ListenerBodyActor), *GetNameSafe(TargetActor));
+
+				const bool bIsVisible = VisibilityResult == UAISense_Sight::EVisibilityResult::Visible;
+				const bool bWasVisible = SightQuery->GetLastResult();
+
+				// Changed this up to support my VR Characters
+				const AVRBaseCharacter* VRChar = Cast<const AVRBaseCharacter>(TargetActor);
+				const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation();
+
+				UpdateQueryVisibilityStatus(*SightQuery, Listener, bIsVisible, SeenLocation, StimulusStrength, TargetActor, TargetLocation);
+
+				const float SightRadiusSq = bWasVisible ? PropDigest.LoseSightRadiusSq : PropDigest.SightRadiusSq;
+				SightQuery->Importance = CalcQueryImportance(Listener, TargetLocation, SightRadiusSq);
+				const bool bShouldBeInRange = SightQuery->Importance > 0.0f;
+				if (bIsInRangeQuery != bShouldBeInRange)
+				{
+					QueryOperations.Add(FQueryOperation(bIsInRangeQuery, EOperationType::SwapList, bIsInRangeQuery ? InRangeIndex : OutOfRangeIndex));
+				}
+
+				// restart query
+				SightQuery->OnProcessed();
+			}
+
+
 
 			// restart query
 			SightQuery->OnProcessed();
@@ -449,7 +490,9 @@ float UAISense_Sight_VR::Update()
 		TArray<FAISightQueryVR> SightQueriesOutOfRangeToInsert;
 		for (FQueryOperation& Operation : QueryOperations)
 		{
-			if (Operation.OpType == EOperationType::SwapList)
+			switch (Operation.OpType)
+			{
+			case EOperationType::SwapList:
 			{
 				if (Operation.bInRange)
 				{
@@ -459,6 +502,19 @@ float UAISense_Sight_VR::Update()
 				{
 					SightQueriesInRange.Add(SightQueriesOutOfRange[Operation.Index]);
 				}
+			}break;
+
+			case EOperationType::MoveToPending:
+			{
+				SightQueriesPending.Add(Operation.bInRange ? SightQueriesInRange[Operation.Index] : SightQueriesOutOfRange[Operation.Index]);
+			}break;
+
+			case EOperationType::Remove:
+				break;
+
+			default:
+				check(false);
+				break;
 			}
 
 			if (Operation.bInRange)
@@ -505,7 +561,7 @@ float UAISense_Sight_VR::Update()
 	return 0.f;
 }
 
-bool UAISense_Sight_VR::ComputeVisibility(const UWorld* World, FAISightQueryVR& SightQuery, FPerceptionListener& Listener, const AActor* ListenerActor, FAISightTargetVR& Target, AActor* TargetActor, const FDigestedSightProperties& PropDigest, float& OutStimulusStrength, FVector& OutSeenLocation, int32& OutNumberOfLoSChecksPerformed) const
+UAISense_Sight::EVisibilityResult UAISense_Sight_VR::ComputeVisibility(UWorld* World, FAISightQueryVR& SightQuery, FPerceptionListener& Listener, const AActor* ListenerActor, FAISightTargetVR& Target, AActor* TargetActor, const FDigestedSightProperties& PropDigest, float& OutStimulusStrength, FVector& OutSeenLocation, int32& OutNumberOfLoSChecksPerformed, int32& OutNumberOfAsyncLosCheckRequested) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_ComputeVisibility);
 
@@ -513,47 +569,96 @@ bool UAISense_Sight_VR::ComputeVisibility(const UWorld* World, FAISightQueryVR& 
 	if (ShouldAutomaticallySeeTarget(PropDigest, &SightQuery, Listener, TargetActor, OutStimulusStrength))
 	{
 		OutSeenLocation = FAISystem::InvalidLocation;
-		return true;
+		return UAISense_Sight::EVisibilityResult::Visible;
 	}
 
 	// Changed this up to support my VR Characters
 	const AVRBaseCharacter* VRChar = Cast<const AVRBaseCharacter>(TargetActor);
 	const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation();
-	//const FVector TargetLocation = TargetActor->GetActorLocation();
-	const float SightRadiusSq = SightQuery.bLastResult ? PropDigest.LoseSightRadiusSq : PropDigest.SightRadiusSq;
+
+	const float SightRadiusSq = SightQuery.GetLastResult() ? PropDigest.LoseSightRadiusSq : PropDigest.SightRadiusSq;
 	if (!FAISystem::CheckIsTargetInSightCone(Listener.CachedLocation, Listener.CachedDirection, PropDigest.PeripheralVisionAngleCos, PropDigest.PointOfViewBackwardOffset, PropDigest.NearClippingRadiusSq, SightRadiusSq, TargetLocation))
 	{
-		return false;
+		return UAISense_Sight::EVisibilityResult::NotVisible;
 	}
 
 	if (Target.SightTargetInterface != nullptr)
 	{
-		const bool bWasVisible = SightQuery.bLastResult;
-		const bool bCanBeSeen = Target.SightTargetInterface->CanBeSeenFrom(Listener.CachedLocation, OutSeenLocation, OutNumberOfLoSChecksPerformed, OutStimulusStrength, ListenerActor, &bWasVisible, &SightQuery.UserData);
-		return bCanBeSeen;
+		const bool bWasVisible = SightQuery.GetLastResult();
+
+		FCanBeSeenFromContext Context;
+
+		FAISightQuery NewQuery;
+		NewQuery.FrameInfo.bLastResult = SightQuery.FrameInfo.bLastResult;
+		NewQuery.FrameInfo.LastProcessedFrameNumber = SightQuery.FrameInfo.LastProcessedFrameNumber;
+		NewQuery.Importance = SightQuery.Importance;
+		NewQuery.LastSeenLocation = SightQuery.LastSeenLocation;
+		NewQuery.ObserverId = SightQuery.ObserverId;
+		NewQuery.UserData = SightQuery.UserData;
+		NewQuery.Score = SightQuery.Score;
+
+		NewQuery.TraceInfo.bLastResult = SightQuery.TraceInfo.bLastResult;
+		NewQuery.TraceInfo.FrameNumber = SightQuery.TraceInfo.FrameNumber;
+		NewQuery.TraceInfo.Index = SightQuery.TraceInfo.Index;
+
+		/*FAISightTarget NewTarget;
+		NewTarget.InvalidTargetId = SightQuery.TargetId.InvalidTargetId;
+		NewTarget.SightTargetInterface = SightQuery.TargetId.SightTargetInterface;
+		NewTarget.Target = SightQuery.TargetId.Target;
+		NewTarget.TargetId = SightQuery.TargetId.TargetId;
+		NewTarget.TeamId = SightQuery.TargetId.TeamId;*/
+
+		NewQuery.TargetId = SightQuery.TargetId;
+
+		Context.SightQueryID = NewQuery;//FAISightQueryIDVR(SightQuery);
+		Context.ObserverLocation = Listener.CachedLocation;
+		Context.IgnoreActor = ListenerActor;
+		Context.bWasVisible = &bWasVisible;
+
+		const UAISense_Sight::EVisibilityResult Result = Target.SightTargetInterface->CanBeSeenFrom(Context, OutSeenLocation, OutNumberOfLoSChecksPerformed, OutNumberOfAsyncLosCheckRequested, OutStimulusStrength, &SightQuery.UserData, &OnPendingCanBeSeenQueryProcessedDelegate);
+		if (Result == UAISense_Sight::EVisibilityResult::Pending)
+		{
+			// we need to clear the trace info value in order to avoid interfering with the engine processed asynchronous queries
+			SightQuery.SetTraceInfo(FTraceHandle());
+		}
+		return Result;
 	}
 	else
 	{
 		// we need to do tests ourselves
-		FHitResult HitResult;
-		const bool bHit = World->LineTraceSingleByChannel(HitResult, Listener.CachedLocation, TargetLocation, DefaultSightCollisionChannel, FCollisionQueryParams(SCENE_QUERY_STAT(AILineOfSight), true, ListenerActor));
 
-		++OutNumberOfLoSChecksPerformed;
+		const FCollisionQueryParams QueryParams = FCollisionQueryParams(SCENE_QUERY_STAT(AILineOfSight), true, ListenerActor);
 
-		auto HitResultActorIsOwnedByTargetActor = [&HitResult, TargetActor]()
+		if (bUseAsynchronousTraceForDefaultSightQueries)
 		{
-			AActor* HitResultActor = HitResult.HitObjectHandle.FetchActor();
-			return (HitResultActor ? HitResultActor->IsOwnedBy(TargetActor) : false);
-		};
+			const FTraceHandle TraceHandle = World->AsyncLineTraceByChannel(EAsyncTraceType::Single, Listener.CachedLocation, TargetLocation, DefaultSightCollisionChannel, QueryParams, FCollisionResponseParams::DefaultResponseParam, &OnPendingTraceQueryProcessedDelegate);
+			if (!TraceHandle.IsValid())
+			{
+				return UAISense_Sight::EVisibilityResult::NotVisible;
+			}
 
-		if (bHit == false || HitResultActorIsOwnedByTargetActor())
-		{
-			OutSeenLocation = TargetLocation;
-			return true;
+			++OutNumberOfAsyncLosCheckRequested;
+
+			// store the trace handle information here so that we can identify the associated query when we'll receive the delegate callback
+			SightQuery.SetTraceInfo(TraceHandle);
+			return UAISense_Sight::EVisibilityResult::Pending;
 		}
 		else
 		{
-			return false;
+			FHitResult HitResult;
+			const bool bHit = World->LineTraceSingleByChannel(HitResult, Listener.CachedLocation, TargetLocation, DefaultSightCollisionChannel, QueryParams, FCollisionResponseParams::DefaultResponseParam);
+
+			++OutNumberOfLoSChecksPerformed;
+
+			if (UE::AISense_SightVR::IsTraceConsideredVisible(bHit ? &HitResult : nullptr, TargetActor))
+			{
+				OutSeenLocation = TargetLocation;
+				return UAISense_Sight::EVisibilityResult::Visible;
+			}
+			else
+			{
+				return UAISense_Sight::EVisibilityResult::NotVisible;
+			}
 		}
 	}
 }
@@ -564,21 +669,141 @@ void UAISense_Sight_VR::UpdateQueryVisibilityStatus(FAISightQueryVR& SightQuery,
 	{
 		const bool bHasValidSeenLocation = SeenLocation != FAISystem::InvalidLocation;
 		Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, StimulusStrength, bHasValidSeenLocation ? SeenLocation : SightQuery.LastSeenLocation, Listener.CachedLocation));
-		SightQuery.bLastResult = true;
+		SightQuery.SetLastResult(true);
 		if (bHasValidSeenLocation)
 		{
 			SightQuery.LastSeenLocation = SeenLocation;
 		}
 	}
 	// communicate failure only if we've seen given actor before
-	else if (SightQuery.bLastResult == true)
+	else if (SightQuery.GetLastResult())
 	{
 		Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, 0.f, TargetLocation, Listener.CachedLocation, FAIStimulus::SensingFailed));
-		SightQuery.bLastResult = false;
+		SightQuery.SetLastResult(false);
 		SightQuery.LastSeenLocation = FAISystem::InvalidLocation;
 	}
 
 	//SIGHT_LOG_SEGMENT(ListenerPtr->GetOwner(), Listener.CachedLocation, TargetLocation, bIsVisible ? FColor::Green : FColor::Red, TEXT("TargetID %d"), Target.TargetId);
+}
+
+void UAISense_Sight_VR::OnPendingCanBeSeenQueryProcessed(const FAISightQueryID& QueryID, const bool bIsVisible, const float StimulusStrength, const FVector& SeenLocation, const TOptional<int32>& UserData)
+{
+	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_ProcessPendingQuery);
+
+	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
+
+
+	FAISightQueryIDVR NewID;
+	NewID.ObserverId = QueryID.ObserverId;
+	NewID.TargetId = QueryID.TargetId;
+
+
+	const int32 QueryIdx = SightQueriesPending.IndexOfByPredicate([&NewID](const FAISightQueryVR& Element)
+		{
+			return Element.ObserverId == NewID.ObserverId
+				&& Element.TargetId == NewID.TargetId;
+		});
+
+	if (QueryIdx == INDEX_NONE)
+	{
+		// the query is not pending. It must have been removed because the source or the target have been removed
+		return;
+	}
+
+	OnPendingQueryProcessed(QueryIdx, bIsVisible, StimulusStrength, SeenLocation, UserData);
+}
+
+void UAISense_Sight_VR::OnPendingTraceQueryProcessed(const FTraceHandle& TraceHandle, FTraceDatum& TraceDatum)
+{
+	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_ProcessPendingQuery);
+	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
+
+	const int32 QueryIdx = SightQueriesPending.IndexOfByPredicate([&TraceHandle](const FAISightQueryVR& Element)
+		{
+			return Element.TraceInfo.FrameNumber == TraceHandle._Data.FrameNumber
+				&& Element.TraceInfo.Index == TraceHandle._Data.Index;
+		});
+
+	if (QueryIdx == INDEX_NONE)
+	{
+		// the query is not pending. It must have been removed because the source or the target have been removed
+		return;
+	}
+
+	AActor* TargetActor = nullptr;
+	if (const FAISightTargetVR* Target = ObservedTargets.Find(SightQueriesPending[QueryIdx].TargetId))
+	{
+		TargetActor = Target->Target.Get();
+	}
+	const bool bIsVisible = UE::AISense_SightVR::IsTraceConsideredVisible(TraceDatum.OutHits.Num() > 0 ? &TraceDatum.OutHits[0] : nullptr, TargetActor);
+
+	OnPendingQueryProcessed(QueryIdx, bIsVisible, DefaultStimulusStrength, TraceDatum.End, NullOpt, TargetActor);
+}
+
+void UAISense_Sight_VR::OnPendingQueryProcessed(const int32 SightQueryIndex, const bool bIsVisible, const float StimulusStrength, const FVector& SeenLocation, const TOptional<int32>& UserData, const TOptional<AActor*> InTargetActor)
+{
+	FAISightQueryVR SightQuery = SightQueriesPending[SightQueryIndex];
+	SightQueriesPending.RemoveAtSwap(SightQueryIndex, 1, false);
+
+	AIPerception::FListenerMap& ListenersMap = *GetListeners();
+	FPerceptionListener* Listener = ListenersMap.Find(SightQuery.ObserverId);
+	if (Listener == nullptr)
+	{
+		return;
+	}
+
+	AActor* TargetActor = nullptr;
+	if (InTargetActor.IsSet())
+	{
+		TargetActor = InTargetActor.GetValue();
+	}
+	else
+	{
+		const FAISightTargetVR* Target = ObservedTargets.Find(SightQuery.TargetId);
+		TargetActor = Target ? Target->Target.Get() : nullptr;
+	}
+
+	if (TargetActor == nullptr)
+	{
+		return;
+	}
+
+	const bool bWasVisible = SightQuery.GetLastResult();
+
+	// Changed this up to support my VR Characters
+	const AVRBaseCharacter* VRChar = Cast<const AVRBaseCharacter>(TargetActor);
+	const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation();
+
+	UpdateQueryVisibilityStatus(SightQuery, *Listener, bIsVisible, SeenLocation, StimulusStrength, TargetActor, TargetLocation);
+
+	if (UserData.IsSet())
+	{
+		SightQuery.UserData = UserData.GetValue();
+	}
+
+	// Call this to be able to have an accurate tick time
+	SightQuery.OnProcessed();
+
+	const FDigestedSightProperties& PropDigest = DigestedProperties[SightQuery.ObserverId];
+	const float SightRadiusSq = bWasVisible ? PropDigest.LoseSightRadiusSq : PropDigest.SightRadiusSq;
+	SightQuery.Importance = CalcQueryImportance(*Listener, TargetLocation, SightRadiusSq);
+	const bool bShouldBeInRange = SightQuery.Importance > 0.0f;
+	if (bShouldBeInRange)
+	{
+		SightQueriesInRange.Add(SightQuery);
+	}
+	else
+	{
+		if (bSightQueriesOutOfRangeDirty)
+		{
+			SightQueriesOutOfRange.Add(SightQuery);
+		}
+		else
+		{
+			SightQueriesOutOfRange.Insert(SightQuery, NextOutOfRangeIndex);
+			++NextOutOfRangeIndex;
+		}
+	}
 }
 
 void UAISense_Sight_VR::RegisterEvent(const FAISightEventVR& Event)
@@ -593,8 +818,11 @@ void UAISense_Sight_VR::RegisterSource(AActor& SourceActor)
 
 void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
 {
+	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
+
 	const FAISightTargetVR::FTargetId AsTargetId = SourceActor.GetUniqueID();
 	FAISightTargetVR AsTarget;
+
 
 	if (ObservedTargets.RemoveAndCopyValue(AsTargetId, AsTarget)
 		&& (SightQueriesInRange.Num() + SightQueriesOutOfRange.Num()) > 0)
@@ -611,7 +839,7 @@ void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
 				FAISightQueryVR* SightQuery = &SightQueries[QueryIndex];
 				if (SightQuery->TargetId == AsTargetId)
 				{
-					if (SightQuery->bLastResult == true)
+					if (SightQuery->GetLastResult())
 					{
 						FPerceptionListener& Listener = ListenersMap[SightQuery->ObserverId];
 						ensure(Listener.Listener.IsValid());
@@ -631,6 +859,7 @@ void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
 			{
 				bSightQueriesOutOfRangeDirty = true;
 			}
+			ReverseForEach(SightQueriesPending, RemoveQuery);
 		}
 	}
 }
@@ -660,6 +889,7 @@ bool UAISense_Sight_VR::RegisterTarget(AActor& TargetActor, const TFunction<void
 	// set/update data
 	SightTarget->TeamId = FGenericTeamId::GetTeamIdentifier(&TargetActor);
 
+
 	// generate all pairs and add them to current Sight Queries
 	bool bNewQueriesAdded = false;
 	AIPerception::FListenerMap& ListenersMap = *GetListeners();
@@ -671,32 +901,17 @@ bool UAISense_Sight_VR::RegisterTarget(AActor& TargetActor, const TFunction<void
 	for (AIPerception::FListenerMap::TConstIterator ItListener(ListenersMap); ItListener; ++ItListener)
 	{
 		const FPerceptionListener& Listener = ItListener->Value;
-		const IGenericTeamAgentInterface* ListenersTeamAgent = Listener.GetTeamAgent();
 
-		if (Listener.HasSense(GetSenseID()) && Listener.GetBodyActor() != &TargetActor)
+		if (!Listener.HasSense(GetSenseID()) || Listener.GetBodyActor() == &TargetActor)
 		{
-			const FDigestedSightProperties& PropDigest = DigestedProperties[Listener.GetListenerID()];
-			if (FAISenseAffiliationFilter::ShouldSenseTeam(ListenersTeamAgent, TargetActor, PropDigest.AffiliationFlags))
-			{
-				// create a sight query		
-				const float Importance = CalcQueryImportance(ItListener->Value, TargetLocation, PropDigest.SightRadiusSq);
-				const bool bInRange = Importance > 0.0f;
-				if (!bInRange)
-				{
-					bSightQueriesOutOfRangeDirty = true;
-				}
-				FAISightQueryVR& AddedQuery = bInRange ? SightQueriesInRange.AddDefaulted_GetRef() : SightQueriesOutOfRange.AddDefaulted_GetRef();
-				AddedQuery.ObserverId = ItListener->Key;
-				AddedQuery.TargetId = SightTarget->TargetId;
+			continue;
+		}
 
-				AddedQuery.Importance = Importance;
-
-				if (OnAddedFunc)
-				{
-					OnAddedFunc(AddedQuery);
-				}
-				bNewQueriesAdded = true;
-			}
+		const FDigestedSightProperties& PropDigest = DigestedProperties[Listener.GetListenerID()];
+		const IGenericTeamAgentInterface* ListenersTeamAgent = Listener.GetTeamAgent();
+		if (RegisterNewQuery(Listener, ListenersTeamAgent, TargetActor, SightTarget->TargetId, TargetLocation, PropDigest, OnAddedFunc))
+		{
+			bNewQueriesAdded = true;
 		}
 	}
 
@@ -732,31 +947,16 @@ void UAISense_Sight_VR::GenerateQueriesForListener(const FPerceptionListener& Li
 	for (FTargetsContainer::TConstIterator ItTarget(ObservedTargets); ItTarget; ++ItTarget)
 	{
 		const AActor* TargetActor = ItTarget->Value.GetTargetActor();
-		if (TargetActor == NULL || TargetActor == Avatar)
+		if (TargetActor == nullptr || TargetActor == Avatar)
 		{
 			continue;
 		}
 
-		if (FAISenseAffiliationFilter::ShouldSenseTeam(ListenersTeamAgent, *TargetActor, PropertyDigest.AffiliationFlags))
+		// Changed this up to support my VR Characters
+		const AVRBaseCharacter* VRChar = Cast<const AVRBaseCharacter>(&TargetActor);
+		const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation();
+		if (RegisterNewQuery(Listener, ListenersTeamAgent, *TargetActor, ItTarget->Key, TargetLocation, PropertyDigest, OnAddedFunc))
 		{
-			// create a sight query		
-			const float Importance = CalcQueryImportance(Listener, ItTarget->Value.GetLocationSimple(), PropertyDigest.SightRadiusSq);
-			const bool bInRange = Importance > 0.0f;
-			if (!bInRange)
-			{
-				bSightQueriesOutOfRangeDirty = true;
-			}
-			FAISightQueryVR& AddedQuery = bInRange ? SightQueriesInRange.AddDefaulted_GetRef() : SightQueriesOutOfRange.AddDefaulted_GetRef();
-			AddedQuery.ObserverId = Listener.GetListenerID();
-			AddedQuery.TargetId = ItTarget->Key;
-
-			AddedQuery.Importance = Importance;
-
-
-			if (OnAddedFunc)
-			{
-				OnAddedFunc(AddedQuery);
-			}
 			bNewQueriesAdded = true;
 		}
 	}
@@ -766,6 +966,34 @@ void UAISense_Sight_VR::GenerateQueriesForListener(const FPerceptionListener& Li
 	{
 		RequestImmediateUpdate();
 	}
+}
+
+bool UAISense_Sight_VR::RegisterNewQuery(const FPerceptionListener& Listener, const IGenericTeamAgentInterface* ListenersTeamAgent, const AActor& TargetActor, const FAISightTargetVR::FTargetId& TargetId, const FVector& TargetLocation, const FDigestedSightProperties& PropDigest, const TFunction<void(FAISightQueryVR&)>& OnAddedFunc)
+{
+	if (!FAISenseAffiliationFilter::ShouldSenseTeam(ListenersTeamAgent, TargetActor, PropDigest.AffiliationFlags))
+	{
+		return false;
+	}
+
+	// create a sight query
+	const float Importance = CalcQueryImportance(Listener, TargetLocation, PropDigest.SightRadiusSq);
+	const bool bInRange = Importance > 0.0f;
+	if (!bInRange)
+	{
+		bSightQueriesOutOfRangeDirty = true;
+	}
+
+	FAISightQueryVR& AddedQuery = bInRange ? SightQueriesInRange.AddDefaulted_GetRef() : SightQueriesOutOfRange.AddDefaulted_GetRef();
+	AddedQuery.ObserverId = Listener.GetListenerID();
+	AddedQuery.TargetId = TargetId;
+	AddedQuery.Importance = Importance;
+
+	if (OnAddedFunc)
+	{
+		OnAddedFunc(AddedQuery);
+	}
+
+	return true;
 }
 
 void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedListener)
@@ -787,7 +1015,7 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 			TSet<FPerceptionListenerID> LastVisibleObservers;
 			RemoveAllQueriesToTarget(AsTargetId, [&LastVisibleObservers](const FAISightQueryVR& Query)
 			{
-				if (Query.bLastResult)
+				if (Query.GetLastResult())
 				{
 					LastVisibleObservers.Add(Query.ObserverId);
 				}
@@ -795,7 +1023,7 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 
 			RegisterTarget(*(AsTarget->Target.Get()), [&LastVisibleObservers](FAISightQueryVR& Query)
 			{
-				Query.bLastResult = LastVisibleObservers.Contains(Query.ObserverId);
+				Query.SetLastResult(LastVisibleObservers.Contains(Query.ObserverId));
 			});
 		}
 		else
@@ -812,7 +1040,7 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 		TSet<FAISightTargetVR::FTargetId> LastVisibleTargets;
 		RemoveAllQueriesByListener(UpdatedListener, [&LastVisibleTargets](const FAISightQueryVR& Query)
 		{
-			if (Query.bLastResult)
+			if (Query.GetLastResult())
 			{
 				LastVisibleTargets.Add(Query.TargetId);
 			}
@@ -820,12 +1048,13 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 
 		const UAISenseConfig_Sight_VR* SenseConfig = Cast<const UAISenseConfig_Sight_VR>(UpdatedListener.Listener->GetSenseConfig(GetSenseID()));
 		check(SenseConfig);
+
 		FDigestedSightProperties& PropertiesDigest = DigestedProperties.FindOrAdd(ListenerID);
 		PropertiesDigest = FDigestedSightProperties(*SenseConfig);
 
 		GenerateQueriesForListener(UpdatedListener, PropertiesDigest, [&LastVisibleTargets](FAISightQueryVR & Query)
 		{
-			Query.bLastResult = LastVisibleTargets.Contains(Query.TargetId);
+			Query.SetLastResult(LastVisibleTargets.Contains(Query.TargetId));
 		});
 	}
 	else
@@ -875,15 +1104,9 @@ void UAISense_Sight_VR::OnListenerRemovedImpl(const FPerceptionListener& Removed
 void UAISense_Sight_VR::RemoveAllQueriesByListener(const FPerceptionListener& Listener, const TFunction<void(const FAISightQueryVR&)>& OnRemoveFunc/*= nullptr */)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_RemoveByListener);
-
-	if ((SightQueriesInRange.Num() + SightQueriesOutOfRange.Num()) == 0)
-	{
-		return;
-	}
+	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
 
 	const uint32 ListenerId = Listener.GetListenerID();
-
-
 
 	auto RemoveQuery = [&ListenerId, &OnRemoveFunc](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
 	{
@@ -910,11 +1133,13 @@ void UAISense_Sight_VR::RemoveAllQueriesByListener(const FPerceptionListener& Li
 
 		bSightQueriesOutOfRangeDirty = true;
 	}
+	ReverseForEach(SightQueriesPending, RemoveQuery);
 }
 
 void UAISense_Sight_VR::RemoveAllQueriesToTarget(const FAISightTargetVR::FTargetId& TargetId, const TFunction<void(const FAISightQueryVR&)>& OnRemoveFunc/*= nullptr */)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_RemoveToTarget);
+	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
 
 	auto RemoveQuery = [&TargetId, &OnRemoveFunc](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
 	{
@@ -939,6 +1164,7 @@ void UAISense_Sight_VR::RemoveAllQueriesToTarget(const FAISightTargetVR::FTarget
 
 		bSightQueriesOutOfRangeDirty = true;
 	}
+	ReverseForEach(SightQueriesPending, RemoveQuery);
 }
 
 
@@ -960,12 +1186,17 @@ void UAISense_Sight_VR::OnListenerForgetsActor(const FPerceptionListener& Listen
 
 	if (ForEach(SightQueriesInRange, ForgetPreviousResult) == EForEachResult::Continue)
 	{
-		ForEach(SightQueriesOutOfRange, ForgetPreviousResult);
+		if (ForEach(SightQueriesOutOfRange, ForgetPreviousResult) == EForEachResult::Continue)
+		{
+			ForEach(SightQueriesPending, ForgetPreviousResult);
+		}
 	}
 }
 
 void UAISense_Sight_VR::OnListenerForgetsAll(const FPerceptionListener& Listener)
 {
+	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
+
 	const uint32 ListenerId = Listener.GetListenerID();
 
 	auto ForgetPreviousResult = [&ListenerId](FAISightQueryVR& SightQuery)->EForEachResult
@@ -980,6 +1211,7 @@ void UAISense_Sight_VR::OnListenerForgetsAll(const FPerceptionListener& Listener
 
 	ForEach(SightQueriesInRange, ForgetPreviousResult);
 	ForEach(SightQueriesOutOfRange, ForgetPreviousResult);
+	ForEach(SightQueriesPending, ForgetPreviousResult);
 }
 
 

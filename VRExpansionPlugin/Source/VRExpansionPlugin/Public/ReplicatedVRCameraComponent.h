@@ -8,6 +8,7 @@
 #include "ReplicatedVRCameraComponent.generated.h"
 
 class AVRBaseCharacter;
+class AVRCharacter;
 
 /**
 * An overridden camera component that replicates its location in multiplayer
@@ -26,7 +27,7 @@ public:
 		bool bUpdateInCharacterMovement;
 
 	UPROPERTY()
-		TObjectPtr<AVRBaseCharacter> AttachChar;
+		TObjectPtr<AVRCharacter> AttachChar;
 	void UpdateTracking(float DeltaTime);
 
 	virtual void OnAttachmentChanged() override;
@@ -91,7 +92,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking")
 		uint32 bAutoSetLockToHmd : 1;
 
-	void ApplyTrackingParameters(FVector & OriginalPosition);
+	void ApplyTrackingParameters(FVector & OriginalPosition, bool bSkipLocZero = false);
 	bool HasTrackingParameters();
 
 	// Get Camera View is no longer required, they finally broke the HMD logic out into its own section!!

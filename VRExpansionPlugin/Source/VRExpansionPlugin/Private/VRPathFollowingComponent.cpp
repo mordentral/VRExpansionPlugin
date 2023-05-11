@@ -96,7 +96,7 @@ void UVRPathFollowingComponent::PauseMove(FAIRequestID RequestID, EPathFollowing
 		}
 
 		LocationWhenPaused = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
-		PathTimeWhenPaused = Path.IsValid() ? Path->GetTimeStamp() : 0.0f;
+		PathTimeWhenPaused = Path.IsValid() ? Path->GetTimeStamp() : 0.;
 		Status = EPathFollowingStatus::Paused;
 
 		UpdateMoveFocus();
@@ -114,9 +114,9 @@ bool UVRPathFollowingComponent::ShouldCheckPathOnResume() const
 		MovementComp->GetOwner()->GetSimpleCollisionCylinder(AgentRadius, AgentHalfHeight);
 
 		const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
-		const float DeltaMove2DSq = (CurrentLocation - LocationWhenPaused).SizeSquared2D();
-		const float DeltaZ = FMath::Abs(CurrentLocation.Z - LocationWhenPaused.Z);
-		if (DeltaMove2DSq < FMath::Square(AgentRadius) && DeltaZ < (AgentHalfHeight * 0.5f))
+		const FVector::FReal DeltaMove2DSq = (CurrentLocation - LocationWhenPaused).SizeSquared2D();
+		const FVector::FReal DeltaZ = FMath::Abs(CurrentLocation.Z - LocationWhenPaused.Z);
+		if (DeltaMove2DSq < FMath::Square(AgentRadius) && DeltaZ < (AgentHalfHeight * 0.5))
 		{
 			bCheckPath = false;
 		}
@@ -159,8 +159,8 @@ int32 UVRPathFollowingComponent::DetermineStartingPathPoint(const FNavigationPat
 				const FVector PathPt1 = *ConsideredPath->GetPathPointLocation(1);
 				// making this test in 2d to avoid situation where agent's Z location not being in "navmesh plane"
 				// would influence the result
-				const float SqDistToFirstPoint = (CurrentLocation - PathPt0).SizeSquared2D();
-				const float SqDistToSecondPoint = (CurrentLocation - PathPt1).SizeSquared2D();
+				const FVector::FReal SqDistToFirstPoint = (CurrentLocation - PathPt0).SizeSquared2D();
+				const FVector::FReal SqDistToSecondPoint = (CurrentLocation - PathPt1).SizeSquared2D();
 				PickedPathPoint = FMath::IsNearlyEqual(SqDistToFirstPoint, SqDistToSecondPoint) ?
 					((FMath::Abs(CurrentLocation.Z - PathPt0.Z) < FMath::Abs(CurrentLocation.Z - PathPt1.Z)) ? 0 : 1) :
 					((SqDistToFirstPoint < SqDistToSecondPoint) ? 0 : 1);
@@ -178,7 +178,7 @@ int32 UVRPathFollowingComponent::DetermineStartingPathPoint(const FNavigationPat
 
 bool UVRPathFollowingComponent::UpdateBlockDetection()
 {
-	const float GameTime = GetWorld()->GetTimeSeconds();
+	const double GameTime = GetWorld()->GetTimeSeconds();
 	if (bUseBlockDetection &&
 		MovementComp &&
 		GameTime > (LastSampleTime + BlockDetectionInterval) &&
@@ -328,13 +328,13 @@ void UVRPathFollowingComponent::FollowPathSegment(float DeltaTime)
 		if (bStopMovementOnFinish && (MoveSegmentStartIndex >= DecelerationSegmentIndex))
 		{
 			const FVector PathEnd = Path->GetEndLocation();
-			const float DistToEndSq = FVector::DistSquared(CurrentLocation, PathEnd);
+			const FVector::FReal DistToEndSq = FVector::DistSquared(CurrentLocation, PathEnd);
 			const bool bShouldDecelerate = DistToEndSq < FMath::Square(CachedBrakingDistance);
 			if (bShouldDecelerate)
 			{
 				bIsDecelerating = true;
 
-				const float SpeedPct = FMath::Clamp(FMath::Sqrt(DistToEndSq) / CachedBrakingDistance, 0.0f, 1.0f);
+				const FVector::FReal  SpeedPct = FMath::Clamp(FMath::Sqrt(DistToEndSq) / CachedBrakingDistance, 0., 1.);
 				CurrentMoveInput *= SpeedPct;
 			}
 		}
@@ -366,8 +366,8 @@ bool UVRPathFollowingComponent::HasReachedCurrentTarget(const FVector& CurrentLo
 
 	// check if moved too far
 	const FVector ToTarget = (CurrentTarget - (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()));
-	const float SegmentDot = FVector::DotProduct(ToTarget, CurrentDirection);
-	if (SegmentDot < 0.0)
+	const FVector::FReal SegmentDot = FVector::DotProduct(ToTarget, CurrentDirection);
+	if (SegmentDot < 0.)
 	{
 		return true;
 	}
@@ -424,7 +424,7 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 
 	const FVector ToGoal = (GoalLocation - AgentLocation);
 	const FVector CurrentDirection = GetCurrentDirection();
-	CurrentDot = FVector::DotProduct(ToGoal.GetSafeNormal(), CurrentDirection);
+	CurrentDot = FloatCastChecked<float>(FVector::DotProduct(ToGoal.GetSafeNormal(), CurrentDirection), /* Precision */ 1. / 128.);
 	bDotFailed = (CurrentDot < 0.0f) ? 1 : 0;
 
 	// get cylinder of moving agent
@@ -433,11 +433,11 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 	AActor* MovingAgent = MovementComp->GetOwner();
 	MovingAgent->GetSimpleCollisionCylinder(AgentRadius, AgentHalfHeight);
 
-	CurrentDistance = ToGoal.Size2D();
+	CurrentDistance = FloatCastChecked<float>(ToGoal.Size2D(), UE::LWC::DefaultFloatPrecision);
 	const float UseRadius = FMath::Max(RadiusThreshold, GoalRadius + (AgentRadius * AgentRadiusPct));
 	bDistanceFailed = (CurrentDistance > UseRadius) ? 1 : 0;
 
-	CurrentHeight = FMath::Abs(ToGoal.Z);
+	CurrentHeight = FloatCastChecked<float>(FMath::Abs(ToGoal.Z), UE::LWC::DefaultFloatPrecision);
 	const float UseHeight = GoalHalfHeight + (AgentHalfHeight * MinAgentHalfHeightPct);
 	bHeightFailed = (CurrentHeight > UseHeight) ? 1 : 0;
 }

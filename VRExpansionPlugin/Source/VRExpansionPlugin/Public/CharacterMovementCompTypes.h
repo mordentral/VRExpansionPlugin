@@ -632,7 +632,7 @@ struct VREXPANSIONPLUGIN_API FVRCharacterNetworkMoveData : public FCharacterNetw
 public:
 
 	FVector_NetQuantize100 VRCapsuleLocation;
-	FVector_NetQuantize100 LFDiff;
+	FVector/*_NetQuantize100*/ LFDiff;
 	uint16 VRCapsuleRotation;
 	EVRConjoinedMovementModes ReplicatedMovementMode;
 	FVRConditionalMoveRep ConditionalMoveReps;

@@ -16,6 +16,7 @@
 #include "EngineGlobals.h"
 #include "MaterialShared.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialRenderProxy.h"
 #include "Engine/Engine.h"
 //#include "Widgets/SWindow.h"
 #include "Engine/TextureRenderTarget2D.h"

@@ -21,10 +21,15 @@
 #include "DrawDebugHelpers.h"
 #include "TimerManager.h"
 #include "VRBaseCharacter.h"
+#include "VRCharacter.h"
+#include "VRRootComponent.h"
 #include "VRGlobalSettings.h"
 #include "Math/DualQuat.h"
 #include "IIdentifiableXRDevice.h" // for FXRDeviceId
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
+#include "XRDeviceVisualizationComponent.h" // For visualization component
+
+#include "Physics/Experimental/PhysScene_Chaos.h"
 
 #include "GripScripts/GS_Default.h"
 #include "GripScripts/GS_LerpToHand.h"
@@ -33,6 +38,7 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/ConstraintDrives.h"
 #include "PhysicsReplication.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 
 #include "Chaos/ParticleHandle.h"
 #include "Chaos/KinematicGeometryParticles.h"
@@ -4520,7 +4526,7 @@ void UGripMotionControllerComponent::Deactivate()
 
 void UGripMotionControllerComponent::OnAttachmentChanged()
 {
-	if (AVRBaseCharacter* CharacterOwner = Cast<AVRBaseCharacter>(this->GetOwner()))
+	if (AVRCharacter* CharacterOwner = Cast<AVRCharacter>(this->GetOwner()))
 	{
 		AttachChar = CharacterOwner;
 	}
@@ -4621,10 +4627,21 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			}
 
 			// if controller tracking just kicked in or we haven't gotten a valid model yet
+			if (!bTracked && bNewTrackedState && !bHasStartedRendering)
+			{
+				if (VisualizationComponent)
+				{
+					VisualizationComponent->SetIsRenderingActive(true);
+					bHasStartedRendering = true;
+				}
+			}
+
+			// This part is deprecated and will be removed in later versions.
+			// If controller tracking just kicked in or we haven't gotten a valid model yet
 			if (((!bTracked && bNewTrackedState) || !DisplayComponentReference.IsValid()) && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
 			{
 				RefreshDisplayComponent();
-			}
+			} // End of deprecation
 
 			bTracked = bNewTrackedState && (bIgnoreTrackingStatus || CurrentTrackingStatus != ETrackingStatus::NotTracked);
 			if (bTracked)
@@ -6965,7 +6982,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 
 bool UGripMotionControllerComponent::HasTrackingParameters()
 {
-	return bOffsetByHMD || bScaleTracking || bLeashToHMD || bLimitMinHeight || bLimitMaxHeight;
+	return bOffsetByHMD || bScaleTracking || bLeashToHMD || bLimitMinHeight || bLimitMaxHeight || (AttachChar && !AttachChar->bRetainRoomscale);
 }
 
 void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread)
@@ -6985,7 +7002,7 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 		OriginalPosition.Z = FMath::Min(OriginalPosition.Z, MaximumHeight);
 	}
 
-	if (bOffsetByHMD || bLeashToHMD)
+	if (bOffsetByHMD || bLeashToHMD || (AttachChar && !AttachChar->bRetainRoomscale))
 	{
 		if (bIsInGameThread)
 		{
@@ -6998,11 +7015,17 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 
 					if (IsValid(AttachChar) && AttachChar->VRReplicatedCamera)
 					{
-						AttachChar->VRReplicatedCamera->ApplyTrackingParameters(curLoc);
+						AttachChar->VRReplicatedCamera->ApplyTrackingParameters(curLoc, true);
 					}
 
 					//curLoc.Z = 0;
 					LastLocationForLateUpdate = curLoc;
+
+					if (IsValid(AttachChar) && !AttachChar->bRetainRoomscale)
+					{
+						FRotator StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(curRot.Rotator());
+						LastLocationForLateUpdate += StoredCameraRotOffset.RotateVector(FVector(AttachChar->VRRootReference->VRCapsuleOffset.X, AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+					}
 				}
 			}
 			else
@@ -7011,6 +7034,12 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 				{
 					// Sample camera location instead
 					LastLocationForLateUpdate = AttachChar->VRReplicatedCamera->GetRelativeLocation();
+
+					if (!AttachChar->bRetainRoomscale)
+					{
+						FRotator StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(AttachChar->VRReplicatedCamera->GetRelativeRotation());
+						LastLocationForLateUpdate += StoredCameraRotOffset.RotateVector(FVector(AttachChar->VRRootReference->VRCapsuleOffset.X, AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+					}
 				}
 			}
 		}
@@ -7020,14 +7049,14 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 		// It has a data race condition right now though
 		FVector CorrectLastLocation = bIsInGameThread ? LastLocationForLateUpdate : LateUpdateParams.GripRenderThreadLastLocationForLateUpdate;
 
-		if (bOffsetByHMD)
+		if (bOffsetByHMD || (AttachChar && !AttachChar->bRetainRoomscale))
 		{
 			OriginalPosition -= FVector(CorrectLastLocation.X, CorrectLastLocation.Y, 0.0f);
 		}
 
 		if (bLeashToHMD)
 		{
-			FVector DifferenceVec = bOffsetByHMD ? OriginalPosition : (OriginalPosition - CorrectLastLocation);
+			FVector DifferenceVec = (bOffsetByHMD || (AttachChar && !AttachChar->bRetainRoomscale)) ? OriginalPosition : (OriginalPosition - CorrectLastLocation);
 
 			if (DifferenceVec.SizeSquared() > FMath::Square(LeashRange))
 			{

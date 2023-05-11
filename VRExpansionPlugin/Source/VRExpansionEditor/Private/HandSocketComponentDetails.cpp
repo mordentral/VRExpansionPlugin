@@ -27,6 +27,8 @@
 #include "EditorStyleSet.h"
 #include "Styling/CoreStyle.h"
 
+#include "Animation/AnimData/AnimDataModel.h"
+
 #include "Editor/UnrealEdEngine.h"
 #include "UnrealEdGlobals.h"
 
@@ -142,23 +144,28 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 				AnimationObject->BoneCompressionSettings = FAnimationUtils::GetDefaultAnimationBoneCompressionSettings();
 			}
 
-			//AnimationObject->SetSequenceLength(4.f);
-			AnimController.SetPlayLength(1.f);
-			//AnimationObject->SetRawNumberOfFrame(1);
+			AnimController.InitializeModel();
+			AnimController.RemoveAllBoneTracks(false);
+			
+
+			//checkf(MovieScene, TEXT("No Movie Scene found for SequencerDataModel"));
+			//AnimController.SetPlayLength(4.f);
+			AnimController.SetNumberOfFrames(FFrameNumber(1), false);
+
+			// Set frame rate to 1 to 1 as we don't animate
 			AnimController.SetFrameRate(FFrameRate(1, 1));
 
 			TArray<FName> TrackNames;
-			UAnimDataModel* BaseDataModel = nullptr;
+			const IAnimationDataModel* BaseDataModel = BaseAnimation ? BaseAnimation->GetController().GetModel() : nullptr;
 
 			if (BaseAnimation)
 			{
-				BaseDataModel = BaseAnimation->GetController().GetModel();
 				if (BaseDataModel)
 				{
 					BaseDataModel->GetBoneTrackNames(TrackNames);
 					for (FName TrackName : TrackNames)
 					{
-						AnimController.AddBoneTrack(TrackName);
+						AnimController.AddBoneCurve(TrackName);
 					}
 				}
 				else
@@ -171,7 +178,8 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 				int numBones = HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetNum();
 				for (int i = 0; i < LocalPoses.Num() && i < numBones; ++i)
 				{
-					AnimController.AddBoneTrack(HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetBoneName(i));
+					AnimController.AddBoneCurve(HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetBoneName(i));
+					//AnimController.AddBoneTrack(HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetBoneName(i));
 				}
 			}
 
@@ -184,53 +192,21 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 				AnimationObject->RetargetSource = HandSocketComponent->VisualizationMesh ? HandSocketComponent->VisualizationMesh->GetSkeleton()->GetRetargetSourceForMesh(HandSocketComponent->VisualizationMesh) : NAME_None;
 			}
 
-			UAnimDataModel* DataModel = AnimController.GetModel();
+			const IAnimationDataModel* DataModel = AnimController.GetModel();
 
 			/// SAVE POSE
 			if (BaseAnimation && DataModel && BaseDataModel)
 			{
-				for (int32 TrackIndex = 0; TrackIndex < DataModel->GetBoneAnimationTracks().Num(); ++TrackIndex)
+				for (int32 TrackIndex = 0; TrackIndex < /*DataModel->GetBoneAnimationTracks().Num()*/BaseDataModel->GetNumBoneTracks(); ++TrackIndex)
 				{
-					const FRawAnimSequenceTrack& RawTrack = BaseDataModel->GetBoneTrackByIndex(TrackIndex).InternalTrackData;
-
-					bool bHadLoc = false;
-					bool bHadRot = false;
-					bool bHadScale = false;
-					FVector Loc = FVector::ZeroVector;
-					FQuat Rot = FQuat::Identity;
-					FVector Scale = FVector::ZeroVector;
-
-					if (RawTrack.PosKeys.Num())
-					{
-						Loc.X = RawTrack.PosKeys[0].X;
-						Loc.Y = RawTrack.PosKeys[0].Y;
-						Loc.Z = RawTrack.PosKeys[0].Z;
-						//Loc = RawTrack.PosKeys[0];
-						bHadLoc = true;
-					}
-
-					if (RawTrack.RotKeys.Num())
-					{
-						Rot.X = RawTrack.RotKeys[0].X;
-						Rot.Y = RawTrack.RotKeys[0].Y;
-						Rot.Z = RawTrack.RotKeys[0].Z;
-						Rot.W = RawTrack.RotKeys[0].W;
-						//Rot = RawTrack.RotKeys[0];
-						bHadRot = true;
-					}
-
-					if (RawTrack.ScaleKeys.Num())
-					{
-						Scale.X = RawTrack.ScaleKeys[0].X;
-						Scale.Y = RawTrack.ScaleKeys[0].Y;
-						Scale.Z = RawTrack.ScaleKeys[0].Z;
-						//Scale = RawTrack.ScaleKeys[0];
-						bHadScale = true;
-					}
-
-					FTransform FinalTrans(Rot, Loc, Scale);
-
 					FName TrackName = TrackIndex < TrackNames.Num() ? TrackNames[TrackIndex] : NAME_None;
+					if (!BaseDataModel->IsValidBoneTrackName(TrackName))
+					{
+						continue;
+					}
+
+					FTransform FinalTrans = BaseDataModel->GetBoneTrackTransform(TrackName, 0);
+					//FTransform FinalTrans(Rot, Loc, Scale);
 
 					FQuat DeltaQuat = FQuat::Identity;
 					for (FBPVRHandPoseBonePair& HandPair : HandSocketComponent->CustomPoseDeltas)
@@ -238,7 +214,6 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 						if (HandPair.BoneName == TrackName)
 						{
 							DeltaQuat = HandPair.DeltaPose;
-							bHadRot = true;
 							break;
 						}
 					}
@@ -247,21 +222,33 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 					FinalTrans.NormalizeRotation();
 
 					//FRawAnimSequenceTrack& RawNewTrack = DataModel->GetBoneTrackByIndex(TrackIndex).InternalTrackData;
-
 					AnimController.SetBoneTrackKeys(TrackName, { FinalTrans.GetTranslation() }, { FinalTrans.GetRotation() }, { FinalTrans.GetScale3D() });
 				}
 			}
-			else
+			else if(DataModel)
 			{
 				USkeletalMesh* SkeletalMesh = HandSocketComponent->VisualizationMesh;
+				FReferenceSkeleton RefSkeleton = SkeletalMesh->GetRefSkeleton();	
 				USkeleton* AnimSkeleton = SkeletalMesh->GetSkeleton();
-				for (int32 TrackIndex = 0; TrackIndex < DataModel->GetBoneAnimationTracks().Num(); ++TrackIndex)
+
+				for (int32 TrackIndex = 0; TrackIndex < RefSkeleton.GetNum(); ++TrackIndex)
 				{
+					
+					FName TrackName = RefSkeleton.GetBoneName(TrackIndex);
+					if (!DataModel->IsValidBoneTrackName(TrackName))
+					{
+						continue;
+					}
+
+					int32 BoneTreeIndex = RefSkeleton.FindBoneIndex(TrackName);
+
 					// verify if this bone exists in skeleton
-					int32 BoneTreeIndex = DataModel->GetBoneTrackByIndex(TrackIndex).BoneTreeIndex;
+					//int32 BoneTreeIndex = DataModel->GetBoneTrackByIndex(TrackIndex).BoneTreeIndex;
+
 					if (BoneTreeIndex != INDEX_NONE)
 					{
-						int32 BoneIndex = AnimSkeleton->GetMeshBoneIndexFromSkeletonBoneIndex(SkeletalMesh, BoneTreeIndex);
+
+						int32 BoneIndex = BoneTreeIndex;//AnimSkeleton->GetMeshBoneIndexFromSkeletonBoneIndex(SkeletalMesh, BoneTreeIndex);
 						//int32 ParentIndex = SkeletalMesh->RefSkeleton.GetParentIndex(BoneIndex);
 						FTransform LocalTransform = LocalPoses[BoneIndex];
 
@@ -609,7 +596,7 @@ void FHandSocketComponentDetails::OnUpdateShowMesh(IDetailLayoutBuilder* LayoutB
 
 FReply FHandSocketComponentDetails::OnUpdateSavePose()
 {
-	if (HandSocketComponent.IsValid() /* && HandSocketComponent->CustomPoseDeltas.Num() > 0*/)
+	if (HandSocketComponent.IsValid() && HandSocketComponent->CustomPoseDeltas.Num() > 0)
 	{
 		if (HandSocketComponent->HandTargetAnimation || HandSocketComponent->VisualizationMesh)
 		{

@@ -12,6 +12,7 @@
 #include "GameFramework/GameNetworkManager.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/GameState.h"
+#include "GameFramework/WorldSettings.h"
 #include "Components/PrimitiveComponent.h"
 #include "Animation/AnimMontage.h"
 #include "DrawDebugHelpers.h"
@@ -409,7 +410,12 @@ void FSavedMove_VRCharacter::SetInitialPosition(ACharacter* C)
 		{
 			VRCapsuleLocation = VRC->VRRootReference->curCameraLoc;
 			VRCapsuleRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRC->VRRootReference->curCameraRot);
-			LFDiff = VRC->VRRootReference->DifferenceFromLastFrame;
+
+			// Don't reset this unless its zero, after that its from a movement merge
+			if (LFDiff.IsZero())
+			{
+				LFDiff = VRC->VRRootReference->DifferenceFromLastFrame;
+			}
 		}
 		else
 		{
@@ -444,12 +450,19 @@ void FSavedMove_VRCharacter::PrepMoveFor(ACharacter* Character)
 			}
 		}
 
+		CharMove->VRRootCapsule->StoredCameraRotOffset = CharMove->VRRootCapsule->curCameraRot;
 		CharMove->VRRootCapsule->GenerateOffsetToWorld(false, false);
 	}
 
 	FSavedMove_VRBaseCharacter::PrepMoveFor(Character);
 }
 
+
+void UVRCharacterMovementComponent::RegenerateOffset()
+{
+	if(VRRootCapsule)
+		VRRootCapsule->GenerateOffsetToWorld();
+}
 
 void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterNetworkMoveData& MoveData)
 {
@@ -483,7 +496,15 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 	}
 
 	const float ClientTimeStamp = MoveData.TimeStamp;
-	FVector_NetQuantize10 ClientAccel = MoveData.Acceleration;
+	FVector ClientAccel = MoveData.Acceleration;
+
+	static const auto CVarNetUseBaseRelativeAcceleration = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetUseBaseRelativeAcceleration"));
+	// Convert the move's acceleration to worldspace if necessary
+	if (CVarNetUseBaseRelativeAcceleration->GetInt() && MovementBaseUtility::IsDynamicBase(MoveData.MovementBase))
+	{
+		MovementBaseUtility::TransformDirectionToWorld(MoveData.MovementBase, MoveData.MovementBaseBoneName, MoveData.Acceleration, ClientAccel);
+	}
+
 	const uint8 ClientMoveFlags = MoveData.CompressedMoveFlags;
 	const FRotator ClientControlRotation = MoveData.ControlRotation;
 
@@ -588,6 +609,7 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 					}
 				}
 
+				VRRootCapsule->StoredCameraRotOffset = VRRootCapsule->curCameraRot;
 				VRRootCapsule->GenerateOffsetToWorld(false, false);
 
 				// #TODO: Should I actually implement the mesh translation from "Crouch"? Generally people are going to be
@@ -1248,6 +1270,9 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 
 				NewMove->CombineWith(PendingMove, CharacterOwner, PC, OldStartLocation);
 
+				// Update the input vector to the new values!! We were always forgetting to do this
+				AdditionalVRInputVector = ((FSavedMove_VRBaseCharacter*)NewMove)->LFDiff;
+
 				/************************/
 				if (PC)
 				{
@@ -1305,7 +1330,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 			// Decide whether to hold off on move	
 			// Decide whether to hold off on move
 			const float NetMoveDelta = FMath::Clamp(GetClientNetSendDeltaTime(PC, ClientData, NewMovePtr), 1.f / 120.f, 1.f / 5.f);
-			
+
 			if ((MyWorld->TimeSeconds - ClientData->ClientUpdateTime) * MyWorld->GetWorldSettings()->GetEffectiveTimeDilation() < NetMoveDelta)
 			{
 				// Delay sending this move.
@@ -3569,7 +3594,18 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 					CurrentFloor.Clear();
 				}
 
-				if (!CurrentFloor.IsWalkableFloor())
+				// Possible for dynamic movement bases, particularly those that align to slopes while the character does not, to encroach the character.
+				// Check to see if we can resolve the penetration in those cases, and if so find the floor.
+				if (CurrentFloor.HitResult.bStartPenetrating && MovementBaseUtility::IsDynamicBase(GetMovementBase()))
+				{
+					// Follows PhysWalking approach for encroachment on floor tests
+					FHitResult Hit(CurrentFloor.HitResult);
+					Hit.TraceEnd = Hit.TraceStart + FVector(0.f, 0.f, MAX_FLOOR_DIST);
+					const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
+					const bool bResolved = ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
+					bForceNextFloorCheck |= bResolved;
+				}
+				else if (!CurrentFloor.IsWalkableFloor())
 				{
 					if (!bSimGravityDisabled)
 					{
@@ -3781,7 +3817,8 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 	FName NewBaseBoneName,
 	bool bHasBase,
 	bool bBaseRelativePosition,
-	uint8 ServerMovementMode
+	uint8 ServerMovementMode,
+	TOptional<FRotator> OptionalRotation
 )
 {
 	if (!HasValidData() || !IsActive())
@@ -3849,13 +3886,33 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 	//  Received Location is relative to dynamic base
 	if (bBaseRelativePosition)
 	{
-		MovementBaseUtility::GetLocalMovementBaseLocationInWorldSpace(NewBase, NewBaseBoneName, NewLocation, WorldShiftedNewLocation); // TODO: error handling if returns false	
+		MovementBaseUtility::TransformLocationToWorld(NewBase, NewBaseBoneName, NewLocation, WorldShiftedNewLocation); // TODO: error handling if returns false	
 	}
 	else
 	{
 		WorldShiftedNewLocation = FRepMovement::RebaseOntoLocalOrigin(NewLocation, this);
 	}
 
+	// Server's world velocity may need to be converted to velocity relative to the movement base orientation, if the base orientations don't match.
+	const FCharacterMoveResponseDataContainer& ResponseDataContainer = GetMoveResponseDataContainer();
+	if (ResponseDataContainer.ClientAdjustment.bBaseRelativeVelocity)
+	{
+		// Convert Relative Velocity -> World Velocity
+		const FVector CurrentVelocity = NewVelocity;
+		MovementBaseUtility::TransformDirectionToWorld(NewBase, NewBaseBoneName, CurrentVelocity, NewVelocity);
+	}
+
+
+	// #TODO: Epics 5.1 rotation enforce, we use our own currently
+	/*
+	// Fall back to the last-known good rotation if the server didn't send one
+	static const auto CVarUseLastGoodRotationDuringCorrection = IConsoleManager::Get().FindConsoleVariable(TEXT("p.UseLastGoodRotationDuringCorrection"));
+	if (CVarUseLastGoodRotationDuringCorrection->GetInt()
+		&& (bOrientRotationToMovement || bUseControllerDesiredRotation)
+		&& (!OptionalRotation.IsSet() && ClientData->LastAckedMove.IsValid()))
+	{
+		OptionalRotation = ClientData->LastAckedMove->SavedRotation;
+	}*/
 
 	// Trigger event
 	OnClientCorrectionReceived(*ClientData, TimeStamp, WorldShiftedNewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
@@ -4023,7 +4080,7 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 	FVector ClientLoc = RelativeClientLoc;
 	if (MovementBaseUtility::UseRelativeLocation(ClientMovementBase))
 	{
-		MovementBaseUtility::GetLocalMovementBaseLocationInWorldSpace(ClientMovementBase, ClientBaseBoneName, RelativeClientLoc, ClientLoc);
+		MovementBaseUtility::TransformLocationToWorld(ClientMovementBase, ClientBaseBoneName, RelativeClientLoc, ClientLoc);
 	}
 	else
 	{
@@ -4133,7 +4190,7 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 				if (MovementBaseUtility::UseRelativeLocation(LastServerMovementBaseVRPtr))
 				{
 					// Relative Location
-					MovementBaseUtility::GetLocalMovementBaseLocation(LastServerMovementBaseVRPtr, LastServerMovementBaseBoneName, UpdatedComponent->GetComponentLocation(), RelativeLocation);
+					MovementBaseUtility::TransformLocationToLocal(LastServerMovementBaseVRPtr, LastServerMovementBaseBoneName, UpdatedComponent->GetComponentLocation(), RelativeLocation);
 					bUseLastBase = true;
 				}
 			}
@@ -4236,9 +4293,11 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 		}
 
 		ServerData->PendingAdjustment.bBaseRelativePosition = (bDeferServerCorrectionsWhenFalling && bUseLastBase) || MovementBaseUtility::UseRelativeLocation(MovementBase);
+		ServerData->PendingAdjustment.bBaseRelativeVelocity = false;
+
+		// Relative location?
 		if (ServerData->PendingAdjustment.bBaseRelativePosition)
 		{
-			// Relative location
 			if (bDeferServerCorrectionsWhenFalling && bUseLastBase)
 			{
 				ServerData->PendingAdjustment.NewVel = RelativeVelocity;
@@ -4275,6 +4334,15 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 				else
 				{
 					ServerData->PendingAdjustment.NewLoc = CharacterOwner->GetBasedMovement().Location;
+				}
+
+				static const auto CVarNetUseBaseRelativeVelocity = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetUseBaseRelativeVelocity"));
+				if (CVarNetUseBaseRelativeVelocity->GetInt())
+				{
+					// Store world velocity converted to local space of movement base
+					ServerData->PendingAdjustment.bBaseRelativeVelocity = true;
+					const FVector CurrentVelocity = ServerData->PendingAdjustment.NewVel;
+					MovementBaseUtility::TransformDirectionToLocal(MovementBase, MovementBaseBoneName, CurrentVelocity, ServerData->PendingAdjustment.NewVel);
 				}
 			}
 
@@ -4345,6 +4413,152 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 	bLastClientIsFalling = bClientIsFalling;
 	bLastServerIsFalling = bServerIsFalling;
 	bLastServerIsWalking = MovementMode == MOVE_Walking;
+}
+
+bool UVRCharacterMovementComponent::ClientUpdatePositionAfterServerUpdate()
+{
+	//SCOPE_CYCLE_COUNTER(STAT_CharacterMovementClientUpdatePositionAfterServerUpdate);
+	if (!HasValidData())
+	{
+		return false;
+	}
+
+	FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
+	check(ClientData);
+
+	if (!ClientData->bUpdatePosition)
+	{
+		return false;
+	}
+
+	ClientData->bUpdatePosition = false;
+
+	// Don't do any network position updates on things running PHYS_RigidBody
+	if (CharacterOwner->GetRootComponent() && CharacterOwner->GetRootComponent()->IsSimulatingPhysics())
+	{
+		return false;
+	}
+
+	if (ClientData->SavedMoves.Num() == 0)
+	{
+		UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ClientUpdatePositionAfterServerUpdate No saved moves to replay"), ClientData->SavedMoves.Num());
+
+		// With no saved moves to resimulate, the move the server updated us with is the last move we've done, no resimulation needed.
+		CharacterOwner->bClientResimulateRootMotion = false;
+		if (CharacterOwner->bClientResimulateRootMotionSources)
+		{
+			// With no resimulation, we just update our current root motion to what the server sent us
+			UE_LOG(LogRootMotion, VeryVerbose, TEXT("CurrentRootMotion getting updated to ServerUpdate state: %s"), *CharacterOwner->GetName());
+			CurrentRootMotion.UpdateStateFrom(CharacterOwner->SavedRootMotion);
+			CharacterOwner->bClientResimulateRootMotionSources = false;
+		}
+		CharacterOwner->SavedRootMotion.Clear();
+
+		return false;
+	}
+
+	// Save important values that might get affected by the replay.
+	const float SavedAnalogInputModifier = AnalogInputModifier;
+	const FRootMotionMovementParams BackupRootMotionParams = RootMotionParams; // For animation root motion
+	const FRootMotionSourceGroup BackupRootMotion = CurrentRootMotion;
+	const bool bRealPressedJump = CharacterOwner->bPressedJump;
+	const float RealJumpMaxHoldTime = CharacterOwner->JumpMaxHoldTime;
+	const int32 RealJumpMaxCount = CharacterOwner->JumpMaxCount;
+	const bool bRealCrouch = bWantsToCrouch;
+	const bool bRealForceMaxAccel = bForceMaxAccel;
+	CharacterOwner->bClientWasFalling = (MovementMode == MOVE_Falling);
+	CharacterOwner->bClientUpdating = true;
+	bForceNextFloorCheck = true;
+
+	// Store out our custom properties to restore after replaying
+	const FVRMoveActionArray Orig_MoveActions = MoveActionArray;
+	const FVector Orig_CustomInput = CustomVRInputVector;
+	const EVRConjoinedMovementModes Orig_VRReplicatedMovementMode = VRReplicatedMovementMode;
+	const FVector Orig_RequestedVelocity = RequestedVelocity;
+	const bool Orig_HasRequestedVelocity = HasRequestedVelocity();
+
+	// Store our VRchar custom properties
+	FVector Orig_CameraLoc = VRRootCapsule->curCameraLoc;
+	FRotator Orig_curCameraRot = VRRootCapsule->curCameraRot;
+	FVector Orig_DifferenceFromLastFrame = VRRootCapsule->DifferenceFromLastFrame;
+	FVector Orig_AdditionalVRInputVector = AdditionalVRInputVector;
+	FRotator Orig_CameraRotOffset = VRRootCapsule->StoredCameraRotOffset;
+
+	// Replay moves that have not yet been acked.
+	UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ClientUpdatePositionAfterServerUpdate Replaying %d Moves, starting at Timestamp %f"), ClientData->SavedMoves.Num(), ClientData->SavedMoves[0]->TimeStamp);
+	for (int32 i = 0; i < ClientData->SavedMoves.Num(); i++)
+	{
+		FSavedMove_Character* const CurrentMove = ClientData->SavedMoves[i].Get();
+		checkSlow(CurrentMove != nullptr);
+
+		// Make current SavedMove accessible to any functions that might need it.PrepMoveFor
+		SetCurrentReplayedSavedMove(CurrentMove);
+
+		CurrentMove->PrepMoveFor(CharacterOwner);
+
+		if (ShouldUsePackedMovementRPCs())
+		{
+			// Make current move data accessible to MoveAutonomous or any other functions that might need it.
+			if (FCharacterNetworkMoveData* NewMove = GetNetworkMoveDataContainer().GetNewMoveData())
+			{
+				SetCurrentNetworkMoveData(NewMove);
+				NewMove->ClientFillNetworkMoveData(*CurrentMove, FCharacterNetworkMoveData::ENetworkMoveType::NewMove);
+			}
+		}
+
+		MoveAutonomous(CurrentMove->TimeStamp, CurrentMove->DeltaTime, CurrentMove->GetCompressedFlags(), CurrentMove->Acceleration);
+
+		CurrentMove->PostUpdate(CharacterOwner, FSavedMove_Character::PostUpdate_Replay);
+		SetCurrentNetworkMoveData(nullptr);
+		SetCurrentReplayedSavedMove(nullptr);
+	}
+	const bool bPostReplayPressedJump = CharacterOwner->bPressedJump;
+
+	if (FSavedMove_Character* const PendingMove = ClientData->PendingMove.Get())
+	{
+		PendingMove->bForceNoCombine = true;
+	}
+
+	// Restore saved values.
+	AnalogInputModifier = SavedAnalogInputModifier;
+	RootMotionParams = BackupRootMotionParams;
+	CurrentRootMotion = BackupRootMotion;
+	if (CharacterOwner->bClientResimulateRootMotionSources)
+	{
+		// If we were resimulating root motion sources, it's because we had mismatched state
+		// with the server - we just resimulated our SavedMoves and now need to restore
+		// CurrentRootMotion with the latest "good state"
+		UE_LOG(LogRootMotion, VeryVerbose, TEXT("CurrentRootMotion getting updated after ServerUpdate replays: %s"), *CharacterOwner->GetName());
+		CurrentRootMotion.UpdateStateFrom(CharacterOwner->SavedRootMotion);
+		CharacterOwner->bClientResimulateRootMotionSources = false;
+	}
+
+	CharacterOwner->SavedRootMotion.Clear();
+	CharacterOwner->bClientResimulateRootMotion = false;
+	CharacterOwner->bClientUpdating = false;
+	CharacterOwner->bPressedJump = bRealPressedJump || bPostReplayPressedJump;
+	CharacterOwner->JumpMaxHoldTime = RealJumpMaxHoldTime;
+	CharacterOwner->JumpMaxCount = RealJumpMaxCount;
+	bWantsToCrouch = bRealCrouch;
+	bForceMaxAccel = bRealForceMaxAccel;
+	bForceNextFloorCheck = true;
+
+	// Restore our custom properties
+	MoveActionArray = Orig_MoveActions;
+	CustomVRInputVector = Orig_CustomInput;
+	VRReplicatedMovementMode = Orig_VRReplicatedMovementMode;
+	RequestedVelocity = Orig_RequestedVelocity;
+	SetHasRequestedVelocity(Orig_HasRequestedVelocity);
+
+	// Restore our VRchar custom properties
+	VRRootCapsule->curCameraLoc = Orig_CameraLoc;
+	VRRootCapsule->curCameraRot = Orig_curCameraRot;
+	VRRootCapsule->DifferenceFromLastFrame = Orig_DifferenceFromLastFrame;
+	AdditionalVRInputVector = Orig_AdditionalVRInputVector;
+	VRRootCapsule->StoredCameraRotOffset = Orig_CameraRotOffset;
+	VRRootCapsule->GenerateOffsetToWorld(false, false);
+
+	return (ClientData->SavedMoves.Num() > 0);
 }
 
 FVector UVRCharacterMovementComponent::GetPenetrationAdjustment(const FHitResult& Hit) const

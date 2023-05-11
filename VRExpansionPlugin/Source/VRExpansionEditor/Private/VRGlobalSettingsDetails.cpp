@@ -110,16 +110,16 @@ FReply FVRGlobalSettingsDetails::OnCorrectInvalidAnimationAssets()
 			IAnimationDataController& AnimController = AnimSeq->GetController();
 			{
 				IAnimationDataController::FScopedBracket ScopedBracket(AnimController, LOCTEXT("FixAnimationAsset_VRE", "Fixing invalid anim sequences"));
-				
-				FFrameRate FrameRate = AnimController.GetModel()->GetFrameRate();
-				//int32 NumFrames = AnimSeq->GetNumberOfFrames();
+				const IAnimationDataModel* AnimModel = AnimController.GetModel();
+
+				FFrameRate FrameRate = AnimModel->GetFrameRate();
+				//int32 NumFrames = AnimModel->GetNumberOfFrames();
 				double FrameRateD = FrameRate.AsDecimal();
 
 				// I was saving with a below 1.0 frame rate and 1 frame
 				if (FrameRateD < 1.0f)
 				{
 					// We have an invalid frame rate for 5.2
-					AnimController.SetPlayLength(1.f);
 					AnimController.SetFrameRate(FFrameRate(1, 1));
 					AnimSeq->MarkPackageDirty();
 

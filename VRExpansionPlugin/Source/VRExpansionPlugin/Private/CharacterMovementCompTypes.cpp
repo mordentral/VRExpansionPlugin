@@ -399,16 +399,15 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 	VRCapsuleLocation.NetSerialize(Ar, PackageMap, bLocalSuccess);
 	Ar << VRCapsuleRotation;
 
-	if (MoveType == ENetworkMoveType::NewMove)
-	{
+	// Location is only used for error checking, so only save for the final move.
+	//if (MoveType == ENetworkMoveType::NewMove)
+	//{
 		Location.NetSerialize(Ar, PackageMap, bLocalSuccess);
+	//}
 
-		// Location, relative movement base, and ending movement mode is only used for error checking, so only save for the final move.
-		SerializeOptionalValue<UPrimitiveComponent*>(bIsSaving, Ar, MovementBase, nullptr);
-		SerializeOptionalValue<FName>(bIsSaving, Ar, MovementBaseBoneName, NAME_None);
-		//SerializeOptionalValue<uint8>(bIsSaving, Ar, MovementMode, MOVE_Walking); // Epic has this like this too, but it is bugged and killing movements
-	}
-
+	// Movement base needs to always send now since they allow for relative based velocity
+	SerializeOptionalValue<UPrimitiveComponent*>(bIsSaving, Ar, MovementBase, nullptr);
+	SerializeOptionalValue<FName>(bIsSaving, Ar, MovementBaseBoneName, NAME_None);
 
 	bool bHasReplicatedMovementMode = ReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX;
 	Ar.SerializeBits(&bHasReplicatedMovementMode, 1);
@@ -427,7 +426,23 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 	ConditionalMoveReps.NetSerialize(Ar, PackageMap, bLocalSuccess);
 
 	//VRCapsuleLocation.NetSerialize(Ar, PackageMap, bLocalSuccess);
-	LFDiff.NetSerialize(Ar, PackageMap, bLocalSuccess);
+	if (AVRBaseCharacter* VRChar = Cast<AVRBaseCharacter>(CharacterOwner))
+	{
+		if (!VRChar->bRetainRoomscale)
+		{
+			SerializePackedVector<10000, 32>(LFDiff, Ar);
+		}
+		else
+		{
+			SerializePackedVector<100, 30>(LFDiff, Ar);
+		}
+	}
+	else
+	{
+		SerializePackedVector<100, 30>(LFDiff, Ar);
+	}
+
+	//LFDiff.NetSerialize(Ar, PackageMap, bLocalSuccess);
 	//Ar << VRCapsuleRotation;
 
 	return !Ar.IsError();
