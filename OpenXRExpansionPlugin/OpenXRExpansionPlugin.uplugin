@@ -24,7 +24,7 @@
 		{
 			"Name": "OpenXRExpansionPlugin",
 			"Type": "Runtime",
-			"LoadingPhase": "PostConfigInit"
+			"LoadingPhase": "PreDefault"
 		}
 		,
 		{
