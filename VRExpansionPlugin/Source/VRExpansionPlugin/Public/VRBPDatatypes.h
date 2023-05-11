@@ -1271,7 +1271,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SecondaryGripInfo")
 		TObjectPtr<USceneComponent> SecondaryAttachment;
 
-	UPROPERTY(BlueprintReadOnly, Category = "SecondaryGripInfo")
+	UPROPERTY(BlueprintReadWrite, Category = "SecondaryGripInfo")
 		FTransform_NetQuantize SecondaryRelativeTransform;
 
 	UPROPERTY(BlueprintReadWrite, Category = "SecondaryGripInfo")
