@@ -8061,7 +8061,21 @@ void UGripMotionControllerComponent::GetHandType(EControllerHand& Hand)
 {
 	if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionSource, Hand))
 	{
-		Hand = EControllerHand::Left;
+		// Check if the palm motion source extension is being used
+		// I assume eventually epic will handle this case
+		if (MotionSource.Compare(FName(TEXT("RightPalm"))) == 0)
+		{
+			Hand = EControllerHand::Right;
+		}
+		// Could skip this and default to left now but would rather check
+		else if (MotionSource.Compare(FName(TEXT("LeftPalm"))) == 0)
+		{
+			Hand = EControllerHand::Left;
+		}
+		else
+		{
+			Hand = EControllerHand::Left;
+		}
 	}
 }
 
