@@ -121,6 +121,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 	FVector VRCapsuleOffset;
 
+	// Store last half height so that we can offset the net smoother based on changes to it
+	float LastCapsuleHalfHeight = 0.0f;
+
+	// Sample current and last capsule half heights and apply an offset based on the difference
+	void UpdateCharacterCapsuleOffset();
+
+
+
 	// If true we will stop tracking the camera / hmd until enabled again
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 		bool bPauseTracking;
@@ -235,7 +243,7 @@ void inline UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGe
 
 	if(owningVRChar && !owningVRChar->bRetainRoomscale)
 	{
-		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(0.0f, 0.0f, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + CamRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
+		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(0.0f, 0.0f, bCenterCapsuleOnHMD ? curCameraLoc.Z : 0.0f), FVector(1.0f)) * GetComponentTransform();
 	}
 	else
 	{
@@ -245,6 +253,9 @@ void inline UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGe
 	if (owningVRChar)
 	{
 		owningVRChar->OffsetComponentToWorld = OffsetComponentToWorld;
+		
+		// Check if we need to move our parents NetSmoother into place
+		UpdateCharacterCapsuleOffset();
 	}
 
 	if (bUpdateBounds)
@@ -276,10 +287,11 @@ FORCEINLINE void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHa
 	CapsuleHalfHeight = FMath::Max3(0.f, NewHalfHeight, NewRadius);
 
 	// Make sure that our character parent updates its replicated var as well
-	if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(GetOwner()))
+
+	if (owningVRChar)
 	{
-		if (GetNetMode() < ENetMode::NM_Client && BaseChar->VRReplicateCapsuleHeight)
-			BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = CapsuleHalfHeight;
+		if (GetNetMode() < ENetMode::NM_Client && owningVRChar->VRReplicateCapsuleHeight)
+			owningVRChar->ReplicatedCapsuleHeight.CapsuleHeight = CapsuleHalfHeight;
 	}
 
 	CapsuleRadius = FMath::Max(0.f, NewRadius);

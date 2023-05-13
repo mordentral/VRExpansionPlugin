@@ -400,14 +400,13 @@ private:
 	float		CapsuleHalfHeight;
 	FColor	ShapeColor;
 	const FVector VRCapsuleOffset;
-	bool bSimulating;
+	bool bSimulating = false;
 	//FTransform OffsetComponentToWorld;
 	FMatrix LocalToWorld;
 };
 
 FPrimitiveSceneProxy* UVRRootComponent::CreateSceneProxy()
 {
-	//GenerateOffsetToWorld();
 	return new FDrawVRCylinderSceneProxy(this);
 }
 
@@ -451,6 +450,18 @@ void UVRRootComponent::BeginPlay()
 void UVRRootComponent::SetTrackingPaused(bool bPaused)
 {
 	bPauseTracking = bPaused;
+}
+
+void UVRRootComponent::UpdateCharacterCapsuleOffset()
+{
+	if (owningVRChar && !owningVRChar->bRetainRoomscale)
+	{
+		if (!FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
+		{
+			LastCapsuleHalfHeight = CapsuleHalfHeight;
+			owningVRChar->VRProxyComponent->SetRelativeLocation(FVector(0.f, 0.f, (-this->GetUnscaledCapsuleHalfHeight()) - VRCapsuleOffset.Z));
+		}
+	}
 }
 
 void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -582,7 +593,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 				// TODO: Needs not retained roomscale version that uses movement diff instead of offset to world
 				if (bAllowWalkingCollision)
+				{
 					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation()/*NextTransform.GetLocation()*/, FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
+				}
 
 				if (bBlockingHit && OutHit.Component.IsValid())
 				{
@@ -597,7 +610,8 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			else
 				bHadRelativeMovement = true;
 
-			if (bHadRelativeMovement)
+			// Not supporting walking collision override currently with new pawn setup
+			if (bHadRelativeMovement || !owningVRChar->bRetainRoomscale)
 			{
 				if (owningVRChar->bRetainRoomscale)
 				{
@@ -718,6 +732,12 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 {
+	/*if (owningVRChar && !owningVRChar->bRetainRoomscale)
+	{
+		Super::SendPhysicsTransform(Teleport);
+		return;
+	}*/
+
 	BodyInstance.SetBodyTransform(OffsetComponentToWorld, Teleport);
 	BodyInstance.UpdateBodyScale(OffsetComponentToWorld.GetScale3D());
 }
@@ -725,6 +745,11 @@ void UVRRootComponent::SendPhysicsTransform(ETeleportType Teleport)
 void UVRRootComponent::SetSimulatePhysics(bool bSimulate)
 {
 	Super::SetSimulatePhysics(bSimulate);
+
+	if (owningVRChar && !owningVRChar->bRetainRoomscale)
+	{
+		return Super::SetSimulatePhysics(bSimulate);
+	}
 
 	if (bSimulate)
 	{
@@ -815,6 +840,12 @@ void UVRRootComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFl
 
 FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
+
+	if (owningVRChar && !owningVRChar->bRetainRoomscale)
+	{
+		return Super::CalcBounds(LocalToWorld);
+	}
+
 	FVector BoxPoint = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
 	//FRotator CamRotOffset(0.0f, curCameraRot.Yaw, 0.0f);
 
@@ -823,14 +854,7 @@ FBoxSphereBounds UVRRootComponent::CalcBounds(const FTransform& LocalToWorld) co
 		return FBoxSphereBounds(FVector(0, 0, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 	else*/
 
-	if (IsValid(owningVRChar) && owningVRChar->bRetainRoomscale)
-	{
-		return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
-	}
-	else
-	{
-		return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
-	}
+	return FBoxSphereBounds(FVector(curCameraLoc.X, curCameraLoc.Y, CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), BoxPoint, BoxPoint.Size()).TransformBy(LocalToWorld);
 }
 
 void UVRRootComponent::GetNavigationData(FNavigationRelevantData& Data) const
@@ -886,6 +910,13 @@ void UVRRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 // This overrides the movement logic to use the offset location instead of the default location for sweeps.
 bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewRotationQuat, bool bSweep, FHitResult* OutHit, EMoveComponentFlags MoveFlags, ETeleportType Teleport)
 {
+
+	/*if (owningVRChar && !owningVRChar->bRetainRoomscale)
+	{
+		return Super::MoveComponentImpl(Delta, NewRotationQuat, bSweep, OutHit, MoveFlags, Teleport);
+		GenerateOffsetToWorld();
+	}*/
+
 	SCOPE_CYCLE_COUNTER(STAT_VRRootMovement);
 	//CSV_SCOPED_TIMING_STAT(PrimitiveComponent, MoveComponentTime);
 
@@ -1195,6 +1226,11 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 bool UVRRootComponent::UpdateOverlapsImpl(const TOverlapArrayView* NewPendingOverlaps, bool bDoNotifies, const TOverlapArrayView* OverlapsAtEndLocation)
 {
+	/*if (owningVRChar && !owningVRChar->bRetainRoomscale)
+	{
+		return Super::UpdateOverlaps(NewPendingOverlaps, bDoNotifies, OverlapsAtEndLocation);
+	}*/
+
 	//SCOPE_CYCLE_COUNTER(STAT_UpdateOverlaps);
 	SCOPE_CYCLE_COUNTER(STAT_UpdateOverlapsVRRoot);
 	SCOPE_CYCLE_UOBJECT(ComponentScope, this);

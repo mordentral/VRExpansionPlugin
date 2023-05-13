@@ -9,6 +9,7 @@
 #include "Components/CapsuleComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
 #include "GripMotionControllerComponent.h"
+#include "VRRootComponent.h"
 #include "VRPathFollowingComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "XRMotionControllerBase.h"
@@ -56,6 +57,14 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (NetSmoother)
 	{
 		NetSmoother->SetupAttachment(RootComponent);
+
+		if (!bRetainRoomscale)
+		{
+			if (UVRRootComponent* MyRoot = Cast<UVRRootComponent>(RootComponent))
+			{
+				VRProxyComponent->SetRelativeLocation(FVector(0.0f, 0.0f, (-MyRoot->GetUnscaledCapsuleHalfHeight()) - MyRoot->VRCapsuleOffset.Z));
+			}
+		}
 	}
 
 	VRProxyComponent = CreateDefaultSubobject<USceneComponent>(AVRBaseCharacter::VRProxyComponentName);

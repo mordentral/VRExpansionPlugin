@@ -173,7 +173,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 				FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VirtualStockComponent->GetComponentRotation());
 				MountWorldTransform = FTransform(PureYaw.Quaternion(), VirtualStockComponent->GetComponentLocation() + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset));
 			}
-			else if (GrippingController->bHasAuthority && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowedForWorld(*GetWorld()))
+			/*else if (GrippingController->bHasAuthority && GEngine->XRSystem.IsValid() && GEngine->XRSystem->IsHeadTrackingAllowedForWorld(*GetWorld()))
 			{
 				FQuat curRot = FQuat::Identity;
 				FVector curLoc = FVector::ZeroVector;
@@ -187,13 +187,15 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 					{
 						if (!OwningCharacter->bRetainRoomscale)
 						{
-							curLoc += PureYaw.RotateVector(FVector(-OwningCharacter->VRRootReference->VRCapsuleOffset.X, -OwningCharacter->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+							curLoc.X = 0.0f;
+							curLoc.Y = 0.0f;
+							curLoc += PureYaw.RotateVector(FVector(-OwningCharacter->VRRootReference->VRCapsuleOffset.X, -OwningCharacter->VRRootReference->VRCapsuleOffset.Y, -OwningCharacter->VRRootReference->GetScaledCapsuleHalfHeight()));
 						}
 					}
 
 					MountWorldTransform = FTransform(PureYaw.Quaternion(), curLoc + PureYaw.RotateVector(VirtualStockSettings.StockSnapOffset)) * GrippingController->GetAttachParent()->GetComponentTransform();
 				}
-			}
+			}*/
 			else if(IsValid(CameraComponent))
 			{		
 				FRotator PureYaw = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(CameraComponent->GetComponentRotation());

@@ -111,7 +111,7 @@ void UParentRelativeAttachmentComponent::UpdateTracking(float DeltaTime)
 		}
 		else
 		{
-			FVector CameraLoc = AttachChar->VRRootReference->curCameraLoc;
+			FVector CameraLoc = FVector(0.0f, 0.0f, AttachChar->VRRootReference->curCameraLoc.Z);
 			CameraLoc += AttachChar->VRRootReference->StoredCameraRotOffset.RotateVector(FVector(-AttachChar->VRRootReference->VRCapsuleOffset.X, -AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
 			SetRelativeRotAndLoc(CameraLoc, AttachChar->VRRootReference->StoredCameraRotOffset, DeltaTime);
 		}

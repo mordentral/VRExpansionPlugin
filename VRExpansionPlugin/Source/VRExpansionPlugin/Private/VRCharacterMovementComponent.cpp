@@ -2250,7 +2250,13 @@ void UVRCharacterMovementComponent::UpdateBasedMovement(float DeltaSeconds)
 		float HalfHeight, Radius;
 		CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleSize(Radius, HalfHeight);
 
-		FVector const BaseOffset(0.0f, 0.0f, 0.0f);//(0.0f, 0.0f, HalfHeight);
+		if (!BaseVRCharacterOwner || BaseVRCharacterOwner->bRetainRoomscale)
+		{
+			HalfHeight = 0;
+		}
+
+		FVector const BaseOffset(0.0f, 0.0f, HalfHeight);
+
 		FVector const LocalBasePos = OldLocalToWorld.InverseTransformPosition(UpdatedComponent->GetComponentLocation() - BaseOffset);
 		FVector const NewWorldPos = ConstrainLocationToPlane(NewLocalToWorld.TransformPosition(LocalBasePos) + BaseOffset);
 		DeltaPosition = ConstrainDirectionToPlane(NewWorldPos - UpdatedComponent->GetComponentLocation());
@@ -2301,7 +2307,16 @@ FVector UVRCharacterMovementComponent::GetImpartedMovementBaseVelocity() const
 			if (bImpartBaseAngularVelocity)
 			{
 				// Base position should be the bottom of the actor since I offset the capsule now
-				const FVector CharacterBasePosition = (UpdatedComponent->GetComponentLocation()/* - FVector(0.f, 0.f, CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight())*/);
+
+				float HalfHeight = CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+				if (!BaseVRCharacterOwner || BaseVRCharacterOwner->bRetainRoomscale)
+				{
+					HalfHeight = 0.0f;
+				}
+
+				const FVector CharacterBasePosition = (UpdatedComponent->GetComponentLocation() - FVector(0.f, 0.f, HalfHeight));
+
+
 				const FVector BaseTangentialVel = MovementBaseUtility::GetMovementBaseTangentialVelocity(MovementBase, CharacterOwner->GetBasedMovement().BoneName, CharacterBasePosition);
 				BaseVelocity += BaseTangentialVel;
 			}
