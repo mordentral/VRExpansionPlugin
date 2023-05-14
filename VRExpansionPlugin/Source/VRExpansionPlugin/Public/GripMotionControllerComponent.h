@@ -234,7 +234,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLeashToHMD"))
 		float LeashRange;
 
-	void ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread);
+	void ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread, bool bApplyZeroing = true);
 	bool HasTrackingParameters();
 
 	// When true any physics constraints will be attached to the grip pivot instead of a new kinematic actor in the scene

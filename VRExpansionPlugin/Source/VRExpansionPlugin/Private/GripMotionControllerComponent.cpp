@@ -4545,7 +4545,7 @@ void UGripMotionControllerComponent::OnRep_ReplicatedControllerTransform()
 	if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
 	{
 		// Ensure that the client is sending valid boundries
-		ApplyTrackingParameters(ReplicatedControllerTransform.Position, true);
+		ApplyTrackingParameters(ReplicatedControllerTransform.Position, true, false);
 	}
 
 	if (bSmoothReplicatedMotion)
@@ -6985,7 +6985,7 @@ bool UGripMotionControllerComponent::HasTrackingParameters()
 	return bOffsetByHMD || bScaleTracking || bLeashToHMD || bLimitMinHeight || bLimitMaxHeight || (AttachChar && !AttachChar->bRetainRoomscale);
 }
 
-void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread)
+void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread, bool bApplyZeroing)
 {
 	if (bScaleTracking)
 	{
@@ -7002,7 +7002,7 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 		OriginalPosition.Z = FMath::Min(OriginalPosition.Z, MaximumHeight);
 	}
 
-	if (bOffsetByHMD || bLeashToHMD || (AttachChar && !AttachChar->bRetainRoomscale))
+	if (bApplyZeroing && (bOffsetByHMD || bLeashToHMD || (AttachChar && !AttachChar->bRetainRoomscale)))
 	{
 		if (bIsInGameThread)
 		{
@@ -7035,7 +7035,7 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 					// Sample camera location instead
 					LastLocationForLateUpdate = AttachChar->VRReplicatedCamera->GetRelativeLocation();
 
-					if (!AttachChar->bRetainRoomscale)
+					if (!AttachChar->bRetainRoomscale && IsLocallyControlled())
 					{
 						FRotator StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(AttachChar->VRReplicatedCamera->GetRelativeRotation());
 						LastLocationForLateUpdate += StoredCameraRotOffset.RotateVector(FVector(AttachChar->VRRootReference->VRCapsuleOffset.X, AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));

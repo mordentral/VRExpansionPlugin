@@ -404,7 +404,7 @@ void UReplicatedVRCameraComponent::OnRep_ReplicatedCameraTransform()
     if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
     {
         // Ensure that we clamp to the expected values from the client
-        ApplyTrackingParameters(ReplicatedCameraTransform.Position);
+        ApplyTrackingParameters(ReplicatedCameraTransform.Position, true);
     }
     
     if (bSmoothReplicatedMotion)
