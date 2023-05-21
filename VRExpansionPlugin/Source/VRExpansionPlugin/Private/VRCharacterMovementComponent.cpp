@@ -179,6 +179,7 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 		}
 
 		// Skipping this move down as the VR character's base root doesn't behave the same
+		// Retain roomscale off also covers it in the capsule size rescale
 		if (bCrouchMaintainsBaseLocation)
 		{
 			// Intentionally not using MoveUpdatedComponent, where a horizontal plane constraint would prevent the base of the capsule from staying at the same spot.
@@ -200,14 +201,18 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 	CharacterOwner->OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
 
 	// Don't smooth this change in mesh position
-	/*if ((bClientSimulation && CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy) || (IsNetMode(NM_ListenServer) && CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy))
+	// Set CapsuleSize VR already handles this
+	/*if (!BaseVRCharacterOwner->bRetainRoomscale)
 	{
-		FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
-
-		if (ClientData)
+		if ((bClientSimulation && CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy) || (IsNetMode(NM_ListenServer) && CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy))
 		{
-			ClientData->MeshTranslationOffset -= FVector(0.f, 0.f, MeshAdjust);
-			ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
+			FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
+
+			if (ClientData)
+			{
+				ClientData->MeshTranslationOffset -= FVector(0.f, 0.f, MeshAdjust);
+				ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
+			}
 		}
 	}*/
 }
@@ -611,21 +616,6 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 
 				VRRootCapsule->StoredCameraRotOffset = VRRootCapsule->curCameraRot;
 				VRRootCapsule->GenerateOffsetToWorld(false, false);
-
-				// #TODO: Should I actually implement the mesh translation from "Crouch"? Generally people are going to be
-				//	IKing any mesh from the HMD instead.
-				/*
-					// Don't smooth this change in mesh position
-					if (bClientSimulation && CharacterOwner->Role == ROLE_SimulatedProxy)
-					{
-						FNetworkPredictionData_Client_Character* ClientData = GetPredictionData_Client_Character();
-						if (ClientData && ClientData->MeshTranslationOffset.Z != 0.f)
-						{
-							ClientData->MeshTranslationOffset += FVector(0.f, 0.f, MeshAdjust);
-							ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
-						}
-					}
-				*/
 			}
 
 			MoveAutonomous(ClientTimeStamp, DeltaTime, ClientMoveFlags, ClientAccel);
@@ -1271,7 +1261,8 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 				NewMove->CombineWith(PendingMove, CharacterOwner, PC, OldStartLocation);
 
 				// Update the input vector to the new values!! We were always forgetting to do this
-				AdditionalVRInputVector = ((FSavedMove_VRBaseCharacter*)NewMove)->LFDiff;
+				FSavedMove_VRBaseCharacter * BaseCharMove = ((FSavedMove_VRBaseCharacter*)NewMove);
+				AdditionalVRInputVector = FVector(BaseCharMove->LFDiff.X, BaseCharMove->LFDiff.Y, 0.0f);
 
 				/************************/
 				if (PC)
