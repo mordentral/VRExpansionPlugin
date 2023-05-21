@@ -52,8 +52,17 @@ public:
 		IVRTrackedParentInterface::Default_SetTrackedParent_Impl(NewParentComponent, WaistRadius, WaistTrackingMode, OptionalWaistTrackingParent, this);
 	}
 
+	// Get the target height offset for the current capsule settings
+	// Generally for when using bRetainRoomscale
+	inline FVector GetTargetHeightOffset()
+	{
+		//return FVector::ZeroVector;
+		return FVector(0.f, 0.f, (-this->GetUnscaledCapsuleHalfHeight()) - VRCapsuleOffset.Z);
+	}
+
 	/**
 	* This is overidden for the VR Character to re-set physics location
+	* If updating the capsule height in VR you should be using this function or SetCapsuleHalfHeightVR
 	* Change the capsule size. This is the unscaled size, before component scale is applied.
 	* @param	InRadius : radius of end-cap hemispheres and center cylinder.
 	* @param	InHalfHeight : half-height, from capsule center to end of top or bottom hemisphere.
@@ -63,6 +72,7 @@ public:
 		virtual void SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true);
 
 	// Used to update the capsule half height and calculate the new offset value for VR
+	// If updating the capsule height in VR you should be using this function or SetCapsuleSizeVR
 	UFUNCTION(BlueprintCallable, Category = "Components|Capsule")
 		void SetCapsuleHalfHeightVR(float HalfHeight, bool bUpdateOverlaps = true);
 
@@ -273,43 +283,4 @@ FORCEINLINE void UVRRootComponent::SetCapsuleHalfHeightVR(float HalfHeight, bool
 	}
 
 	SetCapsuleSizeVR(GetUnscaledCapsuleRadius(), HalfHeight, bUpdateOverlaps);
-}
-
-FORCEINLINE void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
-{
-	SCOPE_CYCLE_COUNTER(STAT_VRRootSetCapsuleSize);
-
-	if (FMath::IsNearlyEqual(NewRadius, CapsuleRadius) && FMath::IsNearlyEqual(NewHalfHeight, CapsuleHalfHeight))
-	{
-		return;
-	}
-
-	CapsuleHalfHeight = FMath::Max3(0.f, NewHalfHeight, NewRadius);
-
-	// Make sure that our character parent updates its replicated var as well
-
-	if (owningVRChar)
-	{
-		if (GetNetMode() < ENetMode::NM_Client && owningVRChar->VRReplicateCapsuleHeight)
-			owningVRChar->ReplicatedCapsuleHeight.CapsuleHeight = CapsuleHalfHeight;
-	}
-
-	CapsuleRadius = FMath::Max(0.f, NewRadius);
-	UpdateBounds();
-	UpdateBodySetup();
-	MarkRenderStateDirty();
-	GenerateOffsetToWorld();
-
-	// do this if already created
-	// otherwise, it hasn't been really created yet
-	if (bPhysicsStateCreated)
-	{
-		// Update physics engine collision shapes
-		BodyInstance.UpdateBodyScale(GetComponentTransform().GetScale3D(), true);
-
-		if (bUpdateOverlaps && IsCollisionEnabled() && GetOwner())
-		{
-			UpdateOverlaps();
-		}
-	}
 }

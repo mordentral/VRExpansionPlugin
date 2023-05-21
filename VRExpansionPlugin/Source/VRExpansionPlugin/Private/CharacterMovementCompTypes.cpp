@@ -49,7 +49,6 @@ bool FSavedMove_VRBaseCharacter::CanCombineWith(const FSavedMovePtr& NewMove, AC
 {
 	FSavedMove_VRBaseCharacter* nMove = (FSavedMove_VRBaseCharacter*)NewMove.Get();
 
-
 	if (!nMove || (VRReplicatedMovementMode != nMove->VRReplicatedMovementMode))
 		return false;
 

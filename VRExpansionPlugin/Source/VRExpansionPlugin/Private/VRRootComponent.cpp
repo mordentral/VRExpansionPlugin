@@ -457,9 +457,16 @@ void UVRRootComponent::UpdateCharacterCapsuleOffset()
 	if (owningVRChar && !owningVRChar->bRetainRoomscale)
 	{
 		if (!FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
-		{
+		{	
+			//if (LastCapsuleHalfHeight > 0.0f)
+			//{
+				//float Offset = -(LastCapsuleHalfHeight - CapsuleHalfHeight);
+				//owningVRChar->NetSmoother->AddRelativeLocation(FVector(0.0f, 0.0f, Offset));
+				owningVRChar->NetSmoother->SetRelativeLocation(GetTargetHeightOffset());
+				//owningVRChar->VRProxyComponent->SetRelativeLocation(GetTargetHeightOffset());
+			//}
+
 			LastCapsuleHalfHeight = CapsuleHalfHeight;
-			owningVRChar->VRProxyComponent->SetRelativeLocation(FVector(0.f, 0.f, (-this->GetUnscaledCapsuleHalfHeight()) - VRCapsuleOffset.Z));
 		}
 	}
 }
@@ -1462,6 +1469,70 @@ bool UVRRootComponent::IsLocallyControlled() const
 	return MyOwner->HasLocalNetOwner();
 	//const APawn* MyPawn = Cast<APawn>(MyOwner);
 	//return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner->Role == ENetRole::ROLE_Authority);
+}
+
+/*FORCEINLINE*/ void UVRRootComponent::SetCapsuleSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps)
+{
+	SCOPE_CYCLE_COUNTER(STAT_VRRootSetCapsuleSize);
+
+	if (FMath::IsNearlyEqual(NewRadius, CapsuleRadius) && FMath::IsNearlyEqual(NewHalfHeight, CapsuleHalfHeight))
+	{
+		return;
+	}
+
+	float OldCapsuleHalfHeight = CapsuleHalfHeight;
+
+	CapsuleHalfHeight = FMath::Max3(0.f, NewHalfHeight, NewRadius);
+	CapsuleRadius = FMath::Max(0.f, NewRadius);
+
+	UpdateBounds();
+	UpdateBodySetup();
+	MarkRenderStateDirty();
+	GenerateOffsetToWorld();
+
+	// do this if already created
+	// otherwise, it hasn't been really created yet
+	if (bPhysicsStateCreated)
+	{
+		// Update physics engine collision shapes
+		BodyInstance.UpdateBodyScale(GetComponentTransform().GetScale3D(), true);
+
+		if (bUpdateOverlaps && IsCollisionEnabled() && GetOwner())
+		{
+			UpdateOverlaps();
+		}
+	}
+
+	// Make sure that our character parent updates its replicated var as well
+	if (owningVRChar)
+	{
+		if (GetNetMode() < ENetMode::NM_Client)
+		{
+			if (owningVRChar->VRReplicateCapsuleHeight)
+			{
+				owningVRChar->ReplicatedCapsuleHeight.CapsuleHeight = CapsuleHalfHeight;
+			}
+		}
+
+		float Offset = (CapsuleHalfHeight - OldCapsuleHalfHeight);
+
+		if (!owningVRChar->bRetainRoomscale && !IsLocallyControlled())
+		{
+			// Don't smooth this change in mesh position
+			FNetworkPredictionData_Client_Character* ClientData = owningVRChar->GetCharacterMovement()->GetPredictionData_Client_Character();
+			if (ClientData)
+			{
+				ClientData->MeshTranslationOffset.Z = 0.0f;// FVector::ZeroVector;// -= FVector(0.f, 0.f, Offset * this->GetComponentScale().Z);
+				ClientData->OriginalMeshTranslationOffset.Z = ClientData->MeshTranslationOffset.Z;
+			}
+		}
+
+		// Simulated proxies should already have the new height from the server
+		if (!owningVRChar->bRetainRoomscale && (owningVRChar->GetNetMode() < ENetMode::NM_Client || IsLocallyControlled()))
+		{
+			MoveComponent(this->GetComponentQuat().GetUpVector() * (Offset * this->GetComponentScale().Z), GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
+		}
+	}
 }
 
 void UVRRootComponent::UpdatePhysicsVolume(bool bTriggerNotifiers)

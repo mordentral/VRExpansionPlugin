@@ -62,7 +62,8 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		{
 			if (UVRRootComponent* MyRoot = Cast<UVRRootComponent>(RootComponent))
 			{
-				VRProxyComponent->SetRelativeLocation(FVector(0.0f, 0.0f, (-MyRoot->GetUnscaledCapsuleHalfHeight()) - MyRoot->VRCapsuleOffset.Z));
+				NetSmoother->SetRelativeLocation(MyRoot->GetTargetHeightOffset());
+				//VRProxyComponent->SetRelativeLocation(MyRoot->GetTargetHeightOffset());
 			}
 		}
 	}

@@ -11,6 +11,7 @@
 #include "VRBPDatatypes.h"
 #include "ParentRelativeAttachmentComponent.h"
 #include "VRBaseCharacter.h"
+#include "VRCharacter.h"
 #include "VRRootComponent.h"
 #include "AITypes.h"
 #include "GripMotionControllerComponent.h"
@@ -1424,7 +1425,7 @@ void  UVRBaseCharacterMovementComponent::SetUpdatedComponent(USceneComponent* Ne
 {
 	Super::SetUpdatedComponent(NewUpdatedComponent);
 
-	BaseVRCharacterOwner = Cast<AVRBaseCharacter>(CharacterOwner);
+	BaseVRCharacterOwner = Cast<AVRCharacter>(CharacterOwner);
 }
 
 
@@ -1858,7 +1859,8 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			// I am currently skipping smoothing on rotation operations
 			if ((!OldRotation.Equals(NewRotation, 1e-5f)))// || Velocity.IsNearlyZero()))
 			{
-				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(BaseVRCharacterOwner->bRetainRoomscale ? FVector::ZeroVector : BaseVRCharacterOwner->VRRootReference->GetTargetHeightOffset());			
+				//BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 				ClientData->MeshTranslationOffset = FVector::ZeroVector;
 				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
@@ -1888,7 +1890,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			// I am currently skipping smoothing on rotation operations
 			/*if ((!OldRotation.Equals(NewRotation, 1e-5f)))// || Velocity.IsNearlyZero()))
 			{
-				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(BaseVRCharacterOwner->bRetainRoomscale ? FVector::ZeroVector : BaseVRCharacterOwner->VRRootReference->GetTargetHeightOffset());
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 				ClientData->MeshTranslationOffset = FVector::ZeroVector;
 				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
@@ -2003,7 +2005,9 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			MeshParentScale.Z = FMath::IsNearlyZero(MeshParentScale.Z) ? 1.0f : MeshParentScale.Z;
 
 			const FVector NewRelLocation = ClientData->MeshRotationOffset.UnrotateVector(ClientData->MeshTranslationOffset);// + CharacterOwner->GetBaseTranslationOffset();
-			BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(NewRelLocation);
+			
+			FVector HeightOffset = (BaseVRCharacterOwner->bRetainRoomscale ? FVector::ZeroVector : BaseVRCharacterOwner->VRRootReference->GetTargetHeightOffset());
+			BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(NewRelLocation + HeightOffset);
 		}
 		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
 		{
@@ -2019,8 +2023,8 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			const FQuat NewRelRotation = ClientData->MeshRotationOffset;// *CharacterOwner->GetBaseRotationOffset();
 			//Basechar->NetSmoother->SetRelativeLocation(NewRelTranslation);
 
-			BaseVRCharacterOwner->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation, NewRelRotation);
-
+			FVector HeightOffset = BaseVRCharacterOwner->bRetainRoomscale ? FVector::ZeroVector : BaseVRCharacterOwner->VRRootReference->GetTargetHeightOffset();
+			BaseVRCharacterOwner->NetSmoother->SetRelativeLocationAndRotation(NewRelTranslation + HeightOffset, NewRelRotation);
 		}
 		else
 		{

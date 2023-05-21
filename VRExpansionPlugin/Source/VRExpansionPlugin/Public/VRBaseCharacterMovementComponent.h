@@ -8,6 +8,7 @@
 #include "VRBaseCharacterMovementComponent.generated.h"
 
 class AVRBaseCharacter;
+class AVRCharacter;
 struct FAIRequestID;
 struct FPathFollowingResult;
 
@@ -35,7 +36,7 @@ public:
 
 	/** BaseVR Character movement component belongs to */
 	UPROPERTY(Transient, DuplicateTransient)
-		TObjectPtr<AVRBaseCharacter> BaseVRCharacterOwner;
+		TObjectPtr<AVRCharacter> BaseVRCharacterOwner;
 
 	virtual void SetUpdatedComponent(USceneComponent* NewUpdatedComponent);
 
