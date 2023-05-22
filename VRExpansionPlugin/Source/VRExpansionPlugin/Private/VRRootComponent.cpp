@@ -458,15 +458,7 @@ void UVRRootComponent::UpdateCharacterCapsuleOffset()
 	{
 		if (!FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
 		{	
-			//if (LastCapsuleHalfHeight > 0.0f)
-			//{
-				//float Offset = -(LastCapsuleHalfHeight - CapsuleHalfHeight);
-				//owningVRChar->NetSmoother->AddRelativeLocation(FVector(0.0f, 0.0f, Offset));
-				owningVRChar->NetSmoother->SetRelativeLocation(GetTargetHeightOffset());
-				//owningVRChar->VRProxyComponent->SetRelativeLocation(GetTargetHeightOffset());
-			//}
-
-			LastCapsuleHalfHeight = CapsuleHalfHeight;
+			owningVRChar->NetSmoother->SetRelativeLocation(GetTargetHeightOffset(), false, nullptr, ETeleportType::TeleportPhysics);
 		}
 	}
 }
@@ -1516,21 +1508,21 @@ bool UVRRootComponent::IsLocallyControlled() const
 
 		float Offset = (CapsuleHalfHeight - OldCapsuleHalfHeight);
 
+		// Simulated proxies should already have the new height from the server
+		if (!owningVRChar->bRetainRoomscale && (owningVRChar->GetNetMode() < ENetMode::NM_Client || IsLocallyControlled()))
+		{
+			MoveComponent(this->GetComponentQuat().GetUpVector() * (Offset * this->GetComponentScale().Z), GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
+		}
+
 		if (!owningVRChar->bRetainRoomscale && !IsLocallyControlled())
 		{
 			// Don't smooth this change in mesh position
 			FNetworkPredictionData_Client_Character* ClientData = owningVRChar->GetCharacterMovement()->GetPredictionData_Client_Character();
 			if (ClientData)
 			{
-				ClientData->MeshTranslationOffset.Z = 0.0f;// FVector::ZeroVector;// -= FVector(0.f, 0.f, Offset * this->GetComponentScale().Z);
+				ClientData->MeshTranslationOffset.Z -= (Offset * this->GetComponentScale().Z);// FVector::ZeroVector;// -= FVector(0.f, 0.f, Offset * this->GetComponentScale().Z);
 				ClientData->OriginalMeshTranslationOffset.Z = ClientData->MeshTranslationOffset.Z;
 			}
-		}
-
-		// Simulated proxies should already have the new height from the server
-		if (!owningVRChar->bRetainRoomscale && (owningVRChar->GetNetMode() < ENetMode::NM_Client || IsLocallyControlled()))
-		{
-			MoveComponent(this->GetComponentQuat().GetUpVector() * (Offset * this->GetComponentScale().Z), GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
 		}
 	}
 }
