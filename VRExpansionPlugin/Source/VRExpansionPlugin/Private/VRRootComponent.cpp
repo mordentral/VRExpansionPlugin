@@ -6,6 +6,7 @@
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 //#include "WorldCollision.h"
 #include "PhysicsPublic.h"
+#include "Engine/ScopedMovementUpdate.h"
 //#include "DrawDebugHelpers.h"
 #include "IHeadMountedDisplay.h"
 #include "IXRTrackingSystem.h"
@@ -457,7 +458,7 @@ void UVRRootComponent::UpdateCharacterCapsuleOffset()
 	if (owningVRChar && !owningVRChar->bRetainRoomscale)
 	{
 		if (!FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
-		{	
+		{
 			owningVRChar->NetSmoother->SetRelativeLocation(GetTargetHeightOffset(), false, nullptr, ETeleportType::TeleportPhysics);
 		}
 	}
@@ -1467,6 +1468,8 @@ bool UVRRootComponent::IsLocallyControlled() const
 {
 	SCOPE_CYCLE_COUNTER(STAT_VRRootSetCapsuleSize);
 
+	FScopedMovementUpdate ScopedNetSmootherMovementUpdate(owningVRChar->NetSmoother, EScopedUpdate::DeferredUpdates);
+
 	if (FMath::IsNearlyEqual(NewRadius, CapsuleRadius) && FMath::IsNearlyEqual(NewHalfHeight, CapsuleHalfHeight))
 	{
 		return;
@@ -1480,7 +1483,6 @@ bool UVRRootComponent::IsLocallyControlled() const
 	UpdateBounds();
 	UpdateBodySetup();
 	MarkRenderStateDirty();
-	GenerateOffsetToWorld();
 
 	// do this if already created
 	// otherwise, it hasn't been really created yet
@@ -1513,6 +1515,11 @@ bool UVRRootComponent::IsLocallyControlled() const
 		{
 			MoveComponent(this->GetComponentQuat().GetUpVector() * (Offset * this->GetComponentScale().Z), GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
 		}
+		else
+		{
+			// Generate final transform
+			GenerateOffsetToWorld();
+		}
 
 		if (!owningVRChar->bRetainRoomscale && !IsLocallyControlled())
 		{
@@ -1524,6 +1531,11 @@ bool UVRRootComponent::IsLocallyControlled() const
 				ClientData->OriginalMeshTranslationOffset.Z = ClientData->MeshTranslationOffset.Z;
 			}
 		}
+	}
+	else
+	{
+		// Generate final transform
+		GenerateOffsetToWorld();
 	}
 }
 
