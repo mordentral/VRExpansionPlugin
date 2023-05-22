@@ -15,6 +15,8 @@
 #include "NavigationSystem.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/GameState.h"
+#include "VRCharacter.h"
+#include "GameFramework/WorldSettings.h"
 #include "Engine/Engine.h"
 #include "Components/PrimitiveComponent.h"
 #include "IXRTrackingSystem.h"
