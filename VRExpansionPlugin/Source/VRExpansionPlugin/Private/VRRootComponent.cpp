@@ -460,6 +460,9 @@ void UVRRootComponent::UpdateCharacterCapsuleOffset()
 		if (!FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
 		{
 			owningVRChar->NetSmoother->SetRelativeLocation(GetTargetHeightOffset(), false, nullptr, ETeleportType::TeleportPhysics);
+			
+			// Update our last sample value
+			LastCapsuleHalfHeight = CapsuleHalfHeight;
 		}
 	}
 }
@@ -1527,7 +1530,7 @@ bool UVRRootComponent::IsLocallyControlled() const
 			FNetworkPredictionData_Client_Character* ClientData = owningVRChar->GetCharacterMovement()->GetPredictionData_Client_Character();
 			if (ClientData)
 			{
-				ClientData->MeshTranslationOffset.Z -= (Offset * this->GetComponentScale().Z);// FVector::ZeroVector;// -= FVector(0.f, 0.f, Offset * this->GetComponentScale().Z);
+				ClientData->MeshTranslationOffset.Z += (Offset * this->GetComponentScale().Z);// FVector::ZeroVector;// -= FVector(0.f, 0.f, Offset * this->GetComponentScale().Z);
 				ClientData->OriginalMeshTranslationOffset.Z = ClientData->MeshTranslationOffset.Z;
 			}
 		}
