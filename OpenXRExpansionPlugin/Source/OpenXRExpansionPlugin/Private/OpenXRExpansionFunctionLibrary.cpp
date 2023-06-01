@@ -56,7 +56,7 @@ void UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& Trackin
 						uint32_t outputsize;
 						xrPathToString(XRInstance, interactionProfile.interactionProfile, XR_MAX_SYSTEM_NAME_SIZE, &outputsize, myPathy);
 
-						if (outputsize < 1)
+						if (interactionProfile.interactionProfile == XR_NULL_PATH || outputsize < 1)
 							return;
 
 						FString InteractionName(ANSI_TO_TCHAR(myPathy));
