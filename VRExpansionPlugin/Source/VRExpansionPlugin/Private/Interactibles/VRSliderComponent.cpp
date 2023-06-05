@@ -455,8 +455,9 @@ void UVRSliderComponent::CheckSliderProgress()
 	}
 	else if ((LastSliderProgressState != CurrentSliderProgress) || bHitEventThreshold)
 	{
+		float ModValue = FMath::Fmod(CurrentSliderProgress, SnapIncrement);
 		if ((!bSliderUsesSnapPoints && (CurrentSliderProgress == 1.0f || CurrentSliderProgress == 0.0f)) ||
-			(bSliderUsesSnapPoints && SnapIncrement > 0.f && FMath::IsNearlyEqual(FMath::Fmod(CurrentSliderProgress, SnapIncrement), 0.0f, 0.001f))
+			(bSliderUsesSnapPoints && SnapIncrement > 0.f && (FMath::IsNearlyEqual(ModValue, 0.0f, 0.001f) || FMath::IsNearlyEqual(ModValue, SnapIncrement, 0.00001f)))
 			)
 		{
 			// I am working with exacts here because of the clamping, it should actually work with no precision issues
