@@ -555,26 +555,19 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 			bCalledUpdateTransform = false;
 
-			// If the character movement doesn't exist or is not active/ticking
-			if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())
+			if (owningVRChar->bRetainRoomscale)
 			{
-				OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+				// If the character movement doesn't exist or is not active/ticking
+				if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())
+				{
+					OnUpdateTransform(EUpdateTransformFlags::None, ETeleportType::None);
+				}
+				else // Let the character movement move the capsule instead
+				{
+					// Skip physics update, let the movement component handle it instead
+					OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
+				}
 			}
-			else // Let the character movement move the capsule instead
-			{
-				// Skip physics update, let the movement component handle it instead
-				OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate, ETeleportType::None);
-			}
-
-			// Get the correct next transform to use
-			/*FTransform NextTransform;
-			if (bOffsetByHMD) // Manually generate it, the current isn't correct
-			{
-				FVector Camdiff = curCameraLoc - lastCameraLoc;
-				NextTransform = FTransform(StoredCameraRotOffset.Quaternion(), FVector(Camdiff.X, Camdiff.Y, bCenterCapsuleOnHMD ? curCameraLoc.Z : CapsuleHalfHeight) + StoredCameraRotOffset.RotateVector(VRCapsuleOffset), FVector(1.0f)) * GetComponentTransform();
-			}
-			else
-				NextTransform = OffsetComponentToWorld;*/
 
 			FHitResult OutHit;
 			FCollisionQueryParams Params("RelativeMovementSweep", false, GetOwner());
@@ -584,9 +577,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			Params.bFindInitialOverlaps = true;
 			bool bBlockingHit = false;
 
-
-			if (bUseWalkingCollisionOverride)
+			if (bUseWalkingCollisionOverride && owningVRChar->bRetainRoomscale)
 			{
+				FVector TargetWorldLocation = OffsetComponentToWorld.GetLocation();
 				bool bAllowWalkingCollision = false;
 				if (CharMove != nullptr)
 				{
@@ -597,7 +590,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 				// TODO: Needs not retained roomscale version that uses movement diff instead of offset to world
 				if (bAllowWalkingCollision)
 				{
-					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, OffsetComponentToWorld.GetLocation()/*NextTransform.GetLocation()*/, FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
+					bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, LastPosition, TargetWorldLocation, FQuat::Identity, WalkingCollisionOverride, GetCollisionShape(), Params, ResponseParam);
 				}
 
 				if (bBlockingHit && OutHit.Component.IsValid())

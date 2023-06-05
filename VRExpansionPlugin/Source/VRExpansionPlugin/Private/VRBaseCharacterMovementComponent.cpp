@@ -1455,6 +1455,17 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	// Clear out this flag prior to movement so we can see if it gets changed
 	bIsInPushBack = false;
 
+
+	// Handle collision swapping if we aren't doing locomotion based movement
+	if (BaseVRCharacterOwner->VRRootReference->bUseWalkingCollisionOverride && !BaseVRCharacterOwner->bRetainRoomscale)
+	{
+		bool bAllowWalkingCollision = false;
+		if (MovementMode == EMovementMode::MOVE_Walking || MovementMode == EMovementMode::MOVE_NavWalking)
+			bAllowWalkingCollision = true;
+
+		BaseVRCharacterOwner->VRRootReference->SetCollisionOverride(bAllowWalkingCollision && GetCurrentAcceleration().IsNearlyZero());
+	}
+
 	Super::PerformMovement(DeltaSeconds);
 
 	EndPushBackNotification(); // Check if we need to notify of ending pushback
