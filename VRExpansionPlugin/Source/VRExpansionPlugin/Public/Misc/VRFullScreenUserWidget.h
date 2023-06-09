@@ -7,9 +7,11 @@
 #include "GameFramework/Info.h"
 #include "Components/WidgetComponent.h"
 #include "ISpectatorScreenController.h"
+#include "Templates/NonNullPointer.h"
 //#include "CompositingElement.h"
 #include "VRFullScreenUserWidget.generated.h"
 
+class FSceneViewport;
 class FWidgetRenderer;
 class FVRWidgetPostProcessHitTester;
 class SConstraintCanvas;
@@ -48,18 +50,21 @@ struct FVRFullScreenUserWidget_Viewport
 	GENERATED_BODY()
 
 public:
-	FVRFullScreenUserWidget_Viewport();
-	bool Display(UWorld* World, UUserWidget* Widget, float InDPIScale);
+	//FVRFullScreenUserWidget_Viewport();
+	bool Display(UWorld* World, UUserWidget* Widget, TAttribute<float> InDPIScale);
 	void Hide(UWorld* World);
-	void Tick(UWorld* World, float DeltaSeconds);
+	//void Tick(UWorld* World, float DeltaSeconds);
 
 #if WITH_EDITOR
-	/** If set, use this viewport instead of GetFirstActiveLevelViewport() */
-	TWeakPtr<SLevelViewport> TargetViewport;
+	/**
+	 * The viewport to use for displaying.
+	 * Defaults to GetFirstActiveLevelViewport().
+
+	 */
+	TWeakPtr<FSceneViewport> EditorTargetViewport;
 #endif
 
 private:
-	bool bAddedToGameViewport;
 
 	/** Constraint widget that contains the widget we want to display. */
 	TWeakPtr<SConstraintCanvas> FullScreenCanvasWidget;
@@ -75,9 +80,9 @@ struct FVRFullScreenUserWidget_PostProcess
 {
 	GENERATED_BODY()
 
-public:
 	FVRFullScreenUserWidget_PostProcess();
-	bool Display(UWorld* World, UUserWidget* Widget, bool bInRenderToTextureOnly, float InDPIScale);
+	void SetCustomPostProcessSettingsSource(TWeakObjectPtr<UObject> InCustomPostProcessSettingsSource);
+	bool Display(UWorld* World, UUserWidget* Widget, bool bInRenderToTextureOnly, TAttribute<float> InDPIScale);
 	void Hide(UWorld* World);
 	void Tick(UWorld* World, float DeltaSeconds);
 
@@ -87,7 +92,7 @@ private:
 	//bool CreatePostProcessComponent(UWorld* World);
 	//void ReleasePostProcessComponent();
 
-	bool CreateRenderer(UWorld* World, UUserWidget* Widget, float InDPIScale);
+	bool CreateRenderer(UWorld* World, UUserWidget* Widget, TAttribute<float> InDPIScale);
 	void ReleaseRenderer();
 	void TickRenderer(UWorld* World, float DeltaSeconds);
 
@@ -96,6 +101,10 @@ private:
 
 	void RegisterHitTesterWithViewport(UWorld* World);
 	void UnRegisterHitTesterWithViewport();
+
+	TSharedPtr<SViewport> GetViewport(UWorld* World) const;
+	float GetDPIScaleForPostProcessHitTester(TWeakObjectPtr<UWorld> World) const;
+	FPostProcessSettings* GetPostProcessSettings() const;
 
 public:
 	/**
@@ -149,7 +158,7 @@ public:
 
 	/** The target to which the user widget is rendered. */
 	UPROPERTY(Transient)
-    UTextureRenderTarget2D* WidgetRenderTarget;
+	TObjectPtr<UTextureRenderTarget2D> WidgetRenderTarget;
 
 	/** Only render to the UTextureRenderTarget2D - do not output to the final viewport. Unless DrawtoVRPreview is active */
 	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = PostProcess)
@@ -168,8 +177,12 @@ public:
 		ESpectatorScreenMode PostVRDisplayType;
 
 #if WITH_EDITOR
-	/** If set, use this viewport instead of GetFirstActiveLevelViewport() */
-	TWeakPtr<SLevelViewport> TargetViewport;
+	/**
+	 * The viewport to use for displaying.
+	 *
+	 * Defaults to GetFirstActiveLevelViewport().
+	 */
+	TWeakPtr<FSceneViewport> EditorTargetViewport;
 #endif
 private:
 	/** Post process component used to add the material to the post process chain. */
@@ -258,9 +271,30 @@ public:
 	virtual void Tick(float DeltaTime);
 
 	void SetDisplayTypes(EVRWidgetDisplayType InEditorDisplayType, EVRWidgetDisplayType InGameDisplayType, EVRWidgetDisplayType InPIEDisplayType);
+	void SetOverrideWidget(UUserWidget* InWidget);
+
+	/**
+	 * If using EVPWidgetDisplayType::PostProcess, you can specify a custom post process settings that should be modified.
+	 * By default, a new post process component is added to AWorldSettings.
+	 *
+	 * @param InCustomPostProcessSettingsSource An object containing a FPostProcessSettings UPROPERTY()
+	 */
+	//void SetCustomPostProcessSettingsSource(TWeakObjectPtr<UObject> InCustomPostProcessSettingsSource);
+
+#if WITH_EDITOR
+	/**
+	 * Sets the TargetViewport to use on both the Viewport and the PostProcess class.
+	 *
+	 * Overrides the viewport to use for displaying.
+	 * Defaults to GetFirstActiveLevelViewport().
+	 */
+	void SetEditorTargetViewport(TWeakPtr<FSceneViewport> InTargetViewport);
+	/** Resets the TargetViewport  */
+	void ResetEditorTargetViewport();
+#endif
 
 protected:
-	void InitWidget();
+	bool InitWidget();
 	void ReleaseWidget();
 
 	FVector2D FindSceneViewportSize();
@@ -269,10 +303,6 @@ protected:
 private:
 	void OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld);
 	void OnWorldCleanup(UWorld* InWorld, bool bSessionEnded, bool bCleanupResources);
-
-
-protected:
-
 
 public:
 
@@ -308,21 +338,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "FullScreenWidgetComp")
 		UTextureRenderTarget2D* GetPostProcessRenderTarget() const { return PostProcessDisplayType.WidgetRenderTarget; };
 
-#if WITH_EDITOR
-	/** If set, use this viewport instead of GetFirstActiveLevelViewport() */
-	TWeakPtr<SLevelViewport> TargetViewport;
-
-	/** Sets the TargetViewport to use on both the Viewport and the PostProcess class */
-	void SetAllTargetViewports(TWeakPtr<SLevelViewport> InTargetViewport);
-
-	/** Resets the TargetViewport  */
-	void ResetAllTargetViewports();
-#endif
-
 private:
 	/** The User Widget object displayed and managed by this component */
 	UPROPERTY(Transient, DuplicateTransient)
-	UUserWidget* Widget;
+	TObjectPtr<UUserWidget> Widget;
 
 	/** The world the widget is attached to. */
 	TWeakObjectPtr<UWorld> World;
@@ -332,6 +351,14 @@ private:
 
 	/** The user requested the widget to be displayed. It's possible that some setting are invalid and the widget will not be displayed. */
 	bool bDisplayRequested;
+
+#if WITH_EDITOR
+	/**
+	 * The viewport to use for displaying.
+	 * Defaults to GetFirstActiveLevelViewport().
+	 */
+	TWeakPtr<FSceneViewport> EditorTargetViewport;
+#endif
 };
 
 /**
