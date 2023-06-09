@@ -140,15 +140,15 @@ public:
 	float LastSnapAngle;
 
 	// Should be called after the dial is moved post begin play
-	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
+	UFUNCTION(BlueprintCallable, Category = "VRDialComponent")
 		void ResetInitialDialLocation();
 
 	// Can be called to recalculate the dial angle after you move it if you want different values
-	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
+	UFUNCTION(BlueprintCallable, Category = "VRDialComponent")
 		void AddDialAngle(float DialAngleDelta, bool bCallEvents = false, bool bSkipSettingRot = false);
 
 	// Directly sets the dial angle, still obeys maximum limits and snapping though
-	UFUNCTION(BlueprintCallable, Category = "VRLeverComponent")
+	UFUNCTION(BlueprintCallable, Category = "VRDialComponent")
 		void SetDialAngle(float DialAngle, bool bCallEvents = false);
 
 	// ------------------------------------------------
