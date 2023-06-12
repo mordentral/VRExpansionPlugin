@@ -1036,7 +1036,7 @@ void UGripMotionControllerComponent::SetGripCollisionType(const FBPActorGripInfo
 		{
 			LocallyGrippedObjects[fIndex].GripCollisionType = NewGripCollisionType;
 
-			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			if (IsLocallyControlled() && !IsServer() && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			{
 				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
 				Server_NotifyLocalGripAddedOrChanged(GripInfo);
@@ -1070,7 +1070,7 @@ void UGripMotionControllerComponent::SetGripLateUpdateSetting(const FBPActorGrip
 		{
 			LocallyGrippedObjects[fIndex].GripLateUpdateSetting = NewGripLateUpdateSetting;
 
-			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			if (IsLocallyControlled() && !IsServer() && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			{
 				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
 				Server_NotifyLocalGripAddedOrChanged(GripInfo);
@@ -1117,7 +1117,7 @@ void UGripMotionControllerComponent::SetGripRelativeTransform(
 				NotifyGripTransformChanged(Grip);
 			}
 
-			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			if (IsLocallyControlled() && !IsServer() && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			{
 				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
 				Server_NotifyLocalGripAddedOrChanged(GripInfo);
@@ -1200,7 +1200,7 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 				LocallyGrippedObjects[fIndex].AdvancedGripSettings.PhysicsSettings.AngularDamping = OptionalAngularDamping;
 			}
 
-			if (GetNetMode() == ENetMode::NM_Client && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			if (IsLocallyControlled() && !IsServer() && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			{
 				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
 				Server_NotifyLocalGripAddedOrChanged(GripInfo);
@@ -1711,7 +1711,7 @@ bool UGripMotionControllerComponent::GripActor(
 				}
 			}
 
-			if (bIsLocalGrip && GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			if (bIsLocalGrip && IsLocallyControlled() && !IsServer() && !IsTornOff() && newActorGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			{
 				Index = LocallyGrippedObjects.IndexOfByKey(newActorGrip.GripID);
 				if (Index != INDEX_NONE)
@@ -1965,7 +1965,7 @@ bool UGripMotionControllerComponent::GripComponent(
 				}
 			}
 
-			if (bIsLocalGrip && GetNetMode() == ENetMode::NM_Client && !IsTornOff() && newComponentGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			if (bIsLocalGrip && IsLocallyControlled() && !IsServer() && !IsTornOff() && newComponentGrip.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
 			{
 				Index = LocallyGrippedObjects.IndexOfByKey(newComponentGrip.GripID);
 				if (Index != INDEX_NONE)
@@ -2103,7 +2103,7 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 
 	if (bWasLocalGrip)
 	{
-		if (GetNetMode() == ENetMode::NM_Client)
+		if (IsLocallyControlled() && !IsServer()) //GetNetMode() == ENetMode::NM_Client)
 		{
 			if (!IsTornOff())
 			{
@@ -2274,7 +2274,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 
 	if (bWasLocalGrip)
 	{
-		if (GetNetMode() == ENetMode::NM_Client)
+		if (IsLocallyControlled() && !IsServer())
 		{
 			if (!IsTornOff() && !bSkipServerNotify)
 			{
@@ -2458,7 +2458,7 @@ void UGripMotionControllerComponent::NotifyDropAndSocket_Implementation(const FB
 	if ((NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive ||
 		NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) &&
 		IsLocallyControlled() &&
-		GetNetMode() == ENetMode::NM_Client)
+		!IsServer())
 	{
 
 		// If we still have the grip then the server is asking us to drop it even though it is locally controlled
@@ -2661,7 +2661,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 	int fIndex = 0;
 	if (LocallyGrippedObjects.Find(NewDrop, fIndex))
 	{
-		if (HasGripAuthority(NewDrop) || GetNetMode() < ENetMode::NM_Client)
+		if (HasGripAuthority(NewDrop) || IsServer())
 		{
 			LocallyGrippedObjects.RemoveAt(fIndex);
 		}
@@ -2676,7 +2676,7 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 		fIndex = 0;
 		if (GrippedObjects.Find(NewDrop, fIndex))
 		{
-			if (HasGripAuthority(NewDrop) || GetNetMode() < ENetMode::NM_Client)
+			if (HasGripAuthority(NewDrop) || IsServer())
 			{
 				GrippedObjects.RemoveAt(fIndex);
 			}
@@ -2744,7 +2744,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 				// Only doing this for actor grips
 				if (NewGrip.AdvancedGripSettings.bSetOwnerOnGrip)
 				{
-					if (GetNetMode() < ENetMode::NM_Client)
+					if (IsServer())
 					{
 						pActor->SetOwner(OwningPawn);
 					}
@@ -3329,7 +3329,7 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 	if ((NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || 
 		NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && 
 		IsLocallyControlled() && 
-		GetNetMode() == ENetMode::NM_Client)
+		!IsServer())
 	{
 		// If we still have the grip then the server is asking us to drop it even though it is locally controlled
 		if (FBPActorGripInformation * GripInfo = GetGripPtrByID(NewDrop.GripID))
@@ -3696,7 +3696,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 	int fIndex = 0;
 	if (LocallyGrippedObjects.Find(NewDrop, fIndex))
 	{
-		if (HasGripAuthority(NewDrop) || GetNetMode() < ENetMode::NM_Client)
+		if (HasGripAuthority(NewDrop) || IsServer())
 		{
 			LocallyGrippedObjects.RemoveAt(fIndex);
 		}
@@ -3711,7 +3711,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 		fIndex = 0;
 		if (GrippedObjects.Find(NewDrop, fIndex))
 		{
-			if (HasGripAuthority(NewDrop) || GetNetMode() < ENetMode::NM_Client)
+			if (HasGripAuthority(NewDrop) || IsServer())
 			{
 				GrippedObjects.RemoveAt(fIndex);
 			}
@@ -3982,7 +3982,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 		}
 	}
 
-	if (GripToUse->GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && GetNetMode() == ENetMode::NM_Client && !IsTornOff())
+	if (GripToUse->GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && !IsServer() && !IsTornOff())
 	{
 		Server_NotifySecondaryAttachmentChanged(GripToUse->GripID, GripToUse->SecondaryGripInfo);
 	}
@@ -4154,7 +4154,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGrip(const FBP
 		GripToUse->SecondaryGripInfo.SecondaryAttachment = nullptr;
 		GripToUse->SecondaryGripInfo.bHasSecondaryAttachment = false;
 
-		if (GripToUse->GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && GetNetMode() == ENetMode::NM_Client)
+		if (GripToUse->GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive && !IsServer())
 		{
 			switch (SecondaryType)
 			{
@@ -4542,7 +4542,7 @@ void UGripMotionControllerComponent::OnRep_ReplicatedControllerTransform()
 {
 	//ReplicatedControllerTransform.Unpack();
 
-	if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())
+	if (IsServer() && HasTrackingParameters())
 	{
 		// Ensure that the client is sending valid boundries
 		ApplyTrackingParameters(ReplicatedControllerTransform.Position, true, false);
@@ -4717,7 +4717,7 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 					// I would keep the torn off check here, except this can be checked on tick if they
 					// Set 100 htz updates, and in the TornOff case, it actually can't hurt any besides some small
 					// Perf difference.
-					if (GetNetMode() == NM_Client/* && !IsTornOff()*/)
+					if (!IsServer()/* && !IsTornOff()*/)
 					{
 						AVRBaseCharacter* OwningChar = Cast<AVRBaseCharacter>(GetOwner());
 						if (OverrideSendTransform != nullptr && OwningChar != nullptr)
