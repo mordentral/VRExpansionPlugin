@@ -305,8 +305,8 @@ FVRFullScreenUserWidget_PostProcess::FVRFullScreenUserWidget_PostProcess()
 
 bool FVRFullScreenUserWidget_PostProcess::Display(UWorld* World, UUserWidget* Widget, bool bInRenderToTextureOnly, TAttribute<float> InDPIScale)
 {
-
-	bool bOk = CreateRenderer(World, Widget, MoveTemp(InDPIScale));
+	TAttribute<float> PostProcessDPIScale = 1.0f;
+	bool bOk = CreateRenderer(World, Widget, MoveTemp(PostProcessDPIScale));
 
 	if (bRenderToTextureOnly && IsValid(WidgetRenderTarget) && bDrawToVRPreview)
 	{
@@ -591,7 +591,7 @@ FIntPoint FVRFullScreenUserWidget_PostProcess::CalculateWidgetDrawSize(UWorld* W
 
 			const float SmallWidgetSize = 16.f;
 			FVector2D OutSize = FVector2D(SmallWidgetSize, SmallWidgetSize);
-			ViewportClient->GetViewportSize(OutSize);
+			OutSize = ViewportClient->GetWindow()->GetSizeInScreen(); //ViewportClient->GetViewportSize(OutSize);
 			if (OutSize.X < UE_SMALL_NUMBER)
 			{
 				OutSize = FVector2D(SmallWidgetSize, SmallWidgetSize);
