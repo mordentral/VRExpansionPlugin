@@ -998,6 +998,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
 		bool DropObjectByInterface(UObject * ObjectToDrop = nullptr, uint8 GripIDToDrop = 0, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector);
 
+	bool DropObjectByInterface_Implementation(UObject* ObjectToDrop = nullptr, uint8 GripIDToDrop = 0, FVector OptionalAngularVelocity = FVector::ZeroVector, FVector OptionalLinearVelocity = FVector::ZeroVector, bool bSkipNotify = false);
+
 	/* Grip an actor, these are stored in a Tarray that will prevent destruction of the object, you MUST ungrip an actor if you want to kill it
 	   The WorldOffset is the transform that it will remain away from the controller, if you use the world position of the actor then it will grab
 	   at the point of intersection. 
