@@ -460,7 +460,7 @@ void UVRRootComponent::UpdateCharacterCapsuleOffset()
 		if (!FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
 		{
 			owningVRChar->NetSmoother->SetRelativeLocation(GetTargetHeightOffset(), false, nullptr, ETeleportType::TeleportPhysics);
-			
+
 			// Update our last sample value
 			LastCapsuleHalfHeight = CapsuleHalfHeight;
 		}
@@ -1479,6 +1479,7 @@ bool UVRRootComponent::IsLocallyControlled() const
 	UpdateBounds();
 	UpdateBodySetup();
 	MarkRenderStateDirty();
+	GenerateOffsetToWorld();
 
 	// do this if already created
 	// otherwise, it hasn't been really created yet
@@ -1511,11 +1512,11 @@ bool UVRRootComponent::IsLocallyControlled() const
 		{
 			MoveComponent(this->GetComponentQuat().GetUpVector() * (Offset * this->GetComponentScale().Z), GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
 		}
-		else
+		/*else
 		{
 			// Generate final transform
 			GenerateOffsetToWorld();
-		}
+		}*/
 
 		if (!owningVRChar->bRetainRoomscale && !IsLocallyControlled())
 		{
@@ -1528,11 +1529,11 @@ bool UVRRootComponent::IsLocallyControlled() const
 			}
 		}
 	}
-	else
+	/*else
 	{
 		// Generate final transform
 		GenerateOffsetToWorld();
-	}
+	}*/
 }
 
 void UVRRootComponent::UpdatePhysicsVolume(bool bTriggerNotifiers)
