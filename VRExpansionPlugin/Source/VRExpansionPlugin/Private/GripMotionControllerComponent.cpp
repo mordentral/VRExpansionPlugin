@@ -5386,8 +5386,11 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 							Grip->bColliding = true;
 						}
-						else if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
+						else if (GetWorld()->ComponentSweepMulti(Hits, root, root->GetComponentLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params) && FHitResult::GetFirstBlockingHit(Hits) != nullptr)
 						{
+							// Assume true by default, will revert if checking ignored below
+							Grip->bColliding = true;
+
 							// Check if the two components are ignoring collisions with each other
 							UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
 
@@ -5427,7 +5430,7 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 								{
 									SetGripConstraintStiffnessAndDamping(Grip, false);
 								}
-								Grip->bColliding = true;
+								//Grip->bColliding = true;
 							}
 						}
 						else
@@ -5488,8 +5491,11 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 							Grip->bColliding = true;
 						}
 						// Check our target rotation
-						else if (GetWorld()->ComponentSweepMulti(Hits, root, BaseTransform.GetLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params))
+						else if (GetWorld()->ComponentSweepMulti(Hits, root, BaseTransform.GetLocation(), WorldTransform.GetLocation(), WorldTransform.GetRotation(), Params) && FHitResult::GetFirstBlockingHit(Hits) != nullptr)
 						{
+							// Assume true by default, will revert if checking ignored below
+							Grip->bColliding = true;
+
 							// Check if the two components are ignoring collisions with each other
 							UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
 							if (CollisionIgnoreSubsystem->HasCollisionIgnorePairs())
@@ -5522,17 +5528,13 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 									}
 								}
 							}
-							else
-							{
-								if (FHitResult::GetFirstBlockingHit(Hits) != nullptr)
-								{
-									Grip->bColliding = true;
-								}
-							}
 						}
 						// Check the other rotation
-						else if (bLerpCollisions && GetWorld()->ComponentSweepMulti(Hits, root, BaseTransform.GetLocation(), WorldTransform.GetLocation(), root->GetComponentRotation(), Params))
+						else if (bLerpCollisions && GetWorld()->ComponentSweepMulti(Hits, root, BaseTransform.GetLocation(), WorldTransform.GetLocation(), root->GetComponentRotation(), Params) && FHitResult::GetFirstBlockingHit(Hits) != nullptr)
 						{
+							// Assume true by default, will revert if checking ignored below
+							Grip->bColliding = true;
+
 							// Check if the two components are ignoring collisions with each other
 							UCollisionIgnoreSubsystem* CollisionIgnoreSubsystem = GetWorld()->GetSubsystem<UCollisionIgnoreSubsystem>();
 
@@ -5548,13 +5550,6 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 										Grip->bColliding = true;
 										break;
 									}
-								}
-							}
-							else
-							{
-								if (FHitResult::GetFirstBlockingHit(Hits) != nullptr)
-								{
-									Grip->bColliding = true;
 								}
 							}
 						}
