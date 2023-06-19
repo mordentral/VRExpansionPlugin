@@ -23,6 +23,8 @@ public:
 	UPROPERTY(Category = VRCharacter, VisibleAnywhere, Transient, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))	
 		TObjectPtr<UVRRootComponent> VRRootReference;
 
+	virtual FVector GetTargetHeightOffset() override;
+
 	// Regenerates the base offsetcomponenttoworld that VR uses
 	virtual void RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw) override;
 	virtual void SetCharacterSizeVR(float NewRadius, float NewHalfHeight, bool bUpdateOverlaps = true) override;

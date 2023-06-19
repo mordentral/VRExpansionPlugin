@@ -578,6 +578,12 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 		{
 			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
+			// Reset NetSmoother
+			if (!bRetainRoomscale)
+			{
+				NetSmoother->SetRelativeLocation(GetTargetHeightOffset());
+			}
+
 			if (this->GetLocalRole() == ROLE_SimulatedProxy)
 			{
 				root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -586,7 +592,7 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 				bUseControllerRotationYaw = SeatInformation.bOriginalControlRotation;
 
 				SetActorLocationAndRotationVR(SeatInformation.StoredTargetTransform.GetTranslation(), SeatInformation.StoredTargetTransform.Rotator(), true, true, true);
-				
+
 				if (IsValid(LeftMotionController))
 				{
 					LeftMotionController->PostTeleportMoveGrippedObjects();
@@ -663,7 +669,7 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 	float LastThresholdScaler = SeatInformation.CurrentThresholdScaler;
 	bool bLastOverThreshold = SeatInformation.bIsOverThreshold;
 
-	FVector NewLoc = VRReplicatedCamera->GetRelativeLocation();
+	FVector NewLoc = VRReplicatedCamera->ReplicatedCameraTransform.Position;//GetRelativeLocation();
 	FVector OrigLocation = SeatInformation.InitialRelCameraTransform.GetTranslation();
 
 	if (!SeatInformation.bZeroToHead)
@@ -695,12 +701,28 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 		diff.Normalize();
 		diff = (-diff * (AbsDistance - SeatInformation.AllowedRadius));
 
-		SetSeatRelativeLocationAndRotationVR(diff);
+		if (bRetainRoomscale)
+		{
+			SetSeatRelativeLocationAndRotationVR(diff);
+		}
+		else
+		{
+			NetSmoother->SetRelativeLocation(GetTargetHeightOffset() - diff);
+		}
+
 		SeatInformation.bWasOverLimit = true;
 	}
 	else if (SeatInformation.bWasOverLimit) // Make sure we are in the zero point otherwise
 	{
-		SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
+		if (bRetainRoomscale)
+		{
+			SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
+		}
+		else
+		{
+			NetSmoother->SetRelativeLocation(GetTargetHeightOffset());
+		}
+
 		SeatInformation.bWasOverLimit = false;
 	}
 
@@ -727,6 +749,13 @@ bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeat
 	{
 		if (!SeatParent)
 			return false;
+
+		// Automate the intial relative camera transform for this mode
+		// I think we can remove the initial value alltogether eventually right?
+		if (!bRetainRoomscale)
+		{
+			InitialRelCameraTransform = FTransform(VRReplicatedCamera->ReplicatedCameraTransform.Rotation, VRReplicatedCamera->ReplicatedCameraTransform.Position, VRReplicatedCamera->GetComponentScale());
+		}
 
 		SeatInformation.SeatParent = SeatParent;
 		SeatInformation.bSitting = true;

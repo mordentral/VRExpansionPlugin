@@ -48,6 +48,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|ComponentVelocity")
 		bool bSampleVelocityInWorldSpace;
 
+	// If true we will sample relative position for replication instead of the tracked settings
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
+		bool bFPSDebugMode = false;
+
 	// For non view target positional updates
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
 	bool bSetPositionDuringTick;
