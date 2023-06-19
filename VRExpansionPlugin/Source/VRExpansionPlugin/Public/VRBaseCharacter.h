@@ -445,7 +445,7 @@ public:
 	// Called when the seated mode is changed
 	UFUNCTION(BlueprintNativeEvent, Category = "Seating")
 		void OnSeatedModeChanged(bool bNewSeatedMode, bool bWasAlreadySeated);
-	virtual void OnSeatedModeChanged_Implementation(bool bNewSeatedMode, bool bWasAlreadySeated) {};
+	virtual void OnSeatedModeChanged_Implementation(bool bNewSeatedMode, bool bWasAlreadySeated) {}
 
 	// Called when the the player either transitions to/from the threshold boundry or the scaler value of being outside the boundry changes
 	// Can be used for warnings or screen darkening, ect
