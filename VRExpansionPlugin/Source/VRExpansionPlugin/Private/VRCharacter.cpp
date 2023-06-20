@@ -187,7 +187,7 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 
 FVector AVRCharacter::GetTargetHeightOffset()
 {
-	return VRRootReference->GetTargetHeightOffset();
+	return bRetainRoomscale ? FVector::ZeroVector : VRRootReference->GetTargetHeightOffset();
 }
 
 void AVRCharacter::RegenerateOffsetComponentToWorld(bool bUpdateBounds, bool bCalculatePureYaw)

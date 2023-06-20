@@ -461,16 +461,12 @@ public:
 	{
 		return FVector::ZeroVector;
 	}
-	
+
 	void ZeroToSeatInformation()
 	{
 		if (bRetainRoomscale)
 		{
 			SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
-		}
-		else
-		{
-			NetSmoother->SetRelativeLocation(GetTargetHeightOffset());
 		}
 
 		NotifyOfTeleport();
