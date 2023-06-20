@@ -106,8 +106,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedCameraTransform, Category = "ReplicatedCamera|Networking")
 	FBPVRComponentPosRep ReplicatedCameraTransform;
 
-	FVector LastUpdatesRelativePosition;
-	FRotator LastUpdatesRelativeRotation;
+	FVector LastUpdatesRelativePosition = FVector::ZeroVector;
+	FRotator LastUpdatesRelativeRotation = FRotator::ZeroRotator;
 
 	bool bLerpingPosition;
 	bool bReppedOnce;

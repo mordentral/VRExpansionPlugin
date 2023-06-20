@@ -198,19 +198,26 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 				ReplicatedCameraTransform.Rotation = Orientation.Rotator();
 
 				if (IsValid(AttachChar) && !AttachChar->bRetainRoomscale)
-				{			
-					FRotator StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(Orientation.Rotator());
+				{	
+					// Zero out camera posiiton
+					Position.X = 0.0f;
+					Position.Y = 0.0f;
+
+					FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
+					if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+					{
+						AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
+					}
+					else
+					{
+						StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(Orientation.Rotator());
+					}
+
 					Position += StoredCameraRotOffset.RotateVector(FVector(-AttachChar->VRRootReference->VRCapsuleOffset.X, -AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+				
 				}
 
-				if (AttachChar && !AttachChar->bRetainRoomscale)
-				{
-					SetRelativeTransform(FTransform(Orientation, FVector(0.0f, 0.0f, Position.Z)));
-				}
-				else
-				{
-					SetRelativeTransform(FTransform(Orientation, Position));
-				}
+				SetRelativeTransform(FTransform(Orientation, Position));
 			}
 		}
 	}
@@ -236,7 +243,16 @@ void UReplicatedVRCameraComponent::RunNetworkedSmoothing(float DeltaTime)
 
 	if (AttachChar && !AttachChar->bRetainRoomscale)
 	{
-		FRotator StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(ReplicatedCameraTransform.Rotation);
+		FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
+		if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+		{
+			AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
+		}
+		else
+		{
+			StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(ReplicatedCameraTransform.Rotation);
+		}
+
 		RetainPositionOffset += StoredCameraRotOffset.RotateVector(FVector(-AttachChar->VRRootReference->VRCapsuleOffset.X, -AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
 	}
 
@@ -372,7 +388,7 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 			FVector RelativeLoc = GetRelativeLocation();
 
 			// Don't rep if no changes
-			if (!RelativeLoc.Equals(ReplicatedCameraTransform.Position) || !RelativeRot.Equals(ReplicatedCameraTransform.Rotation))
+			if (!RelativeLoc.Equals(LastUpdatesRelativePosition) || !RelativeRot.Equals(LastUpdatesRelativeRotation))
 			{
 				NetUpdateCount += DeltaTime;
 
@@ -401,6 +417,9 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 							Server_SendCameraTransform(ReplicatedCameraTransform);
 						}
 					}
+
+					LastUpdatesRelativeRotation = RelativeRot;
+					LastUpdatesRelativePosition = RelativeLoc;
 				}
 			}
 		}
@@ -447,18 +466,29 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 
 						if (IsValid(AttachChar) && !AttachChar->bRetainRoomscale)
 						{
-							FRotator StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(Orientation.Rotator());
-							Position += StoredCameraRotOffset.RotateVector(FVector(-AttachChar->VRRootReference->VRCapsuleOffset.X, -AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+							// Zero out XY for non retained
+							Position.X = 0.0f;
+							Position.Y = 0.0f;
+							//FRotator OffsetRotator = 
+							if (AttachChar->VRMovementReference->GetReplicatedMovementMode() != EVRConjoinedMovementModes::C_VRMOVE_Seated)
+							{
+								AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
+
+								FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
+								if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+								{
+									AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
+								}
+								else
+								{
+									StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(Orientation.Rotator());
+								}
+
+								Position += StoredCameraRotOffset.RotateVector(FVector(-AttachChar->VRRootReference->VRCapsuleOffset.X, -AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+							}
 						}
 
-						if (AttachChar && !AttachChar->bRetainRoomscale)
-						{
-							SetRelativeTransform(FTransform(Orientation, FVector(0.0f, 0.0f, Position.Z)));
-						}
-						else
-						{
-							SetRelativeTransform(FTransform(Orientation, Position));
-						}
+						SetRelativeTransform(FTransform(Orientation, Position));
 					}
 					else
 					{
@@ -489,6 +519,19 @@ void UReplicatedVRCameraComponent::OnRep_ReplicatedCameraTransform()
 	{
 		CameraPosition.X = 0;
 		CameraPosition.Y = 0;
+
+		FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
+		if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+		{
+			AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
+		}
+		else
+		{
+			StoredCameraRotOffset = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(ReplicatedCameraTransform.Rotation);
+		}
+
+		CameraPosition += StoredCameraRotOffset.RotateVector(FVector(-AttachChar->VRRootReference->VRCapsuleOffset.X, -AttachChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+
 	}
     
     if (bSmoothReplicatedMotion)

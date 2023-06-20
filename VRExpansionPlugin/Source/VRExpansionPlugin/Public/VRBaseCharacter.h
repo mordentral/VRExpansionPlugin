@@ -464,10 +464,10 @@ public:
 
 	void ZeroToSeatInformation()
 	{
-		if (bRetainRoomscale)
-		{
+		//if (bRetainRoomscale)
+		//{
 			SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
-		}
+		//}
 
 		NotifyOfTeleport();
 		//LeftMotionController->PostTeleportMoveGrippedObjects();
