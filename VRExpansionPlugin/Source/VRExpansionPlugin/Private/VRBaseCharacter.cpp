@@ -578,12 +578,6 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 		{
 			DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
-			// Reset NetSmoother
-			//if (!bRetainRoomscale)
-			//{
-			//	NetSmoother->SetRelativeLocation(GetTargetHeightOffset());
-			//}
-
 			if (this->GetLocalRole() == ROLE_SimulatedProxy)
 			{
 				root->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -699,29 +693,33 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 		// Force them back into range
 		FVector diff = NewLoc - OrigLocation;
 		diff.Normalize();
-		diff = (-diff * (AbsDistance - SeatInformation.AllowedRadius));
 
-		//if (bRetainRoomscale)
+		if (bRetainRoomscale)
 		{
+			diff = (-diff * (AbsDistance - SeatInformation.AllowedRadius));
 			SetSeatRelativeLocationAndRotationVR(diff);
 		}
-		//else
-		//{
-			//NetSmoother->SetRelativeLocation(GetTargetHeightOffset() - diff);
-		//}
+		else
+		{
+			diff = (diff * (SeatInformation.AllowedRadius));
+			diff.Z = 0.0f;
+			SetSeatRelativeLocationAndRotationVR(diff);
+		}
 
 		SeatInformation.bWasOverLimit = true;
 	}
 	else if (SeatInformation.bWasOverLimit) // Make sure we are in the zero point otherwise
 	{
-		//if (bRetainRoomscale)
-		//{
+		if (bRetainRoomscale)
+		{
 			SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
-		//}
-		//else
-		//{
-			NetSmoother->SetRelativeLocation(GetTargetHeightOffset());
-		//}
+		}
+		else
+		{
+			FVector diff = NewLoc - OrigLocation;
+			diff.Z = 0.0f;
+			SetSeatRelativeLocationAndRotationVR(diff);
+		}
 
 		SeatInformation.bWasOverLimit = false;
 	}
@@ -730,8 +728,8 @@ void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 		if (!bRetainRoomscale)
 		{
 			FVector diff = NewLoc - OrigLocation;
+			diff.Z = 0.0f;
 			SetSeatRelativeLocationAndRotationVR(diff);
-			//NetSmoother->SetRelativeLocation(GetTargetHeightOffset() + FVector(diff.X, diff.Y, 0.0f));
 		}
 	}
 
@@ -818,9 +816,15 @@ void AVRBaseCharacter::SetSeatRelativeLocationAndRotationVR(FVector DeltaLoc)
 
 	FTransform NewTrans = SeatInformation.StoredTargetTransform;// *SeatInformation.SeatParent->GetComponentTransform();
 
+	if (!bRetainRoomscale)
+	{
+		NewTrans.SetTranslation(FVector(0.0f, 0.0f, NewTrans.GetTranslation().Z));
+	}
+
+
 	FVector NewLocation;
 	FRotator NewRotation;
-	FVector PivotPoint = SeatInformation.InitialRelCameraTransform.GetTranslation();
+	FVector PivotPoint = bRetainRoomscale ? SeatInformation.InitialRelCameraTransform.GetTranslation() : FVector::ZeroVector;
 	PivotPoint.Z = 0.0f;
 
 	NewRotation = SeatInformation.InitialRelCameraTransform.Rotator();
