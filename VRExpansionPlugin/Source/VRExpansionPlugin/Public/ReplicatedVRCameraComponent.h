@@ -89,7 +89,7 @@ public:
 		bool bLimitBounds;
 
 	// If we are limiting the maximum bounds, this is the maximum length of the vector from the center of the tracked space
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLimitMaxHeight"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking", meta = (ClampMin = "0.1", UIMin = "0.1", EditCondition = "bLimitBounds"))
 		float MaximumTrackedBounds;
 
 	/** Sets lock to hmd automatically based on if the camera is currently locally controlled or not */
