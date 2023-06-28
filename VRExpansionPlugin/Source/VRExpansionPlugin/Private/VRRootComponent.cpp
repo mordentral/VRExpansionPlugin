@@ -1464,7 +1464,7 @@ bool UVRRootComponent::IsLocallyControlled() const
 {
 	SCOPE_CYCLE_COUNTER(STAT_VRRootSetCapsuleSize);
 
-	FScopedMovementUpdate ScopedNetSmootherMovementUpdate(owningVRChar->NetSmoother, EScopedUpdate::DeferredUpdates);
+	FScopedMovementUpdate ScopedNetSmootherMovementUpdate(owningVRChar ? owningVRChar->NetSmoother : nullptr, EScopedUpdate::DeferredUpdates);
 
 	if (FMath::IsNearlyEqual(NewRadius, CapsuleRadius) && FMath::IsNearlyEqual(NewHalfHeight, CapsuleHalfHeight))
 	{
