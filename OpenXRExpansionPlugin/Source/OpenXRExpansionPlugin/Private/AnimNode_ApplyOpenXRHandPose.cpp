@@ -224,11 +224,14 @@ void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform
 
 	for (int32 Index = 0; Index < EHandKeypointCount; ++Index)
 	{
-		if (WorldTransforms[Index].ContainsNaN())
+		if (WorldTransforms[Index].ContainsNaN() || WorldTransforms[Index].Equals(FTransform::Identity))
 		{
 			OutTransforms[Index] = FTransform::Identity;
 			continue;
 		}
+
+		// Ensure normalization
+		WorldTransforms[Index].NormalizeRotation();
 
 		if (bMirrorLeftRight)
 		{
