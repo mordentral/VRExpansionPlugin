@@ -48,6 +48,9 @@
 #include "Chaos/Sphere.h"
 #include "PhysicsProxy/SingleParticlePhysicsProxy.h"
 #include "Chaos/ChaosConstraintSettings.h"
+#include "Chaos/PhysicsObject.h"
+#include "PhysicsEngine/PhysicsObjectExternalInterface.h"
+#include "Chaos/PhysicsObjectInterface.h"
 
 #include "Misc/CollisionIgnoreSubsystem.h"
 
@@ -6173,19 +6176,32 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 
 	// Get the PxRigidDynamic that we want to grab.
 	FBodyInstance* rBodyInstance = root->GetBodyInstance(NewGrip.GrippedBoneName);
+	Chaos::FPhysicsObject* PhysicsActor = root->GetPhysicsObjectByName(NewGrip.GrippedBoneName);
+
+	bool bUseActorHandle = true;
 	if (!rBodyInstance || !rBodyInstance->IsValidBodyInstance() || !FPhysicsInterface::IsValid(rBodyInstance->ActorHandle) || !rBodyInstance->BodySetup.IsValid())
 	{	
-		return false;
+		if (PhysicsActor)
+		{
+			bUseActorHandle = false;
+		}
+		else
+		{
+			return false;
+		}
 	}
 
-	check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
-
-	if (!HandleInfo->bSkipResettingCom && !FPhysicsInterface::IsValid(HandleInfo->KinActorData2) && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+	if (rBodyInstance && bUseActorHandle)
 	{
-		// Reset the mass properties, this avoids an issue with some weird replication issues
-		// We only do this on initial grip
-		rBodyInstance->UpdateMassProperties();
+		check(rBodyInstance->BodySetup->GetCollisionTraceFlag() != CTF_UseComplexAsSimple);
 
+		if (!HandleInfo->bSkipResettingCom && !FPhysicsInterface::IsValid(HandleInfo->KinActorData2) && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+		{
+			// Reset the mass properties, this avoids an issue with some weird replication issues
+			// We only do this on initial grip
+			rBodyInstance->UpdateMassProperties();
+
+		}
 	}
 
 	/*if (NewGrip.GrippedBoneName != NAME_None)
@@ -6193,46 +6209,56 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		rBodyInstance->SetInstanceSimulatePhysics(true);
 	}*/
 
-	FPhysicsCommand::ExecuteWrite(rBodyInstance->ActorHandle, [&](const FPhysicsActorHandle& Actor)
+	FTransform RootBoneRotation = FTransform::Identity;
+	if (NewGrip.GrippedBoneName != NAME_None)
 	{
-
-		FTransform KinPose;
-		FTransform trans = FPhysicsInterface::GetGlobalPose_AssumesLocked(Actor);
-		FTransform RootBoneRotation = FTransform::Identity;
-
-		if (NewGrip.GrippedBoneName != NAME_None)
+		// Skip root bone rotation
+	}
+	else
+	{
+		// I actually don't need any of this code anymore or the HandleInfo->RootBoneRotation
+		// However I would have to expect people to pass in the bone transform without it.
+		// For now I am keeping it to keep it backwards compatible as it will adjust for root bone rotation automatically then
+		if (USkeletalMeshComponent* skele = Cast<USkeletalMeshComponent>(root))
 		{
-			// Skip root bone rotation
-		}
-		else
-		{
-			// I actually don't need any of this code anymore or the HandleInfo->RootBoneRotation
-			// However I would have to expect people to pass in the bone transform without it.
-			// For now I am keeping it to keep it backwards compatible as it will adjust for root bone rotation automatically then
-			if (USkeletalMeshComponent * skele = Cast<USkeletalMeshComponent>(root))
+			int32 RootBodyIndex = INDEX_NONE;
+			if (const UPhysicsAsset* PhysicsAsset = skele->GetPhysicsAsset())
 			{
-				int32 RootBodyIndex = INDEX_NONE;
-				if (const UPhysicsAsset* PhysicsAsset = skele->GetPhysicsAsset())
+				for (int32 i = 0; i < skele->GetNumBones(); i++)
 				{
-					for (int32 i = 0; i < skele->GetNumBones(); i++)
+					if (PhysicsAsset->FindBodyIndex(skele->GetBoneName(i)) != INDEX_NONE)
 					{
-						if (PhysicsAsset->FindBodyIndex(skele->GetBoneName(i)) != INDEX_NONE)
-						{
-							RootBodyIndex = i;
-							break;
-						}
+						RootBodyIndex = i;
+						break;
 					}
 				}
+			}
 
-				if (RootBodyIndex != INDEX_NONE)
-				{
-					RootBoneRotation = FTransform(skele->GetBoneTransform(RootBodyIndex, FTransform::Identity));
-					RootBoneRotation.SetScale3D(FVector(1.f));
-					RootBoneRotation.NormalizeRotation();
-					HandleInfo->RootBoneRotation = RootBoneRotation;
-				}
+			if (RootBodyIndex != INDEX_NONE)
+			{
+				RootBoneRotation = FTransform(skele->GetBoneTransform(RootBodyIndex, FTransform::Identity));
+				RootBoneRotation.SetScale3D(FVector(1.f));
+				RootBoneRotation.NormalizeRotation();
+				HandleInfo->RootBoneRotation = RootBoneRotation;
 			}
 		}
+	}
+
+	// They forgot to make a single chaos::FPhysicsBody version of the write lock....
+	bool bExecutedPhys = FPhysicsCommand::ExecuteWrite(PhysicsActor, PhysicsActor, [&](/*const FPhysicsActorHandle& Actor*/Chaos::FPhysicsObject* PhysActor, Chaos::FPhysicsObject* PhysActorNULL)
+	{
+		const FPhysicsActorHandle& Actor = bUseActorHandle ? rBodyInstance->GetPhysicsActorHandle() : nullptr;
+		Chaos::FWritePhysicsObjectInterface_External Interface = FPhysicsObjectExternalInterface::GetWrite_AssumesLocked();
+		FChaosScene* PhysScene = PhysicsObjectPhysicsCoreInterface::GetScene({ &PhysActor, 1 });
+		FTransform PhysActorTransform = Interface.GetTransform(PhysActor);
+
+		if (!PhysScene)
+		{
+			return;
+		}
+
+		FTransform KinPose;
+		FTransform trans = Interface.GetTransform(PhysActor);//FPhysicsInterface::GetGlobalPose_AssumesLocked(Actor);
 
 		EPhysicsGripCOMType COMType = NewGrip.AdvancedGripSettings.PhysicsSettings.PhysicsGripLocationSettings;
 
@@ -6248,34 +6274,46 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			}
 		}
 
-		if (COMType == EPhysicsGripCOMType::COM_SetAndGripAt)
+		// For geometry collections we can't set COM
+		if (!bUseActorHandle)
+		{
+			if (COMType == EPhysicsGripCOMType::COM_SetAndGripAt)
+			{
+				COMType = EPhysicsGripCOMType::COM_GripAtControllerLoc;
+			}
+		}
+
+		if (bUseActorHandle && COMType == EPhysicsGripCOMType::COM_SetAndGripAt)
 		{
 			// Update the center of mass
 			FTransform ForwardTrans = (RootBoneRotation * NewGrip.RelativeTransform);
 			ForwardTrans.NormalizeRotation();
 			FVector Loc = (FTransform(ForwardTrans.ToInverseMatrixWithScale())).GetLocation();
-			Loc *= rBodyInstance->Scale3D;
+			Loc *= root->GetComponentScale();
 
-			FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
+			FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);//Interface.GetWorldCoM(PhysActor); 
 			localCom.SetLocation(Loc);
 			FPhysicsInterface::SetComLocalPose_AssumesLocked(Actor, localCom);
 
-			FVector ComLoc = FPhysicsInterface::GetComTransform_AssumesLocked(Actor).GetLocation();
+			FVector ComLoc = FPhysicsInterface::GetComTransform_AssumesLocked(Actor).GetLocation(); // Interface.GetWorldCoM(PhysActor);
 			trans.SetLocation(ComLoc);
-			HandleInfo->COMPosition = FTransform(rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(ComLoc));
+			HandleInfo->COMPosition = FTransform(PhysActorTransform.InverseTransformPosition(ComLoc));
 			HandleInfo->bSetCOM = true;
 		}
 		else if (COMType == EPhysicsGripCOMType::COM_GripAtControllerLoc)
 		{
-			FVector ControllerLoc = (FTransform(NewGrip.RelativeTransform.ToInverseMatrixWithScale()) * root->GetComponentTransform()).GetLocation();
+			FTransform ObjectTransform = PhysActorTransform;
+			ObjectTransform.SetScale3D(root->GetComponentScale());
+
+			FVector ControllerLoc = (FTransform(NewGrip.RelativeTransform.ToInverseMatrixWithScale()) * ObjectTransform).GetLocation();
 			trans.SetLocation(ControllerLoc);
-			HandleInfo->COMPosition = FTransform(rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(ControllerLoc));
+			HandleInfo->COMPosition = FTransform(PhysActorTransform.InverseTransformPosition(ControllerLoc));
 		}
 		else if (COMType != EPhysicsGripCOMType::COM_AtPivot)
 		{
-			FVector ComLoc = FPhysicsInterface::GetComTransform_AssumesLocked(Actor).GetLocation();
+			FVector ComLoc = Interface.GetWorldCoM(PhysActor);// FPhysicsInterface::GetComTransform_AssumesLocked(Actor).GetLocation();
 			trans.SetLocation(ComLoc);
-			HandleInfo->COMPosition = FTransform(rBodyInstance->GetUnrealWorldTransform().InverseTransformPosition(ComLoc));
+			HandleInfo->COMPosition = FTransform(PhysActorTransform.InverseTransformPosition(ComLoc));
 		}
 
 		KinPose = trans;
@@ -6308,7 +6346,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 				}
 			}
 
-			if (HandleInfo->bSetCOM && bResetCom)
+			if (bUseActorHandle && HandleInfo->bSetCOM && bResetCom)
 			{
 				FTransform localCom = FPhysicsInterface::GetComTransformLocal_AssumesLocked(Actor);
 				localCom.SetLocation(HandleInfo->COMPosition.GetTranslation());//Loc);
@@ -6338,7 +6376,7 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			ActorParams.bEnableGravity = false;
 			ActorParams.bQueryOnly = false;// true; // True or false?
 			ActorParams.bStatic = false;
-			ActorParams.Scene = FPhysicsInterface::GetCurrentScene(Actor);
+			ActorParams.Scene = PhysScene;//FPhysicsInterface::GetCurrentScene(Actor);
 			FPhysicsInterface::CreateActor(ActorParams, HandleInfo->KinActorData2);
 			
 			if (FPhysicsInterface::IsValid(HandleInfo->KinActorData2))
@@ -6368,11 +6406,11 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			if (!NewGrip.bIsLerping && bConstrainToPivot)
 			{
 				FTransform TargetTrans(FTransform(NewGrip.RelativeTransform.ToMatrixNoScale().Inverse()) * HandleInfo->RootBoneRotation.Inverse());
-				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2, Actor, FTransform::Identity, TargetTrans);
+				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2->GetPhysicsObject(), PhysActor, FTransform::Identity, TargetTrans);
 			}
 			else
 			{
-				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2, Actor, FTransform::Identity, KinPose.GetRelativeTransform(FPhysicsInterface::GetGlobalPose_AssumesLocked(Actor)));
+				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2->GetPhysicsObject(), PhysActor, FTransform::Identity, KinPose.GetRelativeTransform(PhysActorTransform));
 			}
 		}
 		else
@@ -6389,11 +6427,11 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			if (!NewGrip.bIsLerping && bConstrainToPivot)
 			{
 				FTransform TargetTrans(NewGrip.RelativeTransform.ToMatrixNoScale().Inverse());
-				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2, Actor, FTransform::Identity, TargetTrans);
+				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2->GetPhysicsObject(), PhysActor, FTransform::Identity, TargetTrans);
 			}
 			else
 			{
-				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2, Actor, FTransform::Identity, KinPose.GetRelativeTransform(FPhysicsInterface::GetGlobalPose_AssumesLocked(Actor)));
+				HandleInfo->HandleData2 = FPhysicsInterface::CreateConstraint(HandleInfo->KinActorData2->GetPhysicsObject(), PhysActor, FTransform::Identity, KinPose.GetRelativeTransform(PhysActorTransform));
 			}
 		
 		}
@@ -6587,10 +6625,15 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 		}
 	});
 
+	if (!bExecutedPhys)
+	{
+		return false;
+	}
+
 	HandleInfo->bInitiallySetup = true;
 
 	// Bind to further updates in order to keep it alive
-	if (!rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+	if (bUseActorHandle && !rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
 	{
 		rBodyInstance->OnRecalculatedMassProperties().AddUObject(this, &UGripMotionControllerComponent::OnGripMassUpdated);
 	}
