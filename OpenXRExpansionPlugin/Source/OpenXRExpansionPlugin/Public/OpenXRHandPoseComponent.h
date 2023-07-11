@@ -27,6 +27,7 @@ public:
 		bool bAllowDeformingMesh;
 
 	// If true we will skip sending the 4 metacarpal bones that ue4 doesn't need, (STEAMVR skeletons need this disabled!)
+	// Only really used for the older UE4 skeleton
 	UPROPERTY(Transient, NotReplicated)
 		bool bEnableUE4HandRepSavings;
 
@@ -41,7 +42,7 @@ public:
 	{
 		TargetHand = EVRSkeletalHandIndex::EActionHandIndex_Left;
 		bAllowDeformingMesh = false;
-		bEnableUE4HandRepSavings = true;
+		bEnableUE4HandRepSavings = false;
 		BoneCount = 0;
 	}
 

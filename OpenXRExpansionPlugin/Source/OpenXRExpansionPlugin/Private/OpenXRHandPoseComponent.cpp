@@ -615,8 +615,8 @@ void FBPXRSkeletalRepContainer::CopyReplicatedTo(const FBPXRSkeletalRepContainer
 	//Other.SkeletalData.SkeletalTransforms = Container.SkeletalTransforms;
 
 	if (Other.SkeletalTransforms.Num() != EHandKeypointCount)
+	{ 
 		Other.SkeletalTransforms.Reset(EHandKeypointCount);
-	{
 		Other.SkeletalTransforms.AddUninitialized(EHandKeypointCount);
 	}
 
@@ -629,6 +629,7 @@ void FBPXRSkeletalRepContainer::CopyReplicatedTo(const FBPXRSkeletalRepContainer
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_METACARPAL_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_THUMB_TIP_EXT] = FTransform::Identity;
 
 	if (!Container.bEnableUE4HandRepSavings)
 	{
@@ -641,6 +642,7 @@ void FBPXRSkeletalRepContainer::CopyReplicatedTo(const FBPXRSkeletalRepContainer
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_INTERMEDIATE_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_INDEX_TIP_EXT] = FTransform::Identity;
 
 	if (!Container.bEnableUE4HandRepSavings)
 	{
@@ -653,6 +655,7 @@ void FBPXRSkeletalRepContainer::CopyReplicatedTo(const FBPXRSkeletalRepContainer
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_INTERMEDIATE_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_TIP_EXT] = FTransform::Identity;
 
 	if (!Container.bEnableUE4HandRepSavings)
 	{
@@ -665,6 +668,7 @@ void FBPXRSkeletalRepContainer::CopyReplicatedTo(const FBPXRSkeletalRepContainer
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_INTERMEDIATE_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_RING_TIP_EXT] = FTransform::Identity;
 
 	if (!Container.bEnableUE4HandRepSavings)
 	{
@@ -677,6 +681,7 @@ void FBPXRSkeletalRepContainer::CopyReplicatedTo(const FBPXRSkeletalRepContainer
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_PROXIMAL_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_INTERMEDIATE_EXT] = Container.SkeletalTransforms[idx++];
 	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_DISTAL_EXT] = Container.SkeletalTransforms[idx++];
+	Other.SkeletalTransforms[(int32)EXRHandJointType::OXR_HAND_JOINT_LITTLE_TIP_EXT] = FTransform::Identity;
 
 	Other.bHasValidData = true;
 }

@@ -166,7 +166,7 @@ void FAnimNode_ApplyOpenXRHandPose::CalculateOpenXRAdjustment()
 
 }
 
-void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform>& OutTransforms, TArray<FTransform>& WorldTransforms, FTransform AddTrans, bool bMirrorLeftRight, bool bMergeMissingUE4Bones)
+void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform>& OutTransforms, const TArray<FTransform>& WorldTransforms, FTransform AddTrans, bool bMirrorLeftRight, bool bMergeMissingUE4Bones)
 {
 	// Fail if the count is too low
 	if (WorldTransforms.Num() < EHandKeypointCount)
@@ -177,6 +177,8 @@ void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform
 		OutTransforms.Empty(WorldTransforms.Num());
 		OutTransforms.AddUninitialized(WorldTransforms.Num());
 	}
+
+	TArray<FTransform> TempWorldTransforms = WorldTransforms;
 
 	// Ensure add trans is normalized
 	AddTrans.NormalizeRotation();
@@ -224,35 +226,35 @@ void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform
 
 	for (int32 Index = 0; Index < EHandKeypointCount; ++Index)
 	{
-		if (WorldTransforms[Index].ContainsNaN() || WorldTransforms[Index].Equals(FTransform::Identity))
+		if (TempWorldTransforms[Index].ContainsNaN() || TempWorldTransforms[Index].Equals(FTransform::Identity))
 		{
 			OutTransforms[Index] = FTransform::Identity;
 			continue;
 		}
 
 		// Ensure normalization
-		WorldTransforms[Index].NormalizeRotation();
+		TempWorldTransforms[Index].NormalizeRotation();
 
 		if (bMirrorLeftRight)
 		{
-			WorldTransforms[Index].Mirror(EAxis::Y, EAxis::Y);
+			TempWorldTransforms[Index].Mirror(EAxis::Y, EAxis::Y);
 		}
 
 		if (bUseAutoCalculatedRetarget)
 		{
-			WorldTransforms[Index].ConcatenateRotation(MappedBonePairs.AdjustmentQuat);
+			TempWorldTransforms[Index].ConcatenateRotation(MappedBonePairs.AdjustmentQuat);
 			//WorldTransforms[Index].ConcatenateRotation(MappedBonePairs.BonePairs[0].RetargetRot);
 		}
 		else
 		{
-			WorldTransforms[Index].ConcatenateRotation(AddTrans.GetRotation());
+			TempWorldTransforms[Index].ConcatenateRotation(AddTrans.GetRotation());
 		}
 	}
 
 	for (int32 Index = 0; Index < EHandKeypointCount; ++Index)
 	{
-		FTransform& BoneTransform = WorldTransforms[Index];
-		BoneTransform.NormalizeRotation();
+		FTransform& BoneTransform = TempWorldTransforms[Index];
+		//BoneTransform.NormalizeRotation();
 
 		int32 ParentIndex = BoneParents[Index];
 		int32 ParentParent = -1;
@@ -278,14 +280,14 @@ void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform
 			// Merging missing metacarpal bone into the transform
 			if (bMergeMissingUE4Bones && ParentParent == 1) // Wrist
 			{
-				ParentTransform = WorldTransforms[ParentParent];
+				ParentTransform = TempWorldTransforms[ParentParent];
 			}
 			else
 			{
-				ParentTransform = WorldTransforms[ParentIndex];
+				ParentTransform = TempWorldTransforms[ParentIndex];
 			}
 
-			ParentTransform.NormalizeRotation();
+			//ParentTransform.NormalizeRotation();
 			OutTransforms[Index] = BoneTransform.GetRelativeTransform(ParentTransform);
 		}
 	}

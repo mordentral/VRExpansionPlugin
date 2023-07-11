@@ -44,7 +44,7 @@ public:
 
 	bool bIsOpenInputAnimationInstance;
 
-	void ConvertHandTransformsSpace(TArray<FTransform>& OutTransforms, TArray<FTransform>& WorldTransforms, FTransform AddTrans, bool bMirrorLeftRight, bool bMergeMissingUE4Bones);
+	void ConvertHandTransformsSpace(TArray<FTransform>& OutTransforms, const TArray<FTransform>& WorldTransforms, FTransform AddTrans, bool bMirrorLeftRight, bool bMergeMissingUE4Bones);
 
 	void CalculateSkeletalAdjustment(USkeleton* AssetSkeleton);
 	void CalculateOpenXRAdjustment();
