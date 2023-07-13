@@ -16,7 +16,7 @@ struct VREXPANSIONPLUGIN_API FWeldedBoneDriverData
 public:
 	FTransform RelativeTransform;
 	FName BoneName;
-	FPhysicsShapeHandle ShapeHandle;
+	//FPhysicsShapeHandle ShapeHandle;
 
 	FTransform LastLocal;
 
@@ -26,9 +26,14 @@ public:
 	{
 	}
 
-	FORCEINLINE bool operator==(const FPhysicsShapeHandle& Other) const
+	/*FORCEINLINE bool operator==(const FPhysicsShapeHandle& Other) const
 	{
 		return (ShapeHandle == Other);
+	}*/
+
+	FORCEINLINE bool operator==(const FName& Other) const
+	{
+		return (BoneName == Other);
 	}
 };
 

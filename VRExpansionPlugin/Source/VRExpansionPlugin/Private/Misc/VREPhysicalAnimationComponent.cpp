@@ -148,7 +148,7 @@ void UVREPhysicalAnimationComponent::SetupWeldedBoneDriver_Implementation(bool b
 								{
 									FWeldedBoneDriverData DriverData;
 									DriverData.BoneName = TargetBoneName;
-									DriverData.ShapeHandle = Shape;
+									//DriverData.ShapeHandle = Shape;
 
 									if (bReInit && OriginalData.Num() - 1 >= BoneDriverMap.Num())
 									{
@@ -248,7 +248,19 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 								}
 							}
 
-							if (FWeldedBoneDriverData* WeldedData = BoneDriverMap.FindByKey(Shape))
+							// Log the shapes name to match to the bone
+							FName TargetBoneName = NAME_None;
+							if (FKShapeElem* ShapeElem = FChaosUserData::Get<FKShapeElem>(FPhysicsInterface::GetUserData(Shape)))
+							{
+								TargetBoneName = ShapeElem->GetName();
+							}
+							else
+							{
+								// Cant find the matching shape
+								continue;
+							}
+
+							if (FWeldedBoneDriverData* WeldedData = BoneDriverMap.FindByKey(TargetBoneName/*Shape*/))
 							{
 								bModifiedBody = true;
 
