@@ -119,8 +119,8 @@ public:
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bEnableUE4HandRepSavings;
 
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
-		TArray<FTransform> OldSkeletalTransforms;
+	//UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
+		//TArray<FTransform> OldSkeletalTransforms;
 
 	// The rotation required to rotate the finger bones back to X+
 	// The animation node attempts to auto calculate it, if you have a non standard hand you may need to fill

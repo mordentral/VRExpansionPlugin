@@ -224,10 +224,7 @@ public:
 		void Server_SendSkeletalTransforms(const FBPXRSkeletalRepContainer& SkeletalInfo);
 
 	bool bLerpingPositionLeft;
-	bool bReppedOnceLeft;
-
 	bool bLerpingPositionRight;
-	bool bReppedOnceRight;
 
 	struct FTransformLerpManager
 	{
@@ -235,17 +232,25 @@ public:
 		bool bLerping;
 		float UpdateCount;
 		float UpdateRate;
+		TArray<FTransform> OldTransforms;
 		TArray<FTransform> NewTransforms;
 
 		FTransformLerpManager();
-		void NotifyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate);
+		void PreCopyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bUseExponentialSmoothing);
+		void NotifyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bUseExponentialSmoothing);
 
-		FORCEINLINE void BlendBone(uint8 BoneToBlend, FBPOpenXRActionSkeletalData& ActionInfo, float & LerpVal)
+		FORCEINLINE void BlendBone(uint8 BoneToBlend, FBPOpenXRActionSkeletalData& ActionInfo, float& LerpVal, bool bUseExponentialSmoothing)
 		{
-			ActionInfo.SkeletalTransforms[BoneToBlend].Blend(ActionInfo.OldSkeletalTransforms[BoneToBlend], NewTransforms[BoneToBlend], LerpVal);
+			ActionInfo.SkeletalTransforms[BoneToBlend].Blend(OldTransforms[BoneToBlend], NewTransforms[BoneToBlend], LerpVal);
+
+			if (bUseExponentialSmoothing)
+			{
+				// Saving base back out for exponential
+				OldTransforms[BoneToBlend] = ActionInfo.SkeletalTransforms[BoneToBlend];
+			}
 		}
 
-		void UpdateManager(float DeltaTime, FBPOpenXRActionSkeletalData& ActionInfo);
+		void UpdateManager(float DeltaTime, FBPOpenXRActionSkeletalData& ActionInfo, UOpenXRHandPoseComponent * ParentComp);
 
 	}; 
 	
@@ -259,12 +264,18 @@ public:
 		{
 			if (HandSkeletalActions[i].TargetHand == LeftHandRep.TargetHand)
 			{
-				HandSkeletalActions[i].OldSkeletalTransforms = HandSkeletalActions[i].SkeletalTransforms;
+				if (bSmoothReplicatedSkeletalData)
+				{
+					LeftHandRepManager.PreCopyNewData(HandSkeletalActions[i], ReplicationRateForSkeletalAnimations, bUseExponentialSmoothing);
+				}
 
 				FBPXRSkeletalRepContainer::CopyReplicatedTo(LeftHandRep, HandSkeletalActions[i]);
 				
-				if(bSmoothReplicatedSkeletalData)
-					LeftHandRepManager.NotifyNewData(HandSkeletalActions[i], ReplicationRateForSkeletalAnimations);
+				if (bSmoothReplicatedSkeletalData)
+				{
+					LeftHandRepManager.NotifyNewData(HandSkeletalActions[i], ReplicationRateForSkeletalAnimations, bUseExponentialSmoothing);
+				}
+
 				break;
 			}
 		}
@@ -277,12 +288,17 @@ public:
 		{
 			if (HandSkeletalActions[i].TargetHand == RightHandRep.TargetHand)
 			{
-				HandSkeletalActions[i].OldSkeletalTransforms = HandSkeletalActions[i].SkeletalTransforms;
+				if (bSmoothReplicatedSkeletalData)
+				{
+					RightHandRepManager.PreCopyNewData(HandSkeletalActions[i], ReplicationRateForSkeletalAnimations, bUseExponentialSmoothing);
+				}
 
 				FBPXRSkeletalRepContainer::CopyReplicatedTo(RightHandRep, HandSkeletalActions[i]);
 				
 				if (bSmoothReplicatedSkeletalData)
-					RightHandRepManager.NotifyNewData(HandSkeletalActions[i], ReplicationRateForSkeletalAnimations);
+				{
+					RightHandRepManager.NotifyNewData(HandSkeletalActions[i], ReplicationRateForSkeletalAnimations, bUseExponentialSmoothing);
+				}
 				break;
 			}
 		}
@@ -295,6 +311,14 @@ public:
 	// If true we will lerp between updates of the skeletal mesh transforms and smooth the result
 	UPROPERTY(EditAnywhere, Category = SkeletalData)
 		bool bSmoothReplicatedSkeletalData;
+
+	// If true then we will use exponential smoothing with buffered correction
+	UPROPERTY(EditAnywhere, Category = "SkeletalData", meta = (editcondition = "bSmoothReplicatedSkeletalData"))
+		bool bUseExponentialSmoothing = false;
+
+	// Timestep of smoothing translation
+	UPROPERTY(EditAnywhere, Category = "SkeletalData", meta = (editcondition = "bUseExponentialSmoothing"))
+		float InterpolationSpeed = 25.0f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData)
 		float ReplicationRateForSkeletalAnimations;

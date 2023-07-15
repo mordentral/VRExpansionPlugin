@@ -229,7 +229,7 @@ void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform
 		if (TempWorldTransforms[Index].ContainsNaN() || TempWorldTransforms[Index].Equals(FTransform::Identity))
 		{
 			OutTransforms[Index] = FTransform::Identity;
-			continue;
+			//continue;
 		}
 
 		// Ensure normalization
@@ -251,6 +251,7 @@ void FAnimNode_ApplyOpenXRHandPose::ConvertHandTransformsSpace(TArray<FTransform
 		}
 	}
 
+	// Make this into a single loop, their structure always has children after parent
 	for (int32 Index = 0; Index < EHandKeypointCount; ++Index)
 	{
 		FTransform& BoneTransform = TempWorldTransforms[Index];
