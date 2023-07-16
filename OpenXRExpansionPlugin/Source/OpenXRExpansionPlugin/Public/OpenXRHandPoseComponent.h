@@ -236,14 +236,14 @@ public:
 		TArray<FTransform> NewTransforms;
 
 		FTransformLerpManager();
-		void PreCopyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bUseExponentialSmoothing);
-		void NotifyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bUseExponentialSmoothing);
+		void PreCopyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bExponentialSmoothing);
+		void NotifyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bExponentialSmoothing);
 
-		FORCEINLINE void BlendBone(uint8 BoneToBlend, FBPOpenXRActionSkeletalData& ActionInfo, float& LerpVal, bool bUseExponentialSmoothing)
+		FORCEINLINE void BlendBone(uint8 BoneToBlend, FBPOpenXRActionSkeletalData& ActionInfo, float& LerpVal, bool bExponentialSmoothing)
 		{
 			ActionInfo.SkeletalTransforms[BoneToBlend].Blend(OldTransforms[BoneToBlend], NewTransforms[BoneToBlend], LerpVal);
 
-			if (bUseExponentialSmoothing)
+			if (bExponentialSmoothing)
 			{
 				// Saving base back out for exponential
 				OldTransforms[BoneToBlend] = ActionInfo.SkeletalTransforms[BoneToBlend];
