@@ -448,9 +448,9 @@ UOpenXRHandPoseComponent::FTransformLerpManager::FTransformLerpManager()
 	UpdateRate = 0.0f;
 }
 
-void UOpenXRHandPoseComponent::FTransformLerpManager::PreCopyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bUseExponentialSmoothing)
+void UOpenXRHandPoseComponent::FTransformLerpManager::PreCopyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bExponentialSmoothing)
 {
-	if (!bUseExponentialSmoothing)
+	if (!bExponentialSmoothing)
 	{
 		if (ActionInfo.SkeletalTransforms.Num())
 		{
@@ -459,7 +459,7 @@ void UOpenXRHandPoseComponent::FTransformLerpManager::PreCopyNewData(FBPOpenXRAc
 	}
 }
 
-void UOpenXRHandPoseComponent::FTransformLerpManager::NotifyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bUseExponentialSmoothing)
+void UOpenXRHandPoseComponent::FTransformLerpManager::NotifyNewData(FBPOpenXRActionSkeletalData& ActionInfo, int NetUpdateRate, bool bExponentialSmoothing)
 {
 	UpdateRate = (1.0f / NetUpdateRate);
 
@@ -474,7 +474,7 @@ void UOpenXRHandPoseComponent::FTransformLerpManager::NotifyNewData(FBPOpenXRAct
 	}
 	else
 	{
-		if (bUseExponentialSmoothing)
+		if (bExponentialSmoothing)
 		{
 			OldTransforms = ActionInfo.SkeletalTransforms;
 		}
