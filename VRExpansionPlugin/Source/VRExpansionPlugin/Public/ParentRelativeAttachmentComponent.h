@@ -90,6 +90,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
 		bool bUpdateInCharacterMovement;
 
+private:
+	UPROPERTY()
+		bool bIsPaused;
+public:
+
+	// Set the paused state of the PRC, if setting to paused then zero out rotation and zero out location will null out those values
+	UFUNCTION(BlueprintCallable, Category = "VRExpansionLibrary")
+		void SetPaused(bool bNewPaused, bool bZeroOutRotation, bool bZeroOutLocation);
+
 	// If valid will use this as the tracked parent instead of the HMD / Parent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRTrackedParentInterface")
 	FBPVRWaistTracking_Info OptionalWaistTrackingParent;
