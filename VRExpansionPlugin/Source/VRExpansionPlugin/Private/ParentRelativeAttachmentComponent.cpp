@@ -38,6 +38,7 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 
 	bIgnoreRotationFromParent = false;
 	bUpdateInCharacterMovement = true;
+	bIsPaused = false;
 
 	bUseFeetLocation = false;
 	CustomOffset = FVector::ZeroVector;
@@ -80,8 +81,38 @@ void UParentRelativeAttachmentComponent::OnAttachmentChanged()
 	Super::OnAttachmentChanged();
 }
 
+void UParentRelativeAttachmentComponent::SetPaused(bool bNewPaused, bool bZeroOutRotation, bool bZeroOutLocation)
+{
+	if (bNewPaused != bIsPaused)
+	{
+		bIsPaused = bNewPaused;
+
+		if (bIsPaused && (bZeroOutLocation || bZeroOutRotation))
+		{
+			FVector NewLoc = this->GetRelativeLocation();
+			FRotator NewRot = this->GetRelativeRotation();
+
+			if (bZeroOutLocation)
+			{
+				NewLoc = FVector::ZeroVector;
+			}
+
+			if (bZeroOutRotation)
+			{
+				NewRot = FRotator::ZeroRotator;
+			}
+
+			SetRelativeLocationAndRotation(NewLoc, NewRot);
+		}
+	}
+}
+
 void UParentRelativeAttachmentComponent::UpdateTracking(float DeltaTime)
 {
+	// We are paused, do not update tracking anymore
+	if (bIsPaused)
+		return;
+
 	if (OptionalWaistTrackingParent.IsValid())
 	{
 		//#TODO: bOffsetByHMD not supported with this currently, fix it, need to check for both camera and HMD
