@@ -975,8 +975,8 @@ public:
 			EGripCollisionType GripCollisionType = EGripCollisionType::InteractiveCollisionWithPhysics,
 			EGripLateUpdateSettings GripLateUpdateSetting = EGripLateUpdateSettings::NotWhenCollidingOrDoubleGripping,
 			EGripMovementReplicationSettings GripMovementReplicationSetting = EGripMovementReplicationSettings::ForceClientSideMovement,
-			float GripStiffness = 1500.0f,
-			float GripDamping = 200.0f, bool bIsSlotGrip = false);
+			float GripStiffness = 2250.0f,
+			float GripDamping = 140.0f, bool bIsSlotGrip = false);
 
 
 	// Auto drop any uobject that is/root is a primitive component and has the VR Grip Interface	

@@ -65,6 +65,8 @@ DECLARE_CYCLE_STAT(TEXT("GetGripWorldTransform ~ GettingTransform"), STAT_GetGri
 // Constraint multipliers for angular, to avoid having to have two sets of stiffness/damping variables
 const float ANGULAR_STIFFNESS_MULTIPLIER = 1.5f;
 const float ANGULAR_DAMPING_MULTIPLIER = 1.4f;
+const float ANGULAR_STIFFNESS_MULTIPLIER_CHAOS = 0.45f;
+const float ANGULAR_DAMPING_MULTIPLIER_CHAOS = 0.45f;
 
 // Multiplier for the Interactive Hybrid With Physics grip - When not colliding increases stiffness by this value
 const float HYBRID_PHYSICS_GRIP_MULTIPLIER = 10.0f;
@@ -6473,6 +6475,8 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			float AngularDamping;
 			float AngularMaxForce;
 
+			const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
 			if (NewGrip.AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && NewGrip.AdvancedGripSettings.PhysicsSettings.bUseCustomAngularValues)
 			{
 				AngularStiffness = NewGrip.AdvancedGripSettings.PhysicsSettings.AngularStiffness;
@@ -6482,16 +6486,32 @@ bool UGripMotionControllerComponent::SetUpPhysicsHandle(const FBPActorGripInform
 			{
 				AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier
 				AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
+
+				if (!VRSettings.bUseChaosTranslationScalers)
+				{
+					AngularStiffness *= ANGULAR_STIFFNESS_MULTIPLIER_CHAOS;
+					AngularDamping *= ANGULAR_DAMPING_MULTIPLIER_CHAOS;
+				}
 			}
 			
-			const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
-
 			if (VRSettings.bUseChaosTranslationScalers)
 			{
 				Stiffness *= VRSettings.LinearDriveStiffnessScale;
 				Damping *= VRSettings.LinearDriveDampingScale;
 				AngularStiffness *= VRSettings.AngularDriveStiffnessScale;
 				AngularDamping *= VRSettings.AngularDriveDampingScale;
+			}
+			else
+			{
+				auto CVarLinearDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearDriveStiffnessScale"));
+				auto CVarLinearDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinaearDriveDampingScale"));
+				auto CVarAngularDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveStiffnessScale"));
+				auto CVarAngularDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveDampingScale"));
+
+				Stiffness *= CVarLinearDriveStiffnessScale->GetFloat();
+				Damping *= CVarLinearDriveDampingScale->GetFloat();
+				AngularStiffness *= CVarAngularDriveStiffnessScale->GetFloat();
+				AngularDamping *= CVarAngularDriveDampingScale->GetFloat();
 			}
 
 			AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)NewGrip.AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
@@ -6663,6 +6683,8 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 					float AngularDamping;
 					float AngularMaxForce;
 
+					const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
 					if (Grip->AdvancedGripSettings.PhysicsSettings.bUsePhysicsSettings && Grip->AdvancedGripSettings.PhysicsSettings.bUseCustomAngularValues)
 					{
 						AngularStiffness = Grip->AdvancedGripSettings.PhysicsSettings.AngularStiffness;
@@ -6672,9 +6694,13 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 					{
 						AngularStiffness = Stiffness * ANGULAR_STIFFNESS_MULTIPLIER; // Default multiplier
 						AngularDamping = Damping * ANGULAR_DAMPING_MULTIPLIER; // Default multiplier
-					}
 
-					const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+						if (!VRSettings.bUseChaosTranslationScalers)
+						{
+							AngularStiffness *= ANGULAR_STIFFNESS_MULTIPLIER_CHAOS;
+							AngularDamping *= ANGULAR_DAMPING_MULTIPLIER_CHAOS;
+						}
+					}
 					
 					if (VRSettings.bUseChaosTranslationScalers)
 					{
@@ -6682,6 +6708,28 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 						Damping *= VRSettings.LinearDriveDampingScale;
 						AngularStiffness *= VRSettings.AngularDriveStiffnessScale;
 						AngularDamping *= VRSettings.AngularDriveDampingScale;
+					}
+					else
+					{
+						if (VRSettings.bUseChaosTranslationScalers)
+						{
+							Stiffness *= VRSettings.LinearDriveStiffnessScale;
+							Damping *= VRSettings.LinearDriveDampingScale;
+							AngularStiffness *= VRSettings.AngularDriveStiffnessScale;
+							AngularDamping *= VRSettings.AngularDriveDampingScale;
+						}
+						else
+						{
+							auto CVarLinearDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearDriveStiffnessScale"));
+							auto CVarLinearDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinaearDriveDampingScale"));
+							auto CVarAngularDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveStiffnessScale"));
+							auto CVarAngularDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveDampingScale"));
+
+							Stiffness *= CVarLinearDriveStiffnessScale->GetFloat();
+							Damping *= CVarLinearDriveDampingScale->GetFloat();
+							AngularStiffness *= CVarAngularDriveStiffnessScale->GetFloat();
+							AngularDamping *= CVarAngularDriveDampingScale->GetFloat();
+						}
 					}
 
 					AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
