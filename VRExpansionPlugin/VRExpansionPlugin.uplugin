@@ -32,9 +32,13 @@
     }
   ],
 	"Plugins": [
-		{
-			"Name": "ChaosVehiclesPlugin",
-			"Enabled": true
-		}
+    {
+      "Name": "ChaosVehiclesPlugin",
+      "Enabled": true
+    },
+    {
+      "Name": "XRBase",
+      "Enabled": true
+    }
 	]
 }

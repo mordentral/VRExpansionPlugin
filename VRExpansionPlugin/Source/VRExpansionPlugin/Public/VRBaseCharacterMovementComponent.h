@@ -259,7 +259,7 @@ public:
 	virtual void PhysCustom_LowGrav(float deltaTime, int32 Iterations);
 
 	// Teleport grips on correction to fixup issues
-	virtual void OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode) override;
+	virtual void OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode, FVector ServerGravityDirection) override;
 
 	// Fix network smoothing with our default mesh back in
 	virtual void SimulatedTick(float DeltaSeconds) override;
