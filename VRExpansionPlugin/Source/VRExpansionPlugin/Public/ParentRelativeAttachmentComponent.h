@@ -71,7 +71,11 @@ public:
 
 	// If true uses feet/bottom of the capsule as the base Z position for this component instead of the HMD/Camera Z position
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
-	bool bUseFeetLocation;
+	bool bUseFeetLocation = false;
+
+	// If true uses center of capsule as the feet location instead
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary", meta = (EditCondition = "bUseFeetLocation"))
+		bool bUseCenterAsFeetLocation = false; // Should really be an enum with the above but that would make people change projects
 
 	// An additional value added to the relative position of the PRC 
 	// Can be used to offset the floor, or component heights if needed
@@ -128,40 +132,7 @@ public:
 	}
 
 	// Sets the rotation and location depending on the control variables. Trying to remove some code duplication here
-	inline void SetRelativeRotAndLoc(FVector NewRelativeLocation, FRotator NewRelativeRotation, float DeltaTime)
-	{
-
-		RunSampling(NewRelativeRotation, NewRelativeLocation);
-
-		if (bUseFeetLocation)
-		{
-			if (!bIgnoreRotationFromParent)
-			{
-				SetRelativeLocationAndRotation(
-					FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f) + CustomOffset,
-					GetCalculatedRotation(NewRelativeRotation, DeltaTime)
-				);
-			}
-			else
-			{
-				SetRelativeLocation(FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f) + CustomOffset);
-			}
-		}
-		else
-		{
-			if (!bIgnoreRotationFromParent)
-			{
-				SetRelativeLocationAndRotation(
-					NewRelativeLocation + CustomOffset,
-					GetCalculatedRotation(NewRelativeRotation, DeltaTime)
-				); // Use the HMD height instead
-			}
-			else
-			{
-				SetRelativeLocation(NewRelativeLocation + CustomOffset); // Use the HMD height instead
-			}
-		}
-	}
+	inline void SetRelativeRotAndLoc(FVector NewRelativeLocation, FRotator NewRelativeRotation, float DeltaTime);
 
 	FQuat GetCalculatedRotation(FRotator InverseRot, float DeltaTime)
 	{

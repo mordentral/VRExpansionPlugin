@@ -40,7 +40,6 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	bUpdateInCharacterMovement = true;
 	bIsPaused = false;
 
-	bUseFeetLocation = false;
 	CustomOffset = FVector::ZeroVector;
 
 	//YawRotationMethod = EVR_PRC_RotationMethod::PRC_ROT_HMD;
@@ -103,6 +102,47 @@ void UParentRelativeAttachmentComponent::SetPaused(bool bNewPaused, bool bZeroOu
 			}
 
 			SetRelativeLocationAndRotation(NewLoc, NewRot);
+		}
+	}
+}
+
+void UParentRelativeAttachmentComponent::SetRelativeRotAndLoc(FVector NewRelativeLocation, FRotator NewRelativeRotation, float DeltaTime)
+{
+
+	RunSampling(NewRelativeRotation, NewRelativeLocation);
+
+	if (bUseFeetLocation)
+	{
+		FVector TotalOffset = CustomOffset;
+		if (bUseCenterAsFeetLocation && AttachChar && AttachChar->VRRootReference)
+		{
+			TotalOffset.Z += AttachChar->VRRootReference->GetUnscaledCapsuleHalfHeight();
+		}
+
+		if (!bIgnoreRotationFromParent)
+		{
+			SetRelativeLocationAndRotation(
+				FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f) + TotalOffset,
+				GetCalculatedRotation(NewRelativeRotation, DeltaTime)
+			);
+		}
+		else
+		{
+			SetRelativeLocation(FVector(NewRelativeLocation.X, NewRelativeLocation.Y, 0.0f) + TotalOffset);
+		}
+	}
+	else
+	{
+		if (!bIgnoreRotationFromParent)
+		{
+			SetRelativeLocationAndRotation(
+				NewRelativeLocation + CustomOffset,
+				GetCalculatedRotation(NewRelativeRotation, DeltaTime)
+			); // Use the HMD height instead
+		}
+		else
+		{
+			SetRelativeLocation(NewRelativeLocation + CustomOffset); // Use the HMD height instead
 		}
 	}
 }
