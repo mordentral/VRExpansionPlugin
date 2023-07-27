@@ -182,7 +182,7 @@ public:
 		TObjectPtr<UVRGripScriptBase> DefaultGripScript;
 
 	// This is a pointer to be able to access the display component directly in c++
-	TWeakObjectPtr<const UPrimitiveComponent> DisplayComponentReference;
+	//TWeakObjectPtr<const UPrimitiveComponent> DisplayComponentReference;
 
 	// Lerping functions and events
 	void InitializeLerpToHand(FBPActorGripInformation& GripInfo);
@@ -1431,7 +1431,7 @@ public:
 	bool bHasAuthority;
 
 	/** Whether or not this component has informed the visualization component (if present) to start rendering */
-	bool bHasStartedRendering = false;
+	//bool bHasStartedRendering = false;
 
 private:
 	/** Whether or not this component is currently on the network server*/

@@ -27,7 +27,7 @@
 #include "Math/DualQuat.h"
 #include "IIdentifiableXRDevice.h" // for FXRDeviceId
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
-#include "XRDeviceVisualizationComponent.h" // For visualization component
+//#include "XRDeviceVisualizationComponent.h" // For visualization component
 
 #include "Physics/Experimental/PhysScene_Chaos.h"
 
@@ -204,7 +204,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 
 	DefaultGripScript = nullptr;
 	DefaultGripScriptClass = UGS_Default::StaticClass();
-	DisplayComponentReference = nullptr;
+	//DisplayComponentReference = nullptr;
 
 	VelocityCalculationType = EVRVelocityType::VRLOCITY_Default;
 	LastRelativePosition = FTransform::Identity;
@@ -2973,7 +2973,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 				{
 					if (FPhysScene* PhysScene = World->GetPhysicsScene())
 					{
-						if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
+						if (IPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
 						{
 							FBodyInstance* BI = root->GetBodyInstance(NewGrip.GrippedBoneName);
 							if (BI && BI->IsInstanceSimulatingPhysics())
@@ -3679,7 +3679,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				{
 					if (FPhysScene * PhysScene = World->GetPhysicsScene())
 					{
-						if (FPhysicsReplication * PhysicsReplication = PhysScene->GetPhysicsReplication())
+						if (IPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
 						{
 							FBodyInstance* BI = root->GetBodyInstance(NewDrop.GrippedBoneName);
 							if (BI && BI->IsInstanceSimulatingPhysics())
@@ -4622,7 +4622,7 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			const bool bNewTrackedState = GripPollControllerState(Position, Orientation, WorldToMeters);
 
 			// Pull a reference to the private display component if it should exist
-			if (bDisplayDeviceModel && !IsValid(DisplayComponentReference.Get()))
+			/*if (bDisplayDeviceModel && !IsValid(DisplayComponentReference.Get()))
 			{
 				if (FProperty* Property = this->GetClass()->FindPropertyByName("DisplayComponent"))
 				{
@@ -4634,24 +4634,25 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 						DisplayComponentReference = DisplayCompPrim->Get();
 					}
 				}
-			}
+			}*/
 
 			// if controller tracking just kicked in or we haven't gotten a valid model yet
-			if (!bTracked && bNewTrackedState && !bHasStartedRendering)
+			/*if (!bTracked && bNewTrackedState && !bHasStartedRendering)
 			{
 				if (VisualizationComponent)
 				{
 					VisualizationComponent->SetIsRenderingActive(true);
 					bHasStartedRendering = true;
 				}
-			}
+			}*/
 
 			// This part is deprecated and will be removed in later versions.
 			// If controller tracking just kicked in or we haven't gotten a valid model yet
-			if (((!bTracked && bNewTrackedState) || !DisplayComponentReference.IsValid()) && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
+			/*if (((!bTracked && bNewTrackedState) || !DisplayComponentReference.IsValid()) && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
 			{
 				RefreshDisplayComponent();
 			} // End of deprecation
+			*/
 
 			bTracked = bNewTrackedState && (bIgnoreTrackingStatus || CurrentTrackingStatus != ETrackingStatus::NotTracked);
 			if (bTracked)

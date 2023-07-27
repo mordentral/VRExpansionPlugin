@@ -296,7 +296,7 @@ void UVRRenderTargetManager::DrawOperations()
 		RenderTargetResource,
 		nullptr,
 		World,
-		World->FeatureLevel);
+		World->GetFeatureLevel());
 
 	// Setup the canvas with the FCanvas reference
 	CanvasToUse->Init(RenderTarget->SizeX, RenderTarget->SizeY, nullptr, &RenderCanvas);
@@ -720,7 +720,7 @@ bool UVRRenderTargetManager::DeCompressRenderTarget2D()
 		RenderTargetResource,
 		nullptr,
 		World,
-		World->FeatureLevel);
+		World->GetFeatureLevel());
 
 	// Setup the canvas with the FCanvas reference
 	CanvasToUse->Init(RenderTarget->SizeX, RenderTarget->SizeY, nullptr, &RenderCanvas);

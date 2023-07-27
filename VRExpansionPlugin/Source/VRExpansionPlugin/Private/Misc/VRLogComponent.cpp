@@ -93,7 +93,7 @@ bool UVRLogComponent::DrawConsoleToRenderTarget2D(EBPVRConsoleDrawType DrawType,
 		Texture->GameThread_GetRenderTargetResource(),
 		nullptr,
 		World,
-		World->FeatureLevel,
+		World->GetFeatureLevel(),
 		// Draw immediately so that interleaved SetVectorParameter (etc) function calls work as expected
 		FCanvas::CDM_ImmediateDrawing);
 
