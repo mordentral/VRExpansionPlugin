@@ -57,8 +57,8 @@ public:
 	bool bSetPositionDuringTick;
 
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
-	bool bOffsetByHMD;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera")
+	//bool bOffsetByHMD;
 
 	// If true will scale the tracking of the camera by TrackingScaler
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReplicatedCamera|Advanced|Tracking")

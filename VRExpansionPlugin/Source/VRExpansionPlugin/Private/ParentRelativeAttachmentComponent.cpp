@@ -25,7 +25,7 @@ UParentRelativeAttachmentComponent::UParentRelativeAttachmentComponent(const FOb
 	SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	SetRelativeLocation(FVector::ZeroVector);
 	YawTolerance = 0.0f;
-	bOffsetByHMD = false;
+	//bOffsetByHMD = false;
 	
 	bLerpTransition = true;
 	LerpSpeed = 100.0f;
@@ -193,11 +193,11 @@ void UParentRelativeAttachmentComponent::UpdateTracking(float DeltaTime)
 		FVector curCameraLoc;
 		if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curCameraLoc))
 		{
-			if (bOffsetByHMD)
+			/*if (bOffsetByHMD)
 			{
 				curCameraLoc.X = 0;
 				curCameraLoc.Y = 0;
-			}
+			}*/
 
 			if (!bIgnoreRotationFromParent)
 			{

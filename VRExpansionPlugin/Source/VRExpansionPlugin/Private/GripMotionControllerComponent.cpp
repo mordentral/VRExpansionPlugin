@@ -177,7 +177,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	MinimumHeight = 0.0f;
 	bLimitMaxHeight = false;
 	MaximumHeight = 240.0f;
-	bOffsetByHMD = false;
+	//bOffsetByHMD = false;
 	bLeashToHMD = false;
 	LeashRange = 300.0f;
 	bConstrainToPivot = false;
@@ -7074,7 +7074,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 
 bool UGripMotionControllerComponent::HasTrackingParameters()
 {
-	return bOffsetByHMD || bScaleTracking || bLeashToHMD || bLimitMinHeight || bLimitMaxHeight || (AttachChar && !AttachChar->bRetainRoomscale);
+	return /*bOffsetByHMD ||*/ bScaleTracking || bLeashToHMD || bLimitMinHeight || bLimitMaxHeight || (AttachChar && !AttachChar->bRetainRoomscale);
 }
 
 void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread, bool bApplyZeroing)
@@ -7094,7 +7094,7 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 		OriginalPosition.Z = FMath::Min(OriginalPosition.Z, MaximumHeight);
 	}
 
-	if (bApplyZeroing && (bOffsetByHMD || bLeashToHMD || (AttachChar && !AttachChar->bRetainRoomscale)))
+	if (bApplyZeroing && (/*bOffsetByHMD ||*/ bLeashToHMD || (AttachChar && !AttachChar->bRetainRoomscale)))
 	{
 		if (bIsInGameThread)
 		{
@@ -7141,14 +7141,14 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 		// It has a data race condition right now though
 		FVector CorrectLastLocation = bIsInGameThread ? LastLocationForLateUpdate : LateUpdateParams.GripRenderThreadLastLocationForLateUpdate;
 
-		if (bOffsetByHMD || (AttachChar && !AttachChar->bRetainRoomscale))
+		if (/*bOffsetByHMD ||*/ (AttachChar && !AttachChar->bRetainRoomscale))
 		{
 			OriginalPosition -= FVector(CorrectLastLocation.X, CorrectLastLocation.Y, 0.0f);
 		}
 
 		if (bLeashToHMD)
 		{
-			FVector DifferenceVec = (bOffsetByHMD || (AttachChar && !AttachChar->bRetainRoomscale)) ? OriginalPosition : (OriginalPosition - CorrectLastLocation);
+			FVector DifferenceVec = (/*bOffsetByHMD ||*/ (AttachChar && !AttachChar->bRetainRoomscale)) ? OriginalPosition : (OriginalPosition - CorrectLastLocation);
 
 			if (DifferenceVec.SizeSquared() > FMath::Square(LeashRange))
 			{

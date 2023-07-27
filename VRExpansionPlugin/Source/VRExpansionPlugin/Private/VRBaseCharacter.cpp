@@ -77,7 +77,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	VRReplicatedCamera = CreateDefaultSubobject<UReplicatedVRCameraComponent>(AVRBaseCharacter::ReplicatedCameraComponentName);
 	if (VRReplicatedCamera)
 	{
-		VRReplicatedCamera->bOffsetByHMD = false;
+		//VRReplicatedCamera->bOffsetByHMD = false;
 		VRReplicatedCamera->SetupAttachment(VRProxyComponent);
 		VRReplicatedCamera->OverrideSendTransform = &AVRBaseCharacter::Server_SendTransformCamera;
 	}
@@ -94,7 +94,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		// Moved this to be root relative as the camera late updates were killing how it worked
 		ParentRelativeAttachment->SetupAttachment(VRProxyComponent);
-		ParentRelativeAttachment->bOffsetByHMD = false;
+		//ParentRelativeAttachment->bOffsetByHMD = false;
 		ParentRelativeAttachment->AddTickPrerequisiteComponent(VRReplicatedCamera);
 
 		if (USkeletalMeshComponent * SKMesh = GetMesh())
@@ -110,7 +110,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		//LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
 		LeftMotionController->SetTrackingMotionSource(FXRMotionControllerBase::LeftHandSourceId);
 		//LeftMotionController->Hand = EControllerHand::Left;
-		LeftMotionController->bOffsetByHMD = false;
+		//LeftMotionController->bOffsetByHMD = false;
 		//LeftMotionController->bUpdateInCharacterMovement = true;
 		// Keep the controllers ticking after movement
 		LeftMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());
@@ -124,7 +124,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 		//RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
 		RightMotionController->SetTrackingMotionSource(FXRMotionControllerBase::RightHandSourceId);
 		//RightMotionController->Hand = EControllerHand::Right;
-		RightMotionController->bOffsetByHMD = false;
+		//RightMotionController->bOffsetByHMD = false;
 		//RightMotionController->bUpdateInCharacterMovement = true;
 		// Keep the controllers ticking after movement
 		RightMotionController->AddTickPrerequisiteComponent(GetCharacterMovement());

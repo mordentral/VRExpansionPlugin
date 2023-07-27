@@ -31,7 +31,7 @@ UReplicatedVRCameraComponent::UReplicatedVRCameraComponent(const FObjectInitiali
 	bAutoSetLockToHmd = true;
 	bScaleTracking = false;
 	TrackingScaler = FVector(1.0f);
-	bOffsetByHMD = false;
+	//bOffsetByHMD = false;
 	bLimitMinHeight = false;
 	MinimumHeightAllowed = 0.0f;
 	bLimitMaxHeight = false;
@@ -140,13 +140,13 @@ void UReplicatedVRCameraComponent::OnAttachmentChanged()
 
 bool UReplicatedVRCameraComponent::HasTrackingParameters()
 {
-	return bOffsetByHMD || bScaleTracking || bLimitMaxHeight || bLimitMinHeight || bLimitBounds || (AttachChar && !AttachChar->bRetainRoomscale);
+	return /*bOffsetByHMD ||*/ bScaleTracking || bLimitMaxHeight || bLimitMinHeight || bLimitBounds || (AttachChar && !AttachChar->bRetainRoomscale);
 }
 
 void UReplicatedVRCameraComponent::ApplyTrackingParameters(FVector &OriginalPosition, bool bSkipLocZero)
 {
 	// I'm keeping the original values here as it lets me send them out for seated mode
-	if (!bSkipLocZero && (bOffsetByHMD /* || (AttachChar && !AttachChar->bRetainRoomscale)*/))
+	if (!bSkipLocZero /*&& ((AttachChar && !AttachChar->bRetainRoomscale))*/)
 	{
 		OriginalPosition.X = 0;
 		OriginalPosition.Y = 0;	
