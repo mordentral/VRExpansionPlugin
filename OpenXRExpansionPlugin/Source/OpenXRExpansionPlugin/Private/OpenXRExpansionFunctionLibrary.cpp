@@ -576,12 +576,12 @@ void UOpenXRExpansionFunctionLibrary::GetMockUpControllerData(FXRMotionControlle
 
 	MotionControllerData.DeviceName = TEXT("OpenXR");
 
-	SkeletalMappingData.bHasValidData = (SkeletalMappingData.SkeletalTransforms.Num() == EHandKeypointCount);
-
 	SkeletalMappingData.SkeletalTransforms.Empty(SkeletalMappingData.SkeletalTransforms.Num());
 	FTransform ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
 	for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); i++)
 	{
 		SkeletalMappingData.SkeletalTransforms.Add(FTransform(MotionControllerData.HandKeyRotations[i], MotionControllerData.HandKeyPositions[i], FVector(1.f)).GetRelativeTransform(ParentTrans));
 	}
+
+	SkeletalMappingData.bHasValidData = (SkeletalMappingData.SkeletalTransforms.Num() == EHandKeypointCount);
 }
