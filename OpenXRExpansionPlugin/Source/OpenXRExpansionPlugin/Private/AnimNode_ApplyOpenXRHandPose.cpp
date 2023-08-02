@@ -329,6 +329,11 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 		StoredActionInfoPtr = &OptionalStoredActionInfo;
 	}
 
+	if (!StoredActionInfoPtr->bHasValidData)
+	{
+		return;
+	}
+
 	//MappedBonePairs.AdjustmentQuat = WristAdjustment;
 
 	// Currently not blending correctly
