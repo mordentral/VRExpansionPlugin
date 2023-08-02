@@ -734,14 +734,15 @@ bool FBPXRSkeletalRepContainer::NetSerialize(FArchive& Ar, class UPackageMap* Ma
 {
 	bOutSuccess = true;
 
+	Ar.SerializeBits(&TargetHand, 1);
+	Ar.SerializeBits(&bAllowDeformingMesh, 1);
+	Ar.SerializeBits(&bEnableUE4HandRepSavings, 1);
+
 	int32 BoneCountAdjustment = 6 + (bEnableUE4HandRepSavings ? 4 : 0);
 	uint8 TransformCount = EHandKeypointCount - BoneCountAdjustment;
 
 	bool bHasValidData = SkeletalTransforms.Num() >= TransformCount;
 	Ar.SerializeBits(&bHasValidData, 1);
-	Ar.SerializeBits(&TargetHand, 1);
-	Ar.SerializeBits(&bAllowDeformingMesh, 1);
-	Ar.SerializeBits(&bEnableUE4HandRepSavings, 1);
 
 	//Ar << TransformCount;
 
