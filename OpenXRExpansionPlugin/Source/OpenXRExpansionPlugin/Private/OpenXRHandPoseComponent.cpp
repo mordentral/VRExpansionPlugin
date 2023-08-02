@@ -734,12 +734,14 @@ bool FBPXRSkeletalRepContainer::NetSerialize(FArchive& Ar, class UPackageMap* Ma
 {
 	bOutSuccess = true;
 
+	int32 BoneCountAdjustment = 6 + (bEnableUE4HandRepSavings ? 4 : 0);
+	uint8 TransformCount = EHandKeypointCount - BoneCountAdjustment;
+
+	bool bHasValidData = SkeletalTransforms.Num() >= TransformCount;
+	Ar.SerializeBits(&bHasValidData, 1);
 	Ar.SerializeBits(&TargetHand, 1);
 	Ar.SerializeBits(&bAllowDeformingMesh, 1);
 	Ar.SerializeBits(&bEnableUE4HandRepSavings, 1);
-
-	int32 BoneCountAdjustment = 6 + (bEnableUE4HandRepSavings ? 4 : 0);
-	uint8 TransformCount = EHandKeypointCount - BoneCountAdjustment;
 
 	//Ar << TransformCount;
 
@@ -751,27 +753,30 @@ bool FBPXRSkeletalRepContainer::NetSerialize(FArchive& Ar, class UPackageMap* Ma
 	FVector Position = FVector::ZeroVector;
 	FRotator Rot = FRotator::ZeroRotator;
 
-	for (int i = 0; i < TransformCount; i++)
+	if (bHasValidData)
 	{
-		if (Ar.IsSaving())
+		for (int i = 0; i < TransformCount; i++)
 		{
+			if (Ar.IsSaving())
+			{
+				if (bAllowDeformingMesh)
+					Position = SkeletalTransforms[i].GetLocation();
+
+				Rot = SkeletalTransforms[i].Rotator();
+			}
+
 			if (bAllowDeformingMesh)
-				Position = SkeletalTransforms[i].GetLocation();
+				bOutSuccess &= SerializePackedVector<10, 11>(Position, Ar);
 
-			Rot = SkeletalTransforms[i].Rotator();
-		}
+			Rot.SerializeCompressed(Ar); // Short? 10 bit?
 
-		if (bAllowDeformingMesh)
-			bOutSuccess &= SerializePackedVector<10, 11>(Position, Ar);
-
-		Rot.SerializeCompressed(Ar); // Short? 10 bit?
-
-		if (Ar.IsLoading())
-		{
-			if (bAllowDeformingMesh)
-				SkeletalTransforms.Add(FTransform(Rot, Position));
-			else
-				SkeletalTransforms.Add(FTransform(Rot));
+			if (Ar.IsLoading())
+			{
+				if (bAllowDeformingMesh)
+					SkeletalTransforms.Add(FTransform(Rot, Position));
+				else
+					SkeletalTransforms.Add(FTransform(Rot));
+			}
 		}
 	}
 

@@ -198,7 +198,7 @@ bool UOpenXRExpansionFunctionLibrary::GetOpenXRHandPose(FBPOpenXRActionSkeletalD
 			GetFingerCurlValues(HandPoseContainer.SkeletalTransforms, HandPoseContainer.FingerCurls);
 		}
 
-		HandPoseContainer.bHasValidData = true;
+		HandPoseContainer.bHasValidData = (HandPoseContainer.SkeletalTransforms.Num() == EHandKeypointCount);
 		return true;
 	}
 
@@ -576,7 +576,8 @@ void UOpenXRExpansionFunctionLibrary::GetMockUpControllerData(FXRMotionControlle
 
 	MotionControllerData.DeviceName = TEXT("OpenXR");
 
-	SkeletalMappingData.bHasValidData = true;
+	SkeletalMappingData.bHasValidData = (SkeletalMappingData.SkeletalTransforms.Num() == EHandKeypointCount);
+
 	SkeletalMappingData.SkeletalTransforms.Empty(SkeletalMappingData.SkeletalTransforms.Num());
 	FTransform ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
 	for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); i++)
