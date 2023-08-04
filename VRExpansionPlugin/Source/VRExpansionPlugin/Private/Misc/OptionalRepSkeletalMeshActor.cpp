@@ -311,10 +311,14 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 
 	FTransform LocalToWorldTM = GetComponentTransform();
 
+	// PhysAnim.cpp - PerformBlendPhysicsBones
 	// This fixes the simulated inversed scaled skeletal mesh bug
 	LocalToWorldTM.SetScale3D(LocalToWorldTM.GetScale3D().GetSignVector());
 	LocalToWorldTM.NormalizeRotation();
+
+	// Original implementation stomps negative scale values
 	//LocalToWorldTM.RemoveScaling();
+
 	struct FBodyTMPair
 	{
 		FBodyInstance* BI;
