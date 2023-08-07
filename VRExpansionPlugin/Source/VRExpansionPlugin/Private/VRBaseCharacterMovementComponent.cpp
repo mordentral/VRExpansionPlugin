@@ -1123,7 +1123,7 @@ bool UVRBaseCharacterMovementComponent::DoMASetGravityDirection(FVRMoveActionCon
 	if (bOrientToNewGravity && IsValid(BaseVRCharacterOwner))
 	{
 		FQuat CurrentRotQ = UpdatedComponent->GetComponentQuat();
-		FQuat DeltaRot = FQuat::FindBetweenNormals(CurrentRotQ.GetUpVector(), MoveAction.MoveActionVel);
+		FQuat DeltaRot = FQuat::FindBetweenNormals(-CurrentRotQ.GetUpVector(), MoveAction.MoveActionVel);
 		BaseVRCharacterOwner->SetActorRotationVR((DeltaRot * CurrentRotQ).Rotator(), false, false, false);
 	}
 
