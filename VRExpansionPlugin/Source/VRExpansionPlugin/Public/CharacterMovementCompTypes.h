@@ -21,7 +21,8 @@ enum class EVRMoveAction : uint8
 	VRMOVEACTION_Teleport = 0x02,
 	VRMOVEACTION_StopAllMovement = 0x03,
 	VRMOVEACTION_SetRotation = 0x04,
-	VRMOVEACTION_PauseTracking = 0x14, // Reserved from here up to 0x40
+	VRMOVEACTION_PauseTracking = 0x14,
+	VRMOVEACTION_SetGravityDirection = 0x15, // Reserved from here up to 0x40
 	VRMOVEACTION_CUSTOM1 = 0x05,
 	VRMOVEACTION_CUSTOM2 = 0x06,
 	VRMOVEACTION_CUSTOM3 = 0x07,
@@ -248,6 +249,22 @@ public:
 		}break;
 		case EVRMoveAction::VRMOVEACTION_StopAllMovement:
 		{}break;
+		case EVRMoveAction::VRMOVEACTION_SetGravityDirection:
+		{
+			bOutSuccess = SerializeFixedVector<1, 16>(MoveActionVel, Ar);
+			if (Ar.IsSaving())
+			{
+				bool bOrientToGravity = MoveActionFlags > 0;
+				Ar.SerializeBits(&bOrientToGravity, 1);
+			}
+			else
+			{
+				bool bOrientToGravity = false;
+				Ar.SerializeBits(&bOrientToGravity, 1);
+				MoveActionFlags |= (uint8)bOrientToGravity;
+			}
+
+		}break;
 		case EVRMoveAction::VRMOVEACTION_PauseTracking:
 		{
 

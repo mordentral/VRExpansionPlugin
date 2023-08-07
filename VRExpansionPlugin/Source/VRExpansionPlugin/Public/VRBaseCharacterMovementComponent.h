@@ -133,6 +133,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_StopAllMovement();
 	
+	// Perform StopAllMovementImmediately in line with the move action system
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void PerformMoveAction_SetGravityDirection(FVector NewGravityDirection, bool bOrientToNewGravity);
+
 	// Perform a custom moveaction that you define, will call the OnCustomMoveActionPerformed event in the character when processed so you can run your own logic
 	// Be sure to set the minimum data replication requirements for your move action in order to save on replication.
 	// Flags will always replicate if it is non zero
@@ -148,6 +152,7 @@ public:
 	virtual bool DoMASetRotation(FVRMoveActionContainer& MoveAction);
 	virtual bool DoMATeleport(FVRMoveActionContainer& MoveAction);
 	virtual bool DoMAStopAllMovement(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMASetGravityDirection(FVRMoveActionContainer& MoveAction);
 	virtual bool DoMAPauseTracking(FVRMoveActionContainer& MoveAction);
 
 	FVector CustomVRInputVector;
