@@ -1242,20 +1242,20 @@ bool UGripMotionControllerComponent::GripObject(
 }
 
 bool UGripMotionControllerComponent::DropObject(
-	UObject * ObjectToDrop,
+	UObject* ObjectToDrop,
 	uint8 GripIDToDrop,
 	bool bSimulate,
 	FVector OptionalAngularVelocity,
 	FVector OptionalLinearVelocity)
 {
 
-	if (ObjectToDrop != nullptr)
+	if (IsValid(ObjectToDrop))
 	{
 		FBPActorGripInformation * GripInfo = GrippedObjects.FindByKey(ObjectToDrop);
 		if (!GripInfo)
 			GripInfo = LocallyGrippedObjects.FindByKey(ObjectToDrop);
 
-		if (GripInfo != nullptr)
+		if (GripInfo != nullptr && IsValid(GripInfo->GrippedObject))
 		{
 			return DropGrip_Implementation(*GripInfo, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
@@ -1266,7 +1266,7 @@ bool UGripMotionControllerComponent::DropObject(
 		if (!GripInfo)
 			GripInfo = LocallyGrippedObjects.FindByKey(GripIDToDrop);
 
-		if (GripInfo != nullptr)
+		if (GripInfo != nullptr && IsValid(GripInfo->GrippedObject))
 		{
 			return DropGrip_Implementation(*GripInfo, bSimulate, OptionalAngularVelocity, OptionalLinearVelocity);
 		}
@@ -1275,13 +1275,18 @@ bool UGripMotionControllerComponent::DropObject(
 	return false;
 }
 
-bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative, FName OptionalBoneToGripName, FName OptionalSnapToSocketName, bool bIsSlotGrip)
+bool UGripMotionControllerComponent::GripObjectByInterface(UObject* ObjectToGrip, const FTransform &WorldOffset, bool bWorldOffsetIsRelative, FName OptionalBoneToGripName, FName OptionalSnapToSocketName, bool bIsSlotGrip)
 {
+	if (!IsValid(ObjectToGrip))
+	{
+		return false;
+	}
+
 	if (UPrimitiveComponent * PrimComp = Cast<UPrimitiveComponent>(ObjectToGrip))
 	{
 		AActor * Owner = PrimComp->GetOwner();
 
-		if (!Owner)
+		if (!IsValid(Owner))
 			return false;
 
 		if (PrimComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -1340,7 +1345,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject * ObjectToGri
 	{
 		UPrimitiveComponent * root = Cast<UPrimitiveComponent>(Actor->GetRootComponent());
 
-		if (!root)
+		if (!IsValid(root))
 			return false;
 
 		if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
@@ -1404,10 +1409,10 @@ bool UGripMotionControllerComponent::DropObjectByInterface(UObject* ObjectToDrop
 	return DropObjectByInterface_Implementation(ObjectToDrop, GripIDToDrop, OptionalAngularVelocity, OptionalLinearVelocity, false);
 }
 
-bool UGripMotionControllerComponent::DropObjectByInterface_Implementation(UObject * ObjectToDrop, uint8 GripIDToDrop, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity, bool bSkipNotify)
+bool UGripMotionControllerComponent::DropObjectByInterface_Implementation(UObject* ObjectToDrop, uint8 GripIDToDrop, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity, bool bSkipNotify)
 {
 	FBPActorGripInformation * GripInfo = nullptr;
-	if (ObjectToDrop != nullptr)
+	if (IsValid(ObjectToDrop))
 	{
 		GripInfo = GrippedObjects.FindByKey(ObjectToDrop);
 		if (!GripInfo)
@@ -1420,7 +1425,7 @@ bool UGripMotionControllerComponent::DropObjectByInterface_Implementation(UObjec
 			GripInfo = LocallyGrippedObjects.FindByKey(GripIDToDrop);
 	}
 
-	if (GripInfo == nullptr)
+	if (GripInfo == nullptr || !IsValid(GripInfo->GrippedObject))
 	{
 		return false;
 	}
@@ -1453,7 +1458,7 @@ bool UGripMotionControllerComponent::DropObjectByInterface_Implementation(UObjec
 	{
 		UPrimitiveComponent * root = Cast<UPrimitiveComponent>(Actor->GetRootComponent());
 
-		if (!root)
+		if (!IsValid(root))
 			return false;
 
 		if (root->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
