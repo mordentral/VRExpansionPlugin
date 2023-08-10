@@ -893,6 +893,19 @@ public:
 		//return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
+	// Shorthand for checking if we are in seamless travel
+	inline bool IsTravelingOrNullWorld() const
+	{
+		UWorld* myWorld = GetWorld();
+		if (IsValid(myWorld))
+		{
+			return myWorld->IsInSeamlessTravel();
+		}
+
+		// We don't have a valid world we are part of, don't do anything.
+		return true;
+	}
+
 	// Returns if this is the owning connection for the motion controller
 	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "IsLocallyControlled"))
 		bool BP_IsLocallyControlled();
