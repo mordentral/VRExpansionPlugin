@@ -1264,10 +1264,6 @@ bool UGripMotionControllerComponent::DropObject(
 	FVector OptionalAngularVelocity,
 	FVector OptionalLinearVelocity)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return false;
-
 	if (IsValid(ObjectToDrop))
 	{
 		FBPActorGripInformation * GripInfo = GrippedObjects.FindByKey(ObjectToDrop);
@@ -1434,9 +1430,6 @@ bool UGripMotionControllerComponent::DropObjectByInterface(UObject* ObjectToDrop
 
 bool UGripMotionControllerComponent::DropObjectByInterface_Implementation(UObject* ObjectToDrop, uint8 GripIDToDrop, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity, bool bSkipNotify)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return false;
 
 	FBPActorGripInformation * GripInfo = nullptr;
 	if (IsValid(ObjectToDrop))
@@ -1764,10 +1757,6 @@ bool UGripMotionControllerComponent::GripActor(
 
 bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return false;
-
 	if (!ActorToDrop)
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid actor"));
@@ -2024,10 +2013,6 @@ bool UGripMotionControllerComponent::GripComponent(
 
 bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * ComponentToDrop, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return false;
-
 	FBPActorGripInformation *GripInfo;
 	
 	// First check for it in the local grips	
@@ -2068,10 +2053,6 @@ bool UGripMotionControllerComponent::DropGrip(const FBPActorGripInformation& Gri
 
 bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripInformation &Grip, bool bSimulate, FVector OptionalAngularVelocity, FVector OptionalLinearVelocity, bool bSkipNotify)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return false;
-
 	int FoundIndex = 0;
 	bool bIsServer = IsServer();
 	bool bWasLocalGrip = false;
@@ -2152,24 +2133,27 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 
 	if (bWasLocalGrip)
 	{
+		// Store out a local copy so we can't get funky issues with the engine dropping the grip out from under us
+		FBPActorGripInformation GripInfo = LocallyGrippedObjects[FoundIndex];
+
 		if (IsLocallyControlled() && !IsServer()) //GetNetMode() == ENetMode::NM_Client)
 		{
 			if (!IsTornOff())
 			{
 				FTransform_NetQuantize TransformAtDrop = FTransform::Identity;
 
-				switch (LocallyGrippedObjects[FoundIndex].GripTargetType)
+				switch (GripInfo.GripTargetType)
 				{
 				case EGripTargetType::ActorGrip:
 				{
-					if (AActor * GrippedActor = LocallyGrippedObjects[FoundIndex].GetGrippedActor())
+					if (AActor * GrippedActor = GripInfo.GetGrippedActor())
 					{
 						TransformAtDrop = GrippedActor->GetActorTransform();
 					}
 				}; break;
 				case EGripTargetType::ComponentGrip:
 				{
-					if (UPrimitiveComponent * GrippedPrim = LocallyGrippedObjects[FoundIndex].GetGrippedComponent())
+					if (UPrimitiveComponent * GrippedPrim = GripInfo.GetGrippedComponent())
 					{
 						TransformAtDrop = GrippedPrim->GetComponentTransform();
 					}
@@ -2178,15 +2162,19 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 				}
 
 				if(!bSkipNotify)
-					Server_NotifyLocalGripRemoved(LocallyGrippedObjects[FoundIndex].GripID, TransformAtDrop, OptionalAngularVelocity, OptionalLinearVelocity);
+					Server_NotifyLocalGripRemoved(GripInfo.GripID, TransformAtDrop, OptionalAngularVelocity, OptionalLinearVelocity);
 			}
 
-			// Have to call this ourselves
-			Drop_Implementation(LocallyGrippedObjects[FoundIndex], bSimulate);
+			// Double check we didn't lose the grip (seems to be possible in UE5 from the Server RPC above being ran on the client)
+			if (LocallyGrippedObjects.Num() > 0 && LocallyGrippedObjects.Find(GripInfo, FoundIndex))
+			{
+				// Have to call this ourselves
+				Drop_Implementation(GripInfo, bSimulate);
+			}
 		}
 		else // Server notifyDrop it
 		{
-			NotifyDrop(LocallyGrippedObjects[FoundIndex], bSimulate);
+			NotifyDrop(GripInfo, bSimulate);
 		}
 	}
 	else
@@ -2198,10 +2186,6 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 
 bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQuantize & RelativeTransformToParent, UObject * ObjectToDrop, uint8 GripIDToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, bool bWeldBodies)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return false;
-
 	if (!SocketingParent)
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid socketing parent"));
@@ -2263,10 +2247,6 @@ bool UGripMotionControllerComponent::DropAndSocketGrip(const FBPActorGripInforma
 
 bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPActorGripInformation & GripToDrop, USceneComponent * SocketingParent, FName OptionalSocketName, const FTransform_NetQuantize & RelativeTransformToParent, bool bWeldBodies, bool bSkipServerNotify)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return false;
-
 	if (!SocketingParent || !IsValid(SocketingParent))
 	{
 		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid socketing parent"));
@@ -2753,10 +2733,6 @@ void UGripMotionControllerComponent::DropAndSocket_Implementation(const FBPActor
 // No longer an RPC, now is called from RepNotify so that joining clients also correctly set up grips
 bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip, bool bIsReInit)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return false;
-
 	UPrimitiveComponent *root = NULL;
 	AActor *pActor = NULL;
 
@@ -3386,10 +3362,6 @@ void UGripMotionControllerComponent::CancelGlobalLerpToHand(uint8 GripID)
 
 void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return;
-
 	// Don't do this if we are the owning player on a local grip, there is no filter for multicast to not send to owner
 	if ((NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive || 
 		NewDrop.GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep) && 
@@ -3410,10 +3382,6 @@ void UGripMotionControllerComponent::NotifyDrop_Implementation(const FBPActorGri
 
 void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInformation &NewDrop, bool bSimulate)
 {
-	// Skip if we are traveling
-	if (IsTravelingOrNullWorld())
-		return;
-
 	bool bSkipFullDrop = false;
 	bool bHadAnotherSelfGrip = false;
 	TArray<FBPGripPair> HoldingControllers;
