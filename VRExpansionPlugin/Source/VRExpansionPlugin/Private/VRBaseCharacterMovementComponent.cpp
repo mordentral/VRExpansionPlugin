@@ -1124,46 +1124,46 @@ bool UVRBaseCharacterMovementComponent::DoMASetGravityDirection(FVRMoveActionCon
 	{
 		FQuat CurrentRotQ = UpdatedComponent->GetComponentQuat();
 		FQuat DeltaRot = FQuat::FindBetweenNormals(-CurrentRotQ.GetUpVector(), MoveAction.MoveActionVel);
-		BaseVRCharacterOwner->SetActorRotationVR((DeltaRot * CurrentRotQ).Rotator(), false, false, false);
-
-		/*AController* OwningController = GetController();
+		FRotator NewRot = (DeltaRot * CurrentRotQ)/*.GetNormalized()*/.Rotator();
+		AController* OwningController = BaseVRCharacterOwner->GetController();
 
 		FVector NewLocation;
 		FRotator NewRotation;
-		FVector OrigLocation = GetActorLocation();
-		FVector PivotPoint = GetActorTransform().InverseTransformPosition(BaseVRCharacterOwner->GetVRLocation_Inline());
+		FVector OrigLocation = BaseVRCharacterOwner->GetActorLocation();
+		FVector PivotPoint = BaseVRCharacterOwner->GetActorTransform().InverseTransformPosition(BaseVRCharacterOwner->GetVRLocation_Inline());
+		//(bRotateAroundCapsule ? GetVRLocation_Inline() : BaseVRCharacterOwner->GetProjectedVRLocation());
+
+
+		// Offset to the floor
+		//PivotPoint.Z = -BaseVRCharacterOwner->VRRootReference->GetUnscaledCapsuleHalfHeight();
 		PivotPoint.Z = 0.0f;
 
 		// Need to seperate out each element for the control rotation
-		FRotator OrigRotation = BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
+		FRotator OrigRotation = BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : BaseVRCharacterOwner->GetActorRotation();
 
-		if (bUseYawOnly)
-		{
-			NewRot.Pitch = 0.0f;
-			NewRot.Roll = 0.0f;
-		}
-
-		if (bAccountForHMDRotation)
+		/*if (bAccountForHMDRotation)
 		{
 			NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());
 			NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
 		}
-		else
-			NewRotation = NewRot;
+		else*/
+
+		NewRotation = NewRot;
 
 		NewLocation = OrigLocation + OrigRotation.RotateVector(PivotPoint);
 		//NewRotation = NewRot;
 		NewLocation -= NewRotation.RotateVector(PivotPoint);
 
-		if (bUseControllerRotationYaw && OwningController)
+		if (BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController)
 			OwningController->SetControlRotation(NewRotation);
 
 		// Also setting actor rot because the control rot transfers to it anyway eventually
-		SetActorLocationAndRotation(NewLocation, NewRotation);
-		return NewLocation - OrigLocation;*/
+		BaseVRCharacterOwner->SetActorLocationAndRotation(NewLocation, NewRotation);
+
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 bool UVRBaseCharacterMovementComponent::DoMAPauseTracking(FVRMoveActionContainer& MoveAction)
