@@ -4508,7 +4508,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 	if (!Handle)
 	{
-		PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
+		PrimComp->SetWorldTransform(WorldTransform, bSweepGripTeleports, nullptr, ETeleportType::TeleportPhysics);
 	}
 	else if (Handle && FPhysicsInterface::IsValid(Handle->KinActorData2) && bTeleportPhysicsGrips)
 	{
@@ -4523,7 +4523,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		}
 		else
 		{
-			PrimComp->SetWorldTransform(WorldTransform, false, NULL, ETeleportType::TeleportPhysics);
+			PrimComp->SetWorldTransform(WorldTransform, bSweepGripTeleports, nullptr, ETeleportType::TeleportPhysics);
 		}
 
 		// Zero out our scale now that we are working outside of physx
