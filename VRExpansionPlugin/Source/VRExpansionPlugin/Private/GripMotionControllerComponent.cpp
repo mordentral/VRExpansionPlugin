@@ -7171,19 +7171,19 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 		// It has a data race condition right now though
 		FVector CorrectLastLocation = bIsInGameThread ? LastLocationForLateUpdate : LateUpdateParams.GripRenderThreadLastLocationForLateUpdate;
 
-		if (/*bOffsetByHMD ||*/ (AttachChar && !AttachChar->bRetainRoomscale))
-		{
-			OriginalPosition -= FVector(CorrectLastLocation.X, CorrectLastLocation.Y, 0.0f);
-		}
-
 		if (bLeashToHMD)
 		{
-			FVector DifferenceVec = (/*bOffsetByHMD ||*/ (AttachChar && !AttachChar->bRetainRoomscale)) ? OriginalPosition : (OriginalPosition - CorrectLastLocation);
+			FVector DifferenceVec = OriginalPosition - CorrectLastLocation;
 
 			if (DifferenceVec.SizeSquared() > FMath::Square(LeashRange))
 			{
 				OriginalPosition = CorrectLastLocation + (DifferenceVec.GetSafeNormal() * LeashRange);
 			}
+		}
+
+		if (/*bOffsetByHMD ||*/ (AttachChar && !AttachChar->bRetainRoomscale))
+		{
+			OriginalPosition -= FVector(CorrectLastLocation.X, CorrectLastLocation.Y, 0.0f);
 		}
 	}
 }
