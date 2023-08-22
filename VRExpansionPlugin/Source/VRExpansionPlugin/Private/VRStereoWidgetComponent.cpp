@@ -5,7 +5,10 @@
 
 #include "VRExpansionFunctionLibrary.h"
 #include "IXRTrackingSystem.h"
+#include "IXRCamera.h"
 #include "VRBaseCharacter.h"
+#include "VRCharacter.h"
+#include "VRRootComponent.h"
 #include "TextureResource.h"
 #include "Engine/Texture.h"
 #include "Engine/GameInstance.h"
@@ -574,8 +577,25 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 					{
 						if (USceneComponent* CameraParent = BaseVRChar->VRReplicatedCamera->GetAttachParent())
 						{
+							FTransform DeltaTrans = FTransform::Identity;
+							if (!BaseVRChar->bRetainRoomscale)
+							{
+								FVector HMDLoc;
+								FQuat HMDRot;
+								GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, HMDRot, HMDLoc);
+
+								HMDLoc.Z = 0.0f;
+
+								if (AVRCharacter* VRChar = Cast<AVRCharacter>(mpawn))
+								{
+									HMDLoc += UVRExpansionFunctionLibrary::GetHMDPureYaw_I(HMDRot.Rotator()).RotateVector(FVector(VRChar->VRRootReference->VRCapsuleOffset.X, VRChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+								}
+
+								DeltaTrans = FTransform(FQuat::Identity, HMDLoc, FVector(1.0f));
+							}
+
 							Transform = OffsetTransform.GetRelativeTransform(CameraParent->GetComponentTransform());
-							Transform = FTransform(FRotator(0.f, -180.f, 0.f)) * Transform;
+							Transform = (FTransform(FRotator(0.f, -180.f, 0.f)) * Transform) * DeltaTrans;
 							bHandledTransform = true;
 						}
 					}
