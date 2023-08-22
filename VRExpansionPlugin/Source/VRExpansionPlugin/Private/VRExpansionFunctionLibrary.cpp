@@ -6,7 +6,7 @@
 #include "Engine/Engine.h"
 #include "IXRTrackingSystem.h"
 #include "IHeadMountedDisplay.h"
-#include "InputCore/Classes/InputCoreTypes.h"
+#include "InputCoreTypes.h"
 #include "Grippables/HandSocketComponent.h"
 #include "Misc/CollisionIgnoreSubsystem.h"
 #include "Components/SplineComponent.h"

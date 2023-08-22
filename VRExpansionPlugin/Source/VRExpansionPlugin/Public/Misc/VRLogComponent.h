@@ -7,7 +7,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/Console.h"
 #include "Containers/UnrealString.h"
-#include "Core/Public/Misc/OutputDeviceHelper.h"
+#include "Misc/OutputDeviceHelper.h"
 #include "VRLogComponent.generated.h"
 
 /**

@@ -279,7 +279,7 @@ public:
 
 	// If true then we will retain roomscale tracking in relative space of the character.
 	// If false than the movement component will offset to the hmd tracking and the tracking will be nulled out
-	UPROPERTY(Category = VRBaseCharacter, EditDefaultsOnly)
+	UPROPERTY(Category = VRBaseCharacter, VisibleDefaultsOnly, BlueprintReadOnly)
 		bool bRetainRoomscale = true;
 
 	//virtual void CacheInitialMeshOffset(FVector MeshRelativeLocation, FRotator MeshRelativeRotation) override;

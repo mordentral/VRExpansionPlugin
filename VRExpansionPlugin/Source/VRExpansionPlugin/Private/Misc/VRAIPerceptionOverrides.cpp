@@ -7,17 +7,17 @@
 #include "EngineGlobals.h"
 #include "CollisionQueryParams.h"
 //#include "Engine/Engine.h"
-#include "AIModule/Classes/AISystem.h"
-#include "AIModule/Public/AIHelpers.h"
-#include "AIModule/Classes/Perception/AIPerceptionComponent.h"
+#include "AISystem.h"
+#include "AIHelpers.h"
+#include "Perception/AIPerceptionComponent.h"
 #include "VisualLogger/VisualLogger.h"
-#include "AIModule/Classes/Perception/AISightTargetInterface.h"
-#include "AIModule/Classes/Perception/AISenseConfig_Sight.h"
-#include "AIModule/Classes/Perception/AIPerceptionSystem.h"
+#include "Perception/AISightTargetInterface.h"
+#include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AIPerceptionSystem.h"
 
 #if WITH_GAMEPLAY_DEBUGGER
-#include "GameplayDebugger/Public/GameplayDebuggerTypes.h"
-#include "GameplayDebugger/Public/GameplayDebuggerCategory.h"
+#include "GameplayDebuggerTypes.h"
+#include "GameplayDebuggerCategory.h"
 #endif
 DEFINE_LOG_CATEGORY(LogAIPerceptionVR);
 
