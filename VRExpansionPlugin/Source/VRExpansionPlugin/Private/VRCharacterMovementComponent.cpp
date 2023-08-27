@@ -443,14 +443,14 @@ void FSavedMove_VRCharacter::PrepMoveFor(ACharacter* Character)
 	{
 		CharMove->VRRootCapsule->curCameraLoc = this->VRCapsuleLocation;
 		CharMove->VRRootCapsule->curCameraRot = this->VRCapsuleRotation;//FRotator(0.0f, FRotator::DecompressAxisFromByte(CapsuleYaw), 0.0f);
-		CharMove->VRRootCapsule->DifferenceFromLastFrame = FVector(LFDiff.X, LFDiff.Y, 0.0f);
+		CharMove->VRRootCapsule->DifferenceFromLastFrame = LFDiff;// FVector(LFDiff.X, LFDiff.Y, 0.0f);
 		CharMove->AdditionalVRInputVector = CharMove->VRRootCapsule->DifferenceFromLastFrame;
 
 		if (AVRBaseCharacter * BaseChar = Cast<AVRBaseCharacter>(CharMove->GetCharacterOwner()))
 		{
-			if (BaseChar->VRReplicateCapsuleHeight && this->LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(this->LFDiff.Z, CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+			if (BaseChar->VRReplicateCapsuleHeight && this->CapsuleHeight > 0.0f && !FMath::IsNearlyEqual(this->CapsuleHeight, CharMove->VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 			{
-				BaseChar->SetCharacterHalfHeightVR(LFDiff.Z, false);
+				BaseChar->SetCharacterHalfHeightVR(CapsuleHeight, false);
 				//CharMove->VRRootCapsule->SetCapsuleHalfHeight(this->LFDiff.Z, false);
 			}
 		}
@@ -601,14 +601,14 @@ void UVRCharacterMovementComponent::ServerMove_PerformMovement(const FCharacterN
 			{
 				VRRootCapsule->curCameraLoc = MoveDataVR->VRCapsuleLocation;
 				VRRootCapsule->curCameraRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(MoveDataVR->VRCapsuleRotation), 0.0f);
-				VRRootCapsule->DifferenceFromLastFrame = FVector(MoveDataVR->LFDiff.X, MoveDataVR->LFDiff.Y, 0.0f);
+				VRRootCapsule->DifferenceFromLastFrame = MoveDataVR->LFDiff;//FVector(MoveDataVR->LFDiff.X, MoveDataVR->LFDiff.Y, 0.0f);
 				AdditionalVRInputVector = VRRootCapsule->DifferenceFromLastFrame;
 
 				if (BaseVRCharacterOwner)
 				{
-					if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && MoveDataVR->LFDiff.Z > 0.0f && !FMath::IsNearlyEqual(MoveDataVR->LFDiff.Z, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
+					if (BaseVRCharacterOwner->VRReplicateCapsuleHeight && MoveDataVR->CapsuleHeight > 0.0f && !FMath::IsNearlyEqual(MoveDataVR->CapsuleHeight, VRRootCapsule->GetUnscaledCapsuleHalfHeight()))
 					{
-						BaseVRCharacterOwner->SetCharacterHalfHeightVR(MoveDataVR->LFDiff.Z, false);
+						BaseVRCharacterOwner->SetCharacterHalfHeightVR(MoveDataVR->CapsuleHeight, false);
 						//	BaseChar->ReplicatedCapsuleHeight.CapsuleHeight = LFDiff.Z;
 							//VRRootCapsule->SetCapsuleHalfHeight(LFDiff.Z, false);
 					}
@@ -1263,7 +1263,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 
 				// Update the input vector to the new values!! We were always forgetting to do this
 				FSavedMove_VRBaseCharacter * BaseCharMove = ((FSavedMove_VRBaseCharacter*)NewMove);
-				AdditionalVRInputVector = FVector(BaseCharMove->LFDiff.X, BaseCharMove->LFDiff.Y, 0.0f);
+				AdditionalVRInputVector = BaseCharMove->LFDiff;// FVector(BaseCharMove->LFDiff.X, BaseCharMove->LFDiff.Y, 0.0f);
 
 				/************************/
 				if (PC)

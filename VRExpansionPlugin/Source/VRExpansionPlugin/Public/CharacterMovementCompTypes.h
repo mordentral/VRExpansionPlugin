@@ -611,6 +611,7 @@ public:
 	FVector VRCapsuleLocation;
 	FVector LFDiff;
 	FRotator VRCapsuleRotation;
+	float CapsuleHeight;
 	FVRConditionalMoveRep ConditionalValues;
 
 	void Clear();
@@ -650,6 +651,7 @@ public:
 
 	FVector_NetQuantize100 VRCapsuleLocation;
 	FVector/*_NetQuantize100*/ LFDiff;
+	float CapsuleHeight;
 	uint16 VRCapsuleRotation;
 	EVRConjoinedMovementModes ReplicatedMovementMode;
 	FVRConditionalMoveRep ConditionalMoveReps;
