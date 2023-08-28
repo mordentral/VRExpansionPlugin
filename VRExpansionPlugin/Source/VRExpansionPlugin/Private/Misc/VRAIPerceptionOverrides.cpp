@@ -953,7 +953,7 @@ void UAISense_Sight_VR::GenerateQueriesForListener(const FPerceptionListener& Li
 		}
 
 		// Changed this up to support my VR Characters
-		const AVRBaseCharacter* VRChar = Cast<const AVRBaseCharacter>(&TargetActor);
+		const AVRBaseCharacter* VRChar = Cast<const AVRBaseCharacter>(TargetActor);
 		const FVector TargetLocation = VRChar != nullptr ? VRChar->GetVRLocation_Inline() : TargetActor->GetActorLocation();
 		if (RegisterNewQuery(Listener, ListenersTeamAgent, *TargetActor, ItTarget->Key, TargetLocation, PropertyDigest, OnAddedFunc))
 		{
