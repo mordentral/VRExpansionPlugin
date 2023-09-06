@@ -514,8 +514,9 @@ void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleL
 	if (DownwardSweepResult != NULL && DownwardSweepResult->IsValidBlockingHit())
 	{
 		// Only if the supplied sweep was vertical and downward.
-		if ((DownwardSweepResult->TraceStart.Z > DownwardSweepResult->TraceEnd.Z) &&
-			(DownwardSweepResult->TraceStart - DownwardSweepResult->TraceEnd).SizeSquared2D() <= UE_KINDA_SMALL_NUMBER)
+		const bool bIsDownward = RotateWorldToGravity(DownwardSweepResult->TraceStart - DownwardSweepResult->TraceEnd).Z > 0;
+		const bool bIsVertical = RotateWorldToGravity(DownwardSweepResult->TraceStart - DownwardSweepResult->TraceEnd).SizeSquared2D() <= UE_KINDA_SMALL_NUMBER;
+		if (bIsDownward && bIsVertical)
 		{
 			// Reject hits that are barely on the cusp of the radius of the capsule
 			if (IsWithinEdgeTolerance(DownwardSweepResult->Location, DownwardSweepResult->ImpactPoint, PawnRadius))
@@ -524,7 +525,7 @@ void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleL
 				bSkipSweep = true;
 
 				const bool bIsWalkable = IsWalkable(*DownwardSweepResult);
-				const float FloorDist = (CapsuleLocation.Z - DownwardSweepResult->Location.Z);
+				const float FloorDist = RotateWorldToGravity(CapsuleLocation - DownwardSweepResult->Location).Z;
 				OutFloorResult.SetFromSweep(*DownwardSweepResult, FloorDist, bIsWalkable);
 
 				if (bIsWalkable)
@@ -565,7 +566,7 @@ void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleL
 		FCollisionShape CapsuleShape = FCollisionShape::MakeCapsule(SweepRadius, PawnHalfHeight - ShrinkHeight);
 
 		FHitResult Hit(1.f);
-		bBlockingHit = FloorSweepTest(Hit, CapsuleLocation, CapsuleLocation + FVector(0.f, 0.f, -TraceDist), CollisionChannel, CapsuleShape, QueryParams, ResponseParam);
+		bBlockingHit = FloorSweepTest(Hit, CapsuleLocation, CapsuleLocation + RotateGravityToWorld(FVector(0.f, 0.f, -TraceDist)), CollisionChannel, CapsuleShape, QueryParams, ResponseParam);
 
 		if (bBlockingHit)
 		{
@@ -583,7 +584,7 @@ void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleL
 					CapsuleShape.Capsule.HalfHeight = FMath::Max(PawnHalfHeight - ShrinkHeight, CapsuleShape.Capsule.Radius);
 					Hit.Reset(1.f, false);
 
-					bBlockingHit = FloorSweepTest(Hit, CapsuleLocation, CapsuleLocation + FVector(0.f, 0.f, -TraceDist), CollisionChannel, CapsuleShape, QueryParams, ResponseParam);
+					bBlockingHit = FloorSweepTest(Hit, CapsuleLocation, CapsuleLocation + RotateGravityToWorld(FVector(0.f, 0.f, -TraceDist)), CollisionChannel, CapsuleShape, QueryParams, ResponseParam);
 				}
 			}
 
@@ -619,7 +620,7 @@ void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleL
 		const float ShrinkHeight = PawnHalfHeight;
 		const FVector LineTraceStart = CapsuleLocation;
 		const float TraceDist = LineDistance + ShrinkHeight;
-		const FVector Down = FVector(0.f, 0.f, -TraceDist);
+		const FVector Down = RotateGravityToWorld(FVector(0.f, 0.f, -TraceDist));
 		QueryParams.TraceTag = SCENE_QUERY_STAT_NAME_ONLY(FloorLineTrace);
 
 		FHitResult Hit(1.f);
@@ -658,7 +659,7 @@ float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta,
 		return 0.f;
 	}
 
-	FVector Normal(InNormal);
+	FVector Normal(RotateWorldToGravity(InNormal));
 	if (IsMovingOnGround())
 	{
 		// We don't want to be pushed up an unwalkable surface.
@@ -674,8 +675,9 @@ float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta,
 			// Don't push down into the floor when the impact is on the upper portion of the capsule.
 			if (CurrentFloor.FloorDist < MIN_FLOOR_DIST && CurrentFloor.bBlockingHit)
 			{
-				const FVector FloorNormal = CurrentFloor.HitResult.Normal;
-				const bool bFloorOpposedToMovement = (Delta | FloorNormal) < 0.f && (FloorNormal.Z < 1.f - UE_DELTA);
+				const FVector FloorNormal = RotateWorldToGravity(CurrentFloor.HitResult.Normal);
+				const bool bFloorOpposedToMovement = (RotateWorldToGravity(Delta) | FloorNormal) < 0.f && (FloorNormal.Z < 1.f - UE_DELTA);
+
 				if (bFloorOpposedToMovement)
 				{
 					Normal = FloorNormal;
@@ -698,11 +700,9 @@ float UVRBaseCharacterMovementComponent::SlideAlongSurface(const FVector& Delta,
 	// that we have already validated the floor normal.
 	// Otherwise just pass in as normal, either way skip the parents implementation as we are doing it now.
 	if (IsMovingOnGround() || (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Climbing))
-		return Super::Super::SlideAlongSurface(Delta * VRWallSlideScaler, Time, Normal, Hit, bHandleImpact);
+		return Super::Super::SlideAlongSurface(Delta * VRWallSlideScaler, Time, RotateGravityToWorld(Normal), Hit, bHandleImpact);
 	else
-		return Super::Super::SlideAlongSurface(Delta, Time, Normal, Hit, bHandleImpact);
-
-
+		return Super::Super::SlideAlongSurface(Delta, Time, RotateGravityToWorld(Normal), Hit, bHandleImpact);
 }
 
 /*void UVRBaseCharacterMovementComponent::SetCrouchedHalfHeight(float NewCrouchedHalfHeight)
@@ -845,6 +845,22 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_StopAllMovement()
 	CheckServerAuthedMoveAction();
 }
 
+void UVRBaseCharacterMovementComponent::PerformMoveAction_SetGravityDirection(FVector NewGravityDirection, bool bOrientToNewGravity)
+{
+	if (NewGravityDirection.IsNearlyZero())
+	{
+		return;
+	}
+
+	FVRMoveActionContainer MoveAction;
+	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SetGravityDirection;
+	MoveAction.MoveActionVel = NewGravityDirection.GetSafeNormal();
+	MoveAction.MoveActionFlags |= (uint8)bOrientToNewGravity;
+	MoveActionArray.MoveActions.Add(MoveAction);
+
+	CheckServerAuthedMoveAction();
+}
+
 void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction MoveActionToPerform, EVRMoveActionDataReq DataRequirementsForMoveAction, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags)
 {
 	FVRMoveActionContainer MoveAction;
@@ -877,6 +893,10 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 		case EVRMoveAction::VRMOVEACTION_StopAllMovement:
 		{
 			/*return */DoMAStopAllMovement(MoveAction);
+		}break;
+		case EVRMoveAction::VRMOVEACTION_SetGravityDirection:
+		{
+			/*return */DoMASetGravityDirection(MoveAction);
 		}break;
 		case EVRMoveAction::VRMOVEACTION_SetRotation:
 		{
@@ -1089,6 +1109,57 @@ bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement(FVRMoveActionContain
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
 		this->StopMovementImmediately();
+		return true;
+	}
+
+	return false;
+}
+
+bool UVRBaseCharacterMovementComponent::DoMASetGravityDirection(FVRMoveActionContainer& MoveAction)
+{
+	bool bOrientToNewGravity = MoveAction.MoveActionFlags > 0;
+	SetGravityDirection(MoveAction.MoveActionVel);
+
+	if (bOrientToNewGravity && IsValid(BaseVRCharacterOwner))
+	{
+		FQuat CurrentRotQ = UpdatedComponent->GetComponentQuat();
+		FQuat DeltaRot = FQuat::FindBetweenNormals(-CurrentRotQ.GetUpVector(), MoveAction.MoveActionVel);
+		FRotator NewRot = (DeltaRot * CurrentRotQ)/*.GetNormalized()*/.Rotator();
+		AController* OwningController = BaseVRCharacterOwner->GetController();
+
+		FVector NewLocation;
+		FRotator NewRotation;
+		FVector OrigLocation = BaseVRCharacterOwner->GetActorLocation();
+		FVector PivotPoint = BaseVRCharacterOwner->GetActorTransform().InverseTransformPosition(BaseVRCharacterOwner->GetVRLocation_Inline());
+		//(bRotateAroundCapsule ? GetVRLocation_Inline() : BaseVRCharacterOwner->GetProjectedVRLocation());
+
+
+		// Offset to the floor
+		//PivotPoint.Z = -BaseVRCharacterOwner->VRRootReference->GetUnscaledCapsuleHalfHeight();
+		PivotPoint.Z = 0.0f;
+
+		// Need to seperate out each element for the control rotation
+		FRotator OrigRotation = BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : BaseVRCharacterOwner->GetActorRotation();
+
+		/*if (bAccountForHMDRotation)
+		{
+			NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());
+			NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
+		}
+		else*/
+
+		NewRotation = NewRot;
+
+		NewLocation = OrigLocation + OrigRotation.RotateVector(PivotPoint);
+		//NewRotation = NewRot;
+		NewLocation -= NewRotation.RotateVector(PivotPoint);
+
+		if (BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController)
+			OwningController->SetControlRotation(NewRotation);
+
+		// Also setting actor rot because the control rot transfers to it anyway eventually
+		BaseVRCharacterOwner->SetActorLocationAndRotation(NewLocation, NewRotation);
+
 		return true;
 	}
 
@@ -1481,9 +1552,9 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	}
 }
 
-void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode)
+void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode, FVector ServerGravityDirection)
 {
-	Super::OnClientCorrectionReceived(ClientData, TimeStamp, NewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode);
+	Super::OnClientCorrectionReceived(ClientData, TimeStamp, NewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode, ServerGravityDirection);
 
 
 	// If we got corrected then lets teleport our grips, this means that we were out of sync with the server or the server moved us
@@ -1603,6 +1674,13 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			CharacterOwner->RootMotionRepMoves.Reset();
 		}
 
+		// Update replicated gravity direction
+		if (bNetworkGravityDirectionChanged)
+		{
+			SetGravityDirection(CharacterOwner->GetReplicatedGravityDirection());
+			bNetworkGravityDirectionChanged = false;
+		}
+
 		// Update replicated movement mode.
 		if (bNetworkMovementModeChanged)
 		{
@@ -1630,6 +1708,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			CharacterOwner->RootMotionRepMoves.Empty();
 			CharacterOwner->OnRep_ReplicatedMovement();
 			CharacterOwner->OnRep_ReplicatedBasedMovement();
+			SetGravityDirection(GetCharacterOwner()->GetReplicatedGravityDirection());
 			ApplyNetworkMovementMode(GetCharacterOwner()->GetReplicatedMovementMode());
 		}
 
@@ -1647,6 +1726,13 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 				//const FScopedPreventAttachedComponentMove PreventMeshMovement(bPreventMeshMovement ? Mesh : nullptr);
 				if (CharacterOwner->IsPlayingRootMotion())
 				{
+					// Update replicated gravity direction
+					if (bNetworkGravityDirectionChanged)
+					{
+						SetGravityDirection(CharacterOwner->GetReplicatedGravityDirection());
+						bNetworkGravityDirectionChanged = false;
+					}
+
 					// Update replicated movement mode.
 					if (bNetworkMovementModeChanged)
 					{
@@ -1792,7 +1878,6 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 
 	// We shouldn't be running this on a server that is not a listen server.
 	checkSlow(GetNetMode() != NM_DedicatedServer);
-	checkSlow(GetNetMode() != NM_Standalone);
 
 	// Only client proxies or remote clients on a listen server should run this code.
 	const bool bIsSimulatedProxy = (CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy);
@@ -1803,7 +1888,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 	bNetworkSmoothingComplete = false;
 
 	// Handle selected smoothing mode.
-	if (NetworkSmoothingMode == ENetworkSmoothingMode::Disabled)
+	if (NetworkSmoothingMode == ENetworkSmoothingMode::Disabled || GetNetMode() == NM_Standalone)
 	{
 		UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
 		bNetworkSmoothingComplete = true;

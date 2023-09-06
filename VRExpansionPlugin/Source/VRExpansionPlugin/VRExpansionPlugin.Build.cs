@@ -70,8 +70,8 @@ public class VRExpansionPlugin : ModuleRules
                     "UMG",
                     "NavigationSystem",
                     "AIModule",
-                    "AnimGraphRuntime"
-
+                    "AnimGraphRuntime",
+                    "XRBase"
                     //"Renderer",
                     //"UtilityShaders"
         });

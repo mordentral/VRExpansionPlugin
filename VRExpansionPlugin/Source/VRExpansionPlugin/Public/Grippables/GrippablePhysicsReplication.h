@@ -6,6 +6,13 @@
 #include "Physics/PhysicsInterfaceUtils.h"
 #include "PhysicsReplication.h"
 
+#include "Engine/ReplicatedState.h"
+#include "PhysicsReplicationInterface.h"
+#include "Physics/PhysicsInterfaceDeclares.h"
+#include "PhysicsProxy/SingleParticlePhysicsProxyFwd.h"
+#include "Chaos/Particles.h"
+#include "Chaos/PhysicsObject.h"
+#include "Chaos/SimCallbackObject.h"
 
 
 #include "GrippablePhysicsReplication.generated.h"
@@ -23,8 +30,41 @@
 	ECVF_ReadOnly);*/
 
 //#if PHYSICS_INTERFACE_PHYSX
-struct FAsyncPhysicsRepCallbackDataVR;
-class FPhysicsReplicationAsyncCallbackVR;
+//struct FAsyncPhysicsRepCallbackDataVR;
+//class FPhysicsReplicationAsyncCallbackVR;
+
+class FPhysicsReplicationAsyncVR : public Chaos::TSimCallbackObject<
+	FPhysicsReplicationAsyncInput,
+	Chaos::FSimCallbackNoOutput,
+	Chaos::ESimCallbackOptions::Presimulate>
+{
+	virtual FName GetFNameForStatId() const override;
+	virtual void OnPreSimulate_Internal() override;
+	virtual void ApplyTargetStatesAsync(const float DeltaSeconds, const FPhysicsRepErrorCorrectionData& ErrorCorrection, const TArray<FPhysicsRepAsyncInputData>& TargetStates);
+
+	// Replication functions
+	virtual void DefaultReplication_DEPRECATED(Chaos::FRigidBodyHandle_Internal* Handle, const FPhysicsRepAsyncInputData& State, const float DeltaSeconds, const FPhysicsRepErrorCorrectionData& ErrorCorrection);
+	virtual bool DefaultReplication(Chaos::FPBDRigidParticleHandle* Handle, FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds);
+	virtual bool PredictiveInterpolation(Chaos::FPBDRigidParticleHandle* Handle, FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds);
+	virtual bool ResimulationReplication(Chaos::FPBDRigidParticleHandle* Handle, FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds);
+
+private:
+	float LatencyOneWay;
+	FRigidBodyErrorCorrection ErrorCorrectionDefault;
+	TMap<Chaos::FPhysicsObject*, FReplicatedPhysicsTargetAsync> ObjectToTarget;
+
+private:
+	void UpdateAsyncTarget(const FPhysicsRepAsyncInputData& Input);
+	void UpdateRewindDataTarget(const FPhysicsRepAsyncInputData& Input);
+
+public:
+	void Setup(FRigidBodyErrorCorrection ErrorCorrection)
+	{
+		ErrorCorrectionDefault = ErrorCorrection;
+	}
+};
+
+
 
 class FPhysicsReplicationVR : public FPhysicsReplication
 {
@@ -41,20 +81,26 @@ public:
 	virtual bool ApplyRigidBodyState(float DeltaSeconds, FBodyInstance* BI, FReplicatedPhysicsTarget& PhysicsTarget, const FRigidBodyErrorCorrection& ErrorCorrection, const float PingSecondsOneWay, int32 LocalFrame, int32 NumPredictedFrames) override;
 	virtual bool ApplyRigidBodyState(float DeltaSeconds, FBodyInstance* BI, FReplicatedPhysicsTarget& PhysicsTarget, const FRigidBodyErrorCorrection& ErrorCorrection, const float PingSecondsOneWay, bool* bDidHardSnap = nullptr) override;
 
-	static void ApplyAsyncDesiredStateVR(float DeltaSeconds, const FAsyncPhysicsRepCallbackDataVR* Input);
-
-	FPhysicsReplicationAsyncCallbackVR* AsyncCallbackServer;
+	virtual void SetReplicatedTarget(UPrimitiveComponent* Component, FName BoneName, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame) override;
+	void SetReplicatedTargetVR(Chaos::FPhysicsObject* PhysicsObject, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame, EPhysicsReplicationMode ReplicationMode);
+	
+	TArray<FReplicatedPhysicsTarget> ReplicatedTargetsQueueVR;
+	FPhysicsReplicationAsyncVR* PhysicsReplicationAsyncVR;
+	FPhysicsReplicationAsyncInput* AsyncInputVR;	//async data being written into before we push into callback
 
 	void PrepareAsyncData_ExternalVR(const FRigidBodyErrorCorrection& ErrorCorrection);	//prepare async data for writing. Call on external thread (i.e. game thread)
-	FAsyncPhysicsRepCallbackDataVR* CurAsyncDataVR;	//async data being written into before we push into callback
-	friend FPhysicsReplicationAsyncCallback;
 };
 
 class IPhysicsReplicationFactoryVR : public IPhysicsReplicationFactory
 {
 public:
 
-	virtual FPhysicsReplication* Create(FPhysScene* OwningPhysScene)
+	virtual TUniquePtr<IPhysicsReplication> CreatePhysicsReplication(FPhysScene* OwningPhysScene) override
+	{
+		return TUniquePtr<IPhysicsReplication>(new FPhysicsReplicationVR(OwningPhysScene));
+	}
+
+	/*virtual FPhysicsReplication* Create(FPhysScene* OwningPhysScene)
 	{
 		return new FPhysicsReplicationVR(OwningPhysScene);
 	}
@@ -63,7 +109,7 @@ public:
 	{
 		if (PhysicsReplication)
 			delete PhysicsReplication;
-	}
+	}*/
 };
 
 //#endif
@@ -75,7 +121,7 @@ struct VREXPANSIONPLUGIN_API FRepMovementVR : public FRepMovement
 public:
 
 	FRepMovementVR();
-	FRepMovementVR(FRepMovement& other);	
+	FRepMovementVR(FRepMovement& other);
 	void CopyTo(FRepMovement& other) const;
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 	bool GatherActorsMovement(AActor* OwningActor);

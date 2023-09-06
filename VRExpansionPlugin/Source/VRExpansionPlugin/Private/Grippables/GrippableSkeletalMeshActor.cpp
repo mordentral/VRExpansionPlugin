@@ -132,13 +132,13 @@ void AGrippableSkeletalMeshActor::PreReplication(IRepChangedPropertyTracker& Cha
 	}
 #endif
 
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+	/*PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	UBlueprintGeneratedClass* BPClass = Cast<UBlueprintGeneratedClass>(GetClass());
 	if (BPClass != nullptr)
 	{
 		BPClass->InstancePreReplication(this, ChangedPropertyTracker);
 	}
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS*/
 }
 
 void AGrippableSkeletalMeshActor::GatherCurrentMovement()
@@ -166,9 +166,10 @@ void AGrippableSkeletalMeshActor::GatherCurrentMovement()
 			bool bFoundInCache = false;
 
 			UWorld* World = GetWorld();
+			int ServerFrame = 0;
 			if (FPhysScene_Chaos* Scene = static_cast<FPhysScene_Chaos*>(World->GetPhysicsScene()))
 			{
-				if (FRigidBodyState* FoundState = Scene->ReplicationCache.Map.Find(FObjectKey(RootPrimComp)))
+				if (const FRigidBodyState* FoundState = Scene->GetStateFromReplicationCache(RootPrimComp, ServerFrame))
 				{
 					RepMovement.FillFrom(*FoundState, this, Scene->ReplicationCache.ServerFrame);
 					bFoundInCache = true;
@@ -634,8 +635,8 @@ void AGrippableSkeletalMeshActor::Server_EndClientAuthReplication_Implementation
 	if (UWorld* World = GetWorld())
 	{
 		if (FPhysScene* PhysScene = World->GetPhysicsScene())
-		{
-			if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
+		{ 
+			if (IPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
 			{
 				PhysicsReplication->RemoveReplicatedTarget(this->GetSkeletalMeshComponent());
 			}
@@ -767,9 +768,9 @@ void AGrippableSkeletalMeshActor::PostNetReceivePhysicState()
 	Super::PostNetReceivePhysicState();
 }
 
-void AGrippableSkeletalMeshActor::MarkComponentsAsPendingKill()
+void AGrippableSkeletalMeshActor::MarkComponentsAsGarbage(bool bModify)
 {
-	Super::MarkComponentsAsPendingKill();
+	Super::MarkComponentsAsGarbage(bModify);
 
 	for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
 	{

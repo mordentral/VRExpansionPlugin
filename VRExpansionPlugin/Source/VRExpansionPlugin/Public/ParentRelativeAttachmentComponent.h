@@ -83,8 +83,8 @@ public:
 		FVector CustomOffset;
 	
 	// If true will subtract the HMD's location from the position, useful for if the actors base is set to the HMD location always (simple character).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
-	bool bOffsetByHMD;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")
+	//bool bOffsetByHMD;
 
 	// If true, will not set rotation every frame, only position
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRExpansionLibrary")

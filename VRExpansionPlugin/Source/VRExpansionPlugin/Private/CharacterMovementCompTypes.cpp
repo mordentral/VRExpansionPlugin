@@ -62,10 +62,10 @@ bool FSavedMove_VRBaseCharacter::CanCombineWith(const FSavedMovePtr& NewMove, AC
 		return false;
 
 	// Hate this but we really can't combine if I am sending a new capsule height
-	if (!FMath::IsNearlyEqual(LFDiff.Z, nMove->LFDiff.Z))
+	if (!FMath::IsNearlyEqual(CapsuleHeight, nMove->CapsuleHeight))
 		return false;
 
-	if (!FVector2D(LFDiff.X, LFDiff.Y).IsZero() && !FVector2D(nMove->LFDiff.X, nMove->LFDiff.Y).IsZero() && !FVector::Coincident(LFDiff.GetSafeNormal2D(), nMove->LFDiff.GetSafeNormal2D(), AccelDotThresholdCombine))
+	if (!LFDiff.IsZero() && !nMove->LFDiff.IsZero() && !FVector::Coincident(LFDiff.GetSafeNormal(), nMove->LFDiff.GetSafeNormal(), AccelDotThresholdCombine))
 		return false;
 
 	return FSavedMove_Character::CanCombineWith(NewMove, Character, MaxDelta);
@@ -119,12 +119,12 @@ void FSavedMove_VRBaseCharacter::SetInitialPosition(ACharacter* C)
 		if (AVRBaseCharacter* BaseChar = Cast<AVRBaseCharacter>(C))
 		{
 			if (BaseChar->VRReplicateCapsuleHeight)
-				LFDiff.Z = BaseChar->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+				CapsuleHeight = BaseChar->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
 			else
-				LFDiff.Z = 0.0f;
+				CapsuleHeight = 0.0f;
 		}
 		else
-			LFDiff.Z = 0.0f;
+			CapsuleHeight = 0.0f;
 	}
 	else
 	{
@@ -219,6 +219,7 @@ void FSavedMove_VRBaseCharacter::Clear()
 	VRCapsuleLocation = FVector::ZeroVector;
 	VRCapsuleRotation = FRotator::ZeroRotator;
 	LFDiff = FVector::ZeroVector;
+	CapsuleHeight = 0.0f;
 
 	ConditionalValues.CustomVRInputVector = FVector::ZeroVector;
 	ConditionalValues.RequestedVelocity = FVector::ZeroVector;
@@ -288,7 +289,8 @@ FVRCharacterNetworkMoveData::FVRCharacterNetworkMoveData() : FCharacterNetworkMo
 {
 	VRCapsuleLocation = FVector::ZeroVector;
 	LFDiff = FVector::ZeroVector;
-	VRCapsuleRotation = 0;
+	CapsuleHeight = 0.f;
+	VRCapsuleRotation = 0.f;
 	ReplicatedMovementMode = EVRConjoinedMovementModes::C_MOVE_MAX;
 }
 
@@ -310,6 +312,7 @@ void FVRCharacterNetworkMoveData::ClientFillNetworkMoveData(const FSavedMove_Cha
 		// #TODO: Roll these into the conditionals
 		VRCapsuleLocation = SavedMove->VRCapsuleLocation;
 		LFDiff = SavedMove->LFDiff;
+		CapsuleHeight = SavedMove->CapsuleHeight;
 		VRCapsuleRotation = FRotator::CompressAxisToShort(SavedMove->VRCapsuleRotation.Yaw);
 	}
 }
@@ -439,6 +442,22 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 	else
 	{
 		SerializePackedVector<100, 30>(LFDiff, Ar);
+	}
+
+	bool bHasCapsuleHeight = CapsuleHeight > 0.f;
+	Ar.SerializeBits(&bHasCapsuleHeight, 1);
+
+	if (bHasCapsuleHeight)
+	{
+		// This is 0.0 - 512.0, using compression to get it smaller, 8 bits = max 256 + 1 bit for sign and 7 bits precision for 128 / full 2 digit precision
+		if (Ar.IsSaving())
+		{
+			WriteFixedCompressedFloat<1024, 18>(CapsuleHeight, Ar);
+		}
+		else
+		{
+			ReadFixedCompressedFloat<1024, 18>(CapsuleHeight, Ar);
+		}
 	}
 
 	//LFDiff.NetSerialize(Ar, PackageMap, bLocalSuccess);

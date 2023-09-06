@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 5.2,
-	"VersionName": "5.2",
+	"Version": 5.3,
+	"VersionName": "5.3",
 	"FriendlyName": "OpenXRExpansionPlugin",
 	"Description": "An set of utility functions for OpenXR",
 	"Category": "Virtual Reality",
@@ -17,8 +17,7 @@
 	"SupportedTargetPlatforms": [
 		"Win64",
 		"Linux",
-		"Android",
-		"HoloLens"
+		"Android"
 	],
 	"Modules": [
 		{
@@ -36,6 +35,10 @@
 	"Plugins": [
 		{
 			"Name": "OpenXR",
+			"Enabled": true
+		},
+		{
+			"Name": "XRBase",
 			"Enabled": true
 		}
 	]

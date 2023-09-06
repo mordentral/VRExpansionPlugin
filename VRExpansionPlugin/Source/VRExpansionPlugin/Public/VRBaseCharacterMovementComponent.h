@@ -133,6 +133,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_StopAllMovement();
 	
+	// Perform StopAllMovementImmediately in line with the move action system
+	UFUNCTION(BlueprintCallable, Category = "VRMovement")
+		void PerformMoveAction_SetGravityDirection(FVector NewGravityDirection, bool bOrientToNewGravity);
+
 	// Perform a custom moveaction that you define, will call the OnCustomMoveActionPerformed event in the character when processed so you can run your own logic
 	// Be sure to set the minimum data replication requirements for your move action in order to save on replication.
 	// Flags will always replicate if it is non zero
@@ -148,6 +152,7 @@ public:
 	virtual bool DoMASetRotation(FVRMoveActionContainer& MoveAction);
 	virtual bool DoMATeleport(FVRMoveActionContainer& MoveAction);
 	virtual bool DoMAStopAllMovement(FVRMoveActionContainer& MoveAction);
+	virtual bool DoMASetGravityDirection(FVRMoveActionContainer& MoveAction);
 	virtual bool DoMAPauseTracking(FVRMoveActionContainer& MoveAction);
 
 	FVector CustomVRInputVector;
@@ -259,7 +264,7 @@ public:
 	virtual void PhysCustom_LowGrav(float deltaTime, int32 Iterations);
 
 	// Teleport grips on correction to fixup issues
-	virtual void OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode) override;
+	virtual void OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode, FVector ServerGravityDirection) override;
 
 	// Fix network smoothing with our default mesh back in
 	virtual void SimulatedTick(float DeltaSeconds) override;

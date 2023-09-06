@@ -11,6 +11,8 @@
 #include "VRRootComponent.h"
 #include "TextureResource.h"
 #include "Engine/Texture.h"
+#include "Engine/GameInstance.h"
+#include "Materials/Material.h"
 #include "IStereoLayers.h"
 #include "IHeadMountedDisplay.h"
 #include "PrimitiveViewRelevance.h"
@@ -21,8 +23,9 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialRenderProxy.h"
 #include "Engine/Engine.h"
-//#include "Widgets/SWindow.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/TextureRenderTarget2D.h"
+//#include "Widgets/SWindow.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Kismet/KismetSystemLibrary.h"
 //#include "Input/HittestGrid.h"
@@ -32,11 +35,13 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "Slate/SGameLayerManager.h"
 #include "Slate/SWorldWidgetScreenLayer.h"
+
 #include "Widgets/SViewport.h"
 #include "Widgets/SViewport.h"
 #include "Slate/WidgetRenderer.h"
 #include "Blueprint/UserWidget.h"
-#include "Engine/TextureRenderTarget2D.h"
+#include "SceneInterface.h"
+
 #include "StereoLayerShapes.h"
 
 // CVars
@@ -141,6 +146,7 @@ void UVRStereoWidgetRenderComponent::ReleaseResources()
 #if !UE_SERVER
 	FWorldDelegates::LevelRemovedFromWorld.RemoveAll(this);
 #endif
+
 	if (Widget)
 	{
 		Widget = nullptr;
@@ -380,7 +386,7 @@ UVRStereoWidgetComponent::UVRStereoWidgetComponent(const FObjectInitializer& Obj
 	, Priority(0)
 	, bIsDirty(true)
 	, bTextureNeedsUpdate(false)
-	, LayerId(0)
+	, LayerId(IStereoLayers::FLayerDesc::INVALID_LAYER_ID)
 	, LastTransform(FTransform::Identity)
 	, bLastVisible(false)
 {
@@ -411,7 +417,7 @@ void UVRStereoWidgetComponent::BeginDestroy()
 	if (LayerId && GEngine->StereoRenderingDevice.IsValid() && (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) != nullptr)
 	{
 		StereoLayers->DestroyLayer(LayerId);
-		LayerId = 0;
+		LayerId = IStereoLayers::FLayerDesc::INVALID_LAYER_ID;
 	}
 
 	Super::BeginDestroy();
@@ -424,7 +430,7 @@ void UVRStereoWidgetComponent::OnUnregister()
 	if (LayerId && GEngine->StereoRenderingDevice.IsValid() && (StereoLayers = GEngine->StereoRenderingDevice->GetStereoLayers()) != nullptr)
 	{
 		StereoLayers->DestroyLayer(LayerId);
-		LayerId = 0;
+		LayerId = IStereoLayers::FLayerDesc::INVALID_LAYER_ID;
 	}
 
 	Super::OnUnregister();
@@ -448,6 +454,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 	if (IsRunningDedicatedServer())
 	{
+		SetTickMode(ETickMode::Disabled);
 		return;
 	}
 
@@ -477,7 +484,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 					if (StereoLayers)
 						StereoLayers->DestroyLayer(LayerId);
 				}
-				LayerId = 0;
+				LayerId = IStereoLayers::FLayerDesc::INVALID_LAYER_ID;
 			}
 		}
 
@@ -626,7 +633,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				if (LayerId)
 				{
 					StereoLayers->DestroyLayer(LayerId);
-					LayerId = 0;
+					LayerId = IStereoLayers::FLayerDesc::INVALID_LAYER_ID;
 				}
 				return;
 			}
@@ -877,7 +884,7 @@ public:
 			PreviousLocalToWorld = GetLocalToWorld();
 		}
 
-		if (RenderTarget)//false)//RenderTarget)
+		if (RenderTarget)
 		{
 			FTextureResource* TextureResource = RenderTarget->GetResource();
 			if (TextureResource)
@@ -1043,14 +1050,14 @@ public:
 						Collector.RegisterOneFrameMaterialProxy(SolidMaterialInstance);
 
 						FTransform GeomTransform(GetLocalToWorld());
-						InBodySetup->AggGeom.GetAggGeom(GeomTransform, GetWireframeColor().ToFColor(true), SolidMaterialInstance, false, true, DrawsVelocity(), ViewIndex, Collector);
+						InBodySetup->AggGeom.GetAggGeom(GeomTransform, GetWireframeColor().ToFColor(true), SolidMaterialInstance, false, true, AlwaysHasVelocity(), ViewIndex, Collector);
 					}
 					// wireframe
 					else
 					{
 						FColor CollisionColor = FColor(157, 149, 223, 255);
 						FTransform GeomTransform(GetLocalToWorld());
-						InBodySetup->AggGeom.GetAggGeom(GeomTransform, GetSelectionColor(CollisionColor, bProxyIsSelected, IsHovered()).ToFColor(true), nullptr, false, false, DrawsVelocity(), ViewIndex, Collector);
+						InBodySetup->AggGeom.GetAggGeom(GeomTransform, GetSelectionColor(CollisionColor, bProxyIsSelected, IsHovered()).ToFColor(true), nullptr, false, false, AlwaysHasVelocity(), ViewIndex, Collector);
 					}
 				}
 			}
@@ -1121,13 +1128,75 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 
 	if (WidgetRenderer && GetSlateWindow() && GetSlateWindow()->GetContent() != SNullWidget::NullWidget)
 	{
-		RequestRedraw();
+		RequestRenderUpdate();
 		LastWidgetRenderTime = 0;
 
 		return new FStereoWidget3DSceneProxy(this, *WidgetRenderer->GetSlateRenderer());
 	}
 
+#if WITH_EDITOR
+	// make something so we can see this component in the editor
+	class FWidgetBoxProxy final : public FPrimitiveSceneProxy
+	{
+	public:
+		SIZE_T GetTypeHash() const override
+		{
+			static size_t UniquePointer;
+			return reinterpret_cast<size_t>(&UniquePointer);
+		}
+
+		FWidgetBoxProxy(const UWidgetComponent* InComponent)
+			: FPrimitiveSceneProxy(InComponent)
+			, BoxExtents(1.f, InComponent->GetCurrentDrawSize().X / 2.0f, InComponent->GetCurrentDrawSize().Y / 2.0f)
+		{
+			bWillEverBeLit = false;
+		}
+
+		virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override
+		{
+			QUICK_SCOPE_CYCLE_COUNTER(STAT_BoxSceneProxy_GetDynamicMeshElements);
+
+			const FMatrix& LocalToWorld = GetLocalToWorld();
+
+			for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
+			{
+				if (VisibilityMap & (1 << ViewIndex))
+				{
+					const FSceneView* View = Views[ViewIndex];
+
+					const FLinearColor DrawColor = GetViewSelectionColor(FColor::White, *View, IsSelected(), IsHovered(), false, IsIndividuallySelected());
+
+					FPrimitiveDrawInterface* PDI = Collector.GetPDI(ViewIndex);
+					DrawOrientedWireBox(PDI, LocalToWorld.GetOrigin(), LocalToWorld.GetScaledAxis(EAxis::X), LocalToWorld.GetScaledAxis(EAxis::Y), LocalToWorld.GetScaledAxis(EAxis::Z), BoxExtents, DrawColor, SDPG_World);
+				}
+			}
+		}
+
+		virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override
+		{
+			FPrimitiveViewRelevance Result;
+			if (!View->bIsGameView)
+			{
+				// Should we draw this because collision drawing is enabled, and we have collision
+				const bool bShowForCollision = View->Family->EngineShowFlags.Collision && IsCollisionEnabled();
+				Result.bDrawRelevance = IsShown(View) || bShowForCollision;
+				Result.bDynamicRelevance = true;
+				Result.bShadowRelevance = IsShadowCast(View);
+				Result.bEditorPrimitiveRelevance = UseEditorCompositing(View);
+			}
+			return Result;
+		}
+		virtual uint32 GetMemoryFootprint(void) const override { return(sizeof(*this) + GetAllocatedSize()); }
+		uint32 GetAllocatedSize(void) const { return(FPrimitiveSceneProxy::GetAllocatedSize()); }
+
+	private:
+		const FVector	BoxExtents;
+	};
+
+	return new FWidgetBoxProxy(this);
+#else
 	return nullptr;
+#endif
 }
 
 class FVRStereoWidgetComponentInstanceData : public FActorComponentInstanceData

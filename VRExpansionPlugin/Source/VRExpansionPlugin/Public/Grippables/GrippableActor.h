@@ -164,7 +164,7 @@ public:
 	}*/
 
 	// This isn't called very many places but it does come up
-	virtual void MarkComponentsAsPendingKill() override;
+	virtual void MarkComponentsAsGarbage(bool bModify) override;
 
 	/** Called right before being marked for destruction due to network replication */
 	// Clean up our objects so that they aren't sitting around for GC

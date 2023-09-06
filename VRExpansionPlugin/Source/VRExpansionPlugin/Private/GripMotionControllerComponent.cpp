@@ -27,7 +27,7 @@
 #include "Math/DualQuat.h"
 #include "IIdentifiableXRDevice.h" // for FXRDeviceId
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
-#include "XRDeviceVisualizationComponent.h" // For visualization component
+//#include "XRDeviceVisualizationComponent.h" // For visualization component
 
 #include "Physics/Experimental/PhysScene_Chaos.h"
 
@@ -177,7 +177,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 	MinimumHeight = 0.0f;
 	bLimitMaxHeight = false;
 	MaximumHeight = 240.0f;
-	bOffsetByHMD = false;
+	//bOffsetByHMD = false;
 	bLeashToHMD = false;
 	LeashRange = 300.0f;
 	bConstrainToPivot = false;
@@ -204,7 +204,7 @@ UGripMotionControllerComponent::UGripMotionControllerComponent(const FObjectInit
 
 	DefaultGripScript = nullptr;
 	DefaultGripScriptClass = UGS_Default::StaticClass();
-	DisplayComponentReference = nullptr;
+	//DisplayComponentReference = nullptr;
 
 	VelocityCalculationType = EVRVelocityType::VRLOCITY_Default;
 	LastRelativePosition = FTransform::Identity;
@@ -716,7 +716,7 @@ void UGripMotionControllerComponent::FGripViewExtension::BeginRenderViewFamily(F
 	LateUpdate.Setup(MotionControllerComponent->CalcNewComponentToWorld(FTransform()), MotionControllerComponent, false);
 }
 
-void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity)
+void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &CurAngularVelocity, FVector &CurLinearVelocity)
 {
 	UPrimitiveComponent * primComp = Grip.GetGrippedComponent();//Grip.Component;
 	AActor * pActor = Grip.GetGrippedActor();
@@ -726,13 +726,13 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 
 	if (!primComp)
 	{
-		AngularVelocity = FVector::ZeroVector;
-		LinearVelocity = FVector::ZeroVector;
+		CurAngularVelocity = FVector::ZeroVector;
+		CurLinearVelocity = FVector::ZeroVector;
 		return;
 	}
 
-	AngularVelocity = primComp->GetPhysicsAngularVelocityInDegrees();
-	LinearVelocity = primComp->GetPhysicsLinearVelocity();
+	CurAngularVelocity = primComp->GetPhysicsAngularVelocityInDegrees();
+	CurLinearVelocity = primComp->GetPhysicsLinearVelocity();
 }
 
 bool UGripMotionControllerComponent::GetPhysicsConstraintForce(const FBPActorGripInformation& Grip, FVector& AngularForce, FVector& LinearForce)
@@ -3000,7 +3000,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 				{
 					if (FPhysScene* PhysScene = World->GetPhysicsScene())
 					{
-						if (FPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
+						if (IPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
 						{
 							FBodyInstance* BI = root->GetBodyInstance(NewGrip.GrippedBoneName);
 							if (BI && BI->IsInstanceSimulatingPhysics())
@@ -3705,7 +3705,7 @@ void UGripMotionControllerComponent::Drop_Implementation(const FBPActorGripInfor
 				{
 					if (FPhysScene * PhysScene = World->GetPhysicsScene())
 					{
-						if (FPhysicsReplication * PhysicsReplication = PhysScene->GetPhysicsReplication())
+						if (IPhysicsReplication* PhysicsReplication = PhysScene->GetPhysicsReplication())
 						{
 							FBodyInstance* BI = root->GetBodyInstance(NewDrop.GrippedBoneName);
 							if (BI && BI->IsInstanceSimulatingPhysics())
@@ -4648,7 +4648,7 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			const bool bNewTrackedState = GripPollControllerState(Position, Orientation, WorldToMeters);
 
 			// Pull a reference to the private display component if it should exist
-			if (bDisplayDeviceModel && !IsValid(DisplayComponentReference.Get()))
+			/*if (bDisplayDeviceModel && !IsValid(DisplayComponentReference.Get()))
 			{
 				if (FProperty* Property = this->GetClass()->FindPropertyByName("DisplayComponent"))
 				{
@@ -4660,24 +4660,25 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 						DisplayComponentReference = DisplayCompPrim->Get();
 					}
 				}
-			}
+			}*/
 
 			// if controller tracking just kicked in or we haven't gotten a valid model yet
-			if (!bTracked && bNewTrackedState && !bHasStartedRendering)
+			/*if (!bTracked && bNewTrackedState && !bHasStartedRendering)
 			{
 				if (VisualizationComponent)
 				{
 					VisualizationComponent->SetIsRenderingActive(true);
 					bHasStartedRendering = true;
 				}
-			}
+			}*/
 
 			// This part is deprecated and will be removed in later versions.
 			// If controller tracking just kicked in or we haven't gotten a valid model yet
-			if (((!bTracked && bNewTrackedState) || !DisplayComponentReference.IsValid()) && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
+			/*if (((!bTracked && bNewTrackedState) || !DisplayComponentReference.IsValid()) && bDisplayDeviceModel && DisplayModelSource != UMotionControllerComponent::CustomModelSourceId)
 			{
 				RefreshDisplayComponent();
 			} // End of deprecation
+			*/
 
 			bTracked = bNewTrackedState && (bIgnoreTrackingStatus || CurrentTrackingStatus != ETrackingStatus::NotTracked);
 			if (bTracked)
@@ -7103,7 +7104,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 
 bool UGripMotionControllerComponent::HasTrackingParameters()
 {
-	return bOffsetByHMD || bScaleTracking || bLeashToHMD || bLimitMinHeight || bLimitMaxHeight || (AttachChar && !AttachChar->bRetainRoomscale);
+	return /*bOffsetByHMD ||*/ bScaleTracking || bLeashToHMD || bLimitMinHeight || bLimitMaxHeight || (AttachChar && !AttachChar->bRetainRoomscale);
 }
 
 void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPosition, bool bIsInGameThread, bool bApplyZeroing)
@@ -7123,7 +7124,7 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 		OriginalPosition.Z = FMath::Min(OriginalPosition.Z, MaximumHeight);
 	}
 
-	if (bApplyZeroing && (bOffsetByHMD || bLeashToHMD || (AttachChar && !AttachChar->bRetainRoomscale)))
+	if (bApplyZeroing && (/*bOffsetByHMD ||*/ bLeashToHMD || (AttachChar && !AttachChar->bRetainRoomscale)))
 	{
 		if (bIsInGameThread)
 		{
@@ -7180,7 +7181,7 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 			}
 		}
 
-		if (bOffsetByHMD || (AttachChar && !AttachChar->bRetainRoomscale))
+		if (/*bOffsetByHMD ||*/ (AttachChar && !AttachChar->bRetainRoomscale))
 		{
 			OriginalPosition -= FVector(CorrectLastLocation.X, CorrectLastLocation.Y, 0.0f);
 		}
@@ -7786,12 +7787,12 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 }
 
 
-bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(uint8 GripID, const FTransform_NetQuantize &TransformAtDrop, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity)
+bool UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Validate(uint8 GripID, const FTransform_NetQuantize &TransformAtDrop, FVector_NetQuantize100 OptAngularVelocity, FVector_NetQuantize100 OptLinearVelocity)
 {
 	return true;
 }
 
-void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(uint8 GripID, const FTransform_NetQuantize &TransformAtDrop, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity)
+void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementation(uint8 GripID, const FTransform_NetQuantize &TransformAtDrop, FVector_NetQuantize100 OptAngularVelocity, FVector_NetQuantize100 OptLinearVelocity)
 {
 	FBPActorGripInformation FoundGrip;
 	EBPVRResultSwitch Result;
@@ -7828,9 +7829,9 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 		}
 	}
 
-	if (!DropObjectByInterface_Implementation(nullptr, FoundGrip.GripID, AngularVelocity, LinearVelocity, true))
+	if (!DropObjectByInterface_Implementation(nullptr, FoundGrip.GripID, OptAngularVelocity, OptLinearVelocity, true))
 	{
-		DropGrip_Implementation(FoundGrip, false, AngularVelocity, LinearVelocity,true);
+		DropGrip_Implementation(FoundGrip, false, OptAngularVelocity, OptLinearVelocity,true);
 	}
 }
 
