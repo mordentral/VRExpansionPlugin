@@ -528,7 +528,7 @@ public:
 	// Notify change on relative position editing as well, make RPCS callable in blueprint
 	// Notify the server that we locally gripped something
 	UFUNCTION(Reliable, Server, WithValidation)
-	void Server_NotifyLocalGripRemoved(uint8 GripID, const FTransform_NetQuantize &TransformAtDrop, FVector_NetQuantize100 AngularVelocity, FVector_NetQuantize100 LinearVelocity);
+	void Server_NotifyLocalGripRemoved(uint8 GripID, const FTransform_NetQuantize &TransformAtDrop, FVector_NetQuantize100 OptAngularVelocity, FVector_NetQuantize100 OptLinearVelocity);
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripMotionController|ClientAuth")
 		EVRClientAuthConflictResolutionMode ClientAuthConflictResolutionMethod;
@@ -1125,7 +1125,7 @@ public:
 
 	// Get the physics velocities of a grip
 	UFUNCTION(BlueprintPure, Category = "GripMotionController")
-		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &AngularVelocity, FVector &LinearVelocity);
+		void GetPhysicsVelocities(const FBPActorGripInformation &Grip, FVector &CurAngularVelocity, FVector &CurLinearVelocity);
 
 	// Get the physics constraint force of a simulating grip
 	UFUNCTION(BlueprintCallable, Category = "GripMotionController")
