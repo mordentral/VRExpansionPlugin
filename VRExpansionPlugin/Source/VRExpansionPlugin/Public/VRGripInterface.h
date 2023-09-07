@@ -5,7 +5,7 @@
 //#include "UObject/ObjectMacros.h"
 //#include "UObject/ScriptMacros.h"
 #include "VRBPDatatypes.h"
-#include "InputCore/Classes/InputCoreTypes.h"
+#include "InputCoreTypes.h"
 #include "Engine/EngineBaseTypes.h"
 #include "UObject/Interface.h"
 
