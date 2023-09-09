@@ -9,6 +9,7 @@
 #include "Components/CapsuleComponent.h"
 #include "ParentRelativeAttachmentComponent.h"
 #include "GripMotionControllerComponent.h"
+#include "IMotionController.h"
 #include "VRRootComponent.h"
 #include "VRPathFollowingComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -108,7 +109,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		LeftMotionController->SetupAttachment(VRProxyComponent);
 		//LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
-		LeftMotionController->SetTrackingMotionSource(FXRMotionControllerBase::LeftHandSourceId);
+		LeftMotionController->SetTrackingMotionSource(IMotionController::LeftHandSourceId);
 		//LeftMotionController->Hand = EControllerHand::Left;
 		//LeftMotionController->bOffsetByHMD = false;
 		//LeftMotionController->bUpdateInCharacterMovement = true;
@@ -122,7 +123,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	{
 		RightMotionController->SetupAttachment(VRProxyComponent);
 		//RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
-		RightMotionController->SetTrackingMotionSource(FXRMotionControllerBase::RightHandSourceId);
+		RightMotionController->SetTrackingMotionSource(IMotionController::RightHandSourceId);
 		//RightMotionController->Hand = EControllerHand::Right;
 		//RightMotionController->bOffsetByHMD = false;
 		//RightMotionController->bUpdateInCharacterMovement = true;

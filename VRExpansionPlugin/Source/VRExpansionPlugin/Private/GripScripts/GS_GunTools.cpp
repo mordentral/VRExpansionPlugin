@@ -127,7 +127,7 @@ bool UGS_GunTools::GetWorldTransform_Implementation
 	if (!GrippingController)
 		return false;
 
-	bool bSkipHighQualityOperations = !bUseHighQualityRemoteSimulation && !GrippingController->bHasAuthority;
+	bool bSkipHighQualityOperations = !bUseHighQualityRemoteSimulation && !GrippingController->HasAuthority();
 
 	/*if (!GunViewExtension.IsValid() && GEngine)
 	{
@@ -509,7 +509,7 @@ void UGS_GunTools::OnGrip_Implementation(UGripMotionControllerComponent * Grippi
 
 void UGS_GunTools::GetVirtualStockTarget(UGripMotionControllerComponent * GrippingController)
 {
-	if (GrippingController && (GrippingController->bHasAuthority || bUseHighQualityRemoteSimulation))
+	if (GrippingController && (GrippingController->HasAuthority() || bUseHighQualityRemoteSimulation))
 	{
 		if (AVRBaseCharacter * vrOwner = Cast<AVRBaseCharacter>(GrippingController->GetOwner()))
 		{
