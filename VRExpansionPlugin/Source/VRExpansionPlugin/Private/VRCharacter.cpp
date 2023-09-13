@@ -42,9 +42,16 @@ AVRCharacter::AVRCharacter(const FObjectInitializer& ObjectInitializer)
 
 FVector AVRCharacter::GetTeleportLocation(FVector OriginalLocation)
 {
-	FVector modifier = VRRootReference->OffsetComponentToWorld.GetLocation() - this->GetActorLocation();
-	modifier.Z = 0.0f; // Null out Z
-	return OriginalLocation - modifier;
+	if (!bRetainRoomscale)
+	{
+		return OriginalLocation + FVector(0.f, 0.f, VRRootReference->GetScaledCapsuleHalfHeight());
+	}
+	else
+	{
+		FVector modifier = VRRootReference->OffsetComponentToWorld.GetLocation() - this->GetActorLocation();
+		modifier.Z = 0.0f; // Null out Z
+		return OriginalLocation - modifier;
+	}
 }
 
 bool AVRCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest, bool bNoCheck)
