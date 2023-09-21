@@ -357,6 +357,10 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 							BaseChar->TickSeatInformation(DeltaTime);
 						}
 
+						// Handle move actions here - Should be scoped
+						CheckForMoveAction();
+						MoveActionArray.Clear();
+
 						if (CharacterOwner && !CharacterOwner->IsLocallyControlled() && DeltaTime > 0.0f)
 						{
 							// If not playing root motion, tick animations after physics. We do this here to keep events, notifies, states and transitions in sync with client updates.
@@ -879,6 +883,9 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_Custom(EVRMoveAction M
 
 bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 {
+	if (!BaseVRCharacterOwner)
+		return true;
+
 	for (FVRMoveActionContainer& MoveAction : MoveActionArray.MoveActions)
 	{
 		switch (MoveAction.MoveAction)
@@ -889,7 +896,10 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 		}break;
 		case EVRMoveAction::VRMOVEACTION_Teleport:
 		{
-			/*return */DoMATeleport(MoveAction);
+			if (!BaseVRCharacterOwner->SeatInformation.bSitting)
+			{
+				/*return */DoMATeleport(MoveAction);
+			}
 		}break;
 		case EVRMoveAction::VRMOVEACTION_StopAllMovement:
 		{
@@ -897,11 +907,17 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 		}break;
 		case EVRMoveAction::VRMOVEACTION_SetGravityDirection:
 		{
-			/*return */DoMASetGravityDirection(MoveAction);
+			if (!BaseVRCharacterOwner->SeatInformation.bSitting)
+			{
+				/*return */DoMASetGravityDirection(MoveAction);
+			}
 		}break;
 		case EVRMoveAction::VRMOVEACTION_SetRotation:
 		{
-			/*return */DoMASetRotation(MoveAction);
+			if (!BaseVRCharacterOwner->SeatInformation.bSitting)
+			{
+				/*return */DoMASetRotation(MoveAction);
+			}
 		}break;
 		case EVRMoveAction::VRMOVEACTION_PauseTracking:
 		{
@@ -929,6 +945,8 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		FRotator DeltaRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 		FQuat OrigRot = OwningCharacter->GetActorQuat();
 		FRotator TargetRot = ( OrigRot * DeltaRot.Quaternion() ).Rotator();
+
+		FTransform OriginalRelativeTrans = OwningCharacter->GetRootComponent()->GetRelativeTransform();
 
 		bool bRotateAroundCapsule = MoveAction.MoveActionFlags & 0x08;
 
@@ -985,6 +1003,15 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		{
 			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}
+
+		if (OwningCharacter->SeatInformation.bSitting)
+		{
+			OwningCharacter->SeatInformation.StoredTargetTransform = (OriginalRelativeTrans.Inverse() * OwningCharacter->GetRootComponent()->GetRelativeTransform()) * OwningCharacter->SeatInformation.StoredTargetTransform;
+			if (OwningCharacter->IsLocallyControlled())
+			{
+				OwningCharacter->Server_SeatedSnapTurn(MoveAction.MoveActionRot.Yaw);
+			}
+		}
 	}
 
 	return false;
@@ -996,6 +1023,8 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
+		FTransform OriginalRelativeTrans = OwningCharacter->GetRootComponent()->GetRelativeTransform();
+
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 		if (this->BaseVRCharacterOwner && this->BaseVRCharacterOwner->IsLocallyControlled())
 		{

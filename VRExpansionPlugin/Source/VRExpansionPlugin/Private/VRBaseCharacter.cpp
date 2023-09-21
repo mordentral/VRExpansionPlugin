@@ -291,6 +291,25 @@ bool AVRBaseCharacter::Server_ReZeroSeating_Validate(FTransform_NetQuantize NewT
 	return true;
 }
 
+void AVRBaseCharacter::Server_SeatedSnapTurn_Implementation(float Yaw)
+{
+	if(VRMovementReference && SeatInformation.bSitting)
+	{
+		FVRMoveActionContainer MoveActionTmp;
+		MoveActionTmp.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn;
+		MoveActionTmp.MoveActionRot.Yaw = Yaw;
+		MoveActionTmp.VelRetentionSetting = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None;
+		VRMovementReference->MoveActionArray.MoveActions.Add(MoveActionTmp);
+		VRMovementReference->CheckForMoveAction();
+		VRMovementReference->MoveActionArray.Clear();
+	}
+}
+
+bool AVRBaseCharacter::Server_SeatedSnapTurn_Validate(float Yaw)
+{
+	return Yaw > 0.0f;
+}
+
 void AVRBaseCharacter::OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags)
 {
 
