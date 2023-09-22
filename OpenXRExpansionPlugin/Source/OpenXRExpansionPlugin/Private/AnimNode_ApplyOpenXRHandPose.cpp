@@ -51,17 +51,30 @@ void FAnimNode_ApplyOpenXRHandPose::InitializeBoneReferences(const FBoneContaine
 	if (!OwningAsset)
 		return;
 
-	if (!MappedBonePairs.bInitialized || OwningAsset->GetFName() != MappedBonePairs.LastInitializedName)
+	USkeleton* AssetSkeleton = RequiredBones.GetSkeletonAsset();
+
+	if (!AssetSkeleton)
+		return;
+
+	if (!MappedBonePairs.bInitialized || OwningAsset->GetFName() != MappedBonePairs.LastInitializedName || SkeletonType != MappedBonePairs.LastInitializedSkeleton)
 	{
+
+		// Trigger a full re-build if our asset changed
+		if (MappedBonePairs.bInitialized && (OwningAsset->GetFName() != MappedBonePairs.LastInitializedName || SkeletonType != MappedBonePairs.LastInitializedSkeleton))
+		{
+			MappedBonePairs.ClearMapping();
+		}
+
 		MappedBonePairs.LastInitializedName = OwningAsset->GetFName();
+		MappedBonePairs.LastInitializedSkeleton = SkeletonType;
 		MappedBonePairs.bInitialized = false;
 		
-		USkeleton* AssetSkeleton = RequiredBones.GetSkeletonAsset();
 		if (AssetSkeleton)
 		{
 			// If our bone pairs are empty, then setup our sane defaults
 			if (!MappedBonePairs.BonePairs.Num())
 			{
+
 				MappedBonePairs.ConstructDefaultMappings(SkeletonType, bSkipRootBone);
 			}
 
@@ -299,6 +312,20 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 	if (!MappedBonePairs.bInitialized)
 		return;
 
+
+	const FBoneContainer& BoneContainer = Output.Pose.GetPose().GetBoneContainer();
+
+	UObject* OwningAsset = BoneContainer.GetAsset();
+	if (!OwningAsset)
+		return;
+
+	// Trigger a full re-build if our asset or target skeleton changed, do it up here before finding the correct hand
+	if ((OwningAsset->GetFName() != MappedBonePairs.LastInitializedName || SkeletonType != MappedBonePairs.LastInitializedSkeleton))
+	{
+		InitializeBoneReferences(BoneContainer);
+	}
+
+
 	/*const */FBPOpenXRActionSkeletalData *StoredActionInfoPtr = nullptr;
 	if (bIsOpenInputAnimationInstance)
 	{
@@ -338,7 +365,6 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 
 	// Currently not blending correctly
 	const float BlendWeight = FMath::Clamp<float>(ActualAlpha, 0.f, 1.f);
-	const FBoneContainer& BoneContainer = Output.Pose.GetPose().GetBoneContainer();
 	uint8 BoneTransIndex = 0;
 	uint8 NumBones = StoredActionInfoPtr ? StoredActionInfoPtr->SkeletalTransforms.Num() : 0;
 
@@ -347,6 +373,9 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 		// Early out, we don't have a valid data to work with
 		return;
 	}
+
+
+
 
 	FTransform trans = FTransform::Identity;
 	OutBoneTransforms.Reserve(MappedBonePairs.BonePairs.Num());
