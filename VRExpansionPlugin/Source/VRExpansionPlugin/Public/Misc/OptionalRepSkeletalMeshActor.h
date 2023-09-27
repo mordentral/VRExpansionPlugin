@@ -77,6 +77,10 @@ public:
 	void BlendInPhysicsInternalVR(FTickFunction& ThisTickFunction);
 	void FinalizeAnimationUpdateVR();
 
+	// Weld Fix until epic fixes it #TODO: check back in on this and remove and the asset include when epic fixes it
+	virtual void GetWeldedBodies(TArray<FBodyInstance*>& OutWeldedBodies, TArray<FName>& OutLabels, bool bIncludingAutoWeld) override;
+	virtual FBodyInstance* GetBodyInstance(FName BoneName = NAME_None, bool bGetWelded = true, int32 Index = INDEX_NONE) const override;
+
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override
 	{
 		// Get rid of inverse issues
