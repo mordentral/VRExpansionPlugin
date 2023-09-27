@@ -236,6 +236,75 @@ void UInversePhysicsSkeletalMeshComponent::FinalizeAnimationUpdateVR()
 	RefreshFollowerComponents();
 }
 
+void UInversePhysicsSkeletalMeshComponent::GetWeldedBodies(TArray<FBodyInstance*>& OutWeldedBodies, TArray<FName>& OutLabels, bool bIncludingAutoWeld)
+{
+	UPhysicsAsset* PhysicsAsset = GetPhysicsAsset();
+
+	for (int32 BodyIdx = 0; BodyIdx < Bodies.Num(); ++BodyIdx)
+	{
+		FBodyInstance* BI = Bodies[BodyIdx];
+		if (BI && (BI->WeldParent != nullptr || (bIncludingAutoWeld && BI->bAutoWeld)))
+		{
+			OutWeldedBodies.Add(BI);
+			if (PhysicsAsset)
+			{
+				if (UBodySetup* PhysicsAssetBodySetup = PhysicsAsset->SkeletalBodySetups[BodyIdx])
+				{
+					OutLabels.Add(PhysicsAssetBodySetup->BoneName);
+				}
+				else
+				{
+					OutLabels.Add(NAME_None);
+				}
+			}
+			else
+			{
+				OutLabels.Add(NAME_None);
+			}
+
+		}
+	}
+
+	for (USceneComponent* Child : GetAttachChildren())
+	{
+		if (UPrimitiveComponent* PrimChild = Cast<UPrimitiveComponent>(Child))
+		{
+			PrimChild->GetWeldedBodies(OutWeldedBodies, OutLabels, bIncludingAutoWeld);
+		}
+	}
+}
+
+FBodyInstance* UInversePhysicsSkeletalMeshComponent::GetBodyInstance(FName BoneName, bool bGetWelded, int32) const
+{
+	UPhysicsAsset* const PhysicsAsset = GetPhysicsAsset();
+	FBodyInstance* BodyInst = NULL;
+
+	if (PhysicsAsset != NULL)
+	{
+		// A name of NAME_None indicates 'root body'
+		if (BoneName == NAME_None)
+		{
+			if (Bodies.IsValidIndex(RootBodyData.BodyIndex))
+			{
+				BodyInst = Bodies[RootBodyData.BodyIndex];
+			}
+		}
+		// otherwise, look for the body
+		else
+		{
+			int32 BodyIndex = PhysicsAsset->FindBodyIndex(BoneName);
+			if (Bodies.IsValidIndex(BodyIndex))
+			{
+				BodyInst = Bodies[BodyIndex];
+			}
+		}
+
+		BodyInst = (bGetWelded && BodyInstance.WeldParent) ? BodyInstance.WeldParent : BodyInst;
+	}
+
+	return BodyInst;
+}
+
 struct FAssetWorldBoneTM
 {
 	FTransform	TM;			// Should never contain scaling.
