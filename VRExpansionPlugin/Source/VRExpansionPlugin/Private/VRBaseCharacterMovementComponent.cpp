@@ -1147,52 +1147,7 @@ bool UVRBaseCharacterMovementComponent::DoMAStopAllMovement(FVRMoveActionContain
 bool UVRBaseCharacterMovementComponent::DoMASetGravityDirection(FVRMoveActionContainer& MoveAction)
 {
 	bool bOrientToNewGravity = MoveAction.MoveActionFlags > 0;
-	SetGravityDirection(MoveAction.MoveActionVel);
-
-	if (bOrientToNewGravity && IsValid(BaseVRCharacterOwner))
-	{
-		FQuat CurrentRotQ = UpdatedComponent->GetComponentQuat();
-		FQuat DeltaRot = FQuat::FindBetweenNormals(-CurrentRotQ.GetUpVector(), MoveAction.MoveActionVel);
-		FRotator NewRot = (DeltaRot * CurrentRotQ)/*.GetNormalized()*/.Rotator();
-		AController* OwningController = BaseVRCharacterOwner->GetController();
-
-		FVector NewLocation;
-		FRotator NewRotation;
-		FVector OrigLocation = BaseVRCharacterOwner->GetActorLocation();
-		FVector PivotPoint = BaseVRCharacterOwner->GetActorTransform().InverseTransformPosition(BaseVRCharacterOwner->GetVRLocation_Inline());
-		//(bRotateAroundCapsule ? GetVRLocation_Inline() : BaseVRCharacterOwner->GetProjectedVRLocation());
-
-
-		// Offset to the floor
-		//PivotPoint.Z = -BaseVRCharacterOwner->VRRootReference->GetUnscaledCapsuleHalfHeight();
-		PivotPoint.Z = 0.0f;
-
-		// Need to seperate out each element for the control rotation
-		FRotator OrigRotation = BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : BaseVRCharacterOwner->GetActorRotation();
-
-		/*if (bAccountForHMDRotation)
-		{
-			NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());
-			NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
-		}
-		else*/
-
-		NewRotation = NewRot;
-
-		NewLocation = OrigLocation + OrigRotation.RotateVector(PivotPoint);
-		//NewRotation = NewRot;
-		NewLocation -= NewRotation.RotateVector(PivotPoint);
-
-		if (BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController)
-			OwningController->SetControlRotation(NewRotation);
-
-		// Also setting actor rot because the control rot transfers to it anyway eventually
-		BaseVRCharacterOwner->SetActorLocationAndRotation(NewLocation, NewRotation);
-
-		return true;
-	}
-
-	return false;
+	return SetCharacterToNewGravity(MoveAction.MoveActionVel, bOrientToNewGravity);
 }
 
 bool UVRBaseCharacterMovementComponent::DoMAPauseTracking(FVRMoveActionContainer& MoveAction)
@@ -1375,6 +1330,13 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 		const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
 		ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
 		bForceNextFloorCheck = true;
+	}
+
+	if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
+	{
+		// Auto Align to the new floor normal
+		// Set gravity direction to the new floor normal
+		AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
 	}
 
 	if(!bSteppedUp || !SetDefaultPostClimbMovementOnStepUp)
@@ -2197,4 +2159,81 @@ FVector UVRBaseCharacterMovementComponent::RoundDirectMovement(FVector InMovemen
 	InMovement.Y = FMath::RoundToFloat(InMovement.Y * 100.f) / 100.f;
 	InMovement.Z = FMath::RoundToFloat(InMovement.Z * 100.f) / 100.f;
 	return InMovement;
+}
+
+void UVRBaseCharacterMovementComponent::SetAutoOrientToFloorNormal(bool bAutoOrient, bool bRevertGravityWhenDisabled)
+{
+	bAutoOrientToFloorNormal = bAutoOrient;
+
+	if (!bAutoOrientToFloorNormal && bRevertGravityWhenDisabled)
+	{
+		//DefaultGravityDirection, could also get world gravity
+		AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+	}
+}
+
+void UVRBaseCharacterMovementComponent::AutoTraceAndSetCharacterToNewGravity(FHitResult & TargetFloor)
+{
+	if (TargetFloor.Component.IsValid())
+	{
+		// Should we really be tracing complex? (true should maybe be false?)
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(AutoTraceFloorNormal), true);
+
+		FVector TraceStart = BaseVRCharacterOwner->GetVRLocation_Inline();
+		FVector Offset = (-UpdatedComponent->GetComponentQuat().GetUpVector()) * (BaseVRCharacterOwner->VRRootReference->GetScaledCapsuleHalfHeight() + 10.0f);
+
+		FHitResult OutHit;
+		const bool bDidHit = TargetFloor.Component->LineTraceComponent(OutHit, TraceStart, TraceStart + Offset, QueryParams);
+
+		if (bDidHit)
+		{
+			SetCharacterToNewGravity(-OutHit.Normal, true);
+		}
+	}
+}
+
+bool UVRBaseCharacterMovementComponent::SetCharacterToNewGravity(FVector NewGravityDirection, bool bOrientToNewGravity)
+{
+
+	if (NewGravityDirection.Equals(GetGravityDirection()))
+		return false;
+
+	SetGravityDirection(NewGravityDirection);
+
+	if (bOrientToNewGravity && IsValid(BaseVRCharacterOwner))
+	{
+		FQuat CurrentRotQ = UpdatedComponent->GetComponentQuat();
+		FQuat DeltaRot = FQuat::FindBetweenNormals(-CurrentRotQ.GetUpVector(), NewGravityDirection);
+		FRotator NewRot = (DeltaRot * CurrentRotQ)/*.GetNormalized()*/.Rotator();
+		AController* OwningController = BaseVRCharacterOwner->GetController();
+
+		FVector NewLocation;
+		FRotator NewRotation;
+		FVector OrigLocation = BaseVRCharacterOwner->GetActorLocation();
+		FVector PivotPoint = BaseVRCharacterOwner->GetActorTransform().InverseTransformPosition(BaseVRCharacterOwner->GetVRLocation_Inline());
+		//(bRotateAroundCapsule ? GetVRLocation_Inline() : BaseVRCharacterOwner->GetProjectedVRLocation());
+
+
+		// Offset to the floor
+		//PivotPoint.Z = -BaseVRCharacterOwner->VRRootReference->GetUnscaledCapsuleHalfHeight();
+		PivotPoint.Z = 0.0f;
+
+		// Need to seperate out each element for the control rotation
+		FRotator OrigRotation = BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : BaseVRCharacterOwner->GetActorRotation();
+
+		NewRotation = NewRot;
+
+		NewLocation = OrigLocation + OrigRotation.RotateVector(PivotPoint);
+		//NewRotation = NewRot;
+		NewLocation -= NewRotation.RotateVector(PivotPoint);
+
+		if (BaseVRCharacterOwner->bUseControllerRotationYaw && OwningController)
+			OwningController->SetControlRotation(NewRotation);
+
+		// Also setting actor rot because the control rot transfers to it anyway eventually
+		BaseVRCharacterOwner->SetActorLocationAndRotation(NewLocation, NewRotation);
+		return true;
+	}
+
+	return false;
 }

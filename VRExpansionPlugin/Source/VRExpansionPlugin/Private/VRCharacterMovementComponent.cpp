@@ -1092,6 +1092,13 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 				}
 				bCheckedFall = true;
 			}
+
+			if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
+			{
+				// Auto Align to the new floor normal
+				// Set gravity direction to the new floor normal
+				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+			}
 		}
 
 
@@ -1910,6 +1917,13 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			}
 
 			StepDownResult.bComputedFloor = true;
+
+			if (bAutoOrientToFloorNormal && StepDownResult.FloorResult.IsWalkableFloor())
+			{
+				// Auto Align to the new floor normal
+				// Set gravity direction to the new floor normal
+				AutoTraceAndSetCharacterToNewGravity(StepDownResult.FloorResult.HitResult);
+			}
 		}
 	}
 
@@ -2144,6 +2158,13 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 			}
 
 			StepDownResult.bComputedFloor = true;
+
+			if (bAutoOrientToFloorNormal && StepDownResult.FloorResult.IsWalkableFloor())
+			{
+				// Auto Align to the new floor normal
+				// Set gravity direction to the new floor normal
+				AutoTraceAndSetCharacterToNewGravity(StepDownResult.FloorResult.HitResult);
+			}
 		}
 	}
 
@@ -2840,6 +2861,13 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 						//RestorePreAdditiveVRMotionVelocity();
 						remainingTime += subTimeTickRemaining;
 						ProcessLanded(FloorResult.HitResult, remainingTime, Iterations);
+
+						if (bAutoOrientToFloorNormal && FloorResult.IsWalkableFloor())
+						{
+							// Auto Align to the new floor normal
+							// Set gravity direction to the new floor normal
+							AutoTraceAndSetCharacterToNewGravity(FloorResult.HitResult);
+						}
 						return;
 					}
 				}
@@ -3041,6 +3069,13 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 				const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit2);
 				ResolvePenetration(RequestedAdjustment, Hit2, UpdatedComponent->GetComponentQuat());
 				bForceNextFloorCheck = true;
+			}
+
+			if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
+			{
+				// Auto Align to the new floor normal
+				// Set gravity direction to the new floor normal
+				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
 			}
 		}
 
@@ -3668,6 +3703,13 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 					const FVector RequestedAdjustment = GetPenetrationAdjustment(Hit);
 					const bool bResolved = ResolvePenetration(RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat());
 					bForceNextFloorCheck |= bResolved;
+
+					if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
+					{
+						// Auto Align to the new floor normal
+						// Set gravity direction to the new floor normal
+						AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+					}
 				}
 				else if (!CurrentFloor.IsWalkableFloor())
 				{
@@ -3713,6 +3755,13 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 							}
 							CurrentFloor.Clear();
 						}
+					}
+
+					if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
+					{
+						// Auto Align to the new floor normal
+						// Set gravity direction to the new floor normal
+						AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
 					}
 				}
 			}
@@ -4052,6 +4101,13 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 			{
 				FinalBase = nullptr;
 				FinalBaseBoneName = NAME_None;
+			}
+
+			if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
+			{
+				// Auto Align to the new floor normal
+				// Set gravity direction to the new floor normal
+				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
 			}
 		}
 	}

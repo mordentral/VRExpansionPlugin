@@ -65,6 +65,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
 		bool bCapHMDMovementToMaxMovementSpeed;
 
+	// If true then when in walking mode the character will attempt to automatically orient itself to the normal of the floor it is standing on
+	// Both the rotation and gravity vector will be effected.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
+		bool bAutoOrientToFloorNormal = false;
+
+	// Sets the value of bAutoOrientToFloorNormal in a manner that cleans up when removed
+	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
+		void SetAutoOrientToFloorNormal(bool bAutoOrient, bool bRevertGravityWhenDisabled = true);
+
+	void AutoTraceAndSetCharacterToNewGravity(FHitResult & TargetFloor);
+	bool SetCharacterToNewGravity(FVector NewGravityDirection, bool bOrientToNewGravity = true);
+
 	// Adding seated transition
 	void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
 
@@ -133,7 +145,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_StopAllMovement();
 	
-	// Perform StopAllMovementImmediately in line with the move action system
+	// Set the gravity direction for the character manually (optionall auto align to the new gravity)
 	UFUNCTION(BlueprintCallable, Category = "VRMovement")
 		void PerformMoveAction_SetGravityDirection(FVector NewGravityDirection, bool bOrientToNewGravity);
 
