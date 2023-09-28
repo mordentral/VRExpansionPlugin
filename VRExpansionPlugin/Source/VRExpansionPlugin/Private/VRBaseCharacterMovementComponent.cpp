@@ -2168,7 +2168,7 @@ void UVRBaseCharacterMovementComponent::SetAutoOrientToFloorNormal(bool bAutoOri
 	if (!bAutoOrientToFloorNormal && bRevertGravityWhenDisabled)
 	{
 		//DefaultGravityDirection, could also get world gravity
-		AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+		SetCharacterToNewGravity(FVector(0.0f, 0.0f, -1.0f), true);
 	}
 }
 
