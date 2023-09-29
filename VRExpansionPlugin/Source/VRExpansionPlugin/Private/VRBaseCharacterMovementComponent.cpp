@@ -2177,7 +2177,7 @@ void UVRBaseCharacterMovementComponent::AutoTraceAndSetCharacterToNewGravity(FHi
 	if (TargetFloor.Component.IsValid())
 	{
 		// Should we really be tracing complex? (true should maybe be false?)
-		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(AutoTraceFloorNormal), true);
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(AutoTraceFloorNormal), /*true*/false);
 
 		FVector TraceStart = BaseVRCharacterOwner->GetVRLocation_Inline();
 		FVector Offset = (-UpdatedComponent->GetComponentQuat().GetUpVector()) * (BaseVRCharacterOwner->VRRootReference->GetScaledCapsuleHalfHeight() + 10.0f);
@@ -2187,8 +2187,6 @@ void UVRBaseCharacterMovementComponent::AutoTraceAndSetCharacterToNewGravity(FHi
 
 		if (bDidHit)
 		{
-
-
 			FVector NewGravityDir = -OutHit.Normal;
 
 			// Don't run gravity changes within our walkable slope
