@@ -8,7 +8,7 @@
 
 // A version of the attachment structure that include welding data
 USTRUCT()
-struct FRepAttachmentWithWeld : public FRepAttachment
+struct VREXPANSIONPLUGIN_API FRepAttachmentWithWeld : public FRepAttachment
 {
 public:
 	GENERATED_BODY()
