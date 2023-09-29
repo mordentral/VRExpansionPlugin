@@ -317,17 +317,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
 		bool bRunControlRotationInMovementComponent;
 
-	// Moved into compute floor dist
-	// Option to Skip simulating components when looking for floor
-	/*virtual bool FloorSweepTest(
+	// They have gravity checks incorrect in here so having to override it again
+	virtual bool FloorSweepTest(
+		struct FHitResult& OutHit,
 		const FVector& Start,
-		FHitResult& OutHit,
 		const FVector& End,
 		ECollisionChannel TraceChannel,
 		const struct FCollisionShape& CollisionShape,
 		const struct FCollisionQueryParams& Params,
 		const struct FCollisionResponseParams& ResponseParam
-	) const override;*/
+	) const override;
 
 	virtual void ComputeFloorDist(const FVector& CapsuleLocation, float LineDistance, float SweepDistance, FFindFloorResult& OutFloorResult, float SweepRadius, const FHitResult* DownwardSweepResult = NULL) const override;
 

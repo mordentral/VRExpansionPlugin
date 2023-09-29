@@ -506,6 +506,45 @@ void UVRBaseCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, 
 	}
 }
 
+bool UVRBaseCharacterMovementComponent::FloorSweepTest(
+	FHitResult& OutHit,
+	const FVector& Start,
+	const FVector& End,
+	ECollisionChannel TraceChannel,
+	const struct FCollisionShape& CollisionShape,
+	const struct FCollisionQueryParams& Params,
+	const struct FCollisionResponseParams& ResponseParam
+) const
+{
+	bool bBlockingHit = false;
+
+	// #TODO: Report to epic that their FloorSweepTest was not using the gravity rotation so it didn't work when the capsule was out of range
+
+	if (!bUseFlatBaseForFloorChecks)
+	{
+		bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, GetWorldToGravityTransform(), TraceChannel, CollisionShape, Params, ResponseParam);
+	}
+	else
+	{
+		// Test with a box that is enclosed by the capsule.
+		const float CapsuleRadius = CollisionShape.GetCapsuleRadius();
+		const float CapsuleHeight = CollisionShape.GetCapsuleHalfHeight();
+		const FCollisionShape BoxShape = FCollisionShape::MakeBox(FVector(CapsuleRadius * 0.707f, CapsuleRadius * 0.707f, CapsuleHeight));
+
+		// First test with the box rotated so the corners are along the major axes (ie rotated 45 degrees).
+		bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, FQuat(RotateGravityToWorld(FVector(0.f, 0.f, -1.f)), UE_PI * 0.25f), TraceChannel, BoxShape, Params, ResponseParam);
+
+		if (!bBlockingHit)
+		{
+			// Test again with the same box, not rotated.
+			OutHit.Reset(1.f, false);
+			bBlockingHit = GetWorld()->SweepSingleByChannel(OutHit, Start, End, GetWorldToGravityTransform(), TraceChannel, BoxShape, Params, ResponseParam);
+		}
+	}
+
+	return bBlockingHit;
+}
+
 void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleLocation, float LineDistance, float SweepDistance, FFindFloorResult& OutFloorResult, float SweepRadius, const FHitResult* DownwardSweepResult) const
 {
 	UE_LOG(LogVRBaseCharacterMovement, VeryVerbose, TEXT("[Role:%d] ComputeFloorDist: %s at location %s"), (int32)CharacterOwner->GetLocalRole(), *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
@@ -2191,14 +2230,14 @@ void UVRBaseCharacterMovementComponent::AutoTraceAndSetCharacterToNewGravity(FHi
 
 			// Don't run gravity changes within our walkable slope
 			float AngleOfChange = FMath::Abs(FMath::RadiansToDegrees(acosf(FVector::DotProduct(-OutHit.Normal, GetGravityDirection()))));
-			if (AngleOfChange > GetWalkableFloorAngle())
+			if (AngleOfChange > GetWalkableFloorAngle() || AngleOfChange < 0.01f)
 			{
 				return;
 			}
 			else
 			{
 				if (bBlendGravityFloorChanges)
-				{
+				{	
 					// Blend the angle over time
 					const float Alpha = FMath::Clamp(DeltaTime * FloorOrientationChangeBlendRate, 0.f, 1.f);
 					NewGravityDir = FMath::Lerp(GetGravityDirection(), NewGravityDir, Alpha);
@@ -2251,7 +2290,8 @@ bool UVRBaseCharacterMovementComponent::SetCharacterToNewGravity(FVector NewGrav
 			OwningController->SetControlRotation(NewRotation);
 
 		// Also setting actor rot because the control rot transfers to it anyway eventually
-		BaseVRCharacterOwner->SetActorLocationAndRotation(NewLocation, NewRotation);
+		MoveUpdatedComponent(NewLocation - OrigLocation, NewRotation, /*bSweep*/ false);
+		//BaseVRCharacterOwner->SetActorLocationAndRotation(NewLocation, NewRotation);
 		return true;
 	}
 

@@ -3980,7 +3980,9 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		return;
 	}
 
-	if (/*!bRunClientCorrectionToHMD && */!bUseClientControlRotation)
+	// Trying to use epics rotation code now
+	// Comment this when we port to it
+	if (!bUseClientControlRotation)
 	{
 		float YawValue = FRotator::DecompressAxisFromShort(NewYaw);
 		// Trust the server's control yaw
@@ -4027,9 +4029,9 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 
 
 	// #TODO: Epics 5.1 rotation enforce, we use our own currently
-	/*
+	
 	// Fall back to the last-known good rotation if the server didn't send one
-	static const auto CVarUseLastGoodRotationDuringCorrection = IConsoleManager::Get().FindConsoleVariable(TEXT("p.UseLastGoodRotationDuringCorrection"));
+	/*static const auto CVarUseLastGoodRotationDuringCorrection = IConsoleManager::Get().FindConsoleVariable(TEXT("p.UseLastGoodRotationDuringCorrection"));
 	if (CVarUseLastGoodRotationDuringCorrection->GetInt()
 		&& (bOrientRotationToMovement || bUseControllerDesiredRotation)
 		&& (!OptionalRotation.IsSet() && ClientData->LastAckedMove.IsValid()))
@@ -4037,8 +4039,8 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		OptionalRotation = ClientData->LastAckedMove->SavedRotation;
 	}*/
 
+	// #TODO: Currently epic isn't using the gravity direction in corrections, which should be incorrect
 	// Trigger event
-	// #TODO: HARDCODED GRAVITY, NEED TO UPDATE TO THEIR CHANGES!!
 	OnClientCorrectionReceived(*ClientData, TimeStamp, WorldShiftedNewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode, DefaultGravityDirection);
 
 	// Trust the server's positioning.
@@ -4057,10 +4059,10 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 
 		if (bRunClientCorrectionToHMD && BaseVRCharacterOwner)
 		{
-			/*if (!bUseClientControlRotation)
+			/*if (OptionalRotation.IsSet())
 			{
-				float YawValue = FRotator::DecompressAxisFromShort(NewYaw);
-				BaseVRCharacterOwner->SetActorLocationVR(WorldShiftedNewLocation,);// AndRotationVR(WorldShiftedNewLocation, FRotator(0.0f, YawValue, 0.0f), true, true, true);
+				BaseVRCharacterOwner->SetActorLocationAndRotationVR(WorldShiftedNewLocation, OptionalRotation.GetValue(), false, false, true, true);
+				//BaseVRCharacterOwner->SetActorRotation(OptionalRotation.GetValue(), ETeleportType::TeleportPhysics);
 			}
 			else*/
 			{
@@ -4069,7 +4071,14 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 		}
 		else
 		{
-			UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			/*if (OptionalRotation.IsSet())
+			{
+				UpdatedComponent->SetWorldLocationAndRotation(WorldShiftedNewLocation, OptionalRotation.GetValue(), false, nullptr, ETeleportType::TeleportPhysics);
+			}
+			else*/
+			{
+				UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			}
 		}
 	}
 
