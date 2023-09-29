@@ -1097,7 +1097,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 			{
 				// Auto Align to the new floor normal
 				// Set gravity direction to the new floor normal
-				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult, timeTick);
 			}
 		}
 
@@ -1921,8 +1921,8 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			if (bAutoOrientToFloorNormal && StepDownResult.FloorResult.IsWalkableFloor())
 			{
 				// Auto Align to the new floor normal
-				// Set gravity direction to the new floor normal
-				AutoTraceAndSetCharacterToNewGravity(StepDownResult.FloorResult.HitResult);
+				// Set gravity direction to the new floor normal, don't blend the change, snap to it on a step up
+				AutoTraceAndSetCharacterToNewGravity(StepDownResult.FloorResult.HitResult, 0.0f);
 			}
 		}
 	}
@@ -2162,8 +2162,8 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 			if (bAutoOrientToFloorNormal && StepDownResult.FloorResult.IsWalkableFloor())
 			{
 				// Auto Align to the new floor normal
-				// Set gravity direction to the new floor normal
-				AutoTraceAndSetCharacterToNewGravity(StepDownResult.FloorResult.HitResult);
+				// Set gravity direction to the new floor normal, don't blend the change, snap to it on a step down
+				AutoTraceAndSetCharacterToNewGravity(StepDownResult.FloorResult.HitResult, 0.0f);
 			}
 		}
 	}
@@ -2866,7 +2866,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 						{
 							// Auto Align to the new floor normal
 							// Set gravity direction to the new floor normal
-							AutoTraceAndSetCharacterToNewGravity(FloorResult.HitResult);
+							AutoTraceAndSetCharacterToNewGravity(FloorResult.HitResult, timeTick);
 						}
 						return;
 					}
@@ -3075,7 +3075,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 			{
 				// Auto Align to the new floor normal
 				// Set gravity direction to the new floor normal
-				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult, timeTick);
 			}
 		}
 
@@ -3708,7 +3708,7 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 					{
 						// Auto Align to the new floor normal
 						// Set gravity direction to the new floor normal
-						AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+						AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult, DeltaSeconds);
 					}
 				}
 				else if (!CurrentFloor.IsWalkableFloor())
@@ -3761,7 +3761,7 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 					{
 						// Auto Align to the new floor normal
 						// Set gravity direction to the new floor normal
-						AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+						AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult, DeltaSeconds);
 					}
 				}
 			}
@@ -4106,8 +4106,9 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 			if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
 			{
 				// Auto Align to the new floor normal
-				// Set gravity direction to the new floor normal
-				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+				// Set gravity direction to the new floor normal, snap to new rotation on correction
+				// #TODO: Might need to entirely remove this and let the correction set everything?
+				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult, 0.0f);
 			}
 		}
 	}

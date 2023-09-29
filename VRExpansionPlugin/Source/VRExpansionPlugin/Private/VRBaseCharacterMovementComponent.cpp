@@ -1336,7 +1336,7 @@ void UVRBaseCharacterMovementComponent::PhysCustom_Climbing(float deltaTime, int
 	{
 		// Auto Align to the new floor normal
 		// Set gravity direction to the new floor normal
-		AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult);
+		AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult, deltaTime);
 	}
 
 	if(!bSteppedUp || !SetDefaultPostClimbMovementOnStepUp)
@@ -2172,7 +2172,7 @@ void UVRBaseCharacterMovementComponent::SetAutoOrientToFloorNormal(bool bAutoOri
 	}
 }
 
-void UVRBaseCharacterMovementComponent::AutoTraceAndSetCharacterToNewGravity(FHitResult & TargetFloor)
+void UVRBaseCharacterMovementComponent::AutoTraceAndSetCharacterToNewGravity(FHitResult & TargetFloor, float DeltaTime)
 {
 	if (TargetFloor.Component.IsValid())
 	{
@@ -2187,13 +2187,35 @@ void UVRBaseCharacterMovementComponent::AutoTraceAndSetCharacterToNewGravity(FHi
 
 		if (bDidHit)
 		{
-			SetCharacterToNewGravity(-OutHit.Normal, true);
+
+
+			FVector NewGravityDir = -OutHit.Normal;
+
+			// Don't run gravity changes within our walkable slope
+			float AngleOfChange = FMath::Abs(FMath::RadiansToDegrees(acosf(FVector::DotProduct(-OutHit.Normal, GetGravityDirection()))));
+			if (AngleOfChange > GetWalkableFloorAngle())
+			{
+				return;
+			}
+			else
+			{
+				if (bBlendGravityFloorChanges)
+				{
+					// Blend the angle over time
+					const float Alpha = FMath::Clamp(DeltaTime * FloorOrientationChangeBlendRate, 0.f, 1.f);
+					NewGravityDir = FMath::Lerp(GetGravityDirection(), NewGravityDir, Alpha);
+				}
+			}
+
+			SetCharacterToNewGravity(NewGravityDir, true);
 		}
 	}
 }
 
 bool UVRBaseCharacterMovementComponent::SetCharacterToNewGravity(FVector NewGravityDirection, bool bOrientToNewGravity)
 {
+	// Ensure its normalized
+	NewGravityDirection.Normalize();
 
 	if (NewGravityDirection.Equals(GetGravityDirection()))
 		return false;

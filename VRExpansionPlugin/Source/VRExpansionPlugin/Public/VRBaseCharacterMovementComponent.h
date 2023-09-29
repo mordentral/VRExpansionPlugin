@@ -67,14 +67,22 @@ public:
 
 	// If true then when in walking mode the character will attempt to automatically orient itself to the normal of the floor it is standing on
 	// Both the rotation and gravity vector will be effected.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Wall Walking")
 		bool bAutoOrientToFloorNormal = false;
+
+	// If true then we will attempt to blend all gravity based floor changes as long as they are within the max walking angle of the CMC
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Wall Walking")
+		bool bBlendGravityFloorChanges = true;
+
+	// The rate at which we will blend the change in rotation for wall walking
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRMovement|Wall Walking")
+		float FloorOrientationChangeBlendRate = 25.0f;
 
 	// Sets the value of bAutoOrientToFloorNormal in a manner that cleans up when removed
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
 		void SetAutoOrientToFloorNormal(bool bAutoOrient, bool bRevertGravityWhenDisabled = true);
 
-	void AutoTraceAndSetCharacterToNewGravity(FHitResult & TargetFloor);
+	void AutoTraceAndSetCharacterToNewGravity(FHitResult & TargetFloor, float DeltaTime);
 	bool SetCharacterToNewGravity(FVector NewGravityDirection, bool bOrientToNewGravity = true);
 
 	// Adding seated transition
