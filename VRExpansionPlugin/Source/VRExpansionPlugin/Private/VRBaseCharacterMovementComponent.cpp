@@ -1046,7 +1046,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		if (OwningCharacter->SeatInformation.bSitting)
 		{
 			OwningCharacter->SeatInformation.StoredTargetTransform = (OriginalRelativeTrans.Inverse() * OwningCharacter->GetRootComponent()->GetRelativeTransform()) * OwningCharacter->SeatInformation.StoredTargetTransform;
-			if (OwningCharacter->IsLocallyControlled())
+			if (OwningCharacter->IsLocallyControlled() && GetNetMode() == ENetMode::NM_Client)
 			{
 				OwningCharacter->Server_SeatedSnapTurn(MoveAction.MoveActionRot.Yaw);
 			}
