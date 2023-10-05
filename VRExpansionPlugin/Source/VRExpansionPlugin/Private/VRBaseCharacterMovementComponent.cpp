@@ -759,11 +759,10 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
 	
 	// Removed 2 decimal precision rounding in favor of matching the actual replicated short fidelity instead.
-	// MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaaYwAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
+	// MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
 	
 	// Setting to the exact same fidelity as the replicated value ends up being, losing some precision
-	MoveAction.MoveActionRot = FRotator( 0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(DeltaYawAngle)), 0.0f);
-		//FRotator(0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort((FRotator(0.f, DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw)), 0.0f);
+	MoveAction.MoveActionRot = FRotator(0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort((FRotator(0.f, DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw)), 0.0f);
 
 	if (bFlagCharacterTeleport)
 		MoveAction.MoveActionFlags = 0x02;// .MoveActionRot.Roll = 2.0f;
@@ -775,11 +774,11 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 		MoveAction.MoveActionFlags |= 0x08;
 	}
 
-	/*if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
+	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
 		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
 		MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
-	}*/
+	}
 
 	MoveAction.VelRetentionSetting = VelocityRetention;
 
@@ -906,9 +905,10 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 {
 	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{	
-		FRotator DeltaRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
+
+		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
+
 		FQuat OrigRot = OwningCharacter->GetActorQuat();
-		FRotator TargetRot = ( OrigRot * DeltaRot.Quaternion() ).Rotator();
 
 		bool bRotateAroundCapsule = MoveAction.MoveActionFlags & 0x08;
 
@@ -916,12 +916,12 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		{
 			if (this->bUseClientControlRotation)
 			{
-				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
+				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, true, false, bRotateAroundCapsule);
 				MoveAction.MoveActionFlags |= 0x04; // Flag that we are using loc only
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
+				OwningCharacter->SetActorRotationVR(TargetRot, true, false, bRotateAroundCapsule);
 			}
 		}
 		else
@@ -932,7 +932,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
+				OwningCharacter->SetActorRotationVR(TargetRot, true, false, bRotateAroundCapsule);
 			}
 		}
 
@@ -950,7 +950,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		{	
 			if (OwningCharacter->IsLocallyControlled())
 			{
-				MoveAction.MoveActionVel = RoundDirectMovement((TargetRot.Quaternion() * OrigRot.Inverse()).RotateVector(this->Velocity));
+				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
 				this->Velocity = MoveAction.MoveActionVel;
 			}
 			else
