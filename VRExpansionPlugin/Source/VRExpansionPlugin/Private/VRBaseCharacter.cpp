@@ -307,7 +307,7 @@ void AVRBaseCharacter::Server_SeatedSnapTurn_Implementation(float Yaw)
 
 bool AVRBaseCharacter::Server_SeatedSnapTurn_Validate(float Yaw)
 {
-	return Yaw > 0.0f;
+	return true;
 }
 
 void AVRBaseCharacter::OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags)
