@@ -52,7 +52,7 @@ bool FSavedMove_VRBaseCharacter::CanCombineWith(const FSavedMovePtr& NewMove, AC
 	if (!nMove || (VRReplicatedMovementMode != nMove->VRReplicatedMovementMode))
 		return false;
 
-	if (ConditionalValues.MoveActionArray.MoveActions.Num() > 0 || nMove->ConditionalValues.MoveActionArray.MoveActions.Num() > 0)
+	if (!ConditionalValues.MoveActionArray.CanCombine() || !nMove->ConditionalValues.MoveActionArray.CanCombine())
 		return false;
 
 	if (!ConditionalValues.CustomVRInputVector.IsZero() || !nMove->ConditionalValues.CustomVRInputVector.IsZero())
@@ -172,6 +172,9 @@ void FSavedMove_VRBaseCharacter::CombineWith(const FSavedMove_Character* OldMove
 	// Changes in certain counters like JumpCurrentCount don't allow move combining, so no need to roll those back (they are the same).
 	InCharacter->JumpForceTimeRemaining = OldMove->JumpForceTimeRemaining;
 	InCharacter->JumpKeyHoldTime = OldMove->JumpKeyHoldTime;
+
+	// Merge if we had valid mergable move actions
+	ConditionalValues.MoveActionArray.MoveActions.Append(BaseSavedMovePending->ConditionalValues.MoveActionArray.MoveActions);
 }
 
 void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostUpdateMode)

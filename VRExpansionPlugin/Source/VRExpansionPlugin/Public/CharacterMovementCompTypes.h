@@ -84,6 +84,8 @@ public:
 	UPROPERTY()
 		FRotator MoveActionRot;
 	UPROPERTY()
+		float MoveActionDeltaYaw;
+	UPROPERTY()
 		uint8 MoveActionFlags;
 	UPROPERTY()
 		TArray<UObject*> MoveActionObjectReferences;
@@ -102,6 +104,7 @@ public:
 		MoveActionLoc = FVector::ZeroVector;
 		MoveActionVel = FVector::ZeroVector;
 		MoveActionRot = FRotator::ZeroRotator;
+		MoveActionDeltaYaw = 0.0f;
 		MoveActionFlags = 0;
 		VelRetentionSetting = EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_None;
 		MoveActionObjectReferences.Empty();
@@ -131,8 +134,9 @@ public:
 
 				if (!bUseLocOnly)
 				{
-					Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
-					Ar << Yaw;
+					//Yaw = FRotator::CompressAxisToShort(MoveActionRot.Yaw);
+					//Ar << Yaw;
+					Ar << MoveActionRot;
 				}
 				else
 				{
@@ -153,9 +157,11 @@ public:
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
 					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
-					//Pitch = FRotator::CompressAxisToShort(MoveActionRot.Pitch);
-					//Ar << Pitch;
 				}
+
+				// Always send this in case we are sitting
+				Pitch = FRotator::CompressAxisToShort(MoveActionDeltaYaw);
+				Ar << Pitch;
 
 				bool bRotateAroundCapsule = MoveActionFlags & 0x08;
 				Ar.SerializeBits(&bRotateAroundCapsule, 1);
@@ -169,8 +175,9 @@ public:
 
 				if (!bUseLocOnly)
 				{
-					Ar << Yaw;
-					MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
+					//Ar << Yaw;
+					//MoveActionRot.Yaw = FRotator::DecompressAxisFromShort(Yaw);
+					Ar << MoveActionRot;
 				}
 				else
 				{
@@ -194,9 +201,10 @@ public:
 				if (VelRetentionSetting == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 				{
 					bOutSuccess &= SerializePackedVector<100, 30>(MoveActionVel, Ar);
-					//Ar << Pitch;
-					//MoveActionRot.Pitch = FRotator::DecompressAxisFromShort(Pitch);
 				}
+
+				Ar << Pitch;
+				MoveActionDeltaYaw = FRotator::DecompressAxisFromShort(Pitch);
 
 				bool bRotateAroundCapsule = false;
 				Ar.SerializeBits(&bRotateAroundCapsule, 1);
@@ -332,6 +340,23 @@ struct VREXPANSIONPLUGIN_API FVRMoveActionArray
 public:
 	UPROPERTY()
 		TArray<FVRMoveActionContainer> MoveActions;
+
+	bool CanCombine() const 
+	{
+		return !MoveActions.Num();
+		/*if (!MoveActions.Num())
+		{
+			return true;
+		}
+
+		for (const FVRMoveActionContainer& MoveAction : MoveActions)
+		{
+			if (MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_SnapTurn)
+				return false;
+		}
+
+		return true;*/
+	}
 
 	void Clear()
 	{

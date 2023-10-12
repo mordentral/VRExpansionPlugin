@@ -802,10 +802,15 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	MoveAction.MoveAction = EVRMoveAction::VRMOVEACTION_SnapTurn; 
 	
 	// Removed 2 decimal precision rounding in favor of matching the actual replicated short fidelity instead.
-	// MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaaYwAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
-	
+	// MoveAction.MoveActionRot = FRotator(0.0f, FMath::RoundToFloat(((FRotator(0.f,DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw) * 100.f) / 100.f, 0.0f);
+
 	// Setting to the exact same fidelity as the replicated value ends up being, losing some precision
-	MoveAction.MoveActionRot = FRotator( 0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(DeltaYawAngle)), 0.0f);
+	FRotator TargetRotation = (UpdatedComponent->GetComponentQuat() * FRotator(0.f, DeltaYawAngle, 0.f).Quaternion()).Rotator();
+	TargetRotation.Yaw = FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(TargetRotation.Yaw));
+	TargetRotation.Pitch = FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(TargetRotation.Pitch));
+	TargetRotation.Roll = FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(TargetRotation.Roll));
+	MoveAction.MoveActionRot = TargetRotation;
+	//MoveAction.MoveActionRot = FRotator( 0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(DeltaYawAngle)), 0.0f);
 		//FRotator(0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort((FRotator(0.f, DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw)), 0.0f);
 
 	if (bFlagCharacterTeleport)
@@ -818,11 +823,12 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 		MoveAction.MoveActionFlags |= 0x08;
 	}
 
-	/*if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
+	if (VelocityRetention == EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn)
 	{
 		//MoveAction.MoveActionRot.Pitch = FMath::RoundToFloat(DeltaYawAngle * 100.f) / 100.f;
-		MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
-	}*/
+		//MoveAction.MoveActionRot.Pitch = DeltaYawAngle;
+		MoveAction.MoveActionDeltaYaw = FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(DeltaYawAngle));
+	}
 
 	MoveAction.VelRetentionSetting = VelocityRetention;
 
@@ -966,9 +972,9 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 		{}break;
 		default: // All other move actions (CUSTOM)
 		{
-			if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+			if (BaseVRCharacterOwner)
 			{
-				OwningCharacter->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot, MoveAction.MoveActionFlags);
+				BaseVRCharacterOwner->OnCustomMoveActionPerformed(MoveAction.MoveAction, MoveAction.MoveActionLoc, MoveAction.MoveActionRot, MoveAction.MoveActionFlags);
 			}
 		}break;
 		}
@@ -979,13 +985,18 @@ bool UVRBaseCharacterMovementComponent::CheckForMoveAction()
 
 bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& MoveAction)
 {
-	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	if (BaseVRCharacterOwner)
 	{	
-		FRotator DeltaRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
-		FQuat OrigRot = OwningCharacter->GetActorQuat();
-		FRotator TargetRot = ( OrigRot * DeltaRot.Quaternion() ).Rotator();
+		FRotator TargetRot = MoveAction.MoveActionRot;
+		FQuat OrigRot = BaseVRCharacterOwner->GetActorQuat();
 
-		FTransform OriginalRelativeTrans = OwningCharacter->GetRootComponent()->GetRelativeTransform();
+		if (BaseVRCharacterOwner->SeatInformation.bSitting)
+		{
+			FRotator DeltaRot(0.f, MoveAction.MoveActionDeltaYaw, 0.f);
+			TargetRot = ( OrigRot * DeltaRot.Quaternion() ).Rotator();
+		}
+
+		FTransform OriginalRelativeTrans = BaseVRCharacterOwner->GetRootComponent()->GetRelativeTransform();
 
 		bool bRotateAroundCapsule = MoveAction.MoveActionFlags & 0x08;
 
@@ -993,23 +1004,23 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		{
 			if (this->bUseClientControlRotation)
 			{
-				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
+				MoveAction.MoveActionLoc = BaseVRCharacterOwner->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
 				MoveAction.MoveActionFlags |= 0x04; // Flag that we are using loc only
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
+				BaseVRCharacterOwner->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
 			}
 		}
 		else
 		{
 			if (MoveAction.MoveActionFlags & 0x04)
 			{
-				OwningCharacter->SetActorLocation(OwningCharacter->GetActorLocation() + MoveAction.MoveActionLoc);
+				BaseVRCharacterOwner->SetActorLocation(BaseVRCharacterOwner->GetActorLocation() + MoveAction.MoveActionLoc);
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
+				BaseVRCharacterOwner->SetActorRotationVR(TargetRot, false, false, bRotateAroundCapsule);
 			}
 		}
 
@@ -1025,7 +1036,7 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
 		{	
-			if (OwningCharacter->IsLocallyControlled())
+			if (BaseVRCharacterOwner->IsLocallyControlled())
 			{
 				MoveAction.MoveActionVel = RoundDirectMovement((TargetRot.Quaternion() * OrigRot.Inverse()).RotateVector(this->Velocity));
 				this->Velocity = MoveAction.MoveActionVel;
@@ -1040,15 +1051,15 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionFlags & 0x01 || MoveAction.MoveActionFlags & 0x02)
 		{
-			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
+			BaseVRCharacterOwner->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}
 
-		if (OwningCharacter->SeatInformation.bSitting)
+		if (BaseVRCharacterOwner->SeatInformation.bSitting)
 		{
-			OwningCharacter->SeatInformation.StoredTargetTransform = (OriginalRelativeTrans.Inverse() * OwningCharacter->GetRootComponent()->GetRelativeTransform()) * OwningCharacter->SeatInformation.StoredTargetTransform;
-			if (OwningCharacter->IsLocallyControlled() && GetNetMode() == ENetMode::NM_Client)
+			BaseVRCharacterOwner->SeatInformation.StoredTargetTransform = (OriginalRelativeTrans.Inverse() * BaseVRCharacterOwner->GetRootComponent()->GetRelativeTransform()) * BaseVRCharacterOwner->SeatInformation.StoredTargetTransform;
+			if (BaseVRCharacterOwner->IsLocallyControlled() && GetNetMode() == ENetMode::NM_Client)
 			{
-				OwningCharacter->Server_SeatedSnapTurn(MoveAction.MoveActionRot.Yaw);
+				BaseVRCharacterOwner->Server_SeatedSnapTurn(MoveAction.MoveActionDeltaYaw);
 			}
 		}
 	}
@@ -1060,32 +1071,32 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 {
 	bool bRotateAroundCapsule = MoveAction.MoveActionFlags & 0x08;
 
-	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	if (BaseVRCharacterOwner)
 	{
-		FTransform OriginalRelativeTrans = OwningCharacter->GetRootComponent()->GetRelativeTransform();
+		FTransform OriginalRelativeTrans = BaseVRCharacterOwner->GetRootComponent()->GetRelativeTransform();
 
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
 		if (this->BaseVRCharacterOwner && this->BaseVRCharacterOwner->IsLocallyControlled())
 		{
 			if (this->bUseClientControlRotation)
 			{
-				MoveAction.MoveActionLoc = OwningCharacter->SetActorRotationVR(TargetRot, true);
+				MoveAction.MoveActionLoc = BaseVRCharacterOwner->SetActorRotationVR(TargetRot, true);
 				MoveAction.MoveActionFlags |= 0x04; // Flag that we are using loc only
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, true, true, bRotateAroundCapsule);
+				BaseVRCharacterOwner->SetActorRotationVR(TargetRot, true, true, bRotateAroundCapsule);
 			}
 		}
 		else
 		{
 			if (MoveAction.MoveActionFlags & 0x04)
 			{
-				OwningCharacter->SetActorLocation(OwningCharacter->GetActorLocation() + MoveAction.MoveActionLoc);
+				BaseVRCharacterOwner->SetActorLocation(BaseVRCharacterOwner->GetActorLocation() + MoveAction.MoveActionLoc);
 			}
 			else
 			{
-				OwningCharacter->SetActorRotationVR(TargetRot, true, true, bRotateAroundCapsule);
+				BaseVRCharacterOwner->SetActorRotationVR(TargetRot, true, true, bRotateAroundCapsule);
 			}
 		}
 
@@ -1101,7 +1112,7 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
 		{
-			if (OwningCharacter->IsLocallyControlled())
+			if (BaseVRCharacterOwner->IsLocallyControlled())
 			{
 				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
 				this->Velocity = MoveAction.MoveActionVel;
@@ -1116,7 +1127,7 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 		// If we are flagged to teleport the grips
 		if (MoveAction.MoveActionFlags & 0x01 || MoveAction.MoveActionFlags & 0x02)
 		{
-			OwningCharacter->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
+			BaseVRCharacterOwner->NotifyOfTeleport(MoveAction.MoveActionFlags & 0x02);
 		}
 	}
 
@@ -1125,9 +1136,9 @@ bool UVRBaseCharacterMovementComponent::DoMASetRotation(FVRMoveActionContainer& 
 
 bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& MoveAction)
 {
-	if (AVRBaseCharacter * OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	if (BaseVRCharacterOwner)
 	{
-		AController* OwningController = OwningCharacter->GetController();
+		AController* OwningController = BaseVRCharacterOwner->GetController();
 
 		if (!OwningController)
 		{
@@ -1137,7 +1148,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 
 		bool bSkipEncroachmentCheck = MoveAction.MoveActionFlags & 0x01; //MoveAction.MoveActionRot.Roll > 0.0f;
 		FRotator TargetRot(0.f, MoveAction.MoveActionRot.Yaw, 0.f);
-		OwningCharacter->TeleportTo(MoveAction.MoveActionLoc, TargetRot, false, bSkipEncroachmentCheck);
+		BaseVRCharacterOwner->TeleportTo(MoveAction.MoveActionLoc, TargetRot, false, bSkipEncroachmentCheck);
 
 		switch (MoveAction.VelRetentionSetting)
 		{
@@ -1151,7 +1162,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 		}break;
 		case EVRMoveActionVelocityRetention::VRMOVEACTION_Velocity_Turn:
 		{
-			if (OwningCharacter->IsLocallyControlled())
+			if (BaseVRCharacterOwner->IsLocallyControlled())
 			{
 				MoveAction.MoveActionVel = RoundDirectMovement(FRotator(0.f, MoveAction.MoveActionRot.Pitch, 0.f).RotateVector(this->Velocity));
 				this->Velocity = MoveAction.MoveActionVel;
@@ -1163,7 +1174,7 @@ bool UVRBaseCharacterMovementComponent::DoMATeleport(FVRMoveActionContainer& Mov
 		}break;
 		}
 
-		if (OwningCharacter->bUseControllerRotationYaw)
+		if (BaseVRCharacterOwner->bUseControllerRotationYaw)
 			OwningController->SetControlRotation(TargetRot);
 
 		return true;
@@ -1191,11 +1202,11 @@ bool UVRBaseCharacterMovementComponent::DoMASetGravityDirection(FVRMoveActionCon
 
 bool UVRBaseCharacterMovementComponent::DoMAPauseTracking(FVRMoveActionContainer& MoveAction)
 {
-	if (AVRBaseCharacter* OwningCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+	if (BaseVRCharacterOwner)
 	{
-		OwningCharacter->bTrackingPaused = MoveAction.MoveActionFlags > 0;
-		OwningCharacter->PausedTrackingLoc = MoveAction.MoveActionLoc;
-		OwningCharacter->PausedTrackingRot = MoveAction.MoveActionRot.Yaw;
+		BaseVRCharacterOwner->bTrackingPaused = MoveAction.MoveActionFlags > 0;
+		BaseVRCharacterOwner->PausedTrackingLoc = MoveAction.MoveActionLoc;
+		BaseVRCharacterOwner->PausedTrackingRot = MoveAction.MoveActionRot.Yaw;
 		return true;
 	}
 	return false;
