@@ -199,6 +199,12 @@ void FHandSocketVisualizer::DrawVisualization(const UActorComponent* Component, 
 					}
 				}
 
+				if (HandComponent->BonesToSkip.Contains(BoneName))
+				{
+					// Skip visualizing this bone as its in the ignore array
+					continue;
+				}
+
 				FTransform BoneTransform = HandComponent->HandVisualizerComponent->GetBoneTransform(i);
 				FVector BoneLoc = BoneTransform.GetLocation();
 				BoneScale = 1.0f - ((View->ViewLocation - BoneLoc).SizeSquared() / FMath::Square(100.0f));

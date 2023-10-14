@@ -185,6 +185,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
 		FString FilterPostfix;
 
+	// An array of bones to skip when looking to edit deltas, can help clean up the interaction if you have extra bones in the heirarchy
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Animation")
+		TArray<FName> BonesToSkip;
+
 	FTransform GetBoneTransformAtTime(UAnimSequence* MyAnimSequence, /*float AnimTime,*/ int BoneIdx, FName BoneName, bool bUseRawDataOnly);
 #endif
 
