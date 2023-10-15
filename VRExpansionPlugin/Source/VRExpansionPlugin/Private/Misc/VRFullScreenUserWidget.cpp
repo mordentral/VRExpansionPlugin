@@ -898,7 +898,7 @@ void UVRFullScreenUserWidget::Tick(float DeltaSeconds)
 		{
 			Hide();
 		}
-		else if ((CurrentDisplayType == EVRWidgetDisplayType::PostProcess) /* || (CurrentDisplayType == EVPWidgetDisplayType::Composure)*/)
+		else if (CurrentDisplayType == EVRWidgetDisplayType::PostProcess /* || (CurrentDisplayType == EVPWidgetDisplayType::Composure)*/)
 		{
 			PostProcessDisplayType.Tick(CurrentWorld, DeltaSeconds);
 		}
