@@ -124,6 +124,12 @@ void FAnimNode_ApplyOpenXRHandPose::CalculateSkeletalAdjustment(USkeleton* Asset
 	TArray<FTransform> RefBones = AssetSkeleton->GetReferenceSkeleton().GetRefBonePose();
 	TArray<FMeshBoneInfo> RefBonesInfo = AssetSkeleton->GetReferenceSkeleton().GetRefBoneInfo();
 
+	if (!MappedBonePairs.bInitialized || MappedBonePairs.BonePairs.Num() < 4 || !RefBones.Num())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Empty or incorrect mapping or skeleton data when calculating skeletal adjustment!"));
+		return;
+	}
+
 	FBPOpenXRSkeletalPair KnuckleIndexPair = MappedBonePairs.BonePairs[MappedBonePairs.ReverseBonePairMap[(int8)EXRHandJointType::OXR_HAND_JOINT_INDEX_PROXIMAL_EXT]];
 	FBPOpenXRSkeletalPair KnuckleMiddlePair = MappedBonePairs.BonePairs[MappedBonePairs.ReverseBonePairMap[(int8)EXRHandJointType::OXR_HAND_JOINT_MIDDLE_PROXIMAL_EXT]];
 	FBPOpenXRSkeletalPair KnuckleRingPair = MappedBonePairs.BonePairs[MappedBonePairs.ReverseBonePairMap[(int8)EXRHandJointType::OXR_HAND_JOINT_RING_PROXIMAL_EXT]];
