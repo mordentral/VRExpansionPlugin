@@ -880,7 +880,7 @@ FVector AVRBaseCharacter::AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYa
 	}
 
 	NewLocation = OrigLocation + NewRotation.RotateVector(PivotPoint);
-	NewRotation = (DeltaRot.Quaternion() * NewRotation.Quaternion()).Rotator();
+	NewRotation = (NewRotation.Quaternion() * DeltaRot.Quaternion()).Rotator();
 	NewLocation -= NewRotation.RotateVector(PivotPoint);
 
 	if (bUseControllerRotationYaw && OwningController /*&& IsLocallyControlled()*/)
