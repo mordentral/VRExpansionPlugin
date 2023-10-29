@@ -74,6 +74,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 	HandTargetAnimation = nullptr;
 	MirroredScale = FVector(1.f, 1.f, -1.f);
 	bOnlySnapMesh = false;
+	bOnlyUseHandPose = false;
 	bIgnoreAttachBone = false;
 	bFlipForLeftHand = false;
 	bLeftHandDominant = false;
