@@ -124,6 +124,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
 		bool bOnlySnapMesh;
 
+	// If true the end user should only pull the hand pose, not its transform from this component
+	// This is up to the end user to make use of as its part of the query steps.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
+		bool bOnlyUseHandPose;
+
 	// If true we will not create the mesh relative transform using the attach socket we are attached too
 	// Useful in cases where you aren't doing per bone gripping but want the socket to follow a bone that is animating
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data")
