@@ -88,9 +88,8 @@ bool UVRLogComponent::DrawConsoleToRenderTarget2D(EBPVRConsoleDrawType DrawType,
 
 	// Create the FCanvas which does the actual rendering.
 	//const ERHIFeatureLevel::Type FeatureLevel = World != nullptr ? World->FeatureLevel : GMaxRHIFeatureLevel;
-
 	FCanvas * RenderCanvas = new FCanvas(
-		Texture->GameThread_GetRenderTargetResource(),
+		(FRenderTarget*)Texture->GameThread_GetRenderTargetResource(),
 		nullptr,
 		World,
 		World->GetFeatureLevel(),

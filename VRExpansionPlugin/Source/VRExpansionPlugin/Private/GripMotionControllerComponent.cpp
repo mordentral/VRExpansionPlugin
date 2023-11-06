@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "PrimitiveSceneInfo.h"
 #include "Engine/World.h"
+#include "PrimitiveSceneProxy.h"
 #include "GameFramework/WorldSettings.h"
 #include "IXRSystemAssets.h"
 #include "Components/StaticMeshComponent.h"
