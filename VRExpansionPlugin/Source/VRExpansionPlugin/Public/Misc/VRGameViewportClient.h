@@ -3,8 +3,12 @@
 
 #pragma once
 #include "Engine/GameViewportClient.h"
+
 //#include "Engine/Engine.h"
 #include "CoreMinimal.h"
+#include "InputKeyEventArgs.h"
+#include "Engine/World.h"
+#include "Engine/GameInstance.h"
 
 #include "VRGameViewportClient.generated.h"
 
@@ -67,7 +71,7 @@ public:
 		{
 			BPOnWindowCloseRequested.Broadcast();
 		}
-
+		
 		if (bIgnoreWindowCloseCommands)
 		{
 			return false;

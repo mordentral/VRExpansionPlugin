@@ -3,6 +3,7 @@
 #include "VRBPDatatypes.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRBPDatatypes)
 
+#include "HAL/IConsoleManager.h"
 #include "Chaos/ChaosEngineInterface.h"
 
 namespace VRDataTypeCVARs

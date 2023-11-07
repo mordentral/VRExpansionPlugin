@@ -7,6 +7,8 @@
 //#include "WorldCollision.h"
 #include "PhysicsPublic.h"
 #include "Engine/ScopedMovementUpdate.h"
+#include "SceneManagement.h"
+#include "PrimitiveSceneProxy.h"
 //#include "DrawDebugHelpers.h"
 #include "IHeadMountedDisplay.h"
 #include "IXRTrackingSystem.h"

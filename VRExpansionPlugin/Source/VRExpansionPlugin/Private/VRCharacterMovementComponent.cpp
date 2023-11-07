@@ -29,6 +29,7 @@
 
 #include "Engine/DemoNetDriver.h"
 #include "Engine/NetworkObjectList.h"
+#include "UObject/Package.h"
 
 #include "VRRootComponent.h"
 #include "WorldCollision.h"
