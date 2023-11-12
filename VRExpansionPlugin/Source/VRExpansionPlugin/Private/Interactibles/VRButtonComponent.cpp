@@ -7,6 +7,7 @@
 //#include "VRGripInterface.h"
 #include "GripMotionControllerComponent.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/PlayerController.h"
 
   //=============================================================================
 UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializer)
@@ -184,6 +185,13 @@ bool UVRButtonComponent::IsValidOverlap_Implementation(UPrimitiveComponent * Ove
 	AActor * OverlapOwner = OverlapComponent->GetOwner();
 	if (OverlapOwner && OverlapOwner->IsA(ACharacter::StaticClass()))
 		return true;
+
+	if (OverlapOwner)
+	{
+		const AActor* OverlapNetOwner = OverlapOwner->GetNetOwner();
+		if (OverlapNetOwner->IsA(APlayerController::StaticClass()) || OverlapNetOwner->IsA(ACharacter::StaticClass()))
+			return true;
+	}
 
 	// Because epic motion controllers are not owned by characters have to check here too in case someone implements it like that
 	// Now since our grip controllers are a subclass to the std ones we only need to check for the base one instead of both.
