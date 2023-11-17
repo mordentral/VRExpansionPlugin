@@ -105,7 +105,9 @@ EBPOpenVRHMDDeviceType UOpenVRExpansionFunctionLibrary::GetOpenVRHMDType()
 				DeviceType = EBPOpenVRHMDDeviceType::DT_Vive;
 			}
 			else if ((DeviceModelNumber.Find("oculus quest", ESearchCase::IgnoreCase) != INDEX_NONE) ||
-					(DeviceModelNumber.Find("miramar", ESearchCase::IgnoreCase) != INDEX_NONE))
+					(DeviceModelNumber.Find("miramar", ESearchCase::IgnoreCase) != INDEX_NONE) ||
+					(DeviceModelNumber.Find("quest", ESearchCase::IgnoreCase) != INDEX_NONE) || //lets check for quest as substring for all versions
+					(DeviceModelNumber.Find("eureka", ESearchCase::IgnoreCase) != INDEX_NONE)) //older firmware might stil use codename (quest pro)
 			{
 				DeviceType = EBPOpenVRHMDDeviceType::DT_OculusQuestHMD;
 			}
