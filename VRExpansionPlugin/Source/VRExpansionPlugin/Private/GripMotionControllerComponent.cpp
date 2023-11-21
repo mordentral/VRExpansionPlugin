@@ -4646,7 +4646,7 @@ void UGripMotionControllerComponent::UpdateTracking(float DeltaTime)
 			
 			float WorldToMeters = GetWorld() ? GetWorld()->GetWorldSettings()->WorldToMeters : 100.0f;
 			ETrackingStatus LastTrackingStatus = CurrentTrackingStatus;
-			const bool bNewTrackedState = PollControllerState_GameThread(Position, Orientation, bProvidedLinearVelocity, LinearVelocity, bProvidedAngularVelocity, AngularVelocityAsAxisAndLength, bProvidedLinearAcceleration, LinearAcceleration, WorldToMeters);
+			const bool bNewTrackedState = GripPollControllerState_GameThread(Position, Orientation, bProvidedLinearVelocity, LinearVelocity, bProvidedAngularVelocity, AngularVelocityAsAxisAndLength, bProvidedLinearAcceleration, LinearAcceleration, WorldToMeters);
 
 			// if controller tracking just kicked in or we haven't started rendering in the (possibly present) 
 			// visualization component.
@@ -7411,7 +7411,7 @@ void UGripMotionControllerComponent::FGripViewExtension::PreRenderViewFamily_Ren
 		FVector Position = MotionControllerComponent->LateUpdateParams.GripRenderThreadRelativeTransform.GetTranslation();
 		FRotator Orientation = MotionControllerComponent->LateUpdateParams.GripRenderThreadRelativeTransform.GetRotation().Rotator();
 
-		if (!MotionControllerComponent->PollControllerState_RenderThread(Position, Orientation, WorldToMetersScale))
+		if (!MotionControllerComponent->GripPollControllerState_RenderThread(Position, Orientation, WorldToMetersScale))
 		{
 			return;
 		}
