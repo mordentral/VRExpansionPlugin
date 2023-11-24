@@ -183,13 +183,14 @@ bool UVRButtonComponent::IsValidOverlap_Implementation(UPrimitiveComponent * Ove
 
 	// Should return faster checking for owning character
 	AActor * OverlapOwner = OverlapComponent->GetOwner();
-	if (OverlapOwner && OverlapOwner->IsA(ACharacter::StaticClass()))
-		return true;
 
-	if (OverlapOwner)
+	if (IsValid(OverlapOwner))
 	{
+		if (OverlapOwner->IsA(ACharacter::StaticClass()))
+			return true;
+
 		const AActor* OverlapNetOwner = OverlapOwner->GetNetOwner();
-		if (OverlapNetOwner->IsA(APlayerController::StaticClass()) || OverlapNetOwner->IsA(ACharacter::StaticClass()))
+		if (IsValid(OverlapNetOwner) && OverlapNetOwner->IsA(APlayerController::StaticClass()) || OverlapNetOwner->IsA(ACharacter::StaticClass()))
 			return true;
 	}
 
