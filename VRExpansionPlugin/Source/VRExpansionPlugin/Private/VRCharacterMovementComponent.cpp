@@ -4208,7 +4208,6 @@ bool UVRCharacterMovementComponent::ServerCheckClientErrorVR(float ClientTimeSta
 			{
 				if (!FMath::IsNearlyEqual(FRotator::ClampAxis(ClientRot.Yaw), FRotator::ClampAxis(UpdatedComponent->GetComponentRotation().Yaw), CharacterMovementComponentStatics::fRotationCorrectionThreshold))
 				{
-					GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, FString::Printf(TEXT("Client Rot %s"), *ClientRot.ToString()));
 					return true;
 				}
 			}
@@ -4219,7 +4218,6 @@ bool UVRCharacterMovementComponent::ServerCheckClientErrorVR(float ClientTimeSta
 
 				if (FQuat::ErrorAutoNormalize(UpdatedComponent->GetComponentQuat(), ClientRot.Quaternion()) > CorrectionValue)
 				{
-					GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, FString::Printf(TEXT("Client Rot %s"), *ClientRot.ToString()));
 					return true;
 				}
 			}
