@@ -82,8 +82,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "BaseVRCharacterMovementComponent|VRLocations")
 		void SetAutoOrientToFloorNormal(bool bAutoOrient, bool bRevertGravityWhenDisabled = true);
 
-	void AutoTraceAndSetCharacterToNewGravity(FHitResult & TargetFloor, float DeltaTime);
-	bool SetCharacterToNewGravity(FVector NewGravityDirection, bool bOrientToNewGravity = true);
+	// Store if our current movement was blending rotation
+	bool bIsBlendingOrientation = false;
+
+	void AutoTraceAndSetCharacterToNewGravity(FHitResult & TargetFloor, float DeltaTime = 1.0f);
+	bool SetCharacterToNewGravity(FVector NewGravityDirection, bool bOrientToNewGravity = true, float Deltatime = 1.0f);
 
 	// Adding seated transition
 	void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;

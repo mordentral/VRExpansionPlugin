@@ -189,7 +189,17 @@ void FSavedMove_VRBaseCharacter::PostUpdate(ACharacter* C, EPostUpdateMode PostU
 		ConditionalValues.CustomVRInputVector = moveComp->CustomVRInputVector;
 		ConditionalValues.MoveActionArray = moveComp->MoveActionArray;
 		moveComp->MoveActionArray.Clear();
+
+		if (!moveComp->bUseClientControlRotation)
+		{
+			if (const USceneComponent* UpdatedComponent = moveComp->UpdatedComponent)
+			{
+				SavedControlRotation = UpdatedComponent->GetComponentRotation().Clamp();
+			}
+		}
 	}
+
+
 	//}
 	/*if (ConditionalValues.MoveAction.MoveAction != EVRMoveAction::VRMOVEACTION_None)
 	{
@@ -355,8 +365,21 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 
 	ACharacter* CharacterOwner = CharacterMovement.GetCharacterOwner();
 
-	bool bCanRepRollAndPitch = (CharacterOwner && (CharacterOwner->bUseControllerRotationRoll || CharacterOwner->bUseControllerRotationPitch));
-	bool bRepRollAndPitch = bCanRepRollAndPitch && (Roll != 0 || Pitch != 0);
+	bool bRepRollAndPitch = false;
+
+	if (AVRBaseCharacter* BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
+	{
+		if (!BaseChar->VRMovementReference->bUseClientControlRotation)
+		{
+			bRepRollAndPitch = (Roll != 0 || Pitch != 0);
+		}
+	}
+	else
+	{
+		bool bCanRepRollAndPitch = (CharacterOwner && (CharacterOwner->bUseControllerRotationRoll || CharacterOwner->bUseControllerRotationPitch));
+		bRepRollAndPitch = bCanRepRollAndPitch && (Roll != 0 || Pitch != 0);
+	}
+
 	Ar.SerializeBits(&bRepRollAndPitch, 1);
 
 	if (bRepRollAndPitch)
