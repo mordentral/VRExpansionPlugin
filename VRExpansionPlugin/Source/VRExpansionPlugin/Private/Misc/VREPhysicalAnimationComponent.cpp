@@ -295,6 +295,9 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 								FTransform GlobalTransform = WeldedData->RelativeTransform * Trans;
 								FTransform RelativeTM = GlobalTransform * GlobalPoseInv;
 
+								// Fix chaos ensure
+								RelativeTM.RemoveScaling();
+
 								if (!WeldedData->LastLocal.Equals(RelativeTM))
 								{
 									FPhysicsInterface::SetLocalTransform(Shape, RelativeTM);
