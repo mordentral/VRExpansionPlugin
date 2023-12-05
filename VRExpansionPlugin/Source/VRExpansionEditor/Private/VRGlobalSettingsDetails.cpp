@@ -54,12 +54,12 @@ void FVRGlobalSettingsDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuil
 	//LockedLocationProperty->SetOnPropertyValueChanged(OnLockedStateChangedDelegate);
 
 	DetailBuilder.EditCategory("Utilities")
-		.AddCustomRow(NSLOCTEXT("VRGlobalSettingsDetails", "Tools", "Fix Invalid 5.2 Animation Assets"))
+		.AddCustomRow(LOCTEXT("FixInvalidAnimationAssets", "Fix Invalid 5.2 Animation Assets"))
 		.NameContent()
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(NSLOCTEXT("VRGlobalSettingsDetails", "Tools", "Fix Invalid 5.2 Animation Assets"))
+		.Text(LOCTEXT("FixInvalidAnimationAssets", "Fix Invalid 5.2 Animation Assets"))
 		]
 	.ValueContent()
 		.MaxDesiredWidth(125.f)
@@ -73,7 +73,7 @@ void FVRGlobalSettingsDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuil
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(NSLOCTEXT("VRGlobalSettingsDetails", "Tools", "Fix Animation Assets"))
+		.Text(LOCTEXT("FixInvalidAnimationAssetsButton", "Fix Animation Assets"))
 		]
 		];
 }
