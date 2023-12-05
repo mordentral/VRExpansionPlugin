@@ -559,7 +559,7 @@ void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailB
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(NSLOCTEXT("HandSocketDetails", "UpdateHandSocket", "Save Current Pose"))
+		.Text(LOCTEXT("UpdateHandSocketText", "Save Current Pose"))
 		]
 	.ValueContent()
 		.MaxDesiredWidth(125.f)
@@ -573,7 +573,7 @@ void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailB
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(NSLOCTEXT("HandSocketDetails", "UpdateHandSocket", "Save"))
+		.Text(LOCTEXT("UpdateHandSocketButton", "Save"))
 		]
 		];
 }
