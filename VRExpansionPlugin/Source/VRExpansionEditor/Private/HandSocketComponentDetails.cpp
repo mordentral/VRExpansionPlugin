@@ -554,7 +554,7 @@ void FHandSocketComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailB
 	ShowVisualizationProperty->SetOnPropertyValueChanged(OnShowVisChangedDelegate);
 
 	DetailBuilder.EditCategory("Hand Animation")
-		.AddCustomRow(NSLOCTEXT("HandSocketDetails", "UpdateHandSocket", "Save Current Pose"))
+		.AddCustomRow(LOCTEXT("UpdateHandSocketRow", "Save Current Pose"))
 		.NameContent()
 		[
 			SNew(STextBlock)
