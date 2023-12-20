@@ -406,14 +406,15 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 		return;
 	}
 
-	if (Prim1->Mobility == EComponentMobility::Static || Prim2->Mobility == EComponentMobility::Static)
+	// Appears to work now with the chaos collision ignore setup
+	/*if (Prim1->Mobility == EComponentMobility::Static || Prim2->Mobility == EComponentMobility::Static)
 	{
 		UE_LOG(VRE_CollisionIgnoreLog, Error, TEXT("Set Objects Ignore Collision called with at least one static mobility object (cannot ignore collision with it)!!"));
 		if (bIgnoreCollision)
 		{
 			return;
 		}
-	}
+	}*/
 
 	USkeletalMeshComponent* SkeleMesh = nullptr;
 	USkeletalMeshComponent* SkeleMesh2 = nullptr;
