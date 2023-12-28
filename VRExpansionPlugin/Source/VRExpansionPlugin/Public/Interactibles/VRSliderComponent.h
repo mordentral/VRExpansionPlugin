@@ -224,7 +224,6 @@ public:
 	*/
 	float GetDistanceAlongSplineAtSplineInputKey(float InKey) const;
 
-
 	// Calculates the current slider progress
 	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
 		float CalculateSliderProgress();
@@ -245,6 +244,11 @@ public:
 
 	void GetLerpedKey(float &ClosestKey, float DeltaTime);
 	float GetCurrentSliderProgress(FVector CurLocation, bool bUseKeyInstead = false, float CurKey = 0.f);
+
+	// Returns the slider progress as it is currently per axis (not the total progress, just the amount per axis that has a min/max)
+	UFUNCTION(BlueprintCallable, Category = "VRSliderComponent")
+		FVector GetPerAxisSliderProgress();
+
 	FVector ClampSlideVector(FVector ValueToClamp);
 
 	// ------------------------------------------------

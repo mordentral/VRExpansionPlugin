@@ -779,6 +779,50 @@ float UVRSliderComponent::GetDistanceAlongSplineAtSplineInputKey(float InKey) co
 	return 0.0f;
 }
 
+FVector UVRSliderComponent::GetPerAxisSliderProgress()
+{
+	// If we are following a spline per axis makes no sense, return overall progress on all axis's
+	if (SplineComponentToFollow != nullptr)
+	{
+		return FVector(CurrentSliderProgress);
+	}
+
+	// Get our relative space location
+	FTransform ParentTransform = UVRInteractibleFunctionLibrary::Interactible_GetCurrentParentTransform(this);
+	FTransform CurrentRelativeTransform = InitialRelativeTransform * ParentTransform;
+	FVector CalculatedLocation = CurrentRelativeTransform.InverseTransformPosition(this->GetComponentLocation());
+	CalculatedLocation = bSlideDistanceIsInParentSpace ? CalculatedLocation * InitialRelativeTransform.GetScale3D() : CalculatedLocation;
+
+	// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
+	FVector Progress;
+
+	if (bUseLegacyLogic)
+	{
+		if(MinSlideDistance.X != 0.0f || MaxSlideDistance.X != 0.0)
+			Progress.X = FMath::Clamp(FMath::Abs(-MinSlideDistance.X - CalculatedLocation.X) / FMath::Abs(-MinSlideDistance.X - MaxSlideDistance.X), 0.0f, 1.0f);
+		if (MinSlideDistance.Y != 0.0f || MaxSlideDistance.Y != 0.0)
+			Progress.Y = FMath::Clamp(FMath::Abs(-MinSlideDistance.Y - CalculatedLocation.Y) / FMath::Abs(-MinSlideDistance.Y - MaxSlideDistance.Y), 0.0f, 1.0f);
+		if (MinSlideDistance.Z != 0.0f || MaxSlideDistance.Z != 0.0)
+			Progress.Z = FMath::Clamp(FMath::Abs(-MinSlideDistance.Z - CalculatedLocation.Z) / FMath::Abs(-MinSlideDistance.Z - MaxSlideDistance.Z), 0.0f, 1.0f);
+	}
+	else
+	{
+		FVector MinABS = MinSlideDistance.GetAbs();
+		FVector MaxABS = MaxSlideDistance.GetAbs();
+
+		if (MinSlideDistance.X != 0.0f || MaxSlideDistance.X != 0.0)
+			Progress.X = FMath::Clamp(FMath::Abs(-MinABS.X - CalculatedLocation.X) / FMath::Abs(-MinABS.X - MaxABS.X), 0.0f, 1.0f);
+		if (MinSlideDistance.Y != 0.0f || MaxSlideDistance.Y != 0.0)
+			Progress.Y = FMath::Clamp(FMath::Abs(-MinABS.Y - CalculatedLocation.Y) / FMath::Abs(-MinABS.Y - MaxABS.Y), 0.0f, 1.0f);
+		if (MinSlideDistance.Z != 0.0f || MaxSlideDistance.Z != 0.0)
+			Progress.Z = FMath::Clamp(FMath::Abs(-MinABS.Z - CalculatedLocation.Z) / FMath::Abs(-MinABS.Z - MaxABS.Z), 0.0f, 1.0f);
+	}
+
+	// Don't setup snap point calculations for this function for now
+
+	return Progress;
+}
+
 float UVRSliderComponent::GetCurrentSliderProgress(FVector CurLocation, bool bUseKeyInstead, float CurKey)
 {
 	if (SplineComponentToFollow != nullptr)
