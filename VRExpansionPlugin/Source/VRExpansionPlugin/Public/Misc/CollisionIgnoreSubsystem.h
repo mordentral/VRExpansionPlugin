@@ -117,11 +117,11 @@ public:
 
 	FORCEINLINE bool operator==(const FCollisionPrimPair& Other) const
 	{
-		/*if (!Prim1.IsValid() || !Prim2.IsValid())
+		if (!IsValid(Prim1) || !IsValid(Prim2))
 			return false;
 
-		if (!Other.Prim1.IsValid() || !Other.Prim2.IsValid())
-			return false;*/
+		if (!IsValid(Other.Prim1) || !IsValid(Other.Prim2))
+			return false;
 		
 		return(
 			(Prim1.Get() == Other.Prim1.Get() || Prim1.Get() == Other.Prim2.Get()) &&
