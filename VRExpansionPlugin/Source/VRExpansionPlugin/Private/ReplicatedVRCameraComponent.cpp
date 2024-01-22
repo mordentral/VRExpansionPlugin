@@ -146,7 +146,7 @@ bool UReplicatedVRCameraComponent::HasTrackingParameters()
 void UReplicatedVRCameraComponent::ApplyTrackingParameters(FVector &OriginalPosition, bool bSkipLocZero)
 {
 	// I'm keeping the original values here as it lets me send them out for seated mode
-	if (!bSkipLocZero /*&& ((AttachChar && !AttachChar->bRetainRoomscale))*/)
+	if (!bSkipLocZero && (AttachChar && !AttachChar->bRetainRoomscale))
 	{
 		OriginalPosition.X = 0;
 		OriginalPosition.Y = 0;	
