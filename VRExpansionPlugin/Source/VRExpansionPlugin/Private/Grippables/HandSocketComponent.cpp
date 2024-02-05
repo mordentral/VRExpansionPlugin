@@ -67,6 +67,7 @@ UHandSocketComponent::UHandSocketComponent(const FObjectInitializer& ObjectIniti
 	HandRelativePlacement = FTransform::Identity;
 	bAlwaysInRange = false;
 	bDisabled = false;
+	bLockInPlace = false;
 	bMatchRotation = false;
 	OverrideDistance = 0.0f;
 	SlotPrefix = FName("VRGripP");
@@ -387,7 +388,7 @@ FTransform UHandSocketComponent::GetHandRelativePlacement()
 	{
 		if (USceneComponent* ParentComp = GetAttachParent())
 		{
-			return HandRelativePlacement.GetRelativeTransform(this->GetRelativeTransform());
+			return HandRelativePlacement.GetRelativeTransform(bLockInPlace ? LockedRelativeTransform : this->GetRelativeTransform());
 			//FTransform curTrans = HandRelativePlacement * ParentComp->GetComponentTransform();
 			//return curTrans.GetRelativeTransform(this->GetComponentTransform());
 		}
@@ -427,13 +428,13 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 			bool bIsRightHand = HandType == EControllerHand::Right;
 			if (bLeftHandDominant == bIsRightHand)
 			{
-				FTransform ReturnTrans = this->GetRelativeTransform();
+				FTransform ReturnTrans = bLockInPlace ? LockedRelativeTransform : this->GetRelativeTransform();
 				if (USceneComponent* AttParent = this->GetAttachParent())
 				{
 					ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
 					if (bOnlyFlipRotation)
 					{
-						ReturnTrans.SetTranslation(this->GetRelativeLocation());
+						ReturnTrans.SetTranslation(bLockInPlace ? LockedRelativeTransform.GetLocation() : this->GetRelativeLocation());
 					}
 
 					if (this->GetAttachSocketName() != NAME_None)
@@ -443,12 +444,37 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 
 					ReturnTrans = ReturnTrans * AttParent->GetComponentTransform();
 				}
+
 				return ReturnTrans;
 			}
 		}
 	}
 
-	return this->GetComponentTransform();
+
+	if (bLockInPlace)
+	{
+		FTransform ReturnTrans = LockedRelativeTransform;
+
+		if (USceneComponent* AttParent = this->GetAttachParent())
+		{	
+			if (this->GetAttachSocketName() != NAME_None)
+			{
+				ReturnTrans = ReturnTrans * AttParent->GetSocketTransform(GetAttachSocketName(), RTS_Component);
+			}
+
+			ReturnTrans = ReturnTrans * AttParent->GetComponentTransform();
+		}
+		else
+		{
+			ReturnTrans = this->GetComponentTransform(); // Fallback
+		}
+
+		return ReturnTrans;
+	}
+	else
+	{
+		return this->GetComponentTransform();
+	}
 }
 
 FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, bool bUseParentScale, bool bUseMirrorScale)
@@ -459,7 +485,7 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 	if (!this->GetAttachParent())
 		return FTransform::Identity;
 
-	FTransform relTrans = this->GetRelativeTransform();
+	FTransform relTrans = bLockInPlace ? LockedRelativeTransform : this->GetRelativeTransform();
 	FTransform HandTrans = GetHandRelativePlacement();
 	FTransform ReturnTrans = FTransform::Identity;
 
@@ -552,11 +578,19 @@ FTransform UHandSocketComponent::GetBoneTransformAtTime(UAnimSequence* MyAnimSeq
 void UHandSocketComponent::OnRegister()
 {
 
+
+	UWorld* MyWorld = GetWorld();
+
+	if (!MyWorld)
+		return;
+
+	TEnumAsByte<EWorldType::Type> MyWorldType = MyWorld->WorldType;
+
 #if WITH_EDITORONLY_DATA
 	AActor* MyOwner = GetOwner();
 	if (bShowVisualizationMesh && (MyOwner != nullptr) && !IsRunningCommandlet())
 	{
-		if (HandVisualizerComponent == nullptr && bShowVisualizationMesh)
+		if (HandVisualizerComponent == nullptr && bShowVisualizationMesh && (MyWorldType == EWorldType::EditorPreview || MyWorldType == EWorldType::Editor))
 		{
 			HandVisualizerComponent = NewObject<UPoseableMeshComponent>(MyOwner, NAME_None, RF_Transactional | RF_TextExportTransient);
 			HandVisualizerComponent->SetupAttachment(this);
@@ -570,9 +604,11 @@ void UHandSocketComponent::OnRegister()
 			HandVisualizerComponent->RegisterComponentWithWorld(GetWorld());
 			//HandVisualizerComponent->SetUsingAbsoluteScale(true);
 		}
-		else if (!bShowVisualizationMesh && HandVisualizerComponent)
+		else if (/*!bShowVisualizationMesh && */HandVisualizerComponent)
 		{
-			HideVisualizationMesh();
+			HandVisualizerComponent->SetVisibility(false);
+			HandVisualizerComponent->DestroyComponent();
+			HandVisualizerComponent = nullptr;
 		}
 
 		if (HandVisualizerComponent)
@@ -594,6 +630,16 @@ void UHandSocketComponent::OnRegister()
 	}
 
 #endif	// WITH_EDITORONLY_DATA
+
+	if (bLockInPlace && (MyWorldType != EWorldType::EditorPreview && MyWorldType != EWorldType::Editor))
+	{
+		// Store current starting relative transform
+		LockedRelativeTransform = GetRelativeTransform();
+
+		// Kill off child updates
+		SetUsingAbsoluteLocation(true);
+		SetUsingAbsoluteRotation(true);
+	}
 
 	Super::OnRegister();
 }
@@ -819,6 +865,13 @@ void UHandSocketComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 		else if (PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bShowVisualizationMesh))
 		{
 			HideVisualizationMesh();
+		}
+		else if (PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bLockInPlace))
+		{
+			if (bLockInPlace)
+			{
+				LockedRelativeTransform = this->GetRelativeTransform();
+			}
 		}
 #endif
 	}
