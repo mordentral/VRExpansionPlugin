@@ -169,9 +169,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hand Socket Data|Control")
 		bool bLockInPlace;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Hand Socket Data")
-		FTransform LockedRelativeTransform;
-
 	// Snap distance to use if you want to override the defaults.
 	// Will be ignored if == 0.0f or bAlwaysInRange is true
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Socket Data|Searching")
