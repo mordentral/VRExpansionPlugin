@@ -388,7 +388,7 @@ FTransform UHandSocketComponent::GetHandRelativePlacement()
 	{
 		if (USceneComponent* ParentComp = GetAttachParent())
 		{
-			return HandRelativePlacement.GetRelativeTransform(bLockInPlace ? LockedRelativeTransform : this->GetRelativeTransform());
+			return HandRelativePlacement.GetRelativeTransform(this->GetRelativeTransform());
 			//FTransform curTrans = HandRelativePlacement * ParentComp->GetComponentTransform();
 			//return curTrans.GetRelativeTransform(this->GetComponentTransform());
 		}
@@ -428,13 +428,13 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 			bool bIsRightHand = HandType == EControllerHand::Right;
 			if (bLeftHandDominant == bIsRightHand)
 			{
-				FTransform ReturnTrans = bLockInPlace ? LockedRelativeTransform : this->GetRelativeTransform();
+				FTransform ReturnTrans = this->GetRelativeTransform();
 				if (USceneComponent* AttParent = this->GetAttachParent())
 				{
 					ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
 					if (bOnlyFlipRotation)
 					{
-						ReturnTrans.SetTranslation(bLockInPlace ? LockedRelativeTransform.GetLocation() : this->GetRelativeLocation());
+						ReturnTrans.SetTranslation(this->GetRelativeLocation());
 					}
 
 					if (this->GetAttachSocketName() != NAME_None)
@@ -453,7 +453,7 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 
 	if (bLockInPlace)
 	{
-		FTransform ReturnTrans = LockedRelativeTransform;
+		FTransform ReturnTrans = this->GetRelativeTransform();
 
 		if (USceneComponent* AttParent = this->GetAttachParent())
 		{	
@@ -485,7 +485,7 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 	if (!this->GetAttachParent())
 		return FTransform::Identity;
 
-	FTransform relTrans = bLockInPlace ? LockedRelativeTransform : this->GetRelativeTransform();
+	FTransform relTrans = this->GetRelativeTransform();
 	FTransform HandTrans = GetHandRelativePlacement();
 	FTransform ReturnTrans = FTransform::Identity;
 
@@ -634,7 +634,7 @@ void UHandSocketComponent::OnRegister()
 	if (bLockInPlace && (MyWorldType != EWorldType::EditorPreview && MyWorldType != EWorldType::Editor))
 	{
 		// Store current starting relative transform
-		LockedRelativeTransform = GetRelativeTransform();
+		//LockedRelativeTransform = GetRelativeTransform();
 
 		// Kill off child updates
 		SetUsingAbsoluteLocation(true);
@@ -865,13 +865,6 @@ void UHandSocketComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 		else if (PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bShowVisualizationMesh))
 		{
 			HideVisualizationMesh();
-		}
-		else if (PropertyThatChanged->GetFName() == GET_MEMBER_NAME_CHECKED(UHandSocketComponent, bLockInPlace))
-		{
-			if (bLockInPlace)
-			{
-				LockedRelativeTransform = this->GetRelativeTransform();
-			}
 		}
 #endif
 	}
