@@ -161,10 +161,10 @@ public:
 		bool bDisabled;
 
 	/*** 
-	/*	If true then the hand socket will be locked in place during gameplay and not moved with the actor (saving performance)
-	/*  Generally you want this unless you are moving a hand socket manually during play for custom grip offsetting logic
-	/*  If you need the relative location of the hand socket for game logic, get the LockedRelativeTransform variable if bLockInPlace is enabled.
-	/*  Defaulted off currently for bug testing
+	//	If true then the hand socket will be locked in place during gameplay and not moved with the actor (saving performance)
+	//  Generally you want this unless you are moving a hand socket manually during play for custom grip offsetting logic
+	//  If you need the relative location of the hand socket for game logic, get the LockedRelativeTransform variable if bLockInPlace is enabled.
+	//  Defaulted off currently for bug testing
 	***/
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hand Socket Data|Control")
 		bool bLockInPlace;
