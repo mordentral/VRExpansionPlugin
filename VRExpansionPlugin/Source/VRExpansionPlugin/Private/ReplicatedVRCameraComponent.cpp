@@ -204,7 +204,7 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 					Position.Y = 0.0f;
 
 					FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
-					if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+					if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
 					{
 						AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 					}
@@ -244,7 +244,7 @@ void UReplicatedVRCameraComponent::RunNetworkedSmoothing(float DeltaTime)
 	if (AttachChar && !AttachChar->bRetainRoomscale)
 	{
 		FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
-		if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+		if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
 		{
 			AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 		}
@@ -470,7 +470,7 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 							Position.X = 0.0f;
 							Position.Y = 0.0f;
 							//FRotator OffsetRotator = 
-							if (AttachChar->VRMovementReference->GetReplicatedMovementMode() != EVRConjoinedMovementModes::C_VRMOVE_Seated)
+							if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() != EVRConjoinedMovementModes::C_VRMOVE_Seated)
 							{
 								AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 
@@ -521,7 +521,7 @@ void UReplicatedVRCameraComponent::OnRep_ReplicatedCameraTransform()
 		CameraPosition.Y = 0;
 
 		FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
-		if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+		if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
 		{
 			AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 		}

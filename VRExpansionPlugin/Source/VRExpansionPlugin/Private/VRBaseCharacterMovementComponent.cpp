@@ -2017,8 +2017,11 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			// I am currently skipping smoothing on rotation operations
 			if ((!OldRotation.Equals(NewRotation, 1e-5f)))// || Velocity.IsNearlyZero()))
 			{
-				BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(BaseVRCharacterOwner->bRetainRoomscale ? FVector::ZeroVector : BaseVRCharacterOwner->VRRootReference->GetTargetHeightOffset());			
-				//BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				if (BaseVRCharacterOwner->NetSmoother)
+				{
+					BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(BaseVRCharacterOwner->bRetainRoomscale ? FVector::ZeroVector : BaseVRCharacterOwner->VRRootReference->GetTargetHeightOffset());			
+					//BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(FVector::ZeroVector);
+				}
 				UpdatedComponent->SetWorldLocationAndRotation(NewLocation, NewRotation, false, nullptr, GetTeleportType());
 				ClientData->MeshTranslationOffset = FVector::ZeroVector;
 				ClientData->MeshRotationOffset = ClientData->MeshRotationTarget;
@@ -2152,7 +2155,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 
 	if (ClientData)
 	{
-		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
+		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear && BaseVRCharacterOwner->NetSmoother)
 		{
 			// Erased most of the code here, check back in later
 			const USceneComponent* MeshParent = BaseVRCharacterOwner->NetSmoother->GetAttachParent();
@@ -2167,7 +2170,7 @@ void UVRBaseCharacterMovementComponent::SmoothClientPosition_UpdateVRVisuals()
 			FVector HeightOffset = (BaseVRCharacterOwner->bRetainRoomscale ? FVector::ZeroVector : BaseVRCharacterOwner->VRRootReference->GetTargetHeightOffset());
 			BaseVRCharacterOwner->NetSmoother->SetRelativeLocation(NewRelLocation + HeightOffset);
 		}
-		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Exponential)
+		else if (NetworkSmoothingMode == ENetworkSmoothingMode::Exponential && BaseVRCharacterOwner->NetSmoother)
 		{
 			const USceneComponent* MeshParent = BaseVRCharacterOwner->NetSmoother->GetAttachParent();
 			FVector MeshParentScale = MeshParent != nullptr ? MeshParent->GetComponentScale() : FVector(1.0f, 1.0f, 1.0f);

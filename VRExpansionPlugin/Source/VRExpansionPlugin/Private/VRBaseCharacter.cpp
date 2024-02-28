@@ -79,7 +79,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (VRReplicatedCamera)
 	{
 		//VRReplicatedCamera->bOffsetByHMD = false;
-		VRReplicatedCamera->SetupAttachment(VRProxyComponent);
+		VRReplicatedCamera->SetupAttachment(VRProxyComponent ? VRProxyComponent : NetSmoother ? NetSmoother : RootComponent);
 		VRReplicatedCamera->OverrideSendTransform = &AVRBaseCharacter::Server_SendTransformCamera;
 	}
 
@@ -94,7 +94,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	if (ParentRelativeAttachment && VRReplicatedCamera)
 	{
 		// Moved this to be root relative as the camera late updates were killing how it worked
-		ParentRelativeAttachment->SetupAttachment(VRProxyComponent);
+		ParentRelativeAttachment->SetupAttachment(VRProxyComponent ? VRProxyComponent : NetSmoother ? NetSmoother : RootComponent);
 		//ParentRelativeAttachment->bOffsetByHMD = false;
 		ParentRelativeAttachment->AddTickPrerequisiteComponent(VRReplicatedCamera);
 
@@ -107,7 +107,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	LeftMotionController = CreateOptionalDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::LeftMotionControllerComponentName);
 	if (IsValid(LeftMotionController))
 	{
-		LeftMotionController->SetupAttachment(VRProxyComponent);
+		LeftMotionController->SetupAttachment(VRProxyComponent ? VRProxyComponent : NetSmoother ? NetSmoother : RootComponent);
 		//LeftMotionController->MotionSource = FXRMotionControllerBase::LeftHandSourceId;
 		LeftMotionController->SetTrackingMotionSource(IMotionController::LeftHandSourceId);
 		//LeftMotionController->Hand = EControllerHand::Left;
@@ -121,7 +121,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 	RightMotionController = CreateOptionalDefaultSubobject<UGripMotionControllerComponent>(AVRBaseCharacter::RightMotionControllerComponentName);
 	if (IsValid(RightMotionController))
 	{
-		RightMotionController->SetupAttachment(VRProxyComponent);
+		RightMotionController->SetupAttachment(VRProxyComponent ? VRProxyComponent : NetSmoother ? NetSmoother : RootComponent);
 		//RightMotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
 		RightMotionController->SetTrackingMotionSource(IMotionController::RightHandSourceId);
 		//RightMotionController->Hand = EControllerHand::Right;
@@ -680,6 +680,9 @@ void AVRBaseCharacter::InitSeatedModeTransition()
 
 void AVRBaseCharacter::TickSeatInformation(float DeltaTime)
 {
+	if (!VRReplicatedCamera)
+		return;
+	
 	float LastThresholdScaler = SeatInformation.CurrentThresholdScaler;
 	bool bLastOverThreshold = SeatInformation.bIsOverThreshold;
 
@@ -779,7 +782,7 @@ bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeat
 
 		// Automate the intial relative camera transform for this mode
 		// I think we can remove the initial value alltogether eventually right?
-		if (!bRetainRoomscale)
+		if (!bRetainRoomscale && VRReplicatedCamera)
 		{
 			InitialRelCameraTransform = FTransform(VRReplicatedCamera->ReplicatedCameraTransform.Rotation, VRReplicatedCamera->ReplicatedCameraTransform.Position, VRReplicatedCamera->GetComponentScale());
 		}
@@ -909,7 +912,7 @@ FVector AVRBaseCharacter::SetActorRotationVR(FRotator NewRot, bool bUseYawOnly, 
 		NewRot.Roll = 0.0f;
 	}
 
-	if (bAccountForHMDRotation)
+	if (bAccountForHMDRotation && VRReplicatedCamera)
 	{
 		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());
 		NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();
@@ -944,7 +947,7 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 		NewRot.Roll = 0.0f;
 	}
 
-	if (bAccountForHMDRotation)
+	if (bAccountForHMDRotation && VRReplicatedCamera)
 	{
 		NewRotation = UVRExpansionFunctionLibrary::GetHMDPureYaw_I(VRReplicatedCamera->GetRelativeRotation());//bUseControllerRotationYaw && OwningController ? OwningController->GetControlRotation() : GetActorRotation();
 		NewRotation = (NewRot.Quaternion() * NewRotation.Quaternion().Inverse()).Rotator();

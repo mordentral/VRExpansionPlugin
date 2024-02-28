@@ -50,7 +50,7 @@ void UParentRelativeAttachmentComponent::InitializeComponent()
 	Super::InitializeComponent();
 
 	// Update our tracking
-	if (!bUseFeetLocation && IsValid(AttachChar)) // New case to early out and with less calculations
+	if (!bUseFeetLocation && IsValid(AttachChar) && IsValid(AttachChar->VRReplicatedCamera)) // New case to early out and with less calculations
 	{
 		SetRelativeTransform(AttachChar->VRReplicatedCamera->GetRelativeTransform());
 	}

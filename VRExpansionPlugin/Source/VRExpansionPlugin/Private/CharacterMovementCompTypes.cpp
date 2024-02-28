@@ -369,7 +369,7 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 
 	if (AVRBaseCharacter* BaseChar = Cast<AVRBaseCharacter>(CharacterOwner))
 	{
-		if (!BaseChar->VRMovementReference->bUseClientControlRotation)
+		if (BaseChar->VRMovementReference && !BaseChar->VRMovementReference->bUseClientControlRotation)
 		{
 			bRepRollAndPitch = (Roll != 0 || Pitch != 0);
 		}

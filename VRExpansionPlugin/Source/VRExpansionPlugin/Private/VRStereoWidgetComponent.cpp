@@ -576,28 +576,31 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 					bool bHandledTransform = false;
 					if (AVRBaseCharacter* BaseVRChar = Cast<AVRBaseCharacter>(mpawn))
 					{
-						if (USceneComponent* CameraParent = BaseVRChar->VRReplicatedCamera->GetAttachParent())
+						if (BaseVRChar->VRReplicatedCamera)
 						{
-							FTransform DeltaTrans = FTransform::Identity;
-							if (!BaseVRChar->bRetainRoomscale)
+							if (USceneComponent* CameraParent = BaseVRChar->VRReplicatedCamera->GetAttachParent())
 							{
-								FVector HMDLoc;
-								FQuat HMDRot;
-								GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, HMDRot, HMDLoc);
-
-								HMDLoc.Z = 0.0f;
-
-								if (AVRCharacter* VRChar = Cast<AVRCharacter>(mpawn))
+								FTransform DeltaTrans = FTransform::Identity;
+								if (!BaseVRChar->bRetainRoomscale)
 								{
-									HMDLoc += UVRExpansionFunctionLibrary::GetHMDPureYaw_I(HMDRot.Rotator()).RotateVector(FVector(VRChar->VRRootReference->VRCapsuleOffset.X, VRChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+									FVector HMDLoc;
+									FQuat HMDRot;
+									GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, HMDRot, HMDLoc);
+
+									HMDLoc.Z = 0.0f;
+
+									if (AVRCharacter* VRChar = Cast<AVRCharacter>(mpawn))
+									{
+										HMDLoc += UVRExpansionFunctionLibrary::GetHMDPureYaw_I(HMDRot.Rotator()).RotateVector(FVector(VRChar->VRRootReference->VRCapsuleOffset.X, VRChar->VRRootReference->VRCapsuleOffset.Y, 0.0f));
+									}
+
+									DeltaTrans = FTransform(FQuat::Identity, HMDLoc, FVector(1.0f));
 								}
 
-								DeltaTrans = FTransform(FQuat::Identity, HMDLoc, FVector(1.0f));
+								Transform = OffsetTransform.GetRelativeTransform(CameraParent->GetComponentTransform());
+								Transform = (FTransform(FRotator(0.f, -180.f, 0.f)) * Transform) * DeltaTrans;
+								bHandledTransform = true;
 							}
-
-							Transform = OffsetTransform.GetRelativeTransform(CameraParent->GetComponentTransform());
-							Transform = (FTransform(FRotator(0.f, -180.f, 0.f)) * Transform) * DeltaTrans;
-							bHandledTransform = true;
 						}
 					}
 					else if (UCameraComponent* Camera = mpawn->FindComponentByClass<UCameraComponent>())
