@@ -232,6 +232,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data", meta = (bIgnoreSelf = "true"))
 		static bool GetAnimationSequenceAsPoseSnapShot(UAnimSequence * InAnimationSequence, FPoseSnapshot& OutPoseSnapShot, USkeletalMeshComponent* TargetMesh = nullptr, bool bSkipRootBone = false, bool bFlipHand = false);
 
+
+	/**
+	* Gets all hand socket components in the entire level (this is a slow operation, DO NOT run this on tick)
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
+		static void GetAllHandSocketComponents(TArray<UHandSocketComponent*>& OutHandSockets);
+
+	/**
+	* Gets all hand socket components within a set range of a world location (this is a slow operation, DO NOT run this on tick)
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
+		static bool GetAllHandSocketComponentsInRange(FVector SearchFromWorldLocation, float SearchRange, TArray<UHandSocketComponent*>& OutHandSockets);
+
+	/**
+	* Gets the closest hand socket component within a set range of a world location (this is a slow operation, DO NOT run this on tick)
+	* Must check the output for validity
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
+		static UHandSocketComponent* GetClosestHandSocketComponentInRange(FVector SearchFromWorldLocation, float SearchRange);
+
 	// Returns the target relative transform of the hand
 	//UFUNCTION(BlueprintCallable, Category = "Hand Socket Data")
 	FTransform GetHandRelativePlacement();
