@@ -6718,25 +6718,15 @@ bool UGripMotionControllerComponent::SetGripConstraintStiffnessAndDamping(const 
 					}
 					else
 					{
-						if (VRSettings.bUseChaosTranslationScalers)
-						{
-							Stiffness *= VRSettings.LinearDriveStiffnessScale;
-							Damping *= VRSettings.LinearDriveDampingScale;
-							AngularStiffness *= VRSettings.AngularDriveStiffnessScale;
-							AngularDamping *= VRSettings.AngularDriveDampingScale;
-						}
-						else
-						{
-							auto CVarLinearDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearDriveStiffnessScale"));
-							auto CVarLinearDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinaearDriveDampingScale"));
-							auto CVarAngularDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveStiffnessScale"));
-							auto CVarAngularDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveDampingScale"));
+						auto CVarLinearDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearDriveStiffnessScale"));
+						auto CVarLinearDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinaearDriveDampingScale"));
+						auto CVarAngularDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveStiffnessScale"));
+						auto CVarAngularDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveDampingScale"));
 
-							Stiffness *= CVarLinearDriveStiffnessScale->GetFloat();
-							Damping *= CVarLinearDriveDampingScale->GetFloat();
-							AngularStiffness *= CVarAngularDriveStiffnessScale->GetFloat();
-							AngularDamping *= CVarAngularDriveDampingScale->GetFloat();
-						}
+						Stiffness *= CVarLinearDriveStiffnessScale->GetFloat();
+						Damping *= CVarLinearDriveDampingScale->GetFloat();
+						AngularStiffness *= CVarAngularDriveStiffnessScale->GetFloat();
+						AngularDamping *= CVarAngularDriveDampingScale->GetFloat();
 					}
 
 					AngularMaxForce = (float)FMath::Clamp<double>((double)AngularStiffness * (double)Grip->AdvancedGripSettings.PhysicsSettings.AngularMaxForceCoefficient, 0, (double)MAX_FLT);
