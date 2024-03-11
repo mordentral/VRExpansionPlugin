@@ -90,6 +90,69 @@ UAnimSequence* UHandSocketComponent::GetTargetAnimation()
 	return HandTargetAnimation;
 }
 
+void UHandSocketComponent::GetAllHandSocketComponents(TArray<UHandSocketComponent*>& OutHandSockets)
+{
+	for (TObjectIterator<UHandSocketComponent> It; It; ++It)
+	{
+		UHandSocketComponent* HandSocket = *It;
+		if (IsValid(HandSocket) && !HandSocket->IsTemplate())
+		{
+			OutHandSockets.Add(HandSocket);
+		}
+	}
+}
+
+bool UHandSocketComponent::GetAllHandSocketComponentsInRange(FVector SearchFromWorldLocation, float SearchRange, TArray<UHandSocketComponent*>& OutHandSockets)
+{
+	float SearchDistSq = FMath::Square(SearchRange);
+
+	UHandSocketComponent* HandSocket = nullptr;
+	FTransform HandSocketTrans;
+	for (TObjectIterator<UHandSocketComponent> It; It; ++It)
+	{
+		HandSocket = *It;
+		if (IsValid(HandSocket) && !HandSocket->IsTemplate())
+		{
+			HandSocketTrans = HandSocket->GetRelativeTransform() * HandSocket->GetOwner()->GetActorTransform();
+			if (FVector::DistSquared(HandSocketTrans.GetLocation(), SearchFromWorldLocation) <= SearchDistSq)
+			{
+				OutHandSockets.Add(HandSocket);
+			}
+		}
+	}
+
+	return OutHandSockets.Num() > 0;
+}
+
+UHandSocketComponent* UHandSocketComponent::GetClosestHandSocketComponentInRange(FVector SearchFromWorldLocation, float SearchRange)
+{
+	float SearchDistSq = FMath::Square(SearchRange);
+	UHandSocketComponent* ClosestHandSocket = nullptr;
+	float LastDist = 0.0f;
+	float DistSq = 0.0f;
+
+	bool bFoundOne = false;
+	UHandSocketComponent* HandSocket = nullptr;
+	FTransform HandSocketTrans;
+	for (TObjectIterator<UHandSocketComponent> It; It; ++It)
+	{
+		HandSocket = *It;
+		if (IsValid(HandSocket) && !HandSocket->IsTemplate())
+		{
+			HandSocketTrans = HandSocket->GetRelativeTransform() * HandSocket->GetOwner()->GetActorTransform();
+			DistSq = FVector::DistSquared(HandSocketTrans.GetLocation(), SearchFromWorldLocation);
+			if (DistSq <= SearchDistSq && (!bFoundOne || DistSq < LastDist))
+			{
+				bFoundOne = true;
+				ClosestHandSocket = HandSocket;
+				LastDist = DistSq;
+			}
+		}
+	}
+
+	return ClosestHandSocket;
+}
+
 bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InAnimationSequence, FPoseSnapshot& OutPoseSnapShot, USkeletalMeshComponent* TargetMesh, bool bSkipRootBone, bool bFlipHand)
 {
 	if (InAnimationSequence)
