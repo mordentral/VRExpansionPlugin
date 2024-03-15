@@ -488,11 +488,13 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	}
 
 	UVRBaseCharacterMovementComponent * CharMove = nullptr;
+	bool bRetainRoomscale = true;
 
 	// Need these for passing physics updates to character movement
 	if (IsValid(owningVRChar))
 	{
 		CharMove = Cast<UVRBaseCharacterMovementComponent>(owningVRChar->GetCharacterMovement());
+		bRetainRoomscale = owningVRChar->bRetainRoomscale;
 	}
 
 	if (IsLocallyControlled())
@@ -542,7 +544,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 		// Skip this if not retaining roomscale as we use higher initial fidelity
 		// And we can rep the values at full precision if we want too
-		if (owningVRChar->bRetainRoomscale)
+		if (bRetainRoomscale)
 		{
 			// Pre-Process this for network sends
 			curCameraLoc.X = FMath::RoundToFloat(curCameraLoc.X * 100.f) / 100.f;
@@ -552,14 +554,14 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		
 
 		// Can adjust the relative tolerances to remove jitter and some update processing
-		if (!owningVRChar->bRetainRoomscale || (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f)))
+		if (!bRetainRoomscale || (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f)))
 		{
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
 
 			bCalledUpdateTransform = false;
 
-			if (owningVRChar->bRetainRoomscale)
+			if (bRetainRoomscale)
 			{
 				// If the character movement doesn't exist or is not active/ticking
 				if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())
@@ -581,7 +583,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			Params.bFindInitialOverlaps = true;
 			bool bBlockingHit = false;
 
-			if (bUseWalkingCollisionOverride && owningVRChar->bRetainRoomscale)
+			if (bUseWalkingCollisionOverride && bRetainRoomscale)
 			{
 				FVector TargetWorldLocation = OffsetComponentToWorld.GetLocation();
 				bool bAllowWalkingCollision = false;
@@ -611,9 +613,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 				bHadRelativeMovement = true;
 
 			// Not supporting walking collision override currently with new pawn setup
-			if (bHadRelativeMovement || !owningVRChar->bRetainRoomscale)
+			if (bHadRelativeMovement || (owningVRChar && !owningVRChar->bRetainRoomscale))
 			{
-				if (owningVRChar->bRetainRoomscale)
+				if (bRetainRoomscale)
 				{
 					DifferenceFromLastFrame = OffsetComponentToWorld.GetLocation() - LastPosition;
 					lastCameraLoc = curCameraLoc;
