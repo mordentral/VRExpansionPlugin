@@ -9,7 +9,12 @@
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
 #include "Net/UnrealNetwork.h"
+#include "Net/Core/PushModel/PushModel.h"
 #include "Engine/NetDriver.h"
+
+#if UE_WITH_IRIS
+#include "Iris/ReplicationSystem/ReplicationFragmentUtil.h"
+#endif // UE_WITH_IRIS
 
  
 UVRGripScriptBase::UVRGripScriptBase(const FObjectInitializer& ObjectInitializer)
@@ -69,6 +74,18 @@ UVRGripScriptBase* UVRGripScriptBase::GetGripScriptByClass(UObject* WorldContext
 	return nullptr;
 }
 
+#if UE_WITH_IRIS
+void UVRGripScriptBase::RegisterReplicationFragments(UE::Net::FFragmentRegistrationContext& Context, UE::Net::EFragmentRegistrationFlags RegistrationFlags)
+{
+	using namespace UE::Net;
+
+	Super::RegisterReplicationFragments(Context, RegistrationFlags);
+
+	// Build descriptors and allocate PropertyReplicationFragments for this object
+	FReplicationFragmentUtil::CreateAndRegisterFragmentsForObject(this, Context, RegistrationFlags);
+}
+#endif // UE_WITH_IRIS
+
 void UVRGripScriptBase::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {
 	// Uobject has no replicated props
@@ -79,6 +96,56 @@ void UVRGripScriptBase::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 	if (BPClass != NULL)
 	{
 		BPClass->GetLifetimeBlueprintReplicationList(OutLifetimeProps);
+	}
+
+	FDoRepLifetimeParams SharedParams;
+	SharedParams.bIsPushBased = true;
+
+	DOREPLIFETIME_WITH_PARAMS(UVRGripScriptBase, bReplicates, SharedParams);
+}
+
+void UVRGripScriptBase::SetIsReplicated(bool bShouldReplicate)
+{
+	if (GetIsReplicated() != bShouldReplicate)
+	{
+		bReplicates = bShouldReplicate;
+
+		FBoolProperty* BoolProperty = CastField<FBoolProperty>(this->GetClass()->FindPropertyByName("bReplicates"));
+		MARK_PROPERTY_DIRTY(this, BoolProperty);
+		//MARK_PROPERTY_DIRTY_FROM_NAME(UVRGripScriptBase, bReplicates, this);
+
+		// Remove us from the subobject replication list if we need to be
+		if (AActor* OwningActor = Cast<AActor>(this->GetOwner()))
+		{
+			if (OwningActor->IsUsingRegisteredSubObjectList())
+			{
+				if (bReplicates)
+				{
+					if (!OwningActor->IsReplicatedSubObjectRegistered(this))
+					{
+						OwningActor->AddReplicatedSubObject(this);
+					}
+				}
+				else if(OwningActor->IsReplicatedSubObjectRegistered(this))
+				{
+					OwningActor->RemoveReplicatedSubObject(this);
+				}
+			}
+		}
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetOwner()))
+		{
+			if (bReplicates)
+			{
+				if (!OwningComp->IsReplicatedSubObjectRegistered(this))
+				{
+					OwningComp->AddReplicatedSubObject(this);
+				}
+			}
+			else if (OwningComp->IsReplicatedSubObjectRegistered(this))
+			{
+				OwningComp->RemoveReplicatedSubObject(this);
+			}
+		}
 	}
 }
 
@@ -320,13 +387,72 @@ UWorld* UVRGripScriptBase::GetWorld() const
 
 void UVRGripScriptBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	// Remove us from the subobject replication list if we need to be
+	if (AActor* OwningActor = Cast<AActor>(GetOwner()))
+	{
+		if (OwningActor->IsUsingRegisteredSubObjectList())
+		{
+			OwningActor->RemoveReplicatedSubObject(this);
+		}
+	}
+	else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetOwner()))
+	{
+		if (OwningComp->IsUsingRegisteredSubObjectList())
+		{
+			OwningComp->RemoveReplicatedSubObject(this);
+		}
+	}
+
 	OnEndPlay(EndPlayReason);
+}
+
+void UVRGripScriptBase::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	if (bReplicates)
+	{
+		// Remove us from the subobject replication list if we need to be
+		if (AActor* OwningActor = Cast<AActor>(this->GetOwner()))
+		{
+			if (OwningActor->IsUsingRegisteredSubObjectList())
+			{
+				OwningActor->RemoveReplicatedSubObject(this);
+			}
+		}
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetOwner()))
+		{
+			if (OwningComp->IsUsingRegisteredSubObjectList())
+			{
+				OwningComp->RemoveReplicatedSubObject(this);
+			}
+		}
+	}
 }
 
 void UVRGripScriptBase::BeginPlay(UObject * CallingOwner)
 {
 	if (bAlreadyNotifiedPlay)
 		return;
+
+	if (bReplicates)
+	{
+		// Register us to the subobject replication list if we need to be
+		if (AActor* OwningActor = Cast<AActor>(CallingOwner))
+		{
+			if (OwningActor->IsUsingRegisteredSubObjectList())
+			{
+				OwningActor->AddReplicatedSubObject(this, ReplicationCondition);
+			}
+		}
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetOwner()))
+		{
+			if (OwningComp->IsUsingRegisteredSubObjectList())
+			{
+				OwningComp->AddReplicatedSubObject(this, ReplicationCondition);
+			}
+		}
+	}
 
 	bAlreadyNotifiedPlay = true;
 
@@ -338,14 +464,17 @@ void UVRGripScriptBase::PostInitProperties()
 {
 	Super::PostInitProperties();
 
-	//Called in game, when World exist . BeginPlay will not be called in editor
-	if (GetWorld())
+	if (bReplicates)
 	{
-		if (AActor* Owner = GetOwner())
+		//Called in game, when World exist . BeginPlay will not be called in editor
+		if (GetWorld())
 		{
-			if (Owner->IsActorInitialized())
+			if (AActor* Owner = GetOwner())
 			{
-				BeginPlay(GetOwner());
+				if (Owner->IsActorInitialized())
+				{
+					BeginPlay(GetOwner());
+				}
 			}
 		}
 	}

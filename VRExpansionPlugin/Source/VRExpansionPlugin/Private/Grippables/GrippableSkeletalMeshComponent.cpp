@@ -70,7 +70,7 @@ bool UGrippableSkeletalMeshComponent::ReplicateSubobjects(UActorChannel* Channel
 {
 	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 
-	if (bReplicateGripScripts)
+	if (bReplicateGripScripts && !IsUsingRegisteredSubObjectList())
 	{
 		for (UVRGripScriptBase* Script : GripLogicScripts)
 		{

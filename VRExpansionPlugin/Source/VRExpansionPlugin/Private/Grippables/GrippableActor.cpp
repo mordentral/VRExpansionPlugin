@@ -311,7 +311,7 @@ bool AGrippableActor::ReplicateSubobjects(UActorChannel* Channel, class FOutBunc
 {
 	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 
-	if (bReplicateGripScripts)
+	if (bReplicateGripScripts && !IsUsingRegisteredSubObjectList())
 	{
 		for (UVRGripScriptBase* Script : GripLogicScripts)
 		{

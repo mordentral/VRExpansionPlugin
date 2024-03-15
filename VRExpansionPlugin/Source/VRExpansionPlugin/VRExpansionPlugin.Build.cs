@@ -15,6 +15,7 @@ public class VRExpansionPlugin : ModuleRules
         //bEnforceIWYU = true;
 
         PublicDefinitions.Add("WITH_VR_EXPANSION=1");
+        SetupIrisSupport(Target);
 
         // To detect VR Preview, not built out in packaged builds
         if (Target.bBuildEditor == true)
