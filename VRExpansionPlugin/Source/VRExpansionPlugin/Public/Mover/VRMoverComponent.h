@@ -87,6 +87,19 @@ public:
 
 	virtual UScriptStruct* GetScriptStruct() const override { return StaticStruct(); }
 
+	// Need implemented (if needed)
+	virtual bool ShouldReconcile(const FMoverDataStructBase& AuthorityState) const override
+	{
+		return false;
+	}
+
+	// Needs implemented (should we even do this?)
+	virtual void Interpolate(const FMoverDataStructBase& From, const FMoverDataStructBase& To, float Pct) override
+	{
+		return;
+	}
+
+
 };
 
 template<>
