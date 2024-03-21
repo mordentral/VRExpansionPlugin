@@ -1650,7 +1650,7 @@ bool UVRRootComponent::ConvertSweptOverlapsToCurrentOverlapsVR(
 							// Not handled yet. We could do it by checking every body explicitly and track each body index in the overlap test, but this seems like a rare need.
 							return false;
 						}
-						else if (Cast<USkeletalMeshComponent>(OtherPrimitive) || Cast<USkeletalMeshComponent>(this))
+						else if (Cast<USkeletalMeshComponent>(OtherPrimitive) /* || Cast<USkeletalMeshComponent>(this)*/)
 						{
 							// SkeletalMeshComponent does not support this operation, and would return false in the test when an actual query could return true.
 							return false;
