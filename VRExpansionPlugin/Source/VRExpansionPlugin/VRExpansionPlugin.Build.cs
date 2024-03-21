@@ -114,20 +114,6 @@ public class VRExpansionPlugin : ModuleRules
 			}
 			);
 
-        // Don't load APEX on incompatible platforms
-       /* if (
-            Target.Platform != UnrealTargetPlatform.IOS &&
-            Target.Platform != UnrealTargetPlatform.TVOS &&
-            Target.Platform != UnrealTargetPlatform.Android &&
-            Target.Platform != UnrealTargetPlatform.HTML5)
-        {
-            PublicDependencyModuleNames.AddRange(
-            new string[]
-            {                   
-             "APEX"
-            });
-        }*/
-
         // Allow gameplay debugger on editor builds
         if (Target.bBuildDeveloperTools || (Target.Configuration != UnrealTargetConfiguration.Shipping && Target.Configuration != UnrealTargetConfiguration.Test))
         {
