@@ -115,7 +115,7 @@ void UVRGripScriptBase::SetIsReplicated(bool bShouldReplicate)
 		//MARK_PROPERTY_DIRTY_FROM_NAME(UVRGripScriptBase, bReplicates, this);
 
 		// Remove us from the subobject replication list if we need to be
-		if (AActor* OwningActor = Cast<AActor>(this->GetOwner()))
+		if (AActor* OwningActor = Cast<AActor>(GetParent()))
 		{
 			if (OwningActor->IsUsingRegisteredSubObjectList())
 			{
@@ -132,7 +132,7 @@ void UVRGripScriptBase::SetIsReplicated(bool bShouldReplicate)
 				}
 			}
 		}
-		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetOwner()))
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetParent()))
 		{
 			if (bReplicates)
 			{
@@ -388,14 +388,14 @@ UWorld* UVRGripScriptBase::GetWorld() const
 void UVRGripScriptBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	// Remove us from the subobject replication list if we need to be
-	if (AActor* OwningActor = Cast<AActor>(GetOwner()))
+	if (AActor* OwningActor = Cast<AActor>(GetParent()))
 	{
 		if (OwningActor->IsUsingRegisteredSubObjectList())
 		{
 			OwningActor->RemoveReplicatedSubObject(this);
 		}
 	}
-	else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetOwner()))
+	else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetParent()))
 	{
 		if (OwningComp->IsUsingRegisteredSubObjectList())
 		{
@@ -413,14 +413,14 @@ void UVRGripScriptBase::BeginDestroy()
 	if (bReplicates)
 	{
 		// Remove us from the subobject replication list if we need to be
-		if (AActor* OwningActor = Cast<AActor>(this->GetOwner()))
+		if (AActor* OwningActor = Cast<AActor>(GetParent()))
 		{
 			if (OwningActor->IsUsingRegisteredSubObjectList())
 			{
 				OwningActor->RemoveReplicatedSubObject(this);
 			}
 		}
-		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetOwner()))
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetParent()))
 		{
 			if (OwningComp->IsUsingRegisteredSubObjectList())
 			{
@@ -445,7 +445,7 @@ void UVRGripScriptBase::BeginPlay(UObject * CallingOwner)
 				OwningActor->AddReplicatedSubObject(this, ReplicationCondition);
 			}
 		}
-		else if (UActorComponent* OwningComp = Cast<UActorComponent>(GetOwner()))
+		else if (UActorComponent* OwningComp = Cast<UActorComponent>(CallingOwner))
 		{
 			if (OwningComp->IsUsingRegisteredSubObjectList())
 			{
@@ -473,7 +473,7 @@ void UVRGripScriptBase::PostInitProperties()
 			{
 				if (Owner->IsActorInitialized())
 				{
-					BeginPlay(GetOwner());
+					BeginPlay(GetParent());
 				}
 			}
 		}
