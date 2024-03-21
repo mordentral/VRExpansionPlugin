@@ -13,6 +13,7 @@ class AVRPlayerController;
 class UGripMotionControllerComponent;
 class UParentRelativeAttachmentComponent;
 class AController;
+class UNavigationQueryFilter;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);
 

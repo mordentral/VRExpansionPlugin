@@ -1094,7 +1094,7 @@ public:
 		bShadowMapped = false;
 	}
 
-	virtual void OnTransformChanged() override
+	virtual void OnTransformChanged(FRHICommandListBase& RHICmdList) override
 	{
 		Origin = GetLocalToWorld().GetOrigin();
 	}

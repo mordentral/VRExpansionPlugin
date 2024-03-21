@@ -14,6 +14,7 @@
 #include "GameFramework/Controller.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "VRPathFollowingComponent.h"
+#include "NavFilters/NavigationQueryFilter.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 DEFINE_LOG_CATEGORY(LogVRCharacter);

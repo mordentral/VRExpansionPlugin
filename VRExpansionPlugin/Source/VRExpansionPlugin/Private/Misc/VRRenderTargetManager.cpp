@@ -279,7 +279,7 @@ void UVRRenderTargetManager::DrawOperations()
 
 	UWorld* World = GetWorld();
 
-	if (!World || !World->bBegunPlay)
+	if (!World || !World->GetBegunPlay())
 		return;
 
 	// Reference to the Render Target resource

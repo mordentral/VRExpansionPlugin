@@ -14,6 +14,7 @@
 #include "IXRTrackingSystem.h"
 #include "VRCharacter.h"
 #include "Algo/Copy.h"
+#include "AI/Navigation/NavigationRelevantData.h"
 
 #include "Components/PrimitiveComponent.h"
 

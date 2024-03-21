@@ -14,6 +14,7 @@
 #include "VRPathFollowingComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "XRMotionControllerBase.h"
+#include "NavFilters/NavigationQueryFilter.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 DEFINE_LOG_CATEGORY(LogBaseVRCharacter);
