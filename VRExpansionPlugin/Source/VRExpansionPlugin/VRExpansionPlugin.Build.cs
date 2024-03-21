@@ -73,7 +73,8 @@ public class VRExpansionPlugin : ModuleRules
                     "AIModule",
                     "AnimGraphRuntime",
                     "XRBase",
-                    "GameplayTags"
+                    "GameplayTags",
+                    "Mover"
                     //"Renderer",
                     //"UtilityShaders"
         });

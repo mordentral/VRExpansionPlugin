@@ -33,7 +33,7 @@
 	  "LoadingPhase": "PostEngineInit"
     }
   ],
-	"Plugins": [
+  "Plugins": [
     {
       "Name": "ChaosVehiclesPlugin",
       "Enabled": true
@@ -41,6 +41,10 @@
     {
       "Name": "XRBase",
       "Enabled": true
+    },
+    {
+      "Name": "Mover",
+      "Enabled": true
     }
-	]
+  ]
 }
