@@ -117,6 +117,7 @@ public:
 		TObjectPtr<UStereoLayerShape> Shape;
 
 	void BeginDestroy() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	void OnUnregister() override;
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void DrawWidgetToRenderTarget(float DeltaTime) override;
@@ -176,6 +177,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StereoLayer")
 		uint32 bQuadPreserveTextureRatio : 1;
 
+	/** Additional flags not included in IStereoLayers::ELayerFlags */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StereoLayer", Meta = (GetOptions = "EditorFlagCollector.GetFlagNames"))
+		TArray<FName> AdditionalFlags;
+
 protected:
 	/** Texture displayed on the stereo layer (is stereocopic textures are supported on the platfrom and more than one texture is provided, this will be the right eye) **/
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StereoLayer")
@@ -220,6 +225,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, export, Category = "StereoLayer")
 		int32 Priority;
 
+	/** IStereoLayer id, 0 is unassigned **/
+	uint32 LayerId;
+
 	bool bShouldCreateProxy;
 
 private:
@@ -229,9 +237,6 @@ private:
 
 	/** Texture needs to be marked for update **/
 	bool bTextureNeedsUpdate;
-
-	/** IStereoLayer id, 0 is unassigned **/
-	uint32 LayerId;
 
 	/** Last transform is cached to determine if the new frames transform has changed **/
 	FTransform LastTransform;

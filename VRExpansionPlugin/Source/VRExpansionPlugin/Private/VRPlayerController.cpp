@@ -27,24 +27,6 @@ void AVRPlayerController::SpawnPlayerCameraManager()
 		PlayerCameraManager->bUseClientSideCameraUpdates = false;
 }
 
-// #TODO 4.20: This was removed
-/*void AVRPlayerController::InitNavigationControl(UPathFollowingComponent*& PathFollowingComp)
-{
-	PathFollowingComp = FindComponentByClass<UPathFollowingComponent>();
-	if (PathFollowingComp == NULL)
-	{
-		PathFollowingComp = NewObject<UVRPathFollowingComponent>(this);
-		PathFollowingComp->RegisterComponentWithWorld(GetWorld());
-		PathFollowingComp->Initialize();
-	}
-}*/
-
-/*IPathFollowingAgentInterface* AVRPlayerController::GetPathFollowingAgent() const
-{
-	// Moved spawning the path following component into the path finding logic instead
-	return FNavigationSystem::FindPathFollowingAgentForActor(*this);
-}*/
-
 void AVRPlayerController::PlayerTick(float DeltaTime)
 {
 

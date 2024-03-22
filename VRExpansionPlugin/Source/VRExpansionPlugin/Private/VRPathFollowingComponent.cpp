@@ -254,8 +254,16 @@ void UVRPathFollowingComponent::UpdatePathSegment()
 			{
 				const FVector AgentLocation = DestinationAgent ? DestinationAgent->GetNavAgentLocation() : DestinationActor->GetActorLocation();
 				// note that the condition below requires GoalLocation to be in world space.
-				const FVector GoalLocation = FQuatRotationTranslationMatrix(DestinationActor->GetActorQuat(), AgentLocation).TransformPosition(MoveOffset);
+				FVector GoalLocation = FQuatRotationTranslationMatrix(DestinationActor->GetActorQuat(), AgentLocation).TransformPosition(MoveOffset);
 
+				if (bMoveToGoalClampedToNavigation && NavigationFilter)
+				{
+					FVector HitLocation;
+					if (MyNavData->Raycast(CurrentLocation, GoalLocation, HitLocation, NavigationFilter))
+					{
+						GoalLocation = HitLocation;
+					}
+				}
 				CurrentDestination.Set(NULL, GoalLocation);
 
 				//UE_VLOG(this, LogPathFollowing, Log, TEXT("Moving directly to move goal rather than following last path segment"));
@@ -359,6 +367,27 @@ bool UVRPathFollowingComponent::HasReachedCurrentTarget(const FVector& CurrentLo
 	if (MovementComp == NULL)
 	{
 		return false;
+	}
+
+	// If the next segment is a link with a custom reach condition, we need to call the HasReachedLinkStart on the link interface.
+	if (bMoveSegmentIsUsingCustomLinkReachCondition)
+	{
+		if (const INavLinkCustomInterface* MoveSegmentCustomLink = Cast<const INavLinkCustomInterface>(MoveSegmentCustomLinkOb.Get()))
+		{
+			if (ensureMsgf(Path.IsValid(), TEXT("%hs: Path should be valid when we get here. Owner [%s]."), __FUNCTION__, *GetNameSafe(GetOwner())))
+			{
+				const FNavPathPoint& LinkStart = Path->GetPathPoints()[MoveSegmentEndIndex];
+				if (Path->GetPathPoints().IsValidIndex(MoveSegmentEndIndex + 1))
+				{
+					const FNavPathPoint& LinkEnd = Path->GetPathPoints()[MoveSegmentEndIndex + 1];
+					return MoveSegmentCustomLink->HasReachedLinkStart(this, CurrentLocation, LinkStart, LinkEnd);
+				}
+				else
+				{
+					UE_LOG(LogPathFollowing, Error, TEXT("%hs: NavLink has a start, but no end. Custom reach condition won't be called. NavLinkID [%llu] - LinkStartPos [%s] - Owner [%s]"), __FUNCTION__, LinkStart.CustomNavLinkId.GetId(), *LinkStart.Location.ToString(), *GetNameSafe(GetOwner()));
+				}
+			}
+		}
 	}
 
 	const FVector CurrentTarget = GetCurrentTargetLocation();
