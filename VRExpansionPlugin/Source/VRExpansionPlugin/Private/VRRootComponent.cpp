@@ -331,11 +331,11 @@ public:
 		, CapsuleRadius(InComponent->GetScaledCapsuleRadius())
 		, CapsuleHalfHeight(InComponent->GetScaledCapsuleHalfHeight())
 		, ShapeColor(InComponent->ShapeColor)
-		, LineThickness(InComponent->GetLineThickness())
 		, VRCapsuleOffset(InComponent->VRCapsuleOffset)
 		, bSimulating(false)
 		//, OffsetComponentToWorld(InComponent->OffsetComponentToWorld)
 		, LocalToWorld(InComponent->OffsetComponentToWorld.ToMatrixWithScale())
+		, LineThickness(InComponent->GetLineThickness())
 	{
 		bWillEverBeLit = false;
 	}
@@ -551,9 +551,10 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		if (bRetainRoomscale)
 		{
 			// Pre-Process this for network sends
-			curCameraLoc.X = FMath::RoundToFloat(curCameraLoc.X * 100.f) / 100.f;
-			curCameraLoc.Y = FMath::RoundToFloat(curCameraLoc.Y * 100.f) / 100.f;
-			curCameraLoc.Z = FMath::RoundToFloat(curCameraLoc.Z * 100.f) / 100.f;
+			UE::Net::QuantizeVector(100, curCameraLoc);
+			//curCameraLoc.X = FMath::RoundToFloat(curCameraLoc.X * 100.f) / 100.f;
+			//curCameraLoc.Y = FMath::RoundToFloat(curCameraLoc.Y * 100.f) / 100.f;
+			//curCameraLoc.Z = FMath::RoundToFloat(curCameraLoc.Z * 100.f) / 100.f;
 		}
 		
 
@@ -626,9 +627,10 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 					lastCameraRot = curCameraRot;
 
 					//DifferenceFromLastFrame = (NextTransform.GetLocation() - LastPosition);// .GetSafeNormal2D();
-					DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
-					DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
-					DifferenceFromLastFrame.Z = FMath::RoundToFloat(DifferenceFromLastFrame.Z * 100.f) / 100.f;
+					UE::Net::QuantizeVector(100, DifferenceFromLastFrame);
+					//DifferenceFromLastFrame.X = FMath::RoundToFloat(DifferenceFromLastFrame.X * 100.f) / 100.f;
+					//DifferenceFromLastFrame.Y = FMath::RoundToFloat(DifferenceFromLastFrame.Y * 100.f) / 100.f;
+					//DifferenceFromLastFrame.Z = FMath::RoundToFloat(DifferenceFromLastFrame.Z * 100.f) / 100.f;
 					//DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
 				}
 				else
@@ -652,9 +654,13 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 					{
 						// I'm limiting it to a -100 - 100 unit range in case people somehow skip tracking so far that this multiplication
 						// Would overflow the max/min values of a float. It shouldn't ever be harmful as that is a loooot of travel in one tick
-						DifferenceFromLastFrame.X = FMath::RoundToFloat(FMath::Clamp(DifferenceFromLastFrame.X, -100.0f, 100.0f) * 10000.f) / 10000.f;
-						DifferenceFromLastFrame.Y = FMath::RoundToFloat(FMath::Clamp(DifferenceFromLastFrame.Y, -100.0f, 100.0f) * 10000.f) / 10000.f;
-						DifferenceFromLastFrame.Z = FMath::RoundToFloat(FMath::Clamp(DifferenceFromLastFrame.Z, -100.0f, 100.0f) * 10000.f) / 10000.f;
+						DifferenceFromLastFrame.X = FMath::Clamp(DifferenceFromLastFrame.X, -100.0f, 100.0f);
+						DifferenceFromLastFrame.Y = FMath::Clamp(DifferenceFromLastFrame.Y, -100.0f, 100.0f);
+						DifferenceFromLastFrame.Z = FMath::Clamp(DifferenceFromLastFrame.Z, -100.0f, 100.0f);
+						UE::Net::QuantizeVector(10000, DifferenceFromLastFrame);
+						//DifferenceFromLastFrame.X = FMath::RoundToFloat(FMath::Clamp(DifferenceFromLastFrame.X, -100.0f, 100.0f) * 10000.f) / 10000.f;
+						//DifferenceFromLastFrame.Y = FMath::RoundToFloat(FMath::Clamp(DifferenceFromLastFrame.Y, -100.0f, 100.0f) * 10000.f) / 10000.f;
+						//DifferenceFromLastFrame.Z = FMath::RoundToFloat(FMath::Clamp(DifferenceFromLastFrame.Z, -100.0f, 100.0f) * 10000.f) / 10000.f;
 						//DifferenceFromLastFrame.Z = 0.0f; // Reset Z to zero, its not used anyway and this lets me reuse the Z component for capsule half height
 					}
 				}

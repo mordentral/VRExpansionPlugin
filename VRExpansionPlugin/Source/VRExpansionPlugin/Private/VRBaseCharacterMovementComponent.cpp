@@ -2251,9 +2251,10 @@ void UVRBaseCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 FVector UVRBaseCharacterMovementComponent::RoundDirectMovement(FVector InMovement) const
 {
 	// Match FVector_NetQuantize100 (2 decimal place of precision).
-	InMovement.X = FMath::RoundToFloat(InMovement.X * 100.f) / 100.f;
-	InMovement.Y = FMath::RoundToFloat(InMovement.Y * 100.f) / 100.f;
-	InMovement.Z = FMath::RoundToFloat(InMovement.Z * 100.f) / 100.f;
+	UE::Net::QuantizeVector(100, InMovement);
+	//InMovement.X = FMath::RoundToFloat(InMovement.X * 100.f) / 100.f;
+	//InMovement.Y = FMath::RoundToFloat(InMovement.Y * 100.f) / 100.f;
+	//InMovement.Z = FMath::RoundToFloat(InMovement.Z * 100.f) / 100.f;
 	return InMovement;
 }
 
