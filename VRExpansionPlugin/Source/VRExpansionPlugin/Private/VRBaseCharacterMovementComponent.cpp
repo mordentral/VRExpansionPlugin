@@ -1888,7 +1888,7 @@ void UVRBaseCharacterMovementComponent::MoveAutonomous(
 	const bool bWasPlayingRootMotion = CharacterOwner->IsPlayingRootMotion();
 
 	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
-	const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner ? BaseVRCharacterOwner->NetSmoother : nullptr);
+	//const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner ? BaseVRCharacterOwner->NetSmoother : nullptr);
 
 	PerformMovement(DeltaTime);
 

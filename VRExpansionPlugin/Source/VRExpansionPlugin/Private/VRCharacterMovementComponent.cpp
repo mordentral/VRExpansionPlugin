@@ -4744,7 +4744,7 @@ bool UVRCharacterMovementComponent::ClientUpdatePositionAfterServerUpdate()
 	bForceNextFloorCheck = true;
 
 	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
-	const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner ? BaseVRCharacterOwner->NetSmoother : nullptr);
+	//const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner ? BaseVRCharacterOwner->NetSmoother : nullptr);
 
 	// Store out our custom properties to restore after replaying
 	const FVRMoveActionArray Orig_MoveActions = MoveActionArray;
