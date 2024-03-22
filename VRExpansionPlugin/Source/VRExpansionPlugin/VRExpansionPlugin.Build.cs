@@ -59,15 +59,8 @@ public class VRExpansionPlugin : ModuleRules
                     "NetCore",
                     "CoreUObject",
                     "Engine",
-                   // "InputCore",
                     "PhysicsCore",
-                    //"FLEX", remove comment if building in the NVIDIA flex branch - NOTE when put in place FLEX only listed win32 and win64 at compatible platforms
                     "HeadMountedDisplay",
-                   // "RHI",
-                    //"RenderCore",
-                    //"ShaderCore",
-                    //"NetworkReplayStreaming",
-                    //"AIModule",
                     "UMG",
                     "NavigationSystem",
                     "AIModule",
@@ -75,8 +68,6 @@ public class VRExpansionPlugin : ModuleRules
                     "XRBase",
                     "GameplayTags",
                     "Mover"
-                    //"Renderer",
-                    //"UtilityShaders"
         });
 
         //if(Target.bUseChaos)
