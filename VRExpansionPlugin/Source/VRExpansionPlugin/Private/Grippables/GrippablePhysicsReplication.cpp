@@ -37,6 +37,8 @@ namespace VRPhysicsReplicationStatics
 	static bool bHasVRPhysicsReplication = false;
 }
 
+// Hacky work around for them not exporting these....
+#if !UE_BUILD_SHIPPING
 namespace PhysicsReplicationCVars
 {
 	int32 SkipSkeletalRepOptimization = 1;
@@ -93,7 +95,7 @@ namespace PhysicsReplicationCVars
 	}
 
 }
-
+#endif
 
 /*struct FAsyncPhysicsRepCallbackDataVR : public Chaos::FSimCallbackInput
 {
