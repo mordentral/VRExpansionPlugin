@@ -5991,7 +5991,7 @@ bool UGripMotionControllerComponent::UpdatePhysicsHandle(const FBPActorGripInfor
 	return true;
 //#endif
 
-	return false;
+	//return false;
 }
 
 bool UGripMotionControllerComponent::PausePhysicsHandle(FBPActorPhysicsHandleInformation* HandleInfo)

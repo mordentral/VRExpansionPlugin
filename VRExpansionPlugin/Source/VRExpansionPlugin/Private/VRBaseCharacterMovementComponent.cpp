@@ -2401,5 +2401,5 @@ bool UVRBaseCharacterMovementComponent::SetCharacterToNewGravity(FVector NewGrav
 		return true;
 	}
 
-	return false;
+	//return false;
 }
