@@ -108,7 +108,7 @@ protected:
 
 
 public:
-	void BeginPlay() override;
+	virtual void BeginPlay() override;
 	virtual void InitializeComponent() override;
 
 	bool IsLocallyControlled() const;
@@ -200,7 +200,7 @@ public:
 	bool bHadRelativeMovement;
 
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
-	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	virtual void UpdatePhysicsVolume(bool bTriggerNotifiers) override;
 
