@@ -8,6 +8,9 @@
 #include "GripScripts/VRGripScriptBase.h"
 #include "PhysicsEngine/PhysicsAsset.h" // Tmp until epic bug fixes skeletal welding
 #include "Net/UnrealNetwork.h"
+#if WITH_PUSH_MODEL
+#include "Net/Core/PushModel/PushModel.h"
+#endif
 
   //=============================================================================
 UGrippableSkeletalMeshComponent::UGrippableSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer)
@@ -44,12 +47,19 @@ void UGrippableSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class F
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME_CONDITION(UGrippableSkeletalMeshComponent, GripLogicScripts, COND_Custom);
-	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bReplicateGripScripts);
-	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME(UGrippableSkeletalMeshComponent, bReplicateMovement);
-	DOREPLIFETIME_CONDITION(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGrippableSkeletalMeshComponent, GameplayTags, COND_Custom);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSkeletalMeshComponent, bReplicateGripScripts, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSkeletalMeshComponent, bRepGripSettingsAndGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSkeletalMeshComponent, bReplicateMovement, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSkeletalMeshComponent, GripLogicScripts, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSkeletalMeshComponent, GameplayTags, PushModelParamsWithCondition);
 }
 
 void UGrippableSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -390,3 +400,71 @@ FBodyInstance* UGrippableSkeletalMeshComponent::GetBodyInstance(FName BoneName, 
 
 	return BodyInst;
 }
+
+/////////////////////////////////////////////////
+//- Push networking getter / setter functions
+/////////////////////////////////////////////////
+
+void UGrippableSkeletalMeshComponent::SetReplicateGripScripts(bool bNewReplicateGripScripts)
+{
+	bReplicateGripScripts = bNewReplicateGripScripts;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSkeletalMeshComponent, bReplicateGripScripts, this);
+#endif
+}
+
+TArray<TObjectPtr<UVRGripScriptBase>>& UGrippableSkeletalMeshComponent::GetGripLogicScripts()
+{
+#if WITH_PUSH_MODEL
+	if (bReplicateGripScripts)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSkeletalMeshComponent, GripLogicScripts, this);
+	}
+#endif
+
+	return GripLogicScripts;
+}
+
+void UGrippableSkeletalMeshComponent::SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags)
+{
+	bRepGripSettingsAndGameplayTags = bNewRepGripSettingsAndGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSkeletalMeshComponent, bRepGripSettingsAndGameplayTags, this);
+#endif
+}
+
+void UGrippableSkeletalMeshComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSkeletalMeshComponent, bReplicateMovement, this);
+#endif
+}
+
+FBPInterfaceProperties& UGrippableSkeletalMeshComponent::GetVRGripInterfaceSettings(bool bMarkDirty)
+{
+#if WITH_PUSH_MODEL
+	if (bMarkDirty && bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSkeletalMeshComponent, VRGripInterfaceSettings, this);
+	}
+#endif
+
+	return VRGripInterfaceSettings;
+}
+
+FGameplayTagContainer& UGrippableSkeletalMeshComponent::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSkeletalMeshComponent, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
+}
+
+/////////////////////////////////////////////////
+//- End Push networking getter / setter functions
+/////////////////////////////////////////////////
