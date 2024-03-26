@@ -836,7 +836,9 @@ void AGrippableActor::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>
 void AGrippableActor::SetReplicateGripScripts(bool bNewReplicateGripScripts)
 {
 	bReplicateGripScripts = bNewReplicateGripScripts;
+#if WITH_PUSH_MODEL
 	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, bReplicateGripScripts, this);
+#endif
 }
 
 TArray<TObjectPtr<UVRGripScriptBase>>& AGrippableActor::GetGripLogicScripts()
