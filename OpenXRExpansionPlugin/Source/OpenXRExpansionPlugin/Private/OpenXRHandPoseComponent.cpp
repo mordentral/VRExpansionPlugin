@@ -54,7 +54,9 @@ void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(cons
 
 				FBPXRSkeletalRepContainer::CopyReplicatedTo(SkeletalInfo, HandSkeletalActions[i]);
 				LeftHandRep = SkeletalInfo;
+#if WITH_PUSH_MODEL
 				MARK_PROPERTY_DIRTY_FROM_NAME(UOpenXRHandPoseComponent, LeftHandRep, this);
+#endif
 
 				if (bSmoothReplicatedSkeletalData)
 				{
@@ -70,7 +72,9 @@ void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(cons
 
 				FBPXRSkeletalRepContainer::CopyReplicatedTo(SkeletalInfo, HandSkeletalActions[i]);
 				RightHandRep = SkeletalInfo;
+#if WITH_PUSH_MODEL
 				MARK_PROPERTY_DIRTY_FROM_NAME(UOpenXRHandPoseComponent, RightHandRep, this);
+#endif
 
 				if (bSmoothReplicatedSkeletalData)
 				{

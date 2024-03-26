@@ -19,7 +19,6 @@
 #include "Net/Core/PushModel/PushModel.h"
 #endif
 
-
   //=============================================================================
 AGrippableActor::AGrippableActor(const FObjectInitializer& ObjectInitializer)
 	: Super()
@@ -62,13 +61,20 @@ void AGrippableActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(AGrippableActor, GripLogicScripts, COND_Custom);
-	DOREPLIFETIME(AGrippableActor, bReplicateGripScripts);
-	DOREPLIFETIME(AGrippableActor, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME(AGrippableActor, bAllowIgnoringAttachOnOwner);
-	DOREPLIFETIME(AGrippableActor, ClientAuthReplicationData);
-	DOREPLIFETIME_CONDITION(AGrippableActor, VRGripInterfaceSettings, COND_Custom);
-	DOREPLIFETIME_CONDITION(AGrippableActor, GameplayTags, COND_Custom);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableActor, bReplicateGripScripts, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableActor, bRepGripSettingsAndGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableActor, bAllowIgnoringAttachOnOwner, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableActor, ClientAuthReplicationData, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableActor, GripLogicScripts, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableActor, VRGripInterfaceSettings, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableActor, GameplayTags, PushModelParamsWithCondition);
 
 	DISABLE_REPLICATED_PRIVATE_PROPERTY(AActor, AttachmentReplication);
 
@@ -78,7 +84,6 @@ void AGrippableActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty
 
 void AGrippableActor::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
 {
-
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableActor, GameplayTags, bRepGripSettingsAndGameplayTags);
@@ -823,3 +828,77 @@ void AGrippableActor::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>
 		}
 	}
 }
+
+/////////////////////////////////////////////////
+//- Push networking getter / setter functions
+/////////////////////////////////////////////////
+
+void AGrippableActor::SetReplicateGripScripts(bool bNewReplicateGripScripts)
+{
+	bReplicateGripScripts = bNewReplicateGripScripts;
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, bReplicateGripScripts, this);
+}
+
+TArray<TObjectPtr<UVRGripScriptBase>>& AGrippableActor::GetGripLogicScripts()
+{
+#if WITH_PUSH_MODEL
+	if (bReplicateGripScripts)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, GripLogicScripts, this);
+	}
+#endif
+
+	return GripLogicScripts;
+}
+
+void AGrippableActor::SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags)
+{
+	bRepGripSettingsAndGameplayTags = bNewRepGripSettingsAndGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, bRepGripSettingsAndGameplayTags, this);
+#endif
+}
+
+void AGrippableActor::SetAllowIgnoringAttachOnOwner(bool bNewAllowIgnoringAttachOnOwner)
+{
+	bAllowIgnoringAttachOnOwner = bNewAllowIgnoringAttachOnOwner;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, bAllowIgnoringAttachOnOwner, this);
+#endif
+}
+
+FVRClientAuthReplicationData& AGrippableActor::GetClientAuthReplicationData(FVRClientAuthReplicationData& ClientAuthData)
+{
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, ClientAuthReplicationData, this);
+#endif
+	return ClientAuthReplicationData;
+}
+
+FBPInterfaceProperties& AGrippableActor::GetVRGripInterfaceSettings(bool bMarkDirty)
+{
+#if WITH_PUSH_MODEL
+	if (bMarkDirty && bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, VRGripInterfaceSettings, this);
+	}
+#endif
+
+	return VRGripInterfaceSettings;
+}
+
+FGameplayTagContainer& AGrippableActor::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableActor, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
+}
+
+/////////////////////////////////////////////////
+//- End Push networking getter / setter functions
+/////////////////////////////////////////////////

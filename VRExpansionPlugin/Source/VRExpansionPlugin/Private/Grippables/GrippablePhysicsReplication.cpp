@@ -38,7 +38,7 @@ namespace VRPhysicsReplicationStatics
 }
 
 // Hacky work around for them not exporting these....
-#if !UE_BUILD_SHIPPING
+#if WITH_EDITOR
 namespace PhysicsReplicationCVars
 {
 	int32 SkipSkeletalRepOptimization = 1;
