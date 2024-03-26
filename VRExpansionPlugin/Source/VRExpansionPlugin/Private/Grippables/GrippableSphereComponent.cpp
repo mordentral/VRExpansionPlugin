@@ -8,6 +8,11 @@
 #include "GripScripts/VRGripScriptBase.h"
 #include "Net/UnrealNetwork.h"
 
+#if WITH_PUSH_MODEL
+#include "Net/Core/PushModel/PushModel.h"
+#endif
+
+
   //=============================================================================
 UGrippableSphereComponent::UGrippableSphereComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -42,12 +47,19 @@ void UGrippableSphereComponent::GetLifetimeReplicatedProps(TArray< class FLifeti
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME_CONDITION(UGrippableSphereComponent, GripLogicScripts, COND_Custom);
-	DOREPLIFETIME(UGrippableSphereComponent, bReplicateGripScripts)
-	DOREPLIFETIME(UGrippableSphereComponent, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME(UGrippableSphereComponent, bReplicateMovement);
-	DOREPLIFETIME_CONDITION(UGrippableSphereComponent, VRGripInterfaceSettings, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGrippableSphereComponent, GameplayTags, COND_Custom);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSphereComponent, bReplicateGripScripts, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSphereComponent, bRepGripSettingsAndGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSphereComponent, bReplicateMovement, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSphereComponent, GripLogicScripts, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSphereComponent, VRGripInterfaceSettings, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableSphereComponent, GameplayTags, PushModelParamsWithCondition);
 }
 
 void UGrippableSphereComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -320,3 +332,72 @@ void UGrippableSphereComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 
 	GripLogicScripts.Empty();
 }
+
+
+/////////////////////////////////////////////////
+//- Push networking getter / setter functions
+/////////////////////////////////////////////////
+
+void UGrippableSphereComponent::SetReplicateGripScripts(bool bNewReplicateGripScripts)
+{
+	bReplicateGripScripts = bNewReplicateGripScripts;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSphereComponent, bReplicateGripScripts, this);
+#endif
+}
+
+TArray<TObjectPtr<UVRGripScriptBase>>& UGrippableSphereComponent::GetGripLogicScripts()
+{
+#if WITH_PUSH_MODEL
+	if (bReplicateGripScripts)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSphereComponent, GripLogicScripts, this);
+	}
+#endif
+
+	return GripLogicScripts;
+}
+
+void UGrippableSphereComponent::SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags)
+{
+	bRepGripSettingsAndGameplayTags = bNewRepGripSettingsAndGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSphereComponent, bRepGripSettingsAndGameplayTags, this);
+#endif
+}
+
+void UGrippableSphereComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSphereComponent, bReplicateMovement, this);
+#endif
+}
+
+FBPInterfaceProperties& UGrippableSphereComponent::GetVRGripInterfaceSettings(bool bMarkDirty)
+{
+#if WITH_PUSH_MODEL
+	if (bMarkDirty && bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSphereComponent, VRGripInterfaceSettings, this);
+	}
+#endif
+
+	return VRGripInterfaceSettings;
+}
+
+FGameplayTagContainer& UGrippableSphereComponent::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableSphereComponent, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
+}
+
+/////////////////////////////////////////////////
+//- End Push networking getter / setter functions
+/////////////////////////////////////////////////

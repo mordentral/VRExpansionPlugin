@@ -49,7 +49,6 @@ protected:
 		bool bReplicateGripScripts;
 public:
 
-	UFUNCTION(BlueprintCallable)
 	void SetReplicateGripScripts(bool NewReplicateGripScripts);
 	inline bool GetReplicateGripScripts() { return bReplicateGripScripts; };
 

@@ -8,6 +8,10 @@
 #include "GripScripts/VRGripScriptBase.h"
 #include "Net/UnrealNetwork.h"
 
+#if WITH_PUSH_MODEL
+#include "Net/Core/PushModel/PushModel.h"
+#endif
+
   //=============================================================================
 UGrippableCapsuleComponent::UGrippableCapsuleComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -43,12 +47,19 @@ void UGrippableCapsuleComponent::GetLifetimeReplicatedProps(TArray< class FLifet
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME_CONDITION(UGrippableCapsuleComponent, GripLogicScripts, COND_Custom);
-	DOREPLIFETIME(UGrippableCapsuleComponent, bReplicateGripScripts);
-	DOREPLIFETIME(UGrippableCapsuleComponent, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME(UGrippableCapsuleComponent, bReplicateMovement);
-	DOREPLIFETIME_CONDITION(UGrippableCapsuleComponent, VRGripInterfaceSettings, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGrippableCapsuleComponent, GameplayTags, COND_Custom);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableCapsuleComponent, bReplicateGripScripts, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableCapsuleComponent, bRepGripSettingsAndGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableCapsuleComponent, bReplicateMovement, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableCapsuleComponent, GripLogicScripts, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableCapsuleComponent, VRGripInterfaceSettings, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableCapsuleComponent, GameplayTags, PushModelParamsWithCondition);
 }
 
 void UGrippableCapsuleComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -321,3 +332,71 @@ void UGrippableCapsuleComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 
 	GripLogicScripts.Empty();
 }
+
+/////////////////////////////////////////////////
+//- Push networking getter / setter functions
+/////////////////////////////////////////////////
+
+void UGrippableCapsuleComponent::SetReplicateGripScripts(bool bNewReplicateGripScripts)
+{
+	bReplicateGripScripts = bNewReplicateGripScripts;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableCapsuleComponent, bReplicateGripScripts, this);
+#endif
+}
+
+TArray<TObjectPtr<UVRGripScriptBase>>& UGrippableCapsuleComponent::GetGripLogicScripts()
+{
+#if WITH_PUSH_MODEL
+	if (bReplicateGripScripts)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableCapsuleComponent, GripLogicScripts, this);
+	}
+#endif
+
+	return GripLogicScripts;
+}
+
+void UGrippableCapsuleComponent::SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags)
+{
+	bRepGripSettingsAndGameplayTags = bNewRepGripSettingsAndGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableCapsuleComponent, bRepGripSettingsAndGameplayTags, this);
+#endif
+}
+
+void UGrippableCapsuleComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableCapsuleComponent, bReplicateMovement, this);
+#endif
+}
+
+FBPInterfaceProperties& UGrippableCapsuleComponent::GetVRGripInterfaceSettings(bool bMarkDirty)
+{
+#if WITH_PUSH_MODEL
+	if (bMarkDirty && bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableCapsuleComponent, VRGripInterfaceSettings, this);
+	}
+#endif
+
+	return VRGripInterfaceSettings;
+}
+
+FGameplayTagContainer& UGrippableCapsuleComponent::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableCapsuleComponent, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
+}
+
+/////////////////////////////////////////////////
+//- End Push networking getter / setter functions
+/////////////////////////////////////////////////

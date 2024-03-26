@@ -8,6 +8,10 @@
 #include "GripScripts/VRGripScriptBase.h"
 #include "Net/UnrealNetwork.h"
 
+#if WITH_PUSH_MODEL
+#include "Net/Core/PushModel/PushModel.h"
+#endif
+
 //=============================================================================
 UGrippableBoxComponent::~UGrippableBoxComponent()
 {
@@ -47,12 +51,19 @@ void UGrippableBoxComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeP
 {
 	 Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, GripLogicScripts, COND_Custom);
-	DOREPLIFETIME(UGrippableBoxComponent, bReplicateGripScripts);
-	DOREPLIFETIME(UGrippableBoxComponent, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME(UGrippableBoxComponent, bReplicateMovement);
-	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, VRGripInterfaceSettings, COND_Custom);
-	DOREPLIFETIME_CONDITION(UGrippableBoxComponent, GameplayTags, COND_Custom);
+	 // For std properties
+	 FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	 DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableBoxComponent, bReplicateGripScripts, PushModelParams);
+	 DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableBoxComponent, bRepGripSettingsAndGameplayTags, PushModelParams);
+	 DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableBoxComponent, bReplicateMovement, PushModelParams);
+
+	 // For properties with special conditions
+	 FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	 DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableBoxComponent, GripLogicScripts, PushModelParamsWithCondition);
+	 DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableBoxComponent, VRGripInterfaceSettings, PushModelParamsWithCondition);
+	 DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableBoxComponent, GameplayTags, PushModelParamsWithCondition);
 }
 
 void UGrippableBoxComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -321,3 +332,71 @@ void UGrippableBoxComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 
 	GripLogicScripts.Empty();
 }
+
+/////////////////////////////////////////////////
+//- Push networking getter / setter functions
+/////////////////////////////////////////////////
+
+void UGrippableBoxComponent::SetReplicateGripScripts(bool bNewReplicateGripScripts)
+{
+	bReplicateGripScripts = bNewReplicateGripScripts;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableBoxComponent, bReplicateGripScripts, this);
+#endif
+}
+
+TArray<TObjectPtr<UVRGripScriptBase>>& UGrippableBoxComponent::GetGripLogicScripts()
+{
+#if WITH_PUSH_MODEL
+	if (bReplicateGripScripts)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableBoxComponent, GripLogicScripts, this);
+	}
+#endif
+
+	return GripLogicScripts;
+}
+
+void UGrippableBoxComponent::SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags)
+{
+	bRepGripSettingsAndGameplayTags = bNewRepGripSettingsAndGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableBoxComponent, bRepGripSettingsAndGameplayTags, this);
+#endif
+}
+
+void UGrippableBoxComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableBoxComponent, bReplicateMovement, this);
+#endif
+}
+
+FBPInterfaceProperties& UGrippableBoxComponent::GetVRGripInterfaceSettings(bool bMarkDirty)
+{
+#if WITH_PUSH_MODEL
+	if (bMarkDirty && bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableBoxComponent, VRGripInterfaceSettings, this);
+	}
+#endif
+
+	return VRGripInterfaceSettings;
+}
+
+FGameplayTagContainer& UGrippableBoxComponent::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UGrippableBoxComponent, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
+}
+
+/////////////////////////////////////////////////
+//- End Push networking getter / setter functions
+/////////////////////////////////////////////////
