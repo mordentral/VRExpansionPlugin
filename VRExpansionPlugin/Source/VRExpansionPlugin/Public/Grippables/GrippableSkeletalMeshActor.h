@@ -30,11 +30,13 @@ class VREXPANSIONPLUGIN_API UOptionalRepSkeletalMeshComponent : public USkeletal
 public:
 	UOptionalRepSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer);
 
-public:
-
+protected:
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Component Replication")
 		bool bReplicateMovement;
+public:
+	bool GetReplicateMovement() { return bReplicateMovement; }
+	void SetReplicateMovement(bool bNewReplicateMovement);
 
 	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 

@@ -331,9 +331,14 @@ public:
 
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
+protected:
 	// If true will replicate the capsule height on to clients, allows for dynamic capsule height changes in multiplayer
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRBaseCharacter")
 		bool VRReplicateCapsuleHeight;
+public:
+	bool GetVRReplicateCapsuleHeight() { return VRReplicateCapsuleHeight; }
+	void SetVRReplicateCapsuleHeight(bool bNewVRReplicateCapsuleHeight);
+
 
 	// OnlyReplicated to simulated clients
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_CapsuleHeight)

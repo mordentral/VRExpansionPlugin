@@ -20,8 +20,12 @@ class VREXPANSIONPLUGIN_API UNoRepSphereComponent : public USphereComponent
 public:
 	UNoRepSphereComponent(const FObjectInitializer& ObjectInitializer);
 
+protected:
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Component Replication")
 		bool bReplicateMovement;
+public:
+	bool GetReplicateMovement() { return bReplicateMovement; }
+	void SetReplicateMovement(bool bNewReplicateMovement);
 
 	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 };
@@ -63,11 +67,14 @@ class VREXPANSIONPLUGIN_API UInversePhysicsSkeletalMeshComponent : public USkele
 public:
 	UInversePhysicsSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer);
 
-public:
-
+protected:
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Component Replication")
 		bool bReplicateMovement;
+public:
+	bool GetReplicateMovement() { return bReplicateMovement; }
+	void SetReplicateMovement(bool bNewReplicateMovement);
+
 
 	// This is all overrides to fix the skeletal mesh inverse simulation bug
 	// WILL BE REMOVED LATER when the engine is fixed

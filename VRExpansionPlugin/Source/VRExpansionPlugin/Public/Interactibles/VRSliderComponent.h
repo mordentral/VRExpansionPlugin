@@ -147,9 +147,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GripSettings")
 		void SetGripPriority(int NewGripPriority);
 
+protected:
 	// Set this to assign a spline component to the slider
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated/*Using = OnRep_SplineComponentToFollow*/, Category = "VRSliderComponent")
 	TObjectPtr<USplineComponent> SplineComponentToFollow;
+public:
+	// Gets the initial relative transform, if you want to set it you should be using ResetInitialButtonLocation
+	TObjectPtr<USplineComponent> GetSplineComponentToFollow() { return SplineComponentToFollow; }
 
 	/*UFUNCTION()
 	virtual void OnRep_SplineComponentToFollow()
@@ -198,9 +202,13 @@ public:
 	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
 	virtual void OnRegister() override;
 
+protected:
 	// Now replicating this so that it works correctly over the network
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRSliderComponent")
 		FTransform_NetQuantize InitialRelativeTransform;
+public:
+	// Gets the initial relative transform, if you want to set it you should be using ResetInitialButtonLocation
+	FTransform GetInitialRelativeTransform() { return InitialRelativeTransform; }
 
 	UFUNCTION()
 	virtual void OnRep_InitialRelativeTransform()
@@ -261,14 +269,12 @@ public:
 		TagContainer = GameplayTags;
 	}
 
+protected:
+
 	/** Tags that are set on this object */
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "GameplayTags")
 		FGameplayTagContainer GameplayTags;
-
 	// End Gameplay Tag Interface
-
-	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
-	
 
 	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
@@ -277,7 +283,14 @@ public:
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 		bool bReplicateMovement;
+public:
+		FGameplayTagContainer& GetGameplayTags();
+		bool GetRepGameplayTags() { return bRepGameplayTags; }
+		void SetRepGameplayTags(bool bNewRepGameplayTags);
+		bool GetReplicateMovement() { return bReplicateMovement; }
+		void SetReplicateMovement(bool bNewReplicateMovement);
 
+	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void BeginPlay() override;
 

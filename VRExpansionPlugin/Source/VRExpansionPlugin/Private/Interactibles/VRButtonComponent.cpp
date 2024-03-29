@@ -9,6 +9,10 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 
+#if WITH_PUSH_MODEL
+#include "Net/Core/PushModel/PushModel.h"
+#endif
+
   //=============================================================================
 UVRButtonComponent::UVRButtonComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -48,10 +52,17 @@ void UVRButtonComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePrope
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UVRButtonComponent, InitialRelativeTransform);
-	DOREPLIFETIME(UVRButtonComponent, bReplicateMovement);
-	DOREPLIFETIME(UVRButtonComponent, StateChangeAuthorityType);
-	DOREPLIFETIME_CONDITION(UVRButtonComponent, bButtonState, COND_InitialOnly);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRButtonComponent, InitialRelativeTransform, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRButtonComponent, bReplicateMovement, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRButtonComponent, StateChangeAuthorityType, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_InitialOnly, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRButtonComponent, bButtonState, PushModelParamsWithCondition);
 }
 
 void UVRButtonComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -422,4 +433,28 @@ FVector UVRButtonComponent::SetAxisValue(float SetValue)
 	}
 
 	return vec;
+}
+
+void UVRButtonComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+		MARK_PROPERTY_DIRTY_FROM_NAME(UVRButtonComponent, bReplicateMovement, this);
+#endif
+}
+
+void UVRButtonComponent::SetStateChangeAuthorityType(EVRStateChangeAuthorityType NewStateChangeAuthorityType)
+{
+	StateChangeAuthorityType = NewStateChangeAuthorityType;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRButtonComponent, StateChangeAuthorityType, this);
+#endif
+}
+
+void UVRButtonComponent::SetButtonState(bool bNewButtonState)
+{
+	bButtonState = bNewButtonState;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRButtonComponent, bButtonState, this);
+#endif
 }

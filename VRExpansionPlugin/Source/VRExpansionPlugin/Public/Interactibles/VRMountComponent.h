@@ -94,14 +94,11 @@ public:
 		TagContainer = GameplayTags;
 	}
 
+protected:
 	/** Tags that are set on this object */
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "GameplayTags")
 		FGameplayTagContainer GameplayTags;
-
 	// End Gameplay Tag Interface
-
-	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
-
 
 	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
@@ -110,7 +107,14 @@ public:
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 		bool bReplicateMovement;
+public:
+	FGameplayTagContainer& GetGameplayTags();
+	bool GetRepGameplayTags() { return bRepGameplayTags; }
+	void SetRepGameplayTags(bool bNewRepGameplayTags);
+	bool GetReplicateMovement() { return bReplicateMovement; }
+	void SetReplicateMovement(bool bNewReplicateMovement);
 
+	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void BeginPlay() override;
 
@@ -146,11 +150,7 @@ public:
 
 	// Should be called after the Mount is moved post begin play
 	UFUNCTION(BlueprintCallable, Category = "VRMountComponent")
-		void ResetInitialMountLocation()
-	{
-		// Get our initial relative transform to our parent (or not if un-parented).
-		InitialRelativeTransform = this->GetRelativeTransform();
-	}
+		void ResetInitialMountLocation();
 
 	virtual void OnUnregister() override;;
 

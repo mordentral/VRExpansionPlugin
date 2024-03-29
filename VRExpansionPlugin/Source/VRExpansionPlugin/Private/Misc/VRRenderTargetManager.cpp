@@ -490,9 +490,11 @@ void ARenderTargetReplicationProxy::GetLifetimeReplicatedProps(TArray< class FLi
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_InitialOnly, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
 
-	DOREPLIFETIME(ARenderTargetReplicationProxy, OwningManager);
-	DOREPLIFETIME(ARenderTargetReplicationProxy, OwnersID);
+	DOREPLIFETIME_WITH_PARAMS_FAST(ARenderTargetReplicationProxy, OwningManager, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(ARenderTargetReplicationProxy, OwnersID, PushModelParamsWithCondition);
 }
 
 void ARenderTargetReplicationProxy::ReceiveTextureBlob_Implementation(const TArray<uint8>& TextureBlob, int32 LocationInData, int32 BlobNumber)
