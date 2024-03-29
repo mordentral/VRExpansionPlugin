@@ -10,7 +10,9 @@ namespace UnrealBuildTool.Rules
         public OpenXRExpansionPlugin(ReadOnlyTargetRules Target) 
 				: base(Target)
         {
-			PublicDependencyModuleNames.AddRange(
+            SetupIrisSupport(Target);
+
+            PublicDependencyModuleNames.AddRange(
 			   new string[]
 			   {
 					//"InputDevice",
