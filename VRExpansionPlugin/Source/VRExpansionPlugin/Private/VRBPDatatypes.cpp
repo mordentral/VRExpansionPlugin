@@ -3,6 +3,7 @@
 #include "VRBPDatatypes.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRBPDatatypes)
 
+#include "VRGlobalSettings.h"
 #include "HAL/IConsoleManager.h"
 #include "Chaos/ChaosEngineInterface.h"
 
@@ -218,4 +219,54 @@ FTransform FBPEuroLowPassFilterTrans::RunFilterSmoothing(const FTransform& InRaw
 	NewTrans.NormalizeRotation();
 	// Filter passed value 
 	return NewTrans;
+}
+
+bool FBPAdvancedPhysicsHandleSettings::FillTo(FBPActorPhysicsHandleInformation* HandleInfo, bool bModifyWithScalers) const
+{
+	if (!HandleInfo)
+		return false;
+
+	float DampingMod = 0.0f;
+	float StiffnessMod = 0.0f;
+	float ADampingMod = 0.0f;
+	float AStiffnessMod = 0.0f;
+	const UVRGlobalSettings& VRSettings = *GetDefault<UVRGlobalSettings>();
+
+	if (VRSettings.bUseChaosTranslationScalers)
+	{
+		StiffnessMod = VRSettings.LinearDriveStiffnessScale;
+		DampingMod = VRSettings.LinearDriveDampingScale;
+		AStiffnessMod = VRSettings.AngularDriveStiffnessScale;
+		ADampingMod = VRSettings.AngularDriveDampingScale;
+	}
+	else
+	{
+		auto CVarLinearDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinearDriveStiffnessScale"));
+		auto CVarLinearDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.LinaearDriveDampingScale"));
+		auto CVarAngularDriveStiffnessScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveStiffnessScale"));
+		auto CVarAngularDriveDampingScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Chaos.JointConstraint.AngularDriveDampingScale"));
+
+		StiffnessMod = CVarLinearDriveStiffnessScale->GetFloat();
+		DampingMod = CVarLinearDriveDampingScale->GetFloat();
+		AStiffnessMod = CVarAngularDriveStiffnessScale->GetFloat();
+		ADampingMod = CVarAngularDriveDampingScale->GetFloat();
+	}
+
+	XAxisSettings.FillTo(HandleInfo->LinConstraint.XDrive, DampingMod, StiffnessMod);
+	YAxisSettings.FillTo(HandleInfo->LinConstraint.YDrive, DampingMod, StiffnessMod);
+	ZAxisSettings.FillTo(HandleInfo->LinConstraint.ZDrive, DampingMod, StiffnessMod);
+
+	if ((SlerpSettings.bEnablePositionDrive || SlerpSettings.bEnableVelocityDrive))
+	{
+		HandleInfo->AngConstraint.AngularDriveMode = EAngularDriveMode::SLERP;
+		SlerpSettings.FillTo(HandleInfo->AngConstraint.SlerpDrive, ADampingMod, AStiffnessMod);
+	}
+	else
+	{
+		HandleInfo->AngConstraint.AngularDriveMode = EAngularDriveMode::TwistAndSwing;
+		TwistSettings.FillTo(HandleInfo->AngConstraint.TwistDrive, ADampingMod, AStiffnessMod);
+		SwingSettings.FillTo(HandleInfo->AngConstraint.SwingDrive, ADampingMod, AStiffnessMod);
+	}
+
+	return true;
 }
