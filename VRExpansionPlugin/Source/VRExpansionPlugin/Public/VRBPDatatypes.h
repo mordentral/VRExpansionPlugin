@@ -1868,11 +1868,11 @@ public:
 		bEnableVelocityDrive = ConstraintDrive.bEnableVelocityDrive;
 	}
 
-	void FillTo(FConstraintDrive& ConstraintDrive) const
+	void FillTo(FConstraintDrive& ConstraintDrive, float DampingScaler = 1.0f, float StiffnessScaler = 1.0f) const
 	{
-		ConstraintDrive.Damping = Damping;
-		ConstraintDrive.Stiffness = Stiffness;
-		ConstraintDrive.MaxForce = MaxForceCoefficient * Stiffness;
+		ConstraintDrive.Damping = Damping * DampingScaler;
+		ConstraintDrive.Stiffness = Stiffness * StiffnessScaler;
+		ConstraintDrive.MaxForce = (float)FMath::Clamp<double>((double)ConstraintDrive.Stiffness * (double)MaxForceCoefficient, 0, (double)MAX_FLT);
 		ConstraintDrive.bEnablePositionDrive = bEnablePositionDrive;
 		ConstraintDrive.bEnableVelocityDrive = bEnableVelocityDrive;
 	}
@@ -1929,27 +1929,5 @@ public:
 		return true;
 	}
 
-	bool FillTo(FBPActorPhysicsHandleInformation* HandleInfo) const
-	{
-		if (!HandleInfo)
-			return false;
-
-		XAxisSettings.FillTo(HandleInfo->LinConstraint.XDrive);
-		YAxisSettings.FillTo(HandleInfo->LinConstraint.YDrive);
-		ZAxisSettings.FillTo(HandleInfo->LinConstraint.ZDrive);
-
-		if ((SlerpSettings.bEnablePositionDrive || SlerpSettings.bEnableVelocityDrive))
-		{
-			HandleInfo->AngConstraint.AngularDriveMode = EAngularDriveMode::SLERP;
-			SlerpSettings.FillTo(HandleInfo->AngConstraint.SlerpDrive);
-		}
-		else
-		{
-			HandleInfo->AngConstraint.AngularDriveMode = EAngularDriveMode::TwistAndSwing;
-			TwistSettings.FillTo(HandleInfo->AngConstraint.TwistDrive);
-			SwingSettings.FillTo(HandleInfo->AngConstraint.SwingDrive);
-		}
-
-		return true;
-	}
+	bool FillTo(FBPActorPhysicsHandleInformation* HandleInfo, bool bModifyWithScalers = true) const;
 };
