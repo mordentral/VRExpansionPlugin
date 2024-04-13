@@ -339,7 +339,6 @@ void UVRStereoWidgetRenderComponent::RenderWidget(float DeltaTime)
 		const EPixelFormat requestedFormat = FSlateApplication::Get().GetRenderer()->GetSlateRecommendedColorFormat();
 		RenderTarget = NewObject<UTextureRenderTarget2D>();
 		check(RenderTarget);
-		RenderTarget->AddToRoot();
 		RenderTarget->ClearColor = RenderTargetClearColor;
 		RenderTarget->TargetGamma = WidgetRenderGamma;
 		RenderTarget->InitCustomFormat(TextureSize.X, TextureSize.Y, requestedFormat /*PF_B8G8R8A8*/, false);
