@@ -103,7 +103,7 @@ void FBPEuroLowPassFilter::ResetSmoothingFilter()
 	DeltaFilter.bFirstTime = true;
 }
 
-FVector FBPEuroLowPassFilter::RunFilterSmoothing(const FVector &InRawValue, const float &InDeltaTime)
+FVector FBPEuroLowPassFilter::RunFilterSmoothing(const FVector& InRawValue, const float& InDeltaTime)
 {
 	if (InDeltaTime <= 0.0f)
 	{
@@ -112,7 +112,7 @@ FVector FBPEuroLowPassFilter::RunFilterSmoothing(const FVector &InRawValue, cons
 	}
 
 	// Calculate the delta, if this is the first time then there is no delta
-	const FVector Delta = RawFilter.bFirstTime == true ? FVector::ZeroVector : (InRawValue - RawFilter.PreviousRaw) * 1.0f / InDeltaTime;
+	const FVector Delta = RawFilter.bFirstTime == true ? FVector::ZeroVector : (InRawValue - RawFilter.PreviousRaw) * 1.0 / InDeltaTime;
 
 	// Filter the delta to get the estimated
 	const FVector Estimated = DeltaFilter.Filter(Delta, FVector(DeltaFilter.CalculateAlphaTau(DeltaCutoff, InDeltaTime)));
@@ -153,11 +153,11 @@ FQuat FBPEuroLowPassFilterQuat::RunFilterSmoothing(const FQuat& InRawValue, cons
 
 	if (!RawFilter.bFirstTime)
 	{
-		Delta = (NewInVal - RawFilter.PreviousRaw) * (1.0f / InDeltaTime);
+		Delta = (NewInVal - RawFilter.PreviousRaw) * (1.0 / InDeltaTime);
 	}
 
 
-	float AlphaTau = DeltaFilter.CalculateAlphaTau(DeltaCutoff, InDeltaTime);
+	double AlphaTau = DeltaFilter.CalculateAlphaTau(DeltaCutoff, InDeltaTime);
 	FQuat AlphaTauQ(AlphaTau, AlphaTau, AlphaTau, AlphaTau);
 	const FQuat Estimated = DeltaFilter.Filter(Delta, AlphaTauQ);
 
@@ -197,7 +197,7 @@ FTransform FBPEuroLowPassFilterTrans::RunFilterSmoothing(const FTransform& InRaw
 	// Calculate the delta, if this is the first time then there is no delta
 	FTransform Delta = FTransform::Identity;
 
-	float Frequency = 1.0f / InDeltaTime;
+	double Frequency = 1.0 / InDeltaTime;
 	if (!RawFilter.bFirstTime)
 	{
 		Delta.SetLocation((NewInVal.GetLocation() - RawFilter.PreviousRaw.GetLocation()) * Frequency);
@@ -206,7 +206,7 @@ FTransform FBPEuroLowPassFilterTrans::RunFilterSmoothing(const FTransform& InRaw
 	}
 
 
-	float AlphaTau = DeltaFilter.CalculateAlphaTau(DeltaCutoff, InDeltaTime);
+	double AlphaTau = DeltaFilter.CalculateAlphaTau(DeltaCutoff, InDeltaTime);
 	FTransform AlphaTauQ(FQuat(AlphaTau, AlphaTau, AlphaTau, AlphaTau), FVector(AlphaTau), FVector(AlphaTau));
 	const FTransform Estimated = DeltaFilter.Filter(Delta, AlphaTauQ);
 
