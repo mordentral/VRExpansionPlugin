@@ -186,9 +186,9 @@ public:
 		if (!bFirstTime)
 		{
 			// This is unsafe in non float / float array data types, but I am not going to be using any like that
-			for (int i = 0; i < sizeof(filterType)/sizeof(float); i++)
+			for (int i = 0; i < sizeof(filterType) / sizeof(double); i++)
 			{
-				((float*)&Result)[i] = ((float*)&InAlpha)[i] * ((float*)&InValue)[i] + (1.0f - ((float*)&InAlpha)[i]) * ((float*)&Previous)[i];
+				((double*)&Result)[i] = ((double*)&InAlpha)[i] * ((double*)&InValue)[i] + (1.0f - ((double*)&InAlpha)[i]) * ((double*)&Previous)[i];
 			}
 		}
 
@@ -209,15 +209,15 @@ public:
 	/** If this is the first time doing a filter */
 	bool bFirstTime;
 
-//private:
+	//private:
 
-	const filterType CalculateCutoff(const filterType& InValue, float& MinCutoff, float& CutoffSlope)
+	const filterType CalculateCutoff(const filterType& InValue, double& MinCutoff, double& CutoffSlope)
 	{
 		filterType Result;
 		// This is unsafe in non float / float array data types, but I am not going to be using any like that
-		for (int i = 0; i < sizeof(filterType)/sizeof(float); i++)
+		for (int i = 0; i < sizeof(filterType) / sizeof(double); i++)
 		{
-			((float*)&Result)[i] = MinCutoff + CutoffSlope * FMath::Abs(((float*)&InValue)[i]);
+			((double*)&Result)[i] = MinCutoff + CutoffSlope * FMath::Abs(((double*)&InValue)[i]);
 		}
 		return Result;
 	}
@@ -226,17 +226,17 @@ public:
 	{
 		filterType Result;
 		// This is unsafe in non float / float array data types, but I am not going to be using any like that
-		for (int i = 0; i < sizeof(filterType)/sizeof(float); i++)
+		for (int i = 0; i < sizeof(filterType) / sizeof(double); i++)
 		{
-			((float*)&Result)[i] = CalculateAlphaTau(((float*)&InCutoff)[i], InDeltaTime);
+			((double*)&Result)[i] = CalculateAlphaTau(((double*)&InCutoff)[i], InDeltaTime);
 		}
 		return Result;
 	}
 
-	inline const float CalculateAlphaTau(const float InCutoff, const double InDeltaTime)
+	inline const double CalculateAlphaTau(const double InCutoff, const double InDeltaTime)
 	{
-		const float tau = 1.0 / (2.0f * PI * InCutoff);
-		return 1.0f / (1.0f + tau / InDeltaTime);
+		const double tau = 1.0 / (2.0 * PI * InCutoff);
+		return 1.0 / (1.0 + tau / InDeltaTime);
 	}
 };
 
@@ -254,14 +254,14 @@ public:
 
 	/** Default constructor */
 	FBPEuroLowPassFilter() :
-		MinCutoff(0.9f),
-		DeltaCutoff(1.0f),
-		CutoffSlope(0.007f),
+		MinCutoff(0.9),
+		DeltaCutoff(1.0),
+		CutoffSlope(0.007),
 		RawFilter(FVector::ZeroVector),
 		DeltaFilter(FVector::ZeroVector)
 	{}
 
-	FBPEuroLowPassFilter(const float InMinCutoff, const float InCutoffSlope, const float InDeltaCutoff) :
+	FBPEuroLowPassFilter(const double InMinCutoff, const double InCutoffSlope, const double InDeltaCutoff) :
 		MinCutoff(InMinCutoff),
 		DeltaCutoff(InDeltaCutoff),
 		CutoffSlope(InCutoffSlope),
@@ -271,21 +271,21 @@ public:
 
 	// The smaller the value the less jitter and the more lag with micro movements
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float MinCutoff;
+		double MinCutoff;
 
 	// If latency is too high with fast movements increase this value
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float DeltaCutoff;
+		double DeltaCutoff;
 
 	// This is the magnitude of adjustment
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float CutoffSlope;
+		double CutoffSlope;
 
 
 	void ResetSmoothingFilter();
 
 	/** Smooth vector */
-	FVector RunFilterSmoothing(const FVector &InRawValue, const float &InDeltaTime);
+	FVector RunFilterSmoothing(const FVector& InRawValue, const float& InDeltaTime);
 
 private:
 
@@ -308,14 +308,14 @@ public:
 
 	/** Default constructor */
 	FBPEuroLowPassFilterQuat() :
-		MinCutoff(0.9f),
-		DeltaCutoff(1.0f),
-		CutoffSlope(0.007f),
+		MinCutoff(0.9),
+		DeltaCutoff(1.0),
+		CutoffSlope(0.007),
 		RawFilter(FQuat::Identity),
 		DeltaFilter(FQuat::Identity)
 	{}
 
-	FBPEuroLowPassFilterQuat(const float InMinCutoff, const float InCutoffSlope, const float InDeltaCutoff) :
+	FBPEuroLowPassFilterQuat(const double InMinCutoff, const double InCutoffSlope, const double InDeltaCutoff) :
 		MinCutoff(InMinCutoff),
 		DeltaCutoff(InDeltaCutoff),
 		CutoffSlope(InCutoffSlope),
@@ -325,15 +325,15 @@ public:
 
 	// The smaller the value the less jitter and the more lag with micro movements
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float MinCutoff;
+		double MinCutoff;
 
 	// If latency is too high with fast movements increase this value
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float DeltaCutoff;
+		double DeltaCutoff;
 
 	// This is the magnitude of adjustment
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float CutoffSlope;
+		double CutoffSlope;
 
 	void ResetSmoothingFilter();
 
@@ -361,14 +361,14 @@ public:
 
 	/** Default constructor */
 	FBPEuroLowPassFilterTrans() :
-		MinCutoff(0.1f),
-		DeltaCutoff(10.0f),
-		CutoffSlope(10.0f),
+		MinCutoff(0.1),
+		DeltaCutoff(10.0),
+		CutoffSlope(10.0),
 		RawFilter(FTransform::Identity),
 		DeltaFilter(FTransform::Identity)
 	{}
 
-	FBPEuroLowPassFilterTrans(const float InMinCutoff, const float InCutoffSlope, const float InDeltaCutoff) :
+	FBPEuroLowPassFilterTrans(const double InMinCutoff, const double InCutoffSlope, const double InDeltaCutoff) :
 		MinCutoff(InMinCutoff),
 		DeltaCutoff(InDeltaCutoff),
 		CutoffSlope(InCutoffSlope),
@@ -378,15 +378,15 @@ public:
 
 	// The smaller the value the less jitter and the more lag with micro movements
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float MinCutoff;
+		double MinCutoff;
 
 	// If latency is too high with fast movements increase this value
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float DeltaCutoff;
+		double DeltaCutoff;
 
 	// This is the magnitude of adjustment
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FilterSettings")
-		float CutoffSlope;
+		double CutoffSlope;
 
 	void ResetSmoothingFilter();
 
