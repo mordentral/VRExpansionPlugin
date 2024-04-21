@@ -734,7 +734,12 @@ FVector UVRSliderComponent::ClampSlideVector(FVector ValueToClamp)
 	FVector MinScale = (bUseLegacyLogic ? MinSlideDistance : MinSlideDistance.GetAbs()) * fScaleFactor;
 
 	FVector Dist = (bUseLegacyLogic ? (MinSlideDistance + MaxSlideDistance) : (MinSlideDistance.GetAbs() + MaxSlideDistance.GetAbs())) * fScaleFactor;
-	FVector Progress = (ValueToClamp - (-MinScale)) / Dist;
+	FVector Progress{
+	Dist.X > 0.0f ? (ValueToClamp.X - (-MinScale.X)) / Dist.X : 0.f,
+	Dist.Y > 0.0f ? (ValueToClamp.Y - (-MinScale.Y)) / Dist.Y : 0.f,
+	Dist.Z > 0.0f ? (ValueToClamp.Z - (-MinScale.Z)) / Dist.Z : 0.f,
+	};
+
 
 	if (bSliderUsesSnapPoints)
 	{
