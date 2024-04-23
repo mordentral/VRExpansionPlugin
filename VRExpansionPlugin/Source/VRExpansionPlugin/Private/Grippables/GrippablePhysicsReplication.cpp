@@ -2099,7 +2099,8 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 				}
 #endif
 				// Apply correction to position and rotation
-				RigidsSolver->GetEvolution()->ApplyParticleTransformCorrection(Handle, CorrectedX, CorrectedR, PhysicsReplicationCVars::ResimulationCVars::bRuntimeCorrectConnectedBodies);
+				static const auto CVarResimRuntimeCorrectConnectedBodies = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.RuntimeCorrectConnectedBodies"));
+				RigidsSolver->GetEvolution()->ApplyParticleTransformCorrection(Handle, CorrectedX, CorrectedR, CVarResimRuntimeCorrectConnectedBodies->GetBool());
 			}
 
 			// Keep target for NumPredictedFrames time to perform runtime corrections with until a new target is received
