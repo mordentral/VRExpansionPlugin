@@ -51,9 +51,13 @@ namespace PhysicsReplicationCVars
 	namespace ResimulationCVars
 	{
 		bool bRuntimeCorrectionEnabled = true;
-		bool bDisableReplicationOnInteraction = true;
+		bool bRuntimeVelocityCorrection = false;
+		bool bRuntimeCorrectConnectedBodies = true;
 		float PosStabilityMultiplier = 0.5f;
 		float RotStabilityMultiplier = 1.0f;
+		float VelStabilityMultiplier = 0.5f;
+		float AngVelStabilityMultiplier = 0.5f;
+		bool bDrawDebug = false;
 	}
 
 	namespace PredictiveInterpolationCVars
@@ -84,6 +88,7 @@ namespace PhysicsReplicationCVars
 		bool bSkipVelocityRepOnPosEarlyOut = true;
 		bool bPostResimWaitForUpdate = false;
 		bool bVelocityBased = true;
+		bool bPosCorrectionAsVelocity = false;
 		bool bDisableSoftSnap = false;
 		bool bAlwaysHardSnap = false;
 		bool bSkipReplication = false;
@@ -91,7 +96,7 @@ namespace PhysicsReplicationCVars
 		bool bDrawDebugTargets = false;
 		bool bDrawDebugVectors = false;
 		float SleepSecondsClearTarget = 15.0f;
-		int32 TargetTickAlignmentClampMultiplier = 10;
+		int32 TargetTickAlignmentClampMultiplier = 1;
 	}
 
 }
@@ -1840,19 +1845,40 @@ bool FPhysicsReplicationAsyncVR::PredictiveInterpolation(Chaos::FPBDRigidParticl
 			// Get PosDiff
 			const FVector PosDiff = TargetPos - CurrentState.Position;
 
-			// Convert PosDiff to a velocity
-			const FVector PosDiffVelocity = PosDiff / PosCorrectionTime;
-
 			// Get LinVelDiff by adding inverted CurrentState.LinVel to TargetLinVel
-
 			const FVector LinVelDiff = -CurrentState.LinVel + TargetLinVel;
 
-			// Add PosDiffVelocity to LinVelDiff to get BlendedTargetVelocity
-			const FVector BlendedTargetVelocity = LinVelDiff + PosDiffVelocity;
+			// Calculate velocity blend amount for this tick as an alpha value
+			const float Alpha = FMath::Clamp(DeltaSeconds / InterpolationTime, 0.0f, 1.0f);
 
-			// Add BlendedTargetVelocity onto current velocity
-			const float BlendStepAmount = FMath::Clamp(DeltaSeconds / InterpolationTime, 0.0f, 1.0f);
-			const FVector RepLinVel = CurrentState.LinVel + (BlendedTargetVelocity * BlendStepAmount);
+			FVector RepLinVel;
+			static const auto CVarPosCorrectionAsVelocity = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.PosCorrectionAsVelocity"));
+			if (CVarPosCorrectionAsVelocity->GetBool())
+			{
+				// Convert PosDiff to a velocity
+				const FVector PosDiffVelocity = PosDiff / PosCorrectionTime;
+
+				// Add PosDiffVelocity to LinVelDiff to get BlendedTargetVelocity
+				const FVector BlendedTargetVelocity = LinVelDiff + PosDiffVelocity;
+
+				// Add BlendedTargetVelocity onto current velocity
+
+				RepLinVel = CurrentState.LinVel + (BlendedTargetVelocity * Alpha);
+			}
+			else // Positional correction as position shift
+			{
+				// Calculate the PosDiff amount to correct this tick
+				const FVector PosDiffVelocityDelta = PosDiff * (DeltaSeconds / PosCorrectionTime); // Same as (PosDiff / PosCorrectionTime) * DeltaSeconds
+
+				// Add velocity diff onto current velocity
+				RepLinVel = CurrentState.LinVel + (LinVelDiff * Alpha);
+
+
+				// Apply positional correction
+				Handle->SetX(Handle->GetX() + PosDiffVelocityDelta);
+			}
+
+			// Apply velocity replication
 
 			Handle->SetV(RepLinVel);
 
@@ -1996,18 +2022,19 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 		UE_LOG(LogTemp, Log, TEXT("Particle Target Velocity = %s | Current Velocity = %s"), *Target.TargetState.LinVel.ToString(), *PastState.GetV().ToString());
 		UE_LOG(LogTemp, Log, TEXT("Particle Target Quaternion = %s | Current Quaternion = %s"), *Target.TargetState.Quaternion.ToString(), *PastState.GetR().ToString());
 		UE_LOG(LogTemp, Log, TEXT("Particle Target Omega = %s | Current Omega= %s"), *Target.TargetState.AngVel.ToString(), *PastState.GetW().ToString());
+	}
 
-		{ // DrawDebug
-			static constexpr float BoxSize = 5.0f;
-			const float ColorLerp = ShouldTriggerResim ? 1.0f : 0.0f;
-			const FColor DebugColor = FLinearColor::LerpUsingHSV(FLinearColor::Green, FLinearColor::Red, ColorLerp).ToFColor(false);
+	static const auto CVarResimDrawDebug = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.DrawDebug"));
+	if (CVarResimDrawDebug->GetBool())
+	{
+		static constexpr float BoxSize = 5.0f;
+		const float ColorLerp = ShouldTriggerResim ? 1.0f : 0.0f;
+		const FColor DebugColor = FLinearColor::LerpUsingHSV(FLinearColor::Green, FLinearColor::Red, ColorLerp).ToFColor(false);
 
-			static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
-			Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Target.TargetState.Position, FVector(BoxSize, BoxSize, BoxSize), Target.TargetState.Quaternion, FColor::Orange, true, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
-			Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(PastState.GetX(), FVector(6, 6, 6), PastState.GetR(), DebugColor, true, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
-			Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow(PastState.GetX(), Target.TargetState.Position, 5.0f, FColor::MakeRandomSeededColor(LocalFrame), true, CVarNetCorrectionLifetime->GetFloat(), 0, 0.5f);
-
-		}
+		static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Target.TargetState.Position, FVector(BoxSize, BoxSize, BoxSize), Target.TargetState.Quaternion, FColor::Orange, true, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(PastState.GetX(), FVector(6, 6, 6), PastState.GetR(), DebugColor, true, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow(PastState.GetX(), Target.TargetState.Position, 5.0f, FColor::MakeRandomSeededColor(LocalFrame), true, CVarNetCorrectionLifetime->GetFloat(), 0, 0.5f);
 	}
 #endif
 
@@ -2031,27 +2058,48 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 
 			if (Target.TickCount <= NumPredictedFrames && NumPredictedFrames > 0)
 			{
-				// Calculate correction to position
-				const float CorrectionAmountX = SettingsCurrent.ResimulationSettings.GetPosStabilityMultiplier() / NumPredictedFrames; // Same result as (ErrorOffset / NumPredictedFrames) * PosStabilityMultiplier
-				const FVector CorrectedX = Handle->GetX() + (ErrorOffset * CorrectionAmountX);
+				// Positional Correction
+				const float CorrectionAmountX = SettingsCurrent.ResimulationSettings.GetPosStabilityMultiplier() / NumPredictedFrames;
+				const FVector PosDiffCorrection = ErrorOffset * CorrectionAmountX; // Same result as (ErrorOffset / NumPredictedFrames) * PosStabilityMultiplier
+				const FVector CorrectedX = Handle->GetX() + PosDiffCorrection;
 
-				// Calculate correction to rotation
-				const float CorrectionAmountR = (1.f / NumPredictedFrames) * SettingsCurrent.ResimulationSettings.GetRotStabilityMultiplier();
-				const FQuat InvTargetQuat = Target.TargetState.Quaternion;
-				const FQuat DeltaQuat = PastState.GetR().Inverse() * InvTargetQuat;
+
+				// Rotational Correction
+				const float CorrectionAmountR = SettingsCurrent.ResimulationSettings.GetRotStabilityMultiplier() / NumPredictedFrames;
+
+				const FQuat DeltaQuat = PastState.GetR().Inverse() * Target.TargetState.Quaternion;
 				const FQuat TargetCorrectionR = Handle->GetR() * DeltaQuat;
 				const FQuat CorrectedR = FQuat::Slerp(Handle->GetR(), TargetCorrectionR, CorrectionAmountR);
 
+				if (SettingsCurrent.ResimulationSettings.GetRuntimeVelocityCorrectionEnabled())
+				{
+					// Linear Velocity Correction
+					const FVector LinVelDiff = Target.TargetState.LinVel - PastState.GetV(); // Velocity vector that the server covers but the client doesn't
+					const float CorrectionAmountV = SettingsCurrent.ResimulationSettings.GetVelStabilityMultiplier() / NumPredictedFrames;
+					const FVector VelCorrection = LinVelDiff * CorrectionAmountV; // Same result as (LinVelDiff / NumPredictedFrames) * VelStabilityMultiplier
+					const FVector CorrectedV = Handle->GetV() + VelCorrection;
+
+					// Angular Velocity Correction
+					const FVector AngVelDiff = Target.TargetState.AngVel - PastState.GetW(); // Angular velocity vector that the server covers but the client doesn't
+					const float CorrectionAmountW = SettingsCurrent.ResimulationSettings.GetAngVelStabilityMultiplier() / NumPredictedFrames;
+					const FVector AngVelCorrection = AngVelDiff * CorrectionAmountW; // Same result as (AngVelDiff / NumPredictedFrames) * VelStabilityMultiplier
+					const FVector CorrectedW = Handle->GetW() + AngVelCorrection;
+
+					// Apply correction to velocities
+					Handle->SetV(CorrectedV);
+					Handle->SetW(CorrectedW);
+				}
+
+
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-				if (Chaos::FPhysicsSolverBase::CanDebugNetworkPhysicsPrediction())
+				if (CVarResimDrawDebug->GetBool())
 				{
 					static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
 					Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow(Handle->GetX(), CorrectedX, 5.0f, FColor::MakeRandomSeededColor(LocalFrame), true, CVarNetCorrectionLifetime->GetFloat(), 0, 0.5f);
 				}
 #endif
-				// Apply correction
-				Handle->SetX(CorrectedX);
-				Handle->SetR(CorrectedR);
+				// Apply correction to position and rotation
+				RigidsSolver->GetEvolution()->ApplyParticleTransformCorrection(Handle, CorrectedX, CorrectedR, PhysicsReplicationCVars::ResimulationCVars::bRuntimeCorrectConnectedBodies);
 			}
 
 			// Keep target for NumPredictedFrames time to perform runtime corrections with until a new target is received

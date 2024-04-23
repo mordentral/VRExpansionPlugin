@@ -13,6 +13,7 @@
 #include "IHeadMountedDisplay.h"
 #include "IXRTrackingSystem.h"
 #include "VRCharacter.h"
+#include "Engine/OverlapResult.h"
 #include "Algo/Copy.h"
 #include "AI/Navigation/NavigationRelevantData.h"
 
