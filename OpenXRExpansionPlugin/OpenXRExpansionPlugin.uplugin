@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 5.3,
-	"VersionName": "5.3",
+	"Version": 5.4,
+	"VersionName": "5.4",
 	"FriendlyName": "OpenXRExpansionPlugin",
 	"Description": "An set of utility functions for OpenXR",
 	"Category": "Virtual Reality",

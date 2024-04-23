@@ -60,6 +60,8 @@ public:
 
 	virtual void GatherCurrentMovement() override;
 
+protected:
+
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
 		TArray<TObjectPtr<UVRGripScriptBase>> GripLogicScripts;
 
@@ -68,6 +70,14 @@ public:
 	// where the object will never have a replicating script
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bReplicateGripScripts;
+
+public:
+
+	void SetReplicateGripScripts(bool NewReplicateGripScripts);
+	inline bool GetReplicateGripScripts() { return bReplicateGripScripts; };
+
+	// Get the grip script array, will automatically dirty it if they are replicated as it is assumed if you are directly accessing it you are altering it
+	TArray<TObjectPtr<UVRGripScriptBase>>& GetGripLogicScripts();
 
 	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
 	virtual void GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>& ObjList) override;
@@ -101,8 +111,14 @@ public:
 	// Client Auth Throwing Data and functions 
 	// ------------------------------------------------
 
+protected:
+
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
 		FVRClientAuthReplicationData ClientAuthReplicationData;
+
+public:
+	// If changing this in c++ it is using a getter to make sure it is dirtied
+	FVRClientAuthReplicationData& GetClientAuthReplicationData(FVRClientAuthReplicationData& ClientAuthData);
 
 	// Add this to client side physics replication (until coming to rest or timeout period is hit)
 	UFUNCTION(BlueprintCallable, Category = "Networking")
@@ -147,17 +163,26 @@ public:
 		TagContainer = GameplayTags;
 	}
 
+protected:
+
 	/** Tags that are set on this object */
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "GameplayTags")
 		FGameplayTagContainer GameplayTags;
+public:
+	FGameplayTagContainer& GetGameplayTags();
 
 	// End Gameplay Tag Interface
 
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
+protected:
 	// Skips the attachment replication if we are locally owned and our grip settings say that we are a client authed grip.
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Replication")
 		bool bAllowIgnoringAttachOnOwner;
+
+public:
+	void SetAllowIgnoringAttachOnOwner(bool bNewAllowIgnoringAttachOnOwner);
+	inline bool GetAllowIgnoringAttachOnOwner() { return bAllowIgnoringAttachOnOwner; };
 
 	// Should we skip attachment replication (vr settings say we are a client auth grip and our owner is locally controlled)
 	inline bool ShouldWeSkipAttachmentReplication(bool bConsiderHeld = true) const
@@ -198,11 +223,21 @@ public:
 	// On Destroy clean up our objects
 	virtual void BeginDestroy() override;
 
+protected:
+
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bRepGripSettingsAndGameplayTags;
 
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		FBPInterfaceProperties VRGripInterfaceSettings;
+
+public:
+
+	void SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags);
+	inline bool GetRepGripSettingsAndGameplayTags() { return bRepGripSettingsAndGameplayTags; };
+
+	// Get VRGripInterfaceSettings, set MarkDirty if you intend to (or may) modify the values inside of it
+	FBPInterfaceProperties& GetVRGripInterfaceSettings(bool bMarkDirty);
 
 	// Set up as deny instead of allow so that default allows for gripping
 	// The GripInitiator is not guaranteed to be valid, check it for validity

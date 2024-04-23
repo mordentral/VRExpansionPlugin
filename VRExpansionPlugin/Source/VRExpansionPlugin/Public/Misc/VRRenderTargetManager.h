@@ -183,7 +183,7 @@ public:
 
 	UPROPERTY(Replicated)
 		uint32 OwnersID;
-	
+
 	UFUNCTION()
 		void OnRep_Manager();
 

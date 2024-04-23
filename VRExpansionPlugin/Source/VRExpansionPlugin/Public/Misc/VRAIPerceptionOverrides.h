@@ -377,6 +377,8 @@ protected:
 
 	void RemoveAllQueriesByListener(const FPerceptionListener& Listener, const TFunction<void(const FAISightQueryVR&)>& OnRemoveFunc = nullptr);
 	void RemoveAllQueriesToTarget(const FAISightTargetVR::FTargetId& TargetId, const TFunction<void(const FAISightQueryVR&)>& OnRemoveFunc = nullptr);
+	/** RemoveAllQueriesToTarget version that need to already have a write access on QueriesListAccessDetector*/
+	void RemoveAllQueriesToTarget_Internal(const FAISightTargetVR::FTargetId& TargetId, const TFunction<void(const FAISightQueryVR&)>& OnRemoveFunc = nullptr);
 
 	/** returns information whether new LoS queries have been added */
 	bool RegisterTarget(AActor& TargetActor, const TFunction<void(FAISightQueryVR&)>& OnAddedFunc = nullptr);

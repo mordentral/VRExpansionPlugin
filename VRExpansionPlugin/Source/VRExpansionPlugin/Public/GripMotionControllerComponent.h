@@ -494,9 +494,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "GripMotionController", ReplicatedUsing = OnRep_GrippedObjects)
 	TArray<FBPActorGripInformation> GrippedObjects;
 
+	// If modifying members in gripped objects directly or a specific grip you need to call this function if you are using Push Networking
+	void DIRTY_GRIPPED_OBJECTS();
+
 	// When possible I suggest that you use GetAllGrips/GetGrippedObjects instead of directly referencing this
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "GripMotionController", ReplicatedUsing = OnRep_LocallyGrippedObjects)
 	TArray<FBPActorGripInformation> LocallyGrippedObjects;
+
+	// If modifying members in locally gripped objects directly or a specific grip you need to call this function if you are using Push Networking
+	void DIRTY_LOCALLY_GRIPPED_OBJECTS();
+
 
 	// Local Grip TransactionalBuffer to store server sided grips that need to be emplaced into the local buffer
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "GripMotionController", ReplicatedUsing = OnRep_LocalTransaction)
@@ -766,37 +773,8 @@ public:
 		return true;
 	}
 
-	inline void CheckTransactionBuffer()
-	{
-		if (LocalTransactionBuffer.Num())
-		{
-			for (int i = LocalTransactionBuffer.Num() - 1; i >= 0; --i)
-			{
-				if (LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped && LocalTransactionBuffer[i].GripID != LocalTransactionBuffer[i].ValueCache.CachedGripID)
-				{
-					// There appears to be a bug with TArray replication where if you replace an index with another value of that
-					// Index, it doesn't fully re-init the object, this is a workaround to re-zero non replicated variables
-					// when that happens.
-					LocalTransactionBuffer[i].ClearNonReppingItems();
-				}
-
-				if (!LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped && LocalTransactionBuffer[i].GrippedObject->IsValidLowLevelFast())
-				{
-					LocalTransactionBuffer[i].ValueCache.bWasInitiallyRepped = true;
-					LocalTransactionBuffer[i].ValueCache.CachedGripID = LocalTransactionBuffer[i].GripID;
-
-					int32 Index = LocallyGrippedObjects.Add(LocalTransactionBuffer[i]);
-
-					if (Index != INDEX_NONE)
-					{
-						NotifyGrip(LocallyGrippedObjects[Index]);
-					}
-
-					Server_NotifyHandledTransaction(LocalTransactionBuffer[i].GripID);				
-				}
-			}
-		}
-	}
+	// Check the local transaction buffer
+	void CheckTransactionBuffer();
 
 	UFUNCTION()
 	virtual void OnRep_LocalTransaction(TArray<FBPActorGripInformation> OriginalArrayState) // Original array state is useless without full serialize, it just hold last delta
@@ -848,17 +826,28 @@ public:
 	// Run the smoothing step
 	void RunNetworkedSmoothing(float DeltaTime);
 
+protected:
+
 	// Rate to update the position to the server, 100htz is default (same as replication rate, should also hit every tick).
 	// On dedicated servers the update rate should be at or lower than the server tick rate for smoothing to work
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking", meta = (ClampMin = "0", UIMin = "0"))
 	float ControllerNetUpdateRate;
+
+public:
+	void SetControllerNetUpdateRate(float NewControllerNetUpdateRate);
+	inline float GetControllerNetUpdateRate() { return ControllerNetUpdateRate; };
 	
 	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case, also used for remotes to lerp position
 	float ControllerNetUpdateCount;
 
+	protected:
 	// Whether to smooth (lerp) between ticks for the replicated motion, DOES NOTHING if update rate is larger than FPS!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
 		bool bSmoothReplicatedMotion;
+
+	public:
+		void SetSmoothReplicatedMotion(bool NewSmoothReplicatedMotion);
+		inline bool GetSmoothReplicatedMotion() { return bSmoothReplicatedMotion; };
 
 	// If true then we will use exponential smoothing with buffered correction
 	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bSmoothReplicatedMotion"))
@@ -876,9 +865,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "GripMotionController|Networking|Smoothing", meta = (editcondition = "bUseExponentialSmoothing"))
 		float NetworkNoSmoothUpdateDistance = 100.f;
 
+	protected:
+
 	// Whether to replicate even if no tracking (FPS or test characters)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "GripMotionController|Networking")
 		bool bReplicateWithoutTracking;
+
+	public:
+		void SetReplicateWithoutTracking(bool NewReplicateWithoutTracking);
+		inline bool GetReplicateWithoutTracking() { return bReplicateWithoutTracking; };
 
 	// I'm sending it unreliable because it is being resent pretty often
 	UFUNCTION(Unreliable, Server, WithValidation)

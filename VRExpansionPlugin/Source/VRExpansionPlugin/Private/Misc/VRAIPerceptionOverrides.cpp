@@ -45,12 +45,12 @@ DECLARE_CYCLE_STAT(TEXT("Perception Sense: Sight, Process pending result"), STAT
 
 
 
-static const int32 DefaultMaxTracesPerTick = 6;
-static const int32 DefaultMaxAsyncTracesPerTick = 10;
-static const int32 DefaultMinQueriesPerTimeSliceCheck = 40;
-static const float DefaultPendingQueriesBudgetReductionRatio = 0.5f;
-static const bool bDefaultUseAsynchronousTraceForDefaultSightQueries = false;
-static const float DefaultStimulusStrength = 1.f;
+constexpr int32 DefaultMaxTracesPerTick = 6;
+constexpr int32 DefaultMaxAsyncTracesPerTick = 10;
+constexpr int32 DefaultMinQueriesPerTimeSliceCheck = 40;
+constexpr float DefaultPendingQueriesBudgetReductionRatio = 0.5f;
+constexpr bool bDefaultUseAsynchronousTraceForDefaultSightQueries = false;
+constexpr float DefaultStimulusStrength = 1.f;
 
 enum class EForEachResult : uint8
 {
@@ -111,7 +111,7 @@ FORCEINLINE_DEBUGGABLE bool CheckIsTargetInSightPie(const FPerceptionListener& L
 const FAISightTargetVR::FTargetId FAISightTargetVR::InvalidTargetId = FAISystem::InvalidUnsignedID;
 
 FAISightTargetVR::FAISightTargetVR(AActor* InTarget, FGenericTeamId InTeamId)
-	: Target(InTarget), SightTargetInterface(NULL), TeamId(InTeamId)
+	: Target(InTarget), SightTargetInterface(nullptr), TeamId(InTeamId)
 {
 	if (InTarget)
 	{
@@ -139,8 +139,10 @@ UAISense_Sight_VR::FDigestedSightProperties::FDigestedSightProperties(const UAIS
 }
 
 UAISense_Sight_VR::FDigestedSightProperties::FDigestedSightProperties()
-	: PeripheralVisionAngleCos(0.f), SightRadiusSq(-1.f), AutoSuccessRangeSqFromLastSeenLocation(FAISystem::InvalidRange), LoseSightRadiusSq(-1.f), PointOfViewBackwardOffset(0.0f), NearClippingRadiusSq(0.0f), AffiliationFlags(-1)
-{}
+	: PeripheralVisionAngleCos(0.f), SightRadiusSq(-1.f), AutoSuccessRangeSqFromLastSeenLocation(FAISystem::InvalidRange), LoseSightRadiusSq(-1.f), PointOfViewBackwardOffset(0.0f), NearClippingRadiusSq(0.0f)
+{
+	AffiliationFlags = FAISenseAffiliationFilter::DetectAllFlags();
+}
 
 
 //----------------------------------------------------------------------//
@@ -338,7 +340,7 @@ float UAISense_Sight_VR::Update()
 #if AISENSE_SIGHT_TIMESLICING_DEBUG
 	UE::AISense_SightVR::FTimingSlicingInfo SlicingInfo;
 #endif // AISENSE_SIGHT_TIMESLICING_DEBUG
-	static const int32 InitialInvalidItemsSize = 16;
+	constexpr int32 InitialInvalidItemsSize = 16;
 	enum class EOperationType : uint8
 	{
 		Remove,
@@ -488,7 +490,7 @@ float UAISense_Sight_VR::Update()
 			});
 		// Do all the removes first and save the out of range swaps because we will insert them at the right location to prevent sorting
 		TArray<FAISightQueryVR> SightQueriesOutOfRangeToInsert;
-		for (FQueryOperation& Operation : QueryOperations)
+		for (const FQueryOperation& Operation : QueryOperations)
 		{
 			switch (Operation.OpType)
 			{
@@ -520,12 +522,12 @@ float UAISense_Sight_VR::Update()
 			if (Operation.bInRange)
 			{
 				// In range queries are always sorted at the beginning of the update
-				SightQueriesInRange.RemoveAtSwap(Operation.Index, 1, /*bAllowShrinking*/false);
+				SightQueriesInRange.RemoveAtSwap(Operation.Index, 1, EAllowShrinking::No);
 			}
 			else
 			{
 				// Preserve the list ordered
-				SightQueriesOutOfRange.RemoveAt(Operation.Index, 1, /*bAllowShrinking*/false);
+				SightQueriesOutOfRange.RemoveAt(Operation.Index, 1, EAllowShrinking::No);
 				if (Operation.Index < NextOutOfRangeIndex)
 				{
 					NextOutOfRangeIndex--;
@@ -547,7 +549,7 @@ float UAISense_Sight_VR::Update()
 			for (const auto& TargetId : InvalidTargets)
 			{
 				// remove affected queries
-				RemoveAllQueriesToTarget(TargetId);
+				RemoveAllQueriesToTarget_Internal(TargetId);
 				// remove target itself
 				ObservedTargets.Remove(TargetId);
 			}
@@ -751,7 +753,7 @@ void UAISense_Sight_VR::OnPendingTraceQueryProcessed(const FTraceHandle& TraceHa
 void UAISense_Sight_VR::OnPendingQueryProcessed(const int32 SightQueryIndex, const bool bIsVisible, const float StimulusStrength, const FVector& SeenLocation, const TOptional<int32>& UserData, const TOptional<AActor*> InTargetActor)
 {
 	FAISightQueryVR SightQuery = SightQueriesPending[SightQueryIndex];
-	SightQueriesPending.RemoveAtSwap(SightQueryIndex, 1, false);
+	SightQueriesPending.RemoveAtSwap(SightQueryIndex, 1, EAllowShrinking::No);
 
 	AIPerception::FListenerMap& ListenersMap = *GetListeners();
 	FPerceptionListener* Listener = ListenersMap.Find(SightQuery.ObserverId);
@@ -855,7 +857,7 @@ void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
 						Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, 0.f, SightQuery->LastSeenLocation, Listener.CachedLocation, FAIStimulus::SensingFailed));
 					}
 
-					SightQueries.RemoveAtSwap(QueryIndex, 1, /*bAllowShrinking=*/false);
+					SightQueries.RemoveAtSwap(QueryIndex, 1, EAllowShrinking::No);
 					return EReverseForEachResult::Modified;
 				}
 
@@ -1015,7 +1017,7 @@ void UAISense_Sight_VR::OnListenerUpdateImpl(const FPerceptionListener& UpdatedL
 	// see if this listener is a Target as well
 	const FAISightTargetVR::FTargetId AsTargetId = UpdatedListener.GetBodyActorUniqueID();
 	FAISightTargetVR* AsTarget = ObservedTargets.Find(AsTargetId);
-	if (AsTarget != NULL)
+	if (AsTarget != nullptr)
 	{
 		if (AsTarget->Target.IsValid())
 		{
@@ -1126,12 +1128,10 @@ void UAISense_Sight_VR::RemoveAllQueriesByListener(const FPerceptionListener& Li
 			{
 				OnRemoveFunc(SightQuery);
 			}
-			SightQueries.RemoveAtSwap(QueryIndex, 1, /*bAllowShrinking=*/false);
+			SightQueries.RemoveAtSwap(QueryIndex, 1, EAllowShrinking::No);
 
 			return EReverseForEachResult::Modified;
 		}
-
-
 
 		return EReverseForEachResult::UnTouched;
 	};
@@ -1148,6 +1148,12 @@ void UAISense_Sight_VR::RemoveAllQueriesToTarget(const FAISightTargetVR::FTarget
 {
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_RemoveToTarget);
 	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
+	RemoveAllQueriesToTarget_Internal(TargetId, OnRemoveFunc);
+}
+
+void UAISense_Sight_VR::RemoveAllQueriesToTarget_Internal(const FAISightTargetVR::FTargetId& TargetId, const TFunction<void(const FAISightQueryVR&)>& OnRemoveFunc/*= nullptr */)
+{
+	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_RemoveToTarget);
 
 	auto RemoveQuery = [&TargetId, &OnRemoveFunc](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
 	{
@@ -1159,7 +1165,7 @@ void UAISense_Sight_VR::RemoveAllQueriesToTarget(const FAISightTargetVR::FTarget
 			{
 				OnRemoveFunc(SightQuery);
 			}
-			SightQueries.RemoveAtSwap(QueryIndex, 1, /*bAllowShrinking=*/false);
+			SightQueries.RemoveAtSwap(QueryIndex, 1, EAllowShrinking::No);
 
 			return EReverseForEachResult::Modified;
 		}

@@ -230,6 +230,9 @@ public:
 		return bInsideVolume;
 	}
 
+	// Expose this
+	inline float GetLineThickness() const {return LineThickness;}
+
 public:
 	// Begin UObject interface
 #if WITH_EDITOR

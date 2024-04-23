@@ -1,4 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+
+/*=============================================================================
+	PhysicsReplication.cpp: Code for keeping replicated physics objects in sync with the server based on replicated server state data.
+	Copy / override of this class for VR client authority
+=============================================================================*/
+
 
 #include "Grippables/GrippablePhysicsReplication.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrippablePhysicsReplication)
@@ -9,13 +14,14 @@
 #include "Chaos/ChaosMarshallingManager.h"
 #include "PhysicsProxy/SingleParticlePhysicsProxy.h"
 #include "Chaos/PhysicsObjectInternalInterface.h"
-#include "Chaos/PhysicsObject.h"
+
 #include "PBDRigidsSolver.h"
 #include "Chaos/PBDRigidsEvolutionGBF.h"
 #include "VRGlobalSettings.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "Physics/Experimental/PhysScene_Chaos.h"
 #include "Chaos/DebugDrawQueue.h"
+#include "Chaos/Particles.h"
 //#include "Components/SkeletalMeshComponent.h"
 #include "Misc/ScopeRWLock.h"
 
@@ -30,6 +36,71 @@ namespace VRPhysicsReplicationStatics
 {
 	static bool bHasVRPhysicsReplication = false;
 }
+
+// Hacky work around for them not exporting these....
+#if WITH_EDITOR
+namespace PhysicsReplicationCVars
+{
+	int32 SkipSkeletalRepOptimization = 1;
+#if !UE_BUILD_SHIPPING
+	//int32 LogPhysicsReplicationHardSnaps = 0;
+#endif
+
+	int32 EnableDefaultReplication = 0;
+
+	namespace ResimulationCVars
+	{
+		bool bRuntimeCorrectionEnabled = true;
+		bool bRuntimeVelocityCorrection = false;
+		bool bRuntimeCorrectConnectedBodies = true;
+		float PosStabilityMultiplier = 0.5f;
+		float RotStabilityMultiplier = 1.0f;
+		float VelStabilityMultiplier = 0.5f;
+		float AngVelStabilityMultiplier = 0.5f;
+		bool bDrawDebug = false;
+	}
+
+	namespace PredictiveInterpolationCVars
+	{
+		float PosCorrectionTimeBase = 0.0f;
+		float PosCorrectionTimeMin = 0.1f;
+		float PosCorrectionTimeMultiplier = 1.0f;
+		float RotCorrectionTimeBase = 0.0f;
+		float RotCorrectionTimeMin = 0.1f;
+		float RotCorrectionTimeMultiplier = 1.0f;
+		float PosInterpolationTimeMultiplier = 1.1f;
+		float RotInterpolationTimeMultiplier = 1.25f;
+		float AverageReceiveIntervalSmoothing = 3.0f;
+		float ExtrapolationTimeMultiplier = 3.0f;
+		float ExtrapolationMinTime = 0.75f;
+		float MinExpectedDistanceCovered = 0.5f;
+		float ErrorAccumulationDecreaseMultiplier = 0.5f;
+		float ErrorAccumulationSeconds = 3.0f;
+		bool bDisableErrorVelocityLimits = false;
+		float ErrorAccLinVelMaxLimit = 50.0f;
+		float ErrorAccAngVelMaxLimit = 1.5f;
+		float SoftSnapPosStrength = 0.5f;
+		float SoftSnapRotStrength = 0.5f;
+		bool bSoftSnapToSource = false;
+		float EarlyOutDistanceSqr = 1.0f;
+		float EarlyOutAngle = 1.5f;
+		bool bEarlyOutWithVelocity = true;
+		bool bSkipVelocityRepOnPosEarlyOut = true;
+		bool bPostResimWaitForUpdate = false;
+		bool bVelocityBased = true;
+		bool bPosCorrectionAsVelocity = false;
+		bool bDisableSoftSnap = false;
+		bool bAlwaysHardSnap = false;
+		bool bSkipReplication = false;
+		bool bDontClearTarget = false;
+		bool bDrawDebugTargets = false;
+		bool bDrawDebugVectors = false;
+		float SleepSecondsClearTarget = 15.0f;
+		int32 TargetTickAlignmentClampMultiplier = 1;
+	}
+
+}
+#endif
 
 /*struct FAsyncPhysicsRepCallbackDataVR : public Chaos::FSimCallbackInput
 {
@@ -206,7 +277,7 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 	return ApplyRigidBodyState(DeltaSeconds, BI, PhysicsTarget, ErrorCorrection, InPingSecondsOneWay);
 }
 
-void FPhysicsReplicationVR::SetReplicatedTarget(UPrimitiveComponent* Component, FName BoneName, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame)
+/*void FPhysicsReplicationVR::SetReplicatedTarget(UPrimitiveComponent* Component, FName BoneName, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame)
 {
 
 	// Skip all of the custom logic if we aren't the server
@@ -222,25 +293,30 @@ void FPhysicsReplicationVR::SetReplicatedTarget(UPrimitiveComponent* Component, 
 
 	// If networked physics prediction is enabled, enforce the new physics replication flow via SetReplicatedTarget() using PhysicsObject instead of BodyInstance from BoneName.
 	AActor* Owner = Component->GetOwner();
-	if (UPhysicsSettings::Get()->PhysicsPrediction.bEnablePhysicsPrediction && Owner &&
-		(CVarEnableDefaultReplication->GetInt() || Owner->GetPhysicsReplicationMode() != EPhysicsReplicationMode::Default)) // For now, only opt in to the PhysicsObject flow if not using Default replication or if default is allowed via CVar.
+
+	if (Owner && (CVarEnableDefaultReplication->GetBool() || Owner->GetPhysicsReplicationMode() != EPhysicsReplicationMode::Default)) // For now, only opt in to the PhysicsObject flow if not using Default replication or if default is allowed via CVar.
 	{
 		const ENetRole OwnerRole = Owner->GetLocalRole();
 		const bool bIsSimulated = OwnerRole == ROLE_SimulatedProxy;
 		const bool bIsReplicatedAutonomous = OwnerRole == ROLE_AutonomousProxy && Component->bReplicatePhysicsToAutonomousProxy;
 		if (bIsSimulated || bIsReplicatedAutonomous)
 		{
-			Chaos::FPhysicsObjectHandle PhysicsObject = Component->GetPhysicsObjectByName(BoneName);
+			Chaos::FConstPhysicsObjectHandle PhysicsObject = Component->GetPhysicsObjectByName(BoneName);
 			SetReplicatedTargetVR(PhysicsObject, ReplicatedTarget, ServerFrame, Owner->GetPhysicsReplicationMode());
 			return;
 		}
 	}
 
 	return FPhysicsReplication::SetReplicatedTarget(Component, BoneName, ReplicatedTarget, ServerFrame);
-}
+}*/
 
-void FPhysicsReplicationVR::SetReplicatedTargetVR(Chaos::FPhysicsObject* PhysicsObject, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame, EPhysicsReplicationMode ReplicationMode)
+void FPhysicsReplicationVR::SetReplicatedTargetVR(Chaos::FConstPhysicsObjectHandle PhysicsObject, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame, EPhysicsReplicationMode ReplicationMode)
 {
+	if (!PhysicsObject)
+	{
+		return;
+	}
+
 	UWorld* OwningWorld = GetOwningWorld();
 	if (OwningWorld == nullptr)
 	{
@@ -249,8 +325,8 @@ void FPhysicsReplicationVR::SetReplicatedTargetVR(Chaos::FPhysicsObject* Physics
 
 	// TODO, Check if owning actor is ROLE_SimulatedProxy or ROLE_AutonomousProxy ?
 
-	FReplicatedPhysicsTarget Target;
-	Target.PhysicsObject = PhysicsObject;
+	FReplicatedPhysicsTarget Target(PhysicsObject);
+
 	Target.ReplicationMode = ReplicationMode;
 	Target.ServerFrame = ServerFrame;
 	Target.TargetState = ReplicatedTarget;
@@ -258,6 +334,35 @@ void FPhysicsReplicationVR::SetReplicatedTargetVR(Chaos::FPhysicsObject* Physics
 
 	ensure(!Target.TargetState.Position.ContainsNaN());
 
+	ReplicatedTargetsQueueVR.Add(Target);
+}
+
+void FPhysicsReplicationVR::RemoveReplicatedTarget(UPrimitiveComponent* Component)
+{
+
+	// Skip all of the custom logic if we aren't the server
+	if (const UWorld* World = GetOwningWorld())
+	{
+		if (World->GetNetMode() == ENetMode::NM_Client)
+		{
+			return FPhysicsReplication::RemoveReplicatedTarget(Component);
+		}
+	}
+
+	if (Component == nullptr)
+	{
+		return;
+	}
+	
+	// Call super version to ensure its removed from the inaccessible deprecated targets list
+	FPhysicsReplication::RemoveReplicatedTarget(Component);
+
+	// Remove from legacy flow
+	//ComponentToTargets_DEPRECATED.Remove(Component);
+
+	// Remove from FPhysicsObject flow
+	Chaos::FConstPhysicsObjectHandle PhysicsObject = Component->GetPhysicsObjectByName(NAME_None);
+	FReplicatedPhysicsTarget Target(PhysicsObject); // This creates a new but empty target and when it tries to update the current target in the async flow it will remove it from replication since it's empty.
 	ReplicatedTargetsQueueVR.Add(Target);
 }
 
@@ -521,12 +626,11 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 			else
 			{
 				//If async is used, enqueue for callback
-				FPhysicsRepAsyncInputData AsyncInputData;
+				FPhysicsRepAsyncInputData AsyncInputData(nullptr);
 				AsyncInputData.TargetState = NewState;
 				AsyncInputData.TargetState.Position = IdealWorldTM.GetLocation();
 				AsyncInputData.TargetState.Quaternion = IdealWorldTM.GetRotation();
 				AsyncInputData.Proxy = static_cast<Chaos::FSingleParticlePhysicsProxy*>(BI->GetPhysicsActorHandle());
-				AsyncInputData.PhysicsObject = nullptr;
 				AsyncInputData.ErrorCorrection = { ErrorCorrection.LinearVelocityCoefficient, ErrorCorrection.AngularVelocityCoefficient, ErrorCorrection.PositionLerp, ErrorCorrection.AngleLerp };
 
 				AsyncInputData.LatencyOneWay = PingSeconds;
@@ -614,7 +718,7 @@ void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrim
 			{
 				if (APlayerController* PlayerController = World->GetFirstPlayerController())
 				{
-					LocalFrameOffset = PlayerController->GetServerToLocalAsyncPhysicsTickOffset();
+					LocalFrameOffset = PlayerController->GetNetworkPhysicsTickOffset();
 				}
 			}
 		}
@@ -631,33 +735,29 @@ void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrim
 
 	for (auto Itr = ComponentsToTargets.CreateIterator(); Itr; ++Itr)
 	{
-
 		bool bRemoveItr = false;
 		if (UPrimitiveComponent* PrimComp = Itr.Key().Get())
-		{
-			if (FBodyInstance* BI = PrimComp->GetBodyInstance(Itr.Value().BoneName))
+		{		
+			if (PrimComp->GetAttachParent() == nullptr)
 			{
-				FReplicatedPhysicsTarget& PhysicsTarget = Itr.Value();
-				FRigidBodyState& UpdatedState = PhysicsTarget.TargetState;
-				bool bUpdated = false;
-				if (AActor* OwningActor = PrimComp->GetOwner())
+				if (FBodyInstance* BI = PrimComp->GetBodyInstance(Itr.Value().BoneName))
 				{
-					// Remove if there is no owner
-					if (!OwningActor->GetNetOwningPlayer())
-					{
-						bRemoveItr = true;
-					}
-					else
+					FReplicatedPhysicsTarget& PhysicsTarget = Itr.Value();
+					FRigidBodyState& UpdatedState = PhysicsTarget.TargetState;
+					bool bUpdated = false;
+					if (AActor* OwningActor = PrimComp->GetOwner())
 					{
 						// Removed as this is server sided
-						/*const ENetRole OwnerRole = OwningActor->GetLocalRole();
+						/*
+						const ENetRole OwnerRole = OwningActor->GetLocalRole();
 						const bool bIsSimulated = OwnerRole == ROLE_SimulatedProxy;
 						const bool bIsReplicatedAutonomous = OwnerRole == ROLE_AutonomousProxy && PrimComp->bReplicatePhysicsToAutonomousProxy;
 						if (bIsSimulated || bIsReplicatedAutonomous)*/
 
-
 						// Deleted everything here, we will always be the server, I already filtered out clients to default logic
 						{
+							// Get the ping of this thing's owner. If nobody owns it,
+							// then it's server authoritative.
 							/*const*/ float OwnerPing = 0.0f;// GetOwnerPing(OwningActor, PhysicsTarget);
 
 							/*if (UPlayer* OwningPlayer = OwningActor->GetNetOwningPlayer())
@@ -676,12 +776,10 @@ void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrim
 							// NOTE: We divide by 2 to approximate 1-way ping from 2-way ping.
 							const float PingSecondsOneWay = 0.0f;// (LocalPing + OwnerPing) * 0.5f * 0.001f;
 
-
 							if (UpdatedState.Flags & ERigidBodyFlags::NeedsUpdate)
 							{
-								const int32 LocalFrame = PhysicsTarget.ServerFrame + LocalFrameOffset;
+								const int32 LocalFrame = PhysicsTarget.ServerFrame - LocalFrameOffset;
 								const bool bRestoredState = ApplyRigidBodyState(DeltaSeconds, BI, PhysicsTarget, PhysicErrorCorrection, PingSecondsOneWay, LocalFrame, 0);
-								//const bool bRestoredState = ApplyRigidBodyState(DeltaSeconds, BI, PhysicsTarget, PhysicErrorCorrection, PingSecondsOneWay, LocalFrame, NumPredictedFrames);
 
 								// Need to update the component to match new position.
 								static const auto CVarSkipSkeletalRepOptimization = IConsoleManager::Get().FindConsoleVariable(TEXT("p.SkipSkeletalRepOptimization"));
@@ -689,9 +787,7 @@ void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrim
 								{
 									PrimComp->SyncComponentToRBPhysics();
 								}
-
-								// Added a sleeping check from the input state as well, we always want to cease activity on sleep
-								if (bRestoredState /* || ((UpdatedState.Flags & ERigidBodyFlags::Sleeping) != 0)*/)
+								if (bRestoredState)
 								{
 									bRemoveItr = true;
 								}
@@ -700,34 +796,31 @@ void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrim
 					}
 				}
 			}
+		}
 
-			if (bRemoveItr)
-			{
-				OnTargetRestored(Itr.Key().Get(), Itr.Value());
-				Itr.RemoveCurrent();
-			}
+		if (bRemoveItr)
+		{
+			OnTargetRestored(Itr.Key().Get(), Itr.Value());
+			Itr.RemoveCurrent();
 		}
 	}
 
 	// PhysicsObject replication flow
 	for (FReplicatedPhysicsTarget& PhysicsTarget : ReplicatedTargetsQueueVR)
 	{
-		if (PhysicsTarget.TargetState.Flags & ERigidBodyFlags::NeedsUpdate)
-		{
-			const float PingSecondsOneWay = LocalPing * 0.5f * 0.001f;
+		const float PingSecondsOneWay = LocalPing * 0.5f * 0.001f;
 
-			// Queue up the target state for async replication
-			FPhysicsRepAsyncInputData AsyncInputData;
-			AsyncInputData.TargetState = PhysicsTarget.TargetState;
-			AsyncInputData.Proxy = nullptr;
-			AsyncInputData.PhysicsObject = PhysicsTarget.PhysicsObject;
-			AsyncInputData.RepMode = PhysicsTarget.ReplicationMode;
-			AsyncInputData.ServerFrame = PhysicsTarget.ServerFrame;
-			AsyncInputData.FrameOffset = LocalFrameOffset;
-			AsyncInputData.LatencyOneWay = PingSecondsOneWay;
+		// Queue up the target state for async replication
+		FPhysicsRepAsyncInputData AsyncInputData(PhysicsTarget.PhysicsObject);
+		AsyncInputData.TargetState = PhysicsTarget.TargetState;
+		AsyncInputData.Proxy = nullptr;
 
-			AsyncInputVR->InputData.Add(AsyncInputData);
-		}
+		AsyncInputData.RepMode = PhysicsTarget.ReplicationMode;
+		AsyncInputData.ServerFrame = PhysicsTarget.ServerFrame;
+		AsyncInputData.FrameOffset = LocalFrameOffset;
+		AsyncInputData.LatencyOneWay = PingSecondsOneWay;
+
+		AsyncInputVR->InputData.Add(AsyncInputData);
 	}
 	ReplicatedTargetsQueueVR.Reset();
 
@@ -817,8 +910,48 @@ bool FRepMovementVR::GatherActorsMovement(AActor* OwningActor)
 	return true;
 }
 
+
+#pragma region FPhysicsReplicationAsync
+
+void FPhysicsReplicationAsyncVR::OnPhysicsObjectUnregistered_Internal(Chaos::FConstPhysicsObjectHandle PhysicsObject)
+{
+	ObjectToTarget.Remove(PhysicsObject);
+	ObjectToSettings.Remove(PhysicsObject);
+}
+
+void FPhysicsReplicationAsyncVR::RegisterSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject, FNetworkPhysicsSettingsAsync InSettings)
+{
+	if (PhysicsObject != nullptr)
+	{
+		FNetworkPhysicsSettingsAsync& Settings = ObjectToSettings.FindOrAdd(PhysicsObject);
+		Settings = InSettings;
+	}
+}
+
+void FPhysicsReplicationAsyncVR::FetchObjectSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject)
+{
+	FNetworkPhysicsSettingsAsync* CustomSettings = ObjectToSettings.Find(PhysicsObject);
+	SettingsCurrent = (CustomSettings != nullptr) ? *CustomSettings : SettingsDefault;
+}
+
+void FPhysicsReplicationAsyncVR::OnPostInitialize_Internal()
+{
+	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
+
+	if (ensure(RigidsSolver))
+	{
+		// This doesn't even do anything currently, nothing gets it #TODO: CHECK BACK ON THIS
+		//RigidsSolver->SetPhysicsReplication(this);
+	}
+}
+
 void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 {
+	if (FPhysicsReplication::ShouldSkipPhysicsReplication())
+	{
+		return;
+	}
+
 	if (const FPhysicsReplicationAsyncInput* AsyncInput = GetConsumerInput_Internal())
 	{
 		Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
@@ -826,11 +959,12 @@ void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 
 		// Early out if this is a resim frame
 		Chaos::FRewindData* RewindData = RigidsSolver->GetRewindData();
-		if (RewindData && RewindData->IsResim())
+		const bool bRewindDataExist = RewindData != nullptr;
+		if (bRewindDataExist && RewindData->IsResim())
 		{
-			// TODO, Handle the transition from post-resim to interpolation better.
+			// TODO, Handle the transition from post-resim to interpolation better (disabled by default, resim vs replication interaction is handled via FPhysicsReplicationAsync::CacheResimInteractions)
 			static const auto CVarPostResimWaitForUpdate = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.PostResimWaitForUpdate"));
-			if (CVarPostResimWaitForUpdate->GetBool()  && RewindData->IsFinalResim())
+			if (CVarPostResimWaitForUpdate->GetBool() && RewindData->IsFinalResim())
 			{
 				for (auto Itr = ObjectToTarget.CreateIterator(); Itr; ++Itr)
 				{
@@ -839,8 +973,7 @@ void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 					// If final resim frame, mark interpolated targets as waiting for up to date data from the server.
 					if (Target.RepMode == EPhysicsReplicationMode::PredictiveInterpolation)
 					{
-						Target.bWaiting = true;
-						Target.ServerFrame = RigidsSolver->GetCurrentFrame() + Target.FrameOffset;
+						Target.SetWaiting(RigidsSolver->GetCurrentFrame() + Target.FrameOffset, Target.RepModeOverride);
 					}
 				}
 			}
@@ -851,8 +984,30 @@ void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 		// Update async targets with target input
 		for (const FPhysicsRepAsyncInputData& Input : AsyncInput->InputData)
 		{
+			if (Input.TargetState.Flags == ERigidBodyFlags::None)
+			{
+				// Remove replication target 
+				ObjectToTarget.Remove(Input.PhysicsObject);
+				continue;
+			}
+
+			if (!bRewindDataExist && Input.RepMode == EPhysicsReplicationMode::Resimulation)
+			{
+				// We don't have rewind data but an actor is set to replicate using resimulation; we need to enable rewind capture.
+				if (ensure(Chaos::FPBDRigidsSolver::IsNetworkPhysicsPredictionEnabled()))
+				{
+					const int32 NumFrames = FMath::Max<int32>(1, Chaos::FPBDRigidsSolver::GetPhysicsHistoryCount());
+					RigidsSolver->EnableRewindCapture(NumFrames, true);
+				}
+			}
+
 			UpdateRewindDataTarget(Input);
-			UpdateAsyncTarget(Input);
+			UpdateAsyncTarget(Input, RigidsSolver);
+		}
+
+		if (Chaos::FPBDRigidsSolver::IsNetworkPhysicsPredictionEnabled())
+		{
+			CacheResimInteractions();
 		}
 
 		ApplyTargetStatesAsync(GetDeltaTime_Internal(), AsyncInput->ErrorCorrection, AsyncInput->InputData);
@@ -879,9 +1034,7 @@ void FPhysicsReplicationAsyncVR::UpdateRewindDataTarget(const FPhysicsRepAsyncIn
 	}
 
 	Chaos::FReadPhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetRead();
-	Chaos::FPBDRigidParticleHandle* Handle = Interface.GetRigidParticle(Input.PhysicsObject);
-
-	if (Handle != nullptr)
+	if (Chaos::FGeometryParticleHandle* Handle = Interface.GetParticle(Input.PhysicsObject))
 	{
 		// Cache all target states inside RewindData
 		const int32 LocalFrame = Input.ServerFrame - Input.FrameOffset;
@@ -891,7 +1044,7 @@ void FPhysicsReplicationAsyncVR::UpdateRewindDataTarget(const FPhysicsRepAsyncIn
 	}
 }
 
-void FPhysicsReplicationAsyncVR::UpdateAsyncTarget(const FPhysicsRepAsyncInputData& Input)
+void FPhysicsReplicationAsyncVR::UpdateAsyncTarget(const FPhysicsRepAsyncInputData& Input, Chaos::FPBDRigidsSolver* RigidsSolver)
 {
 	if (Input.PhysicsObject == nullptr)
 	{
@@ -899,34 +1052,142 @@ void FPhysicsReplicationAsyncVR::UpdateAsyncTarget(const FPhysicsRepAsyncInputDa
 	}
 
 	FReplicatedPhysicsTargetAsync* Target = ObjectToTarget.Find(Input.PhysicsObject);
-	if (Target == nullptr)
+	bool bFirstTarget = Target == nullptr;
+	if (bFirstTarget)
 	{
-		// First time we add a target, set it's previous and correction
-		// positions to the target position to avoid math with uninitialized
-		// memory.
-		Target = &ObjectToTarget.Add(Input.PhysicsObject);
+		// First time we add a target, set previous state to current input
+		Target = &ObjectToTarget.Add(Input.PhysicsObject, FReplicatedPhysicsTargetAsync());
 		Target->PrevPos = Input.TargetState.Position;
 		Target->PrevPosTarget = Input.TargetState.Position;
 		Target->PrevRotTarget = Input.TargetState.Quaternion;
 		Target->PrevLinVel = Input.TargetState.LinVel;
+		Target->RepModeOverride = Input.RepMode;
 	}
 
-	if (Input.ServerFrame > Target->ServerFrame)
+	/** Target Update Description
+	* @param Input = incoming state target for replication.
+	*
+	* Input comes mainly from the server but can be a faked state produced by the client for example if the client object wakes up from sleeping.
+	* Fake inputs should have a ServerFrame of -1 (bool bIsFake = Input.ServerFrame == -1)
+	* Server inputs can have ServerFrame values of either 0 or an incrementing integer value.
+	*	If the ServerFrame is 0 it should always be 0. If it's incrementing it will always increment.
+	*
+	* @local Target = The current state target used for replication, to be updated with data from Input.
+	* Read about the different target properties in FReplicatedPhysicsTargetAsync
+	*
+	* IMPORTANT:
+	* Target.ServerFrame can be -1 if the target is newly created or if it has data from a fake input.
+	*
+	* SendInterval is calculated by taking Input.ServerFrame - Target.ServerFrame
+	*	Note, can only be calculated if the server is sending incrementing SendIntervals and if we have received a valid input previously so we have the previous ServerFrame cached in Target.
+	*
+	* ReceiveInterval is calculated by taking RigidsSolver->GetCurrentFrame() - Target.ReceiveFrame
+	*	Note that ReceiveInterval is only used if SendInterval is 0
+	*
+	* Target.TickCount starts at 0 and is incremented each tick that the target is used for, TickCount is reset back to 0 each time Target is updated with new Input.
+	*
+	* NOTE: With perfect network conditions SendInterval, ReceiveInterval and Target.TickCount will be the same value.
+	*/
+
+	if ((bFirstTarget || Input.ServerFrame == 0 || Input.ServerFrame > Target->ServerFrame))
 	{
-		Target->PhysicsObject = Input.PhysicsObject;
-		Target->PrevServerFrame = Target->ServerFrame;
-		Target->ServerFrame = Input.ServerFrame;
+		// Get the current physics frame
+		const int32 CurrentFrame = RigidsSolver->GetCurrentFrame();
+
+		// Cache TickCount before updating it, force to 0 if ServerFrame is -1
+		const int32 PrevTickCount = (Target->ServerFrame < 0) ? 0 : Target->TickCount;
+
+		// Cache SendInterval, only calculate if we have a valid Target->ServerFrame, else leave at 0.
+		const int32 SendInterval = (Target->ServerFrame <= 0) ? 0 : Input.ServerFrame - Target->ServerFrame;
+
+		// Cache if this target was previously allowed to be altered, before this update
+		const bool bPrevAllowTargetAltering = Target->bAllowTargetAltering;
+
+		// Set if the target is allowed to be altered after this update
+		Target->bAllowTargetAltering = !(Target->TargetState.Flags & ERigidBodyFlags::Sleeping) && !(Input.TargetState.Flags & ERigidBodyFlags::Sleeping);
+
+		// Set Target->ReceiveInterval from either SendInterval or the number of physics ticks between receiving input states
+		if (SendInterval > 0)
+		{
+			Target->ReceiveInterval = SendInterval;
+		}
+		else
+		{
+			const int32 PrevReceiveFrame = Target->ReceiveFrame < 0 ? (CurrentFrame - 1) : Target->ReceiveFrame;
+			Target->ReceiveInterval = (CurrentFrame - PrevReceiveFrame);
+		}
+
+		// Update target from input and reset properties
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
+			Target->PrevServerFrame = Target->bWaiting ? Input.ServerFrame : Target->ServerFrame; // DEPRECATED UE5.4
+		Target->PrevReceiveFrame = (Target->ReceiveFrame == INDEX_NONE) ? (RigidsSolver->GetCurrentFrame() - 1) : Target->ReceiveFrame; // DEPRECATED UE5.4
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
+			Target->ServerFrame = Input.ServerFrame;
+		Target->ReceiveFrame = CurrentFrame;
 		Target->TargetState = Input.TargetState;
 		Target->RepMode = Input.RepMode;
 		Target->FrameOffset = Input.FrameOffset;
 		Target->TickCount = 0;
-		Target->bWaiting = false;
+		Target->AccumulatedSleepSeconds = 0.0f;
+
+		// Update waiting state
+		Target->UpdateWaiting(Input.ServerFrame);
 
 		if (Input.RepMode == EPhysicsReplicationMode::PredictiveInterpolation)
 		{
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+			static const auto CVarDrawDebugTargets = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.DrawDebugTargets"));
+			if (CVarDrawDebugTargets->GetBool())
+			{
+				const FVector Offset = FVector(0.0f, 0.0f, 50.0f);
+
+				static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Input.TargetState.Position + Offset, FVector(15.0f, 15.0f, 15.0f), Input.TargetState.Quaternion, FColor::MakeRandomSeededColor(Input.ServerFrame), false, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
+			}
+#endif
+
 			// Cache the position we received this target at, Predictive Interpolation will alter the target state but use this as the source position for reconciliation.
 			Target->PrevPosTarget = Input.TargetState.Position;
 			Target->PrevRotTarget = Input.TargetState.Quaternion;
+
+			{
+				/** Target Alignment Feature
+				* With variable network conditions state inputs from the server can arrive both later or earlier than expected.
+				* Target Alignment can adjust for this to make replication act on a target in the timeline that the client is currently replicating in.
+				*
+				* If SendInterval is 4 we expect TickCount to be 4. TickCount - SendInterval = 0, meaning the client and server has ticked physics the same amount between the target states.
+				*
+				* If SendInterval is 4 and TickCount is 2 we have only simulated physics for 2 ticks with the previous target while the server had simulated physics 4 ticks between previous target and new target
+				*	TickCount - SendInterval = -2
+				*	To align this we need to adjust the new target by predicting backwards by 2 ticks, else the replication will start replicating towards a state that is 2 ticks further ahead than expected, making replication speed up.
+				*
+				* Same goes for vice-versa:
+				* If SendInterval is 4 and TickCount is 6 we have simulated physics for 6 ticks with the previous target while the server had simulated physics 4 ticks between previous target and new target
+				*	TickCount - SendInterval = 2
+				*	To align this we need to adjust the new target by predicting forwards by 2 ticks, else the replication will start replicating towards a state that is 2 ticks behind than expected, making replication slow down.
+				*
+				* Note that state inputs from the server can arrive fluctuating between above examples, but over time the alignment is evened out to 0.
+				* If the clients latency is raised or lowered since replication started there might be a consistent offset in the TickCount which is handled by TimeDilation of client physics through APlayerController::UpdateServerAsyncPhysicsTickOffset()
+				*/
+
+				// Run target alignment if we have been allowed to alter the target during the last two target updates
+				if (!bFirstTarget && bPrevAllowTargetAltering && Target->bAllowTargetAltering)
+				{
+					static const auto CVarTargetTickAlignmentClampMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TargetTickAlignmentClampMultiplier"));
+					const int32 AdjustedAverageReceiveInterval = FMath::CeilToInt(Target->AverageReceiveInterval) * CVarTargetTickAlignmentClampMultiplier->GetInt();
+
+					// Set the TickCount to the physics tick offset value from where we expected this target to arrive.
+					// If the client has ticked 2 times ahead from the last target and this target is 3 ticks in front of the previous target then the TickOffset should be -1
+					Target->TickCount = FMath::Clamp(PrevTickCount - Target->ReceiveInterval, -AdjustedAverageReceiveInterval, AdjustedAverageReceiveInterval);
+
+					// Apply target alignment if we aren't waiting for a newer state from the server
+					if (!Target->IsWaiting())
+					{
+						FPhysicsReplicationAsyncVR::ExtrapolateTarget(*Target, Target->TickCount, GetDeltaTime_Internal());
+					}
+				}
+			}
 		}
 	}
 
@@ -934,11 +1195,47 @@ void FPhysicsReplicationAsyncVR::UpdateAsyncTarget(const FPhysicsRepAsyncInputDa
 	LatencyOneWay = Input.LatencyOneWay;
 }
 
+
+void FPhysicsReplicationAsyncVR::CacheResimInteractions()
+{
+	static const auto CVarResimDisableReplicationOnInteraction = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.DisableReplicationOnInteraction"));
+	if (!CVarResimDisableReplicationOnInteraction->GetBool())
+	{
+		return;
+	}
+
+	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
+	if (RigidsSolver == nullptr)
+	{
+		return;
+	}
+
+	ParticlesInResimIslands.Empty(FMath::CeilToInt(static_cast<float>(ParticlesInResimIslands.Num()) * 0.9f));
+	Chaos::Private::FPBDIslandManager& IslandManager = RigidsSolver->GetEvolution()->GetIslandManager();
+	Chaos::FWritePhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetWrite();
+	for (auto Itr = ObjectToTarget.CreateIterator(); Itr; ++Itr)
+	{
+		FReplicatedPhysicsTargetAsync& Target = Itr.Value();
+		if (Target.RepMode == EPhysicsReplicationMode::Resimulation)
+		{
+			Chaos::FConstPhysicsObjectHandle& POHandle = Itr.Key();
+			if (Chaos::FGeometryParticleHandle* Handle = Interface.GetParticle(POHandle))
+			{
+				// Get a list of particles from the same island as a resim particle is in, i.e. particles interacting with a resim particle
+				for (const Chaos::FGeometryParticleHandle* InteractParticle : IslandManager.FindParticlesInIslands(IslandManager.FindParticleIslands(Handle)))
+				{
+					ParticlesInResimIslands.Add(InteractParticle->GetHandleIdx());
+				}
+			}
+		}
+	}
+}
+
 void FPhysicsReplicationAsyncVR::ApplyTargetStatesAsync(const float DeltaSeconds, const FPhysicsRepErrorCorrectionData& ErrorCorrection, const TArray<FPhysicsRepAsyncInputData>& InputData)
 {
 	using namespace Chaos;
 
-	// Deprecated, BodyInstance flow
+	// Deprecated, legacy BodyInstance flow
 	for (const FPhysicsRepAsyncInputData& Input : InputData)
 	{
 		if (Input.Proxy != nullptr)
@@ -952,40 +1249,38 @@ void FPhysicsReplicationAsyncVR::ApplyTargetStatesAsync(const float DeltaSeconds
 	}
 
 	// PhysicsObject flow
+	Chaos::FWritePhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetWrite();
 	for (auto Itr = ObjectToTarget.CreateIterator(); Itr; ++Itr)
 	{
 		bool bRemoveItr = true; // Remove current cached replication target unless replication logic tells us to store it for next tick
 
-		FReplicatedPhysicsTargetAsync& Target = Itr.Value();
-
-		if (Target.PhysicsObject != nullptr)
+		Chaos::FConstPhysicsObjectHandle& POHandle = Itr.Key();
+		if (FGeometryParticleHandle* Handle = Interface.GetParticle(POHandle))
 		{
-			Chaos::FWritePhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetWrite();
-			FPBDRigidParticleHandle* Handle = Interface.GetRigidParticle(Target.PhysicsObject);
+			FReplicatedPhysicsTargetAsync& Target = Itr.Value();
 
-			if (Handle != nullptr)
+
+			if (FPBDRigidParticleHandle* RigidHandle = Handle->CastToRigidParticle())
 			{
-				// TODO, Remove the resim option from project settings, we only need the physics prediction one now
-				EPhysicsReplicationMode RepMode = Target.RepMode;
-				if (!Chaos::FPBDRigidsSolver::IsPhysicsResimulationEnabled() && RepMode == EPhysicsReplicationMode::Resimulation)
-				{
-					RepMode = EPhysicsReplicationMode::Default;
-				}
+				// Cache custom settings for this object if there are any
+				FetchObjectSettings(POHandle);
 
+				const EPhysicsReplicationMode RepMode = Target.IsWaiting() ? Target.RepModeOverride : Target.RepMode;
 				switch (RepMode)
 				{
 				case EPhysicsReplicationMode::Default:
-					bRemoveItr = DefaultReplication(Handle, Target, DeltaSeconds);
+					bRemoveItr = DefaultReplication(RigidHandle, Target, DeltaSeconds);
 					break;
 
 				case EPhysicsReplicationMode::PredictiveInterpolation:
-					bRemoveItr = PredictiveInterpolation(Handle, Target, DeltaSeconds);
+					bRemoveItr = PredictiveInterpolation(RigidHandle, Target, DeltaSeconds);
 					break;
 
 				case EPhysicsReplicationMode::Resimulation:
-					bRemoveItr = ResimulationReplication(Handle, Target, DeltaSeconds);
+					bRemoveItr = ResimulationReplication(RigidHandle, Target, DeltaSeconds);
 					break;
 				}
+				Target.TickCount++;
 			}
 		}
 
@@ -1059,6 +1354,12 @@ bool FPhysicsReplicationAsyncVR::DefaultReplication(Chaos::FPBDRigidParticleHand
 		return true;
 	}
 
+	static const auto CVarResimDisableReplicationOnInteraction = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.DisableReplicationOnInteraction"));
+	if (CVarResimDisableReplicationOnInteraction->GetBool() && ParticlesInResimIslands.Contains(Handle->GetHandleIdx()))
+	{
+		return false;
+	}
+
 	//
 	// NOTES:
 	//
@@ -1097,7 +1398,7 @@ bool FPhysicsReplicationAsyncVR::DefaultReplication(Chaos::FPBDRigidParticleHand
 
 	const FString ObjectName
 #if CHAOS_DEBUG_NAME
-		= Handle->DebugName() ? *Handle->DebugName() : FString(TEXT(""));
+		= Handle && Handle->DebugName() ? *Handle->DebugName() : FString(TEXT(""));
 #else
 		= FString(TEXT(""));
 #endif
@@ -1162,10 +1463,10 @@ bool FPhysicsReplicationAsyncVR::DefaultReplication(Chaos::FPBDRigidParticleHand
 
 	// Get Current state
 	FRigidBodyState CurrentState;
-	CurrentState.Position = Handle->X();
-	CurrentState.Quaternion = Handle->R();
-	CurrentState.AngVel = Handle->W();
-	CurrentState.LinVel = Handle->V();
+	CurrentState.Position = Handle->GetX();
+	CurrentState.Quaternion = Handle->GetR();
+	CurrentState.AngVel = Handle->GetW();
+	CurrentState.LinVel = Handle->GetV();
 
 
 	// Starting from the last known authoritative position, and
@@ -1317,7 +1618,13 @@ bool FPhysicsReplicationAsyncVR::DefaultReplication(Chaos::FPBDRigidParticleHand
 */
 bool FPhysicsReplicationAsyncVR::PredictiveInterpolation(Chaos::FPBDRigidParticleHandle* Handle, FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds)
 {
-	if (Target.bWaiting)
+	static const auto CVarSkipReplication = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.SkipReplication"));
+	if (CVarSkipReplication->GetBool())
+	{
+		return true;
+	}
+
+	if (Target.IsWaiting())
 	{
 		return false;
 	}
@@ -1328,171 +1635,341 @@ bool FPhysicsReplicationAsyncVR::PredictiveInterpolation(Chaos::FPBDRigidParticl
 		return true;
 	}
 
-	static const auto CVarErrorAccumulationSeconds = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ErrorAccumulationSeconds"));
-	const float ErrorAccumulationSeconds = CVarErrorAccumulationSeconds->GetFloat() >= 0.0f ? CVarErrorAccumulationSeconds->GetFloat() : ErrorCorrectionDefault.ErrorAccumulationSeconds;
-	
-	static const auto CVarMaxRestoredStateError = IConsoleManager::Get().FindConsoleVariable(TEXT("p.MaxRestoredStateError"));
-	const float MaxRestoredStateErrorSqr = CVarMaxRestoredStateError->GetFloat() >= 0.0f ?
-		(CVarMaxRestoredStateError->GetFloat() * CVarMaxRestoredStateError->GetFloat()) :
-		(ErrorCorrectionDefault.MaxRestoredStateError * ErrorCorrectionDefault.MaxRestoredStateError);
+	static const auto CVarResimDisableReplicationOnInteraction = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.DisableReplicationOnInteraction"));
+	if (CVarResimDisableReplicationOnInteraction->GetBool() && ParticlesInResimIslands.Contains(Handle->GetHandleIdx()))
+	{
+		// If particle is in an island with a resim object, don't run replication and wait for an up to date target (after leaving the island)
+		Target.SetWaiting(RigidsSolver->GetCurrentFrame() + Target.FrameOffset, EPhysicsReplicationMode::Resimulation);
+		return false;
+	}
 
-	const bool bShouldSleep = (Target.TargetState.Flags & ERigidBodyFlags::Sleeping) != 0;
-	const int32 LocalFrame = Target.ServerFrame - Target.FrameOffset;
-	const int32 NumPredictedFrames = RigidsSolver->GetCurrentFrame() - LocalFrame - Target.TickCount;
-	const float PredictedTime = DeltaSeconds * NumPredictedFrames;
-	const float SendRate = (Target.ServerFrame - Target.PrevServerFrame) * DeltaSeconds;
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+	static const auto CVarDrawDebugTargets = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.DrawDebugTargets"));
+	if (CVarDrawDebugTargets->GetBool())
+	{
+		const FVector Offset = FVector(0.0f, 0.0f, 50.0f);
+		const FVector StartPos = Target.TargetState.Position + Offset;
+		const int32 SizeMultiplier = FMath::Clamp(Target.TickCount, -4, 30);
+		static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(StartPos, FVector(5.0f + SizeMultiplier * 0.75f, 5.0f + SizeMultiplier * 0.75f, 5.0f + SizeMultiplier * 0.75f), Target.TargetState.Quaternion, FColor::MakeRandomSeededColor(Target.ServerFrame), false, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
+	}
+#endif
 
-	static const auto CVarPosCorrectionTimeMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.PosCorrectionTimeMultiplier"));
-	const float PosCorrectionTime = PredictedTime * CVarPosCorrectionTimeMultiplier->GetFloat();
+	const bool bIsSleeping = Handle->IsSleeping();
+	const bool bCanSimulate = Handle->IsDynamic() || bIsSleeping;
 
-	static const auto CVarInterpolationTimeMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.InterpolationTimeMultiplier"));
-	const float InterpolationTime = SendRate * CVarInterpolationTimeMultiplier->GetFloat();
+	// Accumulate sleep time or reset back to 0s if not sleeping
+	Target.AccumulatedSleepSeconds = bIsSleeping ? (Target.AccumulatedSleepSeconds + DeltaSeconds) : 0.0f;
+
+	// Helper for sleep and target clearing at replication end
+	auto EndReplicationHelper = [RigidsSolver, Handle, bCanSimulate, bIsSleeping, DeltaSeconds](FReplicatedPhysicsTargetAsync& Target, bool bOkToClear) -> bool
+	{
+		const bool bShouldSleep = (Target.TargetState.Flags & ERigidBodyFlags::Sleeping) != 0;
+		const bool bReplicatingPhysics = (Target.TargetState.Flags & ERigidBodyFlags::RepPhysics) != 0;
+
+		// --- Set Sleep State ---
+		if (bOkToClear && bShouldSleep && bCanSimulate)
+		{
+			RigidsSolver->GetEvolution()->SetParticleObjectState(Handle, Chaos::EObjectStateType::Sleeping);
+		}
+
+		static const auto CVarSleepSecondsClearTarget = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.SleepSecondsClearTarget"));
+		static const auto CVarDontClearTarget = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.DontClearTarget"));
+		// --- Should replication stop? ---
+		const bool bClearTarget =
+			(!bCanSimulate
+				|| (bOkToClear && bShouldSleep && Target.AccumulatedSleepSeconds >= CVarSleepSecondsClearTarget->GetFloat()) // Don't clear the target due to sleeping until the object both should sleep and is sleeping for n seconds
+				|| (bOkToClear && !bReplicatingPhysics))
+			&& !CVarDontClearTarget->GetBool();
+
+		// --- Target Prediction ---
+		if (!bClearTarget && Target.bAllowTargetAltering)
+		{
+			static const auto CVarExtrapolationTimeMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.ExtrapolationTimeMultiplier"));
+			static const auto CVarExtrapolationMinTime = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.ExtrapolationMinTime"));
+			const int32 ExtrapolationTickLimit = FMath::Max(
+				FMath::CeilToInt(Target.AverageReceiveInterval * CVarExtrapolationTimeMultiplier->GetFloat()), // Extrapolate time based on receive interval * multiplier
+				FMath::CeilToInt(CVarExtrapolationMinTime->GetFloat() / DeltaSeconds)); // At least extrapolate for N seconds
+			if (Target.TickCount <= ExtrapolationTickLimit)
+			{
+				FPhysicsReplicationAsyncVR::ExtrapolateTarget(Target, 1, DeltaSeconds);
+			}
+		}
+
+		return bClearTarget;
+	};
+
+
+	static const auto CVarEarlyOutWithVelocity = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.EarlyOutWithVelocity"));
+	static const auto CVarEarlyOutDistanceSqr = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.EarlyOutDistanceSqr"));
+	// If target velocity is low enough, check the distance from the current position to the source position of our target to see if it's low enough to early out of replication
+	const bool bXCanEarlyOut = (CVarEarlyOutWithVelocity->GetBool() || Target.TargetState.LinVel.SizeSquared() < UE_KINDA_SMALL_NUMBER) &&
+		(Target.PrevPosTarget - Handle->GetX()).SizeSquared() < CVarEarlyOutDistanceSqr->GetFloat();
+
+	// Early out if we are within range of target, also apply target sleep state
+	if (bXCanEarlyOut)
+	{
+		// Get the rotational offset between the blended rotation target and the current rotation
+		const FQuat TargetRotDelta = Target.TargetState.Quaternion * Handle->GetR().Inverse();
+
+		// Convert to angle axis
+		float Angle;
+		FVector Axis;
+		TargetRotDelta.ToAxisAndAngle(Axis, Angle);
+		Angle = FMath::Abs(FMath::UnwindRadians(Angle));
+
+		static const auto CVarEarlyOutAngle = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.EarlyOutAngle"));
+		if (Angle < FMath::DegreesToRadians(CVarEarlyOutAngle->GetFloat()))
+		{
+			// Early Out
+			return EndReplicationHelper(Target, true);
+		}
+	}
+
+	// Wake up if sleeping
+	if (bIsSleeping)
+	{
+		RigidsSolver->GetEvolution()->SetParticleObjectState(Handle, Chaos::EObjectStateType::Dynamic);
+	}
+
+	static const auto CVarAverageReceiveIntervalSmoothing = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.AverageReceiveIntervalSmoothing"));
+	// Update the AverageReceiveInterval if Target.ReceiveInterval has a valid value to update from
+	Target.AverageReceiveInterval = Target.ReceiveInterval == 0 ? Target.AverageReceiveInterval : FMath::Lerp(Target.AverageReceiveInterval, Target.ReceiveInterval, FMath::Clamp((1.0f / (Target.ReceiveInterval * CVarAverageReceiveIntervalSmoothing->GetFloat())), 0.0f, 1.0f));
 
 	// CurrentState
 	FRigidBodyState CurrentState;
-	CurrentState.Position = Handle->X();
-	CurrentState.Quaternion = Handle->R();
-	CurrentState.LinVel = Handle->V();
-	CurrentState.AngVel = Handle->W();
+	CurrentState.Position = Handle->GetX();
+	CurrentState.Quaternion = Handle->GetR();
+	CurrentState.LinVel = Handle->GetV();
+	CurrentState.AngVel = Handle->GetW(); // Note: Current angular velocity is in Radians
 
 	// NewState
-	const FVector TargetPos = Target.TargetState.Position;
+	const FVector TargetPos = FVector(Target.TargetState.Position);
 	const FQuat TargetRot = Target.TargetState.Quaternion;
-	const FVector TargetLinVel = Target.TargetState.LinVel;
-	const FVector TargetAngVel = Target.TargetState.AngVel;
-
+	const FVector TargetLinVel = FVector(Target.TargetState.LinVel);
+	const FVector TargetAngVel = FVector(Target.TargetState.AngVel); // Note: Target angular velocity is in Degrees
 
 	/** --- Reconciliation ---
-	* Get the traveled direction and distance from previous frame and compare with replicated linear velocity.
-	* If the object isn't moving enough along the replicated velocity it's considered stuck and needs a hard reconciliation.
-	*/
-	const FVector PrevDiff = CurrentState.Position - Target.PrevPos;
-	const float	ExpectedDistance = (Target.PrevLinVel * DeltaSeconds).Size();
-	const float CoveredDistance = FVector::DotProduct(PrevDiff, Target.PrevLinVel.GetSafeNormal());
+	* If target velocities are low enough, check the traveled direction and distance from previous frame and compare with replicated linear velocity.
+	* If the object isn't moving enough along the replicated velocity it's considered stuck and needs reconciliation.
+	* SoftSnap is performed each tick while there is a registered error, if enough time pass HardSnap forces the object into the correct state. */
+	static const auto CVarVelocityBased = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.VelocityBased"));
+	bool bSoftSnap = !CVarVelocityBased->GetBool();
 
-	// If the object is moving less than X% of the expected distance, accumulate error seconds
-	static const auto CVarMinExpectedDistanceCovered = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.MinExpectedDistanceCovered"));
-	if (CoveredDistance / ExpectedDistance < CVarMinExpectedDistanceCovered->GetFloat())
+	static const auto CVarDisableErrorVelocityLimits = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.DisableErrorVelocityLimits"));
+	static const auto CVarErrorAccLinVelMaxLimit = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.ErrorAccLinVelMaxLimit"));
+	static const auto CVarErrorAccAngVelMaxLimit = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.ErrorAccAngVelMaxLimit"));
+	if (CVarDisableErrorVelocityLimits->GetBool() ||
+		(TargetLinVel.Size() < CVarErrorAccLinVelMaxLimit->GetFloat() && TargetAngVel.Size() < CVarErrorAccAngVelMaxLimit->GetFloat()))
 	{
-		Target.AccumulatedErrorSeconds += DeltaSeconds;
+		const FVector PrevDiff = CurrentState.Position - Target.PrevPos;
+		const float ExpectedDistance = (Target.PrevLinVel * DeltaSeconds).Size();
+		const float CoveredDistance = FVector::DotProduct(PrevDiff, Target.PrevLinVel.GetSafeNormal());
+		const float CoveredAplha = FMath::Clamp(CoveredDistance / ExpectedDistance, 0.0f, 1.0f);
+
+		// If the object is moving less than X% of the expected distance, accumulate error seconds
+		static const auto CVarMinExpectedDistanceCovered = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.MinExpectedDistanceCovered"));
+		if (CoveredAplha < CVarMinExpectedDistanceCovered->GetFloat())
+		{
+			Target.AccumulatedErrorSeconds += DeltaSeconds;
+			bSoftSnap = true;
+		}
+		else if (Target.AccumulatedErrorSeconds > 0.f)
+		{
+			static const auto CVarErrorAccumulationDecreaseMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.ErrorAccumulationDecreaseMultiplier"));
+			const float DecreaseTime = DeltaSeconds * CVarErrorAccumulationDecreaseMultiplier->GetFloat();
+			Target.AccumulatedErrorSeconds = FMath::Max(Target.AccumulatedErrorSeconds - DecreaseTime, 0.0f);
+			bSoftSnap = true;
+		}
 	}
 	else
 	{
-		Target.AccumulatedErrorSeconds = FMath::Max(Target.AccumulatedErrorSeconds - DeltaSeconds, 0.0f);
+		Target.AccumulatedErrorSeconds = 0;
 	}
 
-	static const auto CVarbPredictiveInterpolationAlwaysHardSnap = IConsoleManager::Get().FindConsoleVariable(TEXT("p.PredictiveInterpolation.AlwaysHardSnap"));
-	const bool bHardSnap = Target.AccumulatedErrorSeconds > ErrorAccumulationSeconds || CVarbPredictiveInterpolationAlwaysHardSnap->GetBool();
-	bool bClearTarget = bHardSnap;
+	static const auto CVarVelocityBasedSetting = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.VelocityBased"));
+	if (SettingsCurrent.PredictiveInterpolationSettings.GetDisableSoftSnap() && CVarVelocityBasedSetting->GetBool())
+	{
+		bSoftSnap = false;
+	}
+
+	static const auto CVarErrorAccumulationSeconds = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.ErrorAccumulationSeconds"));
+	static const auto CVarAlwaysHardSnap = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.AlwaysHardSnap"));
+	const bool bHardSnap = !bCanSimulate ||
+		Target.AccumulatedErrorSeconds > CVarErrorAccumulationSeconds->GetFloat() ||
+		CVarAlwaysHardSnap->GetBool();
+
 	if (bHardSnap)
 	{
-		// Too much error so just snap state here and be done with it
 		Target.AccumulatedErrorSeconds = 0.0f;
-		Handle->SetX(Target.PrevPosTarget);
-		Handle->SetP(Target.PrevPosTarget);
-		Handle->SetR(Target.PrevRotTarget);
-		Handle->SetQ(Target.PrevRotTarget);
-		Handle->SetV(Target.TargetState.LinVel);
-		Handle->SetW(Target.TargetState.AngVel);
+
+		if (Handle->IsKinematic())
+		{
+			// Set a FKinematicTarget to hard snap kinematic object
+			const Chaos::FKinematicTarget KinTarget = Chaos::FKinematicTarget::MakePositionTarget(Target.PrevPosTarget, Target.PrevRotTarget); // Uses EKinematicTargetMode::Position
+			RigidsSolver->GetEvolution()->SetParticleKinematicTarget(Handle, KinTarget);
+		}
+		else
+		{
+			// Set XPRQVW to hard snap dynamic object
+			Handle->SetX(Target.PrevPosTarget);
+			Handle->SetP(Target.PrevPosTarget);
+			Handle->SetR(Target.PrevRotTarget);
+			Handle->SetQ(Target.PrevRotTarget);
+			Handle->SetV(Target.TargetState.LinVel);
+			Handle->SetW(FMath::DegreesToRadians(Target.TargetState.AngVel));
+		}
+
+		// Cache data for next replication
+		Target.PrevLinVel = FVector(Target.TargetState.LinVel);
+
+		// End replication and go to sleep if that's requested
+		return EndReplicationHelper(Target, true);
 	}
 	else // Velocity-based Replication
 	{
-		const Chaos::EObjectStateType ObjectState = Handle->ObjectState();
-		if (ObjectState != Chaos::EObjectStateType::Dynamic)
-		{
-			RigidsSolver->GetEvolution()->SetParticleObjectState(Handle, Chaos::EObjectStateType::Dynamic);
+		// Calculate interpolation time based on current average receive rate
+		const float AverageReceiveIntervalSeconds = Target.AverageReceiveInterval * DeltaSeconds;
+		const float InterpolationTime = AverageReceiveIntervalSeconds * SettingsCurrent.PredictiveInterpolationSettings.GetPosInterpolationTimeMultiplier();
+
+		// Calculate position correction time based on current Round Trip Time
+		const float RTT = LatencyOneWay * 2.f;
+		const float PosCorrectionTime = FMath::Max(SettingsCurrent.PredictiveInterpolationSettings.GetPosCorrectionTimeBase() + AverageReceiveIntervalSeconds + RTT * SettingsCurrent.PredictiveInterpolationSettings.GetPosCorrectionTimeMultiplier(),
+			DeltaSeconds + SettingsCurrent.PredictiveInterpolationSettings.GetPosCorrectionTimeMin());
+		const float RotCorrectionTime = FMath::Max(SettingsCurrent.PredictiveInterpolationSettings.GetRotCorrectionTimeBase() + AverageReceiveIntervalSeconds + RTT * SettingsCurrent.PredictiveInterpolationSettings.GetRotCorrectionTimeMultiplier(),
+			DeltaSeconds + SettingsCurrent.PredictiveInterpolationSettings.GetRotCorrectionTimeMin());
+
+		if ((bXCanEarlyOut && SettingsCurrent.PredictiveInterpolationSettings.GetSkipVelocityRepOnPosEarlyOut()) == false)
+		{	// --- Velocity Replication ---
+
+			// Get PosDiff
+			const FVector PosDiff = TargetPos - CurrentState.Position;
+
+			// Get LinVelDiff by adding inverted CurrentState.LinVel to TargetLinVel
+			const FVector LinVelDiff = -CurrentState.LinVel + TargetLinVel;
+
+			// Calculate velocity blend amount for this tick as an alpha value
+			const float Alpha = FMath::Clamp(DeltaSeconds / InterpolationTime, 0.0f, 1.0f);
+
+			FVector RepLinVel;
+			static const auto CVarPosCorrectionAsVelocity = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.PosCorrectionAsVelocity"));
+			if (CVarPosCorrectionAsVelocity->GetBool())
+			{
+				// Convert PosDiff to a velocity
+				const FVector PosDiffVelocity = PosDiff / PosCorrectionTime;
+
+				// Add PosDiffVelocity to LinVelDiff to get BlendedTargetVelocity
+				const FVector BlendedTargetVelocity = LinVelDiff + PosDiffVelocity;
+
+				// Add BlendedTargetVelocity onto current velocity
+
+				RepLinVel = CurrentState.LinVel + (BlendedTargetVelocity * Alpha);
+			}
+			else // Positional correction as position shift
+			{
+				// Calculate the PosDiff amount to correct this tick
+				const FVector PosDiffVelocityDelta = PosDiff * (DeltaSeconds / PosCorrectionTime); // Same as (PosDiff / PosCorrectionTime) * DeltaSeconds
+
+				// Add velocity diff onto current velocity
+				RepLinVel = CurrentState.LinVel + (LinVelDiff * Alpha);
+
+
+				// Apply positional correction
+				Handle->SetX(Handle->GetX() + PosDiffVelocityDelta);
+			}
+
+			// Apply velocity replication
+
+			Handle->SetV(RepLinVel);
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+			static const auto CVarDrawDebugVectors = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.DrawDebugVectors"));
+			if (CVarDrawDebugVectors->GetBool())
+			{
+				const FVector Offset = FVector(0.0f, 0.0f, 50.0f);
+				const FVector OffsetAdd = FVector(0.0f, 0.0f, 10.0f);
+				const FVector StartPos = TargetPos + Offset;
+				FVector Direction = TargetLinVel;
+				Direction.Normalize();
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow((StartPos + OffsetAdd * 0), (StartPos + OffsetAdd * 0) + TargetLinVel * 0.5f, 5.0f, FColor::Green, false, -1.0f, 0, 2.0f);
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow((StartPos + OffsetAdd * 1), (StartPos + OffsetAdd * 1) + CurrentState.LinVel * 0.5f, 5.0f, FColor::Blue, false, -1.0f, 0, 2.0f);
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow((StartPos + OffsetAdd * 2), (StartPos + OffsetAdd * 2) + (Target.PrevLinVel - CurrentState.LinVel) * 0.5f, 5.0f, FColor::Red, false, -1.0f, 0, 2.0f);
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow((StartPos + OffsetAdd * 3), (StartPos + OffsetAdd * 3) + RepLinVel * 0.5f, 5.0f, FColor::Magenta, false, -1.0f, 0, 2.0f);
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow((StartPos + OffsetAdd * 4), (StartPos + OffsetAdd * 4) + (Target.PrevLinVel - RepLinVel) * 0.5f, 5.0f, FColor::Orange, false, -1.0f, 0, 2.0f);
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow((StartPos + OffsetAdd * 5), (StartPos + OffsetAdd * 5) + Direction * RTT, 5.0f, FColor::White, false, -1.0f, 0, 2.0f);
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow((StartPos + OffsetAdd * 6), (StartPos + OffsetAdd * 6) + Direction * InterpolationTime, 5.0f, FColor::Yellow, false, -1.0f, 0, 2.0f);
+			}
+#endif
+			// Cache data for next replication
+			Target.PrevLinVel = FVector(RepLinVel);
 		}
 
+		{	// --- Angular Velocity Replication ---
+			/* Todo, Implement InterpolationTime */
 
-		// --- Velocity Replication ---
-		// Get PosDiff
-		const FVector PosDiff = TargetPos - CurrentState.Position;
+			// Extrapolate current rotation along current angular velocity to see where we would end up
+			float CurAngVelSize;
+			FVector CurAngVelAxis;
+			CurrentState.AngVel.FVector::ToDirectionAndLength(CurAngVelAxis, CurAngVelSize);
+			const FQuat CurRotExtrapDelta = FQuat(CurAngVelAxis, CurAngVelSize * DeltaSeconds);
+			const FQuat CurRotExtrap = CurRotExtrapDelta * CurrentState.Quaternion;
 
-		// Convert PosDiff to a velocity
-		const FVector PosDiffVelocity = PosDiff / PosCorrectionTime;
+			// Slerp from the extrapolated current rotation towards the target rotation
+			// This takes current angular velocity into account
+			const float RotCorrectionAmount = FMath::Clamp(DeltaSeconds / RotCorrectionTime, 0.0f, 1.0f);
+			const FQuat TargetRotBlended = FQuat::Slerp(CurRotExtrap, TargetRot, RotCorrectionAmount);
 
-		// Get LinVelDiff by adding inverted CurrentState.LinVel to TargetLinVel
-		const FVector LinVelDiff = -CurrentState.LinVel + TargetLinVel;
+			// Get the rotational offset between the blended rotation target and the current rotation
+			const FQuat TargetRotDelta = TargetRotBlended * CurrentState.Quaternion.Inverse();
 
-		// Add PosDiffVelocity to LinVelDiff to get BlendedTargetVelocity
-		const FVector BlendedTargetVelocity = LinVelDiff + PosDiffVelocity;
+			// Convert the rotational delta to angular velocity
+			float WAngle;
+			FVector WAxis;
+			TargetRotDelta.ToAxisAndAngle(WAxis, WAngle);
+			const FVector TargetRotDeltaBlend = FVector(WAxis * (WAngle / (DeltaSeconds * SettingsCurrent.PredictiveInterpolationSettings.GetRotInterpolationTimeMultiplier())));
+			const FVector RepAngVel = FMath::DegreesToRadians(TargetAngVel) + TargetRotDeltaBlend;
 
-		// Multiply BlendedTargetVelocity with(deltaTime / interpolationTime), clamp to 1 and add to CurrentState.LinVel to get BlendedTargetVelocityInterpolated
-		const float BlendStepAmount = FMath::Clamp(DeltaSeconds / InterpolationTime, 0.f, 1.f);
-		const FVector RepLinVel = CurrentState.LinVel + (BlendedTargetVelocity * BlendStepAmount);
+			Handle->SetW(RepAngVel);
+		}
 
-
-		// --- Angular Velocity Replication ---
-		// Extrapolate current rotation along current angular velocity to see where we would end up
-		float CurAngVelSize;
-		FVector CurAngVelAxis;
-		CurrentState.AngVel.FVector::ToDirectionAndLength(CurAngVelAxis, CurAngVelSize);
-		CurAngVelSize = FMath::DegreesToRadians(CurAngVelSize);
-		const FQuat CurRotExtrapDelta = FQuat(CurAngVelAxis, CurAngVelSize * DeltaSeconds);
-		const FQuat CurRotExtrap = CurRotExtrapDelta * CurrentState.Quaternion;
-
-		// Slerp from the extrapolated current rotation towards the target rotation
-		// This takes current angular velocity into account
-		const FQuat TargetRotBlended = FQuat::Slerp(CurRotExtrap, TargetRot, BlendStepAmount);
-
-		// Get the rotational offset between the blended rotation target and the current rotation
-		const FQuat TargetRotDelta = TargetRotBlended * CurrentState.Quaternion.Inverse();
-
-		// Convert the rotational delta to angular velocity with a magnitude that will make it arrive at the rotation after DeltaTime has passed
-		float WAngle;
-		FVector WAxis;
-		TargetRotDelta.ToAxisAndAngle(WAxis, WAngle);
-
-		const FVector RepAngVel = WAxis * (WAngle / DeltaSeconds);
-
-
-		// Apply velocity
-		Handle->SetV(RepLinVel);
-		Handle->SetW(RepAngVel);
-
-
-		// Cache data for reconciliation
+		// Cache data for next replication
 		Target.PrevPos = FVector(CurrentState.Position);
-		Target.PrevLinVel = FVector(RepLinVel);
-	}
 
-
-	if (bShouldSleep)
-	{
-		// --- Sleep ---
-		// Get the distance from the current position to the source position of our target state
-		const float SourceDistanceSqr = (Target.PrevPosTarget - CurrentState.Position).SizeSquared();
-
-		// Don't allow kinematic to sleeping transition
-		static const auto CVarMaxDistanceToSleepSqr = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.MaxDistanceToSleepSqr"));
-		if (SourceDistanceSqr < CVarMaxDistanceToSleepSqr->GetFloat() && !Handle->IsKinematic())
+		if (bSoftSnap)
 		{
-			RigidsSolver->GetEvolution()->SetParticleObjectState(Handle, Chaos::EObjectStateType::Sleeping);
-			bClearTarget = true;
-		}
-	}
-	else
-	{
-		// --- Target Extrapolation ---
-		static const auto CVarExtrapolationTimeMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.ExtrapolationTimeMultiplier"));
-		if ((Target.TickCount * DeltaSeconds) < SendRate * CVarExtrapolationTimeMultiplier->GetFloat())
-		{
-			// Extrapolate target position
-			Target.TargetState.Position = Target.TargetState.Position + Target.TargetState.LinVel * DeltaSeconds;
+			const FVector SoftSnapPos = FMath::Lerp(FVector(CurrentState.Position),
+				SettingsCurrent.PredictiveInterpolationSettings.GetSoftSnapToSource() ? Target.PrevPosTarget : Target.TargetState.Position,
+				FMath::Clamp(SettingsCurrent.PredictiveInterpolationSettings.GetSoftSnapPosStrength(), 0.0f, 1.0f));
 
-			// Extrapolate target rotation
-			float TargetAngVelSize;
-			FVector TargetAngVelAxis;
-			Target.TargetState.AngVel.FVector::ToDirectionAndLength(TargetAngVelAxis, TargetAngVelSize);
-			TargetAngVelSize = FMath::DegreesToRadians(TargetAngVelSize);
-			const FQuat TargetRotExtrapDelta = FQuat(TargetAngVelAxis, TargetAngVelSize * DeltaSeconds);
-			Target.TargetState.Quaternion = TargetRotExtrapDelta * Target.TargetState.Quaternion;
+			const FQuat SoftSnapRot = FQuat::Slerp(CurrentState.Quaternion,
+				SettingsCurrent.PredictiveInterpolationSettings.GetSoftSnapToSource() ? Target.PrevRotTarget : Target.TargetState.Quaternion,
+				FMath::Clamp(SettingsCurrent.PredictiveInterpolationSettings.GetSoftSnapRotStrength(), 0.0f, 1.0f));
+
+			Handle->SetX(SoftSnapPos);
+			Handle->SetP(SoftSnapPos);
+			Handle->SetR(SoftSnapRot);
+			Handle->SetQ(SoftSnapRot);
 		}
 	}
 
-	Target.TickCount++;
+	return EndReplicationHelper(Target, false);
+}
 
-	return bClearTarget;;
+/** Static function to extrapolate a target for N ticks using X DeltaSeconds */
+void FPhysicsReplicationAsyncVR::ExtrapolateTarget(FReplicatedPhysicsTargetAsync& Target, const int32 ExtrapolateFrames, const float DeltaSeconds)
+{
+	const float ExtrapolationTime = DeltaSeconds * static_cast<float>(ExtrapolateFrames);
+
+	// Extrapolate target position
+	Target.TargetState.Position = Target.TargetState.Position + Target.TargetState.LinVel * ExtrapolationTime;
+
+	// Extrapolate target rotation
+	float TargetAngVelSize;
+	FVector TargetAngVelAxis;
+	Target.TargetState.AngVel.FVector::ToDirectionAndLength(TargetAngVelAxis, TargetAngVelSize);
+	TargetAngVelSize = FMath::DegreesToRadians(TargetAngVelSize);
+	const FQuat TargetRotExtrapDelta = FQuat(TargetAngVelAxis, TargetAngVelSize * ExtrapolationTime);
+	Target.TargetState.Quaternion = TargetRotExtrapDelta * Target.TargetState.Quaternion;
 }
 
 /** Compare states and trigger resimulation if needed */
@@ -1512,63 +1989,124 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 
 	const int32 LocalFrame = Target.ServerFrame - Target.FrameOffset;
 
-	if (LocalFrame <= RewindData->CurrentFrame() && LocalFrame >= RewindData->GetEarliestFrame_Internal())
+	if (LocalFrame >= RewindData->CurrentFrame() || LocalFrame < RewindData->GetEarliestFrame_Internal())
 	{
-		static constexpr Chaos::FFrameAndPhase::EParticleHistoryPhase RewindPhase = Chaos::FFrameAndPhase::EParticleHistoryPhase::PostPushData;
+		if (LocalFrame > 0 && (RewindData->CurrentFrame() - RewindData->GetEarliestFrame_Internal()) == RewindData->Capacity())
+		{
+			UE_LOG(LogPhysics, Warning, TEXT("FPhysicsReplication::ResimulationReplication target frame (%d) out of rewind data bounds (%d,%d)"),
+				LocalFrame, RewindData->GetEarliestFrame_Internal(), RewindData->CurrentFrame());
+		}
+		return true;
+	}
 
-		FAsyncPhysicsTimestamp TimeStamp;
-		TimeStamp.LocalFrame = RewindData->CurrentFrame();
+	bool bClearTarget = true;
 
-		const float ResimErrorThreshold = Chaos::FPhysicsSolverBase::ResimulationErrorThreshold();
 
-		auto PastState = RewindData->GetPastStateAtFrame(*Handle, LocalFrame, RewindPhase);
+	static constexpr Chaos::FFrameAndPhase::EParticleHistoryPhase RewindPhase = Chaos::FFrameAndPhase::EParticleHistoryPhase::PostPushData;
 
-		const FVector ErrorOffset = (PastState.X() - Target.TargetState.Position);
-		const float ErrorDistance = ErrorOffset.Size();
-		const bool ShouldTriggerResim = ErrorDistance >= ResimErrorThreshold;
-		float ColorLerp = ShouldTriggerResim ? 1.0f : 0.0f;
+	const float ResimErrorThreshold = SettingsCurrent.ResimulationSettings.GetResimulationErrorThreshold(Chaos::FPhysicsSolverBase::ResimulationErrorThreshold());
+	const Chaos::FGeometryParticleState PastState = RewindData->GetPastStateAtFrame(*Handle, LocalFrame, RewindPhase);
+
+	const FVector ErrorOffset = (Target.TargetState.Position - PastState.GetX());
+	const float ErrorDistance = ErrorOffset.Size();
+	const bool ShouldTriggerResim = ErrorDistance >= ResimErrorThreshold;
+
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
-		if (Chaos::FPhysicsSolverBase::CanDebugNetworkPhysicsPrediction())
-		{
-			UE_LOG(LogTemp, Log, TEXT("Apply Rigid body state at local frame %d with offset = %d"), LocalFrame, Target.FrameOffset);
-			UE_LOG(LogTemp, Log, TEXT("Particle Position Error = %f | Should Trigger Resim = %s | Server Frame = %d | Client Frame = %d"), ErrorDistance, (ShouldTriggerResim ? TEXT("True") : TEXT("False")), Target.ServerFrame, LocalFrame);
-			UE_LOG(LogTemp, Log, TEXT("Particle Target Position = %s | Current Position = %s"), *Target.TargetState.Position.ToString(), *PastState.X().ToString());
-			UE_LOG(LogTemp, Log, TEXT("Particle Target Velocity = %s | Current Velocity = %s"), *Target.TargetState.LinVel.ToString(), *PastState.V().ToString());
-			UE_LOG(LogTemp, Log, TEXT("Particle Target Quaternion = %s | Current Quaternion = %s"), *Target.TargetState.Quaternion.ToString(), *PastState.R().ToString());
-			UE_LOG(LogTemp, Log, TEXT("Particle Target Omega = %s | Current Omega= %s"), *Target.TargetState.AngVel.ToString(), *PastState.W().ToString());
+	if (Chaos::FPhysicsSolverBase::CanDebugNetworkPhysicsPrediction())
+	{
+		UE_LOG(LogTemp, Log, TEXT("Apply Rigid body state at local frame %d with offset = %d"), LocalFrame, Target.FrameOffset);
+		UE_LOG(LogTemp, Log, TEXT("Particle Position Error = %f | Should Trigger Resim = %s | Server Frame = %d | Client Frame = %d"), ErrorDistance, (ShouldTriggerResim ? TEXT("True") : TEXT("False")), Target.ServerFrame, LocalFrame);
+		UE_LOG(LogTemp, Log, TEXT("Particle Target Position = %s | Current Position = %s"), *Target.TargetState.Position.ToString(), *PastState.GetX().ToString());
+		UE_LOG(LogTemp, Log, TEXT("Particle Target Velocity = %s | Current Velocity = %s"), *Target.TargetState.LinVel.ToString(), *PastState.GetV().ToString());
+		UE_LOG(LogTemp, Log, TEXT("Particle Target Quaternion = %s | Current Quaternion = %s"), *Target.TargetState.Quaternion.ToString(), *PastState.GetR().ToString());
+		UE_LOG(LogTemp, Log, TEXT("Particle Target Omega = %s | Current Omega= %s"), *Target.TargetState.AngVel.ToString(), *PastState.GetW().ToString());
+	}
 
-			{ // DrawDebug
-				static constexpr float BoxSize = 5.0f;
-				const FColor DebugColor = FLinearColor::LerpUsingHSV(FLinearColor::Green, FLinearColor::Red, ColorLerp).ToFColor(false);
+	static const auto CVarResimDrawDebug = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.DrawDebug"));
+	if (CVarResimDrawDebug->GetBool())
+	{
+		static constexpr float BoxSize = 5.0f;
+		const float ColorLerp = ShouldTriggerResim ? 1.0f : 0.0f;
+		const FColor DebugColor = FLinearColor::LerpUsingHSV(FLinearColor::Green, FLinearColor::Red, ColorLerp).ToFColor(false);
 
-				static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
-
-				Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Target.TargetState.Position, FVector(BoxSize, BoxSize, BoxSize), Target.TargetState.Quaternion, FColor::Orange, true, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
-				Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(PastState.X(), FVector(6, 6, 6), PastState.R(), DebugColor, true, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
-
-				Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow(PastState.X(), Target.TargetState.Position, 5.0f, FColor::Green, true, CVarNetCorrectionLifetime->GetFloat(), 0, 0.5f);
-			}
-		}
+		static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Target.TargetState.Position, FVector(BoxSize, BoxSize, BoxSize), Target.TargetState.Quaternion, FColor::Orange, true, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(PastState.GetX(), FVector(6, 6, 6), PastState.GetR(), DebugColor, true, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow(PastState.GetX(), Target.TargetState.Position, 5.0f, FColor::MakeRandomSeededColor(LocalFrame), true, CVarNetCorrectionLifetime->GetFloat(), 0, 0.5f);
+	}
 #endif
 
-		if (ShouldTriggerResim)
+	if (LocalFrame > RewindData->GetBlockedResimFrame())
+	{
+		if (ShouldTriggerResim && Target.TickCount == 0)
 		{
+			// Trigger resimulation
 			RigidsSolver->GetEvolution()->GetIslandManager().SetParticleResimFrame(Handle, LocalFrame);
 
 			int32 ResimFrame = RewindData->GetResimFrame();
 			ResimFrame = (ResimFrame == INDEX_NONE) ? LocalFrame : FMath::Min(ResimFrame, LocalFrame);
 			RewindData->SetResimFrame(ResimFrame);
 		}
-	}
-	else if (LocalFrame > 0)
-	{
-		UE_LOG(LogPhysics, Warning, TEXT("FPhysicsReplication::ApplyRigidBodyState target frame (%d) out of rewind data bounds (%d,%d)"), LocalFrame,
-			RewindData->GetEarliestFrame_Internal(), RewindData->CurrentFrame());
-	}
+		else if (SettingsCurrent.ResimulationSettings.GetRuntimeCorrectionEnabled())
 
-	return true;
+		{
+			const int32 NumPredictedFrames = RigidsSolver->GetCurrentFrame() - LocalFrame - Target.TickCount;
+
+
+
+			if (Target.TickCount <= NumPredictedFrames && NumPredictedFrames > 0)
+			{
+				// Positional Correction
+				const float CorrectionAmountX = SettingsCurrent.ResimulationSettings.GetPosStabilityMultiplier() / NumPredictedFrames;
+				const FVector PosDiffCorrection = ErrorOffset * CorrectionAmountX; // Same result as (ErrorOffset / NumPredictedFrames) * PosStabilityMultiplier
+				const FVector CorrectedX = Handle->GetX() + PosDiffCorrection;
+
+
+				// Rotational Correction
+				const float CorrectionAmountR = SettingsCurrent.ResimulationSettings.GetRotStabilityMultiplier() / NumPredictedFrames;
+
+				const FQuat DeltaQuat = PastState.GetR().Inverse() * Target.TargetState.Quaternion;
+				const FQuat TargetCorrectionR = Handle->GetR() * DeltaQuat;
+				const FQuat CorrectedR = FQuat::Slerp(Handle->GetR(), TargetCorrectionR, CorrectionAmountR);
+
+				if (SettingsCurrent.ResimulationSettings.GetRuntimeVelocityCorrectionEnabled())
+				{
+					// Linear Velocity Correction
+					const FVector LinVelDiff = Target.TargetState.LinVel - PastState.GetV(); // Velocity vector that the server covers but the client doesn't
+					const float CorrectionAmountV = SettingsCurrent.ResimulationSettings.GetVelStabilityMultiplier() / NumPredictedFrames;
+					const FVector VelCorrection = LinVelDiff * CorrectionAmountV; // Same result as (LinVelDiff / NumPredictedFrames) * VelStabilityMultiplier
+					const FVector CorrectedV = Handle->GetV() + VelCorrection;
+
+					// Angular Velocity Correction
+					const FVector AngVelDiff = Target.TargetState.AngVel - PastState.GetW(); // Angular velocity vector that the server covers but the client doesn't
+					const float CorrectionAmountW = SettingsCurrent.ResimulationSettings.GetAngVelStabilityMultiplier() / NumPredictedFrames;
+					const FVector AngVelCorrection = AngVelDiff * CorrectionAmountW; // Same result as (AngVelDiff / NumPredictedFrames) * VelStabilityMultiplier
+					const FVector CorrectedW = Handle->GetW() + AngVelCorrection;
+
+					// Apply correction to velocities
+					Handle->SetV(CorrectedV);
+					Handle->SetW(CorrectedW);
+				}
+
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+				if (CVarResimDrawDebug->GetBool())
+				{
+					static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.NetCorrectionLifetime"));
+					Chaos::FDebugDrawQueue::GetInstance().DrawDebugDirectionalArrow(Handle->GetX(), CorrectedX, 5.0f, FColor::MakeRandomSeededColor(LocalFrame), true, CVarNetCorrectionLifetime->GetFloat(), 0, 0.5f);
+				}
+#endif
+				// Apply correction to position and rotation
+				RigidsSolver->GetEvolution()->ApplyParticleTransformCorrection(Handle, CorrectedX, CorrectedR, PhysicsReplicationCVars::ResimulationCVars::bRuntimeCorrectConnectedBodies);
+			}
+
+			// Keep target for NumPredictedFrames time to perform runtime corrections with until a new target is received
+			bClearTarget = Target.TickCount >= NumPredictedFrames;
+		}
+	}
+	return bClearTarget;
 }
 
 FName FPhysicsReplicationAsyncVR::GetFNameForStatId() const
@@ -1576,3 +2114,5 @@ FName FPhysicsReplicationAsyncVR::GetFNameForStatId() const
 	const static FLazyName StaticName("FPhysicsReplicationAsyncCallback");
 	return StaticName;
 }
+
+#pragma endregion // FPhysicsReplicationAsync

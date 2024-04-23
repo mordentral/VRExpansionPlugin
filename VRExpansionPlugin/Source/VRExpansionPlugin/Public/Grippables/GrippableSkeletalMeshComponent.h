@@ -35,6 +35,7 @@ public:
 	virtual void GetWeldedBodies(TArray<FBodyInstance*>& OutWeldedBodies, TArray<FName>& OutLabels, bool bIncludingAutoWeld) override;
 	virtual FBodyInstance* GetBodyInstance(FName BoneName = NAME_None, bool bGetWelded = true, int32 Index = INDEX_NONE) const override;
 
+protected:
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Instanced, Category = "VRGripInterface")
 		TArray<TObjectPtr<UVRGripScriptBase>> GripLogicScripts;
 
@@ -43,6 +44,12 @@ public:
 	// where the object will never have a replicating script
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		bool bReplicateGripScripts;
+public:
+	void SetReplicateGripScripts(bool NewReplicateGripScripts);
+	inline bool GetReplicateGripScripts() { return bReplicateGripScripts; };
+
+	// Get the grip script array, will automatically dirty it if they are replicated as it is assumed if you are directly accessing it you are altering it
+	TArray<TObjectPtr<UVRGripScriptBase>>& GetGripLogicScripts();
 
 	bool ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
 
@@ -81,9 +88,14 @@ public:
 		TagContainer = GameplayTags;
 	}
 
+protected:
+
 	/** Tags that are set on this object */
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "GameplayTags")
 		FGameplayTagContainer GameplayTags;
+
+public:
+	FGameplayTagContainer& GetGameplayTags();
 
 	// End Gameplay Tag Interface
 
@@ -98,6 +110,7 @@ public:
 	// This one is for components to clean up
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 
+protected:
 	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 		bool bRepGripSettingsAndGameplayTags;
@@ -110,6 +123,16 @@ public:
 
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface")
 		FBPInterfaceProperties VRGripInterfaceSettings;
+public:
+
+	void SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags);
+	inline bool GetRepGripSettingsAndGameplayTags() { return bRepGripSettingsAndGameplayTags; };
+
+	// Get VRGripInterfaceSettings, set MarkDirty if you intend to (or may) modify the values inside of it
+	FBPInterfaceProperties& GetVRGripInterfaceSettings(bool bMarkDirty);
+
+	void SetReplicateMovement(bool bNewReplicateMovement);
+	inline bool GetReplicateMovement() { return bReplicateMovement; };
 
 	// Set up as deny instead of allow so that default allows for gripping
 	// The GripInitiator is not guaranteed to be valid, check it for validity

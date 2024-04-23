@@ -1,7 +1,7 @@
 {
   "FileVersion": 3,
-  "Version": 5.3,
-  "VersionName": "5.3",
+  "Version": 5.4,
+  "VersionName": "5.4",
   "FriendlyName": "VRExpansionPlugin",
   "Description": "Adds several new VR features & components to UE4",
   "Category": "VRExpansion",
@@ -33,7 +33,7 @@
 	  "LoadingPhase": "PostEngineInit"
     }
   ],
-	"Plugins": [
+  "Plugins": [
     {
       "Name": "ChaosVehiclesPlugin",
       "Enabled": true
@@ -41,6 +41,10 @@
     {
       "Name": "XRBase",
       "Enabled": true
+    },
+    {
+      "Name": "Mover",
+      "Enabled": true
     }
-	]
+  ]
 }

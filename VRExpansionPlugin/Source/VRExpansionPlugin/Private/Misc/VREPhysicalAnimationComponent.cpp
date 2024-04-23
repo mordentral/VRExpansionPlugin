@@ -11,6 +11,7 @@
 #if ENABLE_DRAW_DEBUG
 #include "Chaos/ImplicitObject.h"
 #include "Chaos/TriangleMeshImplicitObject.h"
+#include "Chaos/ShapeInstance.h"
 #endif
 
 #include "Physics/PhysicsInterfaceCore.h"
@@ -308,13 +309,13 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 #if ENABLE_DRAW_DEBUG
 							if (bDebugDrawCollision)
 							{
-								const Chaos::FImplicitObject* ShapeImplicit = Shape.Shape->GetGeometry().Get();
-								Chaos::EImplicitObjectType Type = ShapeImplicit->GetType();
+								const Chaos::FImplicitObject& ShapeImplicit = Shape.GetGeometry();
+								Chaos::EImplicitObjectType Type = ShapeImplicit.GetType();
 
 								FTransform shapeTransform = FPhysicsInterface::GetLocalTransform(Shape);
 								FTransform FinalTransform = shapeTransform * GlobalPose;
 								Chaos::FRigidTransform3 RigTransform(FinalTransform);
-								Chaos::DebugDraw::DrawShape(RigTransform, ShapeImplicit, Chaos::FShapeOrShapesArray(), FColor::White);
+								Chaos::DebugDraw::DrawShape(RigTransform, &ShapeImplicit, Shape.Shape, FColor::White);
 							}
 #endif
 						}

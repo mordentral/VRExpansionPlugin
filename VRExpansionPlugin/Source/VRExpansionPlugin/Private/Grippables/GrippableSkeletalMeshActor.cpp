@@ -37,7 +37,18 @@ void UOptionalRepSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UOptionalRepSkeletalMeshComponent, bReplicateMovement);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UOptionalRepSkeletalMeshComponent, bReplicateMovement, PushModelParams);
+}
+
+void UOptionalRepSkeletalMeshComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UOptionalRepSkeletalMeshComponent, bReplicateMovement, this);
+#endif
 }
 
 void UOptionalRepSkeletalMeshComponent::GetWeldedBodies(TArray<FBodyInstance*>& OutWeldedBodies, TArray<FName>& OutLabels, bool bIncludingAutoWeld)
@@ -152,13 +163,20 @@ void AGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< class FLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(AGrippableSkeletalMeshActor, GripLogicScripts, COND_Custom);
-	DOREPLIFETIME(AGrippableSkeletalMeshActor, bReplicateGripScripts);
-	DOREPLIFETIME(AGrippableSkeletalMeshActor, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME(AGrippableSkeletalMeshActor, bAllowIgnoringAttachOnOwner);
-	DOREPLIFETIME(AGrippableSkeletalMeshActor, ClientAuthReplicationData);
-	DOREPLIFETIME_CONDITION(AGrippableSkeletalMeshActor, VRGripInterfaceSettings, COND_Custom);
-	DOREPLIFETIME_CONDITION(AGrippableSkeletalMeshActor, GameplayTags, COND_Custom);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, bReplicateGripScripts, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, bRepGripSettingsAndGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, bAllowIgnoringAttachOnOwner, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, ClientAuthReplicationData, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, GripLogicScripts, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, VRGripInterfaceSettings, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableSkeletalMeshActor, GameplayTags, PushModelParamsWithCondition);
 
 	DISABLE_REPLICATED_PRIVATE_PROPERTY(AActor, AttachmentReplication);
 
@@ -908,3 +926,79 @@ void AGrippableSkeletalMeshActor::GetSubobjectsWithStableNamesForNetworking(TArr
 		}
 	}
 }
+
+/////////////////////////////////////////////////
+//- Push networking getter / setter functions
+/////////////////////////////////////////////////
+
+void AGrippableSkeletalMeshActor::SetReplicateGripScripts(bool bNewReplicateGripScripts)
+{
+	bReplicateGripScripts = bNewReplicateGripScripts;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableSkeletalMeshActor, bReplicateGripScripts, this);
+#endif
+}
+
+TArray<TObjectPtr<UVRGripScriptBase>>& AGrippableSkeletalMeshActor::GetGripLogicScripts()
+{
+#if WITH_PUSH_MODEL
+	if (bReplicateGripScripts)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableSkeletalMeshActor, GripLogicScripts, this);
+	}
+#endif
+
+	return GripLogicScripts;
+}
+
+void AGrippableSkeletalMeshActor::SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags)
+{
+	bRepGripSettingsAndGameplayTags = bNewRepGripSettingsAndGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableSkeletalMeshActor, bRepGripSettingsAndGameplayTags, this);
+#endif
+}
+
+void AGrippableSkeletalMeshActor::SetAllowIgnoringAttachOnOwner(bool bNewAllowIgnoringAttachOnOwner)
+{
+	bAllowIgnoringAttachOnOwner = bNewAllowIgnoringAttachOnOwner;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableSkeletalMeshActor, bAllowIgnoringAttachOnOwner, this);
+#endif
+}
+
+FVRClientAuthReplicationData& AGrippableSkeletalMeshActor::GetClientAuthReplicationData(FVRClientAuthReplicationData& ClientAuthData)
+{
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableSkeletalMeshActor, ClientAuthReplicationData, this);
+#endif
+	return ClientAuthReplicationData;
+}
+
+FBPInterfaceProperties& AGrippableSkeletalMeshActor::GetVRGripInterfaceSettings(bool bMarkDirty)
+{
+#if WITH_PUSH_MODEL
+	if (bMarkDirty && bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableSkeletalMeshActor, VRGripInterfaceSettings, this);
+	}
+#endif
+
+	return VRGripInterfaceSettings;
+}
+
+FGameplayTagContainer& AGrippableSkeletalMeshActor::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableSkeletalMeshActor, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
+}
+
+/////////////////////////////////////////////////
+//- End Push networking getter / setter functions
+/////////////////////////////////////////////////

@@ -30,7 +30,10 @@ void UNoRepSphereComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePr
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UNoRepSphereComponent, bReplicateMovement);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UNoRepSphereComponent, bReplicateMovement, PushModelParams);
 
 	RESET_REPLIFETIME_CONDITION_PRIVATE_PROPERTY(USceneComponent, AttachParent, COND_InitialOnly);
 	RESET_REPLIFETIME_CONDITION_PRIVATE_PROPERTY(USceneComponent, AttachSocketName, COND_InitialOnly);
@@ -39,6 +42,14 @@ void UNoRepSphereComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePr
 	RESET_REPLIFETIME_CONDITION_PRIVATE_PROPERTY(USceneComponent, RelativeRotation, COND_InitialOnly);
 	RESET_REPLIFETIME_CONDITION_PRIVATE_PROPERTY(USceneComponent, RelativeScale3D, COND_InitialOnly);
 	//DISABLE_REPLICATED_PRIVATE_PROPERTY(AActor, AttachmentReplication);
+}
+
+void UNoRepSphereComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UNoRepSphereComponent, bReplicateMovement, this);
+#endif
 }
 
 void UNoRepSphereComponent::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
@@ -93,6 +104,15 @@ void UInversePhysicsSkeletalMeshComponent::PreReplication(IRepChangedPropertyTra
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeLocation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeRotation, bReplicateMovement);
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeScale3D, bReplicateMovement);
+}
+
+
+void UInversePhysicsSkeletalMeshComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UInversePhysicsSkeletalMeshComponent, bReplicateMovement, this);
+#endif
 }
 
 void UInversePhysicsSkeletalMeshComponent::EndPhysicsTickComponentVR(FSkeletalMeshComponentEndPhysicsTickFunctionVR& ThisTickFunction)
@@ -632,7 +652,10 @@ void UInversePhysicsSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< cl
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UInversePhysicsSkeletalMeshComponent, bReplicateMovement);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UInversePhysicsSkeletalMeshComponent, bReplicateMovement, PushModelParams);
 }
 
 AOptionalRepGrippableSkeletalMeshActor::AOptionalRepGrippableSkeletalMeshActor(const FObjectInitializer& ObjectInitializer) :
@@ -646,8 +669,11 @@ void AOptionalRepGrippableSkeletalMeshActor::GetLifetimeReplicatedProps(TArray< 
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(AOptionalRepGrippableSkeletalMeshActor, bIgnoreAttachmentReplication);
-	DOREPLIFETIME(AOptionalRepGrippableSkeletalMeshActor, bIgnorePhysicsReplication);
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_InitialOnly, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(AOptionalRepGrippableSkeletalMeshActor, bIgnoreAttachmentReplication, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AOptionalRepGrippableSkeletalMeshActor, bIgnorePhysicsReplication, PushModelParamsWithCondition);
 
 	if (bIgnoreAttachmentReplication)
 	{

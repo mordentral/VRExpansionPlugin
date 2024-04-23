@@ -111,6 +111,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
 	bool bIsEnabled;
 
+protected:
 	// Current state of the button, writable to set initial value
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Replicated, Category = "VRButtonComponent")
 	bool bButtonState;
@@ -118,6 +119,11 @@ public:
 	// Who is allowed to change the button state
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "VRButtonComponent|Replication")
 		EVRStateChangeAuthorityType StateChangeAuthorityType;
+public:
+	bool GetButtonState() { return bButtonState; }
+	void SetButtonState(bool bNewButtonState);
+	EVRStateChangeAuthorityType GetStateChangeAuthorityType() { return StateChangeAuthorityType; }
+	void SetStateChangeAuthorityType(EVRStateChangeAuthorityType NewStateChangeAuthorityType);
 
 	// Speed that the button de-presses when no longer interacted with
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRButtonComponent")
@@ -155,18 +161,26 @@ public:
 
 	virtual FVector GetTargetRelativeLocation();
 
+	protected:
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 		bool bReplicateMovement;
+	public:
+		bool GetReplicateMovement() { return bReplicateMovement; }
+		void SetReplicateMovement(bool bNewReplicateMovement);
 
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
 	// Resetting the initial transform here so that it comes in prior to BeginPlay and save loading.
 	virtual void OnRegister() override;
 
+	protected:
 	// Now replicating this so that it works correctly over the network
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_InitialRelativeTransform, Category = "VRButtonComponent")
 		FTransform_NetQuantize InitialRelativeTransform;
+	public:
+		// Gets the initial relative transform, if you want to set it you should be using ResetInitialButtonLocation
+		FTransform GetInitialRelativeTransform() { return InitialRelativeTransform; }
 
 	UFUNCTION()
 		virtual void OnRep_InitialRelativeTransform()

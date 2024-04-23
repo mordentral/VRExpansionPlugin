@@ -7,6 +7,10 @@
 #include "GripMotionControllerComponent.h"
 #include "Net/UnrealNetwork.h"
 
+#if WITH_PUSH_MODEL
+#include "Net/Core/PushModel/PushModel.h"
+#endif
+
   //=============================================================================
 UVRDialComponent::UVRDialComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -63,12 +67,19 @@ void UVRDialComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePropert
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UVRDialComponent, InitialRelativeTransform);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRDialComponent, InitialRelativeTransform, PushModelParams);
 	//DOREPLIFETIME_CONDITION(UVRDialComponent, bIsLerping, COND_InitialOnly);
 
-	DOREPLIFETIME(UVRDialComponent, bRepGameplayTags);
-	DOREPLIFETIME(UVRDialComponent, bReplicateMovement);
-	DOREPLIFETIME_CONDITION(UVRDialComponent, GameplayTags, COND_Custom);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRDialComponent, bRepGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRDialComponent, bReplicateMovement, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRDialComponent, GameplayTags, PushModelParamsWithCondition);
 }
 
 void UVRDialComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -583,6 +594,11 @@ void UVRDialComponent::ResetInitialDialLocation()
 {
 	// Get our initial relative transform to our parent (or not if un-parented).
 	InitialRelativeTransform = this->GetRelativeTransform();
+
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRDialComponent, InitialRelativeTransform, this);
+#endif
+
 	CurRotBackEnd = 0.0f;
 	CalculateDialProgress();
 }
@@ -593,4 +609,33 @@ void UVRDialComponent::CalculateDialProgress()
 	LastGripRot = UVRInteractibleFunctionLibrary::GetDeltaAngleFromTransforms(DialRotationAxis, InitialRelativeTransform, CurRelativeTransform);
 	CurRotBackEnd = LastGripRot;
 	AddDialAngle(0.0f, false, true);
+}
+
+
+void UVRDialComponent::SetRepGameplayTags(bool bNewRepGameplayTags)
+{
+	bRepGameplayTags = bNewRepGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRDialComponent, bRepGameplayTags, this);
+#endif
+}
+
+void UVRDialComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRDialComponent, bReplicateMovement, this);
+#endif
+}
+
+FGameplayTagContainer& UVRDialComponent::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UVRDialComponent, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
 }

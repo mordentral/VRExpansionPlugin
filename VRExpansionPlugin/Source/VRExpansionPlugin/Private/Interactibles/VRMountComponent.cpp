@@ -9,6 +9,10 @@
 //#include "PhysicsEngine/ConstraintInstance.h"
 #include "Net/UnrealNetwork.h"
 
+#if WITH_PUSH_MODEL
+#include "Net/Core/PushModel/PushModel.h"
+#endif
+
 //=============================================================================
 UVRMountComponent::UVRMountComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -58,9 +62,16 @@ void UVRMountComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProper
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UVRMountComponent, bRepGameplayTags);
-	DOREPLIFETIME(UVRMountComponent, bReplicateMovement);
-	DOREPLIFETIME_CONDITION(UVRMountComponent, GameplayTags, COND_Custom);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRMountComponent, bRepGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRMountComponent, bReplicateMovement, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRMountComponent, GameplayTags, PushModelParamsWithCondition);
 }
 
 void UVRMountComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -577,8 +588,42 @@ void UVRMountComponent::SetHeld_Implementation(UGripMotionControllerComponent * 
 	return FBPInteractionSettings();
 }*/
 
+void UVRMountComponent::ResetInitialMountLocation()
+{
+	// Get our initial relative transform to our parent (or not if un-parented).
+	InitialRelativeTransform = this->GetRelativeTransform();
+}
+
 
 bool UVRMountComponent::GetGripScripts_Implementation(TArray<UVRGripScriptBase*> & ArrayReference)
 {
 	return false;
+}
+
+void UVRMountComponent::SetRepGameplayTags(bool bNewRepGameplayTags)
+{
+	bRepGameplayTags = bNewRepGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRMountComponent, bRepGameplayTags, this);
+#endif
+}
+
+void UVRMountComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRMountComponent, bReplicateMovement, this);
+#endif
+}
+
+FGameplayTagContainer& UVRMountComponent::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UVRMountComponent, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
 }

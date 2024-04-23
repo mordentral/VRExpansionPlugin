@@ -6,6 +6,7 @@
 #include "MotionControllerComponent.h"
 #include "OpenXRExpansionFunctionLibrary.h"
 #include "Engine/NetSerialization.h"
+#include "Net/Core/PushModel/PushModel.h"
 
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 //#include "EngineMinimal.h"
@@ -29,9 +30,13 @@ void UOpenXRHandPoseComponent::GetLifetimeReplicatedProps(TArray< class FLifetim
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	FDoRepLifetimeParams SkipOwnerParams;
+	SkipOwnerParams.Condition = COND_SkipOwner;
+	SkipOwnerParams.bIsPushBased = true;
+
 	// Skipping the owner with this as the owner will use the controllers location directly
-	DOREPLIFETIME_CONDITION(UOpenXRHandPoseComponent, LeftHandRep, COND_SkipOwner);
-	DOREPLIFETIME_CONDITION(UOpenXRHandPoseComponent, RightHandRep, COND_SkipOwner);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UOpenXRHandPoseComponent, LeftHandRep, SkipOwnerParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UOpenXRHandPoseComponent, RightHandRep, SkipOwnerParams);
 }
 
 void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(const FBPXRSkeletalRepContainer& SkeletalInfo)
@@ -49,6 +54,9 @@ void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(cons
 
 				FBPXRSkeletalRepContainer::CopyReplicatedTo(SkeletalInfo, HandSkeletalActions[i]);
 				LeftHandRep = SkeletalInfo;
+#if WITH_PUSH_MODEL
+				MARK_PROPERTY_DIRTY_FROM_NAME(UOpenXRHandPoseComponent, LeftHandRep, this);
+#endif
 
 				if (bSmoothReplicatedSkeletalData)
 				{
@@ -64,6 +72,9 @@ void UOpenXRHandPoseComponent::Server_SendSkeletalTransforms_Implementation(cons
 
 				FBPXRSkeletalRepContainer::CopyReplicatedTo(SkeletalInfo, HandSkeletalActions[i]);
 				RightHandRep = SkeletalInfo;
+#if WITH_PUSH_MODEL
+				MARK_PROPERTY_DIRTY_FROM_NAME(UOpenXRHandPoseComponent, RightHandRep, this);
+#endif
 
 				if (bSmoothReplicatedSkeletalData)
 				{
