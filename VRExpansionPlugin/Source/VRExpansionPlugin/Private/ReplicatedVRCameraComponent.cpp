@@ -192,7 +192,7 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 			{
 				if (HasTrackingParameters())
 				{
-					ApplyTrackingParameters(Position);
+					ApplyTrackingParameters(Position, true);
 				}
 
 				ReplicatedCameraTransform.Position = Position;
@@ -459,7 +459,7 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 					{
 						if (HasTrackingParameters())
 						{
-							ApplyTrackingParameters(Position);
+							ApplyTrackingParameters(Position, true);
 						}
 
 						ReplicatedCameraTransform.Position = Position;
