@@ -3,11 +3,16 @@
 #include "Grippables/HandSocketComponent.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(HandSocketComponent)
 
+#include "CoreMinimal.h"
+#include "UObject/UObjectIterator.h"
 #include "Engine/CollisionProfile.h"
+#include "BoneContainer.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimInstanceProxy.h"
 #include "Animation/PoseSnapshot.h"
 #include "Animation/AnimData/AnimDataModel.h"
+#include "Engine/SkinnedAssetCommon.h"
+#include "Engine/SkinnedAsset.h"
 //#include "VRExpansionFunctionLibrary.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/PoseableMeshComponent.h"
@@ -1011,3 +1016,10 @@ FGameplayTagContainer& UHandSocketComponent::GetGameplayTags()
 /////////////////////////////////////////////////
 //- End Push networking getter / setter functions
 /////////////////////////////////////////////////
+
+void UHandSocketAnimInstance::NativeInitializeAnimation()
+{
+	Super::NativeInitializeAnimation();
+
+	OwningSocket = Cast<UHandSocketComponent>(GetOwningComponent()->GetAttachParent());
+}

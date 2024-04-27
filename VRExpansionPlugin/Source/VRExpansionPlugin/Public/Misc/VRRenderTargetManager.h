@@ -1,5 +1,8 @@
 #pragma once
 #include "TimerManager.h"
+#include "GameFramework/Actor.h"
+#include "Components/ActorComponent.h"
+#include "Containers/Queue.h"
 #include "VRRenderTargetManager.generated.h"
 
 class UVRRenderTargetManager;
@@ -8,6 +11,8 @@ class UCanvas;
 class UTexture2D;
 class UMaterial;
 class APlayerController;
+class FRenderCommandFence;
+enum EPixelFormat : uint8;
 
 
 // #TODO: Dirty rects so don't have to send entire texture?
@@ -214,14 +219,7 @@ public:
 	UPROPERTY()
 		int32 MaxBytesPerSecondRate;
 
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override
-	{
-		if(SendTimer_Handle.IsValid())
-			GetWorld()->GetTimerManager().ClearTimer(SendTimer_Handle);
-
-		Super::EndPlay(EndPlayReason);
-	}
-
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UFUNCTION(Reliable, Server, WithValidation)
 		void SendLocalDrawOperations(const TArray<FRenderManagerOperation>& LocalRenderOperationStoreList);

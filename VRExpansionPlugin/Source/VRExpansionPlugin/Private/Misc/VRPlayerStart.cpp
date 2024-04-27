@@ -3,6 +3,8 @@
 #include "Misc/VRPlayerStart.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRPlayerStart)
 
+#include "CoreMinimal.h"
+#include "Engine/World.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/BillboardComponent.h"
 

@@ -2,6 +2,8 @@
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRGestureComponent)
 
 #include "VRBaseCharacter.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/LineBatchComponent.h"

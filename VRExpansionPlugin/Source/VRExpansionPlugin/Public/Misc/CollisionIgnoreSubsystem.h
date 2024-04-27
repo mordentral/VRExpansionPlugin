@@ -216,15 +216,7 @@ public:
 		Super::Initialize(Collection);
 	}
 
-	virtual void Deinitialize() override
-	{
-		Super::Deinitialize();
-
-		if (UpdateHandle.IsValid())
-		{
-			GetWorld()->GetTimerManager().ClearTimer(UpdateHandle);
-		}
-	}
+	virtual void Deinitialize() override;
 
 	UPROPERTY()
 	TMap<FCollisionPrimPair, FCollisionIgnorePairArray> CollisionTrackedPairs;

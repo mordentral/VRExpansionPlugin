@@ -4,6 +4,8 @@
 
 #include "VRBPDatatypes.h"
 #include "DefaultMovementSet\LayeredMoves\BasicLayeredMoves.h"
+#include "Engine/BlueprintGeneratedClass.h"
+#include "Curves\CurveFloat.h" // Delete after tests, only needed for cloning
 #include "ReplicatedVRCameraComponent.h"
 
 DEFINE_LOG_CATEGORY(LogVRMoverComponent);
@@ -161,7 +163,8 @@ void AVRMoverBasePawn::BeginPlay()
 		if (HasLocalNetOwner())
 		{
 			// Add the persistant HMDlayered move addition
-			CharacterMotionComponent->QueueLayeredMove(TSharedPtr<FLayeredMoveBase>(new FLayeredMove_VRMovement()));
+			TSharedPtr<FLayeredMove_VRMovement> VRMoveLayer = MakeShared<FLayeredMove_VRMovement>();
+			CharacterMotionComponent->QueueLayeredMove(VRMoveLayer);
 		}
 	}
 }

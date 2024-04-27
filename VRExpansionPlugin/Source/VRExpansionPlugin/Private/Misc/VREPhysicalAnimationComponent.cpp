@@ -8,10 +8,11 @@
 #include "ReferenceSkeleton.h"
 #include "DrawDebugHelpers.h"
 
-#if ENABLE_DRAW_DEBUG
+#if UE_ENABLE_DEBUG_DRAWING
 #include "Chaos/ImplicitObject.h"
 #include "Chaos/TriangleMeshImplicitObject.h"
 #include "Chaos/ShapeInstance.h"
+#include "Chaos/DebugDrawQueue.h"
 #endif
 
 #include "Physics/PhysicsInterfaceCore.h"
@@ -232,8 +233,8 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 				if (FPhysicsInterface::IsValid(ActorHandle) /*&& FPhysicsInterface::IsRigidBody(ActorHandle)*/)
 				{
 
-#if ENABLE_DRAW_DEBUG
-					if (bDebugDrawCollision)
+#if UE_ENABLE_DEBUG_DRAWING
+					if (false)//bDebugDrawCollision)
 					{
 						Chaos::FDebugDrawQueue::GetInstance().SetConsumerActive(this, true); // Need to deactivate this later as well
 						Chaos::FDebugDrawQueue::GetInstance().SetMaxCost(20000);
@@ -252,8 +253,8 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 						FTransform GlobalPoseInv = GlobalPose.Inverse();
 
 
-#if ENABLE_DRAW_DEBUG
-						if (bDebugDrawCollision)
+#if UE_ENABLE_DEBUG_DRAWING
+						if (false)//bDebugDrawCollision)
 						{
 							Chaos::FDebugDrawQueue::GetInstance().SetRegionOfInterest(GlobalPose.GetLocation(), 100.0f);
 						}
@@ -306,33 +307,33 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 								}
 							}
 
-#if ENABLE_DRAW_DEBUG
-							if (bDebugDrawCollision)
+#if UE_ENABLE_DEBUG_DRAWING
+							if (false)//bDebugDrawCollision)
 							{
-								const Chaos::FImplicitObject& ShapeImplicit = Shape.GetGeometry();
+								/*const Chaos::FImplicitObject& ShapeImplicit = Shape.GetGeometry();
 								Chaos::EImplicitObjectType Type = ShapeImplicit.GetType();
 
 								FTransform shapeTransform = FPhysicsInterface::GetLocalTransform(Shape);
 								FTransform FinalTransform = shapeTransform * GlobalPose;
 								Chaos::FRigidTransform3 RigTransform(FinalTransform);
-								Chaos::DebugDraw::DrawShape(RigTransform, &ShapeImplicit, Shape.Shape, FColor::White);
+								Chaos::DebugDraw::DrawShape(RigTransform, &ShapeImplicit, Shape.Shape, FColor::White);*/
 							}
 #endif
 						}
 					});
 
-#if ENABLE_DRAW_DEBUG
-					if (bDebugDrawCollision)
+#if UE_ENABLE_DEBUG_DRAWING
+					if (false)//bDebugDrawCollision)
 					{
 						// Get the latest commands
-						TArray<Chaos::FLatentDrawCommand> DrawCommands;
+						/*TArray<Chaos::FLatentDrawCommand> DrawCommands;
 						Chaos::FDebugDrawQueue::GetInstance().ExtractAllElements(DrawCommands);
 						if (DrawCommands.Num())
 						{
 							DebugDrawMesh(DrawCommands);
 						}
 						Chaos::FDebugDrawQueue::GetInstance().SetConsumerActive(this, false); // Need to deactivate this later as well
-						Chaos::FDebugDrawQueue::GetInstance().SetEnabled(false);
+						Chaos::FDebugDrawQueue::GetInstance().SetEnabled(false);*/
 					}
 #endif
 				}
@@ -342,7 +343,8 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 	}
 }
 
-#if ENABLE_DRAW_DEBUG
+#if UE_ENABLE_DEBUG_DRAWING
+/*
 void UVREPhysicalAnimationComponent::DebugDrawMesh(const TArray<Chaos::FLatentDrawCommand>& DrawCommands)
 {
 	UWorld* World = this->GetWorld();
@@ -383,5 +385,5 @@ void UVREPhysicalAnimationComponent::DebugDrawMesh(const TArray<Chaos::FLatentDr
 			break;
 		}
 	}
-}
+}*/
 #endif

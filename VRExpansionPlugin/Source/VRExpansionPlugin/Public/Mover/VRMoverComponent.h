@@ -8,6 +8,9 @@
 #include "LayeredMove.h"
 #include "VRMoverComponent.generated.h"
 
+class UCurveVector;
+class UCurveFloat;
+
 DECLARE_LOG_CATEGORY_EXTERN(LogVRMoverComponent, Log, All);
 
 /** Linear Velocity: A method of inducing a straight-line velocity on an actor over time  */

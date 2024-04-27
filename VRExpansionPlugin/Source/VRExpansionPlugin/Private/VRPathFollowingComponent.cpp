@@ -3,6 +3,8 @@
 #include "VRPathFollowingComponent.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRPathFollowingComponent)
 
+#include "CoreMinimal.h"
+#include "Engine/World.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 //#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 13
