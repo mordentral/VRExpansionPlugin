@@ -20,6 +20,8 @@ public:
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override;
 
 	FReply OnCorrectInvalidAnimationAssets();
+
+	FReply OnFixShadowShader();
 	
 	void OnLockedStateUpdated(IDetailLayoutBuilder* LayoutBuilder);
 

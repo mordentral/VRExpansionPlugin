@@ -31,6 +31,8 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/ARFilter.h"
 
+#include "FileHelpers.h"
+#include "Engine/Engine.h"
 #include "Editor/UnrealEdEngine.h"
 #include "UnrealEdGlobals.h"
 
@@ -76,6 +78,58 @@ void FVRGlobalSettingsDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuil
 		.Text(LOCTEXT("FixInvalidAnimationAssetsButton", "Fix Animation Assets"))
 		]
 		];
+
+	DetailBuilder.EditCategory("Utilities")
+		.AddCustomRow(LOCTEXT("Fix 5.4.0 Shadow Shader", "Fix Broken 5.4.0 Shadow Shader"))
+		.NameContent()
+		[
+			SNew(STextBlock)
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+		.Text(LOCTEXT("Fix54ShadowShader", "Fix Broken 5.4.0 Shadow Shader"))
+		]
+	.ValueContent()
+		.MaxDesiredWidth(125.f)
+		.MinDesiredWidth(125.f)
+		[
+			SNew(SButton)
+			.ContentPadding(2)
+		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Center)
+		.OnClicked(this, &FVRGlobalSettingsDetails::OnFixShadowShader)
+		[
+			SNew(STextBlock)
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+		.Text(LOCTEXT("Fix54ShadowShaderButton", "Fix Broken 5.4.0 Shadow Shader"))
+		]
+		];
+}
+
+FReply FVRGlobalSettingsDetails::OnFixShadowShader()
+{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 4
+	FString EnginePath = FPaths::EngineDir();
+	EnginePath += "/Shaders/Private/ShadowProjectionPixelShader.usf";
+
+	if (FPlatformFileManager::Get().GetPlatformFile().FileExists(*EnginePath))
+	{
+		FString FileStr = "";
+		if (FFileHelper::LoadFileToString(FileStr, *EnginePath))
+		{
+			// Don't need to do anything complicated, the shader only contains one line with this define in it
+			FileStr = FileStr.Replace(TEXT("#if MOBILE_MULTI_VIEW || INSTANCED_STEREO"),TEXT("#if ((MOBILE_MULTI_VIEW || INSTANCED_STEREO) && SHADING_PATH_MOBILE)"));
+
+			FFileHelper::SaveStringToFile(FileStr, *EnginePath);
+
+			GEngine->Exec(GEngine->GetWorld(), TEXT("recompileshaders changed"));
+			UE_LOG(LogPath, Log, TEXT("ShadowProjectionPixelShader.usf resaved and recompiled!"));
+			return FReply::Handled();
+		}
+	}
+
+#endif
+
+	UE_LOG(LogPath, Error, TEXT("ShadowProjectionPixelShader.usf could not be found, edited, or the engine version is incorrect!"));
+	return FReply::Handled();
 }
 
 FReply FVRGlobalSettingsDetails::OnCorrectInvalidAnimationAssets()
