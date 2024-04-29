@@ -46,6 +46,12 @@ UGS_Melee::UGS_Melee(const FObjectInitializer& ObjectInitializer) :
 	bOnlyPenetrateWithTwoHands = false;
 }
 
+void UGS_Melee::SetIsLodged(bool IsLodged, UPrimitiveComponent* LodgeComponent)
+{
+	bIsLodged = IsLodged;
+	LodgedComponent = LodgeComponent;
+}
+
 void UGS_Melee::UpdateDualHandInfo()
 {
 	TArray<FBPGripPair> HoldingControllers;

@@ -19,6 +19,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
+#include "Animation\AnimInstance.h"
 
 
 DEFINE_LOG_CATEGORY(LogVRBaseCharacterMovement);

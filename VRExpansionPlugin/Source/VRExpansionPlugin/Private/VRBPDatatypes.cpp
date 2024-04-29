@@ -3,7 +3,9 @@
 #include "VRBPDatatypes.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRBPDatatypes)
 
+#include "CoreMinimal.h"
 #include "VRGlobalSettings.h"
+#include "Components\PrimitiveComponent.h"
 #include "HAL/IConsoleManager.h"
 #include "Chaos/ChaosEngineInterface.h"
 
@@ -269,4 +271,22 @@ bool FBPAdvancedPhysicsHandleSettings::FillTo(FBPActorPhysicsHandleInformation* 
 	}
 
 	return true;
+}
+
+AActor* FBPActorGripInformation::GetGrippedActor() const
+{
+	return Cast<AActor>(GrippedObject);
+}
+
+UPrimitiveComponent* FBPActorGripInformation::GetGrippedComponent() const
+{
+	return Cast<UPrimitiveComponent>(GrippedObject);
+}
+
+bool FBPActorGripInformation::operator==(const UPrimitiveComponent* Other) const
+{
+	if (Other && GrippedObject && GrippedObject == (const UObject*)Other)
+		return true;
+
+	return false;
 }

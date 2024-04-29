@@ -8,6 +8,10 @@
 #include "Grippables/GrippablePhysicsReplication.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GrippablePhysicsReplication)
 
+#include "CoreMinimal.h"
+#include "PhysicsEngine\BodyInstance.h"
+#include "Components/PrimitiveComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "UObject/ObjectMacros.h"
 #include "UObject/Interface.h"
 #include "DrawDebugHelpers.h"

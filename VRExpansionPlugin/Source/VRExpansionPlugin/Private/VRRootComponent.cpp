@@ -6,6 +6,8 @@
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 //#include "WorldCollision.h"
 #include "PhysicsPublic.h"
+#include "Engine/World.h"
+#include "Engine/Engine.h"
 #include "Engine/ScopedMovementUpdate.h"
 #include "SceneManagement.h"
 #include "PrimitiveSceneProxy.h"

@@ -3,12 +3,17 @@
 #include "Misc/VRRenderTargetManager.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRRenderTargetManager)
 
+#include "Engine/World.h"
+#include "GlobalRenderResources.h"
+#include "Components/ActorComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework\Pawn.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/Texture2D.h"
 #include "TextureResource.h"
+#include "PixelFormat.h"
 #include "CanvasTypes.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetRenderingLibrary.h"
@@ -483,6 +488,14 @@ void ARenderTargetReplicationProxy::SendNextDataBlob()
 			GetWorld()->GetTimerManager().ClearTimer(SendTimer_Handle);
 		BlobNum = 0;
 	}
+}
+
+void ARenderTargetReplicationProxy::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (SendTimer_Handle.IsValid())
+		GetWorld()->GetTimerManager().ClearTimer(SendTimer_Handle);
+
+	Super::EndPlay(EndPlayReason);
 }
 
 //=============================================================================

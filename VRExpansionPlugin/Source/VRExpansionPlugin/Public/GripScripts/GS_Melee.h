@@ -181,11 +181,8 @@ public:
 	virtual void OnLodgeHitCallback(AActor* SelfActor, AActor* OtherActor, FVector NormalImpulse, const FHitResult& Hit);
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon Settings")
-		void SetIsLodged(bool IsLodged, UPrimitiveComponent * LodgeComponent)
-	{
-		bIsLodged = IsLodged;
-		LodgedComponent = LodgeComponent;
-	}
+	void SetIsLodged(bool IsLodged, UPrimitiveComponent* LodgeComponent);
+
 
 	bool bIsLodged;
 	TWeakObjectPtr<UPrimitiveComponent> LodgedComponent;

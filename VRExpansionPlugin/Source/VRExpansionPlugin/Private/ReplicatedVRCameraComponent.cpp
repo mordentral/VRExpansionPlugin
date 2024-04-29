@@ -3,6 +3,9 @@
 #include "ReplicatedVRCameraComponent.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(ReplicatedVRCameraComponent)
 
+#include "CoreMinimal.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 #include "VRBaseCharacter.h"
 #include "VRCharacter.h"
@@ -192,7 +195,7 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 			{
 				if (HasTrackingParameters())
 				{
-					ApplyTrackingParameters(Position);
+					ApplyTrackingParameters(Position, true);
 				}
 
 				ReplicatedCameraTransform.Position = Position;
@@ -459,7 +462,7 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 					{
 						if (HasTrackingParameters())
 						{
-							ApplyTrackingParameters(Position);
+							ApplyTrackingParameters(Position, true);
 						}
 
 						ReplicatedCameraTransform.Position = Position;
@@ -579,4 +582,11 @@ void UReplicatedVRCameraComponent::SetNetUpdateRate(float NewNetUpdateRate)
 #if WITH_PUSH_MODEL
 	MARK_PROPERTY_DIRTY_FROM_NAME(UReplicatedVRCameraComponent, NetUpdateRate, this);
 #endif
+}
+
+bool UReplicatedVRCameraComponent::IsLocallyControlled() const
+{
+	// I like epics new authority check more than my own
+	const AActor* MyOwner = GetOwner();
+	return MyOwner->HasLocalNetOwner();
 }

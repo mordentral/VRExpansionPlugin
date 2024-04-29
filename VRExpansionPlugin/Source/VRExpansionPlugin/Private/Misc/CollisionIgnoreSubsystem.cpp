@@ -4,6 +4,7 @@
 #include UE_INLINE_GENERATED_CPP_BY_NAME(CollisionIgnoreSubsystem)
 
 #include "Components/SkeletalMeshComponent.h"
+#include "Engine/World.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 #include "VRGlobalSettings.h"
 
@@ -89,6 +90,16 @@ void UCollisionIgnoreSubsystem::ConstructInput()
 				}
 			}
 		}
+	}
+}
+
+void UCollisionIgnoreSubsystem::Deinitialize()
+{
+	Super::Deinitialize();
+
+	if (UpdateHandle.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(UpdateHandle);
 	}
 }
 

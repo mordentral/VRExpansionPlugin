@@ -4,6 +4,8 @@
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRAIController)
 
 //#include "VRBPDatatypes.h"
+#include "CoreMinimal.h"
+#include "Engine/World.h"
 #include "VRBaseCharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "NetworkingDistanceConstants.h" // Needed for the LinOfSightTo function override to work

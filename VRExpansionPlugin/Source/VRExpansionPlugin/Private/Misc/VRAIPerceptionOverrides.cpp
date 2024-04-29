@@ -3,8 +3,11 @@
 #include "Misc/VRAIPerceptionOverrides.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRAIPerceptionOverrides)
 
-#include "EngineDefines.h"
-#include "EngineGlobals.h"
+#include "CoreMinimal.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+//#include "EngineDefines.h"
+//#include "EngineGlobals.h"
 #include "CollisionQueryParams.h"
 //#include "Engine/Engine.h"
 #include "AISystem.h"

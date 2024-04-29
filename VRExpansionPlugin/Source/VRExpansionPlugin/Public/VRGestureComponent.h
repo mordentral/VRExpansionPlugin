@@ -6,6 +6,7 @@
 //#include "Engine/Engine.h"
 #include "VRBPDatatypes.h"
 #include "Engine/DataAsset.h"
+#include "Components\SceneComponent.h"
 
 //#include "Engine/EngineTypes.h"
 //#include "Engine/EngineBaseTypes.h"
@@ -309,7 +310,7 @@ public:
 		return FVector::DistSquared(Seq1, Seq2);
 	}
 
-	void BeginDestroy() override;
+	virtual void BeginDestroy() override;
 
 	// Recalculates a gestures size and re-scales it to the given database
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")

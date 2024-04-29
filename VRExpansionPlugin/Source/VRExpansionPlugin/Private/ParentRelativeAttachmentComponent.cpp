@@ -3,6 +3,7 @@
 #include "ParentRelativeAttachmentComponent.h"
 #include UE_INLINE_GENERATED_CPP_BY_NAME(ParentRelativeAttachmentComponent)
 
+#include "Engine/Engine.h"
 #include "VRBaseCharacter.h"
 #include "VRCharacter.h"
 #include "IXRTrackingSystem.h"
