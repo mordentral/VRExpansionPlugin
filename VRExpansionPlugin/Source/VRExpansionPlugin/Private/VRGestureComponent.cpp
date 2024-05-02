@@ -24,7 +24,6 @@ UVRGestureComponent::UVRGestureComponent(const FObjectInitializer& ObjectInitial
 	maxSlope = 3;// INT_MAX;
 	//globalThreshold = 10.0f;
 	SameSampleTolerance = 0.1f;
-	bGestureChanged = false;
 	MirroringHand = EVRGestureMirrorMode::GES_NoMirror;
 	bDrawSplinesCurved = true;
 	bGetGestureInWorldSpace = true;
@@ -126,14 +125,14 @@ void UGesturesDatabase::FillSplineWithGesture(FVRGesture &Gesture, USplineCompon
 
 }
 
-void UVRGestureComponent::BeginRecording(bool bRunDetection, bool bFlattenGesture, bool bDrawGesture, bool bDrawAsSpline, int SamplingHTZ, int SampleBufferSize, float ClampingTolerance)
+void UVRGestureComponent::BeginRecording(bool bRunDetection, EVRGestureFlattenAxis FlattenAxis, bool bDrawGesture, bool bDrawAsSpline, int SamplingHTZ, int SampleBufferSize, float ClampingTolerance)
 {
 	RecordingBufferSize = SampleBufferSize;
 	RecordingDelta = 1.0f / SamplingHTZ;
 	RecordingClampingTolerance = ClampingTolerance;
 	bDrawRecordingGesture = bDrawGesture;
 	bDrawRecordingGestureAsSpline = bDrawAsSpline;
-	bRecordingFlattenGesture = bFlattenGesture;
+	RecordingFlattenAxis = FlattenAxis;
 	GestureLog.GestureSize.Init();
 
 	// Reset does the reserve already
@@ -223,8 +222,13 @@ void UVRGestureComponent::CaptureGestureFrame()
 
 	if (CurrentState == EVRGestureState::GES_Recording)
 	{
-		if (bRecordingFlattenGesture)
-			NewSample.X = 0;
+		switch (RecordingFlattenAxis)
+		{
+		case EVRGestureFlattenAxis::GES_FlattenX: {NewSample.X = 0.0; }break;
+		case EVRGestureFlattenAxis::GES_FlattenY: {NewSample.Y = 0.0; }break;
+		case EVRGestureFlattenAxis::GES_FlattenZ: {NewSample.Z = 0.0; }break;
+		default: {}break;
+		}
 
 		if (RecordingClampingTolerance > 0.0f)
 		{
