@@ -808,7 +808,7 @@ bool AVRBaseCharacter::SetSeatedMode(USceneComponent * SeatParent, bool bSetSeat
 		// I think we can remove the initial value alltogether eventually right?
 		if (!bRetainRoomscale && VRReplicatedCamera)
 		{
-			InitialRelCameraTransform = FTransform(VRReplicatedCamera->ReplicatedCameraTransform.Rotation, VRReplicatedCamera->ReplicatedCameraTransform.Position, VRReplicatedCamera->GetComponentScale());
+			InitialRelCameraTransform = VRReplicatedCamera->GetHMDTrackingTransform();
 		}
 
 		SeatInformation.SeatParent = SeatParent;

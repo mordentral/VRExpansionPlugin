@@ -510,6 +510,11 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 	}
 }
 
+FTransform UReplicatedVRCameraComponent::GetHMDTrackingTransform()
+{
+	return FTransform(ReplicatedCameraTransform.Rotation, ReplicatedCameraTransform.Position);
+}
+
 void UReplicatedVRCameraComponent::OnRep_ReplicatedCameraTransform()
 {
     if (GetNetMode() < ENetMode::NM_Client && HasTrackingParameters())

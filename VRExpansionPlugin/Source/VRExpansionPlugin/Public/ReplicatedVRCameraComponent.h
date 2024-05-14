@@ -106,6 +106,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_ReplicatedCameraTransform, Category = "ReplicatedCamera|Networking")
 	FBPVRComponentPosRep ReplicatedCameraTransform;
 
+	// Returns the actual tracked transform of the HMD, as with RetainRoomscale = False we do not set the camera to it
+	// Can also just use the HMD function library but this is a fast way if you already have a camera reference
+	UFUNCTION(BlueprintPure, Category = "ReplicatedCamera|Tracking")
+		FTransform GetHMDTrackingTransform();
+
 	FVector LastUpdatesRelativePosition = FVector::ZeroVector;
 	FRotator LastUpdatesRelativeRotation = FRotator::ZeroRotator;
 
