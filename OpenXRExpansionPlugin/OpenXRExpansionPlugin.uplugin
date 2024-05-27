@@ -31,7 +31,7 @@
 		{
 		  "Name": "OpenXRExpansionEditor",
 		  "Type": "UnCookedOnly",
-		  "LoadingPhase": "PostEngineInit"
+		  "LoadingPhase": "PreDefault"
 		}
 	],
 	"Plugins": [
