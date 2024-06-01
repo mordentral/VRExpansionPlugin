@@ -29,9 +29,28 @@ void FAnimNode_ApplyOpenXRHandPose::OnInitializeAnimInstance(const FAnimInstance
 {
 	Super::OnInitializeAnimInstance(InProxy, InAnimInstance);
 
-	if (const UOpenXRAnimInstance * animInst = Cast<UOpenXRAnimInstance>(InAnimInstance))
+	if (const UOpenXRAnimInstance * OpenXRAnimInstance = Cast<UOpenXRAnimInstance>(InAnimInstance))
 	{
 		bIsOpenInputAnimationInstance = true;
+
+		if (OpenXRAnimInstance->AnimInstanceProxy.HandSkeletalActionData.Num())
+		{
+			for (int i = 0; i < OpenXRAnimInstance->AnimInstanceProxy.HandSkeletalActionData.Num(); ++i)
+			{
+				EVRSkeletalHandIndex TargetHand = OpenXRAnimInstance->AnimInstanceProxy.HandSkeletalActionData[i].TargetHand;
+
+				if (OpenXRAnimInstance->AnimInstanceProxy.HandSkeletalActionData[i].bMirrorLeftRight)
+				{
+					TargetHand = (TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left) ? EVRSkeletalHandIndex::EActionHandIndex_Right : EVRSkeletalHandIndex::EActionHandIndex_Left;
+				}
+
+				if (TargetHand == MappedBonePairs.TargetHand)
+				{
+					bIsMirroringHand = OpenXRAnimInstance->AnimInstanceProxy.HandSkeletalActionData[i].bMirrorLeftRight;
+					break;
+				}
+			}
+		}
 	}
 }
 
@@ -168,7 +187,16 @@ void FAnimNode_ApplyOpenXRHandPose::CalculateOpenXRAdjustment()
 
 	// Side direction
 	// Do I need to flip this for left hand?
-	static FVector OpenXRSideDirection = FVector(0.f, 1.f, 0.f); 
+
+	bool bUseLeftHandOffsets = false;
+	if ((!bIsMirroringHand && MappedBonePairs.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left) ||
+		(bIsMirroringHand && MappedBonePairs.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Right))
+	{
+		bUseLeftHandOffsets = true;
+	}
+
+	//static FVector OpenXRSideDirection = FVector(0.f, 1.f, 0.f);
+	FVector OpenXRSideDirection = bUseLeftHandOffsets ? FVector(0.f, -1.f, 0.f) : FVector(0.f, 1.f, 0.f);
 
 	// Align forward vectors, openXR once in engine is X+ forward
 	FQuat AlignmentRot = FQuat::FindBetweenNormals(WristForwardLS_UE, OpenXRForwardDirection);
@@ -379,9 +407,6 @@ void FAnimNode_ApplyOpenXRHandPose::EvaluateSkeletalControl_AnyThread(FComponent
 		// Early out, we don't have a valid data to work with
 		return;
 	}
-
-
-
 
 	FTransform trans = FTransform::Identity;
 	OutBoneTransforms.Reserve(MappedBonePairs.BonePairs.Num());
