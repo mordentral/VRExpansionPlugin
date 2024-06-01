@@ -42,7 +42,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = Skeletal, meta = (PinHiddenByDefault))
 		FBPOpenXRSkeletalMappingData MappedBonePairs;
 
-	bool bIsOpenInputAnimationInstance;
+	bool bIsOpenInputAnimationInstance = false;
+	bool bIsMirroringHand = false;
 
 	void ConvertHandTransformsSpace(TArray<FTransform>& OutTransforms, const TArray<FTransform>& WorldTransforms, FTransform AddTrans, bool bMirrorLeftRight, bool bMergeMissingUE4Bones);
 

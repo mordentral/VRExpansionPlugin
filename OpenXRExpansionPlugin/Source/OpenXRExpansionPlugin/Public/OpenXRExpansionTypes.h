@@ -103,7 +103,7 @@ public:
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bAllowDeformingMesh;
 
-	// If true then the bones will be mirrored from left/right, to allow you to swap a hand mesh or apply to a full body mesh
+	// If true then the bones will be mirrored from left/right, to allow you to swap a hand mesh to the other hand
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bMirrorLeftRight;
 
