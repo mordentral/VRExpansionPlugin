@@ -746,6 +746,12 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 		CurLinearVelocity = FVector::ZeroVector;
 		return;
 	}
+	if (!primComp->IsSimulatingPhysics())
+	{
+		CurLinearVelocity = FixGrippedVelocity;
+		CurAngularVelocity = FixGrippedAngularVelocity;
+		return;
+	}
 
 	CurAngularVelocity = primComp->GetPhysicsAngularVelocityInDegrees();
 	CurLinearVelocity = primComp->GetPhysicsLinearVelocity();
@@ -5034,6 +5040,44 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	}
 
 	// Save out the component velocity from this and last frame
+
+	if (GrippedObjects.IsValidIndex(0))
+	{
+		FBPActorGripInformation& Grip = GrippedObjects[0];
+		UPrimitiveComponent *root = NULL;
+		AActor *actor = NULL;
+
+		// Getting the correct variables depending on the grip target type
+		switch (Grip.GripTargetType)
+		{
+		case EGripTargetType::ActorGrip:
+			//case EGripTargetType::InteractibleActorGrip:
+			{
+				actor = Grip.GetGrippedActor();
+				if(actor)
+					root = Cast<UPrimitiveComponent>(actor->GetRootComponent());
+			}break;
+
+		case EGripTargetType::ComponentGrip:
+			//case EGripTargetType::InteractibleComponentGrip :
+			{
+				root = Grip.GetGrippedComponent();
+				if(root)
+					actor = root->GetOwner();
+			}break;
+
+		default:break;
+		}
+
+		if (root)
+		{
+			FixGrippedVelocity = (root->GetComponentTransform().GetLocation() - FixGrippedLastTransform.GetLocation())/ DeltaTime;
+			FixGrippedAngularVelocity = (root->GetComponentTransform().GetRotation() - FixGrippedLastTransform.GetRotation()).ToRotationVector() / DeltaTime;
+			FixGrippedLastTransform = root->GetComponentTransform();
+
+		}
+	
+	}
 
 	FVector newVelocitySample = ((bSampleVelocityInWorldSpace ? GetComponentLocation() : GetRelativeLocation()) - LastRelativePosition.GetTranslation()) / DeltaTime;
 

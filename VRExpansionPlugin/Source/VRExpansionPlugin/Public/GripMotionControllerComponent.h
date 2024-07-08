@@ -307,6 +307,14 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "GripMotionController")
 		FVRGripControllerOnGripOutOfRange OnGripOutOfRange;
 
+protected:
+
+	// Fixed velocity sampling for bug in 5.4
+	FTransform FixGrippedLastTransform;
+	FVector FixGrippedVelocity;
+	FVector FixGrippedAngularVelocity;
+
+
 private:
 
 	GENERATED_BODY()
