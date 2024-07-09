@@ -5094,22 +5094,17 @@ FVector UGripMotionControllerComponent::GetComponentVelocity() const
 // TEMP: #TODO: Remove
 void UGripMotionControllerComponent::CalculateGripVelocity(FBPActorGripInformation& GripToFill, UPrimitiveComponent* ComponentToSample, float DeltaTime)
 {
-	switch (GripToFill.GripCollisionType)
+	if (!bHasAuthority && !IsServer())
 	{
-	case EGripCollisionType::InteractiveHybridCollisionWithSweep:
-	case EGripCollisionType::SweepWithPhysics:
-	case EGripCollisionType::PhysicsOnly:
-	case EGripCollisionType::EventsOnly:
-	{
-		FTransform CurTrans = ComponentToSample->GetComponentTransform();
-
-		GripToFill.LinVel = (CurTrans.GetLocation() - GripToFill.LastVelWorldTrans.GetLocation()) / DeltaTime;
-		GripToFill.RotVel = (CurTrans.GetRotation() - GripToFill.LastVelWorldTrans.GetRotation()).ToRotationVector() / DeltaTime;
-
-		GripToFill.LastVelWorldTrans = CurTrans;
-	}break;
-	default:break;
+		return;
 	}
+
+	FTransform CurTrans = ComponentToSample->GetComponentTransform();
+
+	GripToFill.LinVel = (CurTrans.GetLocation() - GripToFill.LastVelWorldTrans.GetLocation()) / DeltaTime;
+	GripToFill.RotVel = (CurTrans.GetRotation().ToRotationVector() - GripToFill.LastVelWorldTrans.GetRotation().ToRotationVector()) / DeltaTime;
+
+	GripToFill.LastVelWorldTrans = CurTrans;
 }
 
 void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)
