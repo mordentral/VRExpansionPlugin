@@ -5102,7 +5102,7 @@ void UGripMotionControllerComponent::CalculateGripVelocity(FBPActorGripInformati
 	FTransform CurTrans = ComponentToSample->GetComponentTransform();
 
 	GripToFill.LinVel = (CurTrans.GetLocation() - GripToFill.LastVelWorldTrans.GetLocation()) / DeltaTime;
-	GripToFill.RotVel = (CurTrans.GetRotation().ToRotationVector() - GripToFill.LastVelWorldTrans.GetRotation().ToRotationVector()) / DeltaTime;
+	GripToFill.RotVel = FVector::RadiansToDegrees(((CurTrans.GetRotation().ToRotationVector() - GripToFill.LastVelWorldTrans.GetRotation().ToRotationVector()))) / DeltaTime;
 
 	GripToFill.LastVelWorldTrans = CurTrans;
 }
