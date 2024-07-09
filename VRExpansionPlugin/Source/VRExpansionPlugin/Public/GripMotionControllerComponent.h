@@ -316,6 +316,10 @@ public:
 
 	~UGripMotionControllerComponent();
 
+	// TMP until physics velocity bug is fixed #TODO: Remove
+	void CalculateGripVelocity(FBPActorGripInformation &GripToFill, UPrimitiveComponent* ComponentToSample, float DeltaTime);
+
+
 	// Custom version of the component sweep function to remove that aggravating warning epic is throwing about skeletal mesh components.
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void InitializeComponent() override;

@@ -1468,6 +1468,13 @@ public:
 	float LerpSpeed;
 	FTransform OnGripTransform;
 
+	/////////////////////
+	// TMP: Velocity calculation addition for 5.4 #TODO: Remove this when the bug is fixed
+	FVector LinVel = FVector::ZeroVector;
+	FVector RotVel = FVector::ZeroVector;
+	FTransform LastVelWorldTrans; // Identity by default
+	///////////////////////
+
 	UPROPERTY(BlueprintReadWrite, NotReplicated, Category = "Settings")
 	bool bIsLerping;
 

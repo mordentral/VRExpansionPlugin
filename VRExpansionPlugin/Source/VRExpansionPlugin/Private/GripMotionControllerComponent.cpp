@@ -747,6 +747,14 @@ void UGripMotionControllerComponent::GetPhysicsVelocities(const FBPActorGripInfo
 		return;
 	}
 
+	// TMP #TODO: Fix when 5.4 bug is fixed
+	if (!primComp->IsSimulatingPhysics())
+	{
+		CurLinearVelocity = Grip.LinVel;
+		CurAngularVelocity = Grip.RotVel;
+		return;
+	}
+
 	CurAngularVelocity = primComp->GetPhysicsAngularVelocityInDegrees();
 	CurLinearVelocity = primComp->GetPhysicsLinearVelocity();
 }
@@ -4597,6 +4605,10 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		}
 	}
 
+	// TMP #TODO: Remove with 5.4 bug with velocity is fixed
+	// Reset our last world transform velocity as typically we don't want to accumulate teleport speeds into it.
+	Grip.LastVelWorldTrans = PrimComp->GetComponentTransform();
+
 	return true;
 }
 
@@ -5072,6 +5084,27 @@ FVector UGripMotionControllerComponent::GetComponentVelocity() const
 	return Super::GetComponentVelocity();
 }
 
+// TEMP: #TODO: Remove
+void UGripMotionControllerComponent::CalculateGripVelocity(FBPActorGripInformation& GripToFill, UPrimitiveComponent* ComponentToSample, float DeltaTime)
+{
+	switch (GripToFill.GripCollisionType)
+	{
+	case EGripCollisionType::InteractiveHybridCollisionWithSweep:
+	case EGripCollisionType::SweepWithPhysics:
+	case EGripCollisionType::PhysicsOnly:
+	case EGripCollisionType::EventsOnly:
+	{
+		FTransform CurTrans = ComponentToSample->GetComponentTransform();
+
+		GripToFill.LinVel = (CurTrans.GetLocation() - GripToFill.LastVelWorldTrans.GetLocation()) / DeltaTime;
+		GripToFill.RotVel = (CurTrans.GetRotation() - GripToFill.LastVelWorldTrans.GetRotation()).ToRotationVector() / DeltaTime;
+
+		GripToFill.LastVelWorldTrans = CurTrans;
+	}break;
+	default:break;
+	}
+}
+
 void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformation> &GrippedObjectsArray, const FTransform & ParentTransform, float DeltaTime, bool bReplicatedArray)
 {
 	if (GrippedObjectsArray.Num())
@@ -5159,6 +5192,8 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					else if(bActorHasInterface)
 						IVRGripInterface::Execute_TickGrip(actor, this, *Grip, DeltaTime);
 
+					// TEMP 5.4 (or fixed)
+					CalculateGripVelocity(*Grip, root, DeltaTime);
 					continue;
 				}
 
@@ -5912,6 +5947,9 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 					default:
 					{}break;
 				}
+
+				// TEMP 5.4 (or fixed)
+				CalculateGripVelocity(*Grip, root, DeltaTime); // Technically for physical grips it would be post physics thre
 
 				// We only do this if specifically requested, it has a slight perf hit and isn't normally needed for non Custom Grip types
 				if (bAlwaysSendTickGrip)
