@@ -3124,7 +3124,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 	case EGripCollisionType::AttachmentGrip:
 	{
-		if (root)
+		if (IsValid(root))
 			root->SetSimulatePhysics(false);
 
 		// Move it to the correct location automatically
@@ -3151,7 +3151,7 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 	default: 
 	{
 
-		if (root)
+		if (IsValid(root))
 		{
 			if (root->IsSimulatingPhysics())
 			{
@@ -3184,6 +3184,13 @@ bool UGripMotionControllerComponent::NotifyGrip(FBPActorGripInformation &NewGrip
 
 	if (!bIsReInit)
 	{
+		// TMP #TODO: Remove when 5.4 velocity bug is fixed
+		if (IsValid(root))
+		{
+			// Set initial world transform for velocity
+			NewGrip.LastVelWorldTrans = root->GetComponentTransform();
+		}
+
 		// Broadcast a new grip
 		OnGrippedObject.Broadcast(NewGrip);
 		if (!LocallyGrippedObjects.Contains(NewGrip.GripID) && !GrippedObjects.Contains(NewGrip.GripID))
