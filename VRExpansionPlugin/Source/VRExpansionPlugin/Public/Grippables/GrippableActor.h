@@ -135,19 +135,7 @@ public:
 		bool bAllowIgnoringAttachOnOwner;
 
 	// Should we skip attachment replication (vr settings say we are a client auth grip and our owner is locally controlled)
-	inline bool ShouldWeSkipAttachmentReplication(bool bConsiderHeld = true) const
-	{
-		if ((bConsiderHeld && !VRGripInterfaceSettings.bWasHeld) || GetNetMode() < ENetMode::NM_Client)
-			return false;
-
-		if (VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive ||
-			VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
-		{
-			return HasLocalNetOwner();
-		}
-		else
-			return false;
-	}
+	/*inline*/ bool ShouldWeSkipAttachmentReplication(bool bConsiderHeld = true) const;
 
 	// Handle fixing some bugs and issues with ReplicateMovement being off
 	virtual void OnRep_AttachmentReplication() override;
