@@ -254,6 +254,30 @@ void AGrippableActor::GatherCurrentMovement()
 	}
 }
 
+bool AGrippableActor::ShouldWeSkipAttachmentReplication(bool bConsiderHeld) const
+{
+	if ((bConsiderHeld && !VRGripInterfaceSettings.bWasHeld) || GetNetMode() < ENetMode::NM_Client)
+		return false;
+
+	if (VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive ||
+		VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
+	{
+		// First return if we are locally held (owner may not have replicated yet)
+		for (const FBPGripPair& Grip : VRGripInterfaceSettings.HoldingControllers)
+		{
+			if (IsValid(Grip.HoldingController) && Grip.HoldingController->IsLocallyControlled())
+			{
+				return true;
+			}
+		}
+
+		// then return if we have a local net owner
+		return HasLocalNetOwner();
+	}
+	else
+		return false;
+}
+
 void AGrippableActor::OnRep_AttachmentReplication()
 {
 	if (bAllowIgnoringAttachOnOwner && (ClientAuthReplicationData.bIsCurrentlyClientAuth || ShouldWeSkipAttachmentReplication()))
