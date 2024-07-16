@@ -79,7 +79,7 @@ void FVRGlobalSettingsDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuil
 		]
 		];
 
-	DetailBuilder.EditCategory("Utilities")
+	/*DetailBuilder.EditCategory("Utilities")
 		.AddCustomRow(LOCTEXT("Fix 5.4.0 Shadow Shader", "Fix Broken 5.4.0 Shadow Shader"))
 		.NameContent()
 		[
@@ -101,10 +101,10 @@ void FVRGlobalSettingsDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuil
 			.Font(IDetailLayoutBuilder::GetDetailFont())
 		.Text(LOCTEXT("Fix54ShadowShaderButton", "Fix Broken 5.4.0 Shadow Shader"))
 		]
-		];
+		];*/
 }
 
-FReply FVRGlobalSettingsDetails::OnFixShadowShader()
+/*FReply FVRGlobalSettingsDetails::OnFixShadowShader()
 {
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 4
 	FString EnginePath = FPaths::EngineDir();
@@ -130,7 +130,7 @@ FReply FVRGlobalSettingsDetails::OnFixShadowShader()
 
 	UE_LOG(LogPath, Error, TEXT("ShadowProjectionPixelShader.usf could not be found, edited, or the engine version is incorrect!"));
 	return FReply::Handled();
-}
+}*/
 
 FReply FVRGlobalSettingsDetails::OnCorrectInvalidAnimationAssets()
 {
