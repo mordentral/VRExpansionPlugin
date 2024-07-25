@@ -268,8 +268,14 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 	}
 	else if (bDialUsesAngleSnap && SnapAngleIncrement > 0.f && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 	{
-		this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());		
-		CurRotBackEnd = FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement);
+
+		float AngleOffsetCheck = FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - LastSnapAngle);
+
+		if (AngleOffsetCheck >= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+		{
+			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			CurRotBackEnd = FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement);
+		}
 
 		if (bUseRollover)
 		{
@@ -569,17 +575,22 @@ void UVRDialComponent::AddDialAngle(float DialAngleDelta, bool bCallEvents, bool
 	}
 	else if (bDialUsesAngleSnap && SnapAngleIncrement > 0.f && FMath::Abs(FMath::Fmod(CurRotBackEnd, SnapAngleIncrement)) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 	{
-		if (!bSkipSettingRot)
-			this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::UnwindDegrees(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement)), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
-		CurrentDialAngle = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
+		float AngleOffsetCheck = FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - LastSnapAngle);
 
-		if (bCallEvents && !FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
+		if (AngleOffsetCheck >= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 		{
-			ReceiveDialHitSnapAngle(CurrentDialAngle);
-			OnDialHitSnapAngle.Broadcast(CurrentDialAngle);
-		}
+			if (!bSkipSettingRot)
+				this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::UnwindDegrees(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement)), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
+			CurrentDialAngle = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
 
-		LastSnapAngle = CurrentDialAngle;
+			if (bCallEvents && !FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
+			{
+				ReceiveDialHitSnapAngle(CurrentDialAngle);
+				OnDialHitSnapAngle.Broadcast(CurrentDialAngle);
+			}
+
+			LastSnapAngle = CurrentDialAngle;
+		}
 	}
 	else
 	{
