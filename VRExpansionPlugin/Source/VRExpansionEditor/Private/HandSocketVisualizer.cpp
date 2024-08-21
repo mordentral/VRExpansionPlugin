@@ -98,7 +98,16 @@ bool FHandSocketVisualizer::GetCustomInputCoordinateSystem(const FEditorViewport
 			if (UHandSocketComponent* CurrentlyEditingComponent = GetCurrentlyEditingComponent())
 			{
 				FTransform newTrans = CurrentlyEditingComponent->HandVisualizerComponent->GetBoneTransform(CurrentlySelectedBoneIdx);
-				OutMatrix = FRotationMatrix::Make(newTrans.GetRotation());
+				FQuat Rot = newTrans.GetRotation();
+				if (!newTrans.GetRotation().ContainsNaN())
+				{
+					Rot.Normalize();
+					OutMatrix = FRotationMatrix::Make(Rot);
+				}
+				else
+				{
+					return false;
+				}
 			}
 		}
 
