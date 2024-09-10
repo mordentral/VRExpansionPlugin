@@ -775,6 +775,16 @@ void UHandSocketComponent::PoseVisualizationToAnimation(bool bForceRefresh)
 		LocalPoses = HandVisualizerComponent->GetSkinnedAsset()->GetSkeleton()->GetRefLocalPoses();
 	}
 
+	// Check out of the skin cache, the poses don't update otherwise when enabled
+	int32 NumLODs = HandVisualizerComponent->GetNumLODs();
+	HandVisualizerComponent->SkinCacheUsage.Empty(NumLODs);
+
+	for (int nLODs = 0; nLODs <= NumLODs; ++nLODs)
+	{
+		HandVisualizerComponent->SkinCacheUsage.Add(ESkinCacheUsage::Disabled);
+	}
+
+	// Now Pose the bones
 	TArray<FName> BonesNames;
 	HandVisualizerComponent->GetBoneNames(BonesNames);
 	int32 Bones = HandVisualizerComponent->GetNumBones();
