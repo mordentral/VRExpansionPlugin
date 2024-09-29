@@ -37,13 +37,13 @@
 	"Plugins": [
 		{
 			"Name": "OpenXR",
-			"Enabled": true,
-			"Optional": true
+			"Enabled": true
 		},
 		{
 			"Name": "XRBase",
 			"Enabled": true
 		}
 	],
-	"IsExperimentalVersion": false
+	"NOTE": "For IOS or Mac remove the OpenXR Dependency here. It will still compile for other platforms but only give a warning."
 }
+
