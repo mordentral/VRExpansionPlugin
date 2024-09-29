@@ -97,8 +97,19 @@ bool FHandSocketVisualizer::GetCustomInputCoordinateSystem(const FEditorViewport
 		{
 			if (UHandSocketComponent* CurrentlyEditingComponent = GetCurrentlyEditingComponent())
 			{
-				FTransform newTrans = CurrentlyEditingComponent->HandVisualizerComponent->GetBoneTransform(CurrentlySelectedBoneIdx);
-				OutMatrix = FRotationMatrix::Make(newTrans.GetRotation());
+				if (IsValid(CurrentlyEditingComponent->HandVisualizerComponent))
+				{
+					FTransform newTrans = CurrentlyEditingComponent->HandVisualizerComponent->GetBoneTransform(CurrentlySelectedBoneIdx);
+					FQuat Rot = newTrans.GetRotation();
+					if (!newTrans.GetRotation().ContainsNaN())
+					{
+						Rot.Normalize();
+						OutMatrix = FRotationMatrix::Make(Rot);
+						return true;
+					}
+				}
+
+				return false;
 			}
 		}
 
@@ -126,7 +137,7 @@ void FHandSocketVisualizer::DrawVisualizationHUD(const UActorComponent* Componen
 		{
 			if (UHandSocketComponent* CurrentlyEditingComponent = GetCurrentlyEditingComponent())
 			{
-				if (!CurrentlyEditingComponent->HandVisualizerComponent)
+				if (!IsValid(CurrentlyEditingComponent->HandVisualizerComponent))
 				{
 					return;
 				}
@@ -142,6 +153,7 @@ void FHandSocketVisualizer::DrawVisualizationHUD(const UActorComponent* Componen
 				const float DrawPositionX = FMath::FloorToFloat(CanvasRect.Min.X + (CanvasRect.Width() - XL) * 0.5f);
 				const float DrawPositionY = CanvasRect.Min.Y + 50.0f;
 				Canvas->DrawShadowedString(DrawPositionX, DrawPositionY, *CurrentlySelectedBone.ToString(), GEngine->GetLargeFont(), FLinearColor::Yellow);
+				
 			}
 		}
 	}
@@ -310,7 +322,14 @@ bool FHandSocketVisualizer::GetWidgetLocation(const FEditorViewportClient* Viewp
 		{
 			if (UHandSocketComponent* CurrentlyEditingComponent = GetCurrentlyEditingComponent())
 			{
-				OutLocation = CurrentlyEditingComponent->HandVisualizerComponent->GetBoneTransform(CurrentlySelectedBoneIdx).GetLocation();
+				if (IsValid(CurrentlyEditingComponent->HandVisualizerComponent))
+				{
+					OutLocation = CurrentlyEditingComponent->HandVisualizerComponent->GetBoneTransform(CurrentlySelectedBoneIdx).GetLocation();
+				}
+				else
+				{
+					return false;
+				}
 			}
 		}
 

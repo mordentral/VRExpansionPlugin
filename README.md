@@ -1,4 +1,4 @@
-UE4 Forums Thread
+UE Forums Thread
 https://forums.unrealengine.com/development-discussion/vr-ar-development/89050-vr-openvr-expansion-plugin
 
 Example Template Project

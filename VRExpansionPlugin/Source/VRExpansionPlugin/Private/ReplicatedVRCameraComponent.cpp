@@ -407,6 +407,10 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 						ReplicatedCameraTransform.Rotation = RelativeRot;
 					}
 
+#if WITH_PUSH_MODEL
+					MARK_PROPERTY_DIRTY_FROM_NAME(UReplicatedVRCameraComponent, ReplicatedCameraTransform, this);
+#endif
+
 					if (GetNetMode() == NM_Client)
 					{
 						AVRBaseCharacter* OwningChar = Cast<AVRBaseCharacter>(GetOwner());
