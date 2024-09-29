@@ -7,7 +7,7 @@
 #include "GlobalRenderResources.h"
 #include "Components/ActorComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "GameFramework\Pawn.h"
+#include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/TextureRenderTarget2D.h"
