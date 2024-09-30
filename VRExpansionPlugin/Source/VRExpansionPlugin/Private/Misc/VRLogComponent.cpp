@@ -4,8 +4,8 @@
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VRLogComponent)
 
 #include "Engine/Engine.h"
-#include "GenericPlatform\GenericPlatformInputDeviceMapper.h"
-#include "Engine\GameViewportClient.h"
+#include "GenericPlatform/GenericPlatformInputDeviceMapper.h"
+#include "Engine/GameViewportClient.h"
 #include "GlobalRenderResources.h"
 
 //#include "Engine/Engine.h"

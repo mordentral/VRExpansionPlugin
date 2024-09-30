@@ -185,7 +185,7 @@ public:
 	}
 };
 
-UVRGameViewportClient::UVRGameViewportClient(const FObjectInitializer& ObjectInitializer)
+inline UVRGameViewportClient::UVRGameViewportClient(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	GameInputMethod = EVRGameInputMethod::GameInput_Default;

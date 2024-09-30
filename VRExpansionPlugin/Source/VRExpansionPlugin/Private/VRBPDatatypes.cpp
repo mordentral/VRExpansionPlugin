@@ -5,7 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "VRGlobalSettings.h"
-#include "Components\PrimitiveComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "HAL/IConsoleManager.h"
 #include "Chaos/ChaosEngineInterface.h"
 

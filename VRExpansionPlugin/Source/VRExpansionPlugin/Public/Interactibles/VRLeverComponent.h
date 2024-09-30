@@ -169,7 +169,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VRLeverComponent|Momentum Settings", meta = (ClampMin = "0.0", UIMin = "0.0"))
 		float MaxLeverMomentum;
 
-	UPROPERTY(BlueprintReadOnly, Category = "VRLeverComponent")
+	UPROPERTY(BlueprintReadWrite, Category = "VRLeverComponent")
 		bool bIsLerping;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GripSettings")
