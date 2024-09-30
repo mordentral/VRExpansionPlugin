@@ -14,6 +14,7 @@
 #include "GripMotionControllerComponent.h"
 //#include "VRGripInterface.h"
 //#include "VRBPDatatypes.h"
+#include "Engine/SkinnedAssetCommon.h"
 #include "Net/UnrealNetwork.h"
 #include "Serialization/CustomVersion.h"
 
