@@ -38,7 +38,7 @@
 		{
 			"Name": "OpenXR",
 			"Enabled": true,
-			"Platform": [
+			"PlatformAllowList": [
 			"Win64",
 			"Linux",
 			"Android",
