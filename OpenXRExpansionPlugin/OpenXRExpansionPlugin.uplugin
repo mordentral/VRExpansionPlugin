@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 5.4,
-	"VersionName": "5.4",
+	"Version": 5.5,
+	"VersionName": "5.5",
 	"FriendlyName": "OpenXRExpansionPlugin",
 	"Description": "An set of utility functions for OpenXR",
 	"Category": "Virtual Reality",
@@ -39,10 +39,10 @@
 			"Name": "OpenXR",
 			"Enabled": true,
 			"PlatformAllowList": [
-			"Win64",
-			"Linux",
-			"Android",
-            ]
+				"Win64",
+				"Linux",
+				"Android"
+			]
 		},
 		{
 			"Name": "XRBase",

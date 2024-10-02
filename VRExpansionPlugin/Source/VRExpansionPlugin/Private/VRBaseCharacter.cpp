@@ -142,7 +142,7 @@ AVRBaseCharacter::AVRBaseCharacter(const FObjectInitializer& ObjectInitializer)
 
 	// Setting a minimum of every frame for replication consideration (UT uses this value for characters and projectiles).
 	// Otherwise we will get some massive slow downs if the replication is allowed to hit the 2 per second minimum default
-	MinNetUpdateFrequency = 100.0f;
+	SetMinNetUpdateFrequency(100.0f);
 
 	// This is for smooth turning, we have more of a use for this than FPS characters do
 	// Due to roll/pitch almost never being off 0 for VR the cost is just one byte so i'm fine defaulting it here
@@ -1001,7 +1001,7 @@ FVector AVRBaseCharacter::SetActorLocationAndRotationVR(FVector NewLoc, FRotator
 FVector AVRBaseCharacter::SetActorLocationVR(FVector NewLoc, bool bTeleport, bool bSetCapsuleLocation)
 {
 	FVector NewLocation;
-	FRotator NewRotation;
+	//FRotator NewRotation;
 	FVector PivotOffsetVal = (bSetCapsuleLocation ? GetVRLocation_Inline() : GetProjectedVRLocation()) - GetActorLocation();
 	PivotOffsetVal.Z = 0.0f;
 

@@ -1645,7 +1645,7 @@ bool RLE_Funcs::RLEEncodeBuffer(DataType* BufferToEncode, uint32 EncodeLength, T
 
 	// Resize the out array to fit compressed contents
 	uint32 Wrote = loc - EncodedLine->GetData();
-	EncodedLine->RemoveAt(Wrote, EncodedLine->Num() - Wrote, true);
+	EncodedLine->RemoveAt(Wrote, EncodedLine->Num() - Wrote, EAllowShrinking::Yes);
 
 	// If the compression performed worse than the original file size, throw the results array and use the original instead.
 	// This will almost never happen with voxels but can so should be accounted for.

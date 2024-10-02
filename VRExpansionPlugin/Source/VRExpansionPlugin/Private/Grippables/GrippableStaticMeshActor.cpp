@@ -103,7 +103,7 @@ AGrippableStaticMeshActor::AGrippableStaticMeshActor(const FObjectInitializer& O
 
 	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration
 	// Otherwise we will get some massive slow downs if the replication is allowed to hit the 2 per second minimum default
-	MinNetUpdateFrequency = 30.0f;
+	SetMinNetUpdateFrequency(30.0f);
 }
 
 void AGrippableStaticMeshActor::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
@@ -203,13 +203,23 @@ void AGrippableStaticMeshActor::GatherCurrentMovement()
 			bool bFoundInCache = false;
 
 			UWorld* World = GetWorld();
+
+			const bool bShouldUsePhysicsReplicationCache = GetPhysicsReplicationMode() != EPhysicsReplicationMode::Default;
 			int ServerFrame = 0;
-			if (FPhysScene_Chaos* Scene = static_cast<FPhysScene_Chaos*>(World->GetPhysicsScene()))
+
+			if (bShouldUsePhysicsReplicationCache)
 			{
-				if (const FRigidBodyState* FoundState = Scene->GetStateFromReplicationCache(RootPrimComp, ServerFrame))
+				if (FPhysScene_Chaos* Scene = static_cast<FPhysScene_Chaos*>(World->GetPhysicsScene()))
 				{
-					RepMovement.FillFrom(*FoundState, this, Scene->ReplicationCache.ServerFrame);
-					bFoundInCache = true;
+					if (const FRigidBodyState* FoundState = Scene->GetStateFromReplicationCache(RootPrimComp, /*OUT*/ServerFrame))
+					{
+						if (RepMovement.ServerFrame != ServerFrame)
+						{
+							RepMovement.FillFrom(*FoundState, this, ServerFrame);
+							bWasRepMovementModified = true;
+						}
+						bFoundInCache = true;
+					}
 				}
 			}
 
@@ -243,20 +253,20 @@ void AGrippableStaticMeshActor::GatherCurrentMovement()
 
 						// Technically, the values might have stayed the same, but we'll just assume they've changed.
 						bWasAttachmentModified = true;
+
+#if UE_WITH_IRIS
+						// If RepPhysics has changed value then notify the ReplicationSystem
+						if (bPrevRepPhysics != GetReplicatedMovement_Mutable().bRepPhysics)
+						{
+							UpdateReplicatePhysicsCondition();
+						}
+#endif // UE_WITH_IRIS
 					}
 				}
 			}
 
 			// Technically, the values might have stayed the same, but we'll just assume they've changed.
 			bWasRepMovementModified = true;
-
-#if UE_WITH_IRIS
-			// If RepPhysics has changed value then notify the ReplicationSystem
-			if (bPrevRepPhysics != GetReplicatedMovement_Mutable().bRepPhysics)
-			{
-				UpdateReplicatePhysicsCondition();
-			}
-#endif // UE_WITH_IRIS
 		}
 		else if (RootComponent != nullptr)
 		{

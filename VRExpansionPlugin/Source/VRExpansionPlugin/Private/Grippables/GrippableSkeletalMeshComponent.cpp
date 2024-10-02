@@ -7,6 +7,7 @@
 #include "VRExpansionFunctionLibrary.h"
 #include "GripScripts/VRGripScriptBase.h"
 #include "PhysicsEngine/PhysicsAsset.h" // Tmp until epic bug fixes skeletal welding
+#include "PhysicsEngine/SkeletalBodySetup.h"
 #include "Net/UnrealNetwork.h"
 #if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"

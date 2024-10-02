@@ -175,7 +175,7 @@ protected:
 			int numMessages = OutMessages.Num();
 			if (numMessages > MaxStoredMessages)
 			{
-				OutMessages.RemoveAt(0, numMessages - MaxStoredMessages, true);
+				OutMessages.RemoveAt(0, numMessages - MaxStoredMessages, EAllowShrinking::Yes);
 			}
 			if (OldNumMessages != numMessages)
 				bIsDirty = true;

@@ -64,8 +64,11 @@ private:
 	TMap<Chaos::FConstPhysicsObjectHandle, FReplicatedPhysicsTargetAsync> ObjectToTarget;
 	TMap<Chaos::FConstPhysicsObjectHandle, FNetworkPhysicsSettingsAsync> ObjectToSettings;
 	TArray<int32> ParticlesInResimIslands;
+	TArray<Chaos::FParticleID> ReplicatedParticleIDs;
 
 private:
+	FReplicatedPhysicsTargetAsync* AddObjectToReplication(Chaos::FConstPhysicsObjectHandle PhysicsObject);
+	void RemoveObjectFromReplication(Chaos::FConstPhysicsObjectHandle PhysicsObject);
 	void UpdateAsyncTarget(const FPhysicsRepAsyncInputData& Input, Chaos::FPBDRigidsSolver* RigidsSolver);
 	void UpdateRewindDataTarget(const FPhysicsRepAsyncInputData& Input);
 	void CacheResimInteractions();
@@ -105,6 +108,7 @@ public:
 	TArray<FReplicatedPhysicsTarget> ReplicatedTargetsQueueVR;
 	FPhysicsReplicationAsyncVR* PhysicsReplicationAsyncVR;
 	FPhysicsReplicationAsyncInput* AsyncInputVR;	//async data being written into before we push into callback
+	TWeakObjectPtr<UNetworkPhysicsSettingsComponent> SettingsCurrent;
 
 	void PrepareAsyncData_ExternalVR(const FRigidBodyErrorCorrection& ErrorCorrection);	//prepare async data for writing. Call on external thread (i.e. game thread)
 };

@@ -16,7 +16,7 @@
 
 DEFINE_LOG_CATEGORY(LogPathFollowingVR);
 
-void UVRPathFollowingComponent::SetMovementComponent(UNavMovementComponent* MoveComp)
+/*void UVRPathFollowingComponent::SetMovementComponent(UNavMovementComponent* MoveComp)
 {
 	Super::SetMovementComponent(MoveComp);
 
@@ -26,7 +26,7 @@ void UVRPathFollowingComponent::SetMovementComponent(UNavMovementComponent* Move
 	{
 		OnRequestFinished.AddUObject(VRMovementComp, &UVRBaseCharacterMovementComponent::OnMoveCompleted);
 	}
-}
+}*/
 
 
 void UVRPathFollowingComponent::GetDebugStringTokens(TArray<FString>& Tokens, TArray<EPathFollowingDebugTokens::Type>& Flags) const
@@ -82,51 +82,7 @@ void UVRPathFollowingComponent::GetDebugStringTokens(TArray<FString>& Tokens, TA
 	Flags.Add(bFailedHeight ? EPathFollowingDebugTokens::FailedValue : EPathFollowingDebugTokens::PassedValue);
 }
 
-void UVRPathFollowingComponent::PauseMove(FAIRequestID RequestID, EPathFollowingVelocityMode VelocityMode)
-{
-	//UE_VLOG(GetOwner(), LogPathFollowing, Log, TEXT("PauseMove: RequestID(%u)"), RequestID);
-	if (Status == EPathFollowingStatus::Paused)
-	{
-		return;
-	}
-
-	if (RequestID.IsEquivalent(GetCurrentRequestId()))
-	{
-		if ((VelocityMode == EPathFollowingVelocityMode::Reset) && MovementComp && HasMovementAuthority())
-		{
-			MovementComp->StopMovementKeepPathing();
-		}
-
-		LocationWhenPaused = MovementComp ? (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationVR() : MovementComp->GetActorFeetLocation()) : FVector::ZeroVector;
-		PathTimeWhenPaused = Path.IsValid() ? Path->GetTimeStamp() : 0.;
-		Status = EPathFollowingStatus::Paused;
-
-		UpdateMoveFocus();
-	}
-}
-
-
-
-bool UVRPathFollowingComponent::ShouldCheckPathOnResume() const
-{
-	bool bCheckPath = true;
-	if (MovementComp != NULL)
-	{
-		float AgentRadius = 0.0f, AgentHalfHeight = 0.0f;
-		MovementComp->GetOwner()->GetSimpleCollisionCylinder(AgentRadius, AgentHalfHeight);
-
-		const FVector CurrentLocation = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocation() : MovementComp->GetActorFeetLocation());
-		const FVector::FReal DeltaMove2DSq = (CurrentLocation - LocationWhenPaused).SizeSquared2D();
-		const FVector::FReal DeltaZ = FMath::Abs(CurrentLocation.Z - LocationWhenPaused.Z);
-		if (DeltaMove2DSq < FMath::Square(AgentRadius) && DeltaZ < (AgentHalfHeight * 0.5))
-		{
-			bCheckPath = false;
-		}
-	}
-
-	return bCheckPath;
-}
-
+/*
 int32 UVRPathFollowingComponent::DetermineStartingPathPoint(const FNavigationPath* ConsideredPath) const
 {
 	int32 PickedPathPoint = INDEX_NONE;
@@ -192,7 +148,7 @@ bool UVRPathFollowingComponent::UpdateBlockDetection()
 		{
 			LocationSamples.AddZeroed(1);
 		}
-
+		
 		LocationSamples[NextSampleIdx] = (VRMovementComp != nullptr ? VRMovementComp->GetActorFeetLocationBased() : MovementComp->GetActorFeetLocationBased());
 		NextSampleIdx = (NextSampleIdx + 1) % BlockDetectionSampleCount;
 		return true;
@@ -455,7 +411,7 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 
 	const FVector ToGoal = (GoalLocation - AgentLocation);
 	const FVector CurrentDirection = GetCurrentDirection();
-	CurrentDot = FloatCastChecked<float>(FVector::DotProduct(ToGoal.GetSafeNormal(), CurrentDirection), /* Precision */ 1. / 128.);
+	CurrentDot = FloatCastChecked<float>(FVector::DotProduct(ToGoal.GetSafeNormal(), CurrentDirection),  1. / 128.);
 	bDotFailed = (CurrentDot < 0.0f) ? 1 : 0;
 
 	// get cylinder of moving agent
@@ -472,3 +428,4 @@ void UVRPathFollowingComponent::DebugReachTest(float& CurrentDot, float& Current
 	const float UseHeight = GoalHalfHeight + (AgentHalfHeight * MinAgentHalfHeightPct);
 	bHeightFailed = (CurrentHeight > UseHeight) ? 1 : 0;
 }
+*/

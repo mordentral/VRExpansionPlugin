@@ -90,7 +90,7 @@ namespace
 
 			void RemoveWidget(UVRFullScreenUserWidget* InWidget)
 			{
-				WidgetsToHide.RemoveSingleSwap(InWidget, false);
+				WidgetsToHide.RemoveSingleSwap(InWidget, EAllowShrinking::No);
 			}
 
 		private:

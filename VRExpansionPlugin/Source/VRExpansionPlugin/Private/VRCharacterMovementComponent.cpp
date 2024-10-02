@@ -1024,8 +1024,10 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		if (bCheckLedges && !CurrentFloor.IsWalkableFloor())
 		{
 			// calculate possible alternate movement
-			const FVector GravDir = GetGravityDirection();
-			const FVector NewDelta = bTriedLedgeMove ? FVector::ZeroVector : GetLedgeMove(OldCapsuleLocation, Delta, GravDir);
+			const FVector NewDelta = bTriedLedgeMove ? FVector::ZeroVector : GetLedgeMove(OldLocation, Delta, OldFloor);
+			// REMOVED 5.5 and replaced with above
+			//const FVector GravDir = GetGravityDirection();
+			//const FVector NewDelta = bTriedLedgeMove ? FVector::ZeroVector : GetLedgeMove(OldCapsuleLocation, Delta, GravDir);
 			if (!NewDelta.IsZero())
 			{
 				// first revert this move
@@ -2193,6 +2195,12 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 	// Don't recalculate velocity based on this height adjustment, if considering vertical adjustments.
 	bJustTeleported |= !bMaintainHorizontalGroundVelocity;
 	return true;
+}
+
+FVector UVRCharacterMovementComponent::GetActorFeetLocation() const
+{
+	// Call into the VR version of it instead
+	return GetActorFeetLocationVR();
 }
 
 

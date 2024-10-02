@@ -10,7 +10,7 @@
 
 //#include "Chaos/ParticleHandle.h"
 #include "PhysicsEngine/PhysicsAsset.h"
-#include "PhysicsEngine/PhysicsAsset.h"
+#include "PhysicsEngine/SkeletalBodySetup.h"
 #include "Physics/Experimental/PhysScene_Chaos.h"
 #include "Chaos/KinematicGeometryParticles.h"
 #include "PhysicsProxy/SingleParticlePhysicsProxy.h"

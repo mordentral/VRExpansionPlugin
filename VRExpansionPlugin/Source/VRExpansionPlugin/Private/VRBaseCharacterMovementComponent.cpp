@@ -489,14 +489,32 @@ void UVRBaseCharacterMovementComponent::EndPushBackNotification()
 
 FVector UVRBaseCharacterMovementComponent::GetActorFeetLocationVR() const
 {
-	if (AVRBaseCharacter * BaseCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+
+	const UCapsuleComponent* const CapsuleComponent = CharacterOwner ? CharacterOwner->GetCapsuleComponent() : Cast<UCapsuleComponent>(UpdatedComponent);
+	if (CapsuleComponent)
+	{
+		const float HalfHeight = CapsuleComponent->GetScaledCapsuleHalfHeight();
+		if (AVRBaseCharacter* BaseCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
+		{
+			return BaseCharacter->OffsetComponentToWorld.GetLocation() + HalfHeight * GetGravityDirection();
+		}
+		else
+		{
+			return UpdatedComponent->GetComponentLocation() + HalfHeight * GetGravityDirection();
+		}
+	}
+
+	return Super::GetActorFeetLocation();
+
+
+	/*if (AVRBaseCharacter* BaseCharacter = Cast<AVRBaseCharacter>(GetCharacterOwner()))
 	{
 		return UpdatedComponent ? (BaseCharacter->OffsetComponentToWorld.GetLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : FNavigationSystem::InvalidLocation;
 	}
 	else
 	{
 		return UpdatedComponent ? (UpdatedComponent->GetComponentLocation() - FVector(0, 0, UpdatedComponent->Bounds.BoxExtent.Z)) : FNavigationSystem::InvalidLocation;
-	}
+	}*/
 }
 
 void UVRBaseCharacterMovementComponent::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)

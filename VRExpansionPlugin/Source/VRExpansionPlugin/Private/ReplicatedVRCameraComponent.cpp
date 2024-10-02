@@ -434,7 +434,7 @@ void UReplicatedVRCameraComponent::TickComponent(float DeltaTime, enum ELevelTic
 	}
 }
 
-void UReplicatedVRCameraComponent::HandleXRCamera()
+void UReplicatedVRCameraComponent::HandleXRCamera(float DeltaTime)
 {
 	bool bIsLocallyControlled = IsLocallyControlled();
 
@@ -462,7 +462,7 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 				{
 					FQuat Orientation;
 					FVector Position;
-					if (XRCamera->UpdatePlayerCamera(Orientation, Position))
+					if (XRCamera->UpdatePlayerCamera(Orientation, Position, DeltaTime))
 					{
 						if (HasTrackingParameters())
 						{

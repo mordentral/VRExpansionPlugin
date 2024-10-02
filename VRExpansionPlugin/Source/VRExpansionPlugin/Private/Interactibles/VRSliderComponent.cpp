@@ -810,7 +810,7 @@ FVector UVRSliderComponent::GetPerAxisSliderProgress()
 	CalculatedLocation = bSlideDistanceIsInParentSpace ? CalculatedLocation * InitialRelativeTransform.GetScale3D() : CalculatedLocation;
 
 	// Should need the clamp normally, but if someone is manually setting locations it could go out of bounds
-	FVector Progress;
+	FVector Progress = FVector::ZeroVector;
 
 	if (bUseLegacyLogic)
 	{

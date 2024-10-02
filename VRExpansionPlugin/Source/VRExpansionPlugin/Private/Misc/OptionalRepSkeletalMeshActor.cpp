@@ -7,6 +7,8 @@
 #include "Net/UnrealNetwork.h"
 #include "PhysicsReplication.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+#include "PhysicsEngine/BodySetup.h"
+#include "PhysicsEngine/SkeletalBodySetup.h"
 #if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"
 #endif
@@ -269,7 +271,7 @@ void UInversePhysicsSkeletalMeshComponent::GetWeldedBodies(TArray<FBodyInstance*
 			OutWeldedBodies.Add(BI);
 			if (PhysicsAsset)
 			{
-				if (UBodySetup* PhysicsAssetBodySetup = PhysicsAsset->SkeletalBodySetups[BodyIdx])
+				if (UBodySetup* PhysicsAssetBodySetup = PhysicsAsset->SkeletalBodySetups[BodyIdx].Get())
 				{
 					OutLabels.Add(PhysicsAssetBodySetup->BoneName);
 				}
