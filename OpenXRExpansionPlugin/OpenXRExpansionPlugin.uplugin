@@ -41,13 +41,13 @@
 			"PlatformAllowList": [
 			"Win64",
 			"Linux",
-			"Android",
-            ]
+			"Android"
+     ]
 		},
 		{
 			"Name": "XRBase",
 			"Enabled": true
 		}
-	],
+	]
 }
 
