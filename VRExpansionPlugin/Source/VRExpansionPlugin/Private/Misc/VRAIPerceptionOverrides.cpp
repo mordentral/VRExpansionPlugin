@@ -114,7 +114,7 @@ FORCEINLINE_DEBUGGABLE bool CheckIsTargetInSightPie(const FPerceptionListener& L
 const FAISightTargetVR::FTargetId FAISightTargetVR::InvalidTargetId = FAISystem::InvalidUnsignedID;
 
 FAISightTargetVR::FAISightTargetVR(AActor* InTarget, FGenericTeamId InTeamId)
-	: Target(InTarget), SightTargetInterface(nullptr), TeamId(InTeamId)
+	: Target(InTarget), TeamId(InTeamId)
 {
 	if (InTarget)
 	{
@@ -587,7 +587,7 @@ UAISense_Sight::EVisibilityResult UAISense_Sight_VR::ComputeVisibility(UWorld* W
 		return UAISense_Sight::EVisibilityResult::NotVisible;
 	}
 
-	if (Target.SightTargetInterface != nullptr)
+	if (IAISightTargetInterface* SightTargetInterface = Target.WeakSightTargetInterface.Get())
 	{
 		const bool bWasVisible = SightQuery.GetLastResult();
 
@@ -620,7 +620,7 @@ UAISense_Sight::EVisibilityResult UAISense_Sight_VR::ComputeVisibility(UWorld* W
 		Context.IgnoreActor = ListenerActor;
 		Context.bWasVisible = &bWasVisible;
 
-		const UAISense_Sight::EVisibilityResult Result = Target.SightTargetInterface->CanBeSeenFrom(Context, OutSeenLocation, OutNumberOfLoSChecksPerformed, OutNumberOfAsyncLosCheckRequested, OutStimulusStrength, &SightQuery.UserData, &OnPendingCanBeSeenQueryProcessedDelegate);
+		const UAISense_Sight::EVisibilityResult Result = SightTargetInterface->CanBeSeenFrom(Context, OutSeenLocation, OutNumberOfLoSChecksPerformed, OutNumberOfAsyncLosCheckRequested, OutStimulusStrength, &SightQuery.UserData, &OnPendingCanBeSeenQueryProcessedDelegate);
 		if (Result == UAISense_Sight::EVisibilityResult::Pending)
 		{
 			// we need to clear the trace info value in order to avoid interfering with the engine processed asynchronous queries
@@ -842,38 +842,32 @@ void UAISense_Sight_VR::UnregisterSource(AActor& SourceActor)
 	{
 		AActor* TargetActor = AsTarget.Target.Get();
 
-		if (TargetActor)
-		{
-			// notify all interested observers that this source is no longer
-			// visible		
-			AIPerception::FListenerMap& ListenersMap = *GetListeners();
-			auto RemoveQuery = [this, &ListenersMap, &AsTargetId, &TargetActor](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
+		// notify all interested observers that this source is no longer
+		// visible		
+		AIPerception::FListenerMap& ListenersMap = *GetListeners();
+		auto RemoveQuery = [this, &ListenersMap, &AsTargetId, &TargetActor](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
 			{
 				FAISightQueryVR* SightQuery = &SightQueries[QueryIndex];
 				if (SightQuery->TargetId == AsTargetId)
 				{
-					if (SightQuery->GetLastResult())
+					if (SightQuery->GetLastResult() && TargetActor)
 					{
 						FPerceptionListener& Listener = ListenersMap[SightQuery->ObserverId];
 						ensure(Listener.Listener.IsValid());
-
 						Listener.RegisterStimulus(TargetActor, FAIStimulus(*this, 0.f, SightQuery->LastSeenLocation, Listener.CachedLocation, FAIStimulus::SensingFailed));
 					}
 
-					SightQueries.RemoveAtSwap(QueryIndex, 1, EAllowShrinking::No);
+					SightQueries.RemoveAtSwap(QueryIndex, EAllowShrinking::No);
 					return EReverseForEachResult::Modified;
 				}
-
 				return EReverseForEachResult::UnTouched;
 			};
-
-			ReverseForEach(SightQueriesInRange, RemoveQuery);
-			if (ReverseForEach(SightQueriesOutOfRange, RemoveQuery) == EReverseForEachResult::Modified)
-			{
-				bSightQueriesOutOfRangeDirty = true;
-			}
-			ReverseForEach(SightQueriesPending, RemoveQuery);
+		ReverseForEach(SightQueriesInRange, RemoveQuery);
+		if (ReverseForEach(SightQueriesOutOfRange, RemoveQuery) == EReverseForEachResult::Modified)
+		{
+			bSightQueriesOutOfRangeDirty = true;
 		}
+		ReverseForEach(SightQueriesPending, RemoveQuery);
 	}
 }
 
@@ -883,20 +877,24 @@ bool UAISense_Sight_VR::RegisterTarget(AActor& TargetActor, const TFunction<void
 
 	FAISightTargetVR* SightTarget = ObservedTargets.Find(TargetActor.GetUniqueID());
 
-	if (SightTarget != nullptr && SightTarget->GetTargetActor() != &TargetActor)
+	// Check if the target is recycled OR new
+	if (SightTarget == nullptr || SightTarget->GetTargetActor() != &TargetActor)
 	{
-		// this means given unique ID has already been recycled. 
+
 		FAISightTargetVR NewSightTarget(&TargetActor);
 
 		SightTarget = &(ObservedTargets.Add(NewSightTarget.TargetId, NewSightTarget));
-		SightTarget->SightTargetInterface = Cast<IAISightTargetInterface>(&TargetActor);
-	}
-	else if (SightTarget == nullptr)
-	{
-		FAISightTargetVR NewSightTarget(&TargetActor);
-
-		SightTarget = &(ObservedTargets.Add(NewSightTarget.TargetId, NewSightTarget));
-		SightTarget->SightTargetInterface = Cast<IAISightTargetInterface>(&TargetActor);
+		// we're looking at components first and only if nothing is found we proceed to check 
+		// if the TargetActor implements IAISightTargetInterface. The advantage of doing it in 
+		// this order is that you can have components override the original Actor's implementation
+		if (IAISightTargetInterface* InterfaceComponent = TargetActor.FindComponentByInterface<IAISightTargetInterface>())
+		{
+			SightTarget->WeakSightTargetInterface = InterfaceComponent;
+		}
+		else
+		{
+			SightTarget->WeakSightTargetInterface = Cast<IAISightTargetInterface>(&TargetActor);
+		}
 	}
 
 	// set/update data

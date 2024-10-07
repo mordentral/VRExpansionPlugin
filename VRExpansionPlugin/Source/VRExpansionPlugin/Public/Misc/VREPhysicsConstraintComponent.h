@@ -28,17 +28,21 @@ public:
 		void SetConstraintToForceBased(bool bUseForceConstraint)
 	{
 
-		if (!ConstraintInstance.ConstraintHandle.IsValid())
+		// #TODO: Double check on this in 5.5, but it should work
+		this->SetLinearDriveAccelerationMode(!bUseForceConstraint);
+		this->SetAngularDriveAccelerationMode(!bUseForceConstraint);
+		/*if (!ConstraintInstance.ConstraintHandle.IsValid())
 			return;
 
 		if (ConstraintInstance.ConstraintHandle->IsType(Chaos::EConstraintType::JointConstraintType))
 		{
+
 			if (Chaos::FJointConstraint* Constraint = static_cast<Chaos::FJointConstraint*>(ConstraintInstance.ConstraintHandle.Constraint))
 			{
 				Constraint->SetLinearDriveForceMode(bUseForceConstraint ? Chaos::EJointForceMode::Force : Chaos::EJointForceMode::Acceleration);
 				Constraint->SetAngularDriveForceMode(bUseForceConstraint ? Chaos::EJointForceMode::Force : Chaos::EJointForceMode::Acceleration);
 			}
-		}
+		}*/
 
 		//#endif
 	}

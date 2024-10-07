@@ -113,7 +113,7 @@ struct FAISightTargetVR
 	static const FTargetId InvalidTargetId;
 
 	TWeakObjectPtr<AActor> Target;
-	IAISightTargetInterface* SightTargetInterface;
+	TWeakInterfacePtr<IAISightTargetInterface> WeakSightTargetInterface;
 	FGenericTeamId TeamId;
 	FTargetId TargetId;
 
@@ -333,7 +333,7 @@ protected:
 	FOnPendingVisibilityQueryProcessedDelegateVR OnPendingCanBeSeenQueryProcessedDelegate;
 	FTraceDelegate OnPendingTraceQueryProcessedDelegate;
 
-	UE_MT_DECLARE_RW_ACCESS_DETECTOR(QueriesListAccessDetector);
+	UE_MT_DECLARE_TS_RW_ACCESS_DETECTOR(QueriesListAccessDetector);
 
 public:
 

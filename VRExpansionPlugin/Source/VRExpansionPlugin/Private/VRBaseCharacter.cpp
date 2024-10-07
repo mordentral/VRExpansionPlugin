@@ -434,6 +434,11 @@ void AVRBaseCharacter::OnRep_ReplicatedMovement()
 	ReppedMovement.Location = ReplicatedMovementVR.Location;
 	ReppedMovement.Rotation = ReplicatedMovementVR.Rotation;
 
+	ReppedMovement.ServerFrame = ReplicatedMovementVR.ServerFrame;
+	ReppedMovement.ServerPhysicsHandle = ReplicatedMovementVR.ServerPhysicsHandle;
+	ReppedMovement.bRepAcceleration = ReplicatedMovementVR.bRepAcceleration;
+	ReppedMovement.Acceleration = ReplicatedMovementVR.Acceleration;
+
 	Super::OnRep_ReplicatedMovement();
 
 	if (!IsLocallyControlled())
@@ -469,8 +474,14 @@ void AVRBaseCharacter::GatherCurrentMovement()
 	ReplicatedMovementVR.LinearVelocity = ReppedMovement.LinearVelocity;
 	ReplicatedMovementVR.Location = ReppedMovement.Location;
 	ReplicatedMovementVR.Rotation = ReppedMovement.Rotation;
+	ReplicatedMovementVR.ServerFrame = ReppedMovement.ServerFrame;
+	ReplicatedMovementVR.ServerPhysicsHandle = ReppedMovement.ServerPhysicsHandle;
+	ReplicatedMovementVR.bRepAcceleration = ReppedMovement.bRepAcceleration;
+	ReplicatedMovementVR.Acceleration = ReppedMovement.Acceleration;
+
 	ReplicatedMovementVR.bJustTeleported = bFlagTeleported;
 	ReplicatedMovementVR.bJustTeleportedGrips = bFlagTeleportedGrips;
+
 	bFlagTeleported = false;
 	bFlagTeleportedGrips = false;
 	ReplicatedMovementVR.bPausedTracking = bTrackingPaused;
