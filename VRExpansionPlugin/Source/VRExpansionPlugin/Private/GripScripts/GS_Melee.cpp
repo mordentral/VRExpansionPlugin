@@ -62,6 +62,9 @@ void UGS_Melee::UpdateDualHandInfo()
 	{
 		if (NumControllers > 1)
 		{
+			if (!Grip.IsValid())
+				continue;
+
 			FBPActorGripInformation* GripInfo = Grip.HoldingController->GetGripPtrByID(Grip.GripID);
 			if (GripInfo)
 			{
