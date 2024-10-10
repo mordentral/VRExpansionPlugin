@@ -15,6 +15,7 @@
 #include "Net/UnrealNetwork.h"
 #include "XRMotionControllerBase.h"
 #include "NavFilters/NavigationQueryFilter.h"
+#include "Misc/EngineNetworkCustomVersion.h"
 //#include "Runtime/Engine/Private/EnginePrivate.h"
 
 #if WITH_PUSH_MODEL
@@ -1254,4 +1255,101 @@ void AVRBaseCharacter::SetVRReplicateCapsuleHeight(bool bNewVRReplicateCapsuleHe
 #if WITH_PUSH_MODEL
 	MARK_PROPERTY_DIRTY_FROM_NAME(AVRBaseCharacter, VRReplicateCapsuleHeight, this);
 #endif
+}
+
+bool FRepMovementVRCharacter::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+{
+	FRepMovement BaseSettings = Owner ? Owner->GetReplicatedMovement() : FRepMovement();
+
+	// pack bitfield with flags
+	const bool bServerFrameAndHandleSupported = Ar.EngineNetVer() >= FEngineNetworkCustomVersion::RepMoveServerFrameAndHandle && Ar.EngineNetVer() != FEngineNetworkCustomVersion::Ver21AndViewPitchOnly_DONOTUSE;
+	uint8 Flags = (bSimulatedPhysicSleep << 0) | (bRepPhysics << 1) | (bJustTeleported << 2) | (bJustTeleportedGrips << 3) | (bPausedTracking << 4);
+	Ar.SerializeBits(&Flags, 5);
+	bSimulatedPhysicSleep = (Flags & (1 << 0)) ? 1 : 0;
+	bRepPhysics = (Flags & (1 << 1)) ? 1 : 0;
+	const bool bRepServerFrame = (Flags & (1 << 2) && bServerFrameAndHandleSupported) ? 1 : 0;
+	const bool bRepServerHandle = (Flags & (1 << 3) && bServerFrameAndHandleSupported) ? 1 : 0;
+
+	bJustTeleported = (Flags & (1 << 2)) ? 1 : 0;
+	bJustTeleportedGrips = (Flags & (1 << 3)) ? 1 : 0;
+	bPausedTracking = (Flags & (1 << 4)) ? 1 : 0;
+
+	bOutSuccess = true;
+
+	if (bPausedTracking)
+	{
+		bOutSuccess &= PausedTrackingLoc.NetSerialize(Ar, Map, bOutSuccess);
+
+		uint16 Yaw = 0;
+		if (Ar.IsSaving())
+		{
+			Yaw = FRotator::CompressAxisToShort(PausedTrackingRot);
+			Ar << Yaw;
+		}
+		else
+		{
+			Ar << Yaw;
+			PausedTrackingRot = Yaw;
+		}
+
+	}
+
+	// update location, rotation, linear velocity
+	bOutSuccess &= SerializeQuantizedVector(Ar, Location, BaseSettings.LocationQuantizationLevel);
+
+	switch (BaseSettings.RotationQuantizationLevel)
+	{
+	case ERotatorQuantization::ByteComponents:
+	{
+		Rotation.SerializeCompressed(Ar);
+		break;
+	}
+
+	case ERotatorQuantization::ShortComponents:
+	{
+		Rotation.SerializeCompressedShort(Ar);
+		break;
+	}
+	}
+
+	bOutSuccess &= SerializeQuantizedVector(Ar, LinearVelocity, BaseSettings.VelocityQuantizationLevel);
+
+	// update angular velocity if required
+	if (bRepPhysics)
+	{
+		bOutSuccess &= SerializeQuantizedVector(Ar, AngularVelocity, BaseSettings.VelocityQuantizationLevel);
+	}
+
+	if (bRepServerFrame)
+	{
+		uint32 uServerFrame = (uint32)ServerFrame;
+		Ar.SerializeIntPacked(uServerFrame);
+		ServerFrame = (int32)uServerFrame;
+	}
+
+	if (bRepServerHandle)
+	{
+		uint32 uServerPhysicsHandle = (uint32)ServerPhysicsHandle;
+		Ar.SerializeIntPacked(uServerPhysicsHandle);
+		ServerPhysicsHandle = (int32)uServerPhysicsHandle;
+	}
+
+	if (Ar.EngineNetVer() >= FEngineNetworkCustomVersion::RepMoveOptionalAcceleration)
+	{
+		uint8 AccelFlags = (bRepAcceleration << 0);
+		Ar.SerializeBits(&AccelFlags, 1);
+		bRepAcceleration = (AccelFlags & (1 << 0)) ? 1 : 0;
+
+		if (bRepAcceleration)
+		{
+			// Note that we're using the same quantization as Velocity, since the units are commonly on the same order
+			bOutSuccess &= SerializeQuantizedVector(Ar, Acceleration, VelocityQuantizationLevel);
+		}
+	}
+	else if (Ar.IsLoading())
+	{
+		bRepAcceleration = false;
+	}
+
+	return true;
 }

@@ -2143,7 +2143,8 @@ bool FPhysicsReplicationAsyncVR::PredictiveInterpolation(Chaos::FPBDRigidParticl
 			const float VelocityAlpha = FMath::Clamp(DeltaSeconds / InterpolationTime, 0.0f, 1.0f);
 
 			FVector RepAngVel;
-			if (PhysicsReplicationCVars::PredictiveInterpolationCVars::bCorrectionAsVelocity)
+			static const auto CVarCorrectionAsVelocity = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.CorrectionAsVelocity"));
+			if (CVarCorrectionAsVelocity->GetBool())
 			{
 				// Get RotDiff
 				const FQuat RotDiff = TargetRot * CurrentState.Quaternion.Inverse();
@@ -2181,7 +2182,8 @@ bool FPhysicsReplicationAsyncVR::PredictiveInterpolation(Chaos::FPBDRigidParticl
 		Target.PrevPos = FVector(CurrentState.Position);
 
 		// Apply correction as a transform shift
-		if (!PhysicsReplicationCVars::PredictiveInterpolationCVars::bCorrectionAsVelocity)
+		static const auto CVarCorrectionAsVelocity = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.CorrectionAsVelocity"));
+		if (!CVarCorrectionAsVelocity->GetBool())
 		{
 			const bool bCorrectConnectedBodies = SettingsCurrent.PredictiveInterpolationSettings.GetCorrectConnectedBodies();
 			const bool bCorrectConnectedBodiesFriction = SettingsCurrent.PredictiveInterpolationSettings.GetCorrectConnectedBodiesFriction();
