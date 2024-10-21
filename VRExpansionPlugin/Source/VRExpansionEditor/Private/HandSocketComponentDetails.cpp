@@ -107,7 +107,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 
 	if (!BaseAnimation)
 	{
-		LocalPoses = HandSocketComponent->VisualizationMesh->GetSkeleton()->GetRefLocalPoses();
+		LocalPoses = HandSocketComponent->VisualizationMesh->GetRefSkeleton().GetRefBonePose();
 	}
 
 	// If not, create new one now.
@@ -251,7 +251,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 						int32 BoneIndex = BoneTreeIndex;//AnimSkeleton->GetMeshBoneIndexFromSkeletonBoneIndex(SkeletalMesh, BoneTreeIndex);
 						//int32 ParentIndex = SkeletalMesh->RefSkeleton.GetParentIndex(BoneIndex);
 						FTransform LocalTransform = LocalPoses[BoneIndex];
-
+						//FTransform LocalTransform = RefSkeleton.GetRefBonePose()[BoneIndex];
 
 						FName BoneName = AnimSkeleton->GetReferenceSkeleton().GetBoneName(BoneIndex);
 
