@@ -499,6 +499,8 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 	if (IsLocallyControlled())
 	{
+		bool bHadBadTracking = false;
+
 		if (owningVRChar && owningVRChar->bTrackingPaused)
 		{
 			curCameraLoc = owningVRChar->PausedTrackingLoc;
@@ -517,6 +519,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			{
 				curCameraLoc = lastCameraLoc;
 				curCameraRot = lastCameraRot;
+				bHadBadTracking = true;
 			}
 			else
 			{
@@ -554,7 +557,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		
 
 		// Can adjust the relative tolerances to remove jitter and some update processing
-		if (!bRetainRoomscale || (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f)))
+		if (!bHadBadTracking && (!bRetainRoomscale || (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f))))
 		{
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
@@ -629,7 +632,6 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 				}
 				else
 				{
-
 					// Run this first so we get full fidelity on the relative space calculation
 					FVector NewLocation = StoredCameraRotOffset.RotateVector(FVector(VRCapsuleOffset.X, VRCapsuleOffset.Y, 0.0f)) + curCameraLoc;
 					FVector PlanerLocation = NewLocation - lastCameraLoc;
