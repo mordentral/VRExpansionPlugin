@@ -1536,7 +1536,7 @@ bool UVRRootComponent::IsLocallyControlled() const
 			GenerateOffsetToWorld();
 		}*/
 
-		if (!owningVRChar->bRetainRoomscale && !IsLocallyControlled())
+		if (!owningVRChar->bRetainRoomscale && !IsLocallyControlled() && !IsNetMode(NM_DedicatedServer))
 		{
 			// Don't smooth this change in mesh position
 			FNetworkPredictionData_Client_Character* ClientData = owningVRChar->GetCharacterMovement()->GetPredictionData_Client_Character();
