@@ -267,18 +267,28 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 			{
 				this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 				CurRotBackEnd = FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement);
+				
+				if (bUseRollover)
+				{
+					CurrentDialAngle = FMath::RoundToFloat(CurRotBackEnd);
+				}
+				else
+				{
+					CurrentDialAngle = FRotator::ClampAxis(FMath::RoundToFloat(CurRotBackEnd));
+				}
 			}
-		}
-
-		if (bUseRollover)
-		{
-			CurrentDialAngle = FMath::RoundToFloat(CurRotBackEnd);
+			else
+			{
+				// Reset to the snap angle so that it requires full motion to break out of it
+				CurRotBackEnd = CurrentDialAngle;
+			}
 		}
 		else
 		{
-			CurrentDialAngle = FRotator::ClampAxis(FMath::RoundToFloat(CurRotBackEnd));
+			// Reset to the snap angle so that it requires full motion to break out of it
+			CurRotBackEnd = CurrentDialAngle;
 		}
-		
+
 		if (!FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
 		{
 			ReceiveDialHitSnapAngle(CurrentDialAngle);
