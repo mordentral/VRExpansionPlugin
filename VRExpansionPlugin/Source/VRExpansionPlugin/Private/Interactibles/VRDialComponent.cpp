@@ -261,7 +261,7 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 		float AngleOffsetCheck = FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - FRotator::ClampAxis(LastSnapAngle));
 		float TargetSnap = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
 
-		if (FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - TargetSnap) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+		if (FMath::Abs(/*FRotator::ClampAxis(*/CurRotBackEnd/*)*/ - TargetSnap) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 		{
 			if (AngleOffsetCheck >= SnapAngleThreshold)//FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 			{
@@ -581,7 +581,7 @@ void UVRDialComponent::AddDialAngle(float DialAngleDelta, bool bCallEvents, bool
 		float AngleOffsetCheck = FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - FRotator::ClampAxis(LastSnapAngle));
 		float TargetSnap = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
 
-		if (FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - TargetSnap) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+		if (FMath::Abs(/*FRotator::ClampAxis(*/CurRotBackEnd/*)*/ - TargetSnap) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 		{
 			if (AngleOffsetCheck >= SnapAngleThreshold)//FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 			{
