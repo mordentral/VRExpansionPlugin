@@ -594,9 +594,23 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			Params.bFindInitialOverlaps = true;
 			bool bBlockingHit = false;
 
-			if (bUseWalkingCollisionOverride && bRetainRoomscale)
+			if (bUseWalkingCollisionOverride /* && bRetainRoomscale*/)
 			{
-				FVector TargetWorldLocation = OffsetComponentToWorld.GetLocation();
+				FVector TargetWorldLocation = FVector::ZeroVector;
+				
+				if (bRetainRoomscale)
+				{
+					TargetWorldLocation = OffsetComponentToWorld.GetLocation();
+				}
+				else // Not Retained Roomscale
+				{
+					FVector NewLocation = StoredCameraRotOffset.RotateVector(FVector(VRCapsuleOffset.X, VRCapsuleOffset.Y, 0.0f)) + curCameraLoc;
+					FVector PlanerLocation = NewLocation - lastCameraLoc;
+					PlanerLocation.Z = 0.0f;
+					DifferenceFromLastFrame = GetComponentTransform().TransformVector(PlanerLocation);
+					TargetWorldLocation = LastPosition + DifferenceFromLastFrame;
+				}
+				
 				bool bAllowWalkingCollision = false;
 				if (CharMove != nullptr)
 				{
