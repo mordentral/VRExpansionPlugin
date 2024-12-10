@@ -57,7 +57,14 @@ public:
 	inline FVector GetTargetHeightOffset()
 	{
 		//return FVector::ZeroVector;
-		return FVector(0.f, 0.f, (-this->GetUnscaledCapsuleHalfHeight()) - VRCapsuleOffset.Z);
+		if (bCenterCapsuleOnHMD)
+		{
+			return FVector(0.f, 0.f, (-VRCapsuleOffset.Z) - curCameraLoc.Z);
+		}
+		else
+		{
+			return FVector(0.f, 0.f, (-this->GetUnscaledCapsuleHalfHeight()) - VRCapsuleOffset.Z);
+		}
 	}
 
 	/**
@@ -266,7 +273,7 @@ void inline UVRRootComponent::GenerateOffsetToWorld(bool bUpdateBounds, bool bGe
 
 	if(owningVRChar && !owningVRChar->bRetainRoomscale)
 	{
-		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(0.0f, 0.0f, bCenterCapsuleOnHMD ? curCameraLoc.Z : 0.0f), FVector(1.0f)) * GetComponentTransform();
+		OffsetComponentToWorld = FTransform(CamRotOffset.Quaternion(), FVector(0.0f, 0.0f, 0.0f), FVector(1.0f)) * GetComponentTransform();
 	}
 	else
 	{

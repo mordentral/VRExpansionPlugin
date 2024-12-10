@@ -468,7 +468,7 @@ void UVRRootComponent::UpdateCharacterCapsuleOffset()
 {
 	if (owningVRChar && !owningVRChar->bRetainRoomscale && owningVRChar->NetSmoother)
 	{
-		if (!FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
+		if (bCenterCapsuleOnHMD || !FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
 		{
 			owningVRChar->NetSmoother->SetRelativeLocation(GetTargetHeightOffset(), false, nullptr, ETeleportType::TeleportPhysics);
 
