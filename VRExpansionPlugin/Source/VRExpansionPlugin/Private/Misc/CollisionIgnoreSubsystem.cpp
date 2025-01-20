@@ -291,6 +291,11 @@ void UCollisionIgnoreSubsystem::CheckActiveFilters()
 		}
 	}*/
 
+	if (bMadeChanges)
+	{
+		CollisionTrackedPairs.Compact();
+	}
+
 	UpdateTimer(bMadeChanges);
 }
 
