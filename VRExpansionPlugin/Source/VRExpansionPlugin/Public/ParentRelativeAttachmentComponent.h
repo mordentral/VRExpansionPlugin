@@ -137,8 +137,7 @@ public:
 	FQuat GetCalculatedRotation(FRotator InverseRot, float DeltaTime)
 	{
 		FRotator FinalRot = FRotator::ZeroRotator;
-
-		if (FPlatformMath::Abs(FRotator::ClampAxis(InverseRot.Yaw) - LastRot) < YawTolerance)	// This is never true with the default value of 0.0f
+		if (FPlatformMath::Abs(FMath::FindDeltaAngleDegrees(InverseRot.Yaw, LastRot)) < YawTolerance)	// This is never true with the default value of 0.0f
 		{
 			if (!bWasSetOnce)
 			{
