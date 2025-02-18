@@ -283,6 +283,21 @@ UPrimitiveComponent* FBPActorGripInformation::GetGrippedComponent() const
 	return Cast<UPrimitiveComponent>(GrippedObject);
 }
 
+
+UPrimitiveComponent* FBPActorGripInformation::GetGripPrimitiveComponent() const
+{
+	UPrimitiveComponent* RootComp = nullptr;
+
+	if (GripTargetType == EGripTargetType::ActorGrip)
+	{
+		RootComp = Cast<UPrimitiveComponent>(GetGrippedActor()->GetRootComponent());
+	}
+	else
+		RootComp = GetGrippedComponent();
+
+	return RootComp;
+}
+
 bool FBPActorGripInformation::operator==(const UPrimitiveComponent* Other) const
 {
 	if (Other && GrippedObject && GrippedObject == (const UObject*)Other)

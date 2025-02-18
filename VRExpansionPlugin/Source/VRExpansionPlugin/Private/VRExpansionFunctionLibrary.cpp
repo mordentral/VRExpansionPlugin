@@ -586,6 +586,11 @@ bool UVRExpansionFunctionLibrary::IsActiveGrip(const FBPActorGripInformation& Gr
 	return Grip.IsActive();
 }
 
+UPrimitiveComponent* UVRExpansionFunctionLibrary::GetGripPrimitiveTarget(const FBPActorGripInformation& Grip)
+{
+	return Grip.GetGripPrimitiveComponent();
+}
+
 FTransform_NetQuantize UVRExpansionFunctionLibrary::MakeTransform_NetQuantize(FVector Translation, FRotator Rotation, FVector Scale)
 {
 	return FTransform_NetQuantize(Rotation, Translation, Scale);

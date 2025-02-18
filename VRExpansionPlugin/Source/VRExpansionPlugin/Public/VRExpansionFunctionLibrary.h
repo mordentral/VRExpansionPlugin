@@ -200,6 +200,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions")
 		static bool IsActiveGrip(const FBPActorGripInformation& Grip);
 
+	/* Returns the target primitive component if the grip has one (it should always), otherwise it will return invalid */
+	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions")
+		static UPrimitiveComponent* GetGripPrimitiveTarget(const FBPActorGripInformation& Grip);
+
 	/** Make a transform net quantize from location, rotation and scale */
 	UFUNCTION(BlueprintPure, meta = (Scale = "1,1,1", Keywords = "construct build", NativeMakeFunc), Category = "VRExpansionLibrary|TransformNetQuantize")
 		static FTransform_NetQuantize MakeTransform_NetQuantize(FVector Location, FRotator Rotation, FVector Scale);

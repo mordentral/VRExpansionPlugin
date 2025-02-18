@@ -1562,6 +1562,8 @@ public:
 
 	UPrimitiveComponent* GetGrippedComponent() const;
 
+	UPrimitiveComponent* GetGripPrimitiveComponent() const;
+
 	//Check if a grip is the same as another, the only things I check for are the actor / component
 	//This is here for the Find() function from TArray
 	FORCEINLINE bool operator==(const FBPActorGripInformation &Other) const
