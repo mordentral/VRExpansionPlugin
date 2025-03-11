@@ -465,7 +465,7 @@ public:
 #if WITH_EDITORONLY_DATA
 	// Material to apply to the hand
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hand Visualization")
-		TObjectPtr<UMaterial> HandPreviewMaterial;
+		TObjectPtr<UMaterialInterface> HandPreviewMaterial;
 
 #endif
 };
