@@ -693,7 +693,7 @@ void UHandSocketComponent::OnRegister()
 			{
 				if (HandPreviewMaterial)
 				{
-					HandVisualizerComponent->SetMaterial(0, (UMaterialInterface*)HandPreviewMaterial);
+					HandVisualizerComponent->SetMaterial(0, HandPreviewMaterial);
 				}
 				HandVisualizerComponent->SetSkinnedAssetAndUpdate(VisualizationMesh);
 			}
