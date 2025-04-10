@@ -373,13 +373,13 @@ void FPhysicsReplicationVR::RemoveReplicatedTarget(UPrimitiveComponent* Componen
 {
 
 	// Skip all of the custom logic if we aren't the server
-	if (const UWorld* World = GetOwningWorld())
+	/*if (const UWorld* World = GetOwningWorld())
 	{
 		if (World->GetNetMode() == ENetMode::NM_Client)
 		{
 			return FPhysicsReplication::RemoveReplicatedTarget(Component);
 		}
-	}
+	}*/
 
 	if (Component == nullptr)
 	{
