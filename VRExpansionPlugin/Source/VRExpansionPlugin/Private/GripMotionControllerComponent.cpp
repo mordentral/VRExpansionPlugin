@@ -4230,7 +4230,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedActor(AActor * GrippedAc
 
 	FBPActorGripInformation * GripInfo = LocallyGrippedObjects.FindByKey(GrippedActorToMove);
 	if (!GripInfo)
-		GrippedObjects.FindByKey(GrippedActorToMove);
+		GripInfo = GrippedObjects.FindByKey(GrippedActorToMove);
 
 	if (GripInfo)
 	{
@@ -4247,7 +4247,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrippedComponent(UPrimitiveComp
 
 	FBPActorGripInformation * GripInfo = LocallyGrippedObjects.FindByKey(ComponentToMove);
 	if (!GripInfo)
-		GrippedObjects.FindByKey(ComponentToMove);
+		GripInfo = GrippedObjects.FindByKey(ComponentToMove);
 
 	if (GripInfo)
 	{
@@ -5908,7 +5908,7 @@ void UGripMotionControllerComponent::CleanUpBadPhysicsHandles()
 	{
 		FBPActorGripInformation * GripInfo = LocallyGrippedObjects.FindByKey(PhysicsGrips[g].GripID);
 		if(!GripInfo)
-			GrippedObjects.FindByKey(PhysicsGrips[g].GripID);
+			GripInfo = GrippedObjects.FindByKey(PhysicsGrips[g].GripID);
 
 		if (!GripInfo)
 		{
