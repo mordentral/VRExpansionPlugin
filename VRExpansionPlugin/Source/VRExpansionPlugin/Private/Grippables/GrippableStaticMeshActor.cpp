@@ -805,11 +805,11 @@ void AGrippableStaticMeshActor::OnRep_ReplicatedMovement()
 		return;
 	}
 
-	if (VRGripInterfaceSettings.HoldingControllers.Num() > 0)
+	/*if (VRGripInterfaceSettings.HoldingControllers.Num() > 0)
 	{
 		ShouldWeSkipAttachmentReplication();
 		int gg = 0;
-	}
+	}*/
 
 	Super::OnRep_ReplicatedMovement();
 }
