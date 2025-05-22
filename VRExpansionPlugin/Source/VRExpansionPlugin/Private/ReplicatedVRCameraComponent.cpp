@@ -480,7 +480,7 @@ void UReplicatedVRCameraComponent::HandleXRCamera(float DeltaTime)
 							//FRotator OffsetRotator = 
 							if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() != EVRConjoinedMovementModes::C_VRMOVE_Seated)
 							{
-								AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
+								//AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 
 								FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
 								if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)

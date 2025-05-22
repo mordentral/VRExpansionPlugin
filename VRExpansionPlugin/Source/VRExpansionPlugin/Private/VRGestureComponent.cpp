@@ -544,7 +544,7 @@ void UVRGestureComponent::DrawDebugGesture(UObject* WorldContextObject, FTransfo
 			FVector MirrorVector = FVector(1.f, -1.f, 1.f); // Only mirroring on Y axis to flip Left/Right
 
 															// this means foreground lines can't be persistent 
-			ULineBatchComponent* const LineBatcher = (InWorld ? ((DepthPriority == SDPG_Foreground) ? InWorld->ForegroundLineBatcher : ((bPersistentLines || (LifeTime > 0.f)) ? InWorld->PersistentLineBatcher : InWorld->LineBatcher)) : NULL);
+			ULineBatchComponent* const LineBatcher = (InWorld ? ((DepthPriority == SDPG_Foreground) ? InWorld->GetLineBatcher(UWorld::ELineBatcherType::Foreground) : ((bPersistentLines || (LifeTime > 0.f)) ? InWorld->GetLineBatcher(UWorld::ELineBatcherType::WorldPersistent) : InWorld->GetLineBatcher(UWorld::ELineBatcherType::World))) : NULL);
 
 			if (LineBatcher != NULL)
 			{

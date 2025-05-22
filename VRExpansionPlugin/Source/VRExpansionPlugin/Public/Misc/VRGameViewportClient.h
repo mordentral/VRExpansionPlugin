@@ -61,5 +61,5 @@ public:
 
 	virtual void PostInitProperties() override;
 	virtual bool InputKey(const FInputKeyEventArgs& EventArgs) override;
-	virtual bool InputAxis(FViewport* tViewport, FInputDeviceId InputDevice, FKey Key, float Delta, float DeltaTime, int32 NumSamples = 1, bool bGamepad = false) override;
+	virtual bool InputAxis(const FInputKeyEventArgs& Args) override;
 };

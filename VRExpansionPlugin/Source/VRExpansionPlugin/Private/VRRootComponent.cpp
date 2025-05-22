@@ -962,7 +962,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 	//CSV_SCOPED_TIMING_STAT(PrimitiveComponent, MoveComponentTime);
 
 	// static things can move before they are registered (e.g. immediately after streaming), but not after.
-	if (!IsValid(this) || (this->Mobility == EComponentMobility::Static && IsRegistered()))//|| CheckStaticMobilityAndWarn(PrimitiveComponentStatics::MobilityWarnText))
+	if (!IsValidChecked(this) || (this->Mobility == EComponentMobility::Static && IsRegistered()))//|| CheckStaticMobilityAndWarn(PrimitiveComponentStatics::MobilityWarnText))
 	{
 		if (OutHit)
 		{
@@ -1233,7 +1233,7 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 
 	// Handle blocking hit notifications. Avoid if pending kill (which could happen after overlaps).
 	const bool bAllowHitDispatch = !BlockingHit.bStartPenetrating || !(MoveFlags & MOVECOMP_DisableBlockingOverlapDispatch);
-	if (BlockingHit.bBlockingHit && bAllowHitDispatch && IsValid(this))
+	if (BlockingHit.bBlockingHit && bAllowHitDispatch && IsValidChecked(this))
 	{
 		check(bFilledHitResult);
 		if (IsDeferringMovementUpdates())
@@ -1329,7 +1329,7 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TOverlapArrayView* NewPendingOve
 			TInlineOverlapPointerArray NewOverlappingComponentPtrs;
 
 			// If pending kill, we should not generate any new overlaps. Also not if overlaps were just disabled during BeginComponentOverlap.
-			if (IsValid(this) && GetGenerateOverlapEvents())
+			if (IsValidChecked(this) && GetGenerateOverlapEvents())
 			{
 				// 4.17 converted to auto cvar
 				static const auto CVarAllowCachedOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.AllowCachedOverlaps"));
@@ -1581,7 +1581,7 @@ bool UVRRootComponent::IsLocallyControlled() const
 
 void UVRRootComponent::UpdatePhysicsVolume(bool bTriggerNotifiers)
 {
-	if (GetShouldUpdatePhysicsVolume() && IsValid(this))
+	if (GetShouldUpdatePhysicsVolume() && IsValidChecked(this))
 	{
 		//	SCOPE_CYCLE_COUNTER(STAT_UpdatePhysicsVolume);
 		if (UWorld * MyWorld = GetWorld())

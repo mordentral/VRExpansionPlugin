@@ -249,7 +249,7 @@ void UGripMotionControllerComponent::RegisterEndPhysicsTick(bool bRegister)
 void UGripMotionControllerComponent::EndPhysicsTickComponent(FGripComponentEndPhysicsTickFunction& ThisTickFunction)
 {
 
-	if (!IsValid(this))
+	if (!IsValidChecked(this))
 		return;
 
 	// Now check if we should turn off any post physics ticking
@@ -6156,44 +6156,48 @@ bool UGripMotionControllerComponent::DestroyPhysicsHandle(const FBPActorGripInfo
 		return true;
 	}
 
-	UPrimitiveComponent *root = Grip.GetGrippedComponent();
-	AActor * pActor = Grip.GetGrippedActor();
-
-	if (!root && pActor)
-		root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
-
-	if (root)
+	if (IsValid(Grip.GrippedObject))
 	{
-		if (FBodyInstance * rBodyInstance = root->GetBodyInstance(Grip.GrippedBoneName))
+
+		UPrimitiveComponent* root = Grip.GetGrippedComponent();
+		AActor* pActor = Grip.GetGrippedActor();
+
+		if (!root && pActor)
+			root = Cast<UPrimitiveComponent>(pActor->GetRootComponent());
+
+		if (root)
 		{
-			// #TODO: Should this be done on drop instead?
-			// Remove event registration
-			if (!bSkipUnregistering)
+			if (FBodyInstance* rBodyInstance = root->GetBodyInstance(Grip.GrippedBoneName))
 			{
-				if (rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+				// #TODO: Should this be done on drop instead?
+				// Remove event registration
+				if (!bSkipUnregistering)
 				{
-					rBodyInstance->OnRecalculatedMassProperties().RemoveAll(this);
-				}
-			}
-
-			if (HandleInfo->bSetCOM)
-			{
-				// Reset center of mass to zero
-				// Get our original values
-				FVector vel = rBodyInstance->GetUnrealWorldVelocity();
-				FVector aVel = rBodyInstance->GetUnrealWorldAngularVelocityInRadians();
-				FVector originalCOM = rBodyInstance->GetCOMPosition();
-
-				if (rBodyInstance->IsValidBodyInstance() && rBodyInstance->BodySetup.IsValid())
-				{
-					rBodyInstance->UpdateMassProperties();
+					if (rBodyInstance->OnRecalculatedMassProperties().IsBoundToObject(this))
+					{
+						rBodyInstance->OnRecalculatedMassProperties().RemoveAll(this);
+					}
 				}
 
-				if (rBodyInstance->IsInstanceSimulatingPhysics())
+				if (HandleInfo->bSetCOM)
 				{
-					// Offset the linear velocity by the new COM position and set it
-					vel += FVector::CrossProduct(aVel, rBodyInstance->GetCOMPosition() - originalCOM);
-					rBodyInstance->SetLinearVelocity(vel, false);
+					// Reset center of mass to zero
+					// Get our original values
+					FVector vel = rBodyInstance->GetUnrealWorldVelocity();
+					FVector aVel = rBodyInstance->GetUnrealWorldAngularVelocityInRadians();
+					FVector originalCOM = rBodyInstance->GetCOMPosition();
+
+					if (rBodyInstance->IsValidBodyInstance() && rBodyInstance->BodySetup.IsValid())
+					{
+						rBodyInstance->UpdateMassProperties();
+					}
+
+					if (rBodyInstance->IsInstanceSimulatingPhysics())
+					{
+						// Offset the linear velocity by the new COM position and set it
+						vel += FVector::CrossProduct(aVel, rBodyInstance->GetCOMPosition() - originalCOM);
+						rBodyInstance->SetLinearVelocity(vel, false);
+					}
 				}
 			}
 		}

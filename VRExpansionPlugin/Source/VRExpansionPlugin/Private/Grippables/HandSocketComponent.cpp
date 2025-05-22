@@ -206,7 +206,8 @@ bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InA
 		const FReferenceSkeleton& RefSkeleton = (TargetMesh) ? TargetMesh->GetSkinnedAsset()->GetRefSkeleton() : InAnimationSequence->GetSkeleton()->GetReferenceSkeleton();
 		FTransform LocalTransform;
 
-		const TArray<FTrackToSkeletonMap>& TrackMap = InAnimationSequence->GetCompressedTrackToSkeletonMapTable();
+		//const TArray<FTrackToSkeletonMap>& TrackMap = InAnimationSequence->GetCompressedTrackToSkeletonMapTable();
+		const TArray<FTrackToSkeletonMap>& TrackMap = InAnimationSequence->GetCompressedData().Get().CompressedTrackToSkeletonMapTable;
 		int32 TrackIndex = INDEX_NONE;
 
 		OutPoseSnapShot.LocalTransforms.Reserve(OutPoseSnapShot.BoneNames.Num());
@@ -237,8 +238,9 @@ bool UHandSocketComponent::GetAnimationSequenceAsPoseSnapShot(UAnimSequence* InA
 
 			if (TrackIndex != INDEX_NONE && (!bSkipRootBone || TrackIndex != 0))
 			{
-				double TrackLocation = 0.0f;			
-				InAnimationSequence->GetBoneTransform(LocalTransform, FSkeletonPoseBoneIndex(TrackMap[TrackIndex].BoneTreeIndex), TrackLocation, false);
+				//double TrackLocation = 0.0f;
+				// FAnimExtraContext default is fine, its a zero track location
+				InAnimationSequence->GetBoneTransform(LocalTransform, FSkeletonPoseBoneIndex(TrackMap[TrackIndex].BoneTreeIndex), FAnimExtractContext(), false);
 			}
 			else
 			{
@@ -317,7 +319,7 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 		const FReferenceSkeleton& RefSkeleton = (TargetMesh) ? TargetMesh->GetSkinnedAsset()->GetRefSkeleton() : HandTargetAnimation->GetSkeleton()->GetReferenceSkeleton();
 		FTransform LocalTransform;
 
-		const TArray<FTrackToSkeletonMap>& TrackMap = HandTargetAnimation->GetCompressedTrackToSkeletonMapTable();
+		const TArray<FTrackToSkeletonMap>& TrackMap = HandTargetAnimation->GetCompressedData().Get().CompressedTrackToSkeletonMapTable;
 		int32 TrackIndex = INDEX_NONE;
 
 		for (int32 BoneNameIndex = 0; BoneNameIndex < PoseSnapShot.BoneNames.Num(); ++BoneNameIndex)
@@ -345,8 +347,9 @@ bool UHandSocketComponent::GetBlendedPoseSnapShot(FPoseSnapshot& PoseSnapShot, U
 
 			if (TrackIndex != INDEX_NONE && (!bSkipRootBone || TrackIndex != 0))
 			{
-				double TrackLocation = 0.0f;
-				HandTargetAnimation->GetBoneTransform(LocalTransform, FSkeletonPoseBoneIndex(TrackMap[TrackIndex].BoneTreeIndex), TrackLocation, false);
+				//double TrackLocation = 0.0f;
+				// FAnimExtraContext default is fine, its a zero track location
+				HandTargetAnimation->GetBoneTransform(LocalTransform, FSkeletonPoseBoneIndex(TrackMap[TrackIndex].BoneTreeIndex), FAnimExtractContext(), false);
 			}
 			else
 			{
@@ -609,7 +612,7 @@ FTransform UHandSocketComponent::GetBoneTransformAtTime(UAnimSequence* MyAnimSeq
 
 	if (const IAnimationDataModel* AnimModel = AnimController.GetModel())
 	{
-		const TArray<FTrackToSkeletonMap>& TrackMap = MyAnimSequence->GetCompressedTrackToSkeletonMapTable();
+		const TArray<FTrackToSkeletonMap>& TrackMap = MyAnimSequence->GetCompressedData().Get().CompressedTrackToSkeletonMapTable;
 
 		int32 TrackIndex = INDEX_NONE;
 		if (BoneIdx != INDEX_NONE && BoneIdx < TrackMap.Num() && TrackMap[BoneIdx].BoneTreeIndex == BoneIdx)
@@ -635,7 +638,9 @@ FTransform UHandSocketComponent::GetBoneTransformAtTime(UAnimSequence* MyAnimSeq
 			FSkeletonPoseBoneIndex BoneIndex(TrackMap[TrackIndex].BoneTreeIndex);
 			if (BoneIndex.IsValid())
 			{
-				MyAnimSequence->GetBoneTransform(BoneTransform, BoneIndex, /*AnimTime*/ tracklen, bUseRawDataOnly);
+				FAnimExtractContext NewContext;
+				NewContext.CurrentTime = tracklen;
+				MyAnimSequence->GetBoneTransform(BoneTransform, BoneIndex, /*AnimTime*/ NewContext, bUseRawDataOnly);
 				return BoneTransform;
 			}
 		}

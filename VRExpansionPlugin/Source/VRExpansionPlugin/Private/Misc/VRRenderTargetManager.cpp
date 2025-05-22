@@ -449,7 +449,7 @@ void ARenderTargetReplicationProxy::SendInitMessage()
 
 void ARenderTargetReplicationProxy::SendNextDataBlob()
 {
-	if (!IsValid(this) || !this->GetOwner() || !IsValid(this->GetOwner()))
+	if (!IsValidChecked(this) || !this->GetOwner() || !IsValid(this->GetOwner()))
 	{	
 		TextureStore.Reset();
 		TextureStore.PackedData.Empty();

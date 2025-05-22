@@ -103,7 +103,7 @@ bool UVRGameViewportClient::InputKey(const FInputKeyEventArgs& EventArgs)
 	}
 }
 
-bool UVRGameViewportClient::InputAxis(FViewport* tViewport, FInputDeviceId InputDevice, FKey Key, float Delta, float DeltaTime, int32 NumSamples, bool bGamepad)
+bool UVRGameViewportClient::InputAxis(const FInputKeyEventArgs& Args)
 {		
 	// Remap the old int32 ControllerId value to the new InputDeviceId
 	IPlatformInputDeviceMapper& DeviceMapper = IPlatformInputDeviceMapper::Get();
@@ -111,8 +111,8 @@ bool UVRGameViewportClient::InputAxis(FViewport* tViewport, FInputDeviceId Input
 	const int32 NumLocalPlayers = World->GetGameInstance()->GetNumLocalPlayers();
 
 	// Early out if a gamepad or not a mouse event (vr controller) or ignoring input or is default setup / no GEngine
-	if (((!Key.IsMouseButton() && !bGamepad) || (bGamepad && !IsValidGamePadKey(Key))) || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput())
-		return Super::InputAxis(tViewport, InputDevice, Key, Delta, DeltaTime, NumSamples, bGamepad);
+	if (((!Args.Key.IsMouseButton() && !Args.IsGamepad()) || (Args.IsGamepad() && !IsValidGamePadKey(Args.Key))) || NumLocalPlayers < 2 || GameInputMethod == EVRGameInputMethod::GameInput_Default || IgnoreInput())
+		return Super::InputAxis(Args);
 
 	if (GameInputMethod == EVRGameInputMethod::GameInput_KeyboardAndMouseToPlayer2)
 	{
@@ -123,7 +123,9 @@ bool UVRGameViewportClient::InputAxis(FViewport* tViewport, FInputDeviceId Input
 		FInputDeviceId DeviceId = INPUTDEVICEID_NONE;
 		DeviceMapper.RemapControllerIdToPlatformUserAndDevice(ControllerId, UserId, DeviceId);
 
-		return Super::InputAxis(tViewport, DeviceId, Key, Delta, DeltaTime, NumSamples, bGamepad);
+		FInputKeyEventArgs NewArgs = Args;
+		NewArgs.InputDevice = DeviceId;
+		return Super::InputAxis(NewArgs);
 	}
 	else // Shared keyboard and mouse
 	{
@@ -134,7 +136,9 @@ bool UVRGameViewportClient::InputAxis(FViewport* tViewport, FInputDeviceId Input
 			FInputDeviceId DeviceId = INPUTDEVICEID_NONE;
 			DeviceMapper.RemapControllerIdToPlatformUserAndDevice(i, UserId, DeviceId);
 
-			bRetVal = Super::InputAxis(tViewport, DeviceId, Key, Delta, DeltaTime, NumSamples, bGamepad) || bRetVal;
+			FInputKeyEventArgs NewArgs = Args;
+			NewArgs.InputDevice = DeviceId;
+			bRetVal = Super::InputAxis(NewArgs) || bRetVal;
 		}
 
 		return bRetVal;

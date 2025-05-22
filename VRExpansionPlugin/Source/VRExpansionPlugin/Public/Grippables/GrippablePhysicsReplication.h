@@ -35,7 +35,8 @@
 
 #pragma region FPhysicsReplicationAsync
 
-class FPhysicsReplicationAsyncVR : public Chaos::TSimCallbackObject<
+class FPhysicsReplicationAsyncVR : public IPhysicsReplicationAsync,
+	public Chaos::TSimCallbackObject<
 	FPhysicsReplicationAsyncInput,
 	Chaos::FSimCallbackNoOutput,
 	Chaos::ESimCallbackOptions::Presimulate | Chaos::ESimCallbackOptions::PhysicsObjectUnregister>
@@ -45,7 +46,9 @@ class FPhysicsReplicationAsyncVR : public Chaos::TSimCallbackObject<
 	virtual void OnPreSimulate_Internal() override;
 	virtual void OnPhysicsObjectUnregistered_Internal(Chaos::FConstPhysicsObjectHandle PhysicsObject) override;
 
-	virtual void ApplyTargetStatesAsync(const float DeltaSeconds, const FPhysicsRepErrorCorrectionData& ErrorCorrection, const TArray<FPhysicsRepAsyncInputData>& TargetStates);
+	virtual void ApplyTargetStatesAsync(const float DeltaSeconds);
+	UE_DEPRECATED(5.6, "Deprecated, call the function with just @param DeltaSeconds instead.")
+		virtual void ApplyTargetStatesAsync(const float DeltaSeconds, const FPhysicsRepErrorCorrectionData& ErrorCorrection, const TArray<FPhysicsRepAsyncInputData>& TargetStates) { ApplyTargetStatesAsync(DeltaSeconds); };
 
 	// Replication functions
 	virtual void DefaultReplication_DEPRECATED(Chaos::FRigidBodyHandle_Internal* Handle, const FPhysicsRepAsyncInputData& State, const float DeltaSeconds, const FPhysicsRepErrorCorrectionData& ErrorCorrection);
@@ -54,7 +57,7 @@ class FPhysicsReplicationAsyncVR : public Chaos::TSimCallbackObject<
 	virtual bool ResimulationReplication(Chaos::FPBDRigidParticleHandle* Handle, FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds);
 
 public:
-	virtual void RegisterSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject, FNetworkPhysicsSettingsAsync InSettings);
+	virtual void RegisterSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject, FNetworkPhysicsSettingsAsync InSettings) override;
 
 private:
 	float LatencyOneWay;
@@ -63,6 +66,8 @@ private:
 	FNetworkPhysicsSettingsAsync SettingsDefault;
 	TMap<Chaos::FConstPhysicsObjectHandle, FReplicatedPhysicsTargetAsync> ObjectToTarget;
 	TMap<Chaos::FConstPhysicsObjectHandle, FNetworkPhysicsSettingsAsync> ObjectToSettings;
+	TArray<const Chaos::Private::FPBDIsland*> ResimIslands;
+	TArray<const Chaos::FGeometryParticleHandle*> ResimIslandsParticles;
 	TArray<int32> ParticlesInResimIslands;
 	TArray<Chaos::FParticleID> ReplicatedParticleIDs;
 
@@ -74,7 +79,15 @@ private:
 	void CacheResimInteractions();
 	// Sets SettingsCurrent to either the objects custom settings or to the default settings
 	void FetchObjectSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject);
+	bool UsePhysicsReplicationLOD();
+	void CheckTargetResimValidity(FReplicatedPhysicsTargetAsync& Target);
+	void ApplyPhysicsReplicationLOD(Chaos::FConstPhysicsObjectHandle PhysicsObjectHandle, FReplicatedPhysicsTargetAsync& Target, const uint32 LODFlags);
+	void DebugDrawReplicationMode(const FPhysicsRepAsyncInputData& Input);
+
+	/** Static function to extrapolate a target for N ticks using X DeltaSeconds */
 	static void ExtrapolateTarget(FReplicatedPhysicsTargetAsync& Target, const int32 ExtrapolateFrames, const float DeltaSeconds);
+	/** Static function to extrapolate a target for N Seconds */
+	static void ExtrapolateTarget(FReplicatedPhysicsTargetAsync& Target, const float ExtrapolationTime);
 
 public:
 	void Setup(FRigidBodyErrorCorrection ErrorCorrection)

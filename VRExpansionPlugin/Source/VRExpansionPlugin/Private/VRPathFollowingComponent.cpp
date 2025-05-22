@@ -52,7 +52,7 @@ void UVRPathFollowingComponent::GetDebugStringTokens(TArray<FString>& Tokens, TA
 	Tokens.Add(GetStatusDesc());
 	Flags.Add(EPathFollowingDebugTokens::Description);
 
-	if (Status != EPathFollowingStatus::Moving)
+	if (GetStatus() != EPathFollowingStatus::Moving)
 	{
 		return;
 	}
