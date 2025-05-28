@@ -1721,6 +1721,17 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			const FQuat NewCapsuleRotation = UpdatedComponent->GetComponentQuat();
 			if (Mesh == CharacterOwner->GetMesh() && !NewCapsuleRotation.Equals(OldRotationQuat, 1e-6f) && ClientPredictionData)
 			{
+				// #TODO: The below is new in 5.6, i don't have saved capsule rotation, don't think i need this change for base char
+				/* 
+									// Add delta rotation to the target rotation and original offset. Otherwise this object will move back toward the old rotation.
+					const FQuat RotationDelta = NewCapsuleRotation - SavedCapsuleRotation;
+					ClientPredictionData->MeshRotationTarget += RotationDelta;
+					ClientPredictionData->OriginalMeshRotationOffset += RotationDelta;
+
+					// Update the MeshRotationOffset to match the capsule rotation.
+					ClientPredictionData->MeshRotationOffset = NewCapsuleRotation;
+				*/
+
 				// Smoothing should lerp toward this new rotation target, otherwise it will just try to go back toward the old rotation.
 				ClientPredictionData->MeshRotationTarget = NewCapsuleRotation;
 				Mesh->SetRelativeLocationAndRotation(SavedMeshRelativeLocation, CharacterOwner->GetBaseRotationOffset());
@@ -1941,13 +1952,18 @@ void UVRBaseCharacterMovementComponent::MoveAutonomous(
 		static const auto CVarEnableQueuedAnimEventsOnServer = IConsoleManager::Get().FindConsoleVariable(TEXT("a.EnableQueuedAnimEventsOnServer"));
 		if (CVarEnableQueuedAnimEventsOnServer->GetInt())
 		{
-			if (const UAnimInstance* AnimInstance = OwnerMesh->GetAnimInstance())
+			if (UAnimInstance* AnimInstance = OwnerMesh->GetAnimInstance())
 			{
 				if (OwnerMesh->VisibilityBasedAnimTickOption <= EVisibilityBasedAnimTickOption::AlwaysTickPose && AnimInstance->NeedsUpdate())
 				{
 					// If we are doing a full graph update on the server but its doing a parallel update,
-					// trigger events right away since these are notifies queued from the montage update and we could be receiving multiple ServerMoves per frame.
+					// trigger events right away since these are notifies queued from the montage update, and we could be receiving multiple ServerMoves per frame.
 					OwnerMesh->ConditionallyDispatchQueuedAnimEvents();
+
+					// We need to manually clear the anim notify queue (since normally its only is cleared in PreUpdateAnimation()) otherwise if animation ticks, the notifies queued from the ServerMove would fire twice.
+					AnimInstance->ClearQueuedAnimEvents(false);
+
+					// When animation ticks, we want its queued events to be triggered.
 					OwnerMesh->AllowQueuedAnimEventsNextDispatch();
 				}
 			}
@@ -1955,7 +1971,7 @@ void UVRBaseCharacterMovementComponent::MoveAutonomous(
 		else
 		{
 			// Revert back to old behavior if wanted/needed.
-			if (OwnerMesh->ShouldOnlyTickMontages(DeltaTime))
+			if (OwnerMesh->ShouldOnlyTickMontages(DeltaTime) || OwnerMesh->ShouldOnlyTickMontagesAndRefreshBones(DeltaTime))
 			{
 				OwnerMesh->ConditionallyDispatchQueuedAnimEvents();
 			}

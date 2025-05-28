@@ -1117,7 +1117,7 @@ void UAISense_Sight_VR::RemoveAllQueriesByListener(const FPerceptionListener& Li
 	SCOPE_CYCLE_COUNTER(STAT_AI_Sense_Sight_RemoveByListener);
 	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
 
-	const uint32 ListenerId = Listener.GetListenerID();
+	const FPerceptionListenerID ListenerId = Listener.GetListenerID();
 
 	auto RemoveQuery = [&ListenerId, &OnRemoveFunc](TArray<FAISightQueryVR>& SightQueries, const int32 QueryIndex)->EReverseForEachResult
 	{
@@ -1185,7 +1185,7 @@ void UAISense_Sight_VR::RemoveAllQueriesToTarget_Internal(const FAISightTargetVR
 
 void UAISense_Sight_VR::OnListenerForgetsActor(const FPerceptionListener& Listener, AActor& ActorToForget)
 {
-	const uint32 ListenerId = Listener.GetListenerID();
+	const FPerceptionListenerID ListenerId = Listener.GetListenerID();
 	const uint32 TargetId = ActorToForget.GetUniqueID();
 
 	auto ForgetPreviousResult = [&ListenerId, &TargetId](FAISightQueryVR& SightQuery)->EForEachResult
@@ -1212,7 +1212,7 @@ void UAISense_Sight_VR::OnListenerForgetsAll(const FPerceptionListener& Listener
 {
 	UE_MT_SCOPED_WRITE_ACCESS(QueriesListAccessDetector);
 
-	const uint32 ListenerId = Listener.GetListenerID();
+	const FPerceptionListenerID ListenerId = Listener.GetListenerID();
 
 	auto ForgetPreviousResult = [&ListenerId](FAISightQueryVR& SightQuery)->EForEachResult
 	{

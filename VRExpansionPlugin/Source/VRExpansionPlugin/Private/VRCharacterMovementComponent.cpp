@@ -123,7 +123,7 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 	{
 		if (!bClientSimulation)
 		{
-			CharacterOwner->bIsCrouched = true;
+			CharacterOwner->SetIsCrouched(true);
 		}
 		CharacterOwner->OnStartCrouch(0.f, 0.f);
 		return;
@@ -195,7 +195,7 @@ void UVRCharacterMovementComponent::Crouch(bool bClientSimulation)
 			//UpdatedComponent->MoveComponent(ScaledHalfHeightAdjust * GetGravityDirection(), UpdatedComponent->GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
 		}
 
-		CharacterOwner->bIsCrouched = true;
+		CharacterOwner->SetIsCrouched(true);
 	}
 
 	bForceNextFloorCheck = true;
@@ -240,7 +240,7 @@ void UVRCharacterMovementComponent::UnCrouch(bool bClientSimulation)
 	{
 		if (!bClientSimulation)
 		{
-			CharacterOwner->bIsCrouched = false;
+			CharacterOwner->SetIsCrouched(false);
 		}
 		CharacterOwner->OnEndCrouch(0.f, 0.f);
 		return;
@@ -352,7 +352,7 @@ void UVRCharacterMovementComponent::UnCrouch(bool bClientSimulation)
 			return;
 		}
 
-		CharacterOwner->bIsCrouched = false;
+		CharacterOwner->SetIsCrouched(false);
 	}
 	else
 	{
@@ -881,7 +881,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		return;
 	}
 
-	if (!CharacterOwner || (!CharacterOwner->Controller && !bRunPhysicsWithNoController && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)))
+	if (!CharacterOwner || (!CharacterOwner->GetController() && !bRunPhysicsWithNoController && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)))
 	{
 		Acceleration = FVector::ZeroVector;
 		Velocity = FVector::ZeroVector;
@@ -908,7 +908,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 	RewindVRRelativeMovement();
 
 	// Perform the move
-	while ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations) && CharacterOwner && (CharacterOwner->Controller || bRunPhysicsWithNoController || HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocity() || (CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy)))
+	while ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations) && CharacterOwner && (CharacterOwner->GetController() || bRunPhysicsWithNoController || HasAnimRootMotion() || CurrentRootMotion.HasOverrideVelocity() || (CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy)))
 	{
 		Iterations++;
 		bJustTeleported = false;
@@ -1085,7 +1085,7 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 				}
 
 				AdjustFloorHeight();
-				SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+				SetBaseFromFloor(CurrentFloor);
 			}
 			else if (CurrentFloor.HitResult.bStartPenetrating && remainingTime <= 0.f)
 			{
@@ -2275,7 +2275,7 @@ void UVRCharacterMovementComponent::UpdateBasedMovement(float DeltaSeconds)
 			{
 				// Nothing changed. This means we probably are using another rotation mechanism (bOrientToMovement etc). We should still follow the base object.
 				// @todo: This assumes only Yaw is used, currently a valid assumption. This is the only reason FaceRotation() is used above really, aside from being a virtual hook.
-				if (bOrientRotationToMovement || (bUseControllerDesiredRotation && CharacterOwner->Controller))
+				if (bOrientRotationToMovement || (bUseControllerDesiredRotation && CharacterOwner->GetController()))
 				{
 					// Custom gravity automatically aligns the character to the gravity direction, so we shouldn't zero out pitch and roll.
 					if (!HasCustomGravity())
@@ -2289,7 +2289,7 @@ void UVRCharacterMovementComponent::UpdateBasedMovement(float DeltaSeconds)
 			}
 
 			// Pipe through ControlRotation, to affect camera.
-			if (CharacterOwner->Controller)
+			if (CharacterOwner->GetController())
 			{
 				const FQuat PawnDeltaRotation = FinalQuat * PawnOldQuat.Inverse();
 				FRotator FinalRotation = FinalQuat.Rotator();
@@ -3195,7 +3195,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 	}
 
 	// Root motion not for VR
-	if ((!CharacterOwner || !CharacterOwner->Controller) && !bRunPhysicsWithNoController && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+	if ((!CharacterOwner || !CharacterOwner->GetController()) && !bRunPhysicsWithNoController && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
 		Acceleration = FVector::ZeroVector;
 		Velocity = FVector::ZeroVector;
@@ -3814,7 +3814,7 @@ void UVRCharacterMovementComponent::SimulateMovement(float DeltaSeconds)
 					if (IsMovingOnGround())
 					{
 						AdjustFloorHeight();
-						SetBase(CurrentFloor.HitResult.Component.Get(), CurrentFloor.HitResult.BoneName);
+						SetBaseFromFloor(CurrentFloor);
 					}
 					else if (MovementMode == MOVE_Falling)
 					{

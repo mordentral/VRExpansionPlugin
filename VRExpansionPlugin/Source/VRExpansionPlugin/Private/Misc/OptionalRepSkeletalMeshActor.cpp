@@ -561,6 +561,7 @@ void UInversePhysicsSkeletalMeshComponent::RegisterEndPhysicsTick(bool bRegister
 	// For testing if the engine fix is live yet or not
 	//return Super::RegisterEndPhysicsTick(bRegister);
 
+	
 	if (bRegister != EndPhysicsTickFunctionVR.IsTickFunctionRegistered())
 	{
 		if (bRegister)
