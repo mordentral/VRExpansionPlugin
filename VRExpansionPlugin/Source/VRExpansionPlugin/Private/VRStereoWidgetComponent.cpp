@@ -743,8 +743,8 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 				if (RenderTarget->CanConvertToTexture(TextureSourceFormat, TexturePixelFormat, Error))
 				{
-					RenderTarget->UpdateTexture(LayerDsec.TextureObj.Get());
-					//RenderTarget->UpdateTexture2D(Tex2d, TextureSourceFormat);
+					//RenderTarget->UpdateTexture(LayerDsec.TextureObj.Get());
+					RenderTarget->UpdateTexture2D(Tex2d, TextureSourceFormat);
 				}
 			}
 
