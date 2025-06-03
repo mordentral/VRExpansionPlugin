@@ -1548,8 +1548,7 @@ void FPhysicsReplicationAsyncVR::CheckTargetResimValidity(FReplicatedPhysicsTarg
 	if (!RewindData->IsFrameWithinRewindHistory(LocalFrame))
 	{
 
-
-		static const auto CVarRenderInterpDebugDrawResimTrigger = IConsoleManager::Get().FindConsoleVariable(TEXT("p.RenderInterp.DebugDraw.ResimTrigger"));
+		static const auto CVarResimApplyPredictiveInterpolationWhenBehindServer = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.ApplyPredictiveInterpolationWhenBehindServer"));
 
 		if (LocalFrame < RewindData->GetEarliestFrame_Internal())
 		{
@@ -1557,7 +1556,7 @@ void FPhysicsReplicationAsyncVR::CheckTargetResimValidity(FReplicatedPhysicsTarg
 
 			Target.RepMode = EPhysicsReplicationMode::PredictiveInterpolation;
 		}
-		else if (PhysicsReplicationCVars::ResimulationCVars::bApplyPredictiveInterpolationWhenBehindServer)
+		else if (CVarResimApplyPredictiveInterpolationWhenBehindServer->GetBool())
 		{
 			/** NOTE: If the server is ahead of the client we receive target states for frames we have not yet simulated on the client, target states are stored in FRewindData still though.
 			* If PhysicsReplicationCVars::ResimulationCVars::bApplyPredictiveInterpolationWhenBehindServer is true switch over to using PredictiveInterpolation temporarily.

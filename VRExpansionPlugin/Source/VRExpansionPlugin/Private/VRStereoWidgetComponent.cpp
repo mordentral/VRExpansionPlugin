@@ -730,12 +730,22 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 				if (IsValid(Tex2d))
 				{
 					Tex2d->RemoveFromRoot();
+					Tex2d = nullptr;
 				}
 			}
 
 			if (LayerDsec.TextureObj.IsValid())
 			{
-				RenderTarget->UpdateTexture(LayerDsec.TextureObj.Get(), CTF_Default);
+
+				ETextureSourceFormat TextureSourceFormat;
+				EPixelFormat TexturePixelFormat;
+				FText* Error = nullptr;
+
+				if (RenderTarget->CanConvertToTexture(TextureSourceFormat, TexturePixelFormat, Error))
+				{
+					RenderTarget->UpdateTexture(LayerDsec.TextureObj.Get());
+					//RenderTarget->UpdateTexture2D(Tex2d, TextureSourceFormat);
+				}
 			}
 
 			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
