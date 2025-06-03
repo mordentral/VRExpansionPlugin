@@ -108,11 +108,11 @@ public:
 						SetupPlayerInputComponent(InputComponent);
 						InputComponent->RegisterComponent();
 
-						if (UInputDelegateBinding::SupportsInputDelegate(GetClass()))
-						{
+						//if (UInputDelegateBinding::SupportsInputDelegate(GetClass()))
+						//{
 							InputComponent->bBlockInput = bBlockInput;
 							UInputDelegateBinding::BindInputDelegates(GetClass(), InputComponent);
-						}
+						//}
 					}
 				}
 

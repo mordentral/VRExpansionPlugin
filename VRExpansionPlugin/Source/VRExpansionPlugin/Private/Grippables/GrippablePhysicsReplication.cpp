@@ -71,7 +71,7 @@ namespace PhysicsReplicationCVars
 
 	namespace ResimulationCVars
 	{
-		extern bool bApplyPredictiveInterpolationWhenBehindServer;
+		//extern bool bApplyPredictiveInterpolationWhenBehindServer;
 
 		bool bRuntimeCorrectionEnabled = false;
 		bool bRuntimeVelocityCorrection = false;
@@ -1391,7 +1391,9 @@ void FPhysicsReplicationAsyncVR::UpdateAsyncTarget(const FPhysicsRepAsyncInputDa
 					{
 						// A teleport has most likely happened, set accumulated error seconds to above limit for hard snapping
 						// TODO: Don't piggyback on AccumulatedErrorSeconds (potentially implement ERigidBodyFlags::Teleported)
-						Target->AccumulatedErrorSeconds = PhysicsReplicationCVars::PredictiveInterpolationCVars::ErrorAccumulationSeconds + 1.0f;
+
+						static const auto CVarErrorAcumulationSeconds = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ErrorAccumulationSeconds"));
+						Target->AccumulatedErrorSeconds = CVarErrorAcumulationSeconds->GetFloat() + 1.0f;
 					}
 				}
 			}
@@ -1545,6 +1547,10 @@ void FPhysicsReplicationAsyncVR::CheckTargetResimValidity(FReplicatedPhysicsTarg
 	const int32 LocalFrame = Target.ServerFrame - Target.FrameOffset;
 	if (!RewindData->IsFrameWithinRewindHistory(LocalFrame))
 	{
+
+
+		static const auto CVarRenderInterpDebugDrawResimTrigger = IConsoleManager::Get().FindConsoleVariable(TEXT("p.RenderInterp.DebugDraw.ResimTrigger"));
+
 		if (LocalFrame < RewindData->GetEarliestFrame_Internal())
 		{
 			// Client is far ahead of the server, switch over to Predictive Interpolation since it can't use incoming target states from the server to perform resimulations with
@@ -2514,11 +2520,11 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 	{
 		if (bShouldTriggerResim)
 		{
-			FVector Box = RenderInterpolationCVars::bRenderInterpDebugDrawResimTrigger ? FVector(6, 3, 2) : FVector(40, 20, 10);
-			const float DrawThickness = RenderInterpolationCVars::bRenderInterpDebugDrawResimTrigger ? 0.5f : 1.5f;
+			FVector Box = CVarRenderInterpDebugDrawResimTrigger->GetBool() ? FVector(6, 3, 2) : FVector(40, 20, 10);
+			const float DrawThickness = CVarRenderInterpDebugDrawResimTrigger->GetBool() ? 0.5f : 1.5f;
 
 			static const auto CVarDebugdrawLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.LifeTime"));
-			if (RenderInterpolationCVars::bRenderInterpDebugDrawResimTrigger) // Resim debug draw extension for render interpolation 
+			if (CVarRenderInterpDebugDrawResimTrigger->GetBool()) // Resim debug draw extension for render interpolation 
 			{
 				Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(PastState.GetX(), Box, PastState.GetR(), FColor::White, false, CVarDebugdrawLifetime->GetFloat(), 0, DrawThickness);
 				Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Target.TargetState.Position, Box, Target.TargetState.Quaternion, DebugColor, false, CVarDebugdrawLifetime->GetFloat(), 0, DrawThickness);
@@ -2702,7 +2708,8 @@ void FPhysicsReplicationAsyncVR::DebugDrawReplicationMode(const FPhysicsRepAsync
 		DebugColor = FColor::Green;
 	}
 
-	Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Input.TargetState.Position, BoxExtent, Rotation, DebugColor, false, PhysicsReplicationCVars::DebugDrawLifeTime, 0, 1.0f);
+	static const auto CVarDebugdrawLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.LifeTime"));
+	Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Input.TargetState.Position, BoxExtent, Rotation, DebugColor, false, CVarDebugdrawLifetime->GetFloat(), 0, 1.0f);
 #endif
 }
 

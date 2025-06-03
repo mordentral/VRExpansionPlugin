@@ -720,7 +720,24 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 		if (RenderTarget)
 		{
-			LayerDsec.Texture = RenderTarget->GetResource()->TextureRHI;
+			UTexture2D* Tex2d = Cast<UTexture2D>(LayerDsec.TextureObj);
+
+			if (!IsValid(Tex2d) || Tex2d->GetSizeX() != RenderTarget->SizeX || Tex2d->GetSizeY() != RenderTarget->SizeY)
+			{
+				// Let garbage collection clean up the old one if it exists
+				LayerDsec.TextureObj = UTexture2D::CreateTransient(RenderTarget->SizeX, RenderTarget->SizeY, RenderTarget->GetFormat());
+
+				if (IsValid(Tex2d))
+				{
+					Tex2d->RemoveFromRoot();
+				}
+			}
+
+			if (LayerDsec.TextureObj.IsValid())
+			{
+				RenderTarget->UpdateTexture(LayerDsec.TextureObj.Get(), CTF_Default);
+			}
+
 			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
 		}
 		// Forget the left texture implementation
