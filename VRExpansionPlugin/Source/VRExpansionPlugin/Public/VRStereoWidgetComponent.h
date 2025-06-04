@@ -181,6 +181,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StereoLayer", Meta = (GetOptions = "EditorFlagCollector.GetFlagNames"))
 		TArray<FName> AdditionalFlags;
 
+	UPROPERTY()
+	TObjectPtr<class UTexture2D> TextureRef = nullptr;
+
 protected:
 	/** Texture displayed on the stereo layer (is stereocopic textures are supported on the platfrom and more than one texture is provided, this will be the right eye) **/
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "StereoLayer")

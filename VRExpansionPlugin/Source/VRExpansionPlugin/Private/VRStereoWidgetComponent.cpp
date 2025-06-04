@@ -27,6 +27,8 @@
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "ImageUtils.h"
+#include "ImageCoreUtils.h"
 //#include "Widgets/SWindow.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -433,6 +435,12 @@ void UVRStereoWidgetComponent::BeginDestroy()
 		LayerId = IStereoLayers::FLayerDesc::INVALID_LAYER_ID;
 	}
 
+	if (IsValid(TextureRef))
+	{
+		TextureRef->RemoveFromRoot();
+		TextureRef = nullptr;
+	}
+
 	Super::BeginDestroy();
 }
 
@@ -720,32 +728,50 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 		if (RenderTarget)
 		{
-			UTexture2D* Tex2d = Cast<UTexture2D>(LayerDsec.TextureObj);
+			ETextureSourceFormat TextureSourceFormat;
+			EPixelFormat TexturePixelFormat;
+			FText* Error = nullptr;
 
-			if (!IsValid(Tex2d) || Tex2d->GetSizeX() != RenderTarget->SizeX || Tex2d->GetSizeY() != RenderTarget->SizeY)
+			if (RenderTarget->CanConvertToTexture(TextureSourceFormat, TexturePixelFormat, Error))
 			{
-				// Let garbage collection clean up the old one if it exists
-				LayerDsec.TextureObj = UTexture2D::CreateTransient(RenderTarget->SizeX, RenderTarget->SizeY, RenderTarget->GetFormat());
-
-				if (IsValid(Tex2d))
+				FImage ImageData;
+				if (FImageUtils::GetRenderTargetImage(RenderTarget, ImageData))
 				{
-					Tex2d->RemoveFromRoot();
-					Tex2d = nullptr;
+					if (!IsValid(TextureRef) || TextureRef->GetSizeX() != ImageData.SizeX || TextureRef->GetSizeY() != ImageData.SizeY)
+					{
+						if (IsValid(TextureRef))
+						{
+							TextureRef->RemoveFromRoot();
+							TextureRef = nullptr;
+						}
+
+						TextureRef = FImageUtils::CreateTexture2DFromImage(ImageData);
+					}
+					else
+					{
+						uint8* MipData = static_cast<uint8*>(TextureRef->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
+						check(MipData != nullptr);
+						int64 MipDataSize = TextureRef->GetPlatformData()->Mips[0].BulkData.GetBulkDataSize();
+
+						ERawImageFormat::Type PixelFormatRawFormat;
+						EPixelFormat PixelFormat = FImageCoreUtils::GetPixelFormatForRawImageFormat(ImageData.Format, &PixelFormatRawFormat);
+						FImageView MipImage(MipData, ImageData.SizeX, ImageData.SizeY, 1, PixelFormatRawFormat, ImageData.GammaSpace);
+						check(MipImage.GetImageSizeBytes() <= MipDataSize); // is it exactly == ?
+
+						// copy into texture and convert if necessary :
+						FImageCore::CopyImage(ImageData, MipImage);
+
+						TextureRef->GetPlatformData()->Mips[0].BulkData.Unlock();
+
+						TextureRef->UpdateResource();
+					}
+
+					LayerDsec.TextureObj = TextureRef;
 				}
 			}
-
-			if (LayerDsec.TextureObj.IsValid())
+			else
 			{
-
-				ETextureSourceFormat TextureSourceFormat;
-				EPixelFormat TexturePixelFormat;
-				FText* Error = nullptr;
-
-				if (RenderTarget->CanConvertToTexture(TextureSourceFormat, TexturePixelFormat, Error))
-				{
-					//RenderTarget->UpdateTexture(LayerDsec.TextureObj.Get());
-					RenderTarget->UpdateTexture2D(Tex2d, TextureSourceFormat);
-				}
+				LayerDsec.TextureObj = nullptr;
 			}
 
 			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
