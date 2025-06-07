@@ -344,7 +344,7 @@ void UVRCharacterMovementComponent::UnCrouch(bool bClientSimulation)
 				if (!BaseVRCharacterOwner || !BaseVRCharacterOwner->bRetainRoomscale)
 				{
 					// we actually move this when not using retained roomscale
-					UpdatedComponent->MoveComponent(StandingLocation - PawnLocation, UpdatedComponent->GetComponentQuat(), false, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
+					//UpdatedComponent->MoveComponent(StandingLocation - PawnLocation, UpdatedComponent->GetComponentQuat(), false, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
 				}
 				bForceNextFloorCheck = true;
 			}
