@@ -1553,7 +1553,7 @@ bool UVRRootComponent::IsLocallyControlled() const
 		// Simulated proxies should already have the new height from the server
 		if (!owningVRChar->bRetainRoomscale && (owningVRChar->GetNetMode() < ENetMode::NM_Client || IsLocallyControlled()))
 		{
-			MoveComponent(this->GetComponentQuat().GetUpVector() * (Offset * this->GetComponentScale().Z), GetComponentQuat(), true, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
+			MoveComponent(this->GetComponentQuat().GetUpVector() * (Offset * this->GetComponentScale().Z), GetComponentQuat(), false, nullptr, EMoveComponentFlags::MOVECOMP_NoFlags, ETeleportType::TeleportPhysics);
 		}
 		/*else
 		{
