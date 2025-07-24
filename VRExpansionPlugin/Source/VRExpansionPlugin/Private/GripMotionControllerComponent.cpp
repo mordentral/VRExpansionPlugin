@@ -19,6 +19,7 @@
 #include "UObject/UObjectGlobals.h" // for FindObject<>
 #include "IXRTrackingSystem.h"
 #include "IXRSystemAssets.h"
+#include "SceneView.h"
 #include "DrawDebugHelpers.h"
 #include "TimerManager.h"
 #include "VRBaseCharacter.h"
