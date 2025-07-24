@@ -11,6 +11,8 @@ public class VRExpansionPlugin : ModuleRules
 
     public VRExpansionPlugin(ReadOnlyTargetRules Target) : base(Target)
     {
+        DefaultBuildSettings = BuildSettingsVersion.Latest;
+        IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
 

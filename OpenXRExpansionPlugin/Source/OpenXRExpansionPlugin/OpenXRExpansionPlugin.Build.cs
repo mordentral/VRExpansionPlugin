@@ -10,6 +10,9 @@ namespace UnrealBuildTool.Rules
         public OpenXRExpansionPlugin(ReadOnlyTargetRules Target) 
 				: base(Target)
         {
+            DefaultBuildSettings = BuildSettingsVersion.Latest;
+            IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
+
             SetupIrisSupport(Target);
 
             PublicDependencyModuleNames.AddRange(
