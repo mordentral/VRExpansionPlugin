@@ -12,6 +12,7 @@
 #include "TextureResource.h"
 #include "Engine/Texture.h"
 #include "Engine/Texture2D.h"
+#include "SceneView.h"
 #include "Engine/GameInstance.h"
 #include "SceneManagement.h"
 #include "Materials/Material.h"
