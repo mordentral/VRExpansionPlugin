@@ -373,6 +373,11 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 		{
 			bRepRollAndPitch = (Roll != 0 || Pitch != 0);
 		}
+		else
+		{
+			bool bCanRepRollAndPitch = (CharacterOwner && (CharacterOwner->bUseControllerRotationRoll || CharacterOwner->bUseControllerRotationPitch));
+			bRepRollAndPitch = bCanRepRollAndPitch && (Roll != 0 || Pitch != 0);
+		}
 	}
 	else
 	{
