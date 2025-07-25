@@ -730,7 +730,14 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 		if (RenderTarget)
 		{
-			ETextureSourceFormat TextureSourceFormat;
+			// TODO 5.7 need to figure out how to replace this in some way that isn't so fing slow
+			PRAGMA_DISABLE_DEPRECATION_WARNINGS
+			LayerDsec.Texture = RenderTarget->GetResource()->TextureRHI;
+			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
+			PRAGMA_ENABLE_DEPRECATION_WARNINGS
+
+			// Going to need to be changed in upcoming
+			/*ETextureSourceFormat TextureSourceFormat;
 			EPixelFormat TexturePixelFormat;
 			FText* Error = nullptr;
 
@@ -774,7 +781,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			else
 			{
 				LayerDsec.TextureObj = nullptr;
-			}
+			}*/
 
 			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
 		}
