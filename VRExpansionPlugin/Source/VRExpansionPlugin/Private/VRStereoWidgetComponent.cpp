@@ -731,59 +731,11 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		if (RenderTarget)
 		{
 			// TODO 5.7 need to figure out how to replace this in some way that isn't so fing slow
-			PRAGMA_DISABLE_DEPRECATION_WARNINGS
-			LayerDsec.Texture = RenderTarget->GetResource()->TextureRHI;
+			//PRAGMA_DISABLE_DEPRECATION_WARNINGS
+			//LayerDsec.Texture = RenderTarget->GetResource()->TextureRHI;
+			LayerDsec.TextureObj = RenderTarget;
 			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
-			PRAGMA_ENABLE_DEPRECATION_WARNINGS
-
-			// Going to need to be changed in upcoming
-			/*ETextureSourceFormat TextureSourceFormat;
-			EPixelFormat TexturePixelFormat;
-			FText* Error = nullptr;
-
-			if (RenderTarget->CanConvertToTexture(TextureSourceFormat, TexturePixelFormat, Error))
-			{
-				FImage ImageData;
-				if (FImageUtils::GetRenderTargetImage(RenderTarget, ImageData))
-				{
-					if (!IsValid(TextureRef) || TextureRef->GetSizeX() != ImageData.SizeX || TextureRef->GetSizeY() != ImageData.SizeY)
-					{
-						if (IsValid(TextureRef))
-						{
-							TextureRef->RemoveFromRoot();
-							TextureRef = nullptr;
-						}
-
-						TextureRef = FImageUtils::CreateTexture2DFromImage(ImageData);
-					}
-					else
-					{
-						uint8* MipData = static_cast<uint8*>(TextureRef->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
-						check(MipData != nullptr);
-						int64 MipDataSize = TextureRef->GetPlatformData()->Mips[0].BulkData.GetBulkDataSize();
-
-						ERawImageFormat::Type PixelFormatRawFormat;
-						EPixelFormat PixelFormat = FImageCoreUtils::GetPixelFormatForRawImageFormat(ImageData.Format, &PixelFormatRawFormat);
-						FImageView MipImage(MipData, ImageData.SizeX, ImageData.SizeY, 1, PixelFormatRawFormat, ImageData.GammaSpace);
-						check(MipImage.GetImageSizeBytes() <= MipDataSize); // is it exactly == ?
-
-						// copy into texture and convert if necessary :
-						FImageCore::CopyImage(ImageData, MipImage);
-
-						TextureRef->GetPlatformData()->Mips[0].BulkData.Unlock();
-
-						TextureRef->UpdateResource();
-					}
-
-					LayerDsec.TextureObj = TextureRef;
-				}
-			}
-			else
-			{
-				LayerDsec.TextureObj = nullptr;
-			}*/
-
-			LayerDsec.Flags |= (RenderTarget->GetMaterialType() == MCT_TextureExternal) ? IStereoLayers::LAYER_FLAG_TEX_EXTERNAL : 0;
+			//PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		}
 		// Forget the left texture implementation
 		//if (LeftTexture)
