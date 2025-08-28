@@ -10,6 +10,7 @@ namespace UnrealBuildTool.Rules
         public OpenXRExpansionPlugin(ReadOnlyTargetRules Target) 
 				: base(Target)
         {
+			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
             DefaultBuildSettings = BuildSettingsVersion.Latest;
             IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 
