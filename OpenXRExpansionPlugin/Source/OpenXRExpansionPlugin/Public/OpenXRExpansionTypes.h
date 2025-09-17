@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "UObject/ObjectMacros.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Animation/BoneReference.h"
 #include "UObject/Object.h"
 #include "Engine/EngineTypes.h"
 
