@@ -857,22 +857,6 @@ void AGrippableSkeletalMeshActor::BeginDestroy()
 	GripLogicScripts.Empty();
 }
 
-void AGrippableSkeletalMeshActor::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>& ObjList)
-{
-	Super::GetSubobjectsWithStableNamesForNetworking(ObjList);
-
-	if (bReplicateGripScripts)
-	{
-		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
-		{
-			if (UObject* SubObject = GripLogicScripts[i])
-			{
-				ObjList.Add(SubObject);
-			}
-		}
-	}
-}
-
 /////////////////////////////////////////////////
 //- Push networking getter / setter functions
 /////////////////////////////////////////////////

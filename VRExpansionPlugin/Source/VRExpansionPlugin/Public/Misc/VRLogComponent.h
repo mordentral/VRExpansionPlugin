@@ -67,7 +67,8 @@ public:
 		bIsDirty = false;
 		MaxStoredMessages = 1000;
 		GLog->AddOutputDevice(this);
-		GLog->SerializeBacklog(this);
+		// Deprecated. Do nothing because AddOutputDevice now serializes the backlog.
+		//GLog->SerializeBacklog(this);
 	}
 
 	~FVROutputLogHistory()

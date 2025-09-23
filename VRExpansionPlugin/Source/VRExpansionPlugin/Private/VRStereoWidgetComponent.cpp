@@ -888,7 +888,7 @@ public:
 
 		if (MaterialInstance)
 		{
-			MaterialRelevance = MaterialInstance->GetRelevance(GetScene().GetFeatureLevel());
+			MaterialRelevance = MaterialInstance->GetRelevance(GetScene().GetShaderPlatform());
 		}
 	}
 
