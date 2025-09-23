@@ -57,15 +57,15 @@ class FPhysicsReplicationAsyncVR : public IPhysicsReplicationAsync,
 	virtual bool ResimulationReplication(Chaos::FPBDRigidParticleHandle* Handle, FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds);
 
 public:
-	virtual void RegisterSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject, FNetworkPhysicsSettingsAsync InSettings) override;
+	virtual void RegisterSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject, TWeakPtr<const FNetworkPhysicsSettingsData> InSettings) override;
 
 private:
 	float LatencyOneWay;
 	FRigidBodyErrorCorrection ErrorCorrectionDefault;
-	FNetworkPhysicsSettingsAsync SettingsCurrent;
-	FNetworkPhysicsSettingsAsync SettingsDefault;
+	FNetworkPhysicsSettingsData SettingsCurrent;
+	FNetworkPhysicsSettingsData SettingsDefault;
 	TMap<Chaos::FConstPhysicsObjectHandle, FReplicatedPhysicsTargetAsync> ObjectToTarget;
-	TMap<Chaos::FConstPhysicsObjectHandle, FNetworkPhysicsSettingsAsync> ObjectToSettings;
+	TMap<Chaos::FConstPhysicsObjectHandle, TWeakPtr<const FNetworkPhysicsSettingsData>> ObjectToSettings;
 	TArray<const Chaos::Private::FPBDIsland*> ResimIslands;
 	TArray<const Chaos::FGeometryParticleHandle*> ResimIslandsParticles;
 	TArray<int32> ParticlesInResimIslands;

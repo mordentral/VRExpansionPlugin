@@ -93,7 +93,7 @@ public:
 	static void ConvertHandTransformsSpaceAndBack(TArray<FTransform>& OutTransforms, const TArray<FTransform>& WorldTransforms);
 
 	UFUNCTION(BlueprintCallable, Category = "VRExpansionFunctions|OpenXR", meta = (bIgnoreSelf = "true"))
-	static void GetMockUpControllerData(FXRMotionControllerData& MotionControllerData, FBPOpenXRActionSkeletalData& SkeletalMappingData, bool bOpenHand = false);
+	static void GetMockUpControllerData(FXRHandTrackingState& HandTrackingData,FXRMotionControllerState& MotionControllerData, FBPOpenXRActionSkeletalData& SkeletalMappingData, bool bOpenHand = false);
 
 	// Get a list of all currently tracked devices and their types, index in the array is their device index
 	// Returns failed if the openXR query failed (no interaction profile yet or openXR is not running)

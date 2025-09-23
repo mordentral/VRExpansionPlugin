@@ -542,12 +542,13 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 	bool bCorrectConnectedBodiesFriction = CVarCorrectConnectedBodiesFriction->GetBool();
 
 	// Assign per-actor settings from NetworkPhysicSettingsComponent if this actor has one
-	if (SettingsCurrent.Get())
+	if (SettingsCurrent.IsValid())
 	{
-		MaxLinearHardSnapDistance = SettingsCurrent.Get()->DefaultReplicationSettings.GetMaxLinearHardSnapDistance(MaxLinearHardSnapDistance);
-		bHardsnapLegacyInPT = SettingsCurrent.Get()->DefaultReplicationSettings.GetHardsnapDefaultLegacyInPT();
-		bCorrectConnectedBodies = SettingsCurrent.Get()->DefaultReplicationSettings.GetCorrectConnectedBodies();
-		bCorrectConnectedBodiesFriction = SettingsCurrent.Get()->DefaultReplicationSettings.GetCorrectConnectedBodiesFriction();
+		const FNetworkPhysicsSettingsData& SettingsData = SettingsCurrent.Pin()->GetSettings();
+		MaxLinearHardSnapDistance = SettingsData.DefaultReplicationSettings.GetMaxLinearHardSnapDistance(MaxLinearHardSnapDistance);
+		bHardsnapLegacyInPT = SettingsData.DefaultReplicationSettings.GetHardsnapDefaultLegacyInPT();
+		bCorrectConnectedBodies = SettingsData.DefaultReplicationSettings.GetCorrectConnectedBodies();
+		bCorrectConnectedBodiesFriction = SettingsData.DefaultReplicationSettings.GetCorrectConnectedBodiesFriction();
 	}
 
 	// Get Current state
@@ -1042,19 +1043,19 @@ void FPhysicsReplicationAsyncVR::OnPhysicsObjectUnregistered_Internal(Chaos::FCo
 	ObjectToSettings.Remove(PhysicsObject);
 }
 
-void FPhysicsReplicationAsyncVR::RegisterSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject, FNetworkPhysicsSettingsAsync InSettings)
+void FPhysicsReplicationAsyncVR::RegisterSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject, TWeakPtr<const FNetworkPhysicsSettingsData> InSettings)
 {
 	if (PhysicsObject != nullptr)
 	{
-		FNetworkPhysicsSettingsAsync& Settings = ObjectToSettings.FindOrAdd(PhysicsObject);
+		TWeakPtr<const FNetworkPhysicsSettingsData>& Settings = ObjectToSettings.FindOrAdd(PhysicsObject);
 		Settings = InSettings;
 	}
 }
 
 void FPhysicsReplicationAsyncVR::FetchObjectSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject)
 {
-	FNetworkPhysicsSettingsAsync* CustomSettings = ObjectToSettings.Find(PhysicsObject);
-	SettingsCurrent = (CustomSettings != nullptr) ? *CustomSettings : SettingsDefault;
+	TWeakPtr<const FNetworkPhysicsSettingsData>* CustomSettings = ObjectToSettings.Find(PhysicsObject);
+	SettingsCurrent = (CustomSettings && (*CustomSettings).IsValid()) ? *(*CustomSettings).Pin().Get() : SettingsDefault;
 }
 
 void FPhysicsReplicationAsyncVR::OnPostInitialize_Internal()
@@ -1215,7 +1216,7 @@ void FPhysicsReplicationAsyncVR::UpdateRewindDataTarget(const FPhysicsRepAsyncIn
 	{
 		// Cache all target states inside RewindData
 		const int32 LocalFrame = Input.ServerFrame - *Input.FrameOffset;
-		RewindData->SetTargetStateAtFrame(*Handle, LocalFrame, Chaos::FFrameAndPhase::EParticleHistoryPhase::PostPushData,
+		RewindData->SetTargetStateAtFrame(*Handle, LocalFrame, Chaos::FFrameAndPhase::EParticleHistoryPhase::PrePushData,
 			Input.TargetState.Position, Input.TargetState.Quaternion,
 			Input.TargetState.LinVel, FMath::DegreesToRadians(Input.TargetState.AngVel), (Input.TargetState.Flags & ERigidBodyFlags::Sleeping));
 	}
@@ -2429,7 +2430,7 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 	const bool bShouldSleep = (Target.TargetState.Flags & ERigidBodyFlags::Sleeping) != 0;
 	bool bClearTarget = true;
 
-	static constexpr Chaos::FFrameAndPhase::EParticleHistoryPhase RewindPhase = Chaos::FFrameAndPhase::EParticleHistoryPhase::PostPushData;
+	static constexpr Chaos::FFrameAndPhase::EParticleHistoryPhase RewindPhase = Chaos::FFrameAndPhase::EParticleHistoryPhase::PrePushData;
 
 	// Get state from locally cached history for frame corresponding to received data
 	const Chaos::FGeometryParticleState PastState = RewindData->GetPastStateAtFrame(*Handle, LocalFrame, RewindPhase);
