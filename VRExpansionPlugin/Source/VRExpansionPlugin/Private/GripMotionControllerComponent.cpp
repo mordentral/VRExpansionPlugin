@@ -7976,7 +7976,17 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 			{
 				if (IsValid(DroppingActor) && TransformAtDrop.IsValid())
 				{
-					DroppingActor->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::None);
+					bool bSkipSetTransform = false;
+					if (DroppingActor->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					{
+						FBPAdvGripSettings AdvSettings = IVRGripInterface::Execute_AdvancedGripSettings(DroppingActor);
+						bSkipSetTransform = AdvSettings.bDisallowSettingPositionOnClientAuthDrop;
+					}
+
+					if (!bSkipSetTransform)
+					{
+						DroppingActor->SetActorTransform(TransformAtDrop, false, nullptr, ETeleportType::None);
+					}
 				}
 			}
 		}break;
@@ -7986,7 +7996,17 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripRemoved_Implementatio
 			{
 				if (IsValid(DroppingComp) && TransformAtDrop.IsValid())
 				{
-					DroppingComp->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::None);
+					bool bSkipSetTransform = false;
+					if (DroppingComp->GetClass()->ImplementsInterface(UVRGripInterface::StaticClass()))
+					{
+						FBPAdvGripSettings AdvSettings = IVRGripInterface::Execute_AdvancedGripSettings(DroppingComp);
+						bSkipSetTransform = AdvSettings.bDisallowSettingPositionOnClientAuthDrop;
+					}
+
+					if (!bSkipSetTransform)
+					{
+						DroppingComp->SetWorldTransform(TransformAtDrop, false, nullptr, ETeleportType::None);
+					}
 				}
 			}
 		}break;
