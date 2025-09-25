@@ -1243,19 +1243,25 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
 		bool bDisallowLerping;
 
+	// If true, we will not set the position on grip release of a client auth grip
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
+		bool bDisallowSettingPositionOnClientAuthDrop;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AdvancedGripSettings")
 		FBPAdvGripPhysicsSettings PhysicsSettings;
 
 	FBPAdvGripSettings() :
 		GripPriority(1),
 		bSetOwnerOnGrip(1),
-		bDisallowLerping(0)
+		bDisallowLerping(0),
+		bDisallowSettingPositionOnClientAuthDrop(0)
 	{}
 
 	FBPAdvGripSettings(int GripPrio) :
 		GripPriority(GripPrio),
 		bSetOwnerOnGrip(1),
-		bDisallowLerping(0)
+		bDisallowLerping(0),
+		bDisallowSettingPositionOnClientAuthDrop(0)
 	{}
 };
 
