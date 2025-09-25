@@ -399,7 +399,9 @@ void UVRDialComponent::GetGripStiffnessAndDamping_Implementation(float &GripStif
 
 FBPAdvGripSettings UVRDialComponent::AdvancedGripSettings_Implementation()
 {
-	return FBPAdvGripSettings(GripPriority);
+	FBPAdvGripSettings GripSettings(GripPriority);
+	GripSettings.bDisallowSettingPositionOnClientAuthDrop = true;
+	return GripSettings;
 }
 
 float UVRDialComponent::GripBreakDistance_Implementation()
