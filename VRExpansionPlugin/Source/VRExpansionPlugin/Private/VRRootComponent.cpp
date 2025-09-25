@@ -1374,7 +1374,7 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TOverlapArrayView* NewPendingOve
 							const bool bCheckOverlapFlags = false; // Already checked above
 							if (!ShouldIgnoreOverlapResult(MyWorld, MyActor, *this, Result.OverlapObjectHandle.FetchActor(), *HitComp, bCheckOverlapFlags))
 							{
-								OverlapMultiResult.Emplace(HitComp, Result.ItemIndex);		// don't need to add unique unless the overlap check can return dupes
+								OverlapMultiResult.Emplace(HitComp, Result.GetItemIndex());		// don't need to add unique unless the overlap check can return dupes
 							}
 						}
 					}
