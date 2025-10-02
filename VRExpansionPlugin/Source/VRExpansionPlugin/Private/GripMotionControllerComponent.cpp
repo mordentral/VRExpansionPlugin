@@ -1257,6 +1257,55 @@ void UGripMotionControllerComponent::SetGripStiffnessAndDamping(
 	}
 }
 
+void UGripMotionControllerComponent::SetGripAdvancedGripSettings(
+	const FBPActorGripInformation& Grip,
+	EBPVRResultSwitch& Result,
+	uint8 GripPriority,
+	bool bSetOwnerOnGrip,
+	bool bDisallowLerping,
+	bool bDisallowSettingPositionOnClientAuthDrop
+)
+{
+	Result = EBPVRResultSwitch::OnFailed;
+	int fIndex = GrippedObjects.Find(Grip);
+
+	if (fIndex != INDEX_NONE)
+	{
+		GrippedObjects[fIndex].AdvancedGripSettings.GripPriority = GripPriority;
+		GrippedObjects[fIndex].AdvancedGripSettings.bSetOwnerOnGrip = bSetOwnerOnGrip;
+		GrippedObjects[fIndex].AdvancedGripSettings.bDisallowLerping = bDisallowLerping;
+		GrippedObjects[fIndex].AdvancedGripSettings.bDisallowSettingPositionOnClientAuthDrop = bDisallowSettingPositionOnClientAuthDrop;
+
+		DIRTY_GRIPPED_OBJECTS();
+
+		Result = EBPVRResultSwitch::OnSucceeded;
+	}
+	else
+	{
+		fIndex = LocallyGrippedObjects.Find(Grip);
+
+		if (fIndex != INDEX_NONE)
+		{
+			GrippedObjects[fIndex].AdvancedGripSettings.GripPriority = GripPriority;
+			GrippedObjects[fIndex].AdvancedGripSettings.bSetOwnerOnGrip = bSetOwnerOnGrip;
+			GrippedObjects[fIndex].AdvancedGripSettings.bDisallowLerping = bDisallowLerping;
+			GrippedObjects[fIndex].AdvancedGripSettings.bDisallowSettingPositionOnClientAuthDrop = bDisallowSettingPositionOnClientAuthDrop;
+
+			if (IsLocallyControlled() && !IsServer() && !IsTornOff() && LocallyGrippedObjects[fIndex].GripMovementReplicationSetting == EGripMovementReplicationSettings::ClientSide_Authoritive)
+			{
+				FBPActorGripInformation GripInfo = LocallyGrippedObjects[fIndex];
+				Server_NotifyLocalGripAddedOrChanged(GripInfo);
+			}
+
+			DIRTY_LOCALLY_GRIPPED_OBJECTS();
+
+			Result = EBPVRResultSwitch::OnSucceeded;
+		}
+	}
+
+
+}
+
 FTransform UGripMotionControllerComponent::CreateGripRelativeAdditionTransform_BP(
 	const FBPActorGripInformation &GripToSample,
 	const FTransform & AdditionTransform,
