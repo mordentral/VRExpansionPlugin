@@ -1207,6 +1207,18 @@ public:
 			float NewStiffness, float NewDamping, bool bAlsoSetAngularValues = false, float OptionalAngularStiffness = 0.0f, float OptionalAngularDamping = 0.0f
 		);
 
+		// Set the grips advanced settings, may need to recreate grip locally if altering something important (non owning clients will always re-create the grip)
+		// Can check HasGripAuthority to decide if callable locally
+		UFUNCTION(BlueprintCallable, Category = "GripMotionController", meta = (ExpandEnumAsExecs = "Result"))
+		void SetGripAdvancedGripSettings(
+			const FBPActorGripInformation& Grip,
+			EBPVRResultSwitch& Result,
+			uint8 GripPriority = 0,
+			bool bSetOwnerOnGrip = true,
+			bool bDisallowLerping = false,
+			bool bDisallowSettingPositionOnClientAuthDrop = false
+		);
+
 	// Used to convert an offset transform to grip relative, useful for storing an initial offset and then lerping back to 0 without re-calculating every tick
 	UFUNCTION(BlueprintPure, Category = "GripMotionController", meta = (DisplayName = "CreateGripRelativeAdditionTransform"))
 		FTransform CreateGripRelativeAdditionTransform_BP(
