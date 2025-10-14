@@ -770,14 +770,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = Replication, AdvancedDisplay)
 		EVRRotationQuantization RotationQuantizationLevel;
 
-	FORCEINLINE uint16 CompressAxisTo10BitShort(float Angle)
+	FORCEINLINE static uint16 CompressAxisTo10BitShort(float Angle)
 	{
 		// map [0->360) to [0->1024) and mask off any winding
 		return FMath::RoundToInt(Angle * 1024.f / 360.f) & 0xFFFF;
 	}
 
 
-	FORCEINLINE float DecompressAxisFrom10BitShort(uint16 Angle)
+	FORCEINLINE static float DecompressAxisFrom10BitShort(uint16 Angle)
 	{
 		// map [0->1024) to [0->360)
 		return (Angle * 360.f / 1024.f);

@@ -5,8 +5,7 @@
 
 #include "GameFramework/Actor.h"
 
-
-bool FRepAttachmentWithWeld::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+/*bool FRepAttachmentWithWeld::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 {
 	// Our additional weld bit is here
 	Ar.SerializeBits(&bIsWelded, 1);
@@ -17,7 +16,7 @@ bool FRepAttachmentWithWeld::NetSerialize(FArchive& Ar, class UPackageMap* Map, 
 	Ar << AttachSocket;
 	Ar << AttachComponent;
 	return true;
-}
+}*/
 
 FRepAttachmentWithWeld::FRepAttachmentWithWeld()
 {

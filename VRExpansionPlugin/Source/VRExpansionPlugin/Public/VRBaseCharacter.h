@@ -7,6 +7,9 @@
 #include "ReplicatedVRCameraComponent.h"
 #include "GameFramework/Character.h"
 #include "Navigation/PathFollowingComponent.h"
+
+#include "Iris/Serialization/NetSerializer.h"
+
 #include "VRBaseCharacter.generated.h"
 
 class AVRPlayerController;
@@ -179,6 +182,7 @@ public:
 		CapsuleHeight(0.0f)
 	{}
 
+	
 	/** Network serialization */
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
@@ -591,3 +595,28 @@ public:
 		bool GetCurrentNavigationPathPoints(TArray<FVector>& NavigationPointList);
 
 };
+
+
+
+USTRUCT()
+struct FVRReplicatedCapsuleHeightNetSerializerConfig : public FNetSerializerConfig
+{
+	GENERATED_BODY()
+};
+
+namespace UE::Net
+{
+	UE_NET_DECLARE_SERIALIZER(FVRReplicatedCapsuleHeightNetSerializer, VREXPANSIONPLUGIN_API);
+}
+
+
+USTRUCT()
+struct FVRSeatedCharacterInfoNetSerializerConfig : public FNetSerializerConfig
+{
+	GENERATED_BODY()
+};
+
+namespace UE::Net
+{
+	UE_NET_DECLARE_SERIALIZER(FVRSeatedCharacterInfoNetSerializer, VREXPANSIONPLUGIN_API);
+}

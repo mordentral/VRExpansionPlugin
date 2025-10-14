@@ -40,7 +40,7 @@ UGrippableSphereComponent::UGrippableSphereComponent(const FObjectInitializer& O
 
 	// #TODO we can register them maybe in the future
 	// Don't use the replicated list, use our custom replication instead
-	bReplicateUsingRegisteredSubObjectList = false;
+	bReplicateUsingRegisteredSubObjectList = true;
 }
 
 void UGrippableSphereComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const

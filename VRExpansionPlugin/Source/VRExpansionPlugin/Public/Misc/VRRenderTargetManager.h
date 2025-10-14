@@ -3,6 +3,7 @@
 #include "GameFramework/Actor.h"
 #include "Components/ActorComponent.h"
 #include "Containers/Queue.h"
+#include "Iris/Serialization/NetSerializer.h"
 #include "VRRenderTargetManager.generated.h"
 
 class UVRRenderTargetManager;
@@ -385,3 +386,22 @@ protected:
 	TQueue<FRenderDataStore *> RenderDataQueue;
 
 };
+
+
+USTRUCT()
+struct FBPVRReplicatedTextureStoreSerializerConfig : public FNetSerializerConfig
+{
+	GENERATED_BODY()
+};
+
+USTRUCT()
+struct FRenderManagerOperationSerializerConfig : public FNetSerializerConfig
+{
+	GENERATED_BODY()
+};
+
+namespace UE::Net
+{
+	UE_NET_DECLARE_SERIALIZER(FBPVRReplicatedTextureStoreNetSerializer, VREXPANSIONPLUGIN_API);
+	UE_NET_DECLARE_SERIALIZER(FRenderManagerOperationNetSerializer, VREXPANSIONPLUGIN_API);
+}
