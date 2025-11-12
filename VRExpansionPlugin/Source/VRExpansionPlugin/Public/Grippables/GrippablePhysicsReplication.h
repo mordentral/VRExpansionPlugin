@@ -71,6 +71,9 @@ private:
 	TArray<int32> ParticlesInResimIslands;
 	TArray<Chaos::FParticleID> ReplicatedParticleIDs;
 
+	int32 ResimOutOfBoundsCounter = 0;
+	float ResimErrorLogTimer = 0.0f;
+
 private:
 	FReplicatedPhysicsTargetAsync* AddObjectToReplication(Chaos::FConstPhysicsObjectHandle PhysicsObject);
 	void RemoveObjectFromReplication(Chaos::FConstPhysicsObjectHandle PhysicsObject);

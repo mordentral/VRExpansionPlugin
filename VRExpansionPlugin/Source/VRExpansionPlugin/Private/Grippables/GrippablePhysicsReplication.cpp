@@ -48,6 +48,7 @@ namespace VRPhysicsReplicationStatics
 namespace RenderInterpolationCVars
 {
 	bool bRenderInterpDebugDrawResimTrigger = false;
+	float RenderInterpDebugDrawResimBoxScale = 1.0f;
 }
 
 namespace PhysicsReplicationCVars
@@ -81,6 +82,7 @@ namespace PhysicsReplicationCVars
 		float VelStabilityMultiplier = 0.5f;
 		float AngVelStabilityMultiplier = 0.5f;
 		bool bDrawDebug = false;
+		float LogOutOfBoundsTimeLimit = 5.0f;
 
 		// Inside of NetworkPhysicsComponent - UPDATE AS CHANGE
 		int32 RedundantInputs = 2;
@@ -92,6 +94,11 @@ namespace PhysicsReplicationCVars
 		bool bCompareInputToTriggerRewind = false;
 		bool bEnableUnreliableFlow = true;
 		bool bEnableReliableFlow = false;
+
+		bool bTriggerResimOnInputReceive = false;
+		bool bApplyInputDecayOverSetTime = false;
+		float InputDecaySetTime = 0.15f;
+
 		bool bApplyDataInsteadOfMergeData = false;
 		bool bAllowInputExtrapolation = true;
 		bool bValidateDataOnGameThread = false;
@@ -1081,6 +1088,8 @@ void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
 	check(RigidsSolver);
 
+	ResimErrorLogTimer += RigidsSolver->GetAsyncDeltaTime();
+
 	// Early out if this is a resim frame
 	Chaos::FRewindData* RewindData = RigidsSolver->GetRewindData();
 	const bool bRewindDataExist = RewindData != nullptr;
@@ -1566,8 +1575,28 @@ void FPhysicsReplicationAsyncVR::CheckTargetResimValidity(FReplicatedPhysicsTarg
 			Target.RepMode = EPhysicsReplicationMode::PredictiveInterpolation;
 		}
 
-		UE_LOG(LogPhysics, Warning, TEXT("FPhysicsReplication received target frame (%d) out of rewind data bounds (%d, %d) - %s - Target will use EPhysicsReplicationMode: %s"),
-			LocalFrame, RewindData->GetEarliestFrame_Internal(), RewindData->CurrentFrame(), (LocalFrame < RewindData->GetEarliestFrame_Internal()) ? TEXT("Client is far ahead of the server, server might be dropping frames.") : TEXT("Client is behind the server, client might be dropping frames."), *UEnum::GetValueAsString(Target.RepMode));
+		if (ResimOutOfBoundsCounter == 0)
+		{
+			UE_LOG(LogPhysics, Warning, TEXT("FPhysicsReplication DESYNCED - received target frame (%d) out of rewind data bounds (%d, %d) - %s - Target will use %s")
+				, LocalFrame, RewindData->GetEarliestFrame_Internal(), RewindData->CurrentFrame()
+				, (LocalFrame < RewindData->GetEarliestFrame_Internal())
+				? TEXT("Client is far ahead of the server, server might be dropping frames.")
+				: TEXT("Client is behind the server, client might be dropping frames."), *UEnum::GetValueAsString(Target.RepMode));
+		}
+
+		ResimOutOfBoundsCounter++;
+		ResimErrorLogTimer = 0;
+	}
+	else
+	{
+		static const auto CVarLogOutOfBoundsTimeLimit = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.LogOutOfBoundsTimeLimit"));
+
+		if (ResimOutOfBoundsCounter > 0 && ResimErrorLogTimer > CVarLogOutOfBoundsTimeLimit->GetFloat())
+		{
+			UE_LOG(LogPhysics, Log, TEXT("FPhysicsReplication IN-SYNC - Received targets have now been within rewind data bounds again for at least %f seconds"), ResimErrorLogTimer);
+
+			ResimOutOfBoundsCounter = 0;
+		}
 	}
 }
 
@@ -2516,12 +2545,15 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 
 	static const auto CVarResimDrawDebug = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.DrawDebug"));
 	static const auto CVarRenderInterpDebugDrawResimTrigger = IConsoleManager::Get().FindConsoleVariable(TEXT("p.RenderInterp.DebugDraw.ResimTrigger"));
+	static const auto CVarRenderInterpDebugDrawResimBoxScale = IConsoleManager::Get().FindConsoleVariable(TEXT("p.RenderInterp.DebugDraw.ResimBoxScale"));
 	if (CVarResimDrawDebug->GetBool() || CVarRenderInterpDebugDrawResimTrigger->GetBool())
 	{
 		if (bShouldTriggerResim)
 		{
 			FVector Box = CVarRenderInterpDebugDrawResimTrigger->GetBool() ? FVector(6, 3, 2) : FVector(40, 20, 10);
-			const float DrawThickness = CVarRenderInterpDebugDrawResimTrigger->GetBool() ? 0.5f : 1.5f;
+			Box *= CVarRenderInterpDebugDrawResimBoxScale->GetFloat();
+			const float DrawThickness = (CVarRenderInterpDebugDrawResimTrigger->GetBool() ? 0.5f : 1.5f) * CVarRenderInterpDebugDrawResimBoxScale->GetFloat();
+
 
 			static const auto CVarDebugdrawLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.LifeTime"));
 			if (CVarRenderInterpDebugDrawResimTrigger->GetBool()) // Resim debug draw extension for render interpolation 
