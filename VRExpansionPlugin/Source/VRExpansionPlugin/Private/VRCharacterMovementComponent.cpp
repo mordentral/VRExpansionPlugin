@@ -919,6 +919,12 @@ void UVRCharacterMovementComponent::PhysWalking(float deltaTime, int32 Iteration
 		const float timeTick = GetSimulationTimeStep(remainingTime, Iterations);
 		remainingTime -= timeTick;
 
+#if UE_WITH_REMOTE_OBJECT_HANDLE
+		//Scale down impact force if CharacterMoveComponent is taking multiple substeps.
+		const float LastFrameDt = GetWorld()->GetDeltaSeconds();
+		PhysicsForceSubsteppingFactor = timeTick / LastFrameDt;
+#endif
+
 		// Save current values
 		UPrimitiveComponent * const OldBase = GetMovementBase();
 		const FVector PreviousBaseLocation = (OldBase != NULL) ? OldBase->GetComponentLocation() : FVector::ZeroVector;
@@ -3223,8 +3229,8 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 	Acceleration = ProjectToGravityFloor(Acceleration);
 	//if (!HasRootMotion())
 	//{
-		CalcVelocity(deltaTime, GroundFriction, false, BrakingDecelerationWalking);
-		devCodeVR(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
+	CalcVelocity(deltaTime, GroundFriction, false, BrakingDecelerationWalking);
+	devCodeVR(ensureMsgf(!Velocity.ContainsNaN(), TEXT("PhysNavWalking: Velocity contains NaN after CalcVelocity (%s)\n%s"), *GetPathNameSafe(this), *Velocity.ToString()));
 	//}
 
 	ApplyRootMotionToVelocity(deltaTime);
@@ -3270,7 +3276,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 
 		if (bDeltaMoveNearlyZero && bSameNavLocation)
 		{
-			if (const INavigationDataInterface * NavData = GetNavData())
+			if (const INavigationDataInterface* NavData = GetNavData())
 			{
 				if (!NavData->IsNodeRefValid(CachedNavLocation.NodeRef))
 				{
@@ -3280,6 +3286,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 			}
 		}
 	}
+
 
 	if (bDeltaMoveNearlyZero && bSameNavLocation)
 	{
@@ -3298,9 +3305,51 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 			SetGravitySpaceZ(AdjustedDest, GetGravitySpaceZ(CachedNavLocation.Location));
 		}
 
-		// Find the point on the NavMesh
-		const bool bHasNavigationData = FindNavFloor(AdjustedDest, DestNavLocation);
-		if (!bHasNavigationData)
+		bool bFoundPointOnNavMesh = false;
+		if (bSlideAlongNavMeshEdge)
+		{
+			if (const INavigationDataInterface* NavDataInterface = GetNavData())
+			{
+				const IPathFollowingAgentInterface* PathFollowingAgent = GetPathFollowingAgent();
+				const bool bIsOnNavLink = PathFollowingAgent && PathFollowingAgent->IsFollowingNavLink();
+
+				if (!bIsOnNavLink)
+				{
+					FNavLocation StartingNavFloorLocation;
+					bool bHasValidCachedNavLocation = NavDataInterface->IsNodeRefValid(CachedNavLocation.NodeRef);
+
+					// If we don't have a valid CachedNavLocation lets try finding the NavFloor where we're currently at and use that
+					if (!bHasValidCachedNavLocation)
+					{
+						bHasValidCachedNavLocation = FindNavFloor(OldLocation, OUT StartingNavFloorLocation);
+					}
+					else
+					{
+						StartingNavFloorLocation = CachedNavLocation;
+					}
+
+					if (bHasValidCachedNavLocation)
+					{
+						bFoundPointOnNavMesh = NavDataInterface->FindMoveAlongSurface(StartingNavFloorLocation, AdjustedDest, OUT DestNavLocation);
+
+						if (bFoundPointOnNavMesh)
+						{
+							AdjustedDest = ProjectToGravityFloor(DestNavLocation.Location) + GetGravitySpaceComponentZ(AdjustedDest);
+						}
+					}
+				}
+				else
+				{
+					bFoundPointOnNavMesh = FindNavFloor(AdjustedDest, DestNavLocation);
+				}
+			}
+		}
+		else
+		{
+			bFoundPointOnNavMesh = FindNavFloor(AdjustedDest, DestNavLocation);
+		}
+
+		if (!bFoundPointOnNavMesh)		
 		{
 			RestorePreAdditiveVRMotionVelocity();
 			SetMovementMode(MOVE_Walking);
@@ -3329,7 +3378,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 			// 4.16 UNCOMMENT
 			FHitResult HitResult;
 			SafeMoveUpdatedComponent(AdjustedDelta, UpdatedComponent->GetComponentQuat(), bSweepWhileNavWalking, HitResult);
-			
+
 			/* 4.16 Delete*/
 			//const bool bSweep = UpdatedPrimitive ? UpdatedPrimitive->bGenerateOverlapEvents : false;
 			//FHitResult HitResult;
@@ -3353,6 +3402,7 @@ void UVRCharacterMovementComponent::PhysNavWalking(float deltaTime, int32 Iterat
 
 	RestorePreAdditiveVRMotionVelocity();
 }
+
 
 void UVRCharacterMovementComponent::PhysSwimming(float deltaTime, int32 Iterations)
 {

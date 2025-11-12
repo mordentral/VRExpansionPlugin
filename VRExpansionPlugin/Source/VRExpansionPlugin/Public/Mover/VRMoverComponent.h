@@ -36,7 +36,7 @@ struct VREXPANSIONPLUGIN_API FLayeredMove_VRMovement : public FLayeredMoveBase
 		uint8 SettingsFlags;
 
 	// Never finish this movement
-	virtual bool IsFinished(float CurrentSimTimeMs) const;
+	virtual bool IsFinished(double CurrentSimTimeMs) const;
 
 	// Generate a movement 
 	virtual bool GenerateMove(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, const UMoverComponent* MoverComp, UMoverBlackboard* SimBlackboard, FProposedMove& OutProposedMove) override;

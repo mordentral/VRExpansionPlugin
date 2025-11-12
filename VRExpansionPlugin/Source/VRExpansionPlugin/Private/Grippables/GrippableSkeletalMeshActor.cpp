@@ -152,7 +152,7 @@ AGrippableSkeletalMeshActor::AGrippableSkeletalMeshActor(const FObjectInitialize
 
 	// #TODO we can register them maybe in the future
 	// Don't use the replicated list, use our custom replication instead
-	bReplicateUsingRegisteredSubObjectList = false;
+	bReplicateUsingRegisteredSubObjectList = true;
 
 	bAllowIgnoringAttachOnOwner = true;
 
@@ -855,22 +855,6 @@ void AGrippableSkeletalMeshActor::BeginDestroy()
 	}
 
 	GripLogicScripts.Empty();
-}
-
-void AGrippableSkeletalMeshActor::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>& ObjList)
-{
-	Super::GetSubobjectsWithStableNamesForNetworking(ObjList);
-
-	if (bReplicateGripScripts)
-	{
-		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
-		{
-			if (UObject* SubObject = GripLogicScripts[i])
-			{
-				ObjList.Add(SubObject);
-			}
-		}
-	}
 }
 
 /////////////////////////////////////////////////

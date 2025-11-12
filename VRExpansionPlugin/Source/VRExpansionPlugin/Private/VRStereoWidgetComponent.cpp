@@ -728,6 +728,15 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			}*/
 		}
 
+		// Implement the correct facing stereo layers cvar option
+		static const auto CVarXRUseLegacyFacing = IConsoleManager::Get().FindConsoleVariable(TEXT("XR.StereoLayers.UseLegacyFacing"));
+		if (!CVarXRUseLegacyFacing->GetBool())
+		{
+			// The default Open Xr Stereo layer object faces the camera at no rotation where as the unreal object faces away from it at zero rotation
+			LayerDsec.Transform.SetRotation(Transform.GetRotation() * FQuat(0., 0., 1., 0.));
+		}
+
+
 		if (RenderTarget)
 		{
 			// TODO 5.7 need to figure out how to replace this in some way that isn't so fing slow
@@ -888,7 +897,7 @@ public:
 
 		if (MaterialInstance)
 		{
-			MaterialRelevance = MaterialInstance->GetRelevance(GetScene().GetFeatureLevel());
+			MaterialRelevance = MaterialInstance->GetRelevance(GetScene().GetShaderPlatform());
 		}
 	}
 

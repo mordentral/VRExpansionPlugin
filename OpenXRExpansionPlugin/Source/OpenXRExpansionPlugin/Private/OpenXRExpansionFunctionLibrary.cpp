@@ -163,34 +163,40 @@ void UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& Trackin
 
 bool UOpenXRExpansionFunctionLibrary::GetOpenXRHandPose(FBPOpenXRActionSkeletalData& HandPoseContainer, UOpenXRHandPoseComponent* HandPoseComponent, bool bGetMockUpPose)
 {
-	FXRMotionControllerData MotionControllerData;
+	FXRHandTrackingState HandTrackingData;
+	FXRMotionControllerState MotionControllerData;
 
 	if (bGetMockUpPose)
 	{
-		GetMockUpControllerData(MotionControllerData, HandPoseContainer);
+		// #TODO 5.7 TEST THIS
+		UHeadMountedDisplayFunctionLibrary::GetMotionControllerState((UObject*)HandPoseComponent, EXRSpaceType::UnrealWorldSpace, HandPoseContainer.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left ? EControllerHand::Left : EControllerHand::Right, HandPoseContainer.PoseType, MotionControllerData);
+		GetMockUpControllerData(HandTrackingData,MotionControllerData, HandPoseContainer);
 		return true;
 	}
 
-	UHeadMountedDisplayFunctionLibrary::GetMotionControllerData((UObject*)HandPoseComponent, HandPoseContainer.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left ? EControllerHand::Left : EControllerHand::Right, MotionControllerData);
+	UHeadMountedDisplayFunctionLibrary::GetHandTrackingState((UObject*)HandPoseComponent, EXRSpaceType::UnrealWorldSpace, HandPoseContainer.TargetHand == EVRSkeletalHandIndex::EActionHandIndex_Left ? EControllerHand::Left : EControllerHand::Right, HandTrackingData);
 
-	if (MotionControllerData.bValid)
+	if (HandTrackingData.bValid)
 	{
-		HandPoseContainer.SkeletalTransforms.Empty(MotionControllerData.HandKeyPositions.Num());
+		HandPoseContainer.SkeletalTransforms.Empty(HandTrackingData.HandKeyLocations.Num());
 		FTransform ParentTrans = FTransform::Identity;
 
-		if (MotionControllerData.DeviceVisualType == EXRVisualType::Controller)
+	
+		// #TODO: 5.7 Preview!!
+		// Might need to restore all of this, have to test with vive
+		/*if (MotionControllerData.DeviceVisualType == EXRVisualType::Controller)
 		{
 			ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
 		}
-		else // EXRVisualType::Hand visual type
+		else // EXRVisualType::Hand visual type*/
 		{
-			ParentTrans = FTransform(MotionControllerData.HandKeyRotations[(uint8)EHandKeypoint::Palm], MotionControllerData.HandKeyPositions[(uint8)EHandKeypoint::Palm], FVector(1.f));
+			ParentTrans = FTransform(HandTrackingData.HandKeyRotations[(uint8)EHandKeypoint::Palm], HandTrackingData.HandKeyLocations[(uint8)EHandKeypoint::Palm], FVector(1.f));
 		}
 
-		for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); ++i)
+		for (int i = 0; i < HandTrackingData.HandKeyLocations.Num(); ++i)
 		{
 			// Convert to component space, we convert then to parent space later when applying it
-			HandPoseContainer.SkeletalTransforms.Add(FTransform(MotionControllerData.HandKeyRotations[i].GetNormalized(), MotionControllerData.HandKeyPositions[i], FVector(1.f)).GetRelativeTransform(ParentTrans));
+			HandPoseContainer.SkeletalTransforms.Add(FTransform(HandTrackingData.HandKeyRotations[i].GetNormalized(), HandTrackingData.HandKeyLocations[i], FVector(1.f)).GetRelativeTransform(ParentTrans));
 		}
 
 		//if (bGetCurlValues)
@@ -233,31 +239,33 @@ bool UOpenXRExpansionFunctionLibrary::GetOpenXRFingerCurlValuesForHand(
 	float& RingCurl,
 	float& PinkyCurl)
 {
-	FXRMotionControllerData MotionControllerData;
-	UHeadMountedDisplayFunctionLibrary::GetMotionControllerData(WorldContextObject, TargetHand, MotionControllerData);
+	FXRHandTrackingState HandTrackingData;
+	UHeadMountedDisplayFunctionLibrary::GetHandTrackingState(WorldContextObject, EXRSpaceType::UnrealWorldSpace, TargetHand, HandTrackingData);
 
 	// Fail if the count is too low
-	if (MotionControllerData.HandKeyPositions.Num() < EHandKeypointCount)
+	if (HandTrackingData.HandKeyLocations.Num() < EHandKeypointCount)
 		return false;
 
 	FTransform ParentTrans = FTransform::Identity;
 
-	if (MotionControllerData.DeviceVisualType == EXRVisualType::Controller)
+	// #TODO: 5.7
+	// TEST THIS and restore if we need too
+	/*if (MotionControllerData.DeviceVisualType == EXRVisualType::Controller)
 	{
 		ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
 	}
-	else // EXRVisualType::Hand visual type
+	else // EXRVisualType::Hand visual type*/
 	{
-		ParentTrans = FTransform(MotionControllerData.HandKeyRotations[(uint8)EHandKeypoint::Palm], MotionControllerData.HandKeyPositions[(uint8)EHandKeypoint::Palm], FVector(1.f));
+		ParentTrans = FTransform(HandTrackingData.HandKeyRotations[(uint8)EHandKeypoint::Palm], HandTrackingData.HandKeyLocations[(uint8)EHandKeypoint::Palm], FVector(1.f));
 	}
 
 	TArray<FTransform> TransformArray;
-	TransformArray.AddUninitialized(MotionControllerData.HandKeyPositions.Num());
+	TransformArray.AddUninitialized(HandTrackingData.HandKeyLocations.Num());
 
-	for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); ++i)
+	for (int i = 0; i < HandTrackingData.HandKeyLocations.Num(); ++i)
 	{
 		// Convert to component space, we convert then to parent space later when applying it
-		TransformArray[i] = FTransform(MotionControllerData.HandKeyRotations[i].GetNormalized(), MotionControllerData.HandKeyPositions[i], FVector(1.f)).GetRelativeTransform(ParentTrans);
+		TransformArray[i] = FTransform(HandTrackingData.HandKeyRotations[i].GetNormalized(), HandTrackingData.HandKeyLocations[i], FVector(1.f)).GetRelativeTransform(ParentTrans);
 	}
 
 	ThumbCurl = GetCurlValueForBoneRoot(TransformArray, EHandKeypoint::ThumbMetacarpal);
@@ -436,7 +444,7 @@ void UOpenXRExpansionFunctionLibrary::ConvertHandTransformsSpaceAndBack(TArray<F
 	}
 }
 
-void UOpenXRExpansionFunctionLibrary::GetMockUpControllerData(FXRMotionControllerData& MotionControllerData, FBPOpenXRActionSkeletalData& SkeletalMappingData, bool bOpenHand)
+void UOpenXRExpansionFunctionLibrary::GetMockUpControllerData(FXRHandTrackingState& HandTrackingData, FXRMotionControllerState& MotionControllerData, FBPOpenXRActionSkeletalData& SkeletalMappingData, bool bOpenHand)
 {
 
 
@@ -499,7 +507,7 @@ void UOpenXRExpansionFunctionLibrary::GetMockUpControllerData(FXRMotionControlle
 		FQuat(0.116890728f,-0.981477261f,0.138804480f,-0.061412390f)
 	};
 
-	MotionControllerData.HandKeyRotations = /*SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandRotationsOpen :*/ HandRotationsClosed;
+	HandTrackingData.HandKeyRotations = /*SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandRotationsOpen :*/ HandRotationsClosed;
 
 	TArray<FVector> HandPositionsClosed = {
 		// Closed palm - Left
@@ -561,9 +569,9 @@ void UOpenXRExpansionFunctionLibrary::GetMockUpControllerData(FXRMotionControlle
 		FVector(-1019.778f,-479.842f,203.819f)
 	};
 
-	MotionControllerData.HandKeyPositions = /*SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandPositionsOpen : */HandPositionsClosed;
+	HandTrackingData.HandKeyLocations = /*SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left ? HandPositionsOpen : */HandPositionsClosed;
 
-	if (SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left)
+	/*if (SkeletalMappingData.TargetHand != EVRSkeletalHandIndex::EActionHandIndex_Left)
 	{
 		MotionControllerData.GripPosition = FVector(-1018.305f, -478.019f, 209.872f);
 		MotionControllerData.GripRotation = FQuat(-0.116352126f, 0.039430488f, -0.757644236f, 0.641001403f);
@@ -572,15 +580,15 @@ void UOpenXRExpansionFunctionLibrary::GetMockUpControllerData(FXRMotionControlle
 	{
 		MotionControllerData.GripPosition = FVector(-1202.619f, -521.077f, 283.076f);
 		MotionControllerData.GripRotation = FQuat(0.040843058f, 0.116659224f, 0.980030060f, -0.155767411f);
-	}
+	}*/
 
-	MotionControllerData.DeviceName = TEXT("OpenXR");
-
+	HandTrackingData.DeviceName = TEXT("OpenXR");
+	
 	SkeletalMappingData.SkeletalTransforms.Empty(SkeletalMappingData.SkeletalTransforms.Num());
-	FTransform ParentTrans = FTransform(MotionControllerData.GripRotation, MotionControllerData.GripPosition, FVector(1.f));
-	for (int i = 0; i < MotionControllerData.HandKeyPositions.Num(); i++)
+	FTransform ParentTrans = FTransform(MotionControllerData.GripUnrealSpaceRotation, MotionControllerData.GripUnrealSpaceLocation, FVector(1.f));
+	for (int i = 0; i < HandTrackingData.HandKeyLocations.Num(); i++)
 	{
-		SkeletalMappingData.SkeletalTransforms.Add(FTransform(MotionControllerData.HandKeyRotations[i], MotionControllerData.HandKeyPositions[i], FVector(1.f)).GetRelativeTransform(ParentTrans));
+		SkeletalMappingData.SkeletalTransforms.Add(FTransform(HandTrackingData.HandKeyRotations[i], HandTrackingData.HandKeyLocations[i], FVector(1.f)).GetRelativeTransform(ParentTrans));
 	}
 
 	SkeletalMappingData.bHasValidData = (SkeletalMappingData.SkeletalTransforms.Num() == EHandKeypointCount);

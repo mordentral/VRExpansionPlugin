@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "UObject/ObjectMacros.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "HeadMountedDisplayTypes.h"
 #include "Animation/BoneReference.h"
 #include "UObject/Object.h"
 #include "Engine/EngineTypes.h"
@@ -97,6 +98,10 @@ public:
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		EVRSkeletalHandIndex TargetHand;
 
+	// Used to select the type of pose to retrieve from OpenXR, default is grip but you will want to use Palm when using the palm source for motion controller
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+	EXRControllerPoseType PoseType;
+
 	// A world scale override that will replace the engines current value and force into the tracked data if non zero
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		float WorldScaleOverride;
@@ -144,6 +149,7 @@ public:
 		bMirrorLeftRight = false;
 		bEnableUE4HandRepSavings = false;
 		TargetHand = EVRSkeletalHandIndex::EActionHandIndex_Right;
+		PoseType = EXRControllerPoseType::Grip;
 		bHasValidData = false;
 		LastHandGestureIndex = INDEX_NONE;
 		LastHandGesture = NAME_None;

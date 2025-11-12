@@ -25,6 +25,19 @@
 #include "Materials/Material.h"
 #include "Net/UnrealNetwork.h"
 
+// Iris
+#include "Serializers/SerializerHelpers.h"
+#include "Iris/Serialization/ObjectNetSerializer.h"
+#include "Iris/Core/NetObjectReference.h"
+#include "Iris/Serialization/NetSerializerDelegates.h"
+#include "Iris/Serialization/NetSerializers.h"
+#include "Iris/ReplicationState/PropertyNetSerializerInfoRegistry.h"
+#include "Iris/ReplicationState/ReplicationStateDescriptorBuilder.h"
+#include "Templates/IsPODType.h"
+
+#include "Iris/Serialization/SoftObjectNetSerializers.h"
+#include "Iris/Serialization/NetSerializerArrayStorage.h"
+
 namespace RLE_Funcs
 {
 	enum RLE_Flags
@@ -1741,7 +1754,6 @@ bool FRenderManagerOperation::NetSerialize(FArchive& Ar, class UPackageMap* Map,
 {
 	bOutSuccess = true;
 
-
 	Ar.SerializeIntPacked(OwnerID);
 	Ar.SerializeBits(&OperationType, 3);
 
@@ -1812,4 +1824,726 @@ bool FRenderManagerOperation::NetSerialize(FArchive& Ar, class UPackageMap* Map,
 	}
 
 	return bOutSuccess;
+}
+
+// SERIALIZER SETUP FOR IRIS
+namespace UE::Net
+{
+	struct alignas(8) FQuantizedRenderTargetTextureStoreData
+	{
+		uint32 Width;
+		uint32 Height;
+		uint32 bIsZipped;
+		
+		// I don't think people are going to go over the 512 default generally, and def shouldn't hit 2048
+		// We'll accept the slightly larger memory usage as this isn't a common operation
+		//static constexpr uint32 MaxBlobStorage = 2048;
+		//, AllocationPolicies::TInlinedElementAllocationPolicy<MaxBlobStorage>
+		typedef FNetSerializerArrayStorage<uint8> DataStorage;
+		DataStorage Data;
+	};
+}
+
+template <> struct TIsPODType<UE::Net::FQuantizedRenderTargetTextureStoreData> { enum { Value = true }; };
+
+namespace UE::Net
+{
+
+	// -----------------------------------------------------------------------------
+	// Iris serializer for FBPVRReplicatedTextureStore
+	// -----------------------------------------------------------------------------
+	struct FBPVRReplicatedTextureStoreNetSerializer
+	{
+		// Version is required. 
+		static constexpr uint32 Version = 0;
+
+		//Set to false when a same value delta compression method is undesirable, for example when the serializer only writes a single bit for the state. 
+		static constexpr bool bUseDefaultDelta = true;
+		// Not doing delta, the majority of the time a single bit (bool) controls the serialization of the entirity
+
+		static constexpr bool bHasDynamicState = true;
+
+		class FNetSerializerRegistryDelegates final : private UE::Net::FNetSerializerRegistryDelegates
+		{
+		public:
+			virtual ~FNetSerializerRegistryDelegates();
+
+		private:
+			virtual void OnPreFreezeNetSerializerRegistry() override;
+			//virtual void OnPostFreezeNetSerializerRegistry() override;
+		};
+
+		inline static FBPVRReplicatedTextureStoreNetSerializer::FNetSerializerRegistryDelegates NetSerializerRegistryDelegates;
+
+		typedef FBPVRReplicatedTextureStore SourceType;
+		typedef FQuantizedRenderTargetTextureStoreData QuantizedType;
+		typedef FBPVRReplicatedTextureStoreSerializerConfig ConfigType;
+		inline static const ConfigType DefaultConfig;
+
+		  // Called to create a "quantized snapshot" of the struct
+		static void Quantize(FNetSerializationContext& Context, const FNetQuantizeArgs& Args)
+		{
+			// Actually do the real quantization step here next instead of just in serialize, will save on memory overall
+			const SourceType& Source = *reinterpret_cast<const SourceType*>(Args.Source);
+			QuantizedType& Target = *reinterpret_cast<QuantizedType*>(Args.Target);
+		
+			Target.bIsZipped = Source.bIsZipped ? 1 : 0;
+			Target.Width = Source.Width;
+			Target.Height = Source.Height;
+
+			Target.Data.AdjustSize(Context, Source.PackedData.Num());
+
+			if (Target.Data.Num() > 0)
+			{
+				FMemory::Memcpy(Target.Data.GetData(), Source.PackedData.GetData(), Target.Data.Num());
+			}
+		}
+
+		// Called to apply the quantized snapshot back to gameplay memory
+		static void Dequantize(FNetSerializationContext& Context, const FNetDequantizeArgs& Args)
+		{
+			const QuantizedType& Source = *reinterpret_cast<const QuantizedType*>(Args.Source);
+			SourceType& Target = *reinterpret_cast<SourceType*>(Args.Target);
+
+			Target.bIsZipped = Source.bIsZipped != 0;
+			Target.Width = Source.Width;
+			Target.Height = Source.Height;
+			
+			//Target.Size = Source.PackedData.Num();
+			Target.PackedData.Reset(Source.Data.Num());
+					
+			if (Source.Data.Num() > 0)
+			{
+				Target.PackedData.AddUninitialized(Source.Data.Num());
+				FMemory::Memcpy(Target.PackedData.GetData(), Source.Data.GetData(), Source.Data.Num());
+			}
+		}
+
+		// Serialize into bitstream
+		static void Serialize(FNetSerializationContext& Context, const FNetSerializeArgs& Args)
+		{
+			const QuantizedType& Source = *reinterpret_cast<const QuantizedType*>(Args.Source);
+			FNetBitStreamWriter* Writer = Context.GetBitStreamWriter();
+
+			Writer->WriteBits(Source.bIsZipped, 1);
+			Writer->WriteBits(Source.Width, 32);
+			Writer->WriteBits(Source.Height, 32);
+
+			// Write array size first
+			uint32 Size = Source.Data.Num();
+			Writer->WriteBits(Size, 32);
+
+			if (Size > 0)
+			{
+				Writer->WriteBitStream((uint32*)Source.Data.GetData(), 0, Source.Data.Num() * 8);
+			}
+		}
+
+		// Deserialize from bitstream
+		static void Deserialize(FNetSerializationContext& Context, const FNetDeserializeArgs& Args)
+		{
+			QuantizedType& Target = *reinterpret_cast<QuantizedType*>(Args.Target);
+			FNetBitStreamReader* Reader = Context.GetBitStreamReader();
+
+			Target.bIsZipped = Reader->ReadBits(1);
+			Target.Width = Reader->ReadBits(32);
+			Target.Height = Reader->ReadBits(32);
+
+			uint32 Size = Reader->ReadBits(32);
+			Target.Data.AdjustSize(Context, Size);
+
+			if (Size > 0)
+			{
+				Reader->ReadBitStream((uint32*)Target.Data.GetData(), Target.Data.Num() * 8);
+			}
+		}
+
+		// Compare two instances to see if they differ
+		static bool IsEqual(FNetSerializationContext& Context, const FNetIsEqualArgs& Args)
+		{
+			// This struct is never stored, it is only packed and sent once to catch a client up
+			return false;
+		}
+
+		static void CloneDynamicState(FNetSerializationContext& Context, const FNetCloneDynamicStateArgs& Args)
+		{
+			const QuantizedType* Source = reinterpret_cast<const QuantizedType*>(Args.Source);
+			QuantizedType* Target = reinterpret_cast<QuantizedType*>(Args.Target);
+
+			// copy small fields
+			Target->bIsZipped = Source->bIsZipped;
+			Target->Width = Source->Width;
+			Target->Height = Source->Height;
+
+			Target->Data.Clone(Context, Source->Data);
+		}
+
+		static void FreeDynamicState(FNetSerializationContext& Context, const FNetFreeDynamicStateArgs& Args)
+		{
+			QuantizedType& Target = *reinterpret_cast<QuantizedType*>(Args.Source);
+			Target.Data.Free(Context);
+		}
+	};
+}
+
+namespace UE::Net
+{
+
+	struct alignas(8)  FQuantizedTriData
+	{
+		uint16 P1[2];
+		uint16 P2[2];
+		uint16 P3[2];
+	};
+
+	// TODO check on this if it changes over time.....
+	// Really needs to be a macro for getting struct sizes outside of the private files....
+	struct FQuantizedSoftObjectRef
+	{
+		alignas(8) uint8 Storage[64]; // Iris’ FSoftObjectNetSerializerQuantizedType is 48 bytes
+		// Keeping some overhead
+	};
+
+	struct alignas(8)  FQuantizedRenderManagerOperationData
+	{
+		uint32 OwnerID;
+		uint8 OperationType;
+		uint32 Color;
+		uint16 P1[2];
+		uint16 P2[2];
+		uint32 Thickness;
+
+		typedef FNetSerializerArrayStorage<FQuantizedTriData> TriStorage;
+		TriStorage Tris;
+
+		//String data
+		FQuantizedSoftObjectRef Texture;
+		FQuantizedSoftObjectRef Material;
+	};
+}
+
+template <> struct TIsPODType<UE::Net::FQuantizedRenderManagerOperationData> { enum { Value = true }; };
+
+namespace UE::Net
+{
+
+	// -----------------------------------------------------------------------------
+	// Iris serializer for FRenderManagerOperation
+	// -----------------------------------------------------------------------------
+	struct FRenderManagerOperationNetSerializer
+	{
+		inline static const FSoftObjectNetSerializerConfig ObjectPtrNetSerializerConfig;
+
+		inline static const FNetSerializerConfig* FObjectPtrSerializerConfigPtr = &ObjectPtrNetSerializerConfig;
+		inline static const FNetSerializer* FObjectPtrNetSerializerPtr;
+
+		// Version is required. 
+		static constexpr uint32 Version = 0;
+
+		//Set to false when a same value delta compression method is undesirable, for example when the serializer only writes a single bit for the state. 
+		static constexpr bool bUseDefaultDelta = true;
+		// Not doing delta, the majority of the time a single bit (bool) controls the serialization of the entirity
+
+		static constexpr bool bHasDynamicState = true;
+
+		class FNetSerializerRegistryDelegates final : private UE::Net::FNetSerializerRegistryDelegates
+		{
+		public:
+			virtual ~FNetSerializerRegistryDelegates();
+
+			void InitNetSerializer()
+			{
+				FRenderManagerOperationNetSerializer::FObjectPtrNetSerializerPtr = &UE_NET_GET_SERIALIZER(FSoftObjectNetSerializer);
+			}
+
+		private:
+			virtual void OnPreFreezeNetSerializerRegistry() override;
+			//virtual void OnPostFreezeNetSerializerRegistry() override;
+		};
+
+		inline static FRenderManagerOperationNetSerializer::FNetSerializerRegistryDelegates NetSerializerRegistryDelegates;
+
+		typedef FRenderManagerOperation SourceType;
+		typedef FQuantizedRenderManagerOperationData QuantizedType;
+		typedef FRenderManagerOperationSerializerConfig ConfigType;
+		inline static const ConfigType DefaultConfig;
+
+		// Called to create a "quantized snapshot" of the struct
+		static void Quantize(FNetSerializationContext& Context, const FNetQuantizeArgs& Args)
+		{
+			// Actually do the real quantization step here next instead of just in serialize, will save on memory overall
+			const SourceType& Source = *reinterpret_cast<const SourceType*>(Args.Source);
+			QuantizedType& Target = *reinterpret_cast<QuantizedType*>(Args.Target);
+
+			Target.OwnerID = Source.OwnerID;
+			Target.OperationType = (uint8)Source.OperationType;
+
+
+			switch ((ERenderManagerOperationType)Source.OperationType)
+			{
+			case ERenderManagerOperationType::Op_LineDraw:
+			{
+				// Color
+				uint8* ColorPtr = ((uint8*)&Target.Color);
+				ColorPtr[0] = Source.Color.R;
+				ColorPtr[1] = Source.Color.G;
+				ColorPtr[2] = Source.Color.B;
+				ColorPtr[3] = Source.Color.A;
+
+				// Thickness
+				Target.Thickness = Source.Thickness;
+
+				//P 1  1, 20
+				//P 2  2, 20
+				Target.P1[0] = (uint16)GetCompressedFloat<10000, 16>(Source.P1.X);
+				Target.P1[1] = (uint16)GetCompressedFloat<10000, 16>(Source.P1.Y);
+				Target.P2[0] = (uint16)GetCompressedFloat<10000, 16>(Source.P2.X);
+				Target.P2[1] = (uint16)GetCompressedFloat<10000, 16>(Source.P2.Y);
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TexDraw:
+			{
+				// Texture
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				//Target.Texture
+				FNetQuantizeArgs MemberArgsObj = Args;
+				MemberArgsObj.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				MemberArgsObj.Source = NetSerializerValuePointer(&Source.Texture);
+				MemberArgsObj.Target = NetSerializerValuePointer(&Target.Texture);
+				ObjSerializer->Quantize(Context, MemberArgsObj);
+
+				// P1 1, 20
+				Target.P1[0] = (uint16)GetCompressedFloat<10000, 16>(Source.P1.X);
+				Target.P1[1] = (uint16)GetCompressedFloat<10000, 16>(Source.P1.Y);
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TriDraw:
+			{
+				// Color
+				uint8* ColorPtr = ((uint8*)&Target.Color);
+				ColorPtr[0] = Source.Color.R;
+				ColorPtr[1] = Source.Color.G;
+				ColorPtr[2] = Source.Color.B;
+				ColorPtr[3] = Source.Color.A;
+
+				// Material
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				//Target.Material
+				FNetQuantizeArgs MemberArgsObj = Args;
+				MemberArgsObj.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				MemberArgsObj.Source = NetSerializerValuePointer(&Source.Material);
+				MemberArgsObj.Target = NetSerializerValuePointer(&Target.Material);
+				ObjSerializer->Quantize(Context, MemberArgsObj);
+
+				// Tris
+				Target.Tris.AdjustSize(Context, Source.Tris.Num());
+				FQuantizedTriData* TargetTriData = Target.Tris.GetData();
+
+				if (Target.Tris.Num() > 0)
+				{
+					for (uint32 i = 0; i < Target.Tris.Num(); ++i)
+					{
+						TargetTriData[i].P1[0] = (uint16)GetCompressedFloat<10000, 16>(Source.Tris[i].P1.X);
+						TargetTriData[i].P1[1] = (uint16)GetCompressedFloat<10000, 16>(Source.Tris[i].P1.Y);
+						TargetTriData[i].P2[0] = (uint16)GetCompressedFloat<10000, 16>(Source.Tris[i].P2.X);
+						TargetTriData[i].P2[1] = (uint16)GetCompressedFloat<10000, 16>(Source.Tris[i].P2.Y);
+						TargetTriData[i].P3[0] = (uint16)GetCompressedFloat<10000, 16>(Source.Tris[i].P3.X);
+						TargetTriData[i].P3[1] = (uint16)GetCompressedFloat<10000, 16>(Source.Tris[i].P3.Y);
+					}
+				}
+
+			}break;
+			}
+		}
+
+		// Called to apply the quantized snapshot back to gameplay memory
+		static void Dequantize(FNetSerializationContext& Context, const FNetDequantizeArgs& Args)
+		{
+			const QuantizedType& Source = *reinterpret_cast<const QuantizedType*>(Args.Source);
+			SourceType& Target = *reinterpret_cast<SourceType*>(Args.Target);
+
+			Target.OwnerID = Source.OwnerID;
+			Target.OperationType = (ERenderManagerOperationType)Source.OperationType;
+
+
+			switch ((ERenderManagerOperationType)Source.OperationType)
+			{
+			case ERenderManagerOperationType::Op_LineDraw:
+			{
+				// Color
+				uint8* ColorPtr = ((uint8*)&Source.Color);
+				Target.Color.R = ColorPtr[0];
+				Target.Color.G = ColorPtr[1];
+				Target.Color.B = ColorPtr[2];
+				Target.Color.A = ColorPtr[3];
+
+				// Thickness
+				Target.Thickness = Source.Thickness;
+
+				//P 1  1, 20
+				//P 2  2, 20
+				Target.P1.X = GetDecompressedFloat<10000, 16>(Source.P1[0]);
+				Target.P1.Y = GetDecompressedFloat<10000, 16>(Source.P1[1]);
+
+				Target.P2.X = GetDecompressedFloat<10000, 16>(Source.P2[0]);
+				Target.P2.Y = GetDecompressedFloat<10000, 16>(Source.P2[1]);
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TexDraw:
+			{
+				// Texture
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				//Target.Texture
+				FNetDequantizeArgs MemberArgsObj = Args;
+				MemberArgsObj.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				MemberArgsObj.Source = NetSerializerValuePointer(&Source.Texture);
+				MemberArgsObj.Target = NetSerializerValuePointer(&Target.Texture);
+				ObjSerializer->Dequantize(Context, MemberArgsObj);
+
+				// P1 1, 20
+				Target.P1.X = GetDecompressedFloat<10000, 16>(Source.P1[0]);
+				Target.P1.Y = GetDecompressedFloat<10000, 16>(Source.P1[1]);
+
+			}break;
+			
+			case ERenderManagerOperationType::Op_TriDraw:
+			{
+				// Color
+				uint8* ColorPtr = ((uint8*)&Source.Color);
+				Target.Color.R = ColorPtr[0];
+				Target.Color.G = ColorPtr[1];
+				Target.Color.B = ColorPtr[2];
+				Target.Color.A = ColorPtr[3];
+
+				// Material
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				//Target.Material
+				FNetDequantizeArgs MemberArgsObj = Args;
+				MemberArgsObj.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				MemberArgsObj.Source = NetSerializerValuePointer(&Source.Material);
+				MemberArgsObj.Target = NetSerializerValuePointer(&Target.Material);
+				ObjSerializer->Dequantize(Context, MemberArgsObj);
+
+				// Tris
+				Target.Tris.Reset(Source.Tris.Num());
+				Target.Tris.AddUninitialized(Source.Tris.Num());
+
+				const FQuantizedTriData* SourceTriData = Source.Tris.GetData();
+
+				if (Target.Tris.Num() > 0)
+				{
+					for (int32 i = 0; i < Target.Tris.Num(); ++i)
+					{
+						Target.Tris[i].P1.X = GetDecompressedFloat<10000, 16>(SourceTriData[i].P1[0]);
+						Target.Tris[i].P1.Y = GetDecompressedFloat<10000, 16>(SourceTriData[i].P1[1]);
+						Target.Tris[i].P2.X = GetDecompressedFloat<10000, 16>(SourceTriData[i].P2[0]);
+						Target.Tris[i].P2.Y = GetDecompressedFloat<10000, 16>(SourceTriData[i].P2[1]);
+						Target.Tris[i].P3.X = GetDecompressedFloat<10000, 16>(SourceTriData[i].P3[0]);
+						Target.Tris[i].P3.Y = GetDecompressedFloat<10000, 16>(SourceTriData[i].P3[1]);
+					}
+				}
+
+			}break;
+			}
+		}
+
+		// Serialize into bitstream
+		static void Serialize(FNetSerializationContext& Context, const FNetSerializeArgs& Args)
+		{
+			const QuantizedType& Source = *reinterpret_cast<const QuantizedType*>(Args.Source);
+			FNetBitStreamWriter* Writer = Context.GetBitStreamWriter();
+
+			Writer->WriteBits(Source.OwnerID, 32);
+			Writer->WriteBits(Source.OperationType, 8);
+
+			switch ((ERenderManagerOperationType)Source.OperationType)
+			{
+			case ERenderManagerOperationType::Op_LineDraw:
+			{
+				// Color
+				Writer->WriteBits(Source.Color, 32);
+
+				// Thickness
+				Writer->WriteBits(Source.Thickness, 32);
+
+				//P 1  1, 20
+				//P 2  2, 20
+				if (Writer->WriteBool(Source.P1[0] != 0)) {Writer->WriteBits(Source.P1[0], 16);}
+				if (Writer->WriteBool(Source.P1[1] != 0)) { Writer->WriteBits(Source.P1[1], 16);}
+				if (Writer->WriteBool(Source.P2[0] != 0)) { Writer->WriteBits(Source.P2[0], 16);}
+				if (Writer->WriteBool(Source.P2[1] != 0)) { Writer->WriteBits(Source.P2[1], 16);}
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TexDraw:
+			{
+				// Texture
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				//Target.Texture
+				FNetSerializeArgs MemberArgsObj = Args;
+				MemberArgsObj.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				MemberArgsObj.Source = NetSerializerValuePointer(&Source.Texture);
+				ObjSerializer->Serialize(Context, MemberArgsObj);
+
+				// P1 1, 20
+				if (Writer->WriteBool(Source.P1[0] != 0)) { Writer->WriteBits(Source.P1[0], 16); }
+				if (Writer->WriteBool(Source.P1[1] != 0)) { Writer->WriteBits(Source.P1[1], 16); }
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TriDraw:
+			{
+				// Color
+				Writer->WriteBits(Source.Color, 32);
+
+				// Material
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				//Target.Material
+				FNetSerializeArgs MemberArgsObj = Args;
+				MemberArgsObj.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				MemberArgsObj.Source = NetSerializerValuePointer(&Source.Material);
+				ObjSerializer->Serialize(Context, MemberArgsObj);
+
+				// Tris
+				const FQuantizedTriData* TargetTriData = Source.Tris.GetData();
+
+				uint32 TriSize = Source.Tris.Num();
+				Writer->WriteBits(TriSize, 32);
+
+				if (Source.Tris.Num() > 0)
+				{
+					for (uint32 i = 0; i < Source.Tris.Num(); ++i)
+					{
+						Writer->WriteBits(TargetTriData[i].P1[0], 16);
+						Writer->WriteBits(TargetTriData[i].P1[1], 16);
+						Writer->WriteBits(TargetTriData[i].P2[0], 16);
+						Writer->WriteBits(TargetTriData[i].P2[1], 16);
+						Writer->WriteBits(TargetTriData[i].P3[0], 16);
+						Writer->WriteBits(TargetTriData[i].P3[1], 16);
+					}
+					//Writer->WriteBitStream((uint32*)TargetTriData, 0, (Source.Tris.Num() * sizeof(FQuantizedTriData)) * 8);
+				}
+
+			}break;
+			}
+		}
+
+		// Deserialize from bitstream
+		static void Deserialize(FNetSerializationContext& Context, const FNetDeserializeArgs& Args)
+		{
+			QuantizedType& Target = *reinterpret_cast<QuantizedType*>(Args.Target);
+			FNetBitStreamReader* Reader = Context.GetBitStreamReader();
+
+			Target.OwnerID = Reader->ReadBits(32);
+			Target.OperationType = Reader->ReadBits(8);
+
+
+			switch ((ERenderManagerOperationType)Target.OperationType)
+			{
+			case ERenderManagerOperationType::Op_LineDraw:
+			{
+				// Color
+				Target.Color = Reader->ReadBits(32);
+
+				// Thickness
+				Target.Thickness = Reader->ReadBits(32);
+
+				//P 1  1, 20
+				//P 2  2, 20
+				Target.P1[0] = Reader->ReadBool() ? Reader->ReadBits(16) : 0;
+				Target.P1[1] = Reader->ReadBool() ? Reader->ReadBits(16) : 0;
+				Target.P2[0] = Reader->ReadBool() ? Reader->ReadBits(16) : 0;
+				Target.P2[1] = Reader->ReadBool() ? Reader->ReadBits(16) : 0;
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TexDraw:
+			{
+				// Texture
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				//Target.Texture
+				FNetDeserializeArgs MemberArgsObj = Args;
+				MemberArgsObj.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				MemberArgsObj.Target = NetSerializerValuePointer(&Target.Texture);
+				ObjSerializer->Deserialize(Context, MemberArgsObj);
+
+				// P1 1, 20
+				Target.P1[0] = Reader->ReadBool() ? Reader->ReadBits(16) : 0;
+				Target.P1[1] = Reader->ReadBool() ? Reader->ReadBits(16) : 0;
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TriDraw:
+			{
+				// Color
+				Target.Color = Reader->ReadBits(32);
+
+				// Material
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				//Target.Material
+				FNetDeserializeArgs MemberArgsObj = Args;
+				MemberArgsObj.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				MemberArgsObj.Target = NetSerializerValuePointer(&Target.Material);
+				ObjSerializer->Deserialize(Context, MemberArgsObj);
+
+				// Tris
+				uint32 TriSize = Reader->ReadBits(32);
+				Target.Tris.AdjustSize(Context, TriSize);
+
+				FQuantizedTriData* TargetTriData = Target.Tris.GetData();
+
+				if (Target.Tris.Num() > 0)
+				{
+					for (uint32 i = 0; i < TriSize; ++i)
+					{
+						TargetTriData[i].P1[0] = Reader->ReadBits(16);
+						TargetTriData[i].P1[1] = Reader->ReadBits(16);
+						TargetTriData[i].P2[0] = Reader->ReadBits(16);
+						TargetTriData[i].P2[1] = Reader->ReadBits(16);
+						TargetTriData[i].P3[0] = Reader->ReadBits(16);
+						TargetTriData[i].P3[1] = Reader->ReadBits(16);
+					}
+					//Reader->ReadBitStream((uint32*)&TargetTriData, (TriSize * sizeof(FQuantizedTriData)) * 8);
+				}
+			}break;
+			}
+		}
+
+		// Compare two instances to see if they differ
+		static bool IsEqual(FNetSerializationContext& Context, const FNetIsEqualArgs& Args)
+		{
+			// This struct is never stored, it is only packed and sent once to catch a client up
+			return false;
+		}
+
+		static void CloneDynamicState(FNetSerializationContext& Context, const FNetCloneDynamicStateArgs& Args)
+		{
+			const QuantizedType* Source = reinterpret_cast<const QuantizedType*>(Args.Source);
+			QuantizedType* Target = reinterpret_cast<QuantizedType*>(Args.Target);
+
+			Target->OwnerID = Source->OwnerID;
+			Target->OperationType = Source->OperationType;
+
+
+			switch ((ERenderManagerOperationType)Target->OperationType)
+			{
+			case ERenderManagerOperationType::Op_LineDraw:
+			{
+				// Color
+				Target->Color = Source->Color;
+
+				// Thickness
+				Target->Thickness = Source->Thickness;
+
+				//P 1  1, 20
+				//P 2  2, 20
+				Target->P1[0] = Source->P1[0];
+				Target->P1[1] = Source->P1[1];
+				Target->P2[0] = Source->P2[0];
+				Target->P2[1] = Source->P2[1];
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TexDraw:
+			{
+				// Texture
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				FNetCloneDynamicStateArgs ObjMemberArgs = Args;
+				ObjMemberArgs.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				ObjMemberArgs.Target = NetSerializerValuePointer(&Target->Texture);
+				ObjMemberArgs.Source = NetSerializerValuePointer(&Source->Texture);
+				ObjSerializer->CloneDynamicState(Context, ObjMemberArgs);
+				
+				// P1 1, 20
+				Target->P1[0] = Source->P1[0];
+				Target->P1[1] = Source->P1[1];
+
+			}break;
+
+			case ERenderManagerOperationType::Op_TriDraw:
+			{
+				// Color
+				Target->Color = Source->Color;
+
+				// Material
+				const FNetSerializer* ObjSerializer = FObjectPtrNetSerializerPtr;
+				const FNetSerializerConfig* ObjSerializerConfig = FObjectPtrSerializerConfigPtr;
+
+				FNetCloneDynamicStateArgs ObjMemberArgs = Args;
+				ObjMemberArgs.NetSerializerConfig = NetSerializerConfigParam(ObjSerializerConfig);
+				ObjMemberArgs.Target = NetSerializerValuePointer(&Target->Material);
+				ObjMemberArgs.Source = NetSerializerValuePointer(&Source->Material);
+				ObjSerializer->CloneDynamicState(Context, ObjMemberArgs);
+
+				// Tris
+				Target->Tris.Clone(Context, Source->Tris);
+
+			}break;
+			}
+		}
+
+		static void FreeDynamicState(FNetSerializationContext& Context, const FNetFreeDynamicStateArgs& Args)
+		{
+			QuantizedType& Target = *reinterpret_cast<QuantizedType*>(Args.Source);
+			Target.Tris.Free(Context);
+		}
+	};
+
+
+	static const FName PropertyNetSerializerRegistry_NAME_BPVRReplicatedTextureStore("BPVRReplicatedTextureStore");
+	UE_NET_IMPLEMENT_NAMED_STRUCT_NETSERIALIZER_INFO(PropertyNetSerializerRegistry_NAME_BPVRReplicatedTextureStore, FBPVRReplicatedTextureStoreNetSerializer);
+
+	FBPVRReplicatedTextureStoreNetSerializer::FNetSerializerRegistryDelegates::~FNetSerializerRegistryDelegates()
+	{
+		UE_NET_UNREGISTER_NETSERIALIZER_INFO(PropertyNetSerializerRegistry_NAME_BPVRReplicatedTextureStore);
+	}
+
+	void FBPVRReplicatedTextureStoreNetSerializer::FNetSerializerRegistryDelegates::OnPreFreezeNetSerializerRegistry()
+	{
+		UE_NET_REGISTER_NETSERIALIZER_INFO(PropertyNetSerializerRegistry_NAME_BPVRReplicatedTextureStore);
+	}
+
+
+	UE_NET_IMPLEMENT_SERIALIZER(FBPVRReplicatedTextureStoreNetSerializer);
+
+
+
+	static const FName PropertyNetSerializerRegistry_NAME_RenderManagerOperation("RenderManagerOperation");
+	UE_NET_IMPLEMENT_NAMED_STRUCT_NETSERIALIZER_INFO(PropertyNetSerializerRegistry_NAME_RenderManagerOperation, FRenderManagerOperationNetSerializer);
+
+	FRenderManagerOperationNetSerializer::FNetSerializerRegistryDelegates::~FNetSerializerRegistryDelegates()
+	{
+		UE_NET_UNREGISTER_NETSERIALIZER_INFO(PropertyNetSerializerRegistry_NAME_RenderManagerOperation);
+	}
+
+	void FRenderManagerOperationNetSerializer::FNetSerializerRegistryDelegates::OnPreFreezeNetSerializerRegistry()
+	{
+		InitNetSerializer();
+
+		UE_NET_REGISTER_NETSERIALIZER_INFO(PropertyNetSerializerRegistry_NAME_RenderManagerOperation);
+	}
+
+
+	UE_NET_IMPLEMENT_SERIALIZER(FRenderManagerOperationNetSerializer);
 }

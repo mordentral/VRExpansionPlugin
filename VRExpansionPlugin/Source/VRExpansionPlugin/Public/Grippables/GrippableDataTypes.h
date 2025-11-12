@@ -17,12 +17,13 @@ public:
 	UPROPERTY()
 	bool bIsWelded;
 
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
+	// Not really needed, removing it makes sure Iris will just work
+	//bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess);
 
 	FRepAttachmentWithWeld();
 };
 
-template<>
+/*template<>
 struct TStructOpsTypeTraits< FRepAttachmentWithWeld > : public TStructOpsTypeTraitsBase2<FRepAttachmentWithWeld>
 {
 	enum
@@ -31,3 +32,4 @@ struct TStructOpsTypeTraits< FRepAttachmentWithWeld > : public TStructOpsTypeTra
 		//WithNetSharedSerialization = true,
 	};
 };
+*/

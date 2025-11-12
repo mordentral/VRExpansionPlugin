@@ -29,7 +29,7 @@ FLayeredMove_VRMovement::FLayeredMove_VRMovement()
 	DurationMs = -1.0f;
 }
 
-bool FLayeredMove_VRMovement::IsFinished(float CurrentSimTimeMs) const
+bool FLayeredMove_VRMovement::IsFinished(double CurrentSimTimeMs) const
 {
 	// We never end the VR velocity injection
 	return false;

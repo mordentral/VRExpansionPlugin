@@ -50,7 +50,7 @@ AGrippableActor::AGrippableActor(const FObjectInitializer& ObjectInitializer)
 
 	// #TODO we can register them maybe in the future
 	// Don't use the replicated list, use our custom replication instead
-	bReplicateUsingRegisteredSubObjectList = false;
+	bReplicateUsingRegisteredSubObjectList = true;
 
 	// Setting a minimum of every 3rd frame (VR 90fps) for replication consideration
 	// Otherwise we will get some massive slow downs if the replication is allowed to hit the 2 per second minimum default
@@ -754,22 +754,6 @@ void AGrippableActor::BeginDestroy()
 	}
 
 	GripLogicScripts.Empty();
-}
-
-void AGrippableActor::GetSubobjectsWithStableNamesForNetworking(TArray<UObject*>& ObjList)
-{
-	Super::GetSubobjectsWithStableNamesForNetworking(ObjList);
-
-	if (bReplicateGripScripts)
-	{
-		for (int32 i = 0; i < GripLogicScripts.Num(); ++i)
-		{
-			if (UObject* SubObject = GripLogicScripts[i])
-			{
-				ObjList.Add(SubObject);
-			}
-		}
-	}
 }
 
 /////////////////////////////////////////////////
