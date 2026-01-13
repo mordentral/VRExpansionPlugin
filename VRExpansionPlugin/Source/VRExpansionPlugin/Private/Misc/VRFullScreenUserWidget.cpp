@@ -683,8 +683,8 @@ float FVRFullScreenUserWidget_PostProcess::GetDPIScaleForPostProcessHitTester(TW
 	FSceneViewport* Viewport = nullptr;
 	if (ensure(World.IsValid()) && World->IsGameWorld())
 	{
-		UGameViewportClient* ViewportClient = World->GetGameViewport();
-		Viewport = ensure(ViewportClient) ? ViewportClient->GetGameViewport() : nullptr;
+		UGameViewportClient* ViewportClient = World->GetGameViewport();		
+		Viewport = ViewportClient ? ViewportClient->GetGameViewport() : nullptr;
 	}
 
 #if WITH_EDITOR
