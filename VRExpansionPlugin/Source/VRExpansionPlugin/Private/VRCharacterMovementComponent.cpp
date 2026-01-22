@@ -2665,9 +2665,6 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 		return;
 	}
 
-	// Rewind the players position by the new capsule location
-	RewindVRRelativeMovement();
-
 	RestorePreAdditiveRootMotionVelocity();
 	//RestorePreAdditiveVRMotionVelocity();
 
@@ -2693,6 +2690,9 @@ void UVRCharacterMovementComponent::PhysFlying(float deltaTime, int32 Iterations
 		AdditionalVRInputVector = FVector::ZeroVector;
 		LastPreAdditiveVRVelocity = FVector::ZeroVector;
 	}
+	
+	// Rewind the players position by the new capsule location
+	RewindVRRelativeMovement();
 
 	Iterations++;
 	bJustTeleported = false;
