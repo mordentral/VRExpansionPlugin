@@ -42,6 +42,8 @@ public:
 
 	// Returns the head location projected from the world offset (if applicable)
 	virtual FVector GetProjectedVRLocation() const override;
+
+	virtual void ZeroToSeatInformation() override;
 	
 	
 	// Overriding to correct some nav stuff
