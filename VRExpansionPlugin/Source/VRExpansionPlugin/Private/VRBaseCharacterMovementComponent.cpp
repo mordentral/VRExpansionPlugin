@@ -322,10 +322,14 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 				if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 				{
 
-					// If we had stored smoothing data
+					// If we had stored smoothing data or net smoother is out of position
 					if (BaseVRCharacterOwner)
 					{
-						if (!bNetworkSmoothingComplete || !FVector2D(BaseVRCharacterOwner->NetSmoother->GetRelativeLocation()).Equals(FVector2D::ZeroVector))
+						if (
+							!bNetworkSmoothingComplete ||
+							!FVector2D(BaseVRCharacterOwner->NetSmoother->GetRelativeLocation()).Equals(FVector2D::ZeroVector) ||
+							!BaseVRCharacterOwner->NetSmoother->GetRelativeRotation().IsZero()
+							)
 						{
 							// Now also resets net smoother anyway
 							BaseVRCharacterOwner->ZeroToSeatInformation();
