@@ -468,10 +468,14 @@ public:
 		return FVector::ZeroVector;
 	}
 
-	void ZeroToSeatInformation()
+	virtual void ZeroToSeatInformation()
 	{
 
 		SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
+		if (!FVector2D(NetSmoother->GetRelativeLocation()).Equals(FVector2D::ZeroVector))
+		{
+			NetSmoother->SetRelativeLocation(FVector(0.f, 0.f, NetSmoother->GetRelativeLocation().Z));
+		}
 
 		NotifyOfTeleport();
 		//LeftMotionController->PostTeleportMoveGrippedObjects();

@@ -323,6 +323,18 @@ void UVRBaseCharacterMovementComponent::TickComponent(float DeltaTime, enum ELev
 				if (MovementMode == MOVE_Custom && CustomMovementMode == (uint8)EVRCustomMovementMode::VRMOVE_Seated)
 				{
 
+					// If we had stored smoothing data
+					if (BaseVRCharacterOwner)
+					{
+						if (!bNetworkSmoothingComplete || !FVector2D(BaseVRCharacterOwner->NetSmoother->GetRelativeLocation()).Equals(FVector2D::ZeroVector))
+						{
+							// Now also resets net smoother anyway
+							BaseVRCharacterOwner->ZeroToSeatInformation();
+							bNetworkSmoothingComplete = true;
+						}
+					}
+
+
 					//#TODO 5.0: Handle this?
 					/*FVector InputVector = FVector::ZeroVector;
 					bool bUsingAsyncTick = (CharacterMovementCVars::AsyncCharacterMovement == 1) && IsAsyncCallbackRegistered();
