@@ -197,10 +197,7 @@ void AVRCharacter::ZeroToSeatInformation()
 {
 
 	SetSeatRelativeLocationAndRotationVR(FVector::ZeroVector);
-	if (!FVector2D(NetSmoother->GetRelativeLocation()).Equals(FVector2D::ZeroVector))
-	{
-		NetSmoother->SetRelativeLocation(FVector(0.f, 0.f, this->VRRootReference->GetTargetHeightOffset().Z));
-	}
+	NetSmoother->SetRelativeTransform(FTransform(FQuat::Identity, FVector(0.f, 0.f, this->VRRootReference->GetTargetHeightOffset().Z), FVector(1.0f)));
 
 	NotifyOfTeleport();
 	//LeftMotionController->PostTeleportMoveGrippedObjects();
