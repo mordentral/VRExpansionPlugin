@@ -520,12 +520,13 @@ void AVRBaseCharacter::OnRep_SeatedCharInfo()
 				{
 					InitSeatedModeTransition();
 				}
-				else // Is just a reposition
+				else // Is just a reposition or zero
 				{
 					//if (this->Role != ROLE_SimulatedProxy)
 					ZeroToSeatInformation();
 				}
 
+				OnSeatingRepositioned();
 			}
 			else
 			{

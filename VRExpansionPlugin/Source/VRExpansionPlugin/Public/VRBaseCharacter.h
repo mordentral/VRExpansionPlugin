@@ -22,6 +22,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogBaseVRCharacter, Log, All);
 
 /** Delegate for notification when the lever state changes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVRSeatThresholdChangedSignature, bool, bIsWithinThreshold, float, ToThresholdScaler);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRSeatZeroedSignature);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVRPlayerStateReplicatedSignature, const APlayerState *, NewPlayerState);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRPlayerTeleportedSignature);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVRPlayerNetworkCorrectedSignature);
@@ -397,15 +398,22 @@ public:
 		void OnSeatedModeChanged(bool bNewSeatedMode, bool bWasAlreadySeated);
 	virtual void OnSeatedModeChanged_Implementation(bool bNewSeatedMode, bool bWasAlreadySeated) {}
 
+
+	// Called when seating has been re-zeroed or the transform has been changed or a new seat parent has been set
+	UFUNCTION(BlueprintNativeEvent, Category = "Seating")
+		void OnSeatingRepositioned();
+	virtual void OnSeatingRepositioned_Implementation() {}
+
 	// Called when the the player either transitions to/from the threshold boundry or the scaler value of being outside the boundry changes
 	// Can be used for warnings or screen darkening, ect
 	UFUNCTION(BlueprintNativeEvent, Category = "Seating")
 		void OnSeatThreshholdChanged(bool bIsWithinThreshold, float ToThresholdScaler);
 	virtual void OnSeatThreshholdChanged_Implementation(bool bIsWithinThreshold, float ToThresholdScaler) {}
 	
-	// Call to use an object
+	// When the seating threshold is changed
 	UPROPERTY(BlueprintAssignable, Category = "Seating")
 		FVRSeatThresholdChangedSignature OnSeatThreshholdChanged_Bind;
+
 
 	virtual FVector GetTargetHeightOffset()
 	{
