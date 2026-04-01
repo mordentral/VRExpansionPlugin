@@ -506,6 +506,7 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 			if (bLeftHandDominant == bIsRightHand)
 			{
 				FTransform ReturnTrans = this->GetRelativeTransform();
+
 				if (USceneComponent* AttParent = this->GetAttachParent())
 				{
 					ReturnTrans.Mirror(GetAsEAxis(MirrorAxis), GetAsEAxis(FlipAxis));
@@ -571,8 +572,20 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 	{
 		FVector ParentScale = this->GetAttachParent()->GetComponentScale();
 		// Take parent scale out of our relative transform early
+		
+		FQuat Q = HandTrans.GetRotation();
+		if (ParentScale.GetMin() < 0.0f)
+		{
+			// Flip axes depending on which scale axes are negative
+			if (ParentScale.X < 0.f) { Q.Y *= -1.f; Q.Z *= -1.f; }
+			if (ParentScale.Y < 0.f) { Q.X *= -1.f; Q.Z *= -1.f; }
+			if (ParentScale.Z < 0.f) { Q.X *= -1.f; Q.Y *= -1.f; }
+			HandTrans.SetRotation(Q.GetNormalized());
+		}
+
 		relTrans.ScaleTranslation(ParentScale);
 		ReturnTrans = HandTrans * relTrans;
+
 		// We add in the inverse of the parent scale to adjust the hand mesh
 		ReturnTrans.ScaleTranslation((FVector(1.0f) / ParentScale));
 		ReturnTrans.SetScale3D(FVector(1.0f));
@@ -598,7 +611,6 @@ FTransform UHandSocketComponent::GetMeshRelativeTransform(bool bIsRightHand, boo
 	{
 		ReturnTrans = ReturnTrans * GetAttachParent()->GetSocketTransform(GetAttachSocketName(), RTS_Component);
 	}
-
 
 	return ReturnTrans;
 }
