@@ -179,14 +179,14 @@ bool UVRBaseCharacterMovementComponent::ClientUpdatePositionAfterServerUpdate()
 
 	if (ClientData->SavedMoves.Num() == 0)
 	{
-		UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ClientUpdatePositionAfterServerUpdate No saved moves to replay"), ClientData->SavedMoves.Num());
+		UE_LOGF(LogNetPlayerMovement, Verbose, "ClientUpdatePositionAfterServerUpdate No saved moves to replay");
 
 		// With no saved moves to resimulate, the move the server updated us with is the last move we've done, no resimulation needed.
 		CharacterOwner->bClientResimulateRootMotion = false;
 		if (CharacterOwner->bClientResimulateRootMotionSources)
 		{
 			// With no resimulation, we just update our current root motion to what the server sent us
-			UE_LOG(LogRootMotion, VeryVerbose, TEXT("CurrentRootMotion getting updated to ServerUpdate state: %s"), *CharacterOwner->GetName());
+			UE_LOGF(LogRootMotion, VeryVerbose, "CurrentRootMotion getting updated to ServerUpdate state: %ls", *CharacterOwner->GetName());
 			CurrentRootMotion.UpdateStateFrom(CharacterOwner->SavedRootMotion);
 			CharacterOwner->bClientResimulateRootMotionSources = false;
 		}
@@ -216,7 +216,7 @@ bool UVRBaseCharacterMovementComponent::ClientUpdatePositionAfterServerUpdate()
 	const bool Orig_HasRequestedVelocity = HasRequestedVelocity();
 
 	// Replay moves that have not yet been acked.
-	UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ClientUpdatePositionAfterServerUpdate Replaying %d Moves, starting at Timestamp %f"), ClientData->SavedMoves.Num(), ClientData->SavedMoves[0]->TimeStamp);
+	UE_LOGF(LogNetPlayerMovement, Verbose, "ClientUpdatePositionAfterServerUpdate Replaying %d Moves, starting at Timestamp %f", ClientData->SavedMoves.Num(), ClientData->SavedMoves[0]->TimeStamp);
 	for (int32 i = 0; i < ClientData->SavedMoves.Num(); i++)
 	{
 		FSavedMove_Character* const CurrentMove = ClientData->SavedMoves[i].Get();
@@ -259,7 +259,7 @@ bool UVRBaseCharacterMovementComponent::ClientUpdatePositionAfterServerUpdate()
 		// If we were resimulating root motion sources, it's because we had mismatched state
 		// with the server - we just resimulated our SavedMoves and now need to restore
 		// CurrentRootMotion with the latest "good state"
-		UE_LOG(LogRootMotion, VeryVerbose, TEXT("CurrentRootMotion getting updated after ServerUpdate replays: %s"), *CharacterOwner->GetName());
+		UE_LOGF(LogRootMotion, VeryVerbose, "CurrentRootMotion getting updated after ServerUpdate replays: %ls", *CharacterOwner->GetName());
 		CurrentRootMotion.UpdateStateFrom(CharacterOwner->SavedRootMotion);
 		CharacterOwner->bClientResimulateRootMotionSources = false;
 	}
@@ -583,7 +583,7 @@ bool UVRBaseCharacterMovementComponent::FloorSweepTest(
 
 void UVRBaseCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleLocation, float LineDistance, float SweepDistance, FFindFloorResult& OutFloorResult, float SweepRadius, const FHitResult* DownwardSweepResult) const
 {
-	UE_LOG(LogVRBaseCharacterMovement, VeryVerbose, TEXT("[Role:%d] ComputeFloorDist: %s at location %s"), (int32)CharacterOwner->GetLocalRole(), *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
+	UE_LOGF(LogVRBaseCharacterMovement, VeryVerbose, "[Role:%d] ComputeFloorDist: %ls at location %ls", (int32)CharacterOwner->GetLocalRole(), *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
 	OutFloorResult.Clear();
 
 	float PawnRadius, PawnHalfHeight;
@@ -1647,9 +1647,9 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	}
 }
 
-void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode, FVector ServerGravityDirection)
+void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetworkPredictionData_Client_Character& ClientData, float TimeStamp, FVector NewLocation, FVector NewVelocity, FMovementBaseInterfaceData* ClientMovementBaseInterfaceData, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode, FVector ServerGravityDirection)
 {
-	Super::OnClientCorrectionReceived(ClientData, TimeStamp, NewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode, ServerGravityDirection);
+	Super::OnClientCorrectionReceived(ClientData, TimeStamp, NewLocation, NewVelocity, ClientMovementBaseInterfaceData, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode, ServerGravityDirection);
 
 
 	// If we got corrected then lets teleport our grips, this means that we were out of sync with the server or the server moved us
@@ -1683,7 +1683,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 	if (CharacterOwner->IsPlayingNetworkedRootMotionMontage())
 	{
 		bWasSimulatingRootMotion = true;
-		UE_LOG(LogRootMotion, Verbose, TEXT("UCharacterMovementComponent::SimulatedTick"));
+		UE_LOGF(LogRootMotion, Verbose, "UCharacterMovementComponent::SimulatedTick");
 
 		// Tick animations before physics.
 		if (CharacterOwner && CharacterOwner->GetMesh())
@@ -1758,7 +1758,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 	{
 		// We have root motion sources and possibly animated root motion
 		bWasSimulatingRootMotion = true;
-		UE_LOG(LogRootMotion, Verbose, TEXT("UCharacterMovementComponent::SimulatedTick"));
+		UE_LOGF(LogRootMotion, Verbose, "UCharacterMovementComponent::SimulatedTick");
 
 		// If we have RootMotionRepMoves, find the most recent important one and set position/rotation to it
 		bool bCorrectedToServer = false;
@@ -1786,7 +1786,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 			CurrentRootMotion.UpdateStateFrom(RootMotionRepMove.RootMotion.AuthoritativeRootMotion, true);
 
 			// Clear out existing RootMotionRepMoves since we've consumed the most recent
-			UE_LOG(LogRootMotion, Log, TEXT("\tClearing old moves in SimulatedTick (%d)"), CharacterOwner->RootMotionRepMoves.Num());
+			UE_LOGF(LogRootMotion, Log, "\tClearing old moves in SimulatedTick (%d)", CharacterOwner->RootMotionRepMoves.Num());
 			CharacterOwner->RootMotionRepMoves.Reset();
 		}
 
@@ -1907,7 +1907,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 	}
 	else
 	{
-		UE_LOG(LogVRBaseCharacterMovement, Verbose, TEXT("Skipping network smoothing for %s."), *GetNameSafe(CharacterOwner));
+		UE_LOGF(LogVRBaseCharacterMovement, Verbose, "Skipping network smoothing for %ls.", *GetNameSafe(CharacterOwner));
 	}
 }
 
@@ -1966,8 +1966,8 @@ void UVRBaseCharacterMovementComponent::MoveAutonomous(
 		check(OwnerMesh != nullptr)
 
 		static const auto CVarEnableQueuedAnimEventsOnServer = IConsoleManager::Get().FindConsoleVariable(TEXT("a.EnableQueuedAnimEventsOnServer"));
-		if (CVarEnableQueuedAnimEventsOnServer->GetInt())
-		{
+		if (!CVarEnableQueuedAnimEventsOnServer->GetInt())
+		/* {
 			if (UAnimInstance* AnimInstance = OwnerMesh->GetAnimInstance())
 			{
 				if (OwnerMesh->VisibilityBasedAnimTickOption <= EVisibilityBasedAnimTickOption::AlwaysTickPose && AnimInstance->NeedsUpdate())
@@ -1984,7 +1984,7 @@ void UVRBaseCharacterMovementComponent::MoveAutonomous(
 				}
 			}
 		}
-		else
+		else*/
 		{
 			// Revert back to old behavior if wanted/needed.
 			if (OwnerMesh->ShouldOnlyTickMontages(DeltaTime) || OwnerMesh->ShouldOnlyTickMontagesAndRefreshBones(DeltaTime))
@@ -2091,7 +2091,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			ClientData->MeshTranslationOffset = ClientData->MeshTranslationOffset + NewToOldVector;
 		}
 
-		UE_LOG(LogVRBaseCharacterMovement, Verbose, TEXT("Proxy %s SmoothCorrection(%.2f)"), *GetNameSafe(CharacterOwner), FMath::Sqrt(DistSq));
+		//UE_LOG(LogVRBaseCharacterMovement, Verbose, "Proxy %s SmoothCorrection(%.2f)", *GetNameSafe(CharacterOwner), FMath::Sqrt(DistSq));
 		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
 		{
 			// #TODO: Get this working in the future?
@@ -2159,8 +2159,9 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			const double OldClientTimeStamp = ClientData->SmoothingClientTimeStamp;
 			ClientData->SmoothingClientTimeStamp = FMath::LerpStable(ClientData->SmoothingServerTimeStamp, OldClientTimeStamp, 0.5);
 
-			UE_LOG(LogVRBaseCharacterMovement, VeryVerbose, TEXT("SmoothCorrection: Pull back client from ClientTimeStamp: %.6f to %.6f, ServerTimeStamp: %.6f for %s"),
+			UE_LOGF(LogVRBaseCharacterMovement, VeryVerbose, "SmoothCorrection: Pull back client from ClientTimeStamp: %.6f to %.6f, ServerTimeStamp: %.6f for %ls",
 				OldClientTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->SmoothingServerTimeStamp, *GetNameSafe(CharacterOwner));
+
 		}
 
 		// Using server timestamp lets us know how much time actually elapsed, regardless of packet lag variance.
@@ -2193,8 +2194,9 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 		ClientData->LastCorrectionDelta = ClientData->SmoothingServerTimeStamp - ClientData->SmoothingClientTimeStamp;
 		ClientData->LastCorrectionTime = MyWorld->GetTimeSeconds();
 
-		UE_LOG(LogVRBaseCharacterMovement, VeryVerbose, TEXT("SmoothCorrection: WorldTime: %.6f, ServerTimeStamp: %.6f, ClientTimeStamp: %.6f, Delta: %.6f for %s"),
-		MyWorld->GetTimeSeconds(), ClientData->SmoothingServerTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->LastCorrectionDelta, *GetNameSafe(CharacterOwner));
+		UE_LOGF(LogVRBaseCharacterMovement, VeryVerbose, "SmoothCorrection: WorldTime: %.6f, ServerTimeStamp: %.6f, ClientTimeStamp: %.6f, Delta: %.6f for %ls",
+			MyWorld->GetTimeSeconds(), ClientData->SmoothingServerTimeStamp, ClientData->SmoothingClientTimeStamp, ClientData->LastCorrectionDelta, *GetNameSafe(CharacterOwner));
+
 		/*
 		Visualize network smoothing was here, removed it
 		*/

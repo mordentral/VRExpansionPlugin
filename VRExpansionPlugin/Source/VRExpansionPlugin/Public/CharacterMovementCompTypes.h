@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/ScopedMovementUpdate.h"
+#include "Interfaces/MovementBaseInterface.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "CharacterMovementCompTypes.generated.h"
 
@@ -508,7 +509,7 @@ struct TStructOpsTypeTraits< FVRConditionalMoveRep > : public TStructOpsTypeTrai
 };
 
 // #TODO: DELETE THIS
-USTRUCT()
+/*USTRUCT()
 struct VREXPANSIONPLUGIN_API FVRConditionalMoveRep2
 {
 	GENERATED_USTRUCT_BODY()
@@ -545,7 +546,7 @@ public:
 		ClientPitch = (Rotation32 >> 16);
 	}
 
-	/** Network serialization */
+	// Network serialization 
 	// Doing a custom NetSerialize here because this is sent via RPCs and should change on every update
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
@@ -603,7 +604,7 @@ struct TStructOpsTypeTraits< FVRConditionalMoveRep2 > : public TStructOpsTypeTra
 	{
 		WithNetSerializer = true
 	};
-};
+};*/
 
 /**
 * Helper to change mesh bone updates within a scope.

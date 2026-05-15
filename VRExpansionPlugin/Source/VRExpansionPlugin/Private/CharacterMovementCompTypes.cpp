@@ -150,7 +150,8 @@ void FSavedMove_VRBaseCharacter::CombineWith(const FSavedMove_Character* OldMove
 	CharMovement->UpdatedComponent->SetWorldLocationAndRotation(OldStartLocation, OldMove->StartRotation, false, nullptr, CharMovement->GetTeleportType());
 	CharMovement->Velocity = OldMove->StartVelocity;
 
-	CharMovement->SetBase(OldMove->StartBase.Get(), OldMove->StartBoneName);
+	FMovementBaseInterfaceData OldMovementBaseInterfaceData = OldMove->StartMovementBaseInterfaceData;
+	CharMovement->SetBase(&OldMovementBaseInterfaceData, OldMove->StartBoneName);
 	CharMovement->CurrentFloor = OldMove->StartFloor;
 
 	// Now that we have reverted to the old position, prepare a new move from that position,
@@ -439,8 +440,12 @@ bool FVRCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Charact
 	//}
 
 	// Movement base needs to always send now since they allow for relative based velocity
-	SerializeOptionalValue<UPrimitiveComponent*>(bIsSaving, Ar, MovementBase, nullptr);
+	SerializeOptionalValue<TObjectPtr<UObject>>(bIsSaving, Ar, MovementBasePhysicsObjectOwner, nullptr);
 	SerializeOptionalValue<FName>(bIsSaving, Ar, MovementBaseBoneName, NAME_None);
+
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+		MovementBase = Cast<UPrimitiveComponent>(MovementBasePhysicsObjectOwner.Get());
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	bool bHasReplicatedMovementMode = ReplicatedMovementMode != EVRConjoinedMovementModes::C_MOVE_MAX;
 	Ar.SerializeBits(&bHasReplicatedMovementMode, 1);

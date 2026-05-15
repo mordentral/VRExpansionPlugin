@@ -5,6 +5,7 @@
 //#include "Engine/EngineBaseTypes.h"
 //#include "Engine/EngineTypes.h"
 #include "CharacterMovementCompTypes.h"
+#include "Interfaces/MovementBaseInterface.h"
 #include "VRBaseCharacterMovementComponent.h"
 #include "VRCharacterMovementComponent.generated.h"
 
@@ -124,6 +125,9 @@ public:
 
 	// Engines version of this is private for some reason, making it impossible to override the function that uses it.
 	TWeakObjectPtr<UPrimitiveComponent> LastServerMovementBaseVR = nullptr;
+	FMovementBaseInterfaceData LastMovementBaseInterfaceDataVR;
+
+	//bClientIgnoreMovementCorrections Was added
 
 	virtual bool ShouldCorrectRotation() const override { return !bUseClientControlRotation; }
 	virtual void ClientHandleMoveResponse(const FCharacterMoveResponseDataContainer& MoveResponse) override;
@@ -135,16 +139,18 @@ public:
 	* RelativeClientLocation will be a relative location if MovementBaseUtility::UseRelativePosition(ClientMovementBase) is true, or a world location if false.
 	* @see ServerCheckClientError()
 	*/
-	virtual void ServerMoveHandleClientErrorVR(float ClientTimeStamp, float DeltaTime, const FVector& Accel, const FVector& RelativeClientLocation, FRotator ClientRot, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode);
-
+	//virtual void ServerMoveHandleClientErrorVR(float ClientTimeStamp, float DeltaTime, const FVector& Accel, const FVector& RelativeClientLocation, FRotator ClientRot, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode);
+	virtual void ServerMoveHandleClientErrorVR(float ClientTimeStamp, float DeltaTime, const FVector& Accel, const FVector& RelativeClientLocation, FRotator ClientRot, FMovementBaseInterfaceData* ClientMovementBaseInterfaceData, FName ClientBaseBoneName, uint8 ClientMovementMode);
 	/**
 	* Check for Server-Client disagreement in position or other movement state important enough to trigger a client correction.
 	* @see ServerMoveHandleClientError()
 	*/
 	virtual bool ServerCheckClientErrorVR(float ClientTimeStamp, float DeltaTime, const FVector& Accel, const FVector& ClientWorldLocation, FRotator ClientRot, const FVector& RelativeClientLocation, UPrimitiveComponent* ClientMovementBase, FName ClientBaseBoneName, uint8 ClientMovementMode);
+	virtual bool ServerCheckClientErrorVR(float ClientTimeStamp, float DeltaTime, const FVector& Accel, const FVector& ClientWorldLocation, FRotator ClientRot, const FVector& RelativeClientLocation, FMovementBaseInterfaceData* ClientMovementBaseInterfaceData, FName ClientBaseBoneName, uint8 ClientMovementMode);
 
 	/** Replicate position correction to client, associated with a timestamped servermove.  Client will replay subsequent moves after applying adjustment.  */
-	virtual void ClientAdjustPositionVR_Implementation(float TimeStamp, FVector NewLoc, /*uint16 NewYaw,*/ FVector NewVel, UPrimitiveComponent* NewBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode, TOptional<FRotator> OptionalRotation = TOptional<FRotator>(), TOptional<FVector> OptionalGravityDirection = TOptional<FVector>());
+	virtual void ClientAdjustPositionVR_Implementation(float TimeStamp, FVector NewLoc, /*uint16 NewYaw,*/ FVector NewVel, UPrimitiveComponent* ClientMovementBase, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode, TOptional<FRotator> OptionalRotation = TOptional<FRotator>(), TOptional<FVector> OptionalGravityDirection = TOptional<FVector>());
+	virtual void ClientAdjustPositionVR_Implementation(float TimeStamp, FVector NewLoc, /*uint16 NewYaw,*/ FVector NewVel, FMovementBaseInterfaceData* ClientMovementBaseInterfaceData, FName NewBaseBoneName, bool bHasBase, bool bBaseRelativePosition, uint8 ServerMovementMode, TOptional<FRotator> OptionalRotation = TOptional<FRotator>(), TOptional<FVector> OptionalGravityDirection = TOptional<FVector>());
 
 	virtual bool ClientUpdatePositionAfterServerUpdate() override;
 	///////////////////////////

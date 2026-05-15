@@ -78,24 +78,24 @@ public:
 
 	// This is all overrides to fix the skeletal mesh inverse simulation bug
 	// WILL BE REMOVED LATER when the engine is fixed
-	FSkeletalMeshComponentEndPhysicsTickFunctionVR EndPhysicsTickFunctionVR;
-	friend struct FSkeletalMeshComponentEndPhysicsTickFunctionVR;
-	void EndPhysicsTickComponentVR(FSkeletalMeshComponentEndPhysicsTickFunctionVR& ThisTickFunction);
-	void BlendInPhysicsInternalVR(FTickFunction& ThisTickFunction);
-	void FinalizeAnimationUpdateVR();
+	//FSkeletalMeshComponentEndPhysicsTickFunctionVR EndPhysicsTickFunctionVR;
+	//friend struct FSkeletalMeshComponentEndPhysicsTickFunctionVR;
+	//void EndPhysicsTickComponentVR(FSkeletalMeshComponentEndPhysicsTickFunctionVR& ThisTickFunction);
+	//void BlendInPhysicsInternalVR(FTickFunction& ThisTickFunction);
+	//void FinalizeAnimationUpdateVR();
 
 	// Weld Fix until epic fixes it #TODO: check back in on this and remove and the asset include when epic fixes it
 	virtual void GetWeldedBodies(TArray<FBodyInstance*>& OutWeldedBodies, TArray<FName>& OutLabels, bool bIncludingAutoWeld) override;
 	virtual FBodyInstance* GetBodyInstance(FName BoneName = NAME_None, bool bGetWelded = true, int32 Index = INDEX_NONE) const override;
 
-	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override
+	/*virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override
 	{
 		// Get rid of inverse issues
 		FTransform newLocalToWorld = LocalToWorld;
 		newLocalToWorld.SetScale3D(newLocalToWorld.GetScale3D().GetAbs());
 
 		return Super::CalcBounds(newLocalToWorld);
-	}
+	}*/
 
 	UFUNCTION(BlueprintPure, Category = "VRExpansionFunctions")
 	FBoxSphereBounds GetLocalBounds() const
@@ -103,9 +103,9 @@ public:
 		return this->GetCachedLocalBounds();
 	}
 
-	void PerformBlendPhysicsBonesVR(const TArray<FBoneIndexType>& InRequiredBones, TArray<FTransform>& InOutComponentSpaceTransforms, TArray<FTransform>& InOutBoneSpaceTransforms);
-	virtual void RegisterEndPhysicsTick(bool bRegister) override;
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	//void PerformBlendPhysicsBonesVR(const TArray<FBoneIndexType>& InRequiredBones, TArray<FTransform>& InOutComponentSpaceTransforms, TArray<FTransform>& InOutBoneSpaceTransforms);
+	//virtual void RegisterEndPhysicsTick(bool bRegister) override;
+	//virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	// END INVERSED MESH FIX
 
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
