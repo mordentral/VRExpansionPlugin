@@ -35,8 +35,7 @@ public:
 * Has the upside of also being a blueprintable base since UE4 doesn't allow that with std ones
 */
 
-USTRUCT()
-struct FSkeletalMeshComponentEndPhysicsTickFunctionVR : public FTickFunction
+/* FSkeletalMeshComponentEndPhysicsTickFunctionVR: public FTickFunction
 {
 	GENERATED_USTRUCT_BODY()
 
@@ -56,7 +55,7 @@ struct TStructOpsTypeTraits<FSkeletalMeshComponentEndPhysicsTickFunctionVR> : pu
 	{
 		WithCopy = false
 	};
-};
+};*/
 
 // A base skeletal mesh component that has been added to temp correct an engine bug with inversed scale and physics
 UCLASS(Blueprintable, meta = (ChildCanTick, BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))

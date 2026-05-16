@@ -39,11 +39,12 @@ class FPhysicsReplicationAsyncVR : public IPhysicsReplicationAsync,
 	public Chaos::TSimCallbackObject<
 	FPhysicsReplicationAsyncInput,
 	Chaos::FSimCallbackNoOutput,
-	Chaos::ESimCallbackOptions::Presimulate | Chaos::ESimCallbackOptions::PhysicsObjectUnregister>
+	Chaos::ESimCallbackOptions::Presimulate | Chaos::ESimCallbackOptions::PostSolve | Chaos::ESimCallbackOptions::PhysicsObjectUnregister>
 {
 	virtual FName GetFNameForStatId() const override;
 	virtual void OnPostInitialize_Internal() override;
 	virtual void OnPreSimulate_Internal() override;
+	virtual void OnPostSolve_Internal() override;
 	virtual void OnPhysicsObjectUnregistered_Internal(Chaos::FConstPhysicsObjectHandle PhysicsObject) override;
 
 	virtual void ApplyTargetStatesAsync(const float DeltaSeconds);
@@ -57,7 +58,12 @@ class FPhysicsReplicationAsyncVR : public IPhysicsReplicationAsync,
 	virtual bool ResimulationReplication(Chaos::FPBDRigidParticleHandle* Handle, FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds);
 
 public:
+	//~ Begin IPhysicsReplicationAsync interface
 	virtual void RegisterSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject, TWeakPtr<const FNetworkPhysicsSettingsData> InSettings) override;
+	virtual void AddResimulationRequest_Internal(const float DeltaSeconds) override;
+
+	virtual int32 GetNetworkPhysicsTickOffset_Internal() const override { return NetworkPhysicsTickOffset; }
+	//~ End IPhysicsReplicationAsync interface
 
 private:
 	float LatencyOneWay;
@@ -65,6 +71,7 @@ private:
 	FNetworkPhysicsSettingsData SettingsCurrent;
 	FNetworkPhysicsSettingsData SettingsDefault;
 	TMap<Chaos::FConstPhysicsObjectHandle, FReplicatedPhysicsTargetAsync> ObjectToTarget;
+	TArray<Chaos::FConstPhysicsObjectHandle> PendingDeleteFromObjectToTarget;
 	TMap<Chaos::FConstPhysicsObjectHandle, TWeakPtr<const FNetworkPhysicsSettingsData>> ObjectToSettings;
 	TArray<const Chaos::Private::FPBDIsland*> ResimIslands;
 	TArray<const Chaos::FGeometryParticleHandle*> ResimIslandsParticles;
@@ -73,6 +80,9 @@ private:
 
 	int32 ResimOutOfBoundsCounter = 0;
 	float ResimErrorLogTimer = 0.0f;
+
+	bool NetworkPhysicsTickOffsetAssigned = false;
+	int32 NetworkPhysicsTickOffset = 0;
 
 private:
 	FReplicatedPhysicsTargetAsync* AddObjectToReplication(Chaos::FConstPhysicsObjectHandle PhysicsObject);
@@ -86,6 +96,12 @@ private:
 	void CheckTargetResimValidity(FReplicatedPhysicsTargetAsync& Target);
 	void ApplyPhysicsReplicationLOD(Chaos::FConstPhysicsObjectHandle PhysicsObjectHandle, FReplicatedPhysicsTargetAsync& Target, const uint32 LODFlags);
 	void DebugDrawReplicationMode(const FPhysicsRepAsyncInputData& Input);
+
+	/** Check if we have to resimulate the particle or not */
+	bool ShouldResimulateParticle(const Chaos::FPBDRigidParticleHandle* Handle, const FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds) const;
+
+	/** Check if a target is valid for resimulation or not */
+	bool IsTargetValidForResim(const FReplicatedPhysicsTargetAsync& Target) const;
 
 	/** Static function to extrapolate a target for N ticks using X DeltaSeconds */
 	static void ExtrapolateTarget(FReplicatedPhysicsTargetAsync& Target, const int32 ExtrapolateFrames, const float DeltaSeconds);
@@ -121,10 +137,23 @@ public:
 	
 	virtual void RemoveReplicatedTarget(UPrimitiveComponent* Component) override;
 
+
+	/** Remove the replicated target*/
+	void RemoveReplicatedTargetVR(Chaos::FConstPhysicsObjectHandle PhysicsObject);
+
+	//virtual int32 GetNetworkPhysicsTickOffset() const override { return NetworkPhysicsTickOffset; }
+
+
 	TArray<FReplicatedPhysicsTarget> ReplicatedTargetsQueueVR;
 	FPhysicsReplicationAsyncVR* PhysicsReplicationAsyncVR;
 	FPhysicsReplicationAsyncInput* AsyncInputVR;	//async data being written into before we push into callback
 	TWeakObjectPtr<UNetworkPhysicsSettingsComponent> SettingsCurrent;
+	TArray<TWeakObjectPtr<UPrimitiveComponent>> PendingDeleteFromComponentsToTargetsVR;
+
+	bool NetworkPhysicsTickOffsetAssignedVR = false;
+	int32 NetworkPhysicsTickOffsetVR = 0;
+
+	virtual int32 GetNetworkPhysicsTickOffset() const override { return NetworkPhysicsTickOffsetVR; }
 
 	void PrepareAsyncData_ExternalVR(const FRigidBodyErrorCorrection& ErrorCorrection);	//prepare async data for writing. Call on external thread (i.e. game thread)
 };
