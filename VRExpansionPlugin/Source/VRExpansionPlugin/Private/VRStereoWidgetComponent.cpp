@@ -690,7 +690,7 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 
 	bool bCurrVisible = bIsVisible;
-	if (!RenderTarget || !RenderTarget->GetResource())
+	if ((!RenderTarget || !RenderTarget->GetResource()))
 	{
 		bCurrVisible = false;
 	}
@@ -729,12 +729,12 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		}
 
 		// Implement the correct facing stereo layers cvar option
-		static const auto CVarXRUseLegacyFacing = IConsoleManager::Get().FindConsoleVariable(TEXT("XR.StereoLayers.UseLegacyFacing"));
+		/*static const auto CVarXRUseLegacyFacing = IConsoleManager::Get().FindConsoleVariable(TEXT("XR.StereoLayers.UseLegacyFacing"));
 		if (!CVarXRUseLegacyFacing->GetBool())
 		{
 			// The default Open Xr Stereo layer object faces the camera at no rotation where as the unreal object faces away from it at zero rotation
 			LayerDsec.Transform.SetRotation(Transform.GetRotation() * FQuat(0., 0., 1., 0.));
-		}
+		}*/
 
 
 		if (RenderTarget)
@@ -835,6 +835,10 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 
 		if(Shape)
 			Shape->ApplyShape(LayerDsec);
+
+#if WITH_EDITOR
+		LayerDsec.Name = GetOuter()->GetName() + TEXT('_') + GetName();
+#endif
 
 		if (LayerId)
 		{

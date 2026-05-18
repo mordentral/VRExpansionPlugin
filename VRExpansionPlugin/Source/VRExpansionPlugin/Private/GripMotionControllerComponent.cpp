@@ -7351,23 +7351,6 @@ void UGripMotionControllerComponent::OnModularFeatureUnregistered(const FName& T
 
 
 //=============================================================================
-bool UGripMotionControllerComponent::GripPollControllerState(FVector& Position, FRotator& Orientation, float WorldToMetersScale)
-{
-	if (IsInGameThread())
-	{
-		bool OutbProvidedLinearVelocity;
-		bool OutbProvidedAngularVelocity;
-		bool OutbProvidedLinearAcceleration;
-		FVector OutLinearVelocity;
-		FVector OutAngularVelocityAsAxisAndLength;
-		FVector OutLinearAcceleration;
-		return GripPollControllerState_GameThread(Position, Orientation, OutbProvidedLinearVelocity, OutLinearVelocity, OutbProvidedAngularVelocity, OutAngularVelocityAsAxisAndLength, OutbProvidedLinearAcceleration, OutLinearAcceleration, WorldToMetersScale);
-	}
-	else
-	{
-		return GripPollControllerState_RenderThread(Position, Orientation, WorldToMetersScale);
-	}
-}
 
 bool UGripMotionControllerComponent::GripPollControllerState_GameThread(FVector& Position, FRotator& Orientation, bool& OutbProvidedLinearVelocity, FVector& OutLinearVelocity, bool& OutbProvidedAngularVelocity, FVector& OutAngularVelocityAsAxisAndLength, bool& OutbProvidedLinearAcceleration, FVector& OutLinearAcceleration, float WorldToMetersScale)
 {
