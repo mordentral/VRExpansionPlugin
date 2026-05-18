@@ -215,7 +215,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, bool bAllowSimulatingCo
 			static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ShowInitialOverlaps"));
 			if (CVarShowInitialOverlaps->GetInt() != 0)
 			{
-				UE_LOGF(LogVRRootComponent, Log, "Overlapping %ls Dir %s Dot %f Normal %s Depth %f", *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
+				UE_LOGF(LogVRRootComponent, Log, "Overlapping %ls Dir %ls Dot %f Normal %s Depth %f", *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
 				DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
 				if (TestHit.PenetrationDepth > UE_KINDA_SMALL_NUMBER)
 				{
