@@ -2179,7 +2179,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 			// It's fine to step down onto an unwalkable normal below us, we will just slide off. Rejecting those moves would prevent us from being able to walk off the edge.
 			if ((Hit.Location | -GravDir) > OldLocationZ)
 			{
-				UE_LOGF(LogVRCharacterMovement, VeryVerbose, "- Reject StepUp (unwalkable normal %s above old position)", *Hit.ImpactNormal.ToString());
+				UE_LOGF(LogVRCharacterMovement, VeryVerbose, "- Reject StepUp (unwalkable normal %ls above old position)", *Hit.ImpactNormal.ToString());
 				ScopedStepUpMovement.RevertMove();
 				return false;
 			}

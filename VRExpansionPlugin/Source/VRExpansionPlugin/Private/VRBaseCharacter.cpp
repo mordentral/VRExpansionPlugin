@@ -1081,7 +1081,7 @@ void AVRBaseCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation,
 	UNavigationSystemV1* NavSys = Controller ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(Controller->GetWorld()) : nullptr;
 	if (NavSys == nullptr || Controller == nullptr )
 	{
-		UE_LOGF(LogBaseVRCharacter, Warning, "UVRSimpleCharacter::ExtendedSimpleMoveToLocation called for NavSys:%s Controller:%s (if any of these is None then there's your problem",
+		UE_LOGF(LogBaseVRCharacter, Warning, "UVRSimpleCharacter::ExtendedSimpleMoveToLocation called for NavSys:%ls Controller:%ls (if any of these is None then there's your problem",
 			*GetNameSafe(NavSys), *GetNameSafe(Controller));
 		return;
 	}
