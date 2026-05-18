@@ -1590,8 +1590,10 @@ void FPhysicsReplicationAsyncVR::UpdateAsyncTarget(const FPhysicsRepAsyncInputDa
 					// Run target alignment if we have been allowed to alter the target during the last two target updates
 					if (bPrevAllowTargetAltering && Target->bAllowTargetAltering && !Target->IsWaiting())
 					{
+						static const auto CVarTargetTickAlignmentClampMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TargetTickAlignmentClampMultiplier"));
+
 						// Target alignment is based on TickCount but clamped to not extrapolate forwards or backwards too far
-						const int32 AdjustedAverageReceiveInterval = FMath::CeilToInt(Target->AverageReceiveInterval) * PhysicsReplicationCVars::PredictiveInterpolationCVars::TargetTickAlignmentClampMultiplier;
+						const int32 AdjustedAverageReceiveInterval = FMath::CeilToInt(Target->AverageReceiveInterval) * CVarTargetTickAlignmentClampMultiplier->GetInt();
 						const int32 TickAlignment = FMath::Clamp(Target->TickCount, -AdjustedAverageReceiveInterval, AdjustedAverageReceiveInterval);
 						FPhysicsReplicationAsyncVR::ExtrapolateTarget(*Target, TickAlignment, GetDeltaTime_Internal());
 					}
@@ -2714,7 +2716,10 @@ bool FPhysicsReplicationAsyncVR::ShouldResimulateParticle(const Chaos::FPBDRigid
 		const bool bCompareR = Chaos::FPhysicsSolverBase::GetResimulationErrorRotationThresholdEnabled() || SettingsCurrent.ResimulationSettings.bOverrideResimulationErrorRotationThreshold;
 		const bool bCompareV = Chaos::FPhysicsSolverBase::GetResimulationErrorLinearVelocityThresholdEnabled() || SettingsCurrent.ResimulationSettings.bOverrideResimulationErrorLinearVelocityThreshold;
 		const bool bCompareW = Chaos::FPhysicsSolverBase::GetResimulationErrorAngularVelocityThresholdEnabled() || SettingsCurrent.ResimulationSettings.bOverrideResimulationErrorAngularVelocityThreshold;
-		const bool bCompareSleep = PhysicsReplicationCVars::ResimulationCVars::bResimulateSleepDesync;
+		
+		static const auto CVarResimulateSleepDesync = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.Resim.ResimulateSleepDesync"));
+
+		const bool bCompareSleep = CVarResimulateSleepDesync->GetBool();
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 		// Debugging
