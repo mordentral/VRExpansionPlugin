@@ -73,7 +73,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 	bool const bValidPackageName = FPackageName::IsValidLongPackageName(InAssetPath, false, &InvalidPathReason);
 	if (bValidPackageName == false)
 	{
-		UE_LOG(LogAnimation, Log, TEXT("%s is an invalid asset path, prompting user for new asset path. Reason: %s"), *InAssetPath, *InvalidPathReason.ToString());
+		UE_LOGF(LogAnimation, Log, "%ls is an invalid asset path, prompting user for new asset path. Reason: %ls", *InAssetPath, *InvalidPathReason.ToString());
 	}
 
 	FString ValidatedAssetPath = InAssetPath;
@@ -302,7 +302,7 @@ TWeakObjectPtr<UAnimSequence> FHandSocketComponentDetails::SaveAnimationAsset(co
 			//UPackage::SavePackage(Package, NULL, RF_Standalone, *PackageFileName, GError, nullptr, false, true, SAVE_NoError);
 
 			double ElapsedTime = FPlatformTime::Seconds() - StartTime;
-			UE_LOG(LogAnimation, Log, TEXT("Animation Recorder saved %s in %0.2f seconds"), *PackageName, ElapsedTime);
+			UE_LOGF(LogAnimation, Log, "Animation Recorder saved %ls in %0.2f seconds", *PackageName, ElapsedTime);
 		}
 
 		FinalAnimation = AnimationObject;

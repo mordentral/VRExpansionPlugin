@@ -141,7 +141,7 @@ void UOpenXRExpansionFunctionLibrary::GetXRMotionControllerType(FString& Trackin
 						}
 						else
 						{
-							UE_LOG(OpenXRExpansionFunctionLibraryLog, Warning, TEXT("UNKNOWN OpenXR Interaction profile detected!!!: %s"), *InteractionName);
+							UE_LOGF(OpenXRExpansionFunctionLibraryLog, Warning, "UNKNOWN OpenXR Interaction profile detected!!!: %ls", *InteractionName);
 							DeviceType = EBPOpenXRControllerDeviceType::DT_UnknownController;
 						}
 

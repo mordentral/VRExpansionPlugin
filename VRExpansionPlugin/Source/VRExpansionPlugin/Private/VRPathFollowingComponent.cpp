@@ -360,7 +360,7 @@ bool UVRPathFollowingComponent::HasReachedCurrentTarget(const FVector& CurrentLo
 				}
 				else
 				{
-					UE_LOG(LogPathFollowing, Error, TEXT("%hs: NavLink has a start, but no end. Custom reach condition won't be called. NavLinkID [%llu] - LinkStartPos [%s] - Owner [%s]"), __FUNCTION__, LinkStart.CustomNavLinkId.GetId(), *LinkStart.Location.ToString(), *GetNameSafe(GetOwner()));
+					UE_LOGF(LogPathFollowing, Error, TEXT("%hs: NavLink has a start, but no end. Custom reach condition won't be called. NavLinkID [%llu] - LinkStartPos [%s] - Owner [%s]"), __FUNCTION__, LinkStart.CustomNavLinkId.GetId(), *LinkStart.Location.ToString(), *GetNameSafe(GetOwner()));
 				}
 			}
 		}

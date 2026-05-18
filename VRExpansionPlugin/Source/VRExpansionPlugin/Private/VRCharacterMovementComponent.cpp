@@ -1355,7 +1355,7 @@ void UVRCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 		}
 		/*else
 		{
-			UE_LOG(LogVRCharacterMovement, Verbose, TEXT("Not combining move [not allowed by CanCombineWith()]"));
+			UE_LOGF(LogVRCharacterMovement, Verbose, "Not combining move [not allowed by CanCombineWith()]");
 		}*/
 	}
 
@@ -1564,7 +1564,7 @@ void UVRCharacterMovementComponent::ApplyRepulsionForce(float DeltaSeconds)
 
 				if (!OverlapBody)
 				{
-					UE_LOG(LogVRCharacterMovement, Warning, TEXT("%s could not find overlap body for body index %d"), *GetName(), OverlapBodyIndex);
+					UE_LOGF(LogVRCharacterMovement, Warning, "%ls could not find overlap body for body index %d", *GetName(), OverlapBodyIndex);
 					continue;
 				}
 
@@ -1916,7 +1916,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		const float DeltaZ = (Hit.ImpactPoint | -GravDir) - PawnFloorPointZ;
 		if (DeltaZ > MaxStepHeight)
 		{
-			//UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f"), DeltaZ, PawnInitialFloorBaseZ);
+			//UE_LOGF(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f"), DeltaZ, PawnInitialFloorBaseZ);
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -1928,7 +1928,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			const bool bNormalTowardsMe = (Delta | Hit.ImpactNormal) < 0.f;
 			if (bNormalTowardsMe)
 			{
-				//UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s opposed to movement)"), *Hit.ImpactNormal.ToString());
+				//UE_LOGF(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s opposed to movement)"), *Hit.ImpactNormal.ToString());
 				ScopedStepUpMovement.RevertMove();
 				return false;
 			}
@@ -1937,7 +1937,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 			// It's fine to step down onto an unwalkable normal below us, we will just slide off. Rejecting those moves would prevent us from being able to walk off the edge.
 			if ((Hit.Location | -GravDir) > OldLocationZ)
 			{
-				//UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
+				//UE_LOGF(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
 				ScopedStepUpMovement.RevertMove();
 				return false;
 			}
@@ -1946,7 +1946,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		// Reject moves where the downward sweep hit something very close to the edge of the capsule. This maintains consistency with FindFloor as well.
 		if (!IsWithinEdgeTolerance(Hit.Location, Hit.ImpactPoint, PawnRadius))
 		{
-			//UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
+			//UE_LOGF(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -1954,7 +1954,7 @@ bool UVRCharacterMovementComponent::StepUp(const FVector& GravDir, const FVector
 		// Don't step up onto invalid surfaces if traveling higher.
 		if (DeltaZ > 0.f && !CanStepUp(Hit))
 		{
-			//UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
+			//UE_LOGF(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -2158,7 +2158,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		const float DeltaZ = (Hit.ImpactPoint | -GravDir) - PawnFloorPointZ;
 		if (DeltaZ > MaxStepHeight)
 		{
-			UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (too high Height %.3f) up from floor base %f"), DeltaZ, PawnInitialFloorBaseZ);
+			UE_LOGF(LogVRCharacterMovement, VeryVerbose, "- Reject StepUp (too high Height %.3f) up from floor base %f", DeltaZ, PawnInitialFloorBaseZ);
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -2170,7 +2170,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 			const bool bNormalTowardsMe = (Delta | Hit.ImpactNormal) < 0.f;
 			if (bNormalTowardsMe)
 			{
-				//UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s opposed to movement)"), *Hit.ImpactNormal.ToString());
+				//UE_LOGF(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s opposed to movement)"), *Hit.ImpactNormal.ToString());
 				ScopedStepUpMovement.RevertMove();
 				return false;
 			}
@@ -2179,7 +2179,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 			// It's fine to step down onto an unwalkable normal below us, we will just slide off. Rejecting those moves would prevent us from being able to walk off the edge.
 			if ((Hit.Location | -GravDir) > OldLocationZ)
 			{
-				UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (unwalkable normal %s above old position)"), *Hit.ImpactNormal.ToString());
+				UE_LOGF(LogVRCharacterMovement, VeryVerbose, "- Reject StepUp (unwalkable normal %s above old position)", *Hit.ImpactNormal.ToString());
 				ScopedStepUpMovement.RevertMove();
 				return false;
 			}
@@ -2188,7 +2188,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		// Reject moves where the downward sweep hit something very close to the edge of the capsule. This maintains consistency with FindFloor as well.
 		if (!IsWithinClimbingEdgeTolerance(Hit.Location, Hit.ImpactPoint, PawnRadius))
 		{
-			UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (outside edge tolerance)"));
+			UE_LOGF(LogVRCharacterMovement, VeryVerbose, "- Reject StepUp (outside edge tolerance)");
 			ScopedStepUpMovement.RevertMove();
 			return false;
 		}
@@ -2196,7 +2196,7 @@ bool UVRCharacterMovementComponent::VRClimbStepUp(const FVector& GravDir, const 
 		// Don't step up onto invalid surfaces if traveling higher.
 		if (DeltaZ > 0.f && !CanStepUp(Hit))
 		{
-			UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("- Reject StepUp (up onto surface with !CanStepUp())"));
+			UE_LOGF(LogVRCharacterMovement, VeryVerbose, "- Reject StepUp (up onto surface with !CanStepUp())");
 			ScopedStepUpMovement.RevertMove();
 			return false;		
 		}
@@ -2488,7 +2488,7 @@ FVector UVRCharacterMovementComponent::GetImpartedMovementBaseVelocity() const
 void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FFindFloorResult& OutFloorResult, bool bCanUseCachedLocation, const FHitResult* DownwardSweepResult) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_CharFindFloor);
-	//UE_LOG(LogVRCharacterMovement, Warning, TEXT("Find Floor"));
+	//UE_LOGF(LogVRCharacterMovement, Warning, TEXT("Find Floor"));
 	// No collision, no floor...
 	if (!HasValidData() || !UpdatedComponent->IsQueryCollisionEnabled())
 	{
@@ -2496,7 +2496,7 @@ void UVRCharacterMovementComponent::FindFloor(const FVector& CapsuleLocation, FF
 		return;
 	}
 
-	//UE_LOG(LogVRCharacterMovement, VeryVerbose, TEXT("[Role:%d] FindFloor: %s at location %s"), (int32)CharacterOwner->Role, *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
+	//UE_LOGF(LogVRCharacterMovement, VeryVerbose, TEXT("[Role:%d] FindFloor: %s at location %s"), (int32)CharacterOwner->Role, *GetNameSafe(CharacterOwner), *CapsuleLocation.ToString());
 	check(CharacterOwner->GetCapsuleComponent());
 
 	FVector UseCapsuleLocation = CapsuleLocation;
@@ -2866,7 +2866,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 		// Apply gravity
 		Velocity = NewFallVelocity(Velocity, Gravity, GravityTime);
 
-		//UE_LOG(LogCharacterMovement, Log, TEXT("dt=(%.6f) OldLocation=(%s) OldVelocity=(%s) OldVelocityWithRootMotion=(%s) NewVelocity=(%s)"), timeTick, *(UpdatedComponent->GetComponentLocation()).ToString(), *OldVelocity.ToString(), *OldVelocityWithRootMotion.ToString(), *Velocity.ToString());
+		//UE_LOGF(LogCharacterMovement, Log, TEXT("dt=(%.6f) OldLocation=(%s) OldVelocity=(%s) OldVelocityWithRootMotion=(%s) NewVelocity=(%s)"), timeTick, *(UpdatedComponent->GetComponentLocation()).ToString(), *OldVelocity.ToString(), *OldVelocityWithRootMotion.ToString(), *Velocity.ToString());
 		ApplyRootMotionToVelocity(timeTick);
 		DecayFormerBaseVelocity(timeTick);
 
@@ -2915,7 +2915,7 @@ void UVRCharacterMovementComponent::PhysFalling(float deltaTime, int32 Iteration
 			}
 		}
 
-		//UE_LOG(LogCharacterMovement, Log, TEXT("dt=(%.6f) OldLocation=(%s) OldVelocity=(%s) NewVelocity=(%s)"), timeTick, *(UpdatedComponent->GetComponentLocation()).ToString(), *OldVelocity.ToString(), *Velocity.ToString());
+		//UE_LOGF(LogCharacterMovement, Log, TEXT("dt=(%.6f) OldLocation=(%s) OldVelocity=(%s) NewVelocity=(%s)"), timeTick, *(UpdatedComponent->GetComponentLocation()).ToString(), *OldVelocity.ToString(), *Velocity.ToString());
 
 		ApplyRootMotionToVelocity(timeTick);
 		//ApplyVRMotionToVelocity(deltaTime);
@@ -4160,7 +4160,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 			}
 		}
 
-		UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ClientAdjustPosition_Implementation: Ignoring server correction. bClientIgnoreMovementCorrections is set. TimeStamp: %f"), TimeStamp);
+		UE_LOGF(LogNetPlayerMovement, Verbose, "ClientAdjustPosition_Implementation: Ignoring server correction. bClientIgnoreMovementCorrections is set. TimeStamp: %f", TimeStamp);
 
 		return;
 	}
@@ -4945,7 +4945,7 @@ bool UVRCharacterMovementComponent::ClientUpdatePositionAfterServerUpdate()
 	FRotator Orig_CameraRotOffset = VRRootCapsule->StoredCameraRotOffset;
 
 	// Replay moves that have not yet been acked.
-	UE_LOG(LogNetPlayerMovement, Verbose, TEXT("ClientUpdatePositionAfterServerUpdate Replaying %d Moves, starting at Timestamp %f"), ClientData->SavedMoves.Num(), ClientData->SavedMoves[0]->TimeStamp);
+	UE_LOGF(LogNetPlayerMovement, Verbose, "ClientUpdatePositionAfterServerUpdate Replaying %d Moves, starting at Timestamp %f", ClientData->SavedMoves.Num(), ClientData->SavedMoves[0]->TimeStamp);
 	for (int32 i = 0; i < ClientData->SavedMoves.Num(); i++)
 	{
 		FSavedMove_Character* const CurrentMove = ClientData->SavedMoves[i].Get();
@@ -4988,7 +4988,7 @@ bool UVRCharacterMovementComponent::ClientUpdatePositionAfterServerUpdate()
 		// If we were resimulating root motion sources, it's because we had mismatched state
 		// with the server - we just resimulated our SavedMoves and now need to restore
 		// CurrentRootMotion with the latest "good state"
-		UE_LOG(LogRootMotion, VeryVerbose, TEXT("CurrentRootMotion getting updated after ServerUpdate replays: %s"), *CharacterOwner->GetName());
+		UE_LOGF(LogRootMotion, VeryVerbose, "CurrentRootMotion getting updated after ServerUpdate replays: %ls", *CharacterOwner->GetName());
 		CurrentRootMotion.UpdateStateFrom(CharacterOwner->SavedRootMotion);
 		CharacterOwner->bClientResimulateRootMotionSources = false;
 	}

@@ -1444,7 +1444,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject* ObjectToGrip
 		else
 		{
 			// No interface, no grip
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController GripObjectByInterface was called on an object that doesn't implement the interface and doesn't have a parent that implements the interface!"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController GripObjectByInterface was called on an object that doesn't implement the interface and doesn't have a parent that implements the interface!");
 			return false;
 		}
 	}
@@ -1503,7 +1503,7 @@ bool UGripMotionControllerComponent::GripObjectByInterface(UObject* ObjectToGrip
 		else
 		{
 			// No interface, no grip
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController GripObjectByInterface was called on an object that doesn't implement the interface and doesn't have a parent that implements the interface!"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController GripObjectByInterface was called on an object that doesn't implement the interface and doesn't have a parent that implements the interface!");
 			return false;
 		}
 	}
@@ -1608,19 +1608,19 @@ bool UGripMotionControllerComponent::GripActor(
 
 	if (!IsServer() && !bIsLocalGrip)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was called on the client side as a replicated grip"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController grab function was called on the client side as a replicated grip");
 		return false;
 	}
 
 	if (!ActorToGrip || !IsValid(ActorToGrip))
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or pending kill actor"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController grab function was passed an invalid or pending kill actor");
 		return false;
 	}
 
 	if (GetIsObjectHeld(ActorToGrip))
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already gripped actor"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController grab function was passed an already gripped actor");
 		return false;
 	}
 
@@ -1628,14 +1628,14 @@ bool UGripMotionControllerComponent::GripActor(
 
 	if (!root)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip an actor without a UPrimitiveComponent Root"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController tried to grip an actor without a UPrimitiveComponent Root");
 		return false; // Need a primitive root
 	}
 
 	// Has to be movable to work
 	if (root->Mobility != EComponentMobility::Movable && (GripCollisionType != EGripCollisionType::CustomGrip && GripCollisionType != EGripCollisionType::EventsOnly))
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip an actor set to static mobility not with a Custom Grip"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController tried to grip an actor set to static mobility not with a Custom Grip");
 		return false; // It is not movable, can't grip it
 	}
 
@@ -1853,7 +1853,7 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 {
 	if (!ActorToDrop)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid actor"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop function was passed an invalid actor");
 		return false;
 	}
 
@@ -1864,7 +1864,7 @@ bool UGripMotionControllerComponent::DropActor(AActor* ActorToDrop, bool bSimula
 
 	if (!IsServer())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was called on the client side with a replicated grip"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop function was called on the client side with a replicated grip");
 		return false;
 	}
 
@@ -1897,26 +1897,26 @@ bool UGripMotionControllerComponent::GripComponent(
 
 	if (!IsServer() && !bIsLocalGrip)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was called on the client side with a replicating grip"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController grab function was called on the client side with a replicating grip");
 		return false;
 	}
 
 	if (!ComponentToGrip || !IsValid(ComponentToGrip))
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an invalid or pending kill component"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController grab function was passed an invalid or pending kill component");
 		return false;
 	}
 
 	if (GetIsObjectHeld(ComponentToGrip))
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController grab function was passed an already gripped component"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController grab function was passed an already gripped component");
 		return false;
 	}
 
 	// Has to be movable to work
 	if (ComponentToGrip->Mobility != EComponentMobility::Movable && (GripCollisionType != EGripCollisionType::CustomGrip && GripCollisionType != EGripCollisionType::EventsOnly))
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController tried to grip a component set to static mobility not in CustomGrip mode"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController tried to grip a component set to static mobility not in CustomGrip mode");
 		return false; // It is not movable, can't grip it
 	}
 
@@ -2126,7 +2126,7 @@ bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * Compone
 	// If we aren't the server then fail out
 	if (!IsServer())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was called on the client side for a replicated grip"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop function was called on the client side for a replicated grip");
 		return false;
 	}
 
@@ -2139,7 +2139,7 @@ bool UGripMotionControllerComponent::DropComponent(UPrimitiveComponent * Compone
 	}
 	else
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid component"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop function was passed an invalid component");
 		return false;
 	}
 
@@ -2160,13 +2160,13 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 	{
 		if (!bIsServer)
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was called on the client side for a replicated grip"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop function was called on the client side for a replicated grip");
 			return false;
 		}
 
 		if (!GrippedObjects.Find(Grip, FoundIndex)) // This auto checks if Actor and Component are valid in the == operator
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop function was passed an invalid drop");
 			return false;
 		}
 
@@ -2206,7 +2206,7 @@ bool UGripMotionControllerComponent::DropGrip_Implementation(const FBPActorGripI
 
 	if(!PrimComp)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop function was passed an invalid drop or CleanUpBadGrip wascalled"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop function was passed an invalid drop or CleanUpBadGrip wascalled");
 		//return false;
 	}
 	else
@@ -2291,13 +2291,13 @@ bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQua
 {
 	if (!SocketingParent)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid socketing parent"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was passed an invalid socketing parent");
 		return false;
 	}
 
 	if (!ObjectToDrop && GripIDToDrop == INVALID_VRGRIP_ID)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid object"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was passed an invalid object");
 		return false;
 	}
 
@@ -2317,7 +2317,7 @@ bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQua
 	{
 		if (!IsServer())
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was called on the client side for a replicated grip"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was called on the client side for a replicated grip");
 			return false;
 		}
 
@@ -2332,7 +2332,7 @@ bool UGripMotionControllerComponent::DropAndSocketObject(const FTransform_NetQua
 		}
 		else
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid drop"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was passed an invalid drop");
 			return false;
 		}
 	}
@@ -2352,7 +2352,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 {
 	if (!SocketingParent || !IsValid(SocketingParent))
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid socketing parent"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was passed an invalid socketing parent");
 		return false;
 	}
 
@@ -2368,7 +2368,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 	{
 		if (!IsServer())
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was called on the client side for a replicated grip"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was called on the client side for a replicated grip");
 			return false;
 		}
 
@@ -2380,7 +2380,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 		}
 		else
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid drop"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was passed an invalid drop");
 			return false;
 		}
 	}
@@ -2397,7 +2397,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 
 	if (!PrimComp)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid drop or CleanUpBadGrip wascalled"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was passed an invalid drop or CleanUpBadGrip wascalled");
 		//return false;
 	}
 
@@ -2405,7 +2405,7 @@ bool UGripMotionControllerComponent::DropAndSocketGrip_Implementation(const FBPA
 
 	if (!GrippedObject || !IsValid(GrippedObject))
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController drop and socket function was passed an invalid or pending kill gripped object"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController drop and socket function was passed an invalid or pending kill gripped object");
 		return false;
 	}
 
@@ -2521,11 +2521,11 @@ void UGripMotionControllerComponent::Socket_Implementation(UObject * ObjectToSoc
 	{
 		if (!SocketingParent || !SocketingParent->IsValidLowLevelFast())
 		{
-			UE_LOG(LogVRMotionController, Error, TEXT("VRGripMotionController Socket_Implementation was called with an invalid Socketing Parent object"));
+			UE_LOGF(LogVRMotionController, Error, "VRGripMotionController Socket_Implementation was called with an invalid Socketing Parent object");
 		}
 		else
 		{
-			UE_LOG(LogVRMotionController, Error, TEXT("VRGripMotionController Socket_Implementation was called with an invalid Object to Socket"));
+			UE_LOGF(LogVRMotionController, Error, "VRGripMotionController Socket_Implementation was called with an invalid Object to Socket");
 		}
 		return;
 	}
@@ -3969,7 +3969,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentPoint(UObject * Gripp
 		// Replicated grips need to be called from server side
 		if (!IsServer())
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side with a replicated grip"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController add secondary attachment function was called on the client side with a replicated grip");
 			return false;
 		}
 
@@ -4008,7 +4008,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 {
 	if (!SecondaryPointComponent)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called with a bad secondary component target!"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController add secondary attachment function was called with a bad secondary component target!");
 		return false;
 	}
 
@@ -4026,20 +4026,20 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 
 	if (!GripToUse || GripToUse->GripID == INVALID_VRGRIP_ID)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called with a bad grip! It was not valid / found."));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController add secondary attachment function was called with a bad grip! It was not valid / found.");
 		return false;
 	}
 
 	if (!GripToUse->GrippedObject)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called with a bad grip (gripped object invalid)!"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController add secondary attachment function was called with a bad grip (gripped object invalid)!");
 		return false;
 	}
 
 	// Replicated grips need to be called from server side
 	if (!bWasLocal && !IsServer())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on the client side with a replicated grip"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController add secondary attachment function was called on the client side with a replicated grip");
 		return false;
 	}
 
@@ -4051,7 +4051,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 
 		if (SecondaryType == ESecondaryGripType::SG_None)
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was called on an interface object set to SG_None!"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController add secondary attachment function was called on an interface object set to SG_None!");
 			return false;
 		}
 	}
@@ -4079,7 +4079,7 @@ bool UGripMotionControllerComponent::AddSecondaryAttachmentToGrip(const FBPActor
 
 	if (!root)
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController add secondary attachment function was unable to get root component or gripped component."));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController add secondary attachment function was unable to get root component or gripped component.");
 		return false;
 	}
 
@@ -4166,7 +4166,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentPoint(UObject * Gr
 	{
 		if (!IsServer())
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip"));
+			UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip");
 			return false;
 		}
 
@@ -4217,7 +4217,7 @@ bool UGripMotionControllerComponent::RemoveSecondaryAttachmentFromGrip(const FBP
 
 	if (GripToUse && !bWasLocal && !IsServer())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip"));
+		UE_LOGF(LogVRMotionController, Warning, "VRGripMotionController remove secondary attachment function was called on the client side for a replicating grip");
 		return false;
 	}
 
@@ -4554,7 +4554,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 	if (!WorldTransform.IsValid())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("Something went wrong, TeleportGrip_Impl's target transform contained NAN."));
+		UE_LOGF(LogVRMotionController, Warning, "Something went wrong, TeleportGrip_Impl's target transform contained NAN.");
 		return false;
 	}
 	
@@ -4594,7 +4594,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 	{
 		if (WorldTransform.ContainsNaN())
 		{
-			UE_LOG(LogVRMotionController, Error, TEXT("Failed to teleport grip, bad transform, NaN detected with object: %s"), *Grip.GrippedObject->GetName());
+			UE_LOGF(LogVRMotionController, Error, "Failed to teleport grip, bad transform, NaN detected with object: %ls", *Grip.GrippedObject->GetName());
 			return false;
 		}
 		else if (!WorldTransform.GetRotation().IsNormalized())
@@ -4603,12 +4603,12 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 
 			if (!WorldTransform.IsValid())
 			{
-				UE_LOG(LogVRMotionController, Error, TEXT("Failed to teleport grip, bad transform, rotation normalization issue: %s"), *Grip.GrippedObject->GetName());
+				UE_LOGF(LogVRMotionController, Error, "Failed to teleport grip, bad transform, rotation normalization issue: %ls", *Grip.GrippedObject->GetName());
 				return false;
 			}
 			else
 			{
-				UE_LOG(LogVRMotionController, Error, TEXT("Error during teleport grip, rotation not normalized for object: %s"), *Grip.GrippedObject->GetName());
+				UE_LOGF(LogVRMotionController, Error, "Error during teleport grip, rotation not normalized for object: %ls", *Grip.GrippedObject->GetName());
 			}
 		}
 	}
@@ -5060,7 +5060,7 @@ bool UGripMotionControllerComponent::GetGripWorldTransform(TArray<UVRGripScriptB
 
 	if (bHasValidTransform && !WorldTransform.IsValid())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("Something went wrong, GetGripWorldTransform tried to return NAN!."));
+		UE_LOGF(LogVRMotionController, Warning, "Something went wrong, GetGripWorldTransform tried to return NAN!.");
 		bHasValidTransform = false;
 	}
 
@@ -5075,7 +5075,7 @@ void UGripMotionControllerComponent::TickGrip(float DeltaTime)
 	if (PhysicsGrips.Num() > (GrippedObjects.Num() + LocallyGrippedObjects.Num()))
 	{
 		CleanUpBadPhysicsHandles();
-		UE_LOG(LogVRMotionController, Warning, TEXT("Something went wrong, there were too many physics handles for how many grips exist! Cleaned up bad handles."));
+		UE_LOGF(LogVRMotionController, Warning, "Something went wrong, there were too many physics handles for how many grips exist! Cleaned up bad handles.");
 	}
 	//check(PhysicsGrips.Num() <= (GrippedObjects.Num() + LocallyGrippedObjects.Num()));
 
@@ -5962,14 +5962,14 @@ void UGripMotionControllerComponent::HandleGripArray(TArray<FBPActorGripInformat
 
 						if (!root->GetAttachParent() || root->IsSimulatingPhysics())
 						{
-							UE_LOG(LogVRMotionController, Warning, TEXT("Attachment Grip was missing attach parent - Attempting to Re-attach"));
+							UE_LOGF(LogVRMotionController, Warning, "Attachment Grip was missing attach parent - Attempting to Re-attach");
 
 							if (HasGripMovementAuthority(*Grip) || IsServer())
 							{
 								root->SetSimulatePhysics(false);
 								if (root->AttachToComponent(IsValid(CustomPivotComponent) ? CustomPivotComponent.Get() : this, FAttachmentTransformRules::KeepWorldTransform))
 								{
-									UE_LOG(LogVRMotionController, Warning, TEXT("Re-attached"));
+									UE_LOGF(LogVRMotionController, Warning, "Re-attached");
 									if (!root->GetRelativeTransform().Equals(RelativeTrans))
 									{
 										root->SetRelativeTransform(RelativeTrans);
@@ -6051,7 +6051,7 @@ void UGripMotionControllerComponent::CleanUpBadGrip(TArray<FBPActorGripInformati
 	if (IsServer() || HasGripAuthority(GrippedObjectsArray[GripIndex]))
 	{
 		DropGrip_Implementation(GrippedObjectsArray[GripIndex], false);
-		UE_LOG(LogVRMotionController, Warning, TEXT("Gripped object was null or destroying, auto dropping it"));
+		UE_LOGF(LogVRMotionController, Warning, "Gripped object was null or destroying, auto dropping it");
 	}
 	else
 	{
@@ -7068,7 +7068,7 @@ void UGripMotionControllerComponent::UpdatePhysicsHandleTransform(const FBPActor
 
 	if (!NewTransform.IsValid())
 	{
-		UE_LOG(LogVRMotionController, Warning, TEXT("Something went wrong, UpdatePhysicsHandeTransforms target transform contained NAN!."));
+		UE_LOGF(LogVRMotionController, Warning, "Something went wrong, UpdatePhysicsHandeTransforms target transform contained NAN!.");
 		return;
 	}
 
@@ -7139,7 +7139,7 @@ bool UGripMotionControllerComponent::CheckComponentWithSweep(UPrimitiveComponent
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 		if (!root->IsRegistered())
 		{
-			UE_LOG(LogVRMotionController, Warning, TEXT("MovedComponent %s not initialized in grip motion controller"), *root->GetFullName());
+			UE_LOGF(LogVRMotionController, Warning, "MovedComponent %ls not initialized in grip motion controller", *root->GetFullName());
 		}
 #endif
 

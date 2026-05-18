@@ -145,7 +145,7 @@ void FAnimNode_ApplyOpenXRHandPose::CalculateSkeletalAdjustment(USkeleton* Asset
 
 	if (!MappedBonePairs.bInitialized || MappedBonePairs.BonePairs.Num() < 4 || !RefBones.Num())
 	{
-		UE_LOG(LogTemp, Error, TEXT("Empty or incorrect mapping or skeleton data when calculating skeletal adjustment!"));
+		UE_LOGF(LogTemp, Error, "Empty or incorrect mapping or skeleton data when calculating skeletal adjustment!");
 		return;
 	}
 

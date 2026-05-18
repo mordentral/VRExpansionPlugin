@@ -607,7 +607,7 @@ FIntPoint FVRFullScreenUserWidget_PostProcess::CalculateWidgetDrawSize(UWorld* W
 	{
 		return SharedActiveViewport->GetSize();
 	}
-	//UE_LOG(LogVPUtilities, Warning, TEXT("CalculateWidgetDrawSize failed for editor world."));
+	//UE_LOGF(LogVPUtilities, Warning, "CalculateWidgetDrawSize failed for editor world.");
 #endif
 
 	return FIntPoint::ZeroValue;
@@ -630,7 +630,7 @@ void FVRFullScreenUserWidget_PostProcess::RegisterHitTesterWithViewport(UWorld* 
 	{
 		if (EngineViewportWidget->GetCustomHitTestPath())
 		{
-			//UE_LOG(LogVPUtilities, Warning, TEXT("Can't register a hit tester for FullScreenUserWidget. There is already one defined."));
+			//UE_LOGF(LogVPUtilities, Warning, TEXT("Can't register a hit tester for FullScreenUserWidget. There is already one defined."));
 		}
 		else
 		{
@@ -775,7 +775,7 @@ bool UVRFullScreenUserWidget::Display(UWorld* InWorld)
 #if WITH_EDITOR
 	if (!EditorTargetViewport.IsValid() && !World->IsGameWorld())
 	{
-		//UE_LOG(LogVPUtilities, Log, TEXT("No TargetViewport set. Defaulting to FLevelEditorModule::GetFirstActiveLevelViewport."))
+		//UE_LOGF(LogVPUtilities, Log, TEXT("No TargetViewport set. Defaulting to FLevelEditorModule::GetFirstActiveLevelViewport."))
 			if (FModuleManager::Get().IsModuleLoaded(NAME_LevelEditorName))
 			{
 				FLevelEditorModule& LevelEditorModule = FModuleManager::GetModuleChecked<FLevelEditorModule>(NAME_LevelEditorName);
@@ -785,7 +785,7 @@ bool UVRFullScreenUserWidget::Display(UWorld* InWorld)
 
 		if (!EditorTargetViewport.IsValid())
 		{
-			//UE_LOG(LogVPUtilities, Error, TEXT("FLevelEditorModule::GetFirstActiveLevelViewport found no level viewport. UVPFullScreenUserWidget will not display."))
+			//UE_LOGF(LogVPUtilities, Error, TEXT("FLevelEditorModule::GetFirstActiveLevelViewport found no level viewport. UVPFullScreenUserWidget will not display."))
 				return false;
 		}
 	}
@@ -800,7 +800,7 @@ bool UVRFullScreenUserWidget::Display(UWorld* InWorld)
 		const bool bCreatedWidget = InitWidget();
 		if (!bCreatedWidget)
 		{
-			//UE_LOG(LogVPUtilities, Error, TEXT("Failed to create subwidget for UVPFullScreenUserWidget."));
+			//UE_LOGF(LogVPUtilities, Error, TEXT("Failed to create subwidget for UVPFullScreenUserWidget."));
 			return false;
 		}
 
@@ -854,7 +854,7 @@ bool UVRFullScreenUserWidget::Display(UWorld* InWorld)
 					}
 					else if (Layer)
 					{
-						UE_LOG(LogVPUtilities, Warning, TEXT("VRFullScreenUserWidget - ComposureLayerTarget entry '%s' is not the correct class '%s'"), *Layer->GetName(), *TextureCompClassName);
+						UE_LOGF(LogVPUtilities, Warning, TEXT("VRFullScreenUserWidget - ComposureLayerTarget entry '%s' is not the correct class '%s'"), *Layer->GetName(), *TextureCompClassName);
 					}
 				}
 			}*/

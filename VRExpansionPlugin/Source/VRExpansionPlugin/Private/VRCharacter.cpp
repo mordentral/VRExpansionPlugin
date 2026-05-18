@@ -99,7 +99,7 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 	UNavigationSystemV1* NavSys = Controller ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(Controller->GetWorld()) : nullptr;
 	if (NavSys == nullptr || Controller == nullptr )
 	{
-		UE_LOG(LogVRCharacter, Warning, TEXT("UVRCharacter::ExtendedSimpleMoveToLocation called for NavSys:%s Controller:%s (if any of these is None then there's your problem"),
+		UE_LOGF(LogVRCharacter, Warning, "UVRCharacter::ExtendedSimpleMoveToLocation called for NavSys:%ls Controller:%ls (if any of these is None then there's your problem",
 			*GetNameSafe(NavSys), *GetNameSafe(Controller));
 		return;
 	}
@@ -121,13 +121,13 @@ void AVRCharacter::ExtendedSimpleMoveToLocation(const FVector& GoalLocation, flo
 
 	if (PFollowComp == nullptr)
 	{
-		UE_LOG(LogVRCharacter, Warning, TEXT("ExtendedSimpleMoveToLocation - No PathFollowingComponent Found"));
+		UE_LOGF(LogVRCharacter, Warning, "ExtendedSimpleMoveToLocation - No PathFollowingComponent Found");
 		return;
 	}
 
 	if (!PFollowComp->IsPathFollowingAllowed())
 	{
-		UE_LOG(LogVRCharacter, Warning, TEXT("ExtendedSimpleMoveToLocation - Path Following Movement Is Not Set To Allowed"));
+		UE_LOGF(LogVRCharacter, Warning, "ExtendedSimpleMoveToLocation - Path Following Movement Is Not Set To Allowed");
 		return;
 	}
 

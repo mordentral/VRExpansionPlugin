@@ -511,17 +511,17 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 	// failure cases
 	if (!BI->IsInstanceSimulatingPhysics())
 	{
-		UE_LOG(LogPhysics, Warning, TEXT("Physics replicating on non-simulated body. (%s)"), *BI->GetBodyDebugName());
+		UE_LOGF(LogPhysics, Warning, "Physics replicating on non-simulated body. (%ls)", *BI->GetBodyDebugName());
 		return bRestoredState;
 	}
 	else if (NewQuatSizeSqr < UE_KINDA_SMALL_NUMBER)
 	{
-		UE_LOG(LogPhysics, Warning, TEXT("Invalid zero quaternion set for body. (%s)"), *BI->GetBodyDebugName());
+		UE_LOGF(LogPhysics, Warning, "Invalid zero quaternion set for body. (%ls)", *BI->GetBodyDebugName());
 		return bRestoredState;
 	}
 	else if (FMath::Abs(NewQuatSizeSqr - 1.f) > UE_KINDA_SMALL_NUMBER)
 	{
-		UE_LOG(LogPhysics, Warning, TEXT("Quaternion (%f %f %f %f) with non-unit magnitude detected. (%s)"),
+		UE_LOGF(LogPhysics, Warning, "Quaternion (%f %f %f %f) with non-unit magnitude detected. (%ls)",
 			NewState.Quaternion.X, NewState.Quaternion.Y, NewState.Quaternion.Z, NewState.Quaternion.W, *BI->GetBodyDebugName());
 		return bRestoredState;
 	}
@@ -687,7 +687,7 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 #if !UE_BUILD_SHIPPING
 			if (PhysicsReplicationCVars::LogPhysicsReplicationHardSnaps && GetOwningWorld())
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Simulated HARD SNAP - \nCurrent Pos - %s, Target Pos - %s\n CurrentState.LinVel - %s, New Lin Vel - %s\nTarget Extrapolation Delta - %s, Is Replay? - %d, Is Asleep - %d, Prev Progress - %f, Prev Similarity - %f"),
+				UE_LOGF(LogTemp, Warning, "Simulated HARD SNAP - \nCurrent Pos - %ls, Target Pos - %ls\n CurrentState.LinVel - %ls, New Lin Vel - %ls\nTarget Extrapolation Delta - %ls, Is Replay? - %d, Is Asleep - %d, Prev Progress - %f, Prev Similarity - %f",
 					*CurrentState.Position.ToString(), *TargetPos.ToString(), *CurrentState.LinVel.ToString(), *NewState.LinVel.ToString(),
 					*ExtrapolationDeltaPos.ToString(), GetOwningWorld()->IsPlayingReplay(), !BI->IsInstanceAwake(), PrevProgress, PrevSimilarity);
 				if (bDidHardSnap)
@@ -696,11 +696,11 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 				}
 				if (LinDiffSize > MaxLinearHardSnapDistance)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Hard snap due to linear difference error"));
+					UE_LOGF(LogTemp, Warning, "Hard snap due to linear difference error");
 				}
 				else
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Hard snap due to accumulated error"))
+					UE_LOGF(LogTemp, Warning, "Hard snap due to accumulated error")
 				}
 			}
 #endif

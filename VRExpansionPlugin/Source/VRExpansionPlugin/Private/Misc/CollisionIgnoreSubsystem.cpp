@@ -399,20 +399,20 @@ void UCollisionIgnoreSubsystem::SetComponentCollisionIgnoreState(bool bIterateCh
 {
 	if (!Prim1 || !Prim2)
 	{
-		UE_LOG(VRE_CollisionIgnoreLog, Error, TEXT("Set Objects Ignore Collision called with invalid object(s)!!"));
+		UE_LOGF(VRE_CollisionIgnoreLog, Error, "Set Objects Ignore Collision called with invalid object(s)!!");
 		return;
 	}
 
 	if (Prim1->GetCollisionEnabled() == ECollisionEnabled::NoCollision || Prim2->GetCollisionEnabled() == ECollisionEnabled::NoCollision)
 	{
-		UE_LOG(VRE_CollisionIgnoreLog, Error, TEXT("Set Objects Ignore Collision called with one or more objects with no collision!! %s, %s"), *Prim1->GetName(), *Prim2->GetName());
+		UE_LOGF(VRE_CollisionIgnoreLog, Error, "Set Objects Ignore Collision called with one or more objects with no collision!! %ls, %ls", *Prim1->GetName(), *Prim2->GetName());
 		return;
 	}
 
 	// Appears to work now with the chaos collision ignore setup
 	/*if (Prim1->Mobility == EComponentMobility::Static || Prim2->Mobility == EComponentMobility::Static)
 	{
-		UE_LOG(VRE_CollisionIgnoreLog, Error, TEXT("Set Objects Ignore Collision called with at least one static mobility object (cannot ignore collision with it)!!"));
+		UE_LOGF(VRE_CollisionIgnoreLog, Error, "Set Objects Ignore Collision called with at least one static mobility object (cannot ignore collision with it)!!");
 		if (bIgnoreCollision)
 		{
 			return;

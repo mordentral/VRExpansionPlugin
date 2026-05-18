@@ -475,9 +475,9 @@ float UAISense_Sight_VR::Update()
 
 #if AISENSE_SIGHT_TIMESLICING_DEBUG
 	SlicingInfo.Stop();
-	UE_LOG(LogAIPerception, VeryVerbose, TEXT("UAISense_Sight::Update processed %d sources %s [time slice limited? %d]"), NumQueriesProcessed, *SlicingInfo.ToString(), bHitTimeSliceLimit ? 1 : 0);
+	UE_LOGF(LogAIPerception, VeryVerbose, "UAISense_Sight::Update processed %d sources %ls [time slice limited? %d]", NumQueriesProcessed, *SlicingInfo.ToString(), bHitTimeSliceLimit ? 1 : 0);
 #else
-	UE_LOG(LogAIPerception, VeryVerbose, TEXT("UAISense_Sight::Update processed %d sources [time slice limited? %d]"), NumQueriesProcessed, bHitTimeSliceLimit ? 1 : 0);
+	UE_LOGF(LogAIPerception, VeryVerbose, "UAISense_Sight::Update processed %d sources [time slice limited? %d]", NumQueriesProcessed, bHitTimeSliceLimit ? 1 : 0);
 #endif // AISENSE_SIGHT_TIMESLICING_DEBUG
 
 	if (QueryOperations.Num() > 0)

@@ -75,7 +75,7 @@ void UVRExpansionFunctionLibrary::SetActorsIgnoreAllCollision(UObject* WorldCont
 					{
 						if (CollisionIgnoreSubsystem->AreComponentsIgnoringCollisions(PrimitiveComponents1[i], PrimitiveComponents2[j]))
 						{
-							UE_LOG(VRExpansionFunctionLibraryLog, Error, TEXT("Set Actors Ignore Collision called with at least one object set to no collision that are ignoring collision already!! %s, %s"),*PrimitiveComponents1[i]->GetName(), *PrimitiveComponents2[j]->GetName());
+							UE_LOGF(VRExpansionFunctionLibraryLog, Error, "Set Actors Ignore Collision called with at least one object set to no collision that are ignoring collision already!! %ls, %ls",*PrimitiveComponents1[i]->GetName(), *PrimitiveComponents2[j]->GetName());
 						}
 					}
 					continue;

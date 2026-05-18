@@ -229,7 +229,7 @@ bool UVRGlobalSettings::LoadControllerProfileByName(FName ControllerProfileName,
 	}
 	
 
-	UE_LOG(LogTemp, Warning, TEXT("Could not find controller profile!: %s"), *ControllerProfileName.ToString());
+	UE_LOGF(LogTemp, Warning, "Could not find controller profile!: %ls", *ControllerProfileName.ToString());
 	return false;
 }
 

@@ -1093,7 +1093,7 @@ public:
 				{
 					// Catch this here or otherwise GeomTransform below will assert
 					// This spams so commented out
-					//UE_LOG(LogStaticMesh, Log, TEXT("Zero scaling not supported (%s)"), *StaticMesh->GetPathName());
+					//UE_LOGF(LogStaticMesh, Log, TEXT("Zero scaling not supported (%s)"), *StaticMesh->GetPathName());
 				}
 				else
 				{

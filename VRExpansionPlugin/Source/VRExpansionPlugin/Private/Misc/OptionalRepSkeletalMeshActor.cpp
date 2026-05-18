@@ -472,9 +472,9 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 					// tracking down TTP 280421. Remove this if this doesn't happen. 
 					if (!ensure(Bodies.IsValidIndex(BodyIndex)))
 					{
-						UE_LOG(LogPhysics, Warning, TEXT("%s(Mesh %s, PhysicsAsset %s)"),
+						UE_LOGF(LogPhysics, Warning, "%ls(Mesh %s, PhysicsAsset %ls)",
 							*GetName(), *GetNameSafe(GetSkeletalMeshAsset()), *GetNameSafe(PhysicsAsset));
-						UE_LOG(LogPhysics, Warning, TEXT(" - # of BodySetup (%d), # of Bodies (%d), Invalid BodyIndex(%d)"),
+						UE_LOGF(LogPhysics, Warning, " - # of BodySetup (%d), # of Bodies (%d), Invalid BodyIndex(%d)",
 							PhysicsAsset->SkeletalBodySetups.Num(), Bodies.Num(), BodyIndex);
 						continue;
 					}

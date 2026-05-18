@@ -483,7 +483,7 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 		if (!QueryController)
 		{
 			// No controller input
-			UE_LOG(LogVRMotionController, Warning, TEXT("HandSocketComponent::GetHandSocketTransform was missing required motion controller for bOnlySnapMesh! Check that you are passing a controller into GetClosestSocketInRange!"));
+			UE_LOGF(LogVRMotionController, Warning, "HandSocketComponent::GetHandSocketTransform was missing required motion controller for bOnlySnapMesh! Check that you are passing a controller into GetClosestSocketInRange!");
 		}
 		else
 		{
@@ -496,7 +496,7 @@ FTransform UHandSocketComponent::GetHandSocketTransform(UGripMotionControllerCom
 		if (!QueryController)
 		{
 			// No controller input
-			UE_LOG(LogVRMotionController, Warning, TEXT("HandSocketComponent::GetHandSocketTransform was missing required motion controller for bFlipForLeftand! Check that you are passing a controller into GetClosestSocketInRange!"));
+			UE_LOGF(LogVRMotionController, Warning, "HandSocketComponent::GetHandSocketTransform was missing required motion controller for bFlipForLeftand! Check that you are passing a controller into GetClosestSocketInRange!");
 		}
 		else
 		{

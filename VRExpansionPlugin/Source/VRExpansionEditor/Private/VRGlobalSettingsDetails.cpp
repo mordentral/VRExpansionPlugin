@@ -121,14 +121,14 @@ void FVRGlobalSettingsDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuil
 			FFileHelper::SaveStringToFile(FileStr, *EnginePath);
 
 			GEngine->Exec(GEngine->GetWorld(), TEXT("recompileshaders changed"));
-			UE_LOG(LogPath, Log, TEXT("ShadowProjectionPixelShader.usf resaved and recompiled!"));
+			UE_LOGF(LogPath, Log, "ShadowProjectionPixelShader.usf resaved and recompiled!");
 			return FReply::Handled();
 		}
 	}
 
 #endif
 
-	UE_LOG(LogPath, Error, TEXT("ShadowProjectionPixelShader.usf could not be found, edited, or the engine version is incorrect!"));
+	UE_LOGF(LogPath, Error, "ShadowProjectionPixelShader.usf could not be found, edited, or the engine version is incorrect!");
 	return FReply::Handled();
 }*/
 
@@ -190,7 +190,7 @@ FReply FVRGlobalSettingsDetails::OnCorrectInvalidAnimationAssets()
 					//UPackage::SavePackage(Package, NULL, RF_Standalone, *PackageFileName, GError, nullptr, false, true, SAVE_NoError);
 
 					double ElapsedTime = FPlatformTime::Seconds() - StartTime;
-					UE_LOG(LogAnimation, Log, TEXT("Animation re-saved %s in %0.2f seconds"), *PackageName, ElapsedTime);
+					UE_LOGF(LogAnimation, Log, "Animation re-saved %ls in %0.2f seconds", *PackageName, ElapsedTime);
 				}
 	
 			}

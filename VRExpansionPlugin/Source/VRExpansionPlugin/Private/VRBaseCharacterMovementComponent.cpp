@@ -1718,7 +1718,7 @@ void UVRBaseCharacterMovementComponent::SimulatedTick(float DeltaSeconds)
 				DrawDebugCoordinateSystem(GetWorld(), CharacterOwner->GetMesh()->GetComponentLocation() + FVector(0, 0, 1), NewRotation, 50.f, false);
 				DrawDebugLine(GetWorld(), OldLocation, NewLocation, FColor::Red, false, 10.f);
 
-				UE_LOG(LogRootMotion, Log, TEXT("UCharacterMovementComponent::SimulatedTick DeltaMovement Translation: %s, Rotation: %s, MovementBase: %s"),
+				UE_LOGF(LogRootMotion, Log, TEXT("UCharacterMovementComponent::SimulatedTick DeltaMovement Translation: %s, Rotation: %s, MovementBase: %s"),
 					*(NewLocation - OldLocation).ToCompactString(), *(NewRotation - OldRotation).GetNormalized().ToCompactString(), *GetNameSafe(CharacterOwner->GetMovementBase()));
 			}*/
 #endif // !(UE_BUILD_SHIPPING)
@@ -2091,7 +2091,7 @@ void UVRBaseCharacterMovementComponent::SmoothCorrection(const FVector& OldLocat
 			ClientData->MeshTranslationOffset = ClientData->MeshTranslationOffset + NewToOldVector;
 		}
 
-		//UE_LOG(LogVRBaseCharacterMovement, Verbose, "Proxy %s SmoothCorrection(%.2f)", *GetNameSafe(CharacterOwner), FMath::Sqrt(DistSq));
+		//UE_LOGF(LogVRBaseCharacterMovement, Verbose, "Proxy %ls SmoothCorrection(%.2f)", *GetNameSafe(CharacterOwner), FMath::Sqrt(DistSq));
 		if (NetworkSmoothingMode == ENetworkSmoothingMode::Linear)
 		{
 			// #TODO: Get this working in the future?

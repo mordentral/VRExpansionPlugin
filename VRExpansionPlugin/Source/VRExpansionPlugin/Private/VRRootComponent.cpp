@@ -215,7 +215,7 @@ static bool ShouldIgnoreHitResult(const UWorld* InWorld, bool bAllowSimulatingCo
 			static const auto CVarShowInitialOverlaps = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ShowInitialOverlaps"));
 			if (CVarShowInitialOverlaps->GetInt() != 0)
 			{
-				UE_LOG(LogVRRootComponent, Log, TEXT("Overlapping %s Dir %s Dot %f Normal %s Depth %f"), *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
+				UE_LOGF(LogVRRootComponent, Log, "Overlapping %ls Dir %s Dot %f Normal %s Depth %f", *GetNameSafe(TestHit.Component.Get()), *MovementDir.ToString(), MoveDot, *TestHit.ImpactNormal.ToString(), TestHit.PenetrationDepth);
 				DrawDebugDirectionalArrow(InWorld, TestHit.TraceStart, TestHit.TraceStart + 30.f * TestHit.ImpactNormal, 5.f, bMovingOut ? FColor(64, 128, 255) : FColor(255, 64, 64), true, 4.f);
 				if (TestHit.PenetrationDepth > UE_KINDA_SMALL_NUMBER)
 				{
@@ -1337,7 +1337,7 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TOverlapArrayView* NewPendingOve
 				// Might be able to avoid testing for new overlaps at the end location.
 				if (OverlapsAtEndLocationPtr != nullptr && CVarAllowCachedOverlaps->GetInt() > 0 && PrevTransform.Equals(GetComponentTransform()))
 				{
-					UE_LOG(LogVRRootComponent, VeryVerbose, TEXT("%s->%s Skipping overlap test!"), *GetNameSafe(GetOwner()), *GetName());
+					UE_LOGF(LogVRRootComponent, VeryVerbose, "%ls->%ls Skipping overlap test!", *GetNameSafe(GetOwner()), *GetName());
 					const bool bCheckForInvalid = (NewPendingOverlaps && NewPendingOverlaps->Num() > 0);
 					if (bCheckForInvalid)
 					{
@@ -1352,7 +1352,7 @@ bool UVRRootComponent::UpdateOverlapsImpl(const TOverlapArrayView* NewPendingOve
 				else
 				{
 					SCOPE_CYCLE_COUNTER(STAT_PerformOverlapQueryVR);
-					UE_LOG(LogVRRootComponent, VeryVerbose, TEXT("%s->%s Performing overlaps!"), *GetNameSafe(GetOwner()), *GetName());
+					UE_LOGF(LogVRRootComponent, VeryVerbose, "%ls->%ls Performing overlaps!", *GetNameSafe(GetOwner()), *GetName());
 					UWorld* const MyWorld = GetWorld();
 					TArray<FOverlapResult> Overlaps;
 					// note this will optionally include overlaps with components in the same actor (depending on bIgnoreChildren). 
