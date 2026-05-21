@@ -805,17 +805,25 @@ void UVRStereoWidgetComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			if (Cylinder)
 			{
 				const float ArcAngleRadians = FMath::DegreesToRadians(CylinderArcAngle);
-				const float Radius = GetDrawSize().X / ArcAngleRadians;
+				const FVector2D CylinderScale = FVector2D(GetComponentTransform().GetScale3D());
+				
+				const float Radius = (LayerDsec.QuadSize.X * CylinderScale.X) / ArcAngleRadians;
+				const float Apothem = Radius * FMath::Cos(0.5f * ArcAngleRadians);
 
-				Cylinder->Height = GetDrawSize().Y;//CylinderHeight_DEPRECATED;
-				Cylinder->OverlayArc = CylinderArcAngle;// CylinderOverlayArc_DEPRECATED;
-				Cylinder->Radius = Radius;// CylinderRadius_DEPRECATED;
+				Cylinder->Radius = Radius;
+				Cylinder->OverlayArc = Radius * ArcAngleRadians;
+				Cylinder->Height = LayerDsec.QuadSize.Y * CylinderScale.Y;
+
+				FTransform CylinderTransform = LayerDsec.Transform;
+				FVector ApothemOffset = CylinderTransform.GetRotation().GetForwardVector() * Apothem;
+				CylinderTransform.SetTranslation(CylinderTransform.GetTranslation() - ApothemOffset);
+				LayerDsec.Transform = CylinderTransform;
 			}
 			break;
 
 			//LayerDsec.ShapeType = IStereoLayers::CylinderLayer;
 
-		}break;
+		}
 		case EWidgetGeometryMode::Plane:
 		default:
 		{
