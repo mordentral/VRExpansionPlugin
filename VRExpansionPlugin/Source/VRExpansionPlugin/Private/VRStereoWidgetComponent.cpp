@@ -1271,38 +1271,6 @@ FPrimitiveSceneProxy* UVRStereoWidgetComponent::CreateSceneProxy()
 #endif
 }
 
-class FVRStereoWidgetComponentInstanceData : public FActorComponentInstanceData
-{
-public:
-	FVRStereoWidgetComponentInstanceData(const UVRStereoWidgetComponent* SourceComponent)
-		: FActorComponentInstanceData(SourceComponent)
-		, RenderTarget(SourceComponent->GetRenderTarget())
-	{}
-
-	virtual void ApplyToComponent(UActorComponent* Component, const ECacheApplyPhase CacheApplyPhase) override
-	{
-		FActorComponentInstanceData::ApplyToComponent(Component, CacheApplyPhase);
-		CastChecked<UVRStereoWidgetComponent>(Component)->ApplyVRComponentInstanceData(this);
-	}
-
-	/*virtual void AddReferencedObjects(FReferenceCollector& Collector) override
-	{
-		FActorComponentInstanceData::AddReferencedObjects(Collector);
-
-		UClass* WidgetUClass = *WidgetClass;
-		Collector.AddReferencedObject(WidgetUClass);
-		Collector.AddReferencedObject(RenderTarget);
-	}*/
-
-public:
-	UTextureRenderTarget2D* RenderTarget;
-};
-
-TStructOnScope<FActorComponentInstanceData> UVRStereoWidgetComponent::GetComponentInstanceData() const
-{
-	return MakeStructOnScope<FActorComponentInstanceData, FVRStereoWidgetComponentInstanceData>(this);
-}
-
 void UVRStereoWidgetComponent::ApplyVRComponentInstanceData(FVRStereoWidgetComponentInstanceData* WidgetInstanceData)
 {
 	check(WidgetInstanceData);
@@ -1327,4 +1295,9 @@ void UVRStereoWidgetComponent::ApplyVRComponentInstanceData(FVRStereoWidgetCompo
 	}
 
 	MarkRenderStateDirty();
+}
+
+TStructOnScope<FActorComponentInstanceData> UVRStereoWidgetComponent::GetComponentInstanceData() const
+{
+	return MakeStructOnScope<FActorComponentInstanceData, FVRStereoWidgetComponentInstanceData>(this);
 }
