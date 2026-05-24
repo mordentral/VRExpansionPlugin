@@ -7,6 +7,7 @@
 //#include "VRBPDatatypes.h"
 #include "Components/StereoLayerComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Engine/TextureRenderTarget2D.h"
 //#include "Animation/UMGSequencePlayer.h"
 
 #include "VRStereoWidgetComponent.generated.h"
@@ -15,6 +16,7 @@ class FWidgetRenderer;
 class UUserWidget;
 class UTextureRenderTarget2D;
 class UStereoLayerShape;
+struct FVRStereoWidgetComponentInstanceData;
 
 
 /**
@@ -122,7 +124,7 @@ public:
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 	virtual void DrawWidgetToRenderTarget(float DeltaTime) override;
 	virtual TStructOnScope<FActorComponentInstanceData>  GetComponentInstanceData() const override;
-	void ApplyVRComponentInstanceData(class FVRStereoWidgetComponentInstanceData* WidgetInstanceData);
+	void ApplyVRComponentInstanceData(struct FVRStereoWidgetComponentInstanceData* WidgetInstanceData);
 
 	virtual void UpdateRenderTarget(FIntPoint DesiredRenderTargetSize) override;
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
@@ -247,4 +249,39 @@ private:
 	/** Last frames visiblity state **/
 	bool bLastVisible;
 
+};
+
+USTRUCT()
+struct FVRStereoWidgetComponentInstanceData : public FActorComponentInstanceData
+{
+	GENERATED_BODY()
+public:
+	FVRStereoWidgetComponentInstanceData(const UVRStereoWidgetComponent* SourceComponent)
+		: FActorComponentInstanceData(SourceComponent)
+		, RenderTarget(SourceComponent->GetRenderTarget())
+	{
+	}
+
+	FVRStereoWidgetComponentInstanceData()
+		: FActorComponentInstanceData()
+	{
+	}
+
+	virtual void ApplyToComponent(UActorComponent* Component, const ECacheApplyPhase CacheApplyPhase) override
+	{
+		FActorComponentInstanceData::ApplyToComponent(Component, CacheApplyPhase);
+		CastChecked<UVRStereoWidgetComponent>(Component)->ApplyVRComponentInstanceData(this);
+	}
+
+	/*virtual void AddReferencedObjects(FReferenceCollector& Collector) override
+	{
+		FActorComponentInstanceData::AddReferencedObjects(Collector);
+
+		UClass* WidgetUClass = *WidgetClass;
+		Collector.AddReferencedObject(WidgetUClass);
+		Collector.AddReferencedObject(RenderTarget);
+	}*/
+
+public:
+	UTextureRenderTarget2D* RenderTarget;
 };
