@@ -14,6 +14,8 @@
 
 #include "OpenXRHandPoseComponent.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(OpenXRExpansionHandTrackingLog, Log, All);
+
 USTRUCT(BlueprintType, Category = "VRExpansionFunctions|OpenXR|HandSkeleton")
 struct OPENXREXPANSIONPLUGIN_API FBPXRSkeletalRepContainer
 {
