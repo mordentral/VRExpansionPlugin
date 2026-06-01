@@ -11,6 +11,9 @@
 #include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 //#include "EngineMinimal.h"
 
+//General Log
+DEFINE_LOG_CATEGORY(OpenXRExpansionHandTrackingLog);
+
 UOpenXRHandPoseComponent::UOpenXRHandPoseComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -226,8 +229,10 @@ bool UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRSkeletalH
 {
 
 	if (!HandSkeletalActions.Num())
+	{
+		UE_LOG(OpenXRExpansionHandTrackingLog, Error, TEXT("Cannot Save Pose, no hand skeletal actions!"));
 		return false;
-
+	}
 	// Default to the first hand element so that single length arrays work as is.
 	FBPOpenXRActionSkeletalData* HandSkeletalAction = nullptr;
 
@@ -242,7 +247,22 @@ bool UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRSkeletalH
 	}
 
 	if (!HandSkeletalAction || !HandSkeletalAction->bHasValidData || HandSkeletalAction->SkeletalTransforms.Num() < EHandKeypointCount)
+	{
+		if (!HandSkeletalAction)
+		{
+			UE_LOG(OpenXRExpansionHandTrackingLog, Error, TEXT("Cannot Save Pose,  couldn't match hand skeletal action!"));
+		}
+		else if (!HandSkeletalAction->bHasValidData)
+		{
+			UE_LOG(OpenXRExpansionHandTrackingLog, Error, TEXT("Cannot Save Pose, no valid data!"));
+		}
+		else
+		{
+			UE_LOG(OpenXRExpansionHandTrackingLog, Error, TEXT("Cannot Save Pose, Skeletal transforms array is too small!"));
+		}
+
 		return false;
+	}
 
 	if (GesturesDB)
 	{
@@ -286,6 +306,7 @@ bool UOpenXRHandPoseComponent::SaveCurrentPose(FName RecordingName, EVRSkeletalH
 		return true;
 	}
 
+	UE_LOG(OpenXRExpansionHandTrackingLog, Error, TEXT("Cannot Save Pose, no gestures DB assigned!"));
 	return false;
 }
 
