@@ -1,7 +1,7 @@
 {
   "FileVersion": 3,
-  "Version": 5.7,
-  "VersionName": "5.7",
+  "Version": 5.8,
+  "VersionName": "5.8",
   "FriendlyName": "VRExpansionPlugin",
   "Description": "Adds several new VR features & components to UE4",
   "Category": "VRExpansion",
