@@ -1329,9 +1329,11 @@ void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 				DefaultReplication_DEPRECATED(Handle, Input, GetDeltaTime_Internal(), UsedErrorCorrection);
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-				if (PhysicsReplicationCVars::DebugDrawShowRepMode)
+				static const auto CVarDebugDrawShowRepMode = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.ShowRepMode"));
+				if (CVarDebugDrawShowRepMode->GetInt())
 				{
-					Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Input.TargetState.Position, FVector(10.0f, 10.0f, 10.0f), Input.TargetState.Quaternion, FColor::Green, false, PhysicsReplicationCVars::DebugDrawLifeTime, 0, 1.0f);
+					static const auto CVarDebugDrawLifeTime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.LifeTime"));
+					Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Input.TargetState.Position, FVector(10.0f, 10.0f, 10.0f), Input.TargetState.Quaternion, FColor::Green, false, CVarDebugDrawLifeTime->GetFloat(), 0, 1.0f);
 				}
 #endif
 			}
@@ -1841,14 +1843,17 @@ void FPhysicsReplicationAsyncVR::ApplyTargetStatesAsync(const float DeltaSeconds
 		if (Target.RepMode == EPhysicsReplicationMode::PredictiveInterpolation)
 		{
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-			if (PhysicsReplicationCVars::PredictiveInterpolationCVars::bDrawDebugTargets)
+			static const auto CVarbDrawDebugTargets = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.DrawDebugTargets"));
+			if (CVarbDrawDebugTargets->GetBool())
 			{
-				const FVector Offset = FVector(0.0f, 0.0f, PhysicsReplicationCVars::PredictiveInterpolationCVars::DrawDebugZOffset);
+				static const auto CVarDrawDebugZOffset = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.DrawDebugZOffset"));
+				static const auto CVarDebugdrawLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.LifeTime"));
+				const FVector Offset = FVector(0.0f, 0.0f, CVarDrawDebugZOffset->GetFloat());
 				Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(
 					Target.PrevPosTarget + Offset, FVector(15.0f, 15.0f, 15.0f),
 					Target.PrevRotTarget,
 					FColor::MakeRandomSeededColor(Target.ServerFrame),
-					false, PhysicsReplicationCVars::DebugDrawLifeTime, 0, 1.0f);
+					false, CVarDebugdrawLifetime->GetFloat(), 0, 1.0f);
 			}
 #endif
 
@@ -3261,7 +3266,8 @@ void FPhysicsReplicationAsyncVR::DebugDrawReplicationMode(Chaos::FConstPhysicsOb
 {
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
-	if (!PhysicsReplicationCVars::DebugDrawShowRepMode)
+	static const auto CVarDebugDrawShowRepMode = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.ShowRepMode"));
+	if (!CVarDebugDrawShowRepMode->GetInt())
 	{
 		return;
 	}
