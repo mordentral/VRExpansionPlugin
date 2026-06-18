@@ -81,7 +81,7 @@ UVRRenderTargetManager::UVRRenderTargetManager(const FObjectInitializer& ObjectI
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 
 	PollRelevancyTime = 0.1f;
-	DrawRate = 0.0333;
+	DrawRate = 0.0333f;
 
 	bIsStoringImage = false;
 	RenderTarget = nullptr;

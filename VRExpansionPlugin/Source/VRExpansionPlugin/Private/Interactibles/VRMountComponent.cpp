@@ -45,8 +45,8 @@ UVRMountComponent::UVRMountComponent(const FObjectInitializer& ObjectInitializer
 	SecondarySlotRange = 100.f;
 	GripPriority = 1;
 
-	FlipingZone = 0.4;
-	FlipReajustYawSpeed = 7.7;
+	FlipingZone = 0.4f;
+	FlipReajustYawSpeed = 7.7f;
 
 	// Set to only overlap with things so that its not ruined by touching over actors
 	this->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);

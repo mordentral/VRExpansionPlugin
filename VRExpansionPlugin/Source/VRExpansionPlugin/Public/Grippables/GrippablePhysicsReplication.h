@@ -39,11 +39,12 @@ class FPhysicsReplicationAsyncVR : public IPhysicsReplicationAsync,
 	public Chaos::TSimCallbackObject<
 	FPhysicsReplicationAsyncInput,
 	Chaos::FSimCallbackNoOutput,
-	Chaos::ESimCallbackOptions::Presimulate | Chaos::ESimCallbackOptions::PostSolve | Chaos::ESimCallbackOptions::PhysicsObjectUnregister>
+	Chaos::ESimCallbackOptions::Presimulate | Chaos::ESimCallbackOptions::PostIntegrate | Chaos::ESimCallbackOptions::PostSolve | Chaos::ESimCallbackOptions::PhysicsObjectUnregister>
 {
 	virtual FName GetFNameForStatId() const override;
 	virtual void OnPostInitialize_Internal() override;
 	virtual void OnPreSimulate_Internal() override;
+	virtual void OnPostIntegrate_Internal() override;
 	virtual void OnPostSolve_Internal() override;
 	virtual void OnPhysicsObjectUnregistered_Internal(Chaos::FConstPhysicsObjectHandle PhysicsObject) override;
 
@@ -63,6 +64,8 @@ public:
 	virtual void AddResimulationRequest_Internal(const float DeltaSeconds) override;
 
 	virtual int32 GetNetworkPhysicsTickOffset_Internal() const override { return NetworkPhysicsTickOffset; }
+	virtual TWeakPtr<FParticleSimDecaySettings> FindOrAddParticleSimDecaySettings(Chaos::FConstPhysicsObjectHandle PhysicsObject) override;
+	virtual void RemoveParticleSimDecaySettings(Chaos::FConstPhysicsObjectHandle PhysicsObject) override;
 	//~ End IPhysicsReplicationAsync interface
 
 private:
@@ -73,6 +76,7 @@ private:
 	TMap<Chaos::FConstPhysicsObjectHandle, FReplicatedPhysicsTargetAsync> ObjectToTarget;
 	TArray<Chaos::FConstPhysicsObjectHandle> PendingDeleteFromObjectToTarget;
 	TMap<Chaos::FConstPhysicsObjectHandle, TWeakPtr<const FNetworkPhysicsSettingsData>> ObjectToSettings;
+	TMap<Chaos::FConstPhysicsObjectHandle, TSharedPtr<FParticleSimDecaySettings>> ParticleSimDecaySettings;
 	TArray<const Chaos::Private::FPBDIsland*> ResimIslands;
 	TArray<const Chaos::FGeometryParticleHandle*> ResimIslandsParticles;
 	TArray<int32> ParticlesInResimIslands;
@@ -95,13 +99,16 @@ private:
 	bool UsePhysicsReplicationLOD();
 	void CheckTargetResimValidity(FReplicatedPhysicsTargetAsync& Target);
 	void ApplyPhysicsReplicationLOD(Chaos::FConstPhysicsObjectHandle PhysicsObjectHandle, FReplicatedPhysicsTargetAsync& Target, const uint32 LODFlags);
-	void DebugDrawReplicationMode(const FPhysicsRepAsyncInputData& Input);
+	void DebugDrawReplicationMode(Chaos::FConstPhysicsObjectHandle PhysicsObjectHandle, const FReplicatedPhysicsTargetAsync& Target);
 
 	/** Check if we have to resimulate the particle or not */
 	bool ShouldResimulateParticle(const Chaos::FPBDRigidParticleHandle* Handle, const FReplicatedPhysicsTargetAsync& Target, const float DeltaSeconds) const;
 
 	/** Check if a target is valid for resimulation or not */
 	bool IsTargetValidForResim(const FReplicatedPhysicsTargetAsync& Target) const;
+
+	/** Returns RewindData if it already exists, otherwise enables RewindCapture (when network physics prediction and a fixed timestep are in use) and returns the freshly enabled instance. Returns nullptr if neither conditions allow enabling. */
+	Chaos::FRewindData* GetOrEnableRewindData(Chaos::FPBDRigidsSolver* RigidsSolver);
 
 	/** Static function to extrapolate a target for N ticks using X DeltaSeconds */
 	static void ExtrapolateTarget(FReplicatedPhysicsTargetAsync& Target, const int32 ExtrapolateFrames, const float DeltaSeconds);

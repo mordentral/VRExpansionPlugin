@@ -11,6 +11,7 @@
 #include "CoreMinimal.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "PhysicsReplicationLOD.h"
+#include "Physics/PhysicsReplicationQuantization.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "UObject/ObjectMacros.h"
@@ -50,6 +51,15 @@ namespace RenderInterpolationCVars
 {
 	bool bRenderInterpDebugDrawResimTrigger = false;
 	float RenderInterpDebugDrawResimBoxScale = 1.0f;
+}
+
+namespace PhysicsReplicationLODCVars
+{
+	// Defined in PhysicsReplicationLOD.cpp.
+
+	extern int32 TransitionExtrapFrameMin = 3;
+	extern float TransitionExtrapFraction = 0.3f;
+	extern bool bTransitionModeDebugLog = false;
 }
 
 namespace PhysicsReplicationCVars
@@ -1083,6 +1093,7 @@ void FPhysicsReplicationAsyncVR::OnPhysicsObjectUnregistered_Internal(Chaos::FCo
 
 	// Only clear Settings when PhysicsObject unregister (not when it stops replicating, hence why it's not baked into RemoveObjectFromReplication())
 	ObjectToSettings.Remove(PhysicsObject);
+	RemoveParticleSimDecaySettings(PhysicsObject);
 
 	Chaos::FReadPhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetRead();
 	if (Chaos::FGeometryParticleHandle* Handle = Interface.GetParticle(PhysicsObject))
@@ -1107,6 +1118,27 @@ void FPhysicsReplicationAsyncVR::RegisterSettings(Chaos::FConstPhysicsObjectHand
 	}
 }
 
+TWeakPtr<FParticleSimDecaySettings> FPhysicsReplicationAsyncVR::FindOrAddParticleSimDecaySettings(Chaos::FConstPhysicsObjectHandle PhysicsObject)
+{
+	if (PhysicsObject == nullptr)
+	{
+		return nullptr;
+	}
+
+	// Caller writes directly into the returned element
+	TSharedPtr<FParticleSimDecaySettings>& Entry = ParticleSimDecaySettings.FindOrAdd(PhysicsObject);
+	if (!Entry.IsValid())
+	{
+		Entry = MakeShared<FParticleSimDecaySettings>();
+	}
+	return Entry.ToWeakPtr();
+}
+
+void FPhysicsReplicationAsyncVR::RemoveParticleSimDecaySettings(Chaos::FConstPhysicsObjectHandle PhysicsObject)
+{
+	ParticleSimDecaySettings.Remove(PhysicsObject);
+}
+
 void FPhysicsReplicationAsyncVR::FetchObjectSettings(Chaos::FConstPhysicsObjectHandle PhysicsObject)
 {
 	TWeakPtr<const FNetworkPhysicsSettingsData>* CustomSettings = ObjectToSettings.Find(PhysicsObject);
@@ -1115,96 +1147,105 @@ void FPhysicsReplicationAsyncVR::FetchObjectSettings(Chaos::FConstPhysicsObjectH
 
 void FPhysicsReplicationAsyncVR::OnPostInitialize_Internal()
 {
-	Chaos::FPBDRigidsSolver& RigidsSolver = GetSolver()->CastChecked();
-	RigidsSolver.SetPhysicsReplication_Internal(this);
-	//Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
-
-	/*if (ensure(RigidsSolver))
+	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
+	if (RigidsSolver == nullptr)
 	{
-		// This doesn't even do anything currently, nothing gets it #TODO: CHECK BACK ON THIS
-		//RigidsSolver->SetPhysicsReplication(this);
-	}*/
+		return;
+	}
+
+	RigidsSolver->SetPhysicsReplication_Internal(this);
 }
 
 void FPhysicsReplicationAsyncVR::AddResimulationRequest_Internal(const float DeltaSeconds)
 {
-	//NOTE: This gets called if we perform rewind/resimulation before current physics frame steps - Chaos::RewindBeforeAdvance != 0
+	//NOTE: This gets called if Chaos::RewindBeforeAdvance != 0 before the current physics frame execute any logic or callbacks
 
 	if (FPhysicsReplicationVR::ShouldSkipPhysicsReplication())
 	{
 		return;
 	}
 
-	if (const FPhysicsReplicationAsyncInput* AsyncInputVR = GetConsumerInput_Internal())
+	const FPhysicsReplicationAsyncInput* AsyncInputVR = GetConsumerInput_Internal();
+	if (!AsyncInputVR)
 	{
-		NetworkPhysicsTickOffsetAssigned = AsyncInputVR->NetworkPhysicsTickOffsetAssigned;
-		NetworkPhysicsTickOffset = AsyncInputVR->NetworkPhysicsTickOffset;
+		return;
+	}
 
-		Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
-		check(RigidsSolver);
+	NetworkPhysicsTickOffsetAssigned = AsyncInputVR->NetworkPhysicsTickOffsetAssigned;
+	NetworkPhysicsTickOffset = AsyncInputVR->NetworkPhysicsTickOffset;
 
-		Chaos::FReadPhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetRead();
-		for (const FPhysicsRepAsyncInputData& InputData : AsyncInputVR->InputData)
+	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
+	check(RigidsSolver);
+	Chaos::FRewindData* RewindData = RigidsSolver->GetRewindData();
+
+	Chaos::FReadPhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetRead();
+	const int32 CurrentSolverFrame = RigidsSolver->GetCurrentFrame();
+
+	// Pass 1: per-asyncinput ingestion of received target states.
+	for (const FPhysicsRepAsyncInputData& InputData : AsyncInputVR->InputData)
+	{
+		if (InputData.TargetState.Flags == ERigidBodyFlags::None)
 		{
-			if (InputData.TargetState.Flags != ERigidBodyFlags::None)
-			{
-				Chaos::FRewindData* RewindData = RigidsSolver->GetRewindData();
+			RemoveObjectFromReplication(InputData.PhysicsObject);
+			continue;
+		}
 
-				EPhysicsReplicationMode EffectiveRepMode = InputData.RepMode;
+		UpdateRewindDataTarget(InputData);
+		UpdateAsyncTarget(InputData, RigidsSolver);
+	}
 
-				// Get replication mode from LOD if enabled
-				IPhysicsReplicationLODAsync* PhysRepLod = RigidsSolver->GetPhysicsReplicationLOD_Internal();
-				if (PhysRepLod && PhysRepLod->IsEnabled())
-				{
-					FPhysicsRepLodData* LodData = PhysRepLod->GetLODData_Internal(InputData.PhysicsObject, EPhysicsReplicationLODFlags::LODFlag_All);
-					if (LodData && LodData->DataAssigned)
-					{
-						EffectiveRepMode = LodData->ReplicationMode;
-					}
-				}
+	// Pass 2: per-particle LOD + resim trigger
+	for (const FPhysicsRepAsyncInputData& InputData : AsyncInputVR->InputData)
+	{
+		if (InputData.TargetState.Flags == ERigidBodyFlags::None)
+		{
+			continue;
+		}
 
-				// Create RewindData if we use resim and not yet created
-				if (!RewindData && EffectiveRepMode == EPhysicsReplicationMode::Resimulation)
-				{
-					if (Chaos::FPBDRigidsSolver::IsNetworkPhysicsPredictionEnabled() && RigidsSolver->IsUsingFixedDt())
-					{
-						RigidsSolver->EnableRewindCapture();
-						RewindData = RigidsSolver->GetRewindData();
-					}
-				}
+		FReplicatedPhysicsTargetAsync* Target = ObjectToTarget.Find(InputData.PhysicsObject);
+		if (!Target)
+		{
+			continue;
+		}
 
-				// Update rewind data with target state from server no matter which replication mode is used
-				UpdateRewindDataTarget(InputData);
+		if (Target->LastLODFrame == CurrentSolverFrame)
+		{
+			// Already processed this particle this frame, can happen if AsyncInput holds multiple InputData for the same particle
+			continue;
+		}
 
-				if (EffectiveRepMode == EPhysicsReplicationMode::Resimulation)
-				{
-					if (RewindData)
-					{
-						if (Chaos::FGeometryParticleHandle* GeometryHandle = Interface.GetParticle(InputData.PhysicsObject))
-						{
-							if (Chaos::FPBDRigidParticleHandle* RigidHandle = GeometryHandle->CastToRigidParticle())
-							{
-								FReplicatedPhysicsTargetAsync Target;
+		Target->SimDecayTimeScale = 1.0f;
+		ApplyPhysicsReplicationLOD(InputData.PhysicsObject, *Target, EPhysicsReplicationLODFlags::LODFlag_All);
 
-								// Update target data required to trigger resim from input
-								Target.ServerFrame = InputData.ServerFrame;
-								Target.TargetState = InputData.TargetState;
-								Target.FrameOffset = NetworkPhysicsTickOffset;
+		if (Target->RepMode != EPhysicsReplicationMode::Resimulation)
+		{
+			continue;
+		}
 
-								if (IsTargetValidForResim(Target))
-								{
-									const int32 LocalFrame = Target.ServerFrame - Target.FrameOffset;
-									if (ShouldResimulateParticle(RigidHandle, Target, DeltaSeconds) && LocalFrame > RewindData->GetBlockedResimFrame())
-									{
-										// Request resimulation
-										RewindData->RequestResimulation(LocalFrame, GeometryHandle);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+		// Enable rewind capture lazily on first sight of a resim-mode particle.
+		if (!RewindData)
+		{
+			RewindData = GetOrEnableRewindData(RigidsSolver);
+		}
+
+		if (!RewindData || !IsTargetValidForResim(*Target))
+		{
+			continue;
+		}
+
+		Chaos::FPBDRigidParticleHandle* RigidHandle = Interface.GetRigidParticle(InputData.PhysicsObject);
+		if (!RigidHandle)
+		{
+			continue;
+
+
+		}
+
+		// Target->ServerFrame is the latest after pass 1.
+		const int32 LocalFrame = Target->ServerFrame - Target->FrameOffset;
+		if (ShouldResimulateParticle(RigidHandle, *Target, DeltaSeconds) && LocalFrame > RewindData->GetBlockedResimFrame())
+		{
+			RewindData->RequestResimulation(LocalFrame, RigidHandle);
 		}
 	}
 }
@@ -1262,42 +1303,21 @@ void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 				continue;
 			}
 
-			// When Chaos::RewindBeforeAdvance != 0 this is done inside AddResimulationRequest_Internal()
-			if (Chaos::RewindBeforeAdvance == 0)
+			// Verify the received target is on the same quantization grid as used for per-frame physics quantization
+			if (Input.ServerFrame > 0)
 			{
-				EPhysicsReplicationMode EffectiveRepMode = Input.RepMode;
-
-				// Get replication mode from LOD if enabled
-				IPhysicsReplicationLODAsync* PhysRepLod = RigidsSolver->GetPhysicsReplicationLOD_Internal();
-				if (PhysRepLod && PhysRepLod->IsEnabled())
-				{
-					FPhysicsRepLodData* LodData = PhysRepLod->GetLODData_Internal(Input.PhysicsObject, EPhysicsReplicationLODFlags::LODFlag_All);
-					if (LodData && LodData->DataAssigned)
-					{
-						EffectiveRepMode = LodData->ReplicationMode;
-					}
-				}
-
-				// Create RewindData if we use resim and it's not yet created
-				if (EffectiveRepMode == EPhysicsReplicationMode::Resimulation)
-				{
-					if (!bRewindDataExist)
-					{
-						if (Chaos::FPBDRigidsSolver::IsNetworkPhysicsPredictionEnabled() && RigidsSolver->IsUsingFixedDt())
-						{
-							RigidsSolver->EnableRewindCapture();
-							RewindData = RigidsSolver->GetRewindData();
-							bRewindDataExist = RewindData != nullptr;
-						}
-					}
-				}
-
-				UpdateRewindDataTarget(Input);
+				UE::PhysicsReplicationQuantization::VerifyTargetOnGrid_Internal(
+				GetSolver(), Input.PhysicsObject, Input.ServerFrame,
+				Input.TargetState.Position, Input.TargetState.Quaternion,
+				Input.TargetState.LinVel, Input.TargetState.AngVel);
 			}
 
-			UpdateAsyncTarget(Input, RigidsSolver);
-
-			DebugDrawReplicationMode(Input);
+			// When Chaos::RewindBeforeAdvance != 0 these writes are done inside AddResimulationRequest_Internal()'s Pass 1 instead. Running them again here would clobber Target state established by Pass 2's LOD (TickCount, SimDecayTimeScale, the cached helpers). RewindCapture is lazy-enabled at the RequestResimulation call sites, so UpdateRewindDataTarget may no-op until the first resim trigger forces it on.
+			if (Chaos::RewindBeforeAdvance == 0)
+			{
+				UpdateRewindDataTarget(Input);
+				UpdateAsyncTarget(Input, RigidsSolver);
+			}
 
 			// Deprecated, legacy BodyInstance flow for Default Replication
 			if (Input.Proxy != nullptr)
@@ -1307,6 +1327,13 @@ void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 
 				const FPhysicsRepErrorCorrectionData& UsedErrorCorrection = Input.ErrorCorrection.IsSet() ? Input.ErrorCorrection.GetValue() : AsyncInputVR->ErrorCorrection;
 				DefaultReplication_DEPRECATED(Handle, Input, GetDeltaTime_Internal(), UsedErrorCorrection);
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+				if (PhysicsReplicationCVars::DebugDrawShowRepMode)
+				{
+					Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Input.TargetState.Position, FVector(10.0f, 10.0f, 10.0f), Input.TargetState.Quaternion, FColor::Green, false, PhysicsReplicationCVars::DebugDrawLifeTime, 0, 1.0f);
+				}
+#endif
 			}
 		}
 	}
@@ -1317,6 +1344,127 @@ void FPhysicsReplicationAsyncVR::OnPreSimulate_Internal()
 	}
 
 	ApplyTargetStatesAsync(GetDeltaTime_Internal());
+}
+
+
+void FPhysicsReplicationAsyncVR::OnPostIntegrate_Internal()
+{
+	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
+	if (!RigidsSolver)
+	{
+		return;
+	}
+
+	Chaos::FRewindData* RewindData = RigidsSolver->GetRewindData();
+	const bool bIsResim = RewindData && RewindData->IsResim();
+
+	Chaos::FWritePhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetWrite();
+
+	// Scale back the integration delta between Pre- and Post-integrate by TimeScale
+	auto ApplyDecay = [&](Chaos::FConstPhysicsObjectHandle Handle, float TimeScale)
+		{
+			if (TimeScale >= 1.0f)
+			{
+				return;
+			}
+
+			Chaos::FPBDRigidParticleHandle* Particle = Interface.GetRigidParticle(Handle);
+			if (!Particle || !Particle->IsDynamic())
+			{
+				return;
+			}
+
+			const Chaos::FVec3 PrePos = Particle->GetTransformXRCom().GetLocation();
+			const Chaos::FRotation3 PreRot = Particle->GetTransformXRCom().GetRotation();
+			const Chaos::FVec3 PreVel = Particle->GetPreV();
+			const Chaos::FVec3 PreAngVel = Particle->GetPreW();
+
+			const Chaos::FVec3 PostPos = Particle->GetTransformPQCom().GetLocation();
+			const Chaos::FRotation3 PostRot = Particle->GetTransformPQCom().GetRotation();
+			const Chaos::FVec3 PostVel = Particle->GetV();
+			const Chaos::FVec3 PostAngVel = Particle->GetW();
+
+			Particle->SetTransformPQCom(
+				PrePos + TimeScale * (PostPos - PrePos),
+				Chaos::FRotation3::Slerp(PreRot, PostRot, TimeScale).GetNormalized());
+			Particle->SetV(PreVel + TimeScale * (PostVel - PreVel));
+			Particle->SetW(PreAngVel + TimeScale * (PostAngVel - PreAngVel));
+
+			static const auto CVarbTransitionModeDebugLog = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionMode.DebugLog"));
+			if (CVarbTransitionModeDebugLog->GetBool())
+			{
+				const double DeltaLen = (PostPos - PrePos).Size();
+				const double ScaledLen = DeltaLen * TimeScale;
+				UE_LOGF(LogPhysics, Log, "[ReplicationLOD] Decay | Frame=%d Resim=%d TimeScale=%.3f | DeltaLen=%.3f ScaledLen=%.3f | PrePos=%.2f PostPos=%.2f ResultPos=%.2f"
+					, RigidsSolver->GetCurrentFrame(), bIsResim ? 1 : 0, TimeScale, DeltaLen, ScaledLen, PrePos.Size(), PostPos.Size(), (PrePos + TimeScale * (PostPos - PrePos)).Size());
+			}
+		};
+
+
+	if (bIsResim)
+	{
+		// On first resim step, min-merge per-particle FParticleSimDecaySettings into Target.SimDecayTimeScale
+		if (RigidsSolver->GetCurrentFrame() == RewindData->GetResimFrame())
+		{
+			const float ResimFrames = static_cast<float>(RewindData->GetLatestFrame() - RewindData->GetResimFrame());
+
+			for (const TPair<Chaos::FConstPhysicsObjectHandle, TSharedPtr<FParticleSimDecaySettings>>& Pair : ParticleSimDecaySettings)
+			{
+				FReplicatedPhysicsTargetAsync* ClampTarget = ObjectToTarget.Find(Pair.Key);
+				if (!ClampTarget)
+				{
+					continue;
+				}
+
+				const TSharedPtr<FParticleSimDecaySettings>& Settings = Pair.Value;
+
+				float TimeScale = Settings->StaticTimeScale;
+				if (Settings->bUseDynamicTimeScale && ResimFrames > 0.0f)
+				{
+					TimeScale = FMath::Clamp(
+						Settings->DynamicBase + (ResimFrames - Settings->InputPredictionFramesAverage) / ResimFrames,
+						Settings->DynamicMin, Settings->DynamicMax);
+				}
+
+				ClampTarget->SimDecayTimeScale = FMath::Min(ClampTarget->SimDecayTimeScale, TimeScale);
+
+				static const auto CVarbTransitionModeDebugLog = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionMode.DebugLog"));
+				if (CVarbTransitionModeDebugLog->GetBool())
+				{
+					UE_LOGF(LogPhysics, Log, "[ReplicationLOD] Clamp | ActualResimFrames=%.0f InputPredAvg=%.2f UseDynamic=%d | TimeScale=%.3f SimDecayTimeScale=%.3f (post min-merge)"
+						, ResimFrames, Settings->InputPredictionFramesAverage, Settings->bUseDynamicTimeScale ? 1 : 0
+						, TimeScale, ClampTarget->SimDecayTimeScale);
+				}
+			}
+		}
+
+		// Per-step decay during resim, applied to every replicated Target whose SimDecayTimeScale was reduced
+		for (const TPair<Chaos::FConstPhysicsObjectHandle, FReplicatedPhysicsTargetAsync>& Pair : ObjectToTarget)
+		{
+			ApplyDecay(Pair.Key, Pair.Value.SimDecayTimeScale);
+		}
+	}
+	else
+	{
+		// Runtime decay path: opt-in via Settings.bApplyDecayAtRuntime, suppressed when LOD has forced PI on the particle
+		for (const TPair<Chaos::FConstPhysicsObjectHandle, TSharedPtr<FParticleSimDecaySettings>>& Pair : ParticleSimDecaySettings)
+		{
+			if (!Pair.Value->bApplyDecayAtRuntime)
+			{
+				continue;
+			}
+
+			// Apply if we either don't have a target or if the target uses EPhysicsReplicationMode::Resimulation
+			// TODO: Use persistent particle replication mode API when implemented
+			const FReplicatedPhysicsTargetAsync* Target = ObjectToTarget.Find(Pair.Key);
+			if (Target && Target->RepMode != EPhysicsReplicationMode::Resimulation)
+			{
+				continue;
+			}
+
+			ApplyDecay(Pair.Key, Pair.Value->StaticTimeScale);
+		}
+	}
 }
 
 void FPhysicsReplicationAsyncVR::OnPostSolve_Internal()
@@ -1535,99 +1683,43 @@ void FPhysicsReplicationAsyncVR::UpdateAsyncTarget(const FPhysicsRepAsyncInputDa
 		Target->FrameOffset = NetworkPhysicsTickOffset;
 		Target->TickCount = 0;
 		Target->AccumulatedSleepSeconds = 0.0f;
+		Target->SimDecayTimeScale = 1.0f;
 
 		// Update waiting state
 		Target->UpdateWaiting(Input.ServerFrame);
 
-		// Apply full Replication LOD on received target
-		ApplyPhysicsReplicationLOD(Input.PhysicsObject, *Target, EPhysicsReplicationLODFlags::LODFlag_All);
+		// Per-frame transient helper properties to continue Target update later in the frame
+		Target->bFrameOffsetCorrectedCached = bFrameOffsetCorrected;
+		Target->PrevTickCountCached = PrevTickCount;
+		Target->bPrevAllowTargetAlteringCached = bPrevAllowTargetAltering;
 
-		// Check if target is valid to use for resimulation and perform actions if not
-		CheckTargetResimValidity(*Target);
-
-		if (Target->RepMode == EPhysicsReplicationMode::PredictiveInterpolation)
+		// Teleport detection, we don't have specific data that tells us a teleport has happened on the server, so try to detect it by examining the previous and next state
+		static const auto CVarTeleportDetectionEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TeleportDetection.Enabled"));
+		if (CVarTeleportDetectionEnabled->GetInt() == 1 && !bFirstTarget && SendInterval > 0 && RigidsSolver->IsUsingFixedDt())
 		{
-
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-			static const auto CVarDrawDebugTargets = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.DrawDebugTargets"));
-			if (CVarDrawDebugTargets->GetBool())
+			const FVector PosOffset = (Input.TargetState.Position - Target->PrevPosTarget);
+			static const auto CVarTeleportDetectionMinDistance = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TeleportDetection.MinDistance"));
+			if (PosOffset.SizeSquared() > (CVarTeleportDetectionMinDistance->GetFloat() * CVarTeleportDetectionMinDistance->GetFloat()))
 			{
-				const FVector Offset = FVector(0.0f, 0.0f, 50.0f);
-				// Port this?
-				//const FVector Offset = FVector(0.0f, 0.0f, PhysicsReplicationCVars::PredictiveInterpolationCVars::DrawDebugZOffset);
-				static const auto CVarNetCorrectionLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.LifeTime"));
-				Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Input.TargetState.Position + Offset, FVector(15.0f, 15.0f, 15.0f), Input.TargetState.Quaternion, FColor::MakeRandomSeededColor(Input.ServerFrame), false, CVarNetCorrectionLifetime->GetFloat(), 0, 1.0f);
-			}
-#endif
+				const FVector Velocity = Input.TargetState.LinVel.SizeSquared() > PrevLinVel.SizeSquared() ? Input.TargetState.LinVel : PrevLinVel;
+				const float DeltaSeconds = (SendInterval * RigidsSolver->GetAsyncDeltaTime());
 
-			// TickCount is 0 by default at this point and when LOD is used, TickCount will be 0 if no LOD alignment was performed, in this case perform the normal target alignment
-			if (Target->TickCount == 0)
-			{
-				/** Target Alignment Feature
-				* With variable network conditions state inputs from the server can arrive both later or earlier than expected.
-				* Target Alignment can adjust for this to make replication act on a target in the timeline that the client is currently replicating in.
-				*
-				* If SendInterval is 4 we expect TickCount to be 4. TickCount - SendInterval = 0, meaning the client and server has ticked physics the same amount between the target states.
-				*
-				* If SendInterval is 4 and TickCount is 2 we have only simulated physics for 2 ticks with the previous target while the server had simulated physics 4 ticks between previous target and new target
-				*	TickCount - SendInterval = -2
-				*	To align this we need to adjust the new target by predicting backwards by 2 ticks, else the replication will start replicating towards a state that is 2 ticks further ahead than expected, making replication speed up.
-				*
-				* Same goes for vice-versa:
-				* If SendInterval is 4 and TickCount is 6 we have simulated physics for 6 ticks with the previous target while the server had simulated physics 4 ticks between previous target and new target
-				*	TickCount - SendInterval = 2
-				*	To align this we need to adjust the new target by predicting forwards by 2 ticks, else the replication will start replicating towards a state that is 2 ticks behind than expected, making replication slow down.
-				*
-				* Note that state inputs from the server can arrive fluctuating between above examples, but over time the alignment is evened out to 0.
-				* If the clients latency is raised or lowered since replication started there might be a consistent offset in the TickCount which is handled by TimeDilation of client physics through APlayerController::UpdateServerAsyncPhysicsTickOffset()
-				*/
+				static const auto CVarTeleportDetectionVelocityMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TeleportDetection.VelocityMultiplier"));
+				const float PossibleDistanceSquared = (Velocity * (DeltaSeconds * CVarTeleportDetectionVelocityMultiplier->GetFloat())).SizeSquared();
 
-				if (!bFirstTarget && !bFrameOffsetCorrected)
+				if (PossibleDistanceSquared < PosOffset.SizeSquared())
 				{
-					// Calculate the current tick-offset, leave at 0 for the first target received and if the FrameOffset between client and server has been corrected
-					Target->TickCount = PrevTickCount - Target->ReceiveInterval;
-
-					// Run target alignment if we have been allowed to alter the target during the last two target updates
-					if (bPrevAllowTargetAltering && Target->bAllowTargetAltering && !Target->IsWaiting())
-					{
-						static const auto CVarTargetTickAlignmentClampMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TargetTickAlignmentClampMultiplier"));
-
-						// Target alignment is based on TickCount but clamped to not extrapolate forwards or backwards too far
-						const int32 AdjustedAverageReceiveInterval = FMath::CeilToInt(Target->AverageReceiveInterval) * CVarTargetTickAlignmentClampMultiplier->GetInt();
-						const int32 TickAlignment = FMath::Clamp(Target->TickCount, -AdjustedAverageReceiveInterval, AdjustedAverageReceiveInterval);
-						FPhysicsReplicationAsyncVR::ExtrapolateTarget(*Target, TickAlignment, GetDeltaTime_Internal());
-					}
+					// A teleport has most likely happened, set accumulated error seconds to above limit for hard snapping
+					// TODO: Don't piggyback on AccumulatedErrorSeconds (potentially implement ERigidBodyFlags::Teleported)
+					static const auto CVarErrorAccumulationSeconds = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ErrorAccumulationSeconds"));
+					Target->AccumulatedErrorSeconds = CVarErrorAccumulationSeconds->GetFloat() + 1.0f;
 				}
 			}
-
-			static const auto CVarTeleportDetectionEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TeleportDetection.Enabled"));
-			// Teleport detection, we don't have specific data that tells us a teleport has happened on the server, so try to detect it by examining the previous and next state
-			if (CVarTeleportDetectionEnabled->GetBool() == 1 && !bFirstTarget && SendInterval > 0 && RigidsSolver->IsUsingFixedDt())
-			{
-				const FVector PosOffset = (Input.TargetState.Position - Target->PrevPosTarget);
-				static const auto CVarTeleportDetectionMinDistance = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TeleportDetection.MinDistance"));
-				if (PosOffset.SizeSquared() > (CVarTeleportDetectionMinDistance->GetFloat() * CVarTeleportDetectionMinDistance->GetFloat()))
-				{
-					const FVector Velocity = Input.TargetState.LinVel.SizeSquared() > PrevLinVel.SizeSquared() ? Input.TargetState.LinVel : PrevLinVel;
-					const float DeltaSeconds = (SendInterval * RigidsSolver->GetAsyncDeltaTime());
-					static const auto CVarTeleportDetectionVelocityMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TeleportDetection.VelocityMultiplier"));
-					const float PossibleDistanceSquared = (Velocity * (DeltaSeconds * CVarTeleportDetectionVelocityMultiplier->GetFloat())).SizeSquared();
-
-					if (PossibleDistanceSquared < PosOffset.SizeSquared())
-					{
-						// A teleport has most likely happened, set accumulated error seconds to above limit for hard snapping
-						// TODO: Don't piggyback on AccumulatedErrorSeconds (potentially implement ERigidBodyFlags::Teleported)
-
-						static const auto CVarErrorAcumulationSeconds = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ErrorAccumulationSeconds"));
-						Target->AccumulatedErrorSeconds = CVarErrorAcumulationSeconds->GetFloat() + 1.0f;
-					}
-				}
-			}
-
-			// Cache the position we received this target at, Predictive Interpolation will alter the target state but use this as the source position for reconciliation.
-			Target->PrevPosTarget = Input.TargetState.Position;
-			Target->PrevRotTarget = Input.TargetState.Quaternion;
 		}
+
+		// Cache the position we received this target at, Predictive Interpolation will alter the target state but use this as the source position for reconciliation.
+		Target->PrevPosTarget = Input.TargetState.Position;
+		Target->PrevRotTarget = Input.TargetState.Quaternion;
 	}
 
 	/** Cache the latest ping time */
@@ -1686,6 +1778,13 @@ void FPhysicsReplicationAsyncVR::CacheResimInteractions()
 void FPhysicsReplicationAsyncVR::ApplyTargetStatesAsync(const float DeltaSeconds)
 {
 	using namespace Chaos;
+	using namespace Chaos;
+	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
+	if (!RigidsSolver)
+	{
+		return;
+	}
+	const int32 CurrentSolverFrame = RigidsSolver->GetCurrentFrame();
 
 	/** Helper function to remove replicated target*/
 	auto RemoveTargetHelper = [this](TMap<Chaos::FConstPhysicsObjectHandle, FReplicatedPhysicsTargetAsync>::TIterator Itr, FGeometryParticleHandle* Handle)
@@ -1723,8 +1822,52 @@ void FPhysicsReplicationAsyncVR::ApplyTargetStatesAsync(const float DeltaSeconds
 		// Cache custom settings for this object if there are any
 		FetchObjectSettings(POHandle);
 
-		// Apply limited Replication LOD
-		ApplyPhysicsReplicationLOD(POHandle, Target, EPhysicsReplicationLODFlags::LODFlag_IslandCheck);
+		const bool bFreshInputThisFrame = (Target.ReceiveFrame == CurrentSolverFrame);
+
+		// Run LOD if not already done this frame
+		if (Target.LastLODFrame != CurrentSolverFrame)
+		{
+			Target.SimDecayTimeScale = 1.0f;
+			ApplyPhysicsReplicationLOD(POHandle, Target, EPhysicsReplicationLODFlags::LODFlag_All);
+		}
+
+		// Check new targets for resim validity
+		if (bFreshInputThisFrame)
+		{
+			CheckTargetResimValidity(Target);
+		}
+
+		// Predictive Interpolation prep
+		if (Target.RepMode == EPhysicsReplicationMode::PredictiveInterpolation)
+		{
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+			if (PhysicsReplicationCVars::PredictiveInterpolationCVars::bDrawDebugTargets)
+			{
+				const FVector Offset = FVector(0.0f, 0.0f, PhysicsReplicationCVars::PredictiveInterpolationCVars::DrawDebugZOffset);
+				Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(
+					Target.PrevPosTarget + Offset, FVector(15.0f, 15.0f, 15.0f),
+					Target.PrevRotTarget,
+					FColor::MakeRandomSeededColor(Target.ServerFrame),
+					false, PhysicsReplicationCVars::DebugDrawLifeTime, 0, 1.0f);
+			}
+#endif
+
+			// Align target state if new target, TickCount will be 0 if no LOD alignment was performed which means it's okay to perform the normal target alignment.
+			if (bFreshInputThisFrame && Target.TickCount == 0 && !Target.bFrameOffsetCorrectedCached)
+			{
+				if (Target.bPrevAllowTargetAlteringCached && Target.bAllowTargetAltering && !Target.IsWaiting())
+				{
+					Target.TickCount = Target.PrevTickCountCached - Target.ReceiveInterval;
+
+					static const auto CVarTargetTickAlignmentClampMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TargetTickAlignmentClampMultiplier"));
+					const int32 AdjustedAverageReceiveInterval = FMath::CeilToInt(Target.AverageReceiveInterval) * CVarTargetTickAlignmentClampMultiplier->GetInt();
+					const int32 TickAlignment = FMath::Clamp(Target.TickCount, -AdjustedAverageReceiveInterval, AdjustedAverageReceiveInterval);
+					FPhysicsReplicationAsyncVR::ExtrapolateTarget(Target, TickAlignment, GetDeltaTime_Internal());
+				}
+			}
+		}
+
+		DebugDrawReplicationMode(POHandle, Target);
 
 		const EPhysicsReplicationMode RepMode = Target.IsWaiting() ? Target.RepModeOverride : Target.RepMode;
 		switch (RepMode)
@@ -1750,7 +1893,6 @@ void FPhysicsReplicationAsyncVR::ApplyTargetStatesAsync(const float DeltaSeconds
 		if (bRemoveItr)
 		{
 			RemoveTargetHelper(Itr, RigidHandle);
-
 		}
 	}
 
@@ -1774,7 +1916,7 @@ void FPhysicsReplicationAsyncVR::CheckTargetResimValidity(FReplicatedPhysicsTarg
 		return;
 	}
 
-	Chaos::FRewindData* RewindData = RigidsSolver->GetRewindData();
+	Chaos::FRewindData* RewindData = GetOrEnableRewindData(RigidsSolver);
 	if (RewindData == nullptr)
 	{
 		// Can't perform resimulation without RewindData, revert to PredictiveInterpolation
@@ -1831,40 +1973,194 @@ void FPhysicsReplicationAsyncVR::CheckTargetResimValidity(FReplicatedPhysicsTarg
 	}
 }
 
-void FPhysicsReplicationAsyncVR::ApplyPhysicsReplicationLOD(Chaos::FConstPhysicsObjectHandle PhysicsObjectHandle, FReplicatedPhysicsTargetAsync& Target, const uint32 LODFLags)
+Chaos::FRewindData* FPhysicsReplicationAsyncVR::GetOrEnableRewindData(Chaos::FPBDRigidsSolver* RigidsSolver)
 {
-	Chaos::FPBDRigidsSolver& RigidsSolver = GetSolver()->CastChecked();
+	if (RigidsSolver == nullptr)
+	{
+		return nullptr;
+	}
 
-	IPhysicsReplicationLODAsync* PhysRepLod = RigidsSolver.GetPhysicsReplicationLOD_Internal();
+	Chaos::FRewindData* RewindData = RigidsSolver->GetRewindData();
+	if (!RewindData)
+	{
+		if (Chaos::FPBDRigidsSolver::IsNetworkPhysicsPredictionEnabled() && RigidsSolver->IsUsingFixedDt())
+		{
+			RigidsSolver->EnableRewindCapture();
+			RewindData = RigidsSolver->GetRewindData();
+		}
+	}
+	return RewindData;
+}
+
+void FPhysicsReplicationAsyncVR::ApplyPhysicsReplicationLOD(Chaos::FConstPhysicsObjectHandle PhysicsObjectHandle, FReplicatedPhysicsTargetAsync& Target, const uint32 LODFlags)
+{
+	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
+	if (RigidsSolver == nullptr)
+	{
+		return;
+	}
+	const int32 CurrentFrame = RigidsSolver->GetCurrentFrame();
+
+	// Temporary target, don't apply LOD until we receive targets for specified server physics frames
+	if (Target.ServerFrame <= 0)
+	{
+		Target.RepMode = EPhysicsReplicationMode::PredictiveInterpolation;
+		Target.SimDecayTimeScale = 1.0f;
+
+		static const auto CVarTargetTickAlignmentClampMultiplier = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.PredictiveInterpolation.TargetTickAlignmentClampMultiplier"));
+		static const auto CVarbTransitionModeDebugLog = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionMode.DebugLog"));
+		if (CVarbTransitionModeDebugLog->GetBool())
+		{
+			Chaos::FReadPhysicsObjectInterface_Internal ReadInterface = Chaos::FPhysicsObjectInternalInterface::GetRead();
+			const Chaos::FGeometryParticleHandle* DebugHandle = ReadInterface.GetParticle(PhysicsObjectHandle);
+			const FVector ParticlePos = DebugHandle ? DebugHandle->GetX() : FVector::ZeroVector;
+			const FVector TargetPos = Target.TargetState.Position;
+			UE_LOGF(LogPhysics, Log, "[ReplicationLOD] PreServer | CurrentFrame=%d ServerFrame=%d | ParticlePos=(%.2f,%.2f,%.2f) TargetStatePos=(%.2f,%.2f,%.2f) | RepMode=PredictiveInterpolation"
+				, RigidsSolver->GetCurrentFrame(), Target.ServerFrame
+				, ParticlePos.X, ParticlePos.Y, ParticlePos.Z
+				, TargetPos.X, TargetPos.Y, TargetPos.Z);
+		}
+		return;
+	}
+
+	IPhysicsReplicationLODAsync* PhysRepLod = RigidsSolver->GetPhysicsReplicationLOD_Internal();
 	if (!PhysRepLod || !PhysRepLod->IsEnabled())
 	{
 		return;
 	}
 
-	FPhysicsRepLodData* LodData = PhysRepLod->GetLODData_Internal(PhysicsObjectHandle, LODFLags);
-	if (LodData && LodData->DataAssigned)
+	FPhysicsRepLodData* LodData = PhysRepLod->GetLODData_Internal(PhysicsObjectHandle, LODFlags);
+	if (!LodData || !LodData->DataAssigned)
 	{
-		// Apply recommended replication mode
-		Target.RepMode = LodData->ReplicationMode;
+		return;
+	}
 
-		if (Target.RepMode == EPhysicsReplicationMode::PredictiveInterpolation)
+	const int32 LocalFrame = Target.ServerFrame - NetworkPhysicsTickOffset;
+	const int32 FullPredictionFrames = CurrentFrame - LocalFrame;
+	const float DeltaTime = static_cast<float>(RigidsSolver->GetAsyncDeltaTime());
+	const float FullPredictionTime = FullPredictionFrames * DeltaTime;
+
+	// Number of frames behind current frame that the LOD wants this particle to replicate at
+	const int32 AlignDistance = CurrentFrame - LodData->AlignedFrame;
+
+	/** Outer zone (Predictive Interpolation)
+	* - AlignedTime >= FullPredictionTime - LOD wants align the particle further back in time than the full prediction time, meaning the particle is outside of the transition zone.
+	* - AlignedFrame == 0 (no focal particle registered) - If we don't get recommended frame to align to we don't have a focal particle in LOD
+	* - FullPredictionFrames <= 0 - Server is ahead of client */
+	if (LodData->AlignedTime >= FullPredictionTime || LodData->AlignedFrame == 0 || FullPredictionFrames <= 0)
+	{
+		Target.RepMode = EPhysicsReplicationMode::PredictiveInterpolation;
+		Target.SimDecayTimeScale = 1.0f;
+		Target.LastLODFrame = CurrentFrame;
+
+		static const auto CVarbTransitionModeDebugLog = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionMode.DebugLog"));
+		if (CVarbTransitionModeDebugLog->GetBool())
 		{
-			const bool bShouldSleep = (Target.TargetState.Flags & ERigidBodyFlags::Sleeping) != 0;
-			int32 TargetClientFrame = (Target.ServerFrame - NetworkPhysicsTickOffset);
-
-			// If we use Predicitve Interpolation and we should not sleep and the aligned frame from LOD is ahead of the target, perform LOD aligment extrapolation
-			if (!bShouldSleep && LodData->AlignedFrame > TargetClientFrame)
-			{
-				// Calculate how far to forward predict and extrapolate target by that amount
-				const int32 FullPredictionFrames = RigidsSolver.GetCurrentFrame() - TargetClientFrame;
-				const float FullPredictionTime = (FullPredictionFrames * GetDeltaTime_Internal());
-				const float AlignedPredictionTime = FullPredictionTime - LodData->AlignedTime;
-				FPhysicsReplicationAsyncVR::ExtrapolateTarget(Target, AlignedPredictionTime);
-
-				// Update tick count based on LOD alignment
-				Target.TickCount = LodData->AlignedFrame - TargetClientFrame;
-			}
+			Chaos::FReadPhysicsObjectInterface_Internal ReadInterface = Chaos::FPhysicsObjectInternalInterface::GetRead();
+			const Chaos::FGeometryParticleHandle* DebugHandle = ReadInterface.GetParticle(PhysicsObjectHandle);
+			const FVector ParticlePos = DebugHandle ? DebugHandle->GetX() : FVector::ZeroVector;
+			const FVector TargetPos = Target.TargetState.Position;
+			UE_LOGF(LogPhysics, Log, "[ReplicationLOD] OuterZone | CurrentFrame=%d LocalFrame=%d AlignedFrame=%d | FullPredictionFrames=%d FullPredictionTime=%.4f AlignedTime=%.4f | No extrapolation | ParticlePos=(%.2f,%.2f,%.2f) TargetStatePos=(%.2f,%.2f,%.2f) | RepMode=PredictiveInterpolation"
+				, CurrentFrame, LocalFrame, LodData->AlignedFrame
+				, FullPredictionFrames, FullPredictionTime, LodData->AlignedTime
+				, ParticlePos.X, ParticlePos.Y, ParticlePos.Z
+				, TargetPos.X, TargetPos.Y, TargetPos.Z);
 		}
+		return;
+	}
+
+	/** Inner zone(Resimulation with full forward prediction)
+	* - AlignedTime <= 0 - LOD wants to align this particle 0ms behind the current (forward predicted) timeline */
+	if (LodData->AlignedTime <= 0.0f)
+	{
+		Target.RepMode = EPhysicsReplicationMode::Resimulation;
+		Target.SimDecayTimeScale = 1.0f;
+		Target.LastLODFrame = CurrentFrame;
+
+		static const auto CVarbTransitionModeDebugLog = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionMode.DebugLog"));
+		if (CVarbTransitionModeDebugLog->GetBool())
+		{
+			UE_LOGF(LogPhysics, Log, "[ReplicationLOD] InnerZone | CurrentFrame=%d AlignedFrame=%d AlignedTime=%.4f | RepMode=Resimulation"
+				, CurrentFrame, LodData->AlignedFrame, LodData->AlignedTime);
+		}
+		return;
+	}
+
+	// Transition zone, choose between Extrapolation (PI + extrapolated target) and ResimDecay (Resimulation + SimulationDecay) based on a fraction-of-prediction threshold
+	static const auto CVarTransitionExtrapFrameMin = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionExtrapFrameMin"));
+	static const auto CVarTransitionExtrapFraction = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionExtrapFraction"));
+
+	// Number of frames closest to the latest received server state that use Extrapolation; the remainder of the transition zone uses ResimDecay
+	const int32 ExtrapFramesThreshold = FMath::Max(
+		CVarTransitionExtrapFrameMin->GetInt(),
+		FMath::CeilToInt(CVarTransitionExtrapFraction->GetFloat() * FullPredictionFrames));
+	const int32 ExtrapolationFrameBoundary = LocalFrame + ExtrapFramesThreshold;
+
+	Target.LastLODFrame = CurrentFrame;
+
+	// Apply Extrapolation
+	if (LodData->AlignedFrame <= ExtrapolationFrameBoundary)
+	{
+		Target.RepMode = EPhysicsReplicationMode::PredictiveInterpolation;
+		Target.SimDecayTimeScale = 1.0f;
+
+		// Run target extrapolation for non-sleeping particle
+		const bool bShouldSleep = (Target.TargetState.Flags & ERigidBodyFlags::Sleeping) != 0;
+		const FVector ServerTargetPos = Target.TargetState.Position; // Pre-extrapolation snapshot for logs.
+		if (!bShouldSleep)
+		{
+			const float AlignedPredictionTime = FullPredictionTime - LodData->AlignedTime;
+			FPhysicsReplicationAsyncVR::ExtrapolateTarget(Target, AlignedPredictionTime);
+			Target.TickCount = LodData->AlignedFrame - LocalFrame;
+		}
+
+		static const auto CVarbTransitionModeDebugLog = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionMode.DebugLog"));
+		if (CVarbTransitionModeDebugLog->GetBool())
+		{
+			Chaos::FReadPhysicsObjectInterface_Internal ReadInterface = Chaos::FPhysicsObjectInternalInterface::GetRead();
+			const Chaos::FGeometryParticleHandle* DebugHandle = ReadInterface.GetParticle(PhysicsObjectHandle);
+			const FVector ParticlePos = DebugHandle ? DebugHandle->GetX() : FVector::ZeroVector;
+			const FVector ExtrapolatedTargetPos = Target.TargetState.Position;
+			const TCHAR* Tag = bShouldSleep ? TEXT("TransitionExtrapolationSleep") : TEXT("TransitionExtrapolation");
+			UE_LOGF(LogPhysics, Log, "[ReplicationLOD] %ls | CurrentFrame=%d LocalFrame=%d AlignedFrame=%d | FullPredictionFrames=%d FullPredictionTime=%.4f AlignedTime=%.4f | AlignDistance=%d ExtrapFramesThreshold=%d | ParticlePos=(%.2f,%.2f,%.2f) ServerTargetPos=(%.2f,%.2f,%.2f) ExtrapolatedTargetPos=(%.2f,%.2f,%.2f) | RepMode=PredictiveInterpolation"
+				, Tag
+				, CurrentFrame, LocalFrame, LodData->AlignedFrame
+				, FullPredictionFrames, FullPredictionTime, LodData->AlignedTime
+				, AlignDistance, ExtrapFramesThreshold
+				, ParticlePos.X, ParticlePos.Y, ParticlePos.Z
+				, ServerTargetPos.X, ServerTargetPos.Y, ServerTargetPos.Z
+				, ExtrapolatedTargetPos.X, ExtrapolatedTargetPos.Y, ExtrapolatedTargetPos.Z);
+		}
+		return;
+	}
+
+	// Apply ResimDecay
+	Target.RepMode = EPhysicsReplicationMode::Resimulation;
+
+	// Calculate TimeScale to decay the simulation with during resim to make the particle end up at AlignedTime at the end of a resim
+	Target.SimDecayTimeScale = FMath::Clamp(1.0f - (LodData->AlignedTime / FullPredictionTime), 0.0f, 1.0f);
+
+	if (Chaos::FRewindData* RewindData = GetOrEnableRewindData(RigidsSolver))
+	{
+		// Request a resimulation for particles while inside the transition ZoneResim
+		Chaos::FReadPhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetRead();
+		Chaos::FPBDRigidParticleHandle* RigidParticle = Interface.GetRigidParticle(PhysicsObjectHandle);
+		RewindData->RequestResimulation(LocalFrame, RigidParticle);
+	}
+
+	static const auto CVarbTransitionModeDebugLog = IConsoleManager::Get().FindConsoleVariable(TEXT("p.ReplicationLOD.TransitionMode.DebugLog"));
+	if (CVarbTransitionModeDebugLog->GetBool())
+	{
+		Chaos::FReadPhysicsObjectInterface_Internal ReadInterface = Chaos::FPhysicsObjectInternalInterface::GetRead();
+		const Chaos::FGeometryParticleHandle* DebugHandle = ReadInterface.GetParticle(PhysicsObjectHandle);
+		const FVector ParticlePos = DebugHandle ? DebugHandle->GetX() : FVector::ZeroVector;
+		const FVector ServerTargetPos = Target.TargetState.Position;
+		UE_LOGF(LogPhysics, Log, "[ReplicationLOD] TransitionResim | CurrentFrame=%d LocalFrame=%d AlignedFrame=%d | FullPredictionFrames=%d FullPredictionTime=%.4f AlignedTime=%.4f | AlignDistance=%d ExtrapFramesThreshold=%d | SimDecayTimeScale=%.4f | ParticlePos=(%.2f,%.2f,%.2f) ServerTargetPos=(%.2f,%.2f,%.2f) | RepMode=Resimulation"
+			, CurrentFrame, LocalFrame, LodData->AlignedFrame
+			, FullPredictionFrames, FullPredictionTime, LodData->AlignedTime
+			, AlignDistance, ExtrapFramesThreshold, Target.SimDecayTimeScale
+			, ParticlePos.X, ParticlePos.Y, ParticlePos.Z
+			, ServerTargetPos.X, ServerTargetPos.Y, ServerTargetPos.Z);
 	}
 }
 
@@ -2870,15 +3166,7 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 		return true;
 	}
 
-	Chaos::FRewindData* RewindData = RigidsSolver->GetRewindData();
-	if (!RewindData)
-	{
-		if (Chaos::FPBDRigidsSolver::IsNetworkPhysicsPredictionEnabled() && RigidsSolver->IsUsingFixedDt())
-		{
-			RigidsSolver->EnableRewindCapture();
-			RewindData = RigidsSolver->GetRewindData();
-		}
-	}
+	Chaos::FRewindData* RewindData = GetOrEnableRewindData(RigidsSolver);
 
 	if (!IsTargetValidForResim(Target) || !Handle)
 	{
@@ -2969,65 +3257,48 @@ bool FPhysicsReplicationAsyncVR::ResimulationReplication(Chaos::FPBDRigidParticl
 	return bClearTarget;
 }
 
-void FPhysicsReplicationAsyncVR::DebugDrawReplicationMode(const FPhysicsRepAsyncInputData& Input)
+void FPhysicsReplicationAsyncVR::DebugDrawReplicationMode(Chaos::FConstPhysicsObjectHandle PhysicsObjectHandle, const FReplicatedPhysicsTargetAsync& Target)
 {
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
-	static const auto CVarDebugDrawShowRepMode = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.ShowRepMode"));
-	if (!CVarDebugDrawShowRepMode->GetBool())
+	if (!PhysicsReplicationCVars::DebugDrawShowRepMode)
 	{
 		return;
 	}
 
-	if (Input.PhysicsObject == nullptr && Input.Proxy == nullptr)
+	if (PhysicsObjectHandle == nullptr)
 	{
 		return;
+	}
+
+	FVector BoxExtent = FVector(10.0f, 10.0f, 10.0f);
+	Chaos::FReadPhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetRead();
+	if (Chaos::FGeometryParticleHandle* Handle = Interface.GetParticle(PhysicsObjectHandle))
+	{
+		BoxExtent = Handle->LocalBounds().Extents() * 0.5f;
 	}
 
 	FColor DebugColor = FColor::White;
-	FVector BoxExtent = FVector(10.0f, 10.0f, 10.0f);
-
-	if (Input.PhysicsObject)
+	const EPhysicsReplicationMode RepMode = Target.IsWaiting() ? Target.RepModeOverride : Target.RepMode;
+	switch (RepMode)
 	{
-		if (FReplicatedPhysicsTargetAsync* Target = ObjectToTarget.Find(Input.PhysicsObject))
-		{
-			Chaos::FReadPhysicsObjectInterface_Internal Interface = Chaos::FPhysicsObjectInternalInterface::GetRead();
-			if (Chaos::FGeometryParticleHandle* Handle = Interface.GetParticle(Input.PhysicsObject))
-			{
-				BoxExtent = Handle->LocalBounds().Extents() * 0.5f;
-			}
-
-			const EPhysicsReplicationMode RepMode = Target->IsWaiting() ? Target->RepModeOverride : Target->RepMode;
-			switch (RepMode)
-			{
-			case EPhysicsReplicationMode::PredictiveInterpolation:
-				DebugColor = FColor::Yellow;
-				break;
-			case EPhysicsReplicationMode::Resimulation:
-				DebugColor = FColor::Red;
-				break;
-			case EPhysicsReplicationMode::Default:
-				DebugColor = FColor::Cyan;
-				break;
-			case EPhysicsReplicationMode::None:
-			default:
-				DebugColor = FColor::Black;
-				break;
-			}
-		}
-	}
-	else if (Input.Proxy != nullptr)
-	{
-		// Legacy Default physics replication
-
-		Chaos::FSingleParticlePhysicsProxy* Proxy = Input.Proxy;
-		Chaos::FRigidBodyHandle_Internal* Handle = Proxy->GetPhysicsThreadAPI();
-
-		DebugColor = FColor::Green;
+	case EPhysicsReplicationMode::PredictiveInterpolation:
+		DebugColor = FColor::Yellow;
+		break;
+	case EPhysicsReplicationMode::Resimulation:
+		DebugColor = FColor::Red;
+		break;
+	case EPhysicsReplicationMode::Default:
+		DebugColor = FColor::Cyan;
+		break;
+	case EPhysicsReplicationMode::None:
+	default:
+		DebugColor = FColor::Black;
+		break;
 	}
 
 	static const auto CVarDebugdrawLifetime = IConsoleManager::Get().FindConsoleVariable(TEXT("p.Net.DebugDraw.LifeTime"));
-	Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Input.TargetState.Position, BoxExtent, Input.TargetState.Quaternion, DebugColor, false, CVarDebugdrawLifetime->GetFloat(), 0, 1.0f);
+	Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(Target.TargetState.Position, BoxExtent, Target.TargetState.Quaternion, DebugColor, false, CVarDebugdrawLifetime->GetFloat(), 0, 1.0f);
 #endif
 }
 
@@ -3039,9 +3310,13 @@ FName FPhysicsReplicationAsyncVR::GetFNameForStatId() const
 
 bool FPhysicsReplicationAsyncVR::UsePhysicsReplicationLOD()
 {
-	Chaos::FPBDRigidsSolver& RigidsSolver = GetSolver()->CastChecked();
+	Chaos::FPBDRigidsSolver* RigidsSolver = static_cast<Chaos::FPBDRigidsSolver*>(GetSolver());
+	if (RigidsSolver == nullptr)
+	{
+		return false;
+	}
 
-	IPhysicsReplicationLODAsync* PhysRepLod = RigidsSolver.GetPhysicsReplicationLOD_Internal();
+	IPhysicsReplicationLODAsync* PhysRepLod = RigidsSolver->GetPhysicsReplicationLOD_Internal();
 	return PhysRepLod && PhysRepLod->IsEnabled();
 }
 
