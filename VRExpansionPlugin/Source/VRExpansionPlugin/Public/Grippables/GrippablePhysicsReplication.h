@@ -68,8 +68,6 @@ public:
 	virtual void RemoveParticleSimDecaySettings(Chaos::FConstPhysicsObjectHandle PhysicsObject) override;
 	//~ End IPhysicsReplicationAsync interface
 
-	TMap<TWeakObjectPtr<UPrimitiveComponent>, FReplicatedPhysicsTarget> ComponentToTargetsVR_DEPRECATED; // This collection is keeping the legacy flow working until fully deprecated in a future release
-
 private:
 	float LatencyOneWay;
 	FRigidBodyErrorCorrection ErrorCorrectionDefault;
