@@ -362,24 +362,23 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 	return ApplyRigidBodyState(DeltaSeconds, BI, PhysicsTarget, ErrorCorrection, InPingSecondsOneWay);
 }
 
-/*void FPhysicsReplicationVR::SetReplicatedTarget(UPrimitiveComponent* Component, FName BoneName, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame)
+
+void FPhysicsReplicationVR::SetReplicatedTarget(UPrimitiveComponent* Component, FName BoneName, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame)
 {
 
 	// Skip all of the custom logic if we aren't the server
-	if (const UWorld* World = GetOwningWorld())
+	/*if (const UWorld* World = GetOwningWorld())
 	{
 		if (World->GetNetMode() == ENetMode::NM_Client)
 		{
 			return FPhysicsReplication::SetReplicatedTarget(Component, BoneName, ReplicatedTarget, ServerFrame);
 		}
-	}
-
-	static const auto CVarEnableDefaultReplication = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.EnableDefaultReplication"));
+	}*/
 
 	// If networked physics prediction is enabled, enforce the new physics replication flow via SetReplicatedTarget() using PhysicsObject instead of BodyInstance from BoneName.
 	AActor* Owner = Component->GetOwner();
-
-	if (Owner && (CVarEnableDefaultReplication->GetBool() || Owner->GetPhysicsReplicationMode() != EPhysicsReplicationMode::Default)) // For now, only opt in to the PhysicsObject flow if not using Default replication or if default is allowed via CVar.
+	static const auto CVarEnableDefaultReplication = IConsoleManager::Get().FindConsoleVariable(TEXT("np2.EnableDefaultReplication"));
+	if (Owner && (CVarEnableDefaultReplication->GetInt() || Owner->GetPhysicsReplicationMode() != EPhysicsReplicationMode::Default)) // For now, only opt in to the PhysicsObject flow if not using Default replication or if default is allowed via CVar.
 	{
 		const ENetRole OwnerRole = Owner->GetLocalRole();
 		const bool bIsSimulated = OwnerRole == ROLE_SimulatedProxy;
@@ -392,11 +391,46 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 		}
 	}
 
-	return FPhysicsReplication::SetReplicatedTarget(Component, BoneName, ReplicatedTarget, ServerFrame);
-}*/
+	if (UWorld* OwningWorld = GetOwningWorld())
+	{
+		//TODO: there's a faster way to compare this
+		TWeakObjectPtr<UPrimitiveComponent> TargetKey(Component);
+		FReplicatedPhysicsTarget* Target = ComponentToTargetsVR_DEPRECATED.Find(TargetKey);
+		if (!Target)
+		{
+			// First time we add a target, set it's previous and correction
+			// positions to the target position to avoid math with uninitialized
+			// memory.
+			Target = &ComponentToTargetsVR_DEPRECATED.Add(TargetKey);
+			Target->PrevPos = ReplicatedTarget.Position;
+			Target->PrevPosTarget = ReplicatedTarget.Position;
+		}
+
+		Target->ServerFrame = ServerFrame;
+		Target->TargetState = ReplicatedTarget;
+		Target->BoneName = BoneName;
+		Target->ArrivedTimeSeconds = OwningWorld->GetTimeSeconds();
+
+		ensure(!Target->PrevPos.ContainsNaN());
+		ensure(!Target->PrevPosTarget.ContainsNaN());
+		ensure(!Target->TargetState.Position.ContainsNaN());
+
+		OnSetReplicatedTarget(Component, BoneName, ReplicatedTarget, ServerFrame, *Target);
+	}
+}
 
 void FPhysicsReplicationVR::SetReplicatedTargetVR(Chaos::FConstPhysicsObjectHandle PhysicsObject, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame, EPhysicsReplicationMode ReplicationMode)
 {
+
+	// Skip all of the custom logic if we aren't the server
+	if (const UWorld* World = GetOwningWorld())
+	{
+		if (World->GetNetMode() == ENetMode::NM_Client)
+		{
+			return FPhysicsReplication::SetReplicatedTarget(PhysicsObject, ReplicatedTarget, ServerFrame);
+		}
+	}
+
 	if (!PhysicsObject)
 	{
 		return;
@@ -440,13 +474,24 @@ void FPhysicsReplicationVR::RemoveReplicatedTarget(UPrimitiveComponent* Componen
 	}
 	
 	// Call super version to ensure its removed from the inaccessible deprecated targets list
-	FPhysicsReplication::RemoveReplicatedTarget(Component);
+	//FPhysicsReplication::RemoveReplicatedTarget(Component);
 
 	// Remove from legacy flow
-	//ComponentToTargets_DEPRECATED.Remove(Component);
+	ComponentToTargetsVR_DEPRECATED.Remove(Component);
 
 	// Remove from FPhysicsObject flow
 	Chaos::FConstPhysicsObjectHandle PhysicsObject = Component->GetPhysicsObjectByName(NAME_None);
+	
+	
+	if (const UWorld* World = GetOwningWorld())
+	{
+		if (World->GetNetMode() == ENetMode::NM_Client)
+		{
+			return FPhysicsReplication::RemoveReplicatedTarget(PhysicsObject);
+		}
+	}
+	
+	// Server version
 	RemoveReplicatedTargetVR(PhysicsObject);
 }
 
@@ -838,8 +883,25 @@ bool FPhysicsReplicationVR::ApplyRigidBodyState(float DeltaSeconds, FBodyInstanc
 	return bRestoredState;
 }
 
+void FPhysicsReplicationVR::Tick(float DeltaSeconds)
+{
+	// Skip all of the custom logic if we aren't the server
+	/*if (const UWorld* World = GetOwningWorld())
+	{
+		if (World->GetNetMode() == ENetMode::NM_Client)
+		{
+			return FPhysicsReplication::Tick(DeltaSeconds);
+		}
+	}*/
+
+	OnTick(DeltaSeconds, ComponentToTargetsVR_DEPRECATED);
+}
+
 void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrimitiveComponent>, FReplicatedPhysicsTarget>& ComponentsToTargets)
 {
+	using namespace Chaos;
+
+
 	// Skip all of the custom logic if we aren't the server
 	if (const UWorld* World = GetOwningWorld())
 	{
@@ -848,8 +910,6 @@ void FPhysicsReplicationVR::OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrim
 			return FPhysicsReplication::OnTick(DeltaSeconds, ComponentsToTargets);
 		}
 	}
-
-	using namespace Chaos;
 
 	if (ShouldSkipPhysicsReplication())
 	{

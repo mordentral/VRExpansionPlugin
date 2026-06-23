@@ -68,6 +68,8 @@ public:
 	virtual void RemoveParticleSimDecaySettings(Chaos::FConstPhysicsObjectHandle PhysicsObject) override;
 	//~ End IPhysicsReplicationAsync interface
 
+	TMap<TWeakObjectPtr<UPrimitiveComponent>, FReplicatedPhysicsTarget> ComponentToTargetsVR_DEPRECATED; // This collection is keeping the legacy flow working until fully deprecated in a future release
+
 private:
 	float LatencyOneWay;
 	FRigidBodyErrorCorrection ErrorCorrectionDefault;
@@ -134,14 +136,19 @@ public:
 	~FPhysicsReplicationVR();
 	static bool IsInitialized();
 
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void OnTick(float DeltaSeconds, TMap<TWeakObjectPtr<UPrimitiveComponent>, FReplicatedPhysicsTarget>& ComponentsToTargets) override;
 	
 	virtual bool ApplyRigidBodyState(float DeltaSeconds, FBodyInstance* BI, FReplicatedPhysicsTarget& PhysicsTarget, const FRigidBodyErrorCorrection& ErrorCorrection, const float PingSecondsOneWay, int32 LocalFrame, int32 NumPredictedFrames) override;
 	virtual bool ApplyRigidBodyState(float DeltaSeconds, FBodyInstance* BI, FReplicatedPhysicsTarget& PhysicsTarget, const FRigidBodyErrorCorrection& ErrorCorrection, const float PingSecondsOneWay, bool* bDidHardSnap = nullptr) override;
 
+	/** Sets the latest replicated target for a body instance */
+	virtual void SetReplicatedTarget(UPrimitiveComponent* Component, FName BoneName, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame) override;
+
+
+
 	void SetReplicatedTargetVR(Chaos::FConstPhysicsObjectHandle PhysicsObject, const FRigidBodyState& ReplicatedTarget, int32 ServerFrame, EPhysicsReplicationMode ReplicationMode = EPhysicsReplicationMode::Default);
 
-	
 	virtual void RemoveReplicatedTarget(UPrimitiveComponent* Component) override;
 
 
@@ -150,7 +157,7 @@ public:
 
 	//virtual int32 GetNetworkPhysicsTickOffset() const override { return NetworkPhysicsTickOffset; }
 
-
+	TMap<TWeakObjectPtr<UPrimitiveComponent>, FReplicatedPhysicsTarget> ComponentToTargetsVR_DEPRECATED; // This collection is keeping the legacy flow working until fully deprecated in a future release
 	TArray<FReplicatedPhysicsTarget> ReplicatedTargetsQueueVR;
 	FPhysicsReplicationAsyncVR* PhysicsReplicationAsyncVR;
 	FPhysicsReplicationAsyncInput* AsyncInputVR;	//async data being written into before we push into callback
