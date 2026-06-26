@@ -109,7 +109,7 @@ protected:
 	// Requires bReplicates to be true for the component
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 		bool bRepGripSettingsAndGameplayTags;
-
+	// No longer can turn off replicated movement at the component level with iris
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 		bool bReplicateMovement;

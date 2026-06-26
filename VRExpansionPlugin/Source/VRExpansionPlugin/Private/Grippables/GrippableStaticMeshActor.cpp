@@ -51,9 +51,12 @@ void UOptionalRepStaticMeshComponent::PreReplication(IRepChangedPropertyTracker 
 	Super::PreReplication(ChangedPropertyTracker);
 
 	// Don't replicate if set to not do it
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeLocation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeRotation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeScale3D, bReplicateMovement);
+	if (!IRISNetReplication::IsIris(this))
+	{
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeLocation, bReplicateMovement);
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeRotation, bReplicateMovement);
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeScale3D, bReplicateMovement);
+	}
 
 
 }
@@ -135,9 +138,12 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 {
 	//Super::PreReplication(ChangedPropertyTracker);
 	
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, GripLogicScripts, bReplicateGripScripts);
+	if (!IRISNetReplication::IsIris(this))
+	{
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, VRGripInterfaceSettings, bRepGripSettingsAndGameplayTags);
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, GameplayTags, bRepGripSettingsAndGameplayTags);
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, GripLogicScripts, bReplicateGripScripts);
+	}
 	
 	//Super::PreReplication(ChangedPropertyTracker);
 
@@ -158,7 +164,7 @@ void AGrippableStaticMeshActor::PreReplication(IRepChangedPropertyTracker & Chan
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableStaticMeshActor, AttachmentWeldReplication, RootComponent && !RootComponent->GetIsReplicated());
 
 	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AActor, AttachmentReplication, false);// RootComponent && !RootComponent->GetIsReplicated());
+	//DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AActor, AttachmentReplication, false);// RootComponent && !RootComponent->GetIsReplicated());
 
 
 #if WITH_PUSH_MODEL

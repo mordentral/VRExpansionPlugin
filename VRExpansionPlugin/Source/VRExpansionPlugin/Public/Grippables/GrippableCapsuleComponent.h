@@ -111,6 +111,7 @@ protected:
 		bool bRepGripSettingsAndGameplayTags;
 
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
+	// Doesn't Work with Iris
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "VRGripInterface|Replication")
 		bool bReplicateMovement;
 

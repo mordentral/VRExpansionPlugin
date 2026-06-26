@@ -16,6 +16,25 @@ class UGripMotionControllerComponent;
 class UVRGripScriptBase;
 class UPrimitiveComponent;
 
+namespace IRISNetReplication
+{
+	FORCEINLINE bool IsIris(UObject* WorldContext)
+	{
+		if (!WorldContext) return false;
+
+		if (UWorld* World = WorldContext->GetWorld())
+		{
+			if (UNetDriver* NetDriver = World->GetNetDriver())
+			{
+				return NetDriver->IsUsingIrisReplication();
+			}
+		}
+
+		return false;
+	}
+}
+
+
 // Custom movement modes for the characters
 UENUM(BlueprintType)
 enum class EVRCustomMovementMode : uint8

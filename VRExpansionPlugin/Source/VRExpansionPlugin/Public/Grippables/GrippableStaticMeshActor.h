@@ -31,7 +31,7 @@ class VREXPANSIONPLUGIN_API UOptionalRepStaticMeshComponent : public UStaticMesh
 public:
 	UOptionalRepStaticMeshComponent(const FObjectInitializer& ObjectInitializer);
 
-
+	// No longer can turn off replicated movement at the component level with iris
 	// Overrides the default of : true and allows for controlling it like in an actor, should be default of off normally with grippable components
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Component Replication")
 		bool bReplicateMovement;

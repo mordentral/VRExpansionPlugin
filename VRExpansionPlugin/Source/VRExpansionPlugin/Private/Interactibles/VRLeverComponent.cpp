@@ -114,9 +114,12 @@ void UVRLeverComponent::PreReplication(IRepChangedPropertyTracker & ChangedPrope
 	// Don't replicate if set to not do it
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(UVRLeverComponent, GameplayTags, bRepGameplayTags);
 
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeLocation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeRotation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeScale3D,	bReplicateMovement);
+	if (!IRISNetReplication::IsIris(this))
+	{
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeLocation, bReplicateMovement);
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeRotation, bReplicateMovement);
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeScale3D, bReplicateMovement);
+	}
 }
 
 void UVRLeverComponent::OnRegister()

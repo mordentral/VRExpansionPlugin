@@ -108,7 +108,7 @@ void AGrippableActor::PreReplication(IRepChangedPropertyTracker & ChangedPropert
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AGrippableActor, AttachmentWeldReplication, RootComponent && !RootComponent->GetIsReplicated());
 
 	// Don't need to replicate AttachmentReplication if the root component replicates, because it already handles it.
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AActor, AttachmentReplication, false);// RootComponent && !RootComponent->GetIsReplicated());
+	//DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(AActor, AttachmentReplication, false);// RootComponent && !RootComponent->GetIsReplicated());
 
 
 #if WITH_PUSH_MODEL

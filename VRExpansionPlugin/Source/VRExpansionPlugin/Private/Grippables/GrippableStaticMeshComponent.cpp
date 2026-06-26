@@ -59,6 +59,9 @@ void UGrippableStaticMeshComponent::GetLifetimeReplicatedProps(TArray< class FLi
 	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableStaticMeshComponent, GripLogicScripts, PushModelParamsWithCondition);
 	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableStaticMeshComponent, VRGripInterfaceSettings, PushModelParamsWithCondition);
 	DOREPLIFETIME_WITH_PARAMS_FAST(UGrippableStaticMeshComponent, GameplayTags, PushModelParamsWithCondition);
+
+	// Remove the parent's registration and re-add with your own condition
+	//DOREPLIFETIME_CONDITION(USceneComponent, RelativeLocation, COND_Custom);
 }
 
 void UGrippableStaticMeshComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -70,9 +73,12 @@ void UGrippableStaticMeshComponent::PreReplication(IRepChangedPropertyTracker & 
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(UGrippableStaticMeshComponent, GameplayTags, bRepGripSettingsAndGameplayTags);
 	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(UGrippableStaticMeshComponent, GripLogicScripts, bReplicateGripScripts);
 
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeLocation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeRotation, bReplicateMovement);
-	DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeScale3D, bReplicateMovement);
+	if (!IRISNetReplication::IsIris(this))
+	{
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeLocation, bReplicateMovement);
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeRotation, bReplicateMovement);
+		DOREPLIFETIME_ACTIVE_OVERRIDE_FAST(USceneComponent, RelativeScale3D, bReplicateMovement);
+	}
 }
 
 bool UGrippableStaticMeshComponent::ReplicateSubobjects(UActorChannel* Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags)
