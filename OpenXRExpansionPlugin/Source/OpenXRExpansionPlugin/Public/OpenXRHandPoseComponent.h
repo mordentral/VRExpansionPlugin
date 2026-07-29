@@ -5,6 +5,7 @@
 #include "UObject/Object.h"
 #include "Engine/Texture.h"
 #include "Engine/EngineTypes.h"
+#include "Components/ActorComponent.h"
 #include "HeadMountedDisplayTypes.h"
 //#include "Runtime/Launch/Resources/Version.h"
 
