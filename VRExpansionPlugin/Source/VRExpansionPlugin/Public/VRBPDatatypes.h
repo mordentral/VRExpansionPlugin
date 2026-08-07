@@ -4,6 +4,8 @@
 #include "CoreMinimal.h"
 #include "Engine/NetSerialization.h"
 #include "PhysicsPublic.h"
+#include "Engine/World.h"
+#include "Engine/NetDriver.h"
 //#include "EngineMinimal.h"
 //#include "Components/PrimitiveComponent.h"
 
