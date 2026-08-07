@@ -57,9 +57,9 @@ namespace PhysicsReplicationLODCVars
 {
 	// Defined in PhysicsReplicationLOD.cpp.
 
-	extern int32 TransitionExtrapFrameMin = 3;
-	extern float TransitionExtrapFraction = 0.3f;
-	extern bool bTransitionModeDebugLog = false;
+	/*extern*/ int32 TransitionExtrapFrameMin = 3;
+	/*extern*/ float TransitionExtrapFraction = 0.3f;
+	/*extern*/ bool bTransitionModeDebugLog = false;
 }
 
 namespace PhysicsReplicationCVars
