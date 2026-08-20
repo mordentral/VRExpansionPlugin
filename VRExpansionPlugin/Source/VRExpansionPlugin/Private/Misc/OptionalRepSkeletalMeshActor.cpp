@@ -91,7 +91,7 @@ UInversePhysicsSkeletalMeshComponent::UInversePhysicsSkeletalMeshComponent(const
 	: Super(ObjectInitializer)
 {
 	bReplicateMovement = true;
-	this->EndPhysicsTickFunction.bCanEverTick = false;
+	//this->EndPhysicsTickFunction.bCanEverTick = false;
 	bReplicatePhysicsToAutonomousProxy = false;
 
 	//EndPhysicsTickFunctionVR.TickGroup = TG_EndPhysics;
