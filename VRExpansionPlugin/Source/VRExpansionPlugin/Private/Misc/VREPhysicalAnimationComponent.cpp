@@ -236,7 +236,7 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 				{
 
 #if UE_ENABLE_DEBUG_DRAWING
-					if (false)//bDebugDrawCollision)
+					if ((false))//bDebugDrawCollision)
 					{
 						Chaos::FDebugDrawQueue::GetInstance().SetConsumerActive(this, true); // Need to deactivate this later as well
 						Chaos::FDebugDrawQueue::GetInstance().SetMaxCost(20000);
@@ -256,7 +256,7 @@ void UVREPhysicalAnimationComponent::UpdateWeldedBoneDriver(float DeltaTime)
 
 
 #if UE_ENABLE_DEBUG_DRAWING
-						if (false)//bDebugDrawCollision)
+						if ((false))//bDebugDrawCollision)
 						{
 							Chaos::FDebugDrawQueue::GetInstance().SetRegionOfInterest(GlobalPose.GetLocation(), 100.0f);
 						}
