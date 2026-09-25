@@ -412,12 +412,12 @@ float UVRButtonComponent::GetAxisValue(FVector CheckLocation)
 	switch (ButtonAxis)
 	{
 	case EVRInteractibleAxis::Axis_X:
-		return CheckLocation.X; break;
+		return CheckLocation.X;
 	case EVRInteractibleAxis::Axis_Y:
-		return CheckLocation.Y; break;
+		return CheckLocation.Y;
 	case EVRInteractibleAxis::Axis_Z:
-		return CheckLocation.Z; break;
-	default:return 0.0f; break;
+		return CheckLocation.Z;
+	default:return 0.0f;
 	}
 }
 

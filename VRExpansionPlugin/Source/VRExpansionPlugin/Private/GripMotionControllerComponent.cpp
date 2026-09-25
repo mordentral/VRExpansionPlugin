@@ -4512,7 +4512,7 @@ bool UGripMotionControllerComponent::TeleportMoveGrip_Impl(FBPActorGripInformati
 		case EGripInterfaceTeleportBehavior::DropOnTeleport:
 		{
 			return false;
-		}break;
+		}
 		default:break;
 		}
 	}
@@ -7867,7 +7867,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 
 								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
 								return;
-							}break;
+							}
 							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_Last:
 							{				
 								// Deny the old grip, another connection came and gripped it
@@ -7883,7 +7883,7 @@ void UGripMotionControllerComponent::Server_NotifyLocalGripAddedOrChanged_Implem
 								GripPair.HoldingController->Client_NotifyInvalidLocalGrip(newGrip.GrippedObject, GripPair.GripID, true);
 								OnClientAuthGripConflict.Broadcast(newGrip.GrippedObject, ClientAuthConflictResolutionMethod);
 								return;
-							}break;
+							}
 							case EVRClientAuthConflictResolutionMode::VRGRIP_CONFLICT_None:
 							default:
 							{
@@ -8321,7 +8321,7 @@ void FExpandedLateUpdateManager::ProcessGripArrayLateUpdatePrimitives(UGripMotio
 		case EGripLateUpdateSettings::LateUpdatesAlwaysOff:
 		{
 			continue;
-		}break;
+		}
 		case EGripLateUpdateSettings::NotWhenColliding:
 		{
 			if (actor.bColliding && actor.GripCollisionType != EGripCollisionType::SweepWithPhysics && 
