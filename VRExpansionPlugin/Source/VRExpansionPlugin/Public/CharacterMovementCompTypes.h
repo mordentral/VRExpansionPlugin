@@ -93,6 +93,11 @@ public:
 	UPROPERTY()
 		EVRMoveActionVelocityRetention VelRetentionSetting;
 
+	// Not replicated: snap turn delta that the owning client resolves against its rotation when the action executes
+	// (a correction can rewind the rotation between queuing the action and the movement update)
+	float ClientSnapTurnDeltaYaw;
+	bool bResolveSnapTurnOnExecute;
+
 	FVRMoveActionContainer()
 	{
 		Clear();
@@ -100,6 +105,8 @@ public:
 
 	void Clear()
 	{
+		ClientSnapTurnDeltaYaw = 0.0f;
+		bResolveSnapTurnOnExecute = false;
 		MoveAction = EVRMoveAction::VRMOVEACTION_None;
 		MoveActionDataReq = EVRMoveActionDataReq::VRMOVEACTIONDATA_None;
 		MoveActionLoc = FVector::ZeroVector;

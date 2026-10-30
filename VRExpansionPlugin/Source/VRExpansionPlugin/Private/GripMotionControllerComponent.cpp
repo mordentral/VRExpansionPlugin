@@ -141,7 +141,7 @@ namespace GripMotionControllerCvars
 		DrawDebugGripCOM,
 		TEXT("When on, will draw debug speheres for physics grips COM.\n")
 		TEXT("0: Disable, 1: Enable"),
-		ECVF_Default);
+		ECVF_Cheat);
 }
 
   //=============================================================================

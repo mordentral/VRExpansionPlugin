@@ -1065,7 +1065,12 @@ bool UVRRootComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewR
 			InitSweepCollisionParams(Params, ResponseParam);
 			Params.bIgnoreTouches |= !(GetGenerateOverlapEvents() || bForceGatherOverlaps);
 			Params.TraceTag = TraceTagName;
-			bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
+			//bool const bHadBlockingHit = MyWorld->ComponentSweepMulti(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, Params);
+			// Sweep on the walking channel while the walking collision override is active, everything else stays on the object type
+			// Non retained roomscale only, retained roomscale handles walking collision in TickComponent instead
+			const bool bUseWalkingSweep = bUseWalkingCollisionOverride && bIsOverridingCollision && bSweepWithWalkingCollision && owningVRChar && !owningVRChar->bRetainRoomscale;
+			const ECollisionChannel SweepChannel = bUseWalkingSweep ? WalkingCollisionOverride.GetValue() : GetCollisionObjectType();
+			bool const bHadBlockingHit = MyWorld->ComponentSweepMultiByChannel(Hits, this, TraceStart, TraceEnd, InitialRotationQuat, SweepChannel, Params);
 			//bool const bHadBlockingHit = MyWorld->SweepMultiByChannel(Hits, TraceStart, TraceEnd, InitialRotationQuat, this->GetCollisionObjectType(), this->GetCollisionShape(), Params, ResponseParam);
 
 			if (Hits.Num() > 0)

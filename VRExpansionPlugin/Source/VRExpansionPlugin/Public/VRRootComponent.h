@@ -129,7 +129,6 @@ public:
 	//UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	//UCapsuleComponent * VRCameraCollider;
 
-	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FVector DifferenceFromLastFrame;
 	//UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
@@ -180,17 +179,23 @@ public:
 	bool bIsOverridingCollision = false;
 	TEnumAsByte<ECollisionChannel> OriginalCollision = ECollisionChannel::ECC_Pawn;
 
+	// Set by the movement component around the planar floor moves only (FVRWalkingCollisionSweepScope)
+	// Falling / step down / floor adjustment sweeps stay on the object type so they still find the ground
+	bool bSweepWithWalkingCollision = false;
+
+	// Only flags the override now, MoveComponentImpl sweeps on WalkingCollisionOverride while it is set.
+	// Swapping the object type also moved the floor / step / penetration checks onto the walking channel.
 	void SetCollisionOverride(bool bOverrideCollision)
 	{
 		if (bOverrideCollision && !bIsOverridingCollision)
 		{
-			OriginalCollision = this->GetCollisionObjectType();
-			SetCollisionObjectType(WalkingCollisionOverride);
+			//OriginalCollision = this->GetCollisionObjectType();
+			//SetCollisionObjectType(WalkingCollisionOverride);
 			bIsOverridingCollision = true;
 		}
 		else if (!bOverrideCollision && bIsOverridingCollision)
 		{
-			SetCollisionObjectType(OriginalCollision);
+			//SetCollisionObjectType(OriginalCollision);
 			bIsOverridingCollision = false;
 		}
 	}

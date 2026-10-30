@@ -24,6 +24,18 @@
 
 DEFINE_LOG_CATEGORY(LogVRBaseCharacterMovement);
 
+namespace VRBaseCharacterMovementComponentStatics
+{
+	static int32 WalkingCollisionForceNoInput = 0;
+	FAutoConsoleVariableRef CVarWalkingCollisionForceNoInput(
+		TEXT("vre.WalkingCollisionForceNoInput"),
+		WalkingCollisionForceNoInput,
+		TEXT("Testing: when on, the walking collision override treats movement as having no input (ignores acceleration).\n")
+		TEXT("Needs to be set on both client and server in multiplayer.\n")
+		TEXT("0: Disable, 1: Enable"),
+		ECVF_Cheat);
+}
+
 UVRBaseCharacterMovementComponent::UVRBaseCharacterMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -848,6 +860,10 @@ void UVRBaseCharacterMovementComponent::PerformMoveAction_SnapTurn(float DeltaYa
 	TargetRotation.Roll = FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(TargetRotation.Roll));
 	MoveAction.MoveActionRot = TargetRotation;
 	//MoveAction.MoveActionRot = FRotator( 0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(DeltaYawAngle)), 0.0f);
+
+	// The owning client re-resolves the target when the action executes (DoMASnapTurn), the above is the fallback
+	MoveAction.ClientSnapTurnDeltaYaw = DeltaYawAngle;
+	MoveAction.bResolveSnapTurnOnExecute = true;
 		//FRotator(0.0f, FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort((FRotator(0.f, DeltaYawAngle, 0.f).Quaternion() * UpdatedComponent->GetComponentQuat()).Rotator().Yaw)), 0.0f);
 
 	if (bFlagCharacterTeleport)
@@ -1026,6 +1042,19 @@ bool UVRBaseCharacterMovementComponent::DoMASnapTurn(FVRMoveActionContainer& Mov
 	{	
 		FRotator TargetRot = MoveAction.MoveActionRot;
 		FQuat OrigRot = BaseVRCharacterOwner->GetActorQuat();
+
+		// Resolve the target against our rotation now rather than when the action was queued, a correction can rewind
+		// the rotation in between. The resolved target is what gets saved / sent, replays (bClientUpdating) reuse it as is.
+		if (MoveAction.bResolveSnapTurnOnExecute && !BaseVRCharacterOwner->bClientUpdating && BaseVRCharacterOwner->IsLocallyControlled())
+		{
+			FRotator ResolvedRot = (UpdatedComponent->GetComponentQuat() * FRotator(0.f, MoveAction.ClientSnapTurnDeltaYaw, 0.f).Quaternion()).Rotator();
+			ResolvedRot.Yaw = FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(ResolvedRot.Yaw));
+			ResolvedRot.Pitch = FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(ResolvedRot.Pitch));
+			ResolvedRot.Roll = FRotator::DecompressAxisFromShort(FRotator::CompressAxisToShort(ResolvedRot.Roll));
+			MoveAction.MoveActionRot = ResolvedRot;
+			TargetRot = ResolvedRot;
+		}
+		MoveAction.bResolveSnapTurnOnExecute = false;
 
 		if (BaseVRCharacterOwner->SeatInformation.bSitting)
 		{
@@ -1629,7 +1658,13 @@ void UVRBaseCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 		if (MovementMode == EMovementMode::MOVE_Walking || MovementMode == EMovementMode::MOVE_NavWalking)
 			bAllowWalkingCollision = true;
 
-		BaseVRCharacterOwner->VRRootReference->SetCollisionOverride(bAllowWalkingCollision && GetCurrentAcceleration().IsNearlyZero());
+		const bool bNoInput = VRBaseCharacterMovementComponentStatics::WalkingCollisionForceNoInput != 0 || GetCurrentAcceleration().IsNearlyZero();
+		BaseVRCharacterOwner->VRRootReference->SetCollisionOverride(bAllowWalkingCollision && bNoInput);
+	}
+	else if (BaseVRCharacterOwner->VRRootReference->bIsOverridingCollision)
+	{
+		// Walking collision was turned off or roomscale was retained while overriding, clear it
+		BaseVRCharacterOwner->VRRootReference->SetCollisionOverride(false);
 	}
 
 	Super::PerformMovement(DeltaSeconds);

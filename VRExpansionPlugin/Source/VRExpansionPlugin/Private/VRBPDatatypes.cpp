@@ -18,8 +18,9 @@ namespace VRDataTypeCVARs
 		TEXT("vrexp.RepHighPrecisionTransforms"),
 		RepHighPrecisionTransforms,
 		TEXT("When on, will rep Quantized transforms at full precision, WARNING use at own risk, if this isn't the same setting client & server then it will crash.\n")
+		TEXT("Read only, set it in ini (client and server) rather than at runtime.\n")
 		TEXT("0: Disable, 1: Enable"),
-		ECVF_Default);
+		ECVF_ReadOnly);
 }
 
 bool FTransform_NetQuantize::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
