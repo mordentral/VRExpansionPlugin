@@ -4858,12 +4858,6 @@ void UVRCharacterMovementComponent::ServerMoveHandleClientErrorVR(float ClientTi
 			const FString BaseString = MovementBaseObject ? MovementBaseObject->GetPathName(MovementBaseObject->GetOutermost()) : TEXT("None");
 			UE_LOGF(LogNetPlayerMovement, Warning, "*** Server: Error for %ls at Time=%.3f is %3.3f LocDiff(%ls) ClientLoc(%ls) ServerLoc(%ls) Base: %ls Bone: %ls Accel(%ls) Velocity(%ls)",
 				*GetNameSafe(CharacterOwner), ClientTimeStamp, LocDiff.Size(), *LocDiff.ToString(), *ClientLoc.ToString(), *UpdatedComponent->GetComponentLocation().ToString(), *BaseString, *ServerData->PendingAdjustment.NewBaseBoneName.ToString(), *Accel.ToString(), *Velocity.ToString());
-
-			// Rotation side of the correction (only checked when not using client control rotation)
-			UE_LOGF(LogNetPlayerMovement, Warning, "*** Server: Rotation for %ls ClientRot(%ls) ServerRot(%ls) YawDiff %.4f (threshold %.4f, client control rotation %d)",
-				*GetNameSafe(CharacterOwner), *ClientRot.ToCompactString(), *UpdatedComponent->GetComponentRotation().ToCompactString(),
-				FMath::FindDeltaAngleDegrees(ClientRot.Yaw, UpdatedComponent->GetComponentRotation().Yaw),
-				CharacterMovementComponentStatics::fRotationCorrectionThreshold, bUseClientControlRotation ? 1 : 0);
 			const float DebugLifetime = CVarNetCorrectionLifetime->GetFloat();
 			DrawDebugCapsule(GetWorld(), UpdatedComponent->GetComponentLocation(), CharacterOwner->GetSimpleCollisionHalfHeight(), CharacterOwner->GetSimpleCollisionRadius(), FQuat::Identity, FColor(100, 255, 100), false, DebugLifetime);
 			DrawDebugCapsule(GetWorld(), ClientLoc, CharacterOwner->GetSimpleCollisionHalfHeight(), CharacterOwner->GetSimpleCollisionRadius(), FQuat::Identity, FColor(255, 100, 100), false, DebugLifetime);
