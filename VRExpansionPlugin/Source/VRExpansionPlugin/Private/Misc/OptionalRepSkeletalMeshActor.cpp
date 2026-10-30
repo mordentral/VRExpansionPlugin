@@ -10,6 +10,9 @@
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/SkeletalBodySetup.h"
+#include "Physics/PhysicsInterfaceCore.h"
+#include "Misc/MemStack.h"
+#include "EngineLogs.h"
 #if WITH_PUSH_MODEL
 #include "Net/Core/PushModel/PushModel.h"
 #endif
@@ -61,42 +64,43 @@ void UNoRepSphereComponent::PreReplication(IRepChangedPropertyTracker& ChangedPr
 
 }
 
-/*void FSkeletalMeshComponentEndPhysicsTickFunctionVR::ExecuteTick(float DeltaTime, enum ELevelTick TickType, ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent)
+void FSkeletalMeshComponentEndPhysicsTickFunctionVR::ExecuteTick(float DeltaTime, enum ELevelTick TickType, ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent)
 {
-	//QUICK_SCOPE_CYCLE_COUNTER(FSkeletalMeshComponentEndPhysicsTickFunction_ExecuteTick);
-	//CSV_SCOPED_TIMING_STAT_EXCLUSIVE(Physics);
+	QUICK_SCOPE_CYCLE_COUNTER(FSkeletalMeshComponentEndPhysicsTickFunctionVR_ExecuteTick);
 
-	FActorComponentTickFunction::ExecuteTickHelper(TargetVR,  false, DeltaTime, TickType, [this](float DilatedTime)
+	FActorComponentTickFunction::ExecuteTickHelper(TargetVR, /*bTickInEditor=*/ false, DeltaTime, TickType, [this](float DilatedTime)
 		{
 			TargetVR->EndPhysicsTickComponentVR(*this);
 		});
-}*/
+}
 
-/*FString FSkeletalMeshComponentEndPhysicsTickFunctionVR::DiagnosticMessage()
+FString FSkeletalMeshComponentEndPhysicsTickFunctionVR::DiagnosticMessage()
 {
 	if (TargetVR)
 	{
 		return TargetVR->GetFullName() + TEXT("[EndPhysicsTickVR]");
 	}
-	return TEXT("<NULL>[EndPhysicsTick]");
+	return TEXT("<NULL>[EndPhysicsTickVR]");
 }
 
 FName FSkeletalMeshComponentEndPhysicsTickFunctionVR::DiagnosticContext(bool bDetailed)
 {
 	return FName(TEXT("SkeletalMeshComponentEndPhysicsTickVR"));
-}*/
+}
 
 
 UInversePhysicsSkeletalMeshComponent::UInversePhysicsSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	bReplicateMovement = true;
-	//this->EndPhysicsTickFunction.bCanEverTick = false;
 	bReplicatePhysicsToAutonomousProxy = false;
 
-	//EndPhysicsTickFunctionVR.TickGroup = TG_EndPhysics;
-	//EndPhysicsTickFunctionVR.bCanEverTick = true;
-	//EndPhysicsTickFunctionVR.bStartWithTickEnabled = true;
+	// Replaces the stock end physics tick (see RegisterEndPhysicsTick), same settings as the stock one
+	bUseSignPreservingPhysicsBlend = true;
+	EndPhysicsTickFunctionVR.TickGroup = TG_EndPhysics;
+	EndPhysicsTickFunctionVR.bCanEverTick = true;
+	EndPhysicsTickFunctionVR.bStartWithTickEnabled = true;
+	EndPhysicsTickFunctionVR.bRunTransactionally = true;
 }
 
 void UInversePhysicsSkeletalMeshComponent::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
@@ -121,15 +125,83 @@ void UInversePhysicsSkeletalMeshComponent::SetReplicateMovement(bool bNewReplica
 #endif
 }
 
-/*void UInversePhysicsSkeletalMeshComponent::EndPhysicsTickComponentVR(FSkeletalMeshComponentEndPhysicsTickFunctionVR& ThisTickFunction)
+void UInversePhysicsSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	//IMPORTANT!
-	//
-	// The decision on whether to use EndPhysicsTickComponent or not is made by ShouldRunEndPhysicsTick()
-	// Any changes that are made to EndPhysicsTickComponent that affect whether it should be run or not
-	// have to be reflected in ShouldRunEndPhysicsTick() as well
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// if physics is disabled on dedicated server, no reason to be here. 
+	// Anim events dispatched in the super tick can destroy us
+	if (!IsValid(this))
+	{
+		return;
+	}
+
+	// The stock tick picks its end group from whether ITS end physics tick is registered, ours replaces it.
+	// Match what it does when physics is required so animation finishes before physics runs.
+	if (ThisTickFunction && !PrimaryComponentTick.bRunOnAnyThread && EndPhysicsTickFunctionVR.IsTickFunctionRegistered())
+	{
+		ThisTickFunction->EndTickGroup = TG_PrePhysics;
+	}
+}
+
+void UInversePhysicsSkeletalMeshComponent::RegisterEndPhysicsTick(bool bRegister)
+{
+	// Every registration path (TickComponent, RegisterComponentTickFunctions, physics state changes) funnels through here
+	if (!bUseSignPreservingPhysicsBlend)
+	{
+		RegisterEndPhysicsTickVR(false);
+		Super::RegisterEndPhysicsTick(bRegister);
+		return;
+	}
+
+	// Keep the stock end physics tick (and its blend) off, ours replaces it
+	Super::RegisterEndPhysicsTick(false);
+	RegisterEndPhysicsTickVR(bRegister);
+}
+
+void UInversePhysicsSkeletalMeshComponent::SetUseSignPreservingPhysicsBlend(bool bNewUseSignPreservingPhysicsBlend)
+{
+	if (bUseSignPreservingPhysicsBlend == bNewUseSignPreservingPhysicsBlend)
+	{
+		return;
+	}
+
+	// If either end physics tick is currently running, swap to the other one now
+	const bool bEndPhysicsTickRegistered = EndPhysicsTickFunctionVR.IsTickFunctionRegistered() || EndPhysicsTickFunction.IsTickFunctionRegistered();
+	bUseSignPreservingPhysicsBlend = bNewUseSignPreservingPhysicsBlend;
+
+	if (bEndPhysicsTickRegistered)
+	{
+		RegisterEndPhysicsTick(true);
+	}
+}
+
+void UInversePhysicsSkeletalMeshComponent::RegisterEndPhysicsTickVR(bool bRegister)
+{
+	// Mirrors USkeletalMeshComponent::RegisterEndPhysicsTick
+	if (bRegister != EndPhysicsTickFunctionVR.IsTickFunctionRegistered())
+	{
+		if (bRegister)
+		{
+			UWorld* World = GetWorld();
+			if (World && World->EndPhysicsTickFunction.IsTickFunctionRegistered() && SetupActorComponentTickFunction(&EndPhysicsTickFunctionVR))
+			{
+				EndPhysicsTickFunctionVR.TargetVR = this;
+				// Make sure our EndPhysicsTick gets called after physics simulation is finished
+				EndPhysicsTickFunctionVR.AddPrerequisite(World, World->EndPhysicsTickFunction);
+			}
+		}
+		else
+		{
+			EndPhysicsTickFunctionVR.UnRegisterTickFunction();
+		}
+	}
+}
+
+void UInversePhysicsSkeletalMeshComponent::EndPhysicsTickComponentVR(FSkeletalMeshComponentEndPhysicsTickFunctionVR& ThisTickFunction)
+{
+	// Mirrors USkeletalMeshComponent::EndPhysicsTickComponent, with our own blend
+
+	// if physics is disabled on dedicated server, no reason to be here.
 	if (!bEnablePhysicsOnDedicatedServer && IsRunningDedicatedServer())
 	{
 		FinalizeBoneTransform();
@@ -146,29 +218,21 @@ void UInversePhysicsSkeletalMeshComponent::SetReplicateMovement(bool bNewReplica
 		SyncComponentToRBPhysics();
 	}
 
-	// this used to not run if not rendered, but that causes issues such as bounds not updated
-	// causing it to not rendered, at the end, I think we should blend body positions
-	// for example if you're only simulating, this has to happen all the time
-	// whether looking at it or not, otherwise
-	// @todo better solution is to check if it has moved by changing SyncComponentToRBPhysics to return true if anything modified
-	// and run this if that is true or rendered
-	// that will at least reduce the chance of mismatch
-	// generally if you move your actor position, this has to happen to approximately match their bounds
 	if (ShouldBlendPhysicsBones())
 	{
 		if (IsRegistered())
 		{
-			BlendInPhysicsInternalVR(ThisTickFunction);
+			BlendInPhysicsVR();
 		}
 	}
 }
 
-void UInversePhysicsSkeletalMeshComponent::BlendInPhysicsInternalVR(FTickFunction& ThisTickFunction)
+void UInversePhysicsSkeletalMeshComponent::BlendInPhysicsVR()
 {
 	check(IsInGameThread());
 
 	// Can't do anything without a SkeletalMesh
-	if (!GetSkinnedAsset())
+	if (!GetSkeletalMeshAsset())
 	{
 		return;
 	}
@@ -177,47 +241,27 @@ void UInversePhysicsSkeletalMeshComponent::BlendInPhysicsInternalVR(FTickFunctio
 	// If we don't have or want any physics, we do nothing.
 	if (Bodies.Num() > 0 && CollisionEnabledHasPhysics(GetCollisionEnabled()))
 	{
-		//HandleExistingParallelEvaluationTask(true,  true);
-		// start parallel work
-		//check(!IsValidRef(ParallelAnimationEvaluationTask));
+		// Blocks on any running anim evaluation (and swaps its buffers back) like the stock blend does, then copy the
+		// bone space pose into our own array since the engine's is private now. Always on the game thread (no parallel blend).
+		TArrayView<const FTransform> BoneSpaceView = GetBoneSpaceTransformsView();
+		BlendBoneSpaceTransformsVR.Reset(BoneSpaceView.Num());
+		BlendBoneSpaceTransformsVR.Append(BoneSpaceView.GetData(), BoneSpaceView.Num());
 
-		const bool bParallelBlend = false;// !!CVarUseParallelBlendPhysics.GetValueOnGameThread() && FApp::ShouldUseThreadingForPerformance();
-		if (bParallelBlend)
-		{
-			//SwapEvaluationContextBuffers();
-
-			//ParallelAnimationEvaluationTask = TGraphTask<FParallelBlendPhysicsTask>::CreateTask().ConstructAndDispatchWhenReady(this);
-
-			// set up a task to run on the game thread to accept the results
-			//FGraphEventArray Prerequistes;
-			//Prerequistes.Add(ParallelAnimationEvaluationTask);
-
-			//check(!IsValidRef(ParallelBlendPhysicsCompletionTask));
-			//ParallelBlendPhysicsCompletionTask = TGraphTask<FParallelBlendPhysicsCompletionTask>::CreateTask(&Prerequistes).ConstructAndDispatchWhenReady(this);
-
-			//ThisTickFunction.GetCompletionHandle()->DontCompleteUntil(ParallelBlendPhysicsCompletionTask);
-		}
-		else
-		{
-			PRAGMA_DISABLE_DEPRECATION_WARNINGS
-				PerformBlendPhysicsBonesVR(RequiredBones, GetEditableComponentSpaceTransforms(),  GetBoneSpaceTransformsView());
-			PRAGMA_ENABLE_DEPRECATION_WARNINGS
-				FinalizeAnimationUpdateVR();
-		}
+		// Fetch the editable buffer after the evaluation is done, it can swap
+		PerformBlendPhysicsBonesVR(RequiredBones, GetEditableComponentSpaceTransforms(), BlendBoneSpaceTransformsVR);
+		FinalizeAnimationUpdateVR();
 	}
 }
 
 void UInversePhysicsSkeletalMeshComponent::FinalizeAnimationUpdateVR()
 {
-	//SCOPE_CYCLE_COUNTER(STAT_FinalizeAnimationUpdate);
+	// Mirrors USkeletalMeshComponent::FinalizeAnimationUpdate
 
 	// Flip bone buffer and send 'post anim' notification
 	FinalizeBoneTransform();
 
 	if (!bSimulationUpdatesChildTransforms || !IsSimulatingPhysics())	//If we simulate physics the call to MoveComponent already updates the children transforms. If we are confident that animation will not be needed this can be skipped. TODO: this should be handled at the scene component layer
 	{
-		//SCOPE_CYCLE_COUNTER(STAT_FinalizeAnimationUpdate_UpdateChildTransforms);
-
 		// Update Child Transform - The above function changes bone transform, so will need to update child transform
 		// But only children attached to us via a socket.
 		UpdateChildTransforms(EUpdateTransformFlags::OnlyUpdateIfUsingSocket);
@@ -225,43 +269,28 @@ void UInversePhysicsSkeletalMeshComponent::FinalizeAnimationUpdateVR()
 
 	if (bUpdateOverlapsOnAnimationFinalize)
 	{
-		//SCOPE_CYCLE_COUNTER(STAT_FinalizeAnimationUpdate_UpdateOverlaps);
-
-		// animation often change overlap. 
+		// animation often change overlap.
 		UpdateOverlaps();
 	}
 
 	// update bounds
-	// *NOTE* This is a private var, I have to remove it for this temp fix
-	//if (bSkipBoundsUpdateWhenInterpolating)
-	//{
-	//	if (AnimEvaluationContext.bDoEvaluation)
-	//	{
-			//SCOPE_CYCLE_COUNTER(STAT_FinalizeAnimationUpdate_UpdateBounds);
-			// Cached local bounds are now out of date
-	//		InvalidateCachedBounds();
-
-	//		UpdateBounds();
-	//	}
-	//}
-	//else
+	// *NOTE* bSkipBoundsUpdateWhenInterpolating / AnimEvaluationContext are private, always update them
 	{
-		//SCOPE_CYCLE_COUNTER(STAT_FinalizeAnimationUpdate_UpdateBounds);
 		// Cached local bounds are now out of date
 		InvalidateCachedBounds();
 
 		UpdateBounds();
 	}
 
-	// Need to send new bounds to 
+	// Need to send new bounds to
 	MarkRenderTransformDirty();
 
 	// New bone positions need to be sent to render thread
 	MarkRenderDynamicDataDirty();
 
-	// If we have any Slave Components, they need to be refreshed as well.
+	// If we have any follower components, they need to be refreshed as well.
 	RefreshFollowerComponents();
-}*/
+}
 
 void UInversePhysicsSkeletalMeshComponent::GetWeldedBodies(TArray<FBodyInstance*>& OutWeldedBodies, TArray<FName>& OutLabels, bool bIncludingAutoWeld)
 {
@@ -331,7 +360,10 @@ FBodyInstance* UInversePhysicsSkeletalMeshComponent::GetBodyInstance(FName BoneN
 
 	return BodyInst;
 }
-/*
+
+// Copied from PhysAnim.cpp (file local there), used by PerformBlendPhysicsBonesVR
+namespace InversePhysicsSkeletalMeshStatics
+{
 struct FAssetWorldBoneTM
 {
 	FTransform	TM;			// Should never contain scaling.
@@ -340,7 +372,7 @@ struct FAssetWorldBoneTM
 
 typedef TArray<FAssetWorldBoneTM, TMemStackAllocator<alignof(FAssetWorldBoneTM)>> TAssetWorldBoneTMArray;
 
-void UpdateWorldBoneTMVR(TAssetWorldBoneTMArray& WorldBoneTMs, const TArray<FTransform>& InBoneSpaceTransforms, int32 BoneIndex, USkeletalMeshComponent* SkelComp, const FTransform& LocalToWorldTM, const FVector& Scale3D)
+static void UpdateWorldBoneTMVR(TAssetWorldBoneTMArray& WorldBoneTMs, const TArray<FTransform>& InBoneSpaceTransforms, int32 BoneIndex, USkeletalMeshComponent* SkelComp, const FTransform& LocalToWorldTM, const FVector& Scale3D)
 {
 	// If its already up to date - do nothing
 	if (WorldBoneTMs[BoneIndex].bUpToDate)
@@ -371,13 +403,13 @@ void UpdateWorldBoneTMVR(TAssetWorldBoneTMArray& WorldBoneTMs, const TArray<FTra
 		WorldBoneTMs[BoneIndex].bUpToDate = true;
 	}
 }
+}
 
-void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArray<FBoneIndexType>& InRequiredBones, TArray<FTransform>& InOutComponentSpaceTransforms, TArrayView<FTransform> InOutBoneSpaceTransforms)
+void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArray<FBoneIndexType>& InRequiredBones, TArray<FTransform>& InOutComponentSpaceTransforms, TArray<FTransform>& InOutBoneSpaceTransforms)
 {
-	//SCOPE_CYCLE_COUNTER(STAT_BlendInPhysics);
-	// Get drawscale from Owner (if there is one)
-	FVector TotalScale3D = GetComponentTransform().GetScale3D();
-	FVector RecipScale3D = TotalScale3D.Reciprocal();
+	// Mirrors USkeletalMeshComponent::PerformBlendPhysicsBones (PhysAnim.cpp) except for keeping the sign of the component scale
+	using namespace InversePhysicsSkeletalMeshStatics;
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_InversePhysicsBlendPhysicsBones);
 
 	UPhysicsAsset* const PhysicsAsset = GetPhysicsAsset();
 	check(PhysicsAsset);
@@ -418,13 +450,6 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 
 	// Original implementation stomps negative scale values
 	//LocalToWorldTM.RemoveScaling();
-
-	struct FBodyTMPair
-	{
-		FBodyInstance* BI;
-		FTransform TM;
-	};
-
 
 	// This will update both InOutComponentSpaceTransforms and InOutBoneSpaceTransforms for every
 	// required bone, leaving any others unchanged.
@@ -475,7 +500,7 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 					// tracking down TTP 280421. Remove this if this doesn't happen. 
 					if (!ensure(Bodies.IsValidIndex(BodyIndex)))
 					{
-						UE_LOGF(LogPhysics, Warning, "%ls(Mesh %s, PhysicsAsset %ls)",
+						UE_LOGF(LogPhysics, Warning, "%ls(Mesh %ls, PhysicsAsset %ls)",
 							*GetName(), *GetNameSafe(GetSkeletalMeshAsset()), *GetNameSafe(PhysicsAsset));
 						UE_LOGF(LogPhysics, Warning, " - # of BodySetup (%d), # of Bodies (%d), Invalid BodyIndex(%d)",
 							PhysicsAsset->SkeletalBodySetups.Num(), Bodies.Num(), BodyIndex);
@@ -637,101 +662,6 @@ void UInversePhysicsSkeletalMeshComponent::PerformBlendPhysicsBonesVR(const TArr
 
 }
 
-void UInversePhysicsSkeletalMeshComponent::RegisterEndPhysicsTick(bool bRegister)
-{
-	// For testing if the engine fix is live yet or not
-	//return Super::RegisterEndPhysicsTick(bRegister);
-
-	
-	if (bRegister != EndPhysicsTickFunctionVR.IsTickFunctionRegistered())
-	{
-		if (bRegister)
-		{
-			if (SetupActorComponentTickFunction(&EndPhysicsTickFunctionVR))
-			{
-				EndPhysicsTickFunctionVR.TargetVR = this;
-				// Make sure our EndPhysicsTick gets called after physics simulation is finished
-				UWorld* World = GetWorld();
-				if (World != nullptr)
-				{
-					EndPhysicsTickFunctionVR.AddPrerequisite(World, World->EndPhysicsTickFunction);
-				}
-			}
-		}
-		else
-		{
-			EndPhysicsTickFunctionVR.UnRegisterTickFunction();
-		}
-	}
-}*/
-/*
-void UInversePhysicsSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	//CSV_SCOPED_TIMING_STAT_EXCLUSIVE(Animation);
-
-	bool bShouldRunPhysTick = (bEnablePhysicsOnDedicatedServer || !IsNetMode(NM_DedicatedServer)) && // Early out if we are on a dedicated server and not running physics.
-		((IsSimulatingPhysics() && RigidBodyIsAwake()) || ShouldBlendPhysicsBones());
-
-	RegisterEndPhysicsTick(PrimaryComponentTick.IsTickFunctionRegistered() && bShouldRunPhysTick);
-	//UpdateEndPhysicsTickRegisteredState();
-	RegisterClothTick(PrimaryComponentTick.IsTickFunctionRegistered() && ShouldRunClothTick());
-	//UpdateClothTickRegisteredState();
-
-
-	// If we are suspended, we will not simulate clothing, but as clothing is simulated in local space
-	// relative to a root bone we need to extract simulation positions as this bone could be animated.
-	//if (bClothingSimulationSuspended && this->GetClothingSimulation() && this->GetClothingSimulation()->ShouldSimulate())
-	//{
-		//CSV_SCOPED_TIMING_STAT(Animation, Cloth);
-
-	//	this->GetClothingSimulation()->GetSimulationData(CurrentSimulationData, this, Cast<USkeletalMeshComponent>(MasterPoseComponent.Get()));
-	//}
-
-	Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	PendingRadialForces.Reset();
-
-	// Update bOldForceRefPose
-	bOldForceRefPose = bForceRefpose;
-
-
-	static const auto CVarAnimationDelaysEndGroup = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("tick.AnimationDelaysEndGroup"));
-	// Update the end group and tick priority 
-	const bool bDoLateEnd = CVarAnimationDelaysEndGroup->GetValueOnGameThread() > 0;
-	const bool bRequiresPhysics = EndPhysicsTickFunctionVR.IsTickFunctionRegistered();
-	const ETickingGroup EndTickGroup = bDoLateEnd && !bRequiresPhysics ? TG_PostPhysics : TG_PrePhysics;
-	if (ThisTickFunction)
-	{
-		ThisTickFunction->EndTickGroup = TG_PostPhysics;// EndTickGroup;
-
-		// Note that if animation is so long that we are blocked in EndPhysics we may want to reduce the priority. However, there is a risk that this function will not go wide early enough.
-		// This requires profiling and is very game dependent so cvar for now makes sense
-
-		static const auto CVarHiPriSkinnedMeshesTicks = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("tick.HiPriSkinnedMeshes"));
-		bool bDoHiPri = CVarHiPriSkinnedMeshesTicks->GetValueOnGameThread() > 0;
-		if (ThisTickFunction->bHighPriority != bDoHiPri)
-		{
-			ThisTickFunction->SetPriorityIncludingPrerequisites(bDoHiPri);
-		}
-	}
-
-	// If we are waiting for ParallelEval to complete or if we require Physics, 
-	// then FinalizeBoneTransform will be called and Anim events will be dispatched there. 
-	// We prefer doing it there so these events are triggered once we have a new updated pose.
-	// Note that it's possible that FinalizeBoneTransform has already been called here if not using ParallelUpdate.
-	// or it's possible that it hasn't been called at all if we're skipping Evaluate due to not being visible.
-	// ConditionallyDispatchQueuedAnimEvents will catch that and only Dispatch events if not already done.
-	if (!IsRunningParallelEvaluation() && !bRequiresPhysics)
-	{
-		/////////////////////////////////////////////////////////////////////////////
-		// Notify / Event Handling!
-		// This can do anything to our component (including destroy it) 
-		// Any code added after this point needs to take that into account
-		/////////////////////////////////////////////////////////////////////////////
-
-		ConditionallyDispatchQueuedAnimEvents();
-	}
-}*/
 
 void UInversePhysicsSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
 {

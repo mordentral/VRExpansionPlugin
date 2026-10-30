@@ -36,19 +36,24 @@ public:
 * Has the upside of also being a blueprintable base since UE4 doesn't allow that with std ones
 */
 
-/* FSkeletalMeshComponentEndPhysicsTickFunctionVR: public FTickFunction
+class UInversePhysicsSkeletalMeshComponent;
+
+/**
+* Replaces the stock skeletal mesh end physics tick on UInversePhysicsSkeletalMeshComponent so the physics blend
+* can keep the sign of a negative component scale (the stock PerformBlendPhysicsBones is private and strips it)
+*/
+USTRUCT()
+struct FSkeletalMeshComponentEndPhysicsTickFunctionVR : public FTickFunction
 {
 	GENERATED_USTRUCT_BODY()
 
-		UInversePhysicsSkeletalMeshComponent* TargetVR;
+	UInversePhysicsSkeletalMeshComponent* TargetVR = nullptr;
 
 	virtual void ExecuteTick(float DeltaTime, enum ELevelTick TickType, ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent) override;
-
 	virtual FString DiagnosticMessage() override;
-
 	virtual FName DiagnosticContext(bool bDetailed) override;
-
 };
+
 template<>
 struct TStructOpsTypeTraits<FSkeletalMeshComponentEndPhysicsTickFunctionVR> : public TStructOpsTypeTraitsBase2<FSkeletalMeshComponentEndPhysicsTickFunctionVR>
 {
@@ -56,7 +61,7 @@ struct TStructOpsTypeTraits<FSkeletalMeshComponentEndPhysicsTickFunctionVR> : pu
 	{
 		WithCopy = false
 	};
-};*/
+};
 
 // A base skeletal mesh component that has been added to temp correct an engine bug with inversed scale and physics
 UCLASS(Blueprintable, meta = (ChildCanTick, BlueprintSpawnableComponent), ClassGroup = (VRExpansionPlugin))
@@ -79,11 +84,26 @@ public:
 
 	// This is all overrides to fix the skeletal mesh inverse simulation bug
 	// WILL BE REMOVED LATER when the engine is fixed
-	//FSkeletalMeshComponentEndPhysicsTickFunctionVR EndPhysicsTickFunctionVR;
-	//friend struct FSkeletalMeshComponentEndPhysicsTickFunctionVR;
-	//void EndPhysicsTickComponentVR(FSkeletalMeshComponentEndPhysicsTickFunctionVR& ThisTickFunction);
-	//void BlendInPhysicsInternalVR(FTickFunction& ThisTickFunction);
-	//void FinalizeAnimationUpdateVR();
+
+	// If true, our own end physics tick replaces the stock one so the physics blend keeps negative component scale
+	// If false, the stock end physics tick and blend run instead (for comparison / checking if the engine fix is live)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, BlueprintSetter = SetUseSignPreservingPhysicsBlend, Category = "VRExpansionLibrary")
+	bool bUseSignPreservingPhysicsBlend;
+
+	// Switches between our end physics tick and the stock one right away instead of on the next component tick
+	UFUNCTION(BlueprintSetter)
+	void SetUseSignPreservingPhysicsBlend(bool bNewUseSignPreservingPhysicsBlend);
+
+	FSkeletalMeshComponentEndPhysicsTickFunctionVR EndPhysicsTickFunctionVR;
+	friend struct FSkeletalMeshComponentEndPhysicsTickFunctionVR;
+	void EndPhysicsTickComponentVR(FSkeletalMeshComponentEndPhysicsTickFunctionVR& ThisTickFunction);
+	void RegisterEndPhysicsTickVR(bool bRegister);
+	void BlendInPhysicsVR();
+	void FinalizeAnimationUpdateVR();
+
+	// Our copy of the bone space pose for the blend, the engine's BoneSpaceTransforms is private now
+	// (only the component space result is written back, the engine's bone space array keeps the pre physics pose)
+	TArray<FTransform> BlendBoneSpaceTransformsVR;
 
 	// Weld Fix until epic fixes it #TODO: check back in on this and remove and the asset include when epic fixes it
 	virtual void GetWeldedBodies(TArray<FBodyInstance*>& OutWeldedBodies, TArray<FName>& OutLabels, bool bIncludingAutoWeld) override;
@@ -104,9 +124,9 @@ public:
 		return this->GetCachedLocalBounds();
 	}
 
-	//void PerformBlendPhysicsBonesVR(const TArray<FBoneIndexType>& InRequiredBones, TArray<FTransform>& InOutComponentSpaceTransforms, TArray<FTransform>& InOutBoneSpaceTransforms);
-	//virtual void RegisterEndPhysicsTick(bool bRegister) override;
-	//virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	void PerformBlendPhysicsBonesVR(const TArray<FBoneIndexType>& InRequiredBones, TArray<FTransform>& InOutComponentSpaceTransforms, TArray<FTransform>& InOutBoneSpaceTransforms);
+	virtual void RegisterEndPhysicsTick(bool bRegister) override;
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	// END INVERSED MESH FIX
 
 	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
