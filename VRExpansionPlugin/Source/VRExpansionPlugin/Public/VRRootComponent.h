@@ -129,6 +129,7 @@ public:
 	//UPROPERTY(BlueprintReadWrite, Transient, Category = "VRExpansionLibrary")
 	//UCapsuleComponent * VRCameraCollider;
 
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FVector DifferenceFromLastFrame;
 	//UPROPERTY(BlueprintReadOnly, Transient, Category = "VRExpansionLibrary")
 	FTransform OffsetComponentToWorld;
